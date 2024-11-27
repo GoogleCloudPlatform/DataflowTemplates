@@ -67,4 +67,9 @@ public class Constants {
 
   // Default parallelism for the Dataflow workers
   public static final int DEFAULT_WORKER_HARNESS_THREAD_COUNT = 500;
+
+  // Default shard id in case of single shard migration with logical shard id unspecified
+  public static final String DEFAULT_SHARD_ID = "single_shard";
+
+  public static final String SOURCE_MYSQL = "mysql";
 }

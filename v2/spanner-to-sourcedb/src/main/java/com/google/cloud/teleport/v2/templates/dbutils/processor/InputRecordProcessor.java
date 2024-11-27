@@ -13,10 +13,14 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import org.apache.beam.sdk.metrics.Counter;
@@ -35,10 +39,11 @@ public class InputRecordProcessor {
   public static void processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
-      MySqlDao dao,
+      IDao dao,
       String shardId,
-      String sourceDbTimezoneOffset)
-      throws java.sql.SQLException, ConnectionException {
+      String sourceDbTimezoneOffset,
+      IDMLGenerator dmlGenerator)
+      throws Exception {
 
     try {
 
@@ -49,15 +54,18 @@ public class InputRecordProcessor {
       JSONObject newValuesJson = new JSONObject(newValueJsonStr);
       JSONObject keysJson = new JSONObject(keysJsonStr);
 
-      String dmlStatement =
-          DMLGenerator.getDMLStatement(
-              modType, tableName, schema, newValuesJson, keysJson, sourceDbTimezoneOffset);
-      if (dmlStatement.isEmpty()) {
+      DMLGeneratorRequest dmlGeneratorRequest =
+          new DMLGeneratorRequest.Builder(
+                  modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
+              .setSchema(schema)
+              .build();
+
+      DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);
+      if (dmlGeneratorResponse.getDmlStatement().isEmpty()) {
         LOG.warn("DML statement is empty for table: " + tableName);
         return;
       }
-
-      dao.write(dmlStatement);
+      dao.write(dmlGeneratorResponse.getDmlStatement());
 
       Counter numRecProcessedMetric =
           Metrics.counter(shardId, "records_written_to_source_" + shardId);

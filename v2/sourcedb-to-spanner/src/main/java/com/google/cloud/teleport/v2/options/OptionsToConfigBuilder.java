@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.confi
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig.builderWithPostgreSQLDefaults;
 
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
@@ -130,7 +131,7 @@ public final class OptionsToConfigBuilder {
         if (sourceDbURL == null) {
           sourceDbURL = "jdbc:postgresql://" + host + ":" + port + "/" + dbName;
         }
-        sourceDbURL = sourceDbURL + "?currentSchema=" + sourceSchemaReference.namespace();
+        sourceDbURL = sourceDbURL + "?currentSchema=" + sourceSchemaReference.jdbc().namespace();
         if (StringUtils.isNotBlank(connectionProperties)) {
           sourceDbURL = sourceDbURL + "&" + connectionProperties;
         }
@@ -236,9 +237,10 @@ public final class OptionsToConfigBuilder {
     return builderWithMySqlDefaults();
   }
 
+  // TODO(vardhanvthigle): Standardize for Css.
   private static SourceSchemaReference sourceSchemaReferenceFrom(
       SQLDialect dialect, String dbName, String namespace) {
-    SourceSchemaReference.Builder builder = SourceSchemaReference.builder();
+    JdbcSchemaReference.Builder builder = JdbcSchemaReference.builder();
     // Namespaces are not supported for MySQL
     if (dialect == SQLDialect.POSTGRESQL) {
       if (StringUtils.isBlank(namespace)) {
@@ -247,7 +249,7 @@ public final class OptionsToConfigBuilder {
         builder.setNamespace(namespace);
       }
     }
-    return builder.setDbName(dbName).build();
+    return SourceSchemaReference.ofJdbc(builder.setDbName(dbName).build());
   }
 
   private OptionsToConfigBuilder() {}

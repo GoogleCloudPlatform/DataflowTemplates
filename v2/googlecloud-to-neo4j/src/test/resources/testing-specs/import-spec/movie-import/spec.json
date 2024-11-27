@@ -1,0 +1,168 @@
+{
+  "version": "1",
+  "config": {
+    "reset_db": true
+  },
+  "sources": [
+    {
+      "type": "text",
+      "name": "persons",
+      "data": [
+        ["1","Legendary Hollywood Icon Harrison Ford...","1942-07-13","Chicago, Illinois, USA","","148","Harrison Ford","https://image.tmdb.org/t/p/w440_and_h660_face/5M7oN3sznp99hWYQ9sX0xheswWX.jpg","https://themoviedb.org/person/3"],
+        ["2","Thomas Jeffrey Hanks (born July 9, 1956) is an American actor and filmmaker...","1956-07-09","Concord, California, USA","","158","Tom Hanks","https://image.tmdb.org/t/p/w440_and_h660_face/mKr8PN8sn80LzVaZMg8L52kmakm.jpg","https://themoviedb.org/person/31"],
+        ["3","Sydney Irwin Pollack was an American film director, producer and actor...","1934-07-01","Lafayette, Indiana, USA","2008-05-26","1628","Sydney Pollack","https://image.tmdb.org/t/p/w440_and_h660_face/dbbMGZ2CWqlTuHD09KpoZdxKyI2.jpg","https://themoviedb.org/person/2226"],
+        ["4","John Alan Lasseter is an American animator, director and the chief creative officer at Pixar and Walt Disney Animation Studios...","1957-01-12","Hollywood, California, USA","","5124","John Lasseter","https://image.tmdb.org/t/p/w440_and_h660_face/snqz1JZY3xPzZF1PqFUgxzpv2sN.jpg","https://themoviedb.org/person/7879"]
+      ],
+      "format": "excel",
+      "header": ["person_tmdbId","bio","born","bornIn","died","person_imdbId","name","person_poster","person_url"]
+    },
+    {
+      "type": "text",
+      "name": "movies",
+      "data": [
+        ["1","Toy Story","30000000.0","USA","114709","8.3","591836","English","A cowboy doll is profoundly threatened...",",https://image.tmdb.org/t/p/w440_and_h660_face/uXDfjJbdP4ijW5hWSBrPrlKpxab.jpg","1995-11-22","373554033.0","81","862","https://themoviedb.org/movie/862","1995","Adventure|Animation|Children|Comedy|Fantasy"],
+        ["2","Sabrina","58000000.0","Germany|USA","114319","6.2","29091","English|French","An ugly duckling having undergone a remarkable change...","https://image.tmdb.org/t/p/w440_and_h660_face/z1oNjotUI7D06J4LWQFQzdIuPnf.jpg","1995-12-15","53672080.0","127","11860","https://themoviedb.org/movie/11860","1995","Comedy|Romance"]
+      ],
+      "format": "excel",
+      "header": ["movieId","title","budget","countries","movie_imdbId","imdbRating","imdbVotes","languages","plot","movie_poster","released","revenue","runtime","movie_tmdbId","movie_url","year","genres"]
+    },
+    {
+      "type": "text",
+      "name": "directed",
+      "header": ["movieId","person_tmdbId"],
+      "data": [
+        ["1","4"],
+        ["2","3"]
+      ],
+      "format": "excel"
+    },
+    {
+      "type": "text",
+      "name": "acted_in",
+      "header": ["movieId","person_tmdbId","role"],
+      "data": [
+        ["1","2","Woody (voice)"],
+        ["2","1","Linus Larrabee"]
+      ],
+      "format": "excel"
+    }
+  ],
+  "targets": {
+    "nodes": [
+      {
+        "source": "persons",
+        "name": "Persons",
+        "write_mode": "create",
+        "labels": [
+          "Person"
+        ],
+        "properties": [
+          {
+            "source_field": "person_tmdbId",
+            "target_property": "id"
+          },
+          {
+            "source_field": "name",
+            "target_property": "name"
+          },
+          {
+            "source_field": "bornIn",
+            "target_property": "bornLocation"
+          }
+        ],
+        "schema": {
+          "key_constraints": [
+            {
+              "name": "personIdKey",
+              "label": "Person",
+              "properties": [
+                "id"
+              ]
+            }
+          ],
+          "unique_constraints": [
+            {
+              "name": "personNameUnique",
+              "label": "Person",
+              "properties": [
+                "name"
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "source": "movies",
+        "name": "Movies",
+        "write_mode": "create",
+        "labels": [
+          "Movie"
+        ],
+        "properties": [
+          {
+            "source_field": "movieId",
+            "target_property": "id"
+          },
+          {
+            "source_field": "title",
+            "target_property": "title"
+          },
+          {
+            "source_field": "year",
+            "target_property": "releaseYear"
+          },
+          {
+            "source_field": "imdbRating",
+            "target_property": "imdbRating"
+          }
+        ],
+        "schema": {
+          "key_constraints": [
+            {
+              "name": "movieIdKey",
+              "label": "Movie",
+              "properties": [
+                "id"
+              ]
+            }
+          ],
+          "unique_constraints": [
+            {
+              "name": "movieTitleUnique",
+              "label": "Movie",
+              "properties": [
+                "title"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "relationships": [
+      {
+        "source": "directed",
+        "name": "Directed",
+        "type": "DIRECTED",
+        "write_mode": "create",
+        "node_match_mode": "match",
+        "start_node_reference": "Persons",
+        "end_node_reference": "Movies"
+      },
+      {
+        "source": "acted_in",
+        "name": "Acted_in",
+        "type": "ACTED_IN",
+        "write_mode": "create",
+        "node_match_mode": "match",
+        "start_node_reference": "Persons",
+        "end_node_reference": "Movies",
+        "properties": [
+          {
+            "source_field": "role",
+            "target_property": "role"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -171,6 +171,11 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"timestamp\","
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  }, {"
+            + "    \"name\" : \"HiddenColumn\","
+            + "    \"type\" : [ \"null\", \"long\" ],"
+            + "    \"sqlType\":\"INT64\","
+            + "    \"hidden\" : \"true\""
+            + "  }, {"
             + "    \"name\" : \"MyTokens\","
             + "    \"type\" : \"null\","
             + "    \"default\" : null,"
@@ -201,6 +206,12 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerForeignKey_1\" : "
             + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) "
             + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE\","
+            + "  \"spannerForeignKey_2\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED\","
+            + "  \"spannerForeignKey_3\" : "
+            + "  \"ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`) "
+            + "  REFERENCES `AllowedNames` (`last_name`) ENFORCED\","
             + "  \"spannerCheckConstraint_0\" : "
             + "  \"CONSTRAINT `ck` CHECK(`first_name` != 'last_name')\""
             + "}";
@@ -243,6 +254,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " `float32`         FLOAT32,"
                 + " `float64`         FLOAT64,"
                 + " `timestamp`       TIMESTAMP,"
+                + " `HiddenColumn`    INT64 HIDDEN,"
                 + " `MyTokens`                              TOKENLIST AS ((TOKENIZE_FULLTEXT(MyData))) HIDDEN,"
                 + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
@@ -254,7 +266,13 @@ public class AvroSchemaToDdlConverterTest {
                 + " FOREIGN KEY (`first_name`) REFERENCES `AllowedNames` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc`"
                 + " FOREIGN KEY (`last_name`) REFERENCES "
-                + "`AllowedNames` (`last_name`) ON DELETE CASCADE"));
+                + "`AllowedNames` (`last_name`) ON DELETE CASCADE"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ENFORCED"));
   }
 
   @Test

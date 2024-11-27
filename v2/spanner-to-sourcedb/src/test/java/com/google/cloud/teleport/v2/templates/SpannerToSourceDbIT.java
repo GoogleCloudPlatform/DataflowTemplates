@@ -49,7 +49,10 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link SpannerToSourceDb} Flex template. */
+/**
+ * Integration test for {@link SpannerToSourceDb} Flex template for basic run including new spanner
+ * tables and column rename use-case.
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -134,7 +137,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void spannerToSourceDbBasic() throws InterruptedException {
+  public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
@@ -144,16 +147,20 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
   private void writeRowInSpanner() {
     // Write a single record to Spanner
-    Mutation m =
+    Mutation m1 =
         Mutation.newInsertOrUpdateBuilder("Users")
             .set("id")
             .to(1)
-            .set("name")
+            .set("full_name")
             .to("FF")
             .set("from")
             .to("AA")
             .build();
-    spannerResourceManager.write(m);
+    spannerResourceManager.write(m1);
+
+    Mutation m2 =
+        Mutation.newInsertOrUpdateBuilder("Users2").set("id").to(2).set("name").to("B").build();
+    spannerResourceManager.write(m2);
 
     // Write a single record to Spanner for the given logical shard
     // Add the record with the transaction tag as txBy=
@@ -171,14 +178,14 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         .run(
             (TransactionCallable<Void>)
                 transaction -> {
-                  Mutation m2 =
+                  Mutation m3 =
                       Mutation.newInsertOrUpdateBuilder("Users")
                           .set("id")
                           .to(2)
-                          .set("name")
+                          .set("full_name")
                           .to("GG")
                           .build();
-                  transaction.buffer(m2);
+                  transaction.buffer(m3);
                   return null;
                 });
   }

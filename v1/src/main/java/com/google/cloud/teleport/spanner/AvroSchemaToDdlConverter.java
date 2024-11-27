@@ -285,10 +285,6 @@ public class AvroSchemaToDdlConverter {
         if (Boolean.parseBoolean(stored)) {
           column.stored();
         }
-        String hidden = f.getProp(HIDDEN);
-        if (Boolean.parseBoolean(hidden)) {
-          column.isHidden(true);
-        }
       } else {
         boolean nullable = false;
         Schema avroType = f.schema();
@@ -305,6 +301,10 @@ public class AvroSchemaToDdlConverter {
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
+      }
+      String hidden = f.getProp(HIDDEN);
+      if (Boolean.parseBoolean(hidden)) {
+        column.isHidden(true);
       }
       String placementKey = f.getProp(SPANNER_PLACEMENT_KEY);
       if (placementKey != null) {

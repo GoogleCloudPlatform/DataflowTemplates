@@ -96,6 +96,11 @@ public class DdlTest {
         .generatedAs("CONCAT(first_name, ' ', last_name)")
         .stored()
         .endColumn()
+        .column("HiddenColumn")
+        .type(Type.string())
+        .max()
+        .isHidden(true)
+        .endColumn()
         .primaryKey()
         .asc("id")
         .asc("gen_id")
@@ -109,7 +114,11 @@ public class DdlTest {
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                     + " REFERENCES `AllowedNames` (`first_name`)",
                 "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
-                    + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"))
+                    + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE",
+                "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`) "
+                    + "  REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED",
+                "ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`) "
+                    + "  REFERENCES `AllowedNames` (`last_name`) ENFORCED"))
         .checkConstraints(ImmutableList.of("CONSTRAINT `ck` CHECK (`first_name` != `last_name`)"))
         .endTable();
     Export export =
@@ -133,6 +142,7 @@ public class DdlTest {
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `HiddenColumn`                          STRING(MAX) HIDDEN,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -140,9 +150,15 @@ public class DdlTest {
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                 + " REFERENCES `AllowedNames` (`first_name`)"
                 + " ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
-                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"
+                + " ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ENFORCED"));
     List<String> statements = ddl.statements();
-    assertEquals(6, statements.size());
+    assertEquals(8, statements.size());
     assertThat(
         statements.get(0),
         equalToCompressingWhiteSpace(
@@ -152,6 +168,7 @@ public class DdlTest {
                 + " `first_name` STRING(10) DEFAULT ('John'),"
                 + " `last_name` STRING(MAX),"
                 + " `full_name` STRING(MAX) AS (CONCAT(first_name, ' ', last_name)) STORED,"
+                + " `HiddenColumn`                          STRING(MAX) HIDDEN,"
                 + " CONSTRAINT `ck` CHECK (`first_name` != `last_name`),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC)"));
     assertThat(
@@ -171,8 +188,21 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`) REFERENCES"
                 + " `AllowedNames` (`last_name`) ON DELETE CASCADE"));
+
     assertThat(
         statements.get(5),
+        equalToCompressingWhiteSpace(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"));
+    assertThat(
+        statements.get(6),
+        equalToCompressingWhiteSpace(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced`"
+                + " FOREIGN KEY (`last_name`) REFERENCES "
+                + "`AllowedNames` (`last_name`) ENFORCED"));
+    assertThat(
+        statements.get(7),
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertNotNull(ddl.hashCode());
@@ -1133,6 +1163,8 @@ public class DdlTest {
     assertThrows(NullPointerException.class, () -> foreignKeyBuilder.referencedTable(null));
     assertThrows(NullPointerException.class, () -> foreignKeyBuilder.dialect(null));
     assertThrows(NullPointerException.class, () -> foreignKeyBuilder.referentialAction(null));
+    // Setting null is OK for isEnforced since it's not supported for Postgres
+    foreignKeyBuilder.isEnforced(null);
     assertThrows(IllegalStateException.class, () -> foreignKeyBuilder.build());
     ForeignKey foreignKey =
         foreignKeyBuilder.name("fk").table("table1").referencedTable("table2").build();

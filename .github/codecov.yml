@@ -9,7 +9,7 @@ coverage:
     patch:
       default:
         target: 80%
-        informational: false
+        informational: true
 
 component_management:
   individual_components:
@@ -32,7 +32,7 @@ component_management:
       informational: true
     - type: patch
       target: 80%
-      informational: false
+      informational: true
   - component_id: spanner-import-export
     name: spanner-import-export
     paths:

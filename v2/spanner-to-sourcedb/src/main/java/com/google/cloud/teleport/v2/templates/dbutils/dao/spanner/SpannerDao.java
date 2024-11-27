@@ -13,12 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.dbutils.dao.spanner;
 
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;

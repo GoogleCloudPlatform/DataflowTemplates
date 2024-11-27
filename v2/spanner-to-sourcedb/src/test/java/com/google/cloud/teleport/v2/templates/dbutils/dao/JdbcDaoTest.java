@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.dbutils.dao;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -21,27 +21,26 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.templates.dbutils.connection.JdbcConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.zaxxer.hikari.HikariDataSource;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Before;
-import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.runners.MethodSorters;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-@FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public final class MySqlDaoTest {
-  @Rule public final MockitoRule mocktio = MockitoJUnit.rule();
+public final class JdbcDaoTest {
+  @Rule public final MockitoRule mockito = MockitoJUnit.rule();
+
   @Mock private HikariDataSource mockHikariDataSource;
-
   @Mock private Connection mockConnection;
-
   @Mock private Statement mockStatement;
 
   @Before
@@ -55,17 +54,18 @@ public final class MySqlDaoTest {
 
   @Test(expected = ConnectionException.class)
   public void testNullConnection() throws java.sql.SQLException, ConnectionException {
-    MySqlDao mySqlDao = new MySqlDao("url", "user", "pass");
-    mySqlDao.write("sql");
+    JdbcDao sqlDao = new JdbcDao("url", "user", new JdbcConnectionHelper());
+    sqlDao.write("sql");
   }
 
   @Test
   public void testSuccess() throws java.sql.SQLException, ConnectionException {
     Map<String, HikariDataSource> connectionPoolMap = new HashMap<>();
-    connectionPoolMap.put("urluserpass", mockHikariDataSource);
-    ConnectionHelper.setConnectionPoolMap(connectionPoolMap);
-    MySqlDao mySqlDao = new MySqlDao("url", "user", "pass");
-    mySqlDao.write("sql");
+    connectionPoolMap.put("url/user", mockHikariDataSource);
+    JdbcConnectionHelper jdbcConnectionHelper = new JdbcConnectionHelper();
+    jdbcConnectionHelper.setConnectionPoolMap(connectionPoolMap);
+    JdbcDao sqlDao = new JdbcDao("url", "user", jdbcConnectionHelper);
+    sqlDao.write("sql");
     verify(mockStatement).executeUpdate(eq("sql"));
   }
 }

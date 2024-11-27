@@ -171,7 +171,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void migrationTestWithSyntheticPK() {
+  public void migrationTestWithSyntheticPKAndExtraColumn() {
     // Construct a ChainedConditionCheck with 2 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events

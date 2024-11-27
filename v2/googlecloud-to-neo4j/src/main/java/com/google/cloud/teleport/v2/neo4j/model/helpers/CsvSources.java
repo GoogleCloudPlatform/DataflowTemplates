@@ -22,26 +22,26 @@ public class CsvSources {
   public static CSVFormat toCsvFormat(TextFormat format) {
     switch (format) {
       case EXCEL:
-        return CSVFormat.EXCEL;
+        return CSVFormat.EXCEL.withNullString("");
       case INFORMIX:
-        return CSVFormat.INFORMIX_UNLOAD_CSV;
+        return CSVFormat.INFORMIX_UNLOAD_CSV.withNullString("");
       case MONGO:
-        return CSVFormat.MONGODB_CSV;
+        return CSVFormat.MONGODB_CSV.withNullString("");
       case MONGO_TSV:
-        return CSVFormat.MONGODB_TSV;
+        return CSVFormat.MONGODB_TSV.withNullString("");
       case MYSQL:
-        return CSVFormat.MYSQL;
+        return CSVFormat.MYSQL.withNullString("");
       case ORACLE:
-        return CSVFormat.ORACLE;
+        return CSVFormat.ORACLE.withNullString("");
       case POSTGRES:
-        return CSVFormat.POSTGRESQL_TEXT;
+        return CSVFormat.POSTGRESQL_TEXT.withNullString("");
       case POSTGRESQL_CSV:
-        return CSVFormat.POSTGRESQL_CSV;
+        return CSVFormat.POSTGRESQL_CSV.withNullString("");
       case RFC4180:
-        return CSVFormat.RFC4180;
+        return CSVFormat.RFC4180.withNullString("");
       case DEFAULT:
       default:
-        return CSVFormat.DEFAULT;
+        return CSVFormat.DEFAULT.withNullString("");
     }
   }
 }

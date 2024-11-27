@@ -13,44 +13,34 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
-import java.io.Serializable;
+import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** Writes data to MySQL. */
-public class MySqlDao implements Serializable {
-  private static final Logger LOG = LoggerFactory.getLogger(MySqlDao.class);
+public class JdbcDao implements IDao<String> {
+  private String sqlUrl;
+  private String sqlUser;
 
-  static final String JDBC_DRIVER = "com.mysql.jdbc.Driver";
+  private final IConnectionHelper connectionHelper;
 
-  String sqlUrl;
-  String sqlUser;
-  String sqlPasswd;
-
-  public MySqlDao(String sqlUrl, String sqlUser, String sqlPasswd) {
-    try {
-      Class dirverClass = Class.forName(JDBC_DRIVER);
-    } catch (ClassNotFoundException e) {
-      LOG.error("There was not able to find the driver class");
-    }
+  public JdbcDao(String sqlUrl, String sqlUser, IConnectionHelper connectionHelper) {
     this.sqlUrl = sqlUrl;
     this.sqlUser = sqlUser;
-    this.sqlPasswd = sqlPasswd;
+    this.connectionHelper = connectionHelper;
   }
 
-  // writes to database
+  @Override
   public void write(String sqlStatement) throws SQLException, ConnectionException {
     Connection connObj = null;
     Statement statement = null;
 
     try {
 
-      connObj = ConnectionHelper.getConnection(this.sqlUrl, this.sqlUser, this.sqlPasswd);
+      connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
       if (connObj == null) {
         throw new ConnectionException("Connection is null");
       }

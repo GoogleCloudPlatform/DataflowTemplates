@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.transform.ReaderTransform;
@@ -32,7 +33,8 @@ public class FakeReader implements Reader {
   FakeReader(int rowCount, int tableCount) {
     this.rowCountPerTable = rowCount;
     this.tableCount = tableCount;
-    this.sourceSchemaReference = SourceSchemaReference.builder().setDbName(this.dbName).build();
+    this.sourceSchemaReference =
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName(this.dbName).build());
     this.readerTransformTestUtils =
         new ReaderTransformTestUtils(
             this.rowCountPerTable, this.tableCount, this.sourceSchemaReference);
