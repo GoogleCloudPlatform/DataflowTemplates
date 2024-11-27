@@ -89,8 +89,8 @@ public class BigQueryImpl implements Provider {
         .readDescription("Read from BQ " + source.getName())
         .castDescription("Cast to BeamRow " + source.getName())
         .sql(zeroRowSql)
-        .tempProjectId(source.getTempProjectId())
-        .tempDatasetId(source.getTempDatasetId())
+        .tempDataBeamProject(source.getTempDataBeamProject())
+        .tempDataBeamDataset(source.getTempDataBeamDataset())
         .build();
   }
 
@@ -104,8 +104,8 @@ public class BigQueryImpl implements Provider {
         .castDescription("Cast to BeamRow " + source.getName())
         .readDescription("Read from BQ " + source.getName())
         .sql(source.getQuery())
-        .tempProjectId(source.getTempProjectId())
-        .tempDatasetId(source.getTempDatasetId())
+        .tempDataBeamProject(source.getTempDataBeamProject())
+        .tempDataBeamDataset(source.getTempDataBeamDataset())
         .build();
   }
 
@@ -128,8 +128,8 @@ public class BigQueryImpl implements Provider {
         .castDescription(
             targetSequence.getSequenceNumber(target) + ": Cast to BeamRow " + target.getName())
         .sql(sql)
-        .tempProjectId(source.getTempProjectId())
-        .tempDatasetId(source.getTempDatasetId())
+        .tempDataBeamProject(source.getTempDataBeamProject())
+        .tempDataBeamDataset(source.getTempDataBeamDataset())
         .build();
   }
 }

@@ -52,14 +52,15 @@ public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
             .usingStandardSql()
             .withTemplateCompatibility();
 
-    var tempProjectId = this.bqQuerySpec.getTempProjectId();
-    var tempDatasetId = this.bqQuerySpec.getTempDatasetId();
+    var tempDataBeamProject = this.bqQuerySpec.getTempDataBeamProject();
+    var tempDataBeamDataset = this.bqQuerySpec.getTempDataBeamDataset();
 
-    if (tempProjectId != null && tempDatasetId != null) {
-      read.withQueryTempProjectAndDataset(tempProjectId, tempDatasetId);
-    } else if (tempDatasetId != null) {
-      read.withQueryTempDataset(tempDatasetId);
+    if (tempDataBeamProject != null && tempDataBeamDataset != null) {
+      read = read.withQueryTempProjectAndDataset(tempDataBeamProject, tempDataBeamDataset);
+    } else if (tempDataBeamDataset != null) {
+      read = read.withQueryTempDataset(tempDataBeamDataset);
     }
+
     PCollection<TableRow> sourceRows = input.apply(bqQuerySpec.getReadDescription(), read);
 
     Schema beamSchema = sourceRows.getSchema();

@@ -33,7 +33,7 @@ public class BigQuerySourceProjectDatasetValidatorTest {
             + "        \"type\": \"bigquery\",\n"
             + "        \"name\": \"a-source\",\n"
             + "        \"query\": \"SELECT field_1 FROM project.dataset.table\",\n"
-            + "        \"tempProjectId\": \"temp-project-id\"\n"
+            + "        \"temp_data_beam_project\": \"project\"\n"
             + "    }],\n"
             + "    \"targets\": {\n"
             + "        \"nodes\": [{\n"
@@ -61,6 +61,7 @@ public class BigQuerySourceProjectDatasetValidatorTest {
     assertThat(exception).hasMessageThat().contains("0 warning(s)");
     assertThat(exception)
         .hasMessageThat()
-        .contains("$.sources[0] tempProjectId is provided, but tempDatasetId is missing");
+        .contains(
+            "$.sources[0] temp_data_beam_project is provided, but temp_data_beam_dataset is missing");
   }
 }

@@ -33,10 +33,10 @@ public class BigQuerySourceProjectDatasetValidator implements SpecificationValid
       return;
     }
 
-    var tempProjectId = ((BigQuerySource) source).getTempProjectId();
-    var tempDatasetId = ((BigQuerySource) source).getTempDatasetId();
+    var tempDataBeamProject = ((BigQuerySource) source).getTempDataBeamProject();
+    var tempDataBeamDataset = ((BigQuerySource) source).getTempDataBeamDataset();
 
-    if (tempProjectId != null && tempDatasetId == null) {
+    if (tempDataBeamProject != null && tempDataBeamDataset == null) {
       paths.add(String.format("$.sources[%d]", index));
     }
   }
@@ -48,7 +48,9 @@ public class BigQuerySourceProjectDatasetValidator implements SpecificationValid
             builder.addError(
                 path,
                 ERROR_CODE,
-                String.format("%s tempProjectId is provided, but tempDatasetId is missing", path)));
+                String.format(
+                    "%s temp_data_beam_project is provided, but temp_data_beam_dataset is missing",
+                    path)));
     return paths.isEmpty();
   }
 }

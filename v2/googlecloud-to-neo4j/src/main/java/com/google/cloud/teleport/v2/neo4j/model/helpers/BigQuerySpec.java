@@ -24,20 +24,20 @@ public class BigQuerySpec {
   private final String readDescription;
   private final String castDescription;
   private final String sql;
-  private final String tempProjectId;
-  private final String tempDatasetId;
+  private final String tempDataBeamProject;
+  private final String tempDataBeamDataset;
 
   public BigQuerySpec(
       String readDescription,
       String castDescription,
       String sql,
-      String tempProjectId,
-      String tempDatasetId) {
+      String tempDataBeamProject,
+      String tempDataBeamDataset) {
     this.readDescription = readDescription;
     this.castDescription = castDescription;
     this.sql = sql;
-    this.tempProjectId = tempProjectId;
-    this.tempDatasetId = tempDatasetId;
+    this.tempDataBeamProject = tempDataBeamProject;
+    this.tempDataBeamDataset = tempDataBeamDataset;
   }
 
   public String getReadDescription() {
@@ -52,12 +52,12 @@ public class BigQuerySpec {
     return sql;
   }
 
-  public String getTempProjectId() {
-    return tempProjectId;
+  public String getTempDataBeamProject() {
+    return tempDataBeamProject;
   }
 
-  public String getTempDatasetId() {
-    return tempDatasetId;
+  public String getTempDataBeamDataset() {
+    return tempDataBeamDataset;
   }
 
   public static class BigQuerySpecBuilder {
@@ -65,8 +65,8 @@ public class BigQuerySpec {
     private String readDescription;
     private String castDescription;
     private String sql;
-    private String tempProjectId;
-    private String tempDatasetId;
+    private String tempDataBeamProject;
+    private String tempDataBeamDataset;
 
     public BigQuerySpecBuilder readDescription(String readDescription) {
       this.readDescription = readDescription;
@@ -83,18 +83,19 @@ public class BigQuerySpec {
       return this;
     }
 
-    public BigQuerySpecBuilder tempProjectId(String projectId) {
-      this.tempProjectId = projectId;
+    public BigQuerySpecBuilder tempDataBeamProject(String tempDataBeamProject) {
+      this.tempDataBeamProject = tempDataBeamProject;
       return this;
     }
 
-    public BigQuerySpecBuilder tempDatasetId(String datasetId) {
-      this.tempDatasetId = datasetId;
+    public BigQuerySpecBuilder tempDataBeamDataset(String tempDataBeamDataset) {
+      this.tempDataBeamDataset = tempDataBeamDataset;
       return this;
     }
 
     public BigQuerySpec build() {
-      return new BigQuerySpec(readDescription, castDescription, sql, tempProjectId, tempDatasetId);
+      return new BigQuerySpec(
+          readDescription, castDescription, sql, tempDataBeamProject, tempDataBeamDataset);
     }
   }
 }
