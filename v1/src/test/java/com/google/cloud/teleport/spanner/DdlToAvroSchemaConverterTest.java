@@ -148,7 +148,13 @@ public class DdlToAvroSchemaConverterTest {
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk` FOREIGN KEY (`first_name`)"
                         + " REFERENCES `AllowedNames` (`first_name`)",
                     "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
-                        + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"))
+                        + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE",
+                    "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action`"
+                        + " FOREIGN KEY (`last_name`) REFERENCES "
+                        + "`AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED",
+                    "ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced`"
+                        + " FOREIGN KEY (`last_name`) REFERENCES "
+                        + "`AllowedNames` (`last_name`) ENFORCED"))
             .checkConstraints(ImmutableList.of("CONSTRAINT ck CHECK (`first_name` != `last_name`)"))
             .endTable()
             .build();
@@ -259,6 +265,16 @@ public class DdlToAvroSchemaConverterTest {
         equalTo(
             "ALTER TABLE `Users` ADD CONSTRAINT `fk_odc` FOREIGN KEY (`last_name`)"
                 + " REFERENCES `AllowedNames` (`last_name`) ON DELETE CASCADE"));
+    assertThat(
+        avroSchema.getProp(SPANNER_FOREIGN_KEY + "2"),
+        equalTo(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_not_enforced_no_action` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ON DELETE NO ACTION NOT ENFORCED"));
+    assertThat(
+        avroSchema.getProp(SPANNER_FOREIGN_KEY + "3"),
+        equalTo(
+            "ALTER TABLE `Users` ADD CONSTRAINT `fk_enforced` FOREIGN KEY (`last_name`)"
+                + " REFERENCES `AllowedNames` (`last_name`) ENFORCED"));
     assertThat(
         avroSchema.getProp(SPANNER_CHECK_CONSTRAINT + "0"),
         equalTo("CONSTRAINT ck CHECK (`first_name` != `last_name`)"));

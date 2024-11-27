@@ -697,8 +697,13 @@ public class InformationSchemaScanner {
                     + " kcu2.table_schema,"
                     + " kcu2.table_name,"
                     + " kcu2.column_name,"
-                    + " rc.delete_rule"
+                    + " rc.delete_rule,"
+                    + " tc.enforced"
                     + " FROM information_schema.referential_constraints as rc"
+                    + " INNER JOIN information_schema.table_constraints as tc"
+                    + " ON tc.constraint_catalog = rc.constraint_catalog"
+                    + " AND tc.constraint_schema = rc.constraint_schema"
+                    + " AND tc.constraint_name = rc.constraint_name"
                     + " INNER JOIN information_schema.key_column_usage as kcu1"
                     + " ON kcu1.constraint_catalog = rc.constraint_catalog"
                     + " AND kcu1.constraint_schema = rc.constraint_schema"
@@ -724,8 +729,13 @@ public class InformationSchemaScanner {
                     + " kcu2.table_schema,"
                     + " kcu2.table_name,"
                     + " kcu2.column_name,"
-                    + " rc.delete_rule"
+                    + " rc.delete_rule,"
+                    + " tc.enforced"
                     + " FROM information_schema.referential_constraints as rc"
+                    + " INNER JOIN information_schema.table_constraints as tc"
+                    + " ON tc.constraint_catalog = rc.constraint_catalog"
+                    + " AND tc.constraint_schema = rc.constraint_schema"
+                    + " AND tc.constraint_name = rc.constraint_name"
                     + " INNER JOIN information_schema.key_column_usage as kcu1"
                     + " ON kcu1.constraint_catalog = rc.constraint_catalog"
                     + " AND kcu1.constraint_schema = rc.constraint_schema"
@@ -753,6 +763,7 @@ public class InformationSchemaScanner {
       String referencedTable = getQualifiedName(resultSet.getString(4), resultSet.getString(5));
       String referencedColumn = resultSet.getString(6);
       String deleteRule = resultSet.getString(7);
+      String enforced = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(8) : null;
       Map<String, ForeignKey.Builder> tableForeignKeys =
           foreignKeys.computeIfAbsent(table, k -> Maps.newTreeMap());
       ForeignKey.Builder foreignKey =
@@ -766,6 +777,18 @@ public class InformationSchemaScanner {
       if (!isNullOrEmpty(deleteRule)) {
         foreignKey.referentialAction(
             Optional.of(ReferentialAction.getReferentialAction("DELETE", deleteRule)));
+      }
+      if (!isNullOrEmpty(enforced)) {
+        switch (enforced.trim().toUpperCase()) {
+          case "YES":
+            foreignKey.isEnforced(true);
+            break;
+          case "NO":
+            foreignKey.isEnforced(false);
+            break;
+          default:
+            throw new IllegalArgumentException("Illegal enforcement: " + enforced);
+        }
       }
       foreignKey.columnsBuilder().add(column);
       foreignKey.referencedColumnsBuilder().add(referencedColumn);

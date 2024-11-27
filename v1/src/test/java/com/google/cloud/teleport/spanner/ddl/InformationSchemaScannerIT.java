@@ -674,7 +674,13 @@ public class InformationSchemaScannerIT {
                 + " `id2`                               INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`key` ASC)",
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id2`, `id1`)");
+                + " REFERENCES `Ref` (`id2`, `id1`)",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_2` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE CASCADE ENFORCED",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_3` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) NOT ENFORCED",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_4` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
 
     List<String> dbVerificationStatements =
         Arrays.asList(
@@ -689,7 +695,14 @@ public class InformationSchemaScannerIT {
                 + " ) PRIMARY KEY (`key` ASC)",
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
                 // Unspecified DELETE action defaults to "NO ACTION"
-                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION");
+                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION",
+            // "ENFORCED" keyword is dropped.
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_2` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE CASCADE",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_3` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_4` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
 
     SPANNER_SERVER.createDatabase(dbId, dbCreationStatements);
     Ddl ddl = getDatabaseDdl();
