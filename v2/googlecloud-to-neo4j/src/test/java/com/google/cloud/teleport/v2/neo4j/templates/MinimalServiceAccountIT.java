@@ -39,7 +39,7 @@ import org.junit.experimental.categories.Category;
 @Category(Neo4jCustomTestCategory.class)
 public class MinimalServiceAccountIT extends TemplateTestBase {
 
-  private final String MINIMAL_SERVICE_ACCOUNT =
+  private static final String MINIMAL_SERVICE_ACCOUNT =
       "dataflow-exp2@team-connectors-dev.iam.gserviceaccount.com";
 
   private Neo4jResourceManager neo4jClient;
