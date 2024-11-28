@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 
 @Category(Neo4jCustomTestCategory.class)
+@TemplateIntegrationTest(GoogleCloudToNeo4j.class)
 public class MinimalServiceAccountIT extends TemplateTestBase {
 
   private static final String MINIMAL_SERVICE_ACCOUNT =
@@ -66,7 +68,7 @@ public class MinimalServiceAccountIT extends TemplateTestBase {
   @Test
   public void runsWithProjectAndDataset() throws IOException {
     gcsClient.createArtifact(
-        "project-and-dataset.json",
+        "spec.json",
         contentOf("/testing-specs/minimal-service-account/project-and-dataset.json"));
     gcsClient.createArtifact(
         "neo4j.json",
