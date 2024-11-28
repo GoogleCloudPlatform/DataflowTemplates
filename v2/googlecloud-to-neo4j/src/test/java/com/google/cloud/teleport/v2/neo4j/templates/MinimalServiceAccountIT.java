@@ -96,7 +96,7 @@ public class MinimalServiceAccountIT extends TemplateTestBase {
                     .setQuery(
                         "RETURN EXISTS {\n"
                             + "    MATCH (p:Person)\n"
-                            + "    RETURN p\n"
+                            + "    RETURN p LIMIT 1\n"
                             + "} AS personExists")
                     .setExpectedResult(List.of(Map.of("personExists", true)))
                     .build());
