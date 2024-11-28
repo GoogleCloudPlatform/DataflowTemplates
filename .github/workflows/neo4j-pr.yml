@@ -55,7 +55,7 @@ jobs:
           -Dexcluded.neo4j.tests="" \
           -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory \
           -Dproject=team-connectors-dev \
-          -DstageBucket=emre-dataflow-example
+          -DstageBucket=emre-dataflow-example \
           -PtemplatesIntegrationTests
       - name: Upload Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
