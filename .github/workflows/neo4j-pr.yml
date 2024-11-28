@@ -56,8 +56,8 @@ jobs:
           -Dspotless.check.skip \
           -Dcheckstyle.skip \
           -Dmdep.analyze.skip \
-          -Dexcluded.neo4j.tests="" \ 
-          -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory \ 
+          -Dexcluded.neo4j.tests="" \
+          -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory \
           -Dproject=team-connectors-dev \
           -PtemplatesIntegrationTests
       - name: Upload Tests Report
