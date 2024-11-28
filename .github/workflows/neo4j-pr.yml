@@ -52,9 +52,9 @@ jobs:
           mvn --also-make --projects v2/googlecloud-to-neo4j verify \
           -Djib.skip \
           -Djacoco.skip \
-          -DskipShade \ 
+          -DskipShade \
           -Dspotless.check.skip \
-          -Dcheckstyle.skip \ 
+          -Dcheckstyle.skip \
           -Dmdep.analyze.skip \
           -Dexcluded.neo4j.tests="" \ 
           -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory \ 
