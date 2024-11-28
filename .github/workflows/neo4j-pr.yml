@@ -46,7 +46,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Neo4j Custom Integration Tests
-        run: mvn --also-make --projects verify -Djib.skip -Djacoco.skip -DskipShade -Dspotless.check.skip -Dcheckstyle.skip -Dmdep.analyze.skip -Dexcluded.neo4j.tests="" -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory v2/googlecloud-to-neo4j
+        run: |
+          export DT_IT_ACCESS_TOKEN="ya29.c.c0ASRK0GaJKWeyf0mIUeZqYGQqu9zulW4JUv1jkDAh9qTPytH644HnI62-x293DewMllEpzrWh7QU5wQmLvbbjjTpd5yz-fpxmwDFCPl1iMZLiT0VBUPVzMsa8pNJcaN5prJ2hzdJYuQM_FITvuduu4L1WSnendH-Sl7SDx4FbFXK4VvHBLgeqGGeobJIMgx_-m1eslj6BpQEjj19FbUfzjVXgqhPhrAU9fHk9RcMXCvQWs67UhJQU_U3OjanB6qhTJc6N4LOqk-Ox5Vbw_p1Ur3ZQ0GHZkbMqIexR5x2lnBOIDz9Noz6effmd_3M_iY59jC7jVC7BEBmG7hB6ezD7g8XwpRqugxEXI3NqfdaY9BdJvYDKdb9BB760Mcx8iNUoG8kz0Ygt1mLuA5F29o8-N-PqYYFn9rH2gy24Ya4griUPpsXhsuJqENi7Wbl6o--MzBwNMZEYSQrNSuX8xsWomKlC9hE16hmOGoTdLpY_ukZJXO3lyge51kNNFmEddYd57YpWVeBFVxUiCYxZfiLpZBa3uo9RLq3XGykXYityH6fnMwYZm19HQ7mKRqFjbzFreI7KXVwjWymqfLta9fiuIgpYAIfs3zwYGKIyxv5aI598FjJk1vDJXN7E_tyvL645P5n6vh3mi8zU8IW3cazQamrMVaivzJw2FOaBockiYXr8QXhYjc0h61l-jFe_RvSRmlJBdfic6uWe9lac35Jt9MoQ_J0fqWfb8sSbrSRXVVcO20-gBbtyb8_9msQzzzruQuZobv8mc_nQWnckQ8S3g2vqUXfuyy1kzRhY1hY98Y-9__ec0-1yaaOym90tV8I7vF4fk4iXp5rl39OVxVfsw4W_ZBnu6VgFXB--pl5rphemcUZzf5qymfJ93XVMybOrIdSboxnnWibR2tFvYYkosQxaXQwzfofg3vwgJSBVy7Q_cR-043MBR4vfuO322mr-_yjsSqZXZqlZW0y06QrIm-70u8z0rs6t0W2VduU3jh-_ScMWlSivxU3"
+          mvn --also-make --projects verify -Djib.skip -Djacoco.skip -DskipShade -Dspotless.check.skip -Dcheckstyle.skip -Dmdep.analyze.skip -Dexcluded.neo4j.tests="" -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory -PtemplatesIntegrationTests -Dproject=team-connectors-dev v2/googlecloud-to-neo4j
       - name: Upload Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails

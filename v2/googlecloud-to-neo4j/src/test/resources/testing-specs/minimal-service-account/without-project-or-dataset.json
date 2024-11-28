@@ -1,0 +1,115 @@
+{
+    "version": "1",
+    "config": {
+        "reset_db": true
+    },
+    "sources": [
+        {
+            "type": "bigquery",
+            "name": "persons",
+            "query": "SELECT person_tmdbId, name, bornIn, born, died FROM team-connectors-dev.movies.persons"
+        },
+        {
+            "type": "bigquery",
+            "name": "movies",
+            "query": "SELECT movieId, title, imdbRating, year FROM team-connectors-dev.movies.movies"
+        }
+    ],
+    "targets": {
+        "nodes": [
+            {
+                "source": "persons",
+                "name": "Persons",
+                "write_mode": "merge",
+                "labels": [ "Person" ],
+                "properties": [
+                    {
+                        "source_field": "person_tmdbId",
+                        "target_property": "id",
+                        "target_property_type": "string"
+                    },
+                    {
+                        "source_field": "name",
+                        "target_property": "name",
+                        "target_property_type": "string"
+                    },
+                    {
+                        "source_field": "bornIn",
+                        "target_property": "bornLocation",
+                        "target_property_type": "string"
+                    },
+                    {
+                        "source_field": "born",
+                        "target_property": "bornDate",
+                        "target_property_type": "date"
+                    },
+                    {
+                        "source_field": "died",
+                        "target_property": "diedDate",
+                        "target_property_type": "date"
+                    }
+                ],
+                "schema": {
+                    "key_constraints": [
+                        {
+                            "name": "personIdKey",
+                            "label": "Person",
+                            "properties": ["id"]
+                        }
+                    ],
+                    "unique_constraints": [
+                        {
+                            "name": "personNameUnique",
+                            "label": "Person",
+                            "properties": ["name"]
+                        }
+                    ]
+                }
+            },
+            {
+                "source": "movies",
+                "name": "Movies",
+                "write_mode": "merge",
+                "labels": [ "Movie" ],
+                "properties": [
+                    {
+                        "source_field": "movieId",
+                        "target_property": "id",
+                        "target_property_type": "string"
+                    },
+                    {
+                        "source_field": "title",
+                        "target_property": "title",
+                        "target_property_type": "string"
+                    },
+                    {
+                        "source_field": "year",
+                        "target_property": "releaseYear",
+                        "target_property_type": "string"
+                    },
+                    {
+                        "source_field": "imdbRating",
+                        "target_property": "imdbRating",
+                        "target_property_type": "float"
+                    }
+                ],
+                "schema": {
+                    "key_constraints": [
+                        {
+                            "name": "movieIdKey",
+                            "label": "Movie",
+                            "properties": ["id"]
+                        }
+                    ],
+                    "unique_constraints": [
+                        {
+                            "name": "movieTitleUnique",
+                            "label": "Movie",
+                            "properties": ["title"]
+                        }
+                    ]
+                }
+            }
+        ]
+    }
+}
