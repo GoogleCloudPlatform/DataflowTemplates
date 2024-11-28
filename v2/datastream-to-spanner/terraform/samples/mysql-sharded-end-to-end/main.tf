@@ -100,6 +100,16 @@ resource "google_storage_bucket_object" "session_file_object" {
   bucket       = google_storage_bucket.datastream_bucket[count.index].id
 }
 
+# upload local schema overrides file to the created GCS bucket
+resource "google_storage_bucket_object" "schema_overrides_file_object" {
+  count        = var.common_params.dataflow_params.template_params.local_schema_overrides_file_path != null ? length(var.shard_list) : 0
+  depends_on   = [google_project_service.enabled_apis]
+  name         = "schema-overrides.json"
+  source       = var.common_params.dataflow_params.template_params.local_schema_overrides_file_path
+  content_type = "application/json"
+  bucket       = google_storage_bucket.datastream_bucket[count.index].id
+}
+
 # if the transformation context file for the shard is specified, use that, otherwise
 # auto-generate transformation context on basis of MySQL host IP and logical
 # shard names.
@@ -306,6 +316,9 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     transformationClassName         = var.common_params.dataflow_params.template_params.transformation_class_name
     transformationCustomParameters  = var.common_params.dataflow_params.template_params.transformation_custom_parameters
     filteredEventsDirectory         = var.common_params.dataflow_params.template_params.filtered_events_directory
+    tableOverrides                  = var.common_params.dataflow_params.template_params.table_overrides
+    columnOverrides                 = var.common_params.dataflow_params.template_params.column_overrides
+    schemaOverridesFilePath         = var.common_params.dataflow_params.template_params.local_session_file_path != null ? "gs://${google_storage_bucket_object.schema_overrides_file_object[count.index].bucket}/${google_storage_bucket_object.schema_overrides_file_object[count.index].name}" : null
   }
 
   # Additional Job Configurations
