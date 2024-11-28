@@ -416,6 +416,9 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
+    if (config.maxFetchSize() != null) {
+      jdbcIO = jdbcIO.withFetchSize(config.maxFetchSize());
+    }
     return jdbcIO;
   }
 
@@ -443,6 +446,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
+            .setFetchSize(config.maxFetchSize())
             .setRowMapper(
                 new JdbcSourceRowMapper(
                     config.valueMappingsProvider(),
@@ -463,7 +467,9 @@ public final class JdbcIoWrapper implements IoWrapper {
       readWithUniformPartitionsBuilder =
           readWithUniformPartitionsBuilder.setMaxPartitionsHint((long) tableConfig.maxPartitions());
     }
-    return readWithUniformPartitionsBuilder.build();
+    ReadWithUniformPartitions readWithUniformPartitions = readWithUniformPartitionsBuilder.build();
+    LOG.info("Configured ReadWithUniformPartitions {} for {}", readWithUniformPartitions, config);
+    return readWithUniformPartitions;
   }
 
   /**
