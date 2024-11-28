@@ -18,10 +18,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **mongoDbUri** : The MongoDB connection URI in the format mongodb+srv://:@.
-* **database** : Database in MongoDB to store the collection. (Example: my-db).
-* **collection** : The name of the collection in the MongoDB database. (Example: my-collection).
-* **inputTableSpec** : The BigQuery table to read from. (Example: bigquery-project:dataset.input_table).
+* **mongoDbUri**: The MongoDB connection URI in the format `mongodb+srv://:@`.
+* **database**: Database in MongoDB to store the collection. For example, `my-db`.
+* **collection**: The name of the collection in the MongoDB database. For example, `my-collection`.
+* **inputTableSpec**: The BigQuery table to read from. For example, `bigquery-project:dataset.input_table`.
 
 ### Optional parameters
 
@@ -196,9 +196,9 @@ resource "google_dataflow_flex_template_job" "bigquery_to_mongodb" {
   region            = var.region
   parameters        = {
     mongoDbUri = "<mongoDbUri>"
-    database = "my-db"
-    collection = "my-collection"
-    inputTableSpec = "bigquery-project:dataset.input_table"
+    database = "<database>"
+    collection = "<collection>"
+    inputTableSpec = "<inputTableSpec>"
   }
 }
 ```

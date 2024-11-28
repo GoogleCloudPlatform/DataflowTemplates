@@ -125,7 +125,7 @@ public class GCSToSourceDb {
         order = 5,
         optional = true,
         description =
-            "Duration in mili seconds between calls to stateful timer processing.Defaults to 1"
+            "Duration in mili seconds between calls to stateful timer processing.Defaults to `1`."
                 + " millisecond. ",
         helpText =
             "Controls the time between successive polls to buffer and processing of the resultant"
@@ -215,7 +215,7 @@ public class GCSToSourceDb {
         },
         description =
             "This type of run mode. Supported values are"
-                + " regular/reprocess/resumeSucess/resumeFailed/resumeAll. Defaults to regular. All"
+                + " regular/reprocess/resumeSucess/resumeFailed/resumeAll. Defaults to `regular`. All"
                 + " run modes should have the same run identifier.",
         helpText =
             "Regular writes to source db, reprocess does processing the specific shards marked as"
@@ -255,7 +255,7 @@ public class GCSToSourceDb {
         optional = true,
         description = "Custom transformation jar location in Cloud Storage",
         helpText =
-            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+            "Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records"
                 + " in reverse replication.")
     @Default.String("")
     String getTransformationJarPath();
@@ -267,8 +267,8 @@ public class GCSToSourceDb {
         optional = true,
         description = "Custom class name for transformation",
         helpText =
-            "Fully qualified class name having the custom transformation logic.  It is a"
-                + " mandatory field in case transformationJarPath is specified")
+            "Fully qualified class name for the class that contains the custom transformation logic.  When"
+                + " `transformationJarPath` is specified, this field is required.")
     @Default.String("")
     String getTransformationClassName();
 
@@ -279,7 +279,7 @@ public class GCSToSourceDb {
         optional = true,
         description = "Custom parameters for transformation",
         helpText =
-            "String containing any custom parameters to be passed to the custom transformation class.")
+            "The string that contains any custom parameters to pass to the custom transformation class.")
     @Default.String("")
     String getTransformationCustomParameters();
 
@@ -290,7 +290,7 @@ public class GCSToSourceDb {
         optional = true,
         description = "Write filtered events to GCS",
         helpText =
-            "This is a flag which if set to true will write filtered events from custom transformation to GCS.")
+            "When set to `true`, writes filtered events from custom transformation to Cloud Storage.")
     @Default.Boolean(false)
     Boolean getWriteFilteredEventsToGcs();
 

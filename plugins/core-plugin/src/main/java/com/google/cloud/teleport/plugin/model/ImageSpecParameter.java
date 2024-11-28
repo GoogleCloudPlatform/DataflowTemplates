@@ -652,7 +652,7 @@ public class ImageSpecParameter {
       this.setHelpText(helpText);
 
       if (example != null && !example.isEmpty()) {
-        this.setHelpText(this.getHelpText() + " (Example: " + example + ")");
+        this.setHelpText(this.getHelpText() + " For example, `" + example + "`");
       }
     }
   }
