@@ -27,47 +27,48 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **deadletterTable** : The BigQuery dead-letter table to send failed inserts to. (Example: your-project:your-dataset.your-table-name).
-* **inputFileSpec** : The Cloud Storage file pattern to search for CSV files. Example: `gs://mybucket/test-*.csv`.
-* **connectionUrl** : The Elasticsearch URL in the format `https://hostname:[port]`. If using Elastic Cloud, specify the CloudID. (Example: https://elasticsearch-host:9200).
-* **apiKey** : The Base64-encoded API key to use for authentication.
-* **index** : The Elasticsearch index that the requests are issued to. (Example: my-index).
+* **deadletterTable**: The BigQuery dead-letter table to send failed inserts to. For example, `your-project:your-dataset.your-table-name`.
+* **inputFileSpec**: The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`.
+* **connectionUrl**: The Elasticsearch URL in the format `https://hostname:[port]`. If using Elastic Cloud, specify the CloudID. For example, `https://elasticsearch-host:9200`.
+* **apiKey**: The Base64-encoded API key to use for authentication.
+* **index**: The Elasticsearch index that the requests are issued to. For example, `my-index`.
 
 ### Optional parameters
 
-* **inputFormat** : Input file format. Defaults to: `CSV`.
-* **containsHeaders** : Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
-* **delimiter** : The column delimiter of the input text files. Default: `,` (Example: ,).
-* **csvFormat** : CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
-* **jsonSchemaPath** : The path to the JSON schema. Defaults to: `null`. (Example: gs://path/to/schema).
-* **largeNumFiles** : Set to true if number of files is in the tens of thousands. Defaults to: `false`.
-* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
-* **logDetailedCsvConversionErrors** : Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`.
-* **elasticsearchUsername** : The Elasticsearch username to authenticate with. If specified, the value of `apiKey` is ignored.
-* **elasticsearchPassword** : The Elasticsearch password to authenticate with. If specified, the value of `apiKey` is ignored.
-* **batchSize** : The batch size in number of documents. Defaults to: `1000`.
-* **batchSizeBytes** : The batch size in number of bytes. Defaults to: `5242880` (5mb).
-* **maxRetryAttempts** : The maximum number of retry attempts. Must be greater than zero. Defaults to: `no retries`.
-* **maxRetryDuration** : The maximum retry duration in milliseconds. Must be greater than zero. Defaults to: `no retries`.
-* **propertyAsIndex** : The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to: `none`.
-* **javaScriptIndexFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: `none`.
-* **javaScriptIndexFnName** : The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: `none`.
-* **propertyAsId** : A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to: `none`.
-* **javaScriptIdFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to: `none`.
-* **javaScriptIdFnName** : The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to: `none`.
-* **javaScriptTypeFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Default: `none`.
-* **javaScriptTypeFnName** : The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to: `none`.
-* **javaScriptIsDeleteFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: `none`.
-* **javaScriptIsDeleteFnName** : The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: `none`.
-* **usePartialUpdate** : Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to: `false`.
-* **bulkInsertMethod** : Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: `CREATE`.
-* **trustSelfSignedCerts** : Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`).
-* **disableCertificateValidation** : If `true`, trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to `true`. Default: `false`.
-* **apiKeyKMSEncryptionKey** : The Cloud KMS key to decrypt the API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. For the key, use the format `projects/<PROJECT_ID>/locations/<KEY_REGION>/keyRings/<KEY_RING>/cryptoKeys/<KMS_KEY_NAME>`. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
-* **apiKeySecretId** : Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **apiKeySource** : Source of the API key. One of `PLAINTEXT`, `KMS` or `SECRET_MANAGER`. This parameter must be provided if secret manager or KMS is used. If `apiKeySource` is set to `KMS`, `apiKeyKMSEncryptionKey` and encrypted apiKey must be provided. If `apiKeySource` is set to `SECRET_MANAGER`, `apiKeySecretId` must be provided. If `apiKeySource` is set to `PLAINTEXT`, apiKey must be provided. Defaults to: PLAINTEXT.
-* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
-* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **inputFormat**: The input file format. Defaults to `CSV`.
+* **containsHeaders**: Input CSV files contain a header record (true/false). Only required if reading CSV files. Defaults to: false.
+* **delimiter**: The column delimiter of the input text files. Default: `,` For example, `,`.
+* **csvFormat**: CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html.
+* **jsonSchemaPath**: The path to the JSON schema. Defaults to `null`. For example, `gs://path/to/schema`.
+* **largeNumFiles**: Set to true if number of files is in the tens of thousands. Defaults to `false`.
+* **csvFileEncoding**: The CSV file character encoding format. Allowed values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
+* **logDetailedCsvConversionErrors**: Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`.
+* **elasticsearchUsername**: The Elasticsearch username to authenticate with. If specified, the value of `apiKey` is ignored.
+* **elasticsearchPassword**: The Elasticsearch password to authenticate with. If specified, the value of `apiKey` is ignored.
+* **batchSize**: The batch size in number of documents. Defaults to `1000`.
+* **batchSizeBytes**: The batch size in number of bytes. Defaults to `5242880` (5mb).
+* **maxRetryAttempts**: The maximum number of retry attempts. Must be greater than zero. Defaults to `no retries`.
+* **maxRetryDuration**: The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `no retries`.
+* **propertyAsIndex**: The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to `none`.
+* **javaScriptIndexFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptIndexFnName**: The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.
+* **propertyAsId**: A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to `none`.
+* **javaScriptIdFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptIdFnName**: The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptTypeFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Defaults to `none`.
+* **javaScriptTypeFnName**: The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptIsDeleteFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`.
+* **javaScriptIsDeleteFnName**: The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`.
+* **usePartialUpdate**: Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to `false`.
+* **bulkInsertMethod**: Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to `CREATE`.
+* **trustSelfSignedCerts**: Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`).
+* **disableCertificateValidation**: If `true`, trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to `true`. Defaults to `false`.
+* **apiKeyKMSEncryptionKey**: The Cloud KMS key to decrypt the API key. This parameter is required if the `apiKeySource` is set to `KMS`. If this parameter is provided, pass in an encrypted `apiKey` string. Encrypt parameters using the KMS API encrypt endpoint. For the key, use the format `projects/<PROJECT_ID>/locations/<KEY_REGION>/keyRings/<KEY_RING>/cryptoKeys/<KMS_KEY_NAME>`. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`.
+* **apiKeySecretId**: The Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>. For example, `projects/your-project-id/secrets/your-secret/versions/your-secret-version`.
+* **apiKeySource**: The source of the API key. Allowed values are `PLAINTEXT`, `KMS` orand `SECRET_MANAGER`. This parameter is required when you use Secret Manager or KMS. If `apiKeySource` is set to `KMS`, `apiKeyKMSEncryptionKey` and encrypted apiKey must be provided. If `apiKeySource` is set to `SECRET_MANAGER`, `apiKeySecretId` must be provided. If `apiKeySource` is set to `PLAINTEXT`, `apiKey` must be provided. Defaults to: PLAINTEXT.
+* **socketTimeout**: If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient.
+* **pythonExternalTextTransformGcsPath**: The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-function.py`.
+* **pythonExternalTextTransformFunctionName**: The name of the function to call from your Python file. Use only letters, digits, and underscores. For example, `'transform' or 'transform_udf1'`.
 
 
 
@@ -184,6 +185,7 @@ export DISABLE_CERTIFICATE_VALIDATION=false
 export API_KEY_KMSENCRYPTION_KEY=<apiKeyKMSEncryptionKey>
 export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=PLAINTEXT
+export SOCKET_TIMEOUT=<socketTimeout>
 export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
 export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
@@ -227,6 +229,7 @@ gcloud dataflow flex-template run "gcs-to-elasticsearch-xlang-job" \
   --parameters "apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY" \
   --parameters "apiKeySecretId=$API_KEY_SECRET_ID" \
   --parameters "apiKeySource=$API_KEY_SOURCE" \
+  --parameters "socketTimeout=$SOCKET_TIMEOUT" \
   --parameters "pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH" \
   --parameters "pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME"
 ```
@@ -285,6 +288,7 @@ export DISABLE_CERTIFICATE_VALIDATION=false
 export API_KEY_KMSENCRYPTION_KEY=<apiKeyKMSEncryptionKey>
 export API_KEY_SECRET_ID=<apiKeySecretId>
 export API_KEY_SOURCE=PLAINTEXT
+export SOCKET_TIMEOUT=<socketTimeout>
 export PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH=<pythonExternalTextTransformGcsPath>
 export PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME=<pythonExternalTextTransformFunctionName>
 
@@ -295,7 +299,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="gcs-to-elasticsearch-xlang-job" \
 -DtemplateName="GCS_to_Elasticsearch_Xlang" \
--Dparameters="deadletterTable=$DEADLETTER_TABLE,inputFormat=$INPUT_FORMAT,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="deadletterTable=$DEADLETTER_TABLE,inputFormat=$INPUT_FORMAT,inputFileSpec=$INPUT_FILE_SPEC,containsHeaders=$CONTAINS_HEADERS,delimiter=$DELIMITER,csvFormat=$CSV_FORMAT,jsonSchemaPath=$JSON_SCHEMA_PATH,largeNumFiles=$LARGE_NUM_FILES,csvFileEncoding=$CSV_FILE_ENCODING,logDetailedCsvConversionErrors=$LOG_DETAILED_CSV_CONVERSION_ERRORS,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,socketTimeout=$SOCKET_TIMEOUT,pythonExternalTextTransformGcsPath=$PYTHON_EXTERNAL_TEXT_TRANSFORM_GCS_PATH,pythonExternalTextTransformFunctionName=$PYTHON_EXTERNAL_TEXT_TRANSFORM_FUNCTION_NAME" \
 -f v2/googlecloud-to-elasticsearch
 ```
 
@@ -340,16 +344,16 @@ resource "google_dataflow_flex_template_job" "gcs_to_elasticsearch_xlang" {
   name              = "gcs-to-elasticsearch-xlang"
   region            = var.region
   parameters        = {
-    deadletterTable = "your-project:your-dataset.your-table-name"
+    deadletterTable = "<deadletterTable>"
     inputFileSpec = "<inputFileSpec>"
-    connectionUrl = "https://elasticsearch-host:9200"
+    connectionUrl = "<connectionUrl>"
     apiKey = "<apiKey>"
-    index = "my-index"
+    index = "<index>"
     # inputFormat = "csv"
     # containsHeaders = "false"
-    # delimiter = ","
+    # delimiter = "<delimiter>"
     # csvFormat = "Default"
-    # jsonSchemaPath = "gs://path/to/schema"
+    # jsonSchemaPath = "<jsonSchemaPath>"
     # largeNumFiles = "false"
     # csvFileEncoding = "UTF-8"
     # logDetailedCsvConversionErrors = "false"
@@ -373,11 +377,12 @@ resource "google_dataflow_flex_template_job" "gcs_to_elasticsearch_xlang" {
     # bulkInsertMethod = "CREATE"
     # trustSelfSignedCerts = "false"
     # disableCertificateValidation = "false"
-    # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
-    # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
+    # apiKeyKMSEncryptionKey = "<apiKeyKMSEncryptionKey>"
+    # apiKeySecretId = "<apiKeySecretId>"
     # apiKeySource = "PLAINTEXT"
-    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
-    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # socketTimeout = "<socketTimeout>"
+    # pythonExternalTextTransformGcsPath = "<pythonExternalTextTransformGcsPath>"
+    # pythonExternalTextTransformFunctionName = "<pythonExternalTextTransformFunctionName>"
   }
 }
 ```

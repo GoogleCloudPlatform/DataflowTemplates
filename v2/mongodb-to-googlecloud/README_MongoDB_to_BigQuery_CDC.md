@@ -19,22 +19,24 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **mongoDbUri** : The MongoDB connection URI in the format `mongodb+srv://:@.`.
-* **database** : Database in MongoDB to read the collection from. (Example: my-db).
-* **collection** : Name of the collection inside MongoDB database. (Example: my-collection).
-* **userOption** : `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE.
-* **inputTopic** : The Pub/Sub input topic to read from, in the format of `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
-* **outputTableSpec** : The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.
+* **mongoDbUri**: The MongoDB connection URI in the format `mongodb+srv://:@.`.
+* **database**: Database in MongoDB to read the collection from. For example, `my-db`.
+* **collection**: Name of the collection inside MongoDB database. For example, `my-collection`.
+* **userOption**: `FLATTEN`, `JSON`, or `NONE`. `FLATTEN` flattens the documents to the single level. `JSON` stores document in BigQuery JSON format. `NONE` stores the whole document as a JSON-formatted STRING. Defaults to: NONE.
+* **inputTopic**: The Pub/Sub input topic to read from, in the format of `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **outputTableSpec**: The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`.
 
 ### Optional parameters
 
-* **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly- once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
-* **KMSEncryptionKey** : Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
-* **javascriptDocumentTransformGcsPath** : The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://your-bucket/your-transforms/*.js).
-* **javascriptDocumentTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). (Example: transform).
+* **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly- once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **KMSEncryptionKey**: Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **filter**: Bson filter in json format. For example, `{ "val": { $gt: 0, $lt: 9 }}`.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
+* **bigQuerySchemaPath**: The Cloud Storage path for the BigQuery JSON schema. For example, `gs://your-bucket/your-schema.json`.
+* **javascriptDocumentTransformGcsPath**: The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://your-bucket/your-transforms/*.js`.
+* **javascriptDocumentTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). For example, `transform`.
 
 
 
@@ -123,9 +125,11 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 ### Optional
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
+export FILTER=<filter>
 export USE_STORAGE_WRITE_API=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
+export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
 
@@ -139,11 +143,13 @@ gcloud dataflow flex-template run "mongodb-to-bigquery-cdc-job" \
   --parameters "collection=$COLLECTION" \
   --parameters "userOption=$USER_OPTION" \
   --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
+  --parameters "filter=$FILTER" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
   --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
   --parameters "inputTopic=$INPUT_TOPIC" \
   --parameters "outputTableSpec=$OUTPUT_TABLE_SPEC" \
+  --parameters "bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH" \
   --parameters "javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH" \
   --parameters "javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME"
 ```
@@ -174,9 +180,11 @@ export OUTPUT_TABLE_SPEC=<outputTableSpec>
 ### Optional
 export USE_STORAGE_WRITE_API_AT_LEAST_ONCE=false
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
+export FILTER=<filter>
 export USE_STORAGE_WRITE_API=false
 export NUM_STORAGE_WRITE_API_STREAMS=0
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=<storageWriteApiTriggeringFrequencySec>
+export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH=<javascriptDocumentTransformGcsPath>
 export JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME=<javascriptDocumentTransformFunctionName>
 
@@ -187,7 +195,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mongodb-to-bigquery-cdc-job" \
 -DtemplateName="MongoDB_to_BigQuery_CDC" \
--Dparameters="useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,inputTopic=$INPUT_TOPIC,outputTableSpec=$OUTPUT_TABLE_SPEC,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,mongoDbUri=$MONGO_DB_URI,database=$DATABASE,collection=$COLLECTION,userOption=$USER_OPTION,KMSEncryptionKey=$KMSENCRYPTION_KEY,filter=$FILTER,useStorageWriteApi=$USE_STORAGE_WRITE_API,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,inputTopic=$INPUT_TOPIC,outputTableSpec=$OUTPUT_TABLE_SPEC,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,javascriptDocumentTransformGcsPath=$JAVASCRIPT_DOCUMENT_TRANSFORM_GCS_PATH,javascriptDocumentTransformFunctionName=$JAVASCRIPT_DOCUMENT_TRANSFORM_FUNCTION_NAME" \
 -f v2/mongodb-to-googlecloud
 ```
 
@@ -233,18 +241,20 @@ resource "google_dataflow_flex_template_job" "mongodb_to_bigquery_cdc" {
   region            = var.region
   parameters        = {
     mongoDbUri = "<mongoDbUri>"
-    database = "my-db"
-    collection = "my-collection"
+    database = "<database>"
+    collection = "<collection>"
     userOption = "NONE"
     inputTopic = "<inputTopic>"
     outputTableSpec = "<outputTableSpec>"
     # useStorageWriteApiAtLeastOnce = "false"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
+    # filter = "<filter>"
     # useStorageWriteApi = "false"
     # numStorageWriteApiStreams = "0"
     # storageWriteApiTriggeringFrequencySec = "<storageWriteApiTriggeringFrequencySec>"
-    # javascriptDocumentTransformGcsPath = "gs://your-bucket/your-transforms/*.js"
-    # javascriptDocumentTransformFunctionName = "transform"
+    # bigQuerySchemaPath = "<bigQuerySchemaPath>"
+    # javascriptDocumentTransformGcsPath = "<javascriptDocumentTransformGcsPath>"
+    # javascriptDocumentTransformFunctionName = "<javascriptDocumentTransformFunctionName>"
   }
 }
 ```

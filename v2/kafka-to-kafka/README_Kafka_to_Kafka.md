@@ -13,30 +13,30 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readBootstrapServerAndTopic** : Kafka Bootstrap server and topic to read the input from. (Example: localhost:9092;topic1,topic2).
-* **kafkaReadAuthenticationMode** : The mode of authentication to use with the Kafka cluster. Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, and `TLS` for certificate-based authentication. Apache Kafka for BigQuery only supports the `SASL_PLAIN` authentication mode. Defaults to: SASL_PLAIN.
-* **writeBootstrapServerAndTopic** : Kafka topic to write the output to.
-* **kafkaWriteAuthenticationMethod** : The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
+* **readBootstrapServerAndTopic**: Kafka Bootstrap server and topic to read the input from. For example, `localhost:9092;topic1,topic2`.
+* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, and `TLS` for certificate-based authentication. Apache Kafka for BigQuery only supports the `SASL_PLAIN` authentication mode. Defaults to: SASL_PLAIN.
+* **writeBootstrapServerAndTopic**: Kafka topic to write the output to.
+* **kafkaWriteAuthenticationMethod**: The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
 
 ### Optional parameters
 
-* **enableCommitOffsets** : Commit offsets of processed messages to Kafka. If enabled, this will minimize the gaps or duplicate processing of messages when restarting the pipeline. Requires specifying the Consumer Group ID. Defaults to: false.
-* **consumerGroupId** : The unique identifier for the consumer group that this pipeline belongs to. Required if Commit Offsets to Kafka is enabled. Defaults to empty.
-* **kafkaReadOffset** : The starting point for reading messages when no committed offsets exist. The earliest starts from the beginning, the latest from the newest message. Defaults to: latest.
-* **kafkaReadUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username to use with `SASL_PLAIN` authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
-* **kafkaReadPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_PLAIN` authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
-* **kafkaReadKeystoreLocation** : The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key to use when authenticating with the Kafka cluster. (Example: gs://your-bucket/keystore.jks).
-* **kafkaReadTruststoreLocation** : The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
-* **kafkaReadTruststorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
-* **kafkaReadKeystorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java KeyStore (JKS) file for Kafka TLS authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
-* **kafkaReadKeyPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for Kafka TLS authentication. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
-* **kafkaWriteUsernameSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka username  for SASL_PLAIN authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
-* **kafkaWritePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the Kafka password to use for SASL_PLAIN authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>). Defaults to empty.
-* **kafkaWriteKeystoreLocation** : The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key for authenticating with the destination Kafka cluster. (Example: gs://<BUCKET>/<KEYSTORE>.jks).
-* **kafkaWriteTruststoreLocation** : The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the destination Kafka broker.
-* **kafkaWriteTruststorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for TLS authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
-* **kafkaWriteKeystorePasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to access the Java KeyStore (JKS) file to use for TLS authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
-* **kafkaWriteKeyPasswordSecretId** : The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for TLS authentication with the destination Kafka cluster. (Example: projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>).
+* **enableCommitOffsets**: Commit offsets of processed messages to Kafka. If enabled, this will minimize the gaps or duplicate processing of messages when restarting the pipeline. Requires specifying the Consumer Group ID. Defaults to: false.
+* **consumerGroupId**: The unique identifier for the consumer group that this pipeline belongs to. Required if Commit Offsets to Kafka is enabled. Defaults to empty.
+* **kafkaReadOffset**: The starting point for reading messages when no committed offsets exist. The earliest starts from the beginning, the latest from the newest message. Defaults to: latest.
+* **kafkaReadUsernameSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka username to use with `SASL_PLAIN` authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`. Defaults to empty.
+* **kafkaReadPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_PLAIN` authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`. Defaults to empty.
+* **kafkaReadKeystoreLocation**: The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key to use when authenticating with the Kafka cluster. For example, `gs://your-bucket/keystore.jks`.
+* **kafkaReadTruststoreLocation**: The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
+* **kafkaReadTruststorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadKeystorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java KeyStore (JKS) file for Kafka TLS authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadKeyPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for Kafka TLS authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaWriteUsernameSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka username  for SASL_PLAIN authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`. Defaults to empty.
+* **kafkaWritePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka password to use for SASL_PLAIN authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`. Defaults to empty.
+* **kafkaWriteKeystoreLocation**: The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key for authenticating with the destination Kafka cluster. For example, `gs://<BUCKET>/<KEYSTORE>.jks`.
+* **kafkaWriteTruststoreLocation**: The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the destination Kafka broker.
+* **kafkaWriteTruststorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for TLS authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaWriteKeystorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to access the Java KeyStore (JKS) file to use for TLS authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaWriteKeyPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for TLS authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 
 
 
@@ -258,27 +258,27 @@ resource "google_dataflow_flex_template_job" "kafka_to_kafka" {
   name              = "kafka-to-kafka"
   region            = var.region
   parameters        = {
-    readBootstrapServerAndTopic = "localhost:9092;topic1,topic2"
+    readBootstrapServerAndTopic = "<readBootstrapServerAndTopic>"
     kafkaReadAuthenticationMode = "SASL_PLAIN"
     writeBootstrapServerAndTopic = "<writeBootstrapServerAndTopic>"
     kafkaWriteAuthenticationMethod = "APPLICATION_DEFAULT_CREDENTIALS"
     # enableCommitOffsets = "false"
     # consumerGroupId = ""
     # kafkaReadOffset = "latest"
-    # kafkaReadUsernameSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaReadPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaReadKeystoreLocation = "gs://your-bucket/keystore.jks"
+    # kafkaReadUsernameSecretId = ""
+    # kafkaReadPasswordSecretId = ""
+    # kafkaReadKeystoreLocation = "<kafkaReadKeystoreLocation>"
     # kafkaReadTruststoreLocation = "<kafkaReadTruststoreLocation>"
-    # kafkaReadTruststorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaReadKeystorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaReadKeyPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaWriteUsernameSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaWritePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaWriteKeystoreLocation = "gs://<BUCKET>/<KEYSTORE>.jks"
+    # kafkaReadTruststorePasswordSecretId = "<kafkaReadTruststorePasswordSecretId>"
+    # kafkaReadKeystorePasswordSecretId = "<kafkaReadKeystorePasswordSecretId>"
+    # kafkaReadKeyPasswordSecretId = "<kafkaReadKeyPasswordSecretId>"
+    # kafkaWriteUsernameSecretId = ""
+    # kafkaWritePasswordSecretId = ""
+    # kafkaWriteKeystoreLocation = "<kafkaWriteKeystoreLocation>"
     # kafkaWriteTruststoreLocation = "<kafkaWriteTruststoreLocation>"
-    # kafkaWriteTruststorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaWriteKeystorePasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
-    # kafkaWriteKeyPasswordSecretId = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>"
+    # kafkaWriteTruststorePasswordSecretId = "<kafkaWriteTruststorePasswordSecretId>"
+    # kafkaWriteKeystorePasswordSecretId = "<kafkaWriteKeystorePasswordSecretId>"
+    # kafkaWriteKeyPasswordSecretId = "<kafkaWriteKeyPasswordSecretId>"
   }
 }
 ```

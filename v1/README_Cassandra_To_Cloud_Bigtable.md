@@ -23,19 +23,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **cassandraHosts** : The hosts of the Apache Cassandra nodes in a comma-separated list.
-* **cassandraKeyspace** : The Apache Cassandra keyspace where the table is located.
-* **cassandraTable** : The Apache Cassandra table to copy.
-* **bigtableProjectId** : The Google Cloud project ID associated with the Bigtable instance.
-* **bigtableInstanceId** : The ID of the Bigtable instance that the Apache Cassandra table is copied to.
-* **bigtableTableId** : The name of the Bigtable table that the Apache Cassandra table is copied to.
+* **cassandraHosts**: The hosts of the Apache Cassandra nodes in a comma-separated list.
+* **cassandraKeyspace**: The Apache Cassandra keyspace where the table is located.
+* **cassandraTable**: The Apache Cassandra table to copy.
+* **bigtableProjectId**: The Google Cloud project ID associated with the Bigtable instance.
+* **bigtableInstanceId**: The ID of the Bigtable instance that the Apache Cassandra table is copied to.
+* **bigtableTableId**: The name of the Bigtable table that the Apache Cassandra table is copied to.
 
 ### Optional parameters
 
-* **cassandraPort** : The TCP port to use to reach Apache Cassandra on the nodes. The default value is `9042`.
-* **defaultColumnFamily** : The name of the column family of the Bigtable table. The default value is `default`.
-* **rowKeySeparator** : The separator used to build row-keys. The default value is `#`.
-* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **cassandraPort**: The TCP port to use to reach Apache Cassandra on the nodes. The default value is `9042`.
+* **defaultColumnFamily**: The name of the column family of the Bigtable table. The default value is `default`.
+* **rowKeySeparator**: The separator used to build row-keys. The default value is `#`.
+* **splitLargeRows**: The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
 
 
 

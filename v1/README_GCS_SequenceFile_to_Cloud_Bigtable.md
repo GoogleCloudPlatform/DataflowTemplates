@@ -18,15 +18,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProject** : The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.
-* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Bigtable table to import.
-* **sourcePattern** : The Cloud Storage path pattern to the location of the data. (Example: gs://your-bucket/your-path/prefix*).
+* **bigtableProject**: The ID of the Google Cloud project that contains the Bigtable instance that you want to write data to.
+* **bigtableInstanceId**: The ID of the Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Bigtable table to import.
+* **sourcePattern**: The Cloud Storage path pattern to the location of the data. For example, `gs://your-bucket/your-path/prefix*`.
 
 ### Optional parameters
 
-* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the import. If you don't specify an application profile, Bigtable uses the instance's default application profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile).
-* **mutationThrottleLatencyMs** : Optional Set mutation latency throttling (enables the feature). Value in milliseconds. Defaults to: 0.
+* **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the import. If you don't specify an application profile, Bigtable uses the instance's default application profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile).
+* **mutationThrottleLatencyMs**: Optional Set mutation latency throttling (enables the feature). Value in milliseconds. Defaults to: 0.
 
 
 
@@ -209,7 +209,7 @@ resource "google_dataflow_job" "gcs_sequencefile_to_cloud_bigtable" {
     bigtableProject = "<bigtableProject>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    sourcePattern = "gs://your-bucket/your-path/prefix*"
+    sourcePattern = "<sourcePattern>"
     # bigtableAppProfileId = "<bigtableAppProfileId>"
     # mutationThrottleLatencyMs = "0"
   }
