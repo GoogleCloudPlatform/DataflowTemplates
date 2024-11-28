@@ -68,8 +68,7 @@ public class MinimalServiceAccountIT extends TemplateTestBase {
   @Test
   public void runsWithProjectAndDataset() throws IOException {
     gcsClient.createArtifact(
-        "spec.json",
-        contentOf("/testing-specs/minimal-service-account/project-and-dataset.json"));
+        "spec.json", contentOf("/testing-specs/minimal-service-account/project-and-dataset.json"));
     gcsClient.createArtifact(
         "neo4j.json",
         String.format(
