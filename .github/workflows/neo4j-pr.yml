@@ -1,0 +1,59 @@
+# Copyright 2021 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks that are intended to run on PRs containing Java code.
+
+name: Neo4j PR
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    paths:
+      - 'v2/googlecloud-to-neo4j/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+permissions: read-all
+
+jobs:
+  neo4j_integration_test_templates:
+    name: Neo4j Template Custom Integration Tests
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Neo4j Custom Integration Tests
+        run: mvn --also-make --projects verify -Djib.skip -Djacoco.skip -DskipShade -Dspotless.check.skip -Dcheckstyle.skip -Dmdep.analyze.skip -Dexcluded.neo4j.tests="" -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory v2/googlecloud-to-neo4j
+      - name: Upload Tests Report
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()

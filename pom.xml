@@ -106,6 +106,7 @@
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
     <direct-runner.tests>com.google.cloud.teleport.metadata.DirectRunnerTest</direct-runner.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
+    <excluded.neo4j.tests>com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory</excluded.neo4j.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
@@ -271,6 +272,7 @@
           They can be run manually using 'mvn -Dexcluded.spanner.tests="" -Dtest=<testname> test' -->
           <excludedGroups>${integration.tests}</excludedGroups>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
+          <excludedGroups>${excluded.neo4j.tests}</excludedGroups>
           <trimStackTrace>false</trimStackTrace>
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
