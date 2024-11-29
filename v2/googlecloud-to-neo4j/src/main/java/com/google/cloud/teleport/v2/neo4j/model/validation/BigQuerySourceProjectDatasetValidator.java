@@ -49,8 +49,7 @@ public class BigQuerySourceProjectDatasetValidator implements SpecificationValid
                 path,
                 ERROR_CODE,
                 String.format(
-                    "%s query_temp_project is provided, but query_temp_dataset is missing",
-                    path)));
+                    "%s query_temp_project is provided, but query_temp_dataset is missing", path)));
     return paths.isEmpty();
   }
 }

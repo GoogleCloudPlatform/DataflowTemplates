@@ -30,7 +30,7 @@ public class BigQuerySource implements Source {
   }
 
   public BigQuerySource(
-          String name, String query, String queryTempProject, String queryTempDataset) {
+      String name, String query, String queryTempProject, String queryTempDataset) {
     this.name = name;
     this.query = query;
     this.queryTempProject = queryTempProject;

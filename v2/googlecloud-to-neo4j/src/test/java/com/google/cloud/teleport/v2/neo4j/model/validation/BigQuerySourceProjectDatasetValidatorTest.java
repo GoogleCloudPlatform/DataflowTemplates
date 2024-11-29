@@ -61,7 +61,6 @@ public class BigQuerySourceProjectDatasetValidatorTest {
     assertThat(exception).hasMessageThat().contains("0 warning(s)");
     assertThat(exception)
         .hasMessageThat()
-        .contains(
-            "$.sources[0] query_temp_project is provided, but query_temp_dataset is missing");
+        .contains("$.sources[0] query_temp_project is provided, but query_temp_dataset is missing");
   }
 }
