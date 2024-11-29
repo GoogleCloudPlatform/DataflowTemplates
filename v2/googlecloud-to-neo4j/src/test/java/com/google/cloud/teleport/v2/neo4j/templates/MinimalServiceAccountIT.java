@@ -16,7 +16,6 @@
 package com.google.cloud.teleport.v2.neo4j.templates;
 
 import static com.google.cloud.teleport.v2.neo4j.templates.Resources.contentOf;
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -61,11 +60,6 @@ public class MinimalServiceAccountIT extends TemplateTestBase {
   }
 
   @Test
-  public void test() {
-    assertThat(2).isEqualTo(1 + 2);
-  }
-
-  @Test
   public void runsWithProjectAndDataset() throws IOException {
     gcsClient.createArtifact(
         "spec.json", contentOf("/testing-specs/minimal-service-account/project-and-dataset.json"));
@@ -88,6 +82,7 @@ public class MinimalServiceAccountIT extends TemplateTestBase {
             .addParameter("serviceAccount", MINIMAL_SERVICE_ACCOUNT);
 
     LaunchInfo info = launchTemplate(options);
+
     assertThatPipeline(info).isRunning();
     PipelineOperator.Result result =
         pipelineOperator()
@@ -105,7 +100,44 @@ public class MinimalServiceAccountIT extends TemplateTestBase {
   }
 
   @Test
-  public void runsWithOnlyDataset() {}
+  public void runsWithOnlyDataset() throws IOException {
+    gcsClient.createArtifact(
+        "spec.json", contentOf("/testing-specs/minimal-service-account/only-dataset.json"));
+    gcsClient.createArtifact(
+        "neo4j.json",
+        String.format(
+            "{\n"
+                + "  \"server_url\": \"%s\",\n"
+                + "  \"database\": \"%s\",\n"
+                + "  \"auth_type\": \"basic\",\n"
+                + "  \"username\": \"neo4j\",\n"
+                + "  \"pwd\": \"%s\"\n"
+                + "}",
+            neo4jClient.getUri(), neo4jClient.getDatabaseName(), neo4jClient.getAdminPassword()));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jobSpecUri", getGcsPath("spec.json"))
+            .addParameter("neo4jConnectionUri", getGcsPath("neo4j.json"))
+            .addParameter("serviceAccount", MINIMAL_SERVICE_ACCOUNT);
+
+    LaunchInfo info = launchTemplate(options);
+
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(info),
+                Neo4jQueryCheck.builder(neo4jClient)
+                    .setQuery(
+                        "RETURN EXISTS {\n"
+                            + "    MATCH (p:Person)\n"
+                            + "    RETURN p LIMIT 1\n"
+                            + "} AS personExists")
+                    .setExpectedResult(List.of(Map.of("personExists", true)))
+                    .build());
+    assertThatResult(result).meetsConditions();
+  }
 
   @Test
   public void failsWithoutProjectAndDataset() {}

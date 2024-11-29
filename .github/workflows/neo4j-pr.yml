@@ -53,9 +53,9 @@ jobs:
           -Dcheckstyle.skip \
           -Dmdep.analyze.skip \
           -Dexcluded.neo4j.tests="" \
-          -Dgroups=com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory \
           -Dproject=team-connectors-dev \
-          -DstageBucket=emre-dataflow-example
+          -DstageBucket=emre-dataflow-example \
+          -Pneo4jCustomIntegrationTests
       - name: Upload Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails

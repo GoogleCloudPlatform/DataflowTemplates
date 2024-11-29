@@ -8,13 +8,13 @@
             "type": "bigquery",
             "name": "persons",
             "query": "SELECT person_tmdbId, name, bornIn, born, died FROM team-connectors-dev.movies.persons",
-            "temp_data_beam_dataset": "test_temp_dataset_beam"
+            "query_temp_dataset": "test_temp_dataset_beam"
         },
         {
             "type": "bigquery",
             "name": "movies",
             "query": "SELECT movieId, title, imdbRating, year FROM team-connectors-dev.movies.movies",
-            "temp_data_beam_dataset": "test_temp_dataset_beam"
+            "query_temp_dataset": "test_temp_dataset_beam"
         }
     ],
     "targets": {
