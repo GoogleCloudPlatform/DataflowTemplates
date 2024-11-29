@@ -43,7 +43,7 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Neo4j Custom Integration Tests
         env:
-          DT_IT_ACCESS_TOKEN: ${{ secrets.AccountToken }}
+          DT_IT_ACCESS_TOKEN: ${{ secrets.ACCOUNTTOKEN }}
         run: |
           mvn --also-make --projects v2/googlecloud-to-neo4j verify \
           -Dexcluded.neo4j.tests="" \
