@@ -42,7 +42,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Login
-        run: gcloud auth login
+        run: gcloud auth login --no-browser
         env:
           CLOUDSDK_AUTH_ACCESS_TOKEN: ${{ secrets.ACCOUNTTOKEN }}
       - name: Run Neo4j Custom Integration Tests
