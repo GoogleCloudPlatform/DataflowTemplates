@@ -46,12 +46,6 @@ jobs:
           DT_IT_ACCESS_TOKEN: ${{ secrets.AccountToken }}
         run: |
           mvn --also-make --projects v2/googlecloud-to-neo4j verify \
-          -Djib.skip \
-          -Djacoco.skip \
-          -DskipShade \
-          -Dspotless.check.skip \
-          -Dcheckstyle.skip \
-          -Dmdep.analyze.skip \
           -Dexcluded.neo4j.tests="" \
           -Dproject=team-connectors-dev \
           -DstageBucket=emre-dataflow-example \
