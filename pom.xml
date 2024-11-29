@@ -514,7 +514,7 @@
 <!--              <excludedGroups>${direct-runner.tests}</excludedGroups>-->
 <!--              <excludedGroups>${integration.tests}</excludedGroups>-->
               <groups>
-                ${excluded.neo4j.tests}
+                com.google.cloud.teleport.v2.neo4j.templates.Neo4jCustomTestCategory
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
