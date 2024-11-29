@@ -33,7 +33,7 @@ public final class MysqlMappingProvider {
   private static final ImmutableMap<String, UnifiedTypeMapping> MAPPING =
       ImmutableMap.<String, UnifiedMappingProvider.Type>builder()
           .put("BIGINT", UnifiedMappingProvider.Type.LONG)
-          .put("BIGINT UNSIGNED", UnifiedMappingProvider.Type.DECIMAL)
+          .put("BIGINT UNSIGNED", UnifiedMappingProvider.Type.NUMBER)
           .put("BINARY", UnifiedMappingProvider.Type.STRING)
           .put("BIT", UnifiedMappingProvider.Type.LONG)
           .put("BLOB", UnifiedMappingProvider.Type.STRING)

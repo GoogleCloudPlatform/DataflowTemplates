@@ -66,6 +66,10 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
                   .unscaledValue()
                   .toByteArray());
 
+  /** Map BigInt Unsigned type to Avro Number. */
+  private static final ResultSetValueMapper<BigDecimal> bigDecimalToAvroNumber =
+      (value, schema) -> value.toString();
+
   /* Hex Encoded string for bytes type. */
   private static final ResultSetValueMapper<byte[]> bytesToHexString =
       (value, schema) -> new String(Hex.encodeHex(value));
@@ -191,7 +195,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
   private static final ImmutableMap<String, JdbcValueMapper<?>> SCHEMA_MAPPINGS =
       ImmutableMap.<String, Pair<ResultSetValueExtractor<?>, ResultSetValueMapper<?>>>builder()
           .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
-          .put("BIGINT UNSIGNED", Pair.of(ResultSet::getBigDecimal, bigDecimalToByteArray))
+          .put("BIGINT UNSIGNED", Pair.of(ResultSet::getBigDecimal, bigDecimalToAvroNumber))
           .put("BINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
           .put("BIT", Pair.of(ResultSet::getBytes, bytesToLong))
           .put("BLOB", Pair.of(ResultSet::getBlob, blobToHexString))
