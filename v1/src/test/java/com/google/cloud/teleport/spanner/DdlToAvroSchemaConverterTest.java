@@ -1064,7 +1064,7 @@ public class DdlToAvroSchemaConverterTest {
     PropertyGraph.PropertyDeclaration propertyDeclaration1 =
         new PropertyGraph.PropertyDeclaration("dummyPropName", "dummyPropType");
     PropertyGraph.PropertyDeclaration propertyDeclaration2 =
-        new PropertyGraph.PropertyDeclaration("aliasedPropName", "dummyPropType");
+        new PropertyGraph.PropertyDeclaration("aliasedPropName", "aliasedPropType");
     ImmutableList<String> propertyDeclsLabel1 =
         ImmutableList.copyOf(Arrays.asList(propertyDeclaration1.name, propertyDeclaration2.name));
 
@@ -1196,10 +1196,10 @@ public class DdlToAvroSchemaConverterTest {
     assertEquals("dummyLabelName3", avroSchema.getProp(SPANNER_LABEL + "_2_NAME"));
 
     // Asserting properties related to graph property declarations
-    assertEquals(
-        "dummyPropName dummyPropType", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "0"));
-    assertEquals(
-        "aliasedPropName dummyPropType", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "1"));
+    assertEquals("dummyPropName", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_0_NAME"));
+    assertEquals("dummyPropType", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_0_TYPE"));
+    assertEquals("aliasedPropName", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_1_NAME"));
+    assertEquals("aliasedPropType", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_1_TYPE"));
   }
 
   @Test

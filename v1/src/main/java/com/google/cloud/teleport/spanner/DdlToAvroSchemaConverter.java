@@ -69,6 +69,7 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.stream.Collectors;
@@ -260,102 +261,19 @@ public class DdlToAvroSchemaConverter {
 
       // Encode nodeTables
       for (int i = 0; i < propertyGraph.nodeTables().size(); i++) {
-        GraphElementTable nodeTable = propertyGraph.nodeTables().get(i);
-        recordBuilder.prop(SPANNER_NODE_TABLE + "_" + i + "_NAME", nodeTable.name());
-        recordBuilder.prop(
-            SPANNER_NODE_TABLE + "_" + i + "_BASE_TABLE_NAME", nodeTable.baseTableName());
-        recordBuilder.prop(SPANNER_NODE_TABLE + "_" + i + "_KIND", nodeTable.kind().toString());
-        // Encode keyColumns
-        recordBuilder.prop(
-            SPANNER_NODE_TABLE + "_" + i + "_KEY_COLUMNS",
-            String.join(", ", nodeTable.keyColumns()));
-        // Encode labelToPropertyDefinitions
-        for (int j = 0; j < nodeTable.labelToPropertyDefinitions().size(); j++) {
-          GraphElementTable.LabelToPropertyDefinitions labelToPropertyDef =
-              nodeTable.labelToPropertyDefinitions().get(j);
-          recordBuilder.prop(
-              SPANNER_NODE_TABLE + "_" + i + "_LABEL_" + j + "_NAME", labelToPropertyDef.labelName);
-          // Encode propertyDefinitions
-          for (int k = 0; k < labelToPropertyDef.propertyDefinitions.size(); k++) {
-            GraphElementTable.PropertyDefinition propertyDef =
-                labelToPropertyDef.propertyDefinitions.get(k);
-            recordBuilder.prop(
-                SPANNER_NODE_TABLE + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_NAME",
-                propertyDef.name);
-            recordBuilder.prop(
-                SPANNER_NODE_TABLE + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_VALUE",
-                propertyDef.valueExpressionString);
-          }
-        }
+        encodeNodeTable(recordBuilder, propertyGraph.nodeTables().get(i), i);
       }
 
       // Encode edgeTables
       for (int i = 0; i < propertyGraph.edgeTables().size(); i++) {
-        GraphElementTable edgeTable = propertyGraph.edgeTables().get(i);
-        recordBuilder.prop(SPANNER_EDGE_TABLE + "_" + i + "_NAME", edgeTable.name());
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_BASE_TABLE_NAME", edgeTable.baseTableName());
-        recordBuilder.prop(SPANNER_EDGE_TABLE + "_" + i + "_KIND", edgeTable.kind().toString());
-        // Encode keyColumns
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_KEY_COLUMNS",
-            String.join(", ", edgeTable.keyColumns()));
-        // Encode labelToPropertyDefinitions
-        for (int j = 0; j < edgeTable.labelToPropertyDefinitions().size(); j++) {
-          GraphElementTable.LabelToPropertyDefinitions labelToPropertyDef =
-              edgeTable.labelToPropertyDefinitions().get(j);
-          recordBuilder.prop(
-              SPANNER_EDGE_TABLE + "_" + i + "_LABEL_" + j + "_NAME", labelToPropertyDef.labelName);
-          // Encode propertyDefinitions
-          for (int k = 0; k < labelToPropertyDef.propertyDefinitions.size(); k++) {
-            GraphElementTable.PropertyDefinition propertyDef =
-                labelToPropertyDef.propertyDefinitions().get(k);
-            recordBuilder.prop(
-                SPANNER_EDGE_TABLE + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_NAME",
-                propertyDef.name);
-            recordBuilder.prop(
-                SPANNER_EDGE_TABLE + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_VALUE",
-                propertyDef.valueExpressionString);
-          }
-        }
-        // Encode sourceNodeTable and targetNodeTable (always present for edges)
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_NODE_TABLE_NAME",
-            edgeTable.sourceNodeTable().nodeTableName);
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_NODE_KEY_COLUMNS",
-            String.join(", ", edgeTable.sourceNodeTable().nodeKeyColumns));
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_EDGE_KEY_COLUMNS",
-            String.join(", ", edgeTable.sourceNodeTable().edgeKeyColumns));
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_TARGET_NODE_TABLE_NAME",
-            edgeTable.targetNodeTable().nodeTableName);
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_TARGET_NODE_KEY_COLUMNS",
-            String.join(", ", edgeTable.targetNodeTable().nodeKeyColumns));
-        recordBuilder.prop(
-            SPANNER_EDGE_TABLE + "_" + i + "_TARGET_EDGE_KEY_COLUMNS",
-            String.join(", ", edgeTable.targetNodeTable().edgeKeyColumns));
+        encodeEdgeTable(recordBuilder, propertyGraph.edgeTables().get(i), i);
       }
 
       // Encode propertyDeclarations
-      for (int i = 0; i < propertyGraph.propertyDeclarations().size(); i++) {
-        PropertyGraph.PropertyDeclaration declaration = propertyGraph.propertyDeclarations().get(i);
-        recordBuilder.prop(
-            SPANNER_PROPERTY_DECLARATION + i,
-            String.format("%s %s", declaration.name, declaration.type));
-      }
+      encodePropertyDeclarations(recordBuilder, propertyGraph.propertyDeclarations());
 
       // Encode labels
-      for (int i = 0; i < propertyGraph.labels().size(); i++) {
-        PropertyGraph.GraphElementLabel label = propertyGraph.labels().get(i);
-        recordBuilder.prop(SPANNER_LABEL + "_" + i + "_NAME", label.name);
-        // Encode properties
-        for (int j = 0; j < label.properties.size(); j++) {
-          recordBuilder.prop(SPANNER_LABEL + "_" + i + "_PROPERTY_" + j, label.properties.get(j));
-        }
-      }
+      encodeLabels(recordBuilder, propertyGraph.labels());
 
       Schema schema = recordBuilder.fields().endRecord();
       schemas.add(schema);
@@ -440,6 +358,89 @@ public class DdlToAvroSchemaConverter {
       schemas.add(recordBuilder.fields().endRecord());
     }
     return schemas;
+  }
+
+  private void encodeNodeTable(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder, GraphElementTable nodeTable, int i) {
+    encodeElementTable(recordBuilder, nodeTable, i, SPANNER_NODE_TABLE);
+  }
+
+  private void encodeEdgeTable(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder, GraphElementTable edgeTable, int i) {
+    encodeElementTable(recordBuilder, edgeTable, i, SPANNER_EDGE_TABLE);
+
+    // Encode sourceNodeTable and targetNodeTable (always present for edges)
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_NODE_TABLE_NAME",
+        edgeTable.sourceNodeTable().nodeTableName);
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_NODE_KEY_COLUMNS",
+        String.join(", ", edgeTable.sourceNodeTable().nodeKeyColumns));
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_SOURCE_EDGE_KEY_COLUMNS",
+        String.join(", ", edgeTable.sourceNodeTable().edgeKeyColumns));
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_TARGET_NODE_TABLE_NAME",
+        edgeTable.targetNodeTable().nodeTableName);
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_TARGET_NODE_KEY_COLUMNS",
+        String.join(", ", edgeTable.targetNodeTable().nodeKeyColumns));
+    recordBuilder.prop(
+        SPANNER_EDGE_TABLE + "_" + i + "_TARGET_EDGE_KEY_COLUMNS",
+        String.join(", ", edgeTable.targetNodeTable().edgeKeyColumns));
+  }
+
+  private void encodeElementTable(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder,
+      GraphElementTable elementTable,
+      int i,
+      String prefix) {
+    recordBuilder.prop(prefix + "_" + i + "_NAME", elementTable.name());
+    recordBuilder.prop(prefix + "_" + i + "_BASE_TABLE_NAME", elementTable.baseTableName());
+    recordBuilder.prop(prefix + "_" + i + "_KIND", elementTable.kind().toString());
+    // Encode keyColumns
+    recordBuilder.prop(
+        prefix + "_" + i + "_KEY_COLUMNS", String.join(", ", elementTable.keyColumns()));
+
+    // Encode labelToPropertyDefinitions
+    for (int j = 0; j < elementTable.labelToPropertyDefinitions().size(); j++) {
+      GraphElementTable.LabelToPropertyDefinitions labelToPropertyDef =
+          elementTable.labelToPropertyDefinitions().get(j);
+      recordBuilder.prop(prefix + "_" + i + "_LABEL_" + j + "_NAME", labelToPropertyDef.labelName);
+      // Encode propertyDefinitions
+      for (int k = 0; k < labelToPropertyDef.propertyDefinitions.size(); k++) {
+        GraphElementTable.PropertyDefinition propertyDef =
+            labelToPropertyDef.propertyDefinitions.get(k);
+        recordBuilder.prop(
+            prefix + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_NAME", propertyDef.name);
+        recordBuilder.prop(
+            prefix + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_VALUE",
+            propertyDef.valueExpressionString);
+      }
+    }
+  }
+
+  private void encodePropertyDeclarations(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder,
+      ImmutableList<PropertyGraph.PropertyDeclaration> declarations) {
+    for (int i = 0; i < declarations.size(); i++) {
+      PropertyGraph.PropertyDeclaration declaration = declarations.get(i);
+      recordBuilder.prop(SPANNER_PROPERTY_DECLARATION + "_" + i + "_NAME", declaration.name);
+      recordBuilder.prop(SPANNER_PROPERTY_DECLARATION + "_" + i + "_TYPE", declaration.type);
+    }
+  }
+
+  private void encodeLabels(
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder,
+      ImmutableList<PropertyGraph.GraphElementLabel> labels) {
+    for (int i = 0; i < labels.size(); i++) {
+      PropertyGraph.GraphElementLabel label = labels.get(i);
+      recordBuilder.prop(SPANNER_LABEL + "_" + i + "_NAME", label.name);
+      // Encode properties
+      for (int j = 0; j < label.properties.size(); j++) {
+        recordBuilder.prop(SPANNER_LABEL + "_" + i + "_PROPERTY_" + j, label.properties.get(j));
+      }
+    }
   }
 
   /**

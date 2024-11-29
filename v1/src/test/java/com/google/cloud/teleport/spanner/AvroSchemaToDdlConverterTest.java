@@ -479,8 +479,10 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"CONCAT(CAST(test_col AS STRING), \\\":\\\", \\\"dummyColumn\\\")\",\n"
             + "  \"spannerGraphLabel_0_NAME\": \"dummyLabelName1\",\n"
             + "  \"googleFormatVersion\": \"booleans\",\n"
-            + "  \"spannerGraphPropertyDeclaration1\": \"aliasedPropName dummyPropType\",\n"
-            + "  \"spannerGraphPropertyDeclaration0\": \"dummyPropName dummyPropType\"\n"
+            + "  \"spannerGraphPropertyDeclaration_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_TYPE\": \"dummyPropType\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_TYPE\": \"dummyPropType\"\n"
             + "}";
 
     Schema schema = new Schema.Parser().parse(avroString);

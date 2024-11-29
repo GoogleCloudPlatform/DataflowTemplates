@@ -142,14 +142,15 @@ public class AvroSchemaToDdlConverter {
     return builder.build();
   }
 
+  // TODO: Modularize long function implementation using helpers
   public PropertyGraph toPropertyGraph(String propertyGraphName, Schema schema) {
-    PropertyGraph.Builder pgBuilder = PropertyGraph.builder();
+    PropertyGraph.Builder propertyGraphBuilder = PropertyGraph.builder();
     if (propertyGraphName == null) {
       propertyGraphName = getSpannerObjectName(schema);
     }
     LOG.debug("Converting to Ddl propertyGraphName {}", propertyGraphName);
 
-    pgBuilder.name(propertyGraphName);
+    propertyGraphBuilder.name(propertyGraphName);
 
     // Deserialize nodeTables
     int nodeTableCount = 0;
@@ -162,7 +163,10 @@ public class AvroSchemaToDdlConverter {
 
       // Deserialize keyColumns
       String[] keyColumns =
-          schema.getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_KEY_COLUMNS").split(", ");
+          schema
+              .getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_KEY_COLUMNS")
+              .trim()
+              .split(",");
       nodeTableBuilder.keyColumns(ImmutableList.copyOf(keyColumns));
 
       // Deserialize labelToPropertyDefinitions
@@ -219,7 +223,7 @@ public class AvroSchemaToDdlConverter {
       }
       nodeTableBuilder.labelToPropertyDefinitions(labelsBuilder.build());
 
-      pgBuilder.addNodeTable(nodeTableBuilder.autoBuild());
+      propertyGraphBuilder.addNodeTable(nodeTableBuilder.autoBuild());
       nodeTableCount++;
     }
 
@@ -234,7 +238,10 @@ public class AvroSchemaToDdlConverter {
 
       // Deserialize keyColumns
       String[] keyColumns =
-          schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_KEY_COLUMNS").split(", ");
+          schema
+              .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_KEY_COLUMNS")
+              .trim()
+              .split(",");
       edgeTableBuilder.keyColumns(ImmutableList.copyOf(keyColumns));
 
       // Deserialize labelToPropertyDefinitions
@@ -297,11 +304,13 @@ public class AvroSchemaToDdlConverter {
       String[] sourceNodeKeyColumns =
           schema
               .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_SOURCE_NODE_KEY_COLUMNS")
-              .split(", ");
+              .trim()
+              .split(",");
       String[] sourceEdgeKeyColumns =
           schema
               .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_SOURCE_EDGE_KEY_COLUMNS")
-              .split(", ");
+              .trim()
+              .split(",");
       edgeTableBuilder.sourceNodeTable(
           new GraphElementTable.GraphNodeTableReference(
               sourceNodeTableName,
@@ -313,18 +322,20 @@ public class AvroSchemaToDdlConverter {
       String[] targetNodeKeyColumns =
           schema
               .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_TARGET_NODE_KEY_COLUMNS")
-              .split(", ");
+              .trim()
+              .split(",");
       String[] targetEdgeKeyColumns =
           schema
               .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_TARGET_EDGE_KEY_COLUMNS")
-              .split(", ");
+              .trim()
+              .split(",");
       edgeTableBuilder.targetNodeTable(
           new GraphElementTable.GraphNodeTableReference(
               targetNodeTableName,
               ImmutableList.copyOf(targetNodeKeyColumns),
               ImmutableList.copyOf(targetEdgeKeyColumns)));
 
-      pgBuilder.addEdgeTable(edgeTableBuilder.autoBuild());
+      propertyGraphBuilder.addEdgeTable(edgeTableBuilder.autoBuild());
       edgeTableCount++;
     }
 
@@ -332,11 +343,14 @@ public class AvroSchemaToDdlConverter {
     int propertyDeclCount = 0;
     ImmutableList.Builder<PropertyGraph.PropertyDeclaration> propertyDeclsBuilder =
         ImmutableList.builder();
-    while (schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount) != null) {
-      String[] propertyDeclParts =
-          schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount).split(" ");
-      pgBuilder.addPropertyDeclaration(
-          new PropertyDeclaration(propertyDeclParts[0], propertyDeclParts[1]));
+    while (schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount + "_NAME")
+        != null) {
+      String propertyName =
+          schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount + "_NAME");
+      String propertyType =
+          schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount + "_TYPE");
+      propertyGraphBuilder.addPropertyDeclaration(
+          new PropertyDeclaration(propertyName, propertyType));
       propertyDeclCount++;
     }
 
@@ -353,12 +367,12 @@ public class AvroSchemaToDdlConverter {
             schema.getProp(SPANNER_LABEL + "_" + labelCount + "_PROPERTY_" + propertyCount));
         propertyCount++;
       }
-      pgBuilder.addLabel(
+      propertyGraphBuilder.addLabel(
           new PropertyGraph.GraphElementLabel(labelName, labelPropertiesBuilder.build()));
       labelCount++;
     }
 
-    return pgBuilder.build();
+    return propertyGraphBuilder.build();
   }
 
   public Model toModel(String modelName, Schema schema) {
