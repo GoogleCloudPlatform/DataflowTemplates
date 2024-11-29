@@ -24,7 +24,7 @@ import org.neo4j.importer.v1.validation.SpecificationValidator;
 
 public class BigQuerySourceProjectDatasetValidator implements SpecificationValidator {
 
-  private static final String ERROR_CODE = "DFBQSPD-001";
+  private static final String ERROR_CODE = "DFBQ-001";
   private final Set<String> paths = new LinkedHashSet<>();
 
   @Override
@@ -33,10 +33,10 @@ public class BigQuerySourceProjectDatasetValidator implements SpecificationValid
       return;
     }
 
-    var tempDataBeamProject = ((BigQuerySource) source).getTempDataBeamProject();
-    var tempDataBeamDataset = ((BigQuerySource) source).getTempDataBeamDataset();
+    var queryTempProject = ((BigQuerySource) source).getQueryTempProject();
+    var queryTempDataset = ((BigQuerySource) source).getQueryTempDataset();
 
-    if (tempDataBeamProject != null && tempDataBeamDataset == null) {
+    if (queryTempProject != null && queryTempDataset == null) {
       paths.add(String.format("$.sources[%d]", index));
     }
   }
@@ -49,7 +49,7 @@ public class BigQuerySourceProjectDatasetValidator implements SpecificationValid
                 path,
                 ERROR_CODE,
                 String.format(
-                    "%s temp_data_beam_project is provided, but temp_data_beam_dataset is missing",
+                    "%s query_temp_project is provided, but query_temp_dataset is missing",
                     path)));
     return paths.isEmpty();
   }

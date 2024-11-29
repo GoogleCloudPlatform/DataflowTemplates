@@ -22,19 +22,19 @@ public class BigQuerySource implements Source {
 
   private final String name;
   private final String query;
-  private final String tempDataBeamProject;
-  private final String tempDataBeamDataset;
+  private final String queryTempProject;
+  private final String queryTempDataset;
 
   public BigQuerySource(String name, String query) {
     this(name, query, null, null);
   }
 
   public BigQuerySource(
-      String name, String query, String tempDataBeamProject, String tempDataBeamDataset) {
+          String name, String query, String queryTempProject, String queryTempDataset) {
     this.name = name;
     this.query = query;
-    this.tempDataBeamProject = tempDataBeamProject;
-    this.tempDataBeamDataset = tempDataBeamDataset;
+    this.queryTempProject = queryTempProject;
+    this.queryTempDataset = queryTempDataset;
   }
 
   @Override
@@ -51,12 +51,12 @@ public class BigQuerySource implements Source {
     return query;
   }
 
-  public String getTempDataBeamProject() {
-    return tempDataBeamProject;
+  public String getQueryTempProject() {
+    return queryTempProject;
   }
 
-  public String getTempDataBeamDataset() {
-    return tempDataBeamDataset;
+  public String getQueryTempDataset() {
+    return queryTempDataset;
   }
 
   @Override
@@ -85,11 +85,11 @@ public class BigQuerySource implements Source {
         + ", query='"
         + query
         + '\''
-        + ", tempDataBeamProject='"
-        + tempDataBeamProject
+        + ", queryTempProject='"
+        + queryTempProject
         + '\''
-        + ", tempDataBeamDataset='"
-        + tempDataBeamDataset
+        + ", queryTempDataset='"
+        + queryTempDataset
         + '\''
         + '}';
   }

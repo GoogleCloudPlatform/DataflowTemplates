@@ -32,10 +32,10 @@ public class BigQuerySourceProvider implements SourceProvider<BigQuerySource> {
     return new BigQuerySource(
         node.get("name").textValue(),
         node.get("query").textValue(),
-        Optional.ofNullable(node.get("temp_data_beam_project"))
+        Optional.ofNullable(node.get("query_temp_project"))
             .map(JsonNode::textValue)
             .orElse(null),
-        Optional.ofNullable(node.get("temp_data_beam_dataset"))
+        Optional.ofNullable(node.get("query_temp_dataset"))
             .map(JsonNode::textValue)
             .orElse(null));
   }
