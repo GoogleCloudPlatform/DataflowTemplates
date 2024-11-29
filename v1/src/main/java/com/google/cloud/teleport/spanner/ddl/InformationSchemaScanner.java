@@ -41,7 +41,9 @@ import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import com.google.protobuf.DescriptorProtos.MessageOptions;
 import com.google.protobuf.InvalidProtocolBufferException;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,6 +53,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.values.KV;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,6 +107,13 @@ public class InformationSchemaScanner {
     }
     if (placementsSupported()) {
       listPlacements(builder);
+    }
+    if (isPropertyGraphSupported()) {
+      listPropertyGraphs(builder);
+      listPropertyGraphPropertyDeclarations(builder);
+      listPropertyGraphLabels(builder);
+      listPropertyGraphNodeTables(builder);
+      listPropertyGraphEdgeTables(builder);
     }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
@@ -915,6 +926,271 @@ public class InformationSchemaScanner {
   // TODO: Remove after models are supported in POSTGRESQL.
   private boolean isModelSupported() {
     return dialect == Dialect.GOOGLE_STANDARD_SQL;
+  }
+
+  private boolean isPropertyGraphSupported() {
+    return dialect == Dialect.GOOGLE_STANDARD_SQL;
+  }
+
+  private void listPropertyGraphs(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.property_graph_schema, t.property_graph_name "
+                    + " FROM information_schema.property_graphs AS t "
+                    + " WHERE t.property_graph_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"));
+
+    while (resultSet.next()) {
+      String propertyGraphName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+      LOG.debug("Schema PropertyGraph {}", propertyGraphName);
+      builder.createPropertyGraph(propertyGraphName).endPropertyGraph();
+    }
+  }
+
+  private void listPropertyGraphPropertyDeclarations(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.property_graph_schema, t.property_graph_name, "
+                    + "t.property_graph_metadata_json.propertyDeclarations "
+                    + "FROM information_schema.property_graphs AS t "
+                    + "WHERE t.property_graph_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"));
+
+    while (resultSet.next()) {
+      String propertyGraphSchema = resultSet.getString(0);
+      String propertyGraphName = resultSet.getString(1);
+      String propertyGraphNameQualified = getQualifiedName(propertyGraphSchema, propertyGraphName);
+      String propertyDeclarationsJson = resultSet.getJson(2);
+
+      LOG.debug("Schema PropertyGraph {}", propertyGraphNameQualified);
+
+      try {
+        JSONArray propertyDeclarationsArray = new JSONArray(propertyDeclarationsJson);
+
+        for (int i = 0; i < propertyDeclarationsArray.length(); i++) {
+          JSONObject propertyDeclaration = propertyDeclarationsArray.getJSONObject(i);
+
+          String name = propertyDeclaration.getString("name");
+          String type = propertyDeclaration.getString("type");
+
+          builder
+              .createPropertyGraph(propertyGraphNameQualified)
+              .addPropertyDeclaration(new PropertyGraph.PropertyDeclaration(name, type))
+              .endPropertyGraph();
+        }
+      } catch (Exception e) {
+        LOG.error("Error parsing property declarations JSON: {}", e.getMessage());
+      }
+    }
+  }
+
+  private void listPropertyGraphLabels(Ddl.Builder builder) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.property_graph_schema, t.property_graph_name, "
+                    + "t.property_graph_metadata_json.labels "
+                    + "FROM information_schema.property_graphs AS t "
+                    + "WHERE t.property_graph_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"));
+
+    while (resultSet.next()) {
+      String propertyGraphSchema = resultSet.getString(0);
+      String propertyGraphName = resultSet.getString(1);
+      String propertyGraphNameQualified = getQualifiedName(propertyGraphSchema, propertyGraphName);
+      String labelsJson = resultSet.getJson(2);
+
+      LOG.debug("Schema PropertyGraph {}", propertyGraphNameQualified);
+
+      try {
+        JSONArray labelsArray = new JSONArray(labelsJson);
+
+        for (int i = 0; i < labelsArray.length(); i++) {
+          JSONObject label = labelsArray.getJSONObject(i);
+          String name = label.getString("name");
+          JSONArray propertyDeclarationNamesArray = label.getJSONArray("propertyDeclarationNames");
+
+          List<String> propertyNames = new ArrayList<>();
+          for (int j = 0; j < propertyDeclarationNamesArray.length(); j++) {
+            String propertyName = propertyDeclarationNamesArray.getString(j);
+            propertyNames.add(propertyName);
+          }
+
+          ImmutableList<String> immutablePropertyNames = ImmutableList.copyOf(propertyNames);
+          PropertyGraph.GraphElementLabel elementLabel =
+              new PropertyGraph.GraphElementLabel(name, immutablePropertyNames);
+
+          builder
+              .createPropertyGraph(propertyGraphNameQualified)
+              .addLabel(elementLabel)
+              .endPropertyGraph();
+        }
+      } catch (Exception e) {
+        LOG.error("Error parsing labels JSON: {}", e.getMessage());
+      }
+    }
+  }
+
+  public static PropertyGraph getPropertyGraphByName(
+      Collection<PropertyGraph> graphs, String propertyGraphName) {
+    return graphs.stream()
+        .filter(graph -> graph.name().equals(propertyGraphName))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private void listPropertyGraphTables(Ddl.Builder builder, String tableType) {
+    ResultSet resultSet =
+        context.executeQuery(
+            Statement.of(
+                "SELECT t.property_graph_schema, t.property_graph_name, "
+                    + "t.property_graph_metadata_json."
+                    + tableType
+                    + " FROM information_schema.property_graphs AS t "
+                    + "WHERE t.property_graph_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS')"));
+
+    while (resultSet.next()) {
+      String propertyGraphSchema = resultSet.getString(0);
+      String propertyGraphName = resultSet.getString(1);
+      String propertyGraphNameQualified = getQualifiedName(propertyGraphSchema, propertyGraphName);
+
+      String tablesJson;
+      try {
+        tablesJson = resultSet.getJson(2);
+      } catch (Exception edgeTableException) {
+        LOG.debug(propertyGraphNameQualified + " does not contain any edge tables");
+        return;
+      }
+
+      LOG.debug("Schema PropertyGraph {}", propertyGraphNameQualified);
+
+      try {
+        JSONArray tablesArray = new JSONArray(tablesJson);
+
+        PropertyGraph propertyGraph =
+            getPropertyGraphByName(builder.build().propertyGraphs(), propertyGraphNameQualified);
+        PropertyGraph.Builder propertyGraphBuilder = propertyGraph.toBuilder();
+        if (propertyGraph == null) {
+          throw new RuntimeException("Property graph not found: " + propertyGraphNameQualified);
+        }
+
+        for (int i = 0; i < tablesArray.length(); i++) {
+          JSONObject table = tablesArray.getJSONObject(i);
+
+          String baseTableName = table.getString("baseTableName");
+          JSONArray keyColumnsArray = table.getJSONArray("keyColumns");
+          String kind = table.getString("kind");
+          JSONArray labelNamesArray = table.getJSONArray("labelNames");
+          String name = table.getString("name");
+          JSONArray propertyDefinitionsArray = table.getJSONArray("propertyDefinitions");
+
+          ImmutableList.Builder<String> keyColumnsBuilder = ImmutableList.builder();
+          for (int j = 0; j < keyColumnsArray.length(); j++) {
+            keyColumnsBuilder.add(keyColumnsArray.getString(j));
+          }
+          ImmutableList<String> keyColumns = keyColumnsBuilder.build();
+
+          GraphElementTable.Builder graphElementTableBuilder =
+              GraphElementTable.builder()
+                  .propertyGraphBuilder(propertyGraphBuilder)
+                  .name(name)
+                  .baseTableName(baseTableName)
+                  .kind(GraphElementTable.Kind.valueOf(kind))
+                  .keyColumns(keyColumns);
+
+          // If it's an edge table, extract source and destination node table references
+          if (tableType.equals("edgeTables")) {
+            JSONObject sourceNodeTable = table.getJSONObject("sourceNodeTable");
+            JSONObject destinationNodeTable = table.getJSONObject("destinationNodeTable");
+
+            GraphElementTable.GraphNodeTableReference sourceNodeTableReference =
+                new GraphElementTable.GraphNodeTableReference(
+                    sourceNodeTable.getString("nodeTableName"),
+                    ImmutableList.copyOf(
+                        toStringList(sourceNodeTable.getJSONArray("nodeTableColumns"))),
+                    ImmutableList.copyOf(
+                        toStringList(sourceNodeTable.getJSONArray("edgeTableColumns"))));
+
+            GraphElementTable.GraphNodeTableReference destinationNodeTableReference =
+                new GraphElementTable.GraphNodeTableReference(
+                    destinationNodeTable.getString("nodeTableName"),
+                    ImmutableList.copyOf(
+                        toStringList(destinationNodeTable.getJSONArray("nodeTableColumns"))),
+                    ImmutableList.copyOf(
+                        toStringList(destinationNodeTable.getJSONArray("edgeTableColumns"))));
+
+            graphElementTableBuilder
+                .sourceNodeTable(sourceNodeTableReference)
+                .targetNodeTable(destinationNodeTableReference);
+          }
+
+          List<GraphElementTable.LabelToPropertyDefinitions> labelsToPropertyDefinitions =
+              new ArrayList<>();
+          for (int j = 0; j < labelNamesArray.length(); j++) {
+            String labelName = labelNamesArray.getString(j);
+
+            PropertyGraph.GraphElementLabel propertyGraphLabel = propertyGraph.getLabel(labelName);
+
+            if (propertyGraphLabel != null) {
+              ImmutableList.Builder<GraphElementTable.PropertyDefinition>
+                  propertyDefinitionsBuilder = ImmutableList.builder();
+
+              for (String propertyName : propertyGraphLabel.properties) {
+                for (int k = 0; k < propertyDefinitionsArray.length(); k++) {
+                  JSONObject propertyDefinition = propertyDefinitionsArray.getJSONObject(k);
+                  String propertyDeclarationName =
+                      propertyDefinition.getString("propertyDeclarationName");
+
+                  if (propertyName.equals(propertyDeclarationName)) {
+                    PropertyGraph.PropertyDeclaration propertyDeclaration =
+                        propertyGraph.getPropertyDeclaration(propertyDeclarationName);
+                    propertyDefinitionsBuilder.add(
+                        new GraphElementTable.PropertyDefinition(
+                            propertyDeclaration.name,
+                            propertyDefinition.getString("valueExpressionSql")));
+                    break;
+                  }
+                }
+              }
+              ImmutableList<GraphElementTable.PropertyDefinition> propertyDefinitions =
+                  propertyDefinitionsBuilder.build();
+              labelsToPropertyDefinitions.add(
+                  new GraphElementTable.LabelToPropertyDefinitions(labelName, propertyDefinitions));
+            }
+          }
+          graphElementTableBuilder.labelToPropertyDefinitions(
+              ImmutableList.copyOf(labelsToPropertyDefinitions));
+
+          // Add the GraphElementTable to the PropertyGraph builder
+          if (tableType.equals("nodeTables")) {
+            propertyGraphBuilder.addNodeTable(graphElementTableBuilder.autoBuild());
+          } else { // tableType.equals("edgeTables")
+            propertyGraphBuilder.addEdgeTable(graphElementTableBuilder.autoBuild());
+          }
+        }
+        propertyGraph = propertyGraphBuilder.build();
+        builder.addPropertyGraph(propertyGraph);
+
+      } catch (Exception e) {
+        LOG.error("Error parsing {} JSON: {}", tableType, e.getMessage());
+      }
+    }
+  }
+
+  // Helper function to convert JSONArray to List<String>
+  private static List<String> toStringList(JSONArray jsonArray) {
+    List<String> list = new ArrayList<>();
+    for (int i = 0; i < jsonArray.length(); i++) {
+      list.add(jsonArray.getString(i));
+    }
+    return list;
+  }
+
+  private void listPropertyGraphNodeTables(Ddl.Builder builder) {
+    listPropertyGraphTables(builder, "nodeTables");
+  }
+
+  private void listPropertyGraphEdgeTables(Ddl.Builder builder) {
+    listPropertyGraphTables(builder, "edgeTables");
   }
 
   private void listModels(Ddl.Builder builder) {
