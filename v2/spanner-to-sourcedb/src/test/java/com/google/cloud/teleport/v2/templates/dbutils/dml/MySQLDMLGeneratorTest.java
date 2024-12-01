@@ -1088,6 +1088,33 @@ public final class MySQLDMLGeneratorTest {
     assertTrue(sql.isEmpty());
   }
 
+  @Test
+  public void customTransformationMatch() {
+    Schema schema = SessionFileReader.read("src/test/resources/customTransformation.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("FullName", "\'kk ll\'");
+    customTransformation.put("SingerId", "1");
+
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .setCustomTransformationResponse(customTransformation)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("`FullName` = 'kk ll'"));
+    assertTrue(sql.contains("VALUES (1,'kk ll')"));
+  }
+
   public static Schema getSchemaObject() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
     Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
