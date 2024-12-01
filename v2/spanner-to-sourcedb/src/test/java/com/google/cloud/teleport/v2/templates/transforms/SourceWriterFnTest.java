@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -220,6 +221,45 @@ public class SourceWriterFnTest {
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, atLeast(1)).write(any());
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+  }
+
+  @Test
+  public void testCustomTransformationException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    when(mockSpannerMigrationTransformer.toSourceRow(any()))
+        .thenThrow(new InvalidTransformationException("some exception"));
+    CustomTransformation customTransformation =
+        CustomTransformation.builder("jarPath", "classPath").build();
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            customTransformation);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
+    sourceWriterFn.processElement(processContext);
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(
+            jsonRec,
+            "com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException: some exception");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
   }
 
   @Test
