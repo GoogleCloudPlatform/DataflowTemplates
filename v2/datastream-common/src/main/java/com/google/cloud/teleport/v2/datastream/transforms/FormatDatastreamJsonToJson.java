@@ -76,6 +76,7 @@ public final class FormatDatastreamJsonToJson
     outputObject.put("_metadata_stream", getStreamName(record));
     outputObject.put("_metadata_timestamp", getSourceTimestamp(record));
     outputObject.put("_metadata_read_timestamp", getMetadataTimestamp(record));
+    outputObject.put("_metadata_dataflow_timestamp", getCurrentTimestamp());
     outputObject.put("_metadata_read_method", record.get("read_method").textValue());
     outputObject.put("_metadata_source_type", sourceType);
 
@@ -233,5 +234,9 @@ public final class FormatDatastreamJsonToJson
     }
 
     return value.booleanValue();
+  }
+
+  private long getCurrentTimestamp() {
+    return System.currentTimeMillis() / 1000L;
   }
 }
