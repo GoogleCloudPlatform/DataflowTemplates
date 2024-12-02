@@ -287,4 +287,20 @@ public class OptionsToConfigBuilderTest {
                 "allowMultiQueries",
                 "true"));
   }
+
+  @Test
+  public void testMySqlSetCursorModeIfNeeded() {
+    assertThat(
+            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
+                SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
+    assertThat(
+            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
+                SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", null))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
+    assertThat(
+            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
+                SQLDialect.POSTGRESQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
+  }
 }
