@@ -46,6 +46,7 @@ import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.Schema.Type;
+import org.apache.avro.generic.GenericData.EnumSymbol;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.extensions.avro.schemas.utils.AvroUtils;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryUtils;
@@ -77,15 +78,18 @@ public class BigQueryAvroUtils {
   static final ImmutableMultimap<String, Type> BIG_QUERY_TO_AVRO_TYPES =
       ImmutableMultimap.<String, Type>builder()
           .put("STRING", Type.STRING)
+          .put("STRING", Type.ENUM)
           .put("GEOGRAPHY", Type.STRING)
           .put("BYTES", Type.BYTES)
           .put("INTEGER", Type.LONG)
           .put("INTEGER", Type.INT)
           .put("INT64", Type.LONG)
           .put("INT64", Type.INT)
-          .put("FLOAT", Type.DOUBLE)
-          .put("FLOAT", Type.INT)
+          // BigQueryUtils map both Avro's FLOAT and DOUBLE to BigQuery's FLOAT64:
+          // https://github.com/apache/beam/blob/b70375db84a7ff04a6be3aea8d5ae30f4d7cdbe1/sdks/java/io/google-cloud-platform/src/main/java/org/apache/beam/sdk/io/gcp/bigquery/BigQueryUtils.java#L227-L228
           .put("FLOAT64", Type.DOUBLE)
+          .put("FLOAT64", Type.FLOAT)
+          .put("FLOAT64", Type.LONG)
           .put("FLOAT64", Type.INT)
           .put("NUMERIC", Type.BYTES)
           .put("BIGNUMERIC", Type.BYTES)
@@ -312,11 +316,16 @@ public class BigQueryAvroUtils {
     // BigQuery represents NUMERIC in Avro format as BYTES with a DECIMAL logical type.
     switch (bqType) {
       case "STRING":
+        // Avro will use a CharSequence to represent String objects, but it may not always use
+        // java.lang.String; for example, it may prefer org.apache.avro.util.Utf8.
+        verify(
+            v instanceof CharSequence || v instanceof EnumSymbol,
+            "Expected CharSequence (String) or EnumSymbol, got %s",
+            v.getClass());
+        return v.toString();
       case "DATETIME":
       case "GEOGRAPHY":
       case "JSON":
-        // Avro will use a CharSequence to represent String objects, but it may not always use
-        // java.lang.String; for example, it may prefer org.apache.avro.util.Utf8.
         verify(v instanceof CharSequence, "Expected CharSequence (String), got %s", v.getClass());
         return v.toString();
       case "DATE":
@@ -350,11 +359,16 @@ public class BigQueryAvroUtils {
           verify(v instanceof Long, "Expected Long, got %s", v.getClass());
           return ((Long) v).toString();
         }
-      case "FLOAT":
       case "FLOAT64":
         if (avroType == Type.INT) {
           verify(v instanceof Integer, "Expected Integer, got %s", v.getClass());
           return (Double) ((Integer) v).doubleValue();
+        } else if (avroType == Type.LONG) {
+          verify(v instanceof Long, "Expected Long, got %s", v.getClass());
+          return (Double) ((Long) v).doubleValue();
+        } else if (avroType == Type.FLOAT) {
+          verify(v instanceof Float, "Expected Float, got %s", v.getClass());
+          return (Double) ((Float) v).doubleValue();
         } else {
           verify(v instanceof Double, "Expected Double, got %s", v.getClass());
           return v;
