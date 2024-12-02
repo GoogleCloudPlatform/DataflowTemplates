@@ -234,10 +234,11 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private static <T> RetryPolicy<T> retryOnQuotaException() {
     return RetryPolicy.<T>builder()
-        .handleIf(exception -> {
-          LOG.warn("Error from spanner:", exception);
-          return ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED");
-        })
+        .handleIf(
+            exception -> {
+              LOG.warn("Error from spanner:", exception);
+              return ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED");
+            })
         .withMaxRetries(CREATE_MAX_RETRIES)
         .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
         .withJitter(CREATE_BACKOFF_JITTER)
