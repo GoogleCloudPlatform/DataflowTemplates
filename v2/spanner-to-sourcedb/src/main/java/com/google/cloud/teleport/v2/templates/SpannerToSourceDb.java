@@ -27,27 +27,22 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.IShard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
-import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
-import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimmedShardedDataChangeRecordFn;
-import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
-import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
-import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
-import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
+import com.google.cloud.teleport.v2.templates.metadata.source.ISourceMetadata;
+import com.google.cloud.teleport.v2.templates.metadata.source.SourceMetadataFactory;
+import com.google.cloud.teleport.v2.templates.schema.source.SourceSchema;
+import com.google.cloud.teleport.v2.templates.transforms.*;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -63,11 +58,7 @@ import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.StreamingOptions;
-import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.*;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -77,6 +68,10 @@ import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /** This pipeline reads Spanner Change streams data and writes them to a source DB. */
 @Template(
@@ -367,6 +362,15 @@ public class SpannerToSourceDb {
     String getSourceType();
 
     void setSourceType(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 10,
+        optional = false,
+        description = "Path to GCS file containing the the Cassandra Config details",
+        helpText = "Path to GCS file containing connection profile info for cassandra.")
+    String getCassandraConfigFilePath();
+
+    void setCassandraConfigFilePath(String value);
   }
 
   /**
@@ -405,7 +409,13 @@ public class SpannerToSourceDb {
         pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers() > 0
             ? pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getMaxNumWorkers()
             : 1;
-    int connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
+    int connectionPoolSizePerWorker = 1;
+    if ("cassandra".equals(options.getSourceType())) {
+      connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
+    } else {
+      connectionPoolSizePerWorker = (int) (options.getMaxShardConnections() / maxNumWorkers);
+    }
+
     if (connectionPoolSizePerWorker < 1) {
       // This can happen when the number of workers is more than max.
       // This can cause overload on the source database. Error out and let the user know.
@@ -463,17 +473,38 @@ public class SpannerToSourceDb {
 
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-    String shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
-    if (shards.size() == 1) {
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
 
-      Shard singleShard = shards.get(0);
-      if (singleShard.getLogicalShardId() == null) {
-        singleShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
-        LOG.info(
-            "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
+    List<IShard> iShards = new ArrayList<>();
+    String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+
+    if ("mysql".equals(options.getSourceType())) {
+      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+      iShards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+      if (iShards.size() == 1) {
+        shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+
+        IShard singleMySqlShard = iShards.get(0);
+        if (singleMySqlShard.getLogicalShardId() == null) {
+          singleMySqlShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+          LOG.info(
+              "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
+        }
+      }
+    } else {
+      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
+      iShards = cassandraConfigFileReader.getCassandraShard(options.getCassandraConfigFilePath());
+      LOG.info("Cassandra config is: {}", iShards.get(0));
+      if (iShards.size() == 1) {
+        shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+        IShard singleCassandraShard = iShards.get(0);
+        if (singleCassandraShard.getLogicalShardId() == null) {
+          singleCassandraShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+          LOG.info(
+              "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
+        }
+      }else{
+        throw new IllegalArgumentException("Not Supporting more than one shard for cassandra");
       }
     }
     boolean isRegularMode = "regular".equals(options.getRunMode());
@@ -483,8 +514,8 @@ public class SpannerToSourceDb {
     int reshuffleBucketSize =
         maxNumWorkers
             * (debugOptions.getNumberOfWorkerHarnessThreads() > 0
-                ? debugOptions.getNumberOfWorkerHarnessThreads()
-                : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
+            ? debugOptions.getNumberOfWorkerHarnessThreads()
+            : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
     if (isRegularMode) {
       reconsumedElements =
@@ -541,6 +572,16 @@ public class SpannerToSourceDb {
     } else {
       mergedRecords = dlqRecords;
     }
+
+//  getting source schema metadata
+    ISourceMetadata<SourceSchema> sourceMetadata = SourceMetadataFactory.getSourceMetadata(options.getSourceType(), iShards);
+    if (sourceMetadata == null) {
+      throw new IllegalArgumentException("Unsupported source type: " + options.getSourceType());
+    }
+    SourceSchema sourceSchema = sourceMetadata.getMetadata();
+//    Todo: Add source schema validation after reading change stream.
+
+
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -555,13 +596,16 @@ public class SpannerToSourceDb {
                         schema,
                         ddl,
                         shardingMode,
-                        shards.get(0).getLogicalShardId(),
+                        iShards.get(0).getLogicalShardId(),
                         options.getSkipDirectoryName(),
                         options.getShardingCustomJarPath(),
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
                         options.getMaxShardConnections()
-                            * shards.size()))) // currently assuming that all shards accept the same
+                            * iShards.size(),
+                        options.getSourceType(),
+                        options.getMaxShardConnections()
+                    ))) // currently assuming that all mySqlShards accept the same
             // number of max connections
             .setCoder(
                 KvCoder.of(
@@ -570,7 +614,7 @@ public class SpannerToSourceDb {
             .apply(
                 "Write to source",
                 new SourceWriterTransform(
-                    shards,
+                    iShards,
                     schema,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
@@ -578,7 +622,9 @@ public class SpannerToSourceDb {
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
                     connectionPoolSizePerWorker,
-                    options.getSourceType()));
+                    options.getSourceType(),
+                    options.getMaxShardConnections()
+                ));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements

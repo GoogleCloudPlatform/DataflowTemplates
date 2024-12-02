@@ -1,30 +1,29 @@
 package com.google.cloud.teleport.v2.templates.schema.source;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
-
 import java.io.Serializable;
 
 public class SourceColumn implements Serializable {
-  /** represents name of a column in a source table */
-  private final String name;
-  /** represents the data type of the source column. */
-  private final SourceType type;
+  private String sourceType;
+  private boolean isPrimaryKey;
 
-  public SourceColumn(String name, SourceType type) {
-    this.name = name;
-    this.type = type;
+  public SourceColumn(String sourceType, boolean isPrimaryKey) {
+    this.sourceType = sourceType;
+    this.isPrimaryKey = isPrimaryKey;
   }
 
-  public String getName() {
-    return name;
+  public String getSourceType() {
+    return sourceType;
   }
 
-  public SourceType getType() {
-    return type;
+  public void setSourceType(String sourceType) {
+    this.sourceType = sourceType;
   }
 
-  public String toString() {
-    return String.format("{ 'name': '%s' , 'type': '%s'}", name, type);
+  public boolean isPrimaryKey() {
+    return isPrimaryKey;
   }
 
+  public void setPrimaryKey(boolean primaryKey) {
+    isPrimaryKey = primaryKey;
+  }
 }

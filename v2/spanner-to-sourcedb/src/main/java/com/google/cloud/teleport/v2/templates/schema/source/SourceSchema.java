@@ -6,17 +6,17 @@ import java.util.Map;
 
 public class SourceSchema implements Serializable {
 
-  private final Map<String, SourceTable> srcSchema;
+  private final Map<String, Map<String, SourceColumn>> srcSchema;
 
   public SourceSchema() {
-    this.srcSchema = new HashMap<String, SourceTable>();
+    this.srcSchema = new HashMap<>();
   }
 
-  public SourceSchema(Map<String, SourceTable> srcSchema) {
+  public SourceSchema(Map<String, Map<String, SourceColumn>> srcSchema) {
     this.srcSchema = srcSchema;
   }
 
-  public Map<String, SourceTable> getSrcSchema() {
+  public Map<String, Map<String, SourceColumn>> getSrcSchema() {
     return srcSchema;
   }
 }

@@ -57,4 +57,26 @@ public class JdbcDao implements IDao<String> {
       }
     }
   }
+
+  @Override
+  public String read(String statement) throws Exception {
+    Connection connObj = null;
+    Statement stmt = null;
+
+    try {
+      connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
+      if (connObj == null) {
+        throw new ConnectionException("Connection is null");
+      }
+      stmt = connObj.createStatement();
+      return stmt.executeQuery(statement).toString();
+    } finally {
+      if (stmt != null) {
+        stmt.close();
+      }
+      if (connObj != null) {
+        connObj.close();
+      }
+    }
+  }
 }
