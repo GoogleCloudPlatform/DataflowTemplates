@@ -1,0 +1,53 @@
+# Set default createDisposition
+{% if createDisposition is not defined %}
+{% set createDisposition = 'CREATE_NEVER' %}
+{% endif %}
+
+# Set default fetchSize
+# TODO - JdbcReadSchemaTransformProvider uses short for this value,
+# but default template behavior is to use 50,000 which is outside int16
+# range.
+{% if fetchSize is not defined %}
+{% set fetchSize = 30000 %}
+{% endif %}
+
+pipeline:
+  type: chain
+  transforms:
+
+    # TODO - add support for KMS key in JdbcReadSchemaTransformProvider
+    # TODO - add support for partition column in JdbcReadSchemaTransformProvider
+    - type: ReadFromJdbc
+      config:
+        # TODO - Use ReadFromPostgres when Beam 2.61 is released
+        jdbc_type: postgres
+        url: {{ connectionURL }}
+        {% if username is defined %}
+        username: {{ username }}
+        {% endif %}
+        {% if password is defined %}
+        password: {{ password }}
+        {% endif %}
+        {% if table is defined %}
+        table: {{ table }}
+        {% endif %}
+        {% if query is defined %}
+        query: {{ query }}
+        {% endif %}
+        {% if connectionProperties is defined %}
+        connection_properties: {{ connectionProperties }}
+        {% endif %}
+        fetch_size: {{ fetchSize }}
+
+    # TODO - add withCustomGcsTempLocation() to BigQueryDirectReadSchemaTransformProvider
+    # TODO - add ability to specify schema when using CREATE_IF_NEEDED create_disposition
+    - type: WriteToBigQuery
+      config:
+        table: {{ outputTable }}
+        create_disposition: {{ createDisposition }}
+
+{% if disabledAlgorithms is defined %}
+options:
+  disabledAlgorithms: {{ disabledAlgorithms }}
+{% endif %}
+ 
