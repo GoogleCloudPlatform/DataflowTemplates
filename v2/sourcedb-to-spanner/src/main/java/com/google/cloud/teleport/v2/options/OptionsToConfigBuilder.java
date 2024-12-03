@@ -172,7 +172,7 @@ public final class OptionsToConfigBuilder {
       SQLDialect sqlDialect, String url, @Nullable Integer fetchSize) {
     if (fetchSize == null) {
       LOG.info(
-          "FetchSize is not explicitly configured. In case of out of memory errors, please set `FetSize` according to the available memory and maximum size of a row.");
+          "FetchSize is not explicitly configured. In case of out of memory errors, please set `FetchSize` according to the available memory and maximum size of a row.");
       return url;
     }
     if (sqlDialect != SQLDialect.MYSQL) {
