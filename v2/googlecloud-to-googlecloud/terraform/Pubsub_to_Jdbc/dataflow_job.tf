@@ -35,73 +35,73 @@ variable "region" {
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
 
 }
 
 variable "driverClassName" {
   type        = string
-  description = "JDBC driver class name to use. (Example: com.mysql.jdbc.Driver)"
+  description = "The JDBC driver class name. (Example: com.mysql.jdbc.Driver)"
 
 }
 
 variable "connectionUrl" {
   type        = string
-  description = "Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. (Example: jdbc:mysql://some-host:3306/sampledb)"
+  description = "The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. (Example: jdbc:mysql://some-host:3306/sampledb)"
 
 }
 
 variable "username" {
   type        = string
-  description = "User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS."
+  description = "The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded."
   default     = null
 }
 
 variable "password" {
   type        = string
-  description = "Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS."
+  description = "The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded."
   default     = null
 }
 
 variable "driverJars" {
   type        = string
-  description = "Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar)"
+  description = "Comma separated Cloud Storage paths for JDBC drivers.  (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar)"
 
 }
 
 variable "connectionProperties" {
   type        = string
-  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
+  description = "The properties string to use for the JDBC connection. The string must use the format `[propertyName=property;]*`.  (Example: unicode=true;characterEncoding=UTF-8)"
   default     = null
 }
 
 variable "statement" {
   type        = string
-  description = "SQL statement which will be executed to write to the database. The statement must specify the column names of the table in any order. Only the values of the specified column names will be read from the json and added to the statement. (Example: INSERT INTO tableName (column1, column2) VALUES (?,?))"
+  description = "The statement to run against the database. The statement must specify the column names of the table in any order. Only the values of the specified column names are read from the JSON and added to the statement.  (Example: INSERT INTO tableName (column1, column2) VALUES (?,?))"
 
 }
 
 variable "outputDeadletterTopic" {
   type        = string
-  description = "The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name."
+  description = "The Pub/Sub topic to forward undeliverable messages to.  (Example: projects/<PROJECT_ID>/topics/<TOPIC_NAME>)"
 
 }
 
 variable "KMSEncryptionKey" {
   type        = string
-  description = "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name})"
+  description = "The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted. (Example: projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name})"
   default     = null
 }
 
 variable "disabledAlgorithms" {
   type        = string
-  description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
+  description = "Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4)"
   default     = null
 }
 
 variable "extraFilesToStage" {
   type        = string
-  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
+  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>)"
   default     = null
 }
 

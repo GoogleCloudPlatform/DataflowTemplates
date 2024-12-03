@@ -35,31 +35,31 @@ variable "region" {
 
 variable "brokerServer" {
   type        = string
-  description = "Server IP for MQTT broker (Example: tcp://host:1883)"
+  description = "The MQTT broker server IP or host. (Example: tcp://host:1883)"
   default     = null
 }
 
 variable "inputTopic" {
   type        = string
-  description = "MQTT topic(s) to read the input from. (Example: topic)"
+  description = "The name of the MQTT topic that data is read from. (Example: topic)"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The name of the output Pub/Sub topic that data is written to. (Example: projects/your-project-id/topics/your-topic-name)"
 
 }
 
 variable "username" {
   type        = string
-  description = "MQTT username for authentication with MQTT server (Example: sampleusername)"
+  description = "The username to use for authentication on the MQTT server. (Example: sampleusername)"
 
 }
 
 variable "password" {
   type        = string
-  description = "Password for username provided for authentication with MQTT server (Example: samplepassword)"
+  description = "The password associated with the provided username. (Example: samplepassword)"
 
 }
 

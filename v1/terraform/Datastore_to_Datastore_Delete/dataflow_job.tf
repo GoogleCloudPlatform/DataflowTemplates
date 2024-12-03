@@ -35,31 +35,31 @@ variable "region" {
 
 variable "datastoreReadGqlQuery" {
   type        = string
-  description = "Specifies which Datastore entities to read. Ex: ‘SELECT * FROM MyKind’"
+  description = "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies which entities to grab. For example, `SELECT * FROM MyKind`."
 
 }
 
 variable "datastoreReadProjectId" {
   type        = string
-  description = "The Google Cloud project ID of the Datastore instance to read from"
+  description = "The ID of the Google Cloud project that contains the Datastore instance that you want to read data from."
 
 }
 
 variable "datastoreReadNamespace" {
   type        = string
-  description = "Namespace of requested Datastore entities. Leave blank to use default namespace."
+  description = "The namespace of the requested entities. To use the default namespace, leave this parameter blank."
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions."
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`."
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
@@ -70,7 +70,7 @@ variable "datastoreDeleteProjectId" {
 }
 
 variable "datastoreHintNumWorkers" {
-  type        = string
+  type        = number
   description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500."
   default     = null
 }
@@ -178,7 +178,7 @@ resource "google_dataflow_job" "generated" {
     javascriptTextTransformGcsPath      = var.javascriptTextTransformGcsPath
     javascriptTextTransformFunctionName = var.javascriptTextTransformFunctionName
     datastoreDeleteProjectId            = var.datastoreDeleteProjectId
-    datastoreHintNumWorkers             = var.datastoreHintNumWorkers
+    datastoreHintNumWorkers             = tostring(var.datastoreHintNumWorkers)
   }
 
   additional_experiments       = var.additional_experiments
