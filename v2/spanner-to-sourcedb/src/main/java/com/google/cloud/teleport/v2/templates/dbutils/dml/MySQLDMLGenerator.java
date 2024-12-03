@@ -239,7 +239,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         continue; // we only need non-primary keys
       }
       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, (String) customTransformationResponse.get(colName));
+        response.put(colName, customTransformationResponse.get(colName).toString());
         continue;
       }
 
@@ -318,7 +318,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
           && customTransformColumns.contains(sourceColDef.getName())) {
         response.put(
             sourceColDef.getName(),
-            (String) customTransformationResponse.get(sourceColDef.getName()));
+            customTransformationResponse.get(sourceColDef.getName()).toString());
         continue;
       }
       String spannerColumnName = spannerColDef.getName();
