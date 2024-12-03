@@ -35,19 +35,19 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /** Integration test for {@link ImportPipeline} classic template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(ImportPipeline.class)
-@RunWith(JUnit4.class)
-public class ImportPipelineIT extends TemplateTestBase {
+@RunWith(Parameterized.class)
+public class ImportPipelineIT extends SpannerTemplateITBase {
 
   private SpannerResourceManager spannerResourceManager;
 
@@ -127,16 +127,7 @@ public class ImportPipelineIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
-            .build();
-    testGoogleSqlImportPipelineBase(Function.identity());
-  }
-
-  @Test
-  public void testGoogleSqlImportPipelineStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testGoogleSqlImportPipelineBase(
         paramAdder ->
@@ -209,16 +200,7 @@ public class ImportPipelineIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
-            .build();
-    testPostgresImportPipelineBase(Function.identity());
-  }
-
-  @Test
-  public void testPostgresImportPipelineStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testPostgresImportPipelineBase(
         paramAdder ->

@@ -34,23 +34,23 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /** Integration test for {@link ExportPipeline Spanner to GCS Avro} template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(ExportPipeline.class)
-@RunWith(JUnit4.class)
-public class ExportPipelineIT extends TemplateTestBase {
+@RunWith(Parameterized.class)
+public class ExportPipelineIT extends SpannerTemplateITBase {
 
   private static final int MESSAGES_COUNT = 100;
 
@@ -154,16 +154,7 @@ public class ExportPipelineIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
-            .build();
-    testSpannerToGCSAvroBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerToGCSAvroStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerToGCSAvroBase(
         paramAdder ->
@@ -260,16 +251,7 @@ public class ExportPipelineIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
-            .build();
-    testPostgresSpannerToGCSAvroBase(Function.identity());
-  }
-
-  @Test
-  public void testPostgresSpannerToGCSAvroStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testPostgresSpannerToGCSAvroBase(
         paramAdder ->

@@ -46,7 +46,6 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
@@ -56,6 +55,7 @@ import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.datastream.OracleSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -65,13 +65,13 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
-@RunWith(JUnit4.class)
-public class DataStreamToSpannerIT extends TemplateTestBase {
+@RunWith(Parameterized.class)
+public class DataStreamToSpannerIT extends SpannerTemplateITBase {
 
   enum JDBCType {
     MYSQL,
@@ -126,7 +126,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
         Function.identity());
   }
 
@@ -136,27 +135,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleOracleToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamMySqlToSpannerStaging() throws IOException {
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamOracleToSpannerStaging() throws IOException {
-    // Run a simple IT
-    simpleOracleToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
         Function.identity());
   }
 
@@ -166,17 +144,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.POSTGRESQL,
-        false,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamMySqlToPostgresSpannerStaging() throws IOException {
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.POSTGRESQL,
-        true,
         Function.identity());
   }
 
@@ -186,7 +153,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
         config -> config.addEnvironment("enableStreamingEngine", true));
   }
 
@@ -196,7 +162,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleMySqlToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
         Function.identity());
   }
 
@@ -206,34 +171,12 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     simpleOracleToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
-        false,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamMySqlToSpannerJsonStaging() throws IOException {
-    // Run a simple IT
-    simpleMySqlToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
-        Function.identity());
-  }
-
-  @Test
-  public void testDataStreamOracleToSpannerJsonStaging() throws IOException {
-    // Run a simple IT
-    simpleOracleToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        true,
         Function.identity());
   }
 
   private void simpleMySqlToSpannerTest(
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
-      boolean isStaging,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
@@ -241,7 +184,6 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
         JDBCType.MYSQL,
         fileFormat,
         spannerDialect,
-        isStaging,
         config ->
             paramsAdder.apply(
                 config.addParameter("sessionFilePath", getGcsPath("input/mysql-session.json"))));
@@ -250,23 +192,17 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
   private void simpleOracleToSpannerTest(
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
-      boolean isStaging,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
     simpleJdbcToSpannerTest(
-        JDBCType.ORACLE,
-        fileFormat,
-        spannerDialect,
-        isStaging,
-        config -> paramsAdder.apply(config));
+        JDBCType.ORACLE, fileFormat, spannerDialect, config -> paramsAdder.apply(config));
   }
 
   private void simpleJdbcToSpannerTest(
       JDBCType jdbcType,
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
       Dialect spannerDialect,
-      boolean isStaging,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
 
@@ -280,10 +216,8 @@ public class DataStreamToSpannerIT extends TemplateTestBase {
     SpannerResourceManager.Builder spannerResourceManagerBuilder =
         SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)
             .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
             .setCredentials(credentials);
-    if (isStaging) {
-      spannerResourceManagerBuilder.maybeUseCustomHost();
-    }
     spannerResourceManager = spannerResourceManagerBuilder.build();
 
     // Generate table names
