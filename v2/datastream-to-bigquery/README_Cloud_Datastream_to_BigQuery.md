@@ -49,7 +49,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **ignoreFields** : Comma-separated fields to ignore in BigQuery. Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count. (Example: _metadata_stream,_metadata_schema).
 * **mergeFrequencyMinutes** : The number of minutes between merges for a given table. Defaults to: 5.
 * **dlqRetryMinutes** : The number of minutes between DLQ Retries. Defaults to: 10.
-* **dataStreamRootUrl** : The Datastream API root URL. Defaults to: https://datastream.googleapis.com/.
+* **dataStreamRootUrl** : The Datastream API root URL. Defaults to: `https://datastream.googleapis.com/`.
 * **applyMerge** : Whether to disable MERGE queries for the job. Defaults to: true.
 * **mergeConcurrency** : The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Defaults to: 30.
 * **partitionRetentionDays** : The number of days to use for partition retention when running BigQuery merges. Defaults to: 1.

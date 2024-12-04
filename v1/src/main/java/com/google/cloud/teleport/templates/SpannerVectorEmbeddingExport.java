@@ -161,9 +161,9 @@ public class SpannerVectorEmbeddingExport {
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText =
-            "The Spanner endpoint to call in the template. The default value is https://batch-spanner.googleapis.com.",
-        example = "https://batch-spanner.googleapis.com")
-    @Default.String("https://batch-spanner.googleapis.com")
+            "The Spanner endpoint to call in the template. The default value is `https://batch-spanner.googleapis.com`.",
+        example = "`https://batch-spanner.googleapis.com`")
+    @Default.String("`https://batch-spanner.googleapis.com`")
     ValueProvider<String> getSpannerHost();
 
     void setSpannerHost(ValueProvider<String> value);

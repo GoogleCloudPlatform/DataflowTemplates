@@ -313,7 +313,7 @@ public class DataStreamToBigQuery {
         order = 16,
         optional = true,
         description = "Datastream API Root URL (only required for testing)",
-        helpText = "The Datastream API root URL. Defaults to: https://datastream.googleapis.com/.")
+        helpText = "The Datastream API root URL. Defaults to: `https://datastream.googleapis.com/`.")
     @Default.String("https://datastream.googleapis.com/")
     String getDataStreamRootUrl();
 
