@@ -27,7 +27,7 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
-import java.util.Set;
+import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.annotation.Nullable;
@@ -132,10 +132,10 @@ public class BulkDecompressor {
    * Compression#UNCOMPRESSED}.
    */
   @VisibleForTesting
-  static final Set<Compression> SUPPORTED_COMPRESSIONS =
+  static final List<Compression> SUPPORTED_COMPRESSIONS =
       Stream.of(Compression.values())
           .filter(value -> value != Compression.AUTO && value != Compression.UNCOMPRESSED)
-          .collect(Collectors.toSet());
+          .collect(Collectors.toList());
 
   /** The error msg given when the pipeline matches a file but cannot determine the compression. */
   @VisibleForTesting
