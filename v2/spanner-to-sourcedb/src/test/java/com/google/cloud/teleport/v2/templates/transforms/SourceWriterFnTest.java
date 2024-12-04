@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -38,7 +40,10 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -63,6 +68,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -76,6 +82,7 @@ public class SourceWriterFnTest {
   @Mock HashMap<String, IDao> mockDaoMap;
   @Mock private SpannerConfig mockSpannerConfig;
   @Mock private DoFn.ProcessContext processContext;
+  @Mock private ISpannerMigrationTransformer mockSpannerMigrationTransformer;
   private static Gson gson = new Gson();
 
   private Shard testShard;
@@ -148,7 +155,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -175,7 +183,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -201,7 +210,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -211,6 +221,118 @@ public class SourceWriterFnTest {
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, atLeast(1)).write(any());
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+  }
+
+  @Test
+  public void testCustomTransformationException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    when(mockSpannerMigrationTransformer.toSourceRow(any()))
+        .thenThrow(new InvalidTransformationException("some exception"));
+    CustomTransformation customTransformation =
+        CustomTransformation.builder("jarPath", "classPath").build();
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            customTransformation);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
+    sourceWriterFn.processElement(processContext);
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(
+            jsonRec,
+            "com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException: some exception");
+    verify(processContext, atLeast(1))
+        .output(
+            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  @Test
+  public void testCustomTransformationApplied() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    when(mockSpannerMigrationTransformer.toSourceRow(any()))
+        .thenReturn(new MigrationTransformationResponse(Map.of("id", "45"), false));
+    CustomTransformation customTransformation =
+        CustomTransformation.builder("jarPath", "classPath").build();
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            customTransformation);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
+    verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture());
+    assertTrue(argumentCaptor.getValue().contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
+    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+  }
+
+  @Test
+  public void testCustomTransformationFiltered() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    when(mockSpannerMigrationTransformer.toSourceRow(any()))
+        .thenReturn(new MigrationTransformationResponse(null, true));
+    CustomTransformation customTransformation =
+        CustomTransformation.builder("jarPath", "classPath").build();
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            testSchema,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            customTransformation);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
+    sourceWriterFn.processElement(processContext);
+    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
+    verify(mockSqlDao, atLeast(0)).write(any());
+    verify(mockSpannerDao, atLeast(0)).updateShadowTable(any());
+    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
+    ChangeStreamErrorRecord errorRecord =
+        new ChangeStreamErrorRecord(jsonRec, Constants.FILTERED_TAG_MESSAGE);
+    verify(processContext, atLeast(1))
+        .output(Constants.FILTERED_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
   }
 
   @Test
@@ -227,7 +349,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -257,7 +380,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -285,7 +409,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -317,7 +442,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -345,7 +471,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -375,7 +502,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -405,7 +533,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -435,7 +564,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -464,7 +594,8 @@ public class SourceWriterFnTest {
             "shadow_",
             "skip",
             500,
-            "mysql");
+            "mysql",
+            null);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
