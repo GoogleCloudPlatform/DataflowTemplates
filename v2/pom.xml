@@ -688,6 +688,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>gcs-avro-to-spanner-scd</module>
         <module>gcs-to-sourcedb</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>
