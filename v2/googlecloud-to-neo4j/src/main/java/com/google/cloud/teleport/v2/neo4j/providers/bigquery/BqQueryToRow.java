@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
 import com.google.api.services.bigquery.model.TableRow;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
 import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.schemas.Schema;
@@ -34,25 +34,33 @@ import org.slf4j.LoggerFactory;
 public class BqQueryToRow extends PTransform<PBegin, PCollection<Row>> {
 
   private static final Logger LOG = LoggerFactory.getLogger(BqQueryToRow.class);
-  private final SqlQuerySpec bqQuerySpec;
+  private final BigQuerySpec bqQuerySpec;
 
-  public BqQueryToRow(SqlQuerySpec bqQuerySpec) {
+  public BqQueryToRow(BigQuerySpec bqQuerySpec) {
     this.bqQuerySpec = bqQuerySpec;
   }
 
   @Override
   public PCollection<Row> expand(PBegin input) {
-
     String rewrittenSql = this.bqQuerySpec.getSql();
     LOG.info("Reading BQ with query: {}", rewrittenSql);
 
-    PCollection<TableRow> sourceRows =
-        input.apply(
-            bqQuerySpec.getReadDescription(),
-            BigQueryIO.readTableRowsWithSchema()
-                .fromQuery(rewrittenSql)
-                .usingStandardSql()
-                .withTemplateCompatibility());
+    var read =
+        BigQueryIO.readTableRowsWithSchema()
+            .fromQuery(rewrittenSql)
+            .usingStandardSql()
+            .withTemplateCompatibility();
+
+    var queryTempProject = this.bqQuerySpec.getQueryTempProject();
+    var queryTempDataset = this.bqQuerySpec.getQueryTempDataset();
+
+    if (queryTempProject != null && queryTempDataset != null) {
+      read = read.withQueryTempProjectAndDataset(queryTempProject, queryTempDataset);
+    } else if (queryTempDataset != null) {
+      read = read.withQueryTempDataset(queryTempDataset);
+    }
+
+    PCollection<TableRow> sourceRows = input.apply(bqQuerySpec.getReadDescription(), read);
 
     Schema beamSchema = sourceRows.getSchema();
     Coder<Row> rowCoder = SchemaCoder.of(beamSchema);

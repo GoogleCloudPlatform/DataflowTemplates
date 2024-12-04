@@ -15,11 +15,12 @@
  */
 package com.google.cloud.teleport.v2.neo4j.model.sources;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Optional;
 import org.neo4j.importer.v1.sources.SourceProvider;
 
 public class BigQuerySourceProvider implements SourceProvider<BigQuerySource> {
-
   @Override
   public String supportedType() {
     return "bigquery";
@@ -27,6 +28,10 @@ public class BigQuerySourceProvider implements SourceProvider<BigQuerySource> {
 
   @Override
   public BigQuerySource provide(ObjectNode node) {
-    return new BigQuerySource(node.get("name").textValue(), node.get("query").textValue());
+    return new BigQuerySource(
+        node.get("name").textValue(),
+        node.get("query").textValue(),
+        Optional.ofNullable(node.get("query_temp_project")).map(JsonNode::textValue).orElse(null),
+        Optional.ofNullable(node.get("query_temp_dataset")).map(JsonNode::textValue).orElse(null));
   }
 }
