@@ -30,42 +30,42 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : Pub/Sub subscription to consume the input from. Name should be in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **errorOutputTopic** : Pub/Sub output topic for publishing failed records in the format of 'projects/your-project-id/topics/your-topic-name'.
-* **connectionUrl** : The Elasticsearch URL in the format https://hostname:[port]. If using Elastic Cloud, specify the CloudID. (Example: https://elasticsearch-host:9200).
-* **apiKey** : The Base64-encoded API key to use for authentication.
+* **inputSubscription**: Pub/Sub subscription to consume the input from. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
+* **errorOutputTopic**: The Pub/Sub output topic for publishing failed records, in the format of `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **connectionUrl**: The Elasticsearch URL in the format `https://hostname:[port]`. If using Elastic Cloud, specify the CloudID. For example, `https://elasticsearch-host:9200`.
+* **apiKey**: The Base64-encoded API key to use for authentication.
 
 ### Optional parameters
 
-* **dataset** : The type of logs sent using Pub/Sub, for which we have an out-of-the-box dashboard. Known log types values are audit, vpcflow and firewall. Default 'pubsub'.
-* **namespace** : An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Default: 'default'.
-* **elasticsearchTemplateVersion** : Dataflow Template Version Identifier, usually defined by Google Cloud. Defaults to: 1.0.0.
-* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
-* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
-* **elasticsearchUsername** : The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored.
-* **elasticsearchPassword** : The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.
-* **batchSize** : The batch size in number of documents. Defaults to: 1000.
-* **batchSizeBytes** : The batch size in number of bytes. Defaults to: 5242880 (5mb).
-* **maxRetryAttempts** : The maximum number of retry attempts. Must be greater than zero. Defaults to: no retries.
-* **maxRetryDuration** : The maximum retry duration in milliseconds. Must be greater than zero. Defaults to: no retries.
-* **propertyAsIndex** : The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to: none.
-* **javaScriptIndexFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: none.
-* **javaScriptIndexFnName** : The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to: none.
-* **propertyAsId** : A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to: none.
-* **javaScriptIdFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to: none.
-* **javaScriptIdFnName** : The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to: none.
-* **javaScriptTypeFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Default: none.
-* **javaScriptTypeFnName** : The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to: none.
-* **javaScriptIsDeleteFnGcsPath** : The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none.
-* **javaScriptIsDeleteFnName** : The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to: none.
-* **usePartialUpdate** : Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to: false.
-* **bulkInsertMethod** : Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: CREATE.
-* **trustSelfSignedCerts** : Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False).
-* **disableCertificateValidation** : If 'true', trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to 'true'. Default: false.
-* **apiKeyKMSEncryptionKey** : The Cloud KMS key to decrypt the API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
-* **apiKeySecretId** : Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **apiKeySource** : Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager or KMS is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided. Defaults to: PLAINTEXT.
-* **socketTimeout** : If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient.
+* **dataset**: The type of logs sent using Pub/Sub, for which we have an out-of-the-box dashboard. Known log types values are `audit`, `vpcflow`, and `firewall`. Defaults to: `pubsub`.
+* **namespace**: An arbitrary grouping, such as an environment (dev, prod, or qa), a team, or a strategic business unit. Defaults to: `default`.
+* **elasticsearchTemplateVersion**: Dataflow Template Version Identifier, usually defined by Google Cloud. Defaults to: 1.0.0.
+* **pythonExternalTextTransformGcsPath**: The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-function.py`.
+* **pythonExternalTextTransformFunctionName**: The name of the function to call from your Python file. Use only letters, digits, and underscores. For example, `'transform' or 'transform_udf1'`.
+* **elasticsearchUsername**: The Elasticsearch username to authenticate with. If specified, the value of `apiKey` is ignored.
+* **elasticsearchPassword**: The Elasticsearch password to authenticate with. If specified, the value of `apiKey` is ignored.
+* **batchSize**: The batch size in number of documents. Defaults to `1000`.
+* **batchSizeBytes**: The batch size in number of bytes. Defaults to `5242880` (5mb).
+* **maxRetryAttempts**: The maximum number of retry attempts. Must be greater than zero. Defaults to `no retries`.
+* **maxRetryDuration**: The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `no retries`.
+* **propertyAsIndex**: The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to `none`.
+* **javaScriptIndexFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptIndexFnName**: The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`.
+* **propertyAsId**: A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to `none`.
+* **javaScriptIdFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptIdFnName**: The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptTypeFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Defaults to `none`.
+* **javaScriptTypeFnName**: The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to `none`.
+* **javaScriptIsDeleteFnGcsPath**: The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`.
+* **javaScriptIsDeleteFnName**: The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`.
+* **usePartialUpdate**: Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to `false`.
+* **bulkInsertMethod**: Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to `CREATE`.
+* **trustSelfSignedCerts**: Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`).
+* **disableCertificateValidation**: If `true`, trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to `true`. Defaults to `false`.
+* **apiKeyKMSEncryptionKey**: The Cloud KMS key to decrypt the API key. This parameter is required if the `apiKeySource` is set to `KMS`. If this parameter is provided, pass in an encrypted `apiKey` string. Encrypt parameters using the KMS API encrypt endpoint. For the key, use the format `projects/<PROJECT_ID>/locations/<KEY_REGION>/keyRings/<KEY_RING>/cryptoKeys/<KMS_KEY_NAME>`. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`.
+* **apiKeySecretId**: The Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>. For example, `projects/your-project-id/secrets/your-secret/versions/your-secret-version`.
+* **apiKeySource**: The source of the API key. Allowed values are `PLAINTEXT`, `KMS` orand `SECRET_MANAGER`. This parameter is required when you use Secret Manager or KMS. If `apiKeySource` is set to `KMS`, `apiKeyKMSEncryptionKey` and encrypted apiKey must be provided. If `apiKeySource` is set to `SECRET_MANAGER`, `apiKeySecretId` must be provided. If `apiKeySource` is set to `PLAINTEXT`, `apiKey` must be provided. Defaults to: PLAINTEXT.
+* **socketTimeout**: If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient.
 
 
 
@@ -323,15 +323,15 @@ resource "google_dataflow_flex_template_job" "pubsub_to_elasticsearch_xlang" {
   name              = "pubsub-to-elasticsearch-xlang"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
+    inputSubscription = "<inputSubscription>"
     errorOutputTopic = "<errorOutputTopic>"
-    connectionUrl = "https://elasticsearch-host:9200"
+    connectionUrl = "<connectionUrl>"
     apiKey = "<apiKey>"
     # dataset = "PUBSUB"
     # namespace = "default"
     # elasticsearchTemplateVersion = "1.0.0"
-    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
-    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # pythonExternalTextTransformGcsPath = "<pythonExternalTextTransformGcsPath>"
+    # pythonExternalTextTransformFunctionName = "<pythonExternalTextTransformFunctionName>"
     # elasticsearchUsername = "<elasticsearchUsername>"
     # elasticsearchPassword = "<elasticsearchPassword>"
     # batchSize = "1000"
@@ -352,8 +352,8 @@ resource "google_dataflow_flex_template_job" "pubsub_to_elasticsearch_xlang" {
     # bulkInsertMethod = "CREATE"
     # trustSelfSignedCerts = "false"
     # disableCertificateValidation = "false"
-    # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
-    # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
+    # apiKeyKMSEncryptionKey = "<apiKeyKMSEncryptionKey>"
+    # apiKeySecretId = "<apiKeySecretId>"
     # apiKeySource = "PLAINTEXT"
     # socketTimeout = "<socketTimeout>"
   }

@@ -152,7 +152,7 @@ public class TextImportPipeline {
         groupName = "Source",
         optional = true,
         description = "Column delimiter of the data files",
-        helpText = "The column delimiter that the source file uses. The default value is ','.",
+        helpText = "The column delimiter that the source file uses. The default value is `,`.",
         example = ",")
     @Default.Character(',')
     ValueProvider<Character> getColumnDelimiter();
@@ -166,7 +166,7 @@ public class TextImportPipeline {
         description = "Field qualifier used by the source file",
         helpText =
             "The character that must surround any value in the source file that "
-                + "contains the columnDelimiter. The default value is \".")
+                + "contains the columnDelimiter. The default value is double quotes.")
     @Default.Character('"')
     ValueProvider<Character> getFieldQualifier();
 
@@ -179,7 +179,7 @@ public class TextImportPipeline {
         description = "If true, the lines has trailing delimiters",
         helpText =
             "Specifies whether the lines in the source files have trailing delimiters, that is, whether the "
-                + "`columnDelimiter` character appears at the end of each line, after the last column value). "
+                + "`columnDelimiter` character appears at the end of each line, after the last column value. "
                 + "The default value is `true`.")
     @Default.Boolean(true)
     ValueProvider<Boolean> getTrailingDelimiter();
@@ -218,7 +218,7 @@ public class TextImportPipeline {
         description = "Date format",
         helpText =
             "The format used to parse date columns. By default, the pipeline tries to parse the date columns "
-                + "as `yyyy-M-d[' 00:00:00']`, for example, as 2019-01-31 or 2019-1-1 00:00:00. If your date format "
+                + "as `yyyy-M-d[' 00:00:00']`, for example, as `2019-01-31` or `2019-1-1 00:00:00`. If your date format "
                 + "is different, specify the format using the java.time.format.DateTimeFormatter "
                 + "(https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html) patterns.")
     ValueProvider<String> getDateFormat();
@@ -232,11 +232,10 @@ public class TextImportPipeline {
         description = "Timestamp format",
         helpText =
             "The format used to parse timestamp columns. If the timestamp is a long integer, then it is parsed "
-                + "as Unix epoch time. Otherwise, it is parsed as a string using the "
-                + "java.time.format.DateTimeFormatter.ISO_INSTANT "
+                + "as Unix epoch time. Otherwise, it is parsed as a string using the java.time.format.DateTimeFormatter.ISO_INSTANT "
                 + "(https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/format/DateTimeFormatter.html#ISO_INSTANT) format. "
                 + "For other cases, specify your own pattern string, for example, using `MMM dd yyyy HH:mm:ss.SSSVV` "
-                + "for timestamps in the form of `\"Jan 21 1998 01:02:03.456+08:00\"`.")
+                + "for timestamps in the form of `Jan 21 1998 01:02:03.456+08:00`.")
     ValueProvider<String> getTimestampFormat();
 
     void setTimestampFormat(ValueProvider<String> value);
@@ -271,7 +270,7 @@ public class TextImportPipeline {
         description = "Priority for Spanner RPC invocations",
         helpText =
             "The request priority for Spanner calls. Possible values "
-                + "are HIGH, MEDIUM, and LOW. The default value is MEDIUM.")
+                + "are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

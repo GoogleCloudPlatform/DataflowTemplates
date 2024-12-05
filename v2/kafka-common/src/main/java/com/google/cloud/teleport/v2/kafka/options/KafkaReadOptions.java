@@ -1,4 +1,4 @@
-/*
+    /*
  * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -15,10 +15,11 @@
  */
 package com.google.cloud.teleport.v2.kafka.options;
 
-import com.google.cloud.teleport.metadata.TemplateParameter;
-import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
+
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 
 /**
  * The {@link KafkaReadOptions} interface provides the custom execution options passed by the
@@ -102,18 +103,11 @@ public interface KafkaReadOptions extends PipelineOptions {
       },
       description = "Kafka Source Authentication Mode",
       helpText =
-          ("The mode of authentication to use with the Kafka cluster. "
-              + "Use "
-              + KafkaAuthenticationMethod.NONE
-              + " for no authentication, "
-              + KafkaAuthenticationMethod.SASL_PLAIN
-              + " for SASL/PLAIN username and password, "
-              + KafkaAuthenticationMethod.TLS
-              + "for certificate-based authentication. "
-              + KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS
-              + " should be used only for Google Cloud Apache Kafka for BigQuery cluster since "
-              + "This allow you to authenticate with Google Cloud Apache Kafka for BigQuery using application default credentials"))
-  @Default.String(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)
+          "The mode of authentication to use with the Kafka cluster. "
+              + "Use `KafkaAuthenticationMethod.NONE` for no authentication, `KafkaAuthenticationMethod.SASL_PLAIN` for SASL/PLAIN username and password, "
+              + "and `KafkaAuthenticationMethod.TLS` for certificate-based authentication. `KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS` "
+              + "should be used only for Google Cloud Apache Kafka for BigQuery cluster, it allows to authenticate using application default credentials.")
+  @Default.String(KafkaAuthenticationMethod.SASL_PLAIN)
   String getKafkaReadAuthenticationMode();
 
   void setKafkaReadAuthenticationMode(String value);
@@ -127,7 +121,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       description = "Secret Version ID For Kafka SASL/PLAIN Username",
       helpText =
           "The Google Cloud Secret Manager secret ID that contains the Kafka username "
-              + "to use with SASL_PLAIN authentication.",
+              + "to use with `SASL_PLAIN` authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
   @Default.String("")
   String getKafkaReadUsernameSecretId();
@@ -142,7 +136,7 @@ public interface KafkaReadOptions extends PipelineOptions {
       optional = true,
       description = "Secret Version ID For Kafka SASL/PLAIN Password",
       helpText =
-          "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with SASL_PLAIN authentication.",
+          "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_PLAIN` authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
   @Default.String("")
   String getKafkaReadPasswordSecretId();

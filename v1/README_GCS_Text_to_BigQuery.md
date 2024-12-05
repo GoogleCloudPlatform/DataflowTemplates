@@ -19,8 +19,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv).
-* **JSONPath** : JSON file with BigQuery Schema description. JSON Example: {
+* **inputFilePattern**: Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.csv`.
+* **JSONPath**: JSON file with BigQuery Schema description. JSON Example: {
 	"BigQuery Schema": [
 		{
 			"name": "location",
@@ -44,13 +44,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 		}
 	]
 }.
-* **outputTable** : BigQuery table location to write the output to. The table's schema must match the input objects.
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
+* **outputTable**: BigQuery table location to write the output to. The table's schema must match the input objects.
+* **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`.
 
 ### Optional parameters
 
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
 
 
 ## User-Defined functions (UDFs)
@@ -240,10 +240,10 @@ resource "google_dataflow_job" "gcs_text_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/path/*.csv"
+    inputFilePattern = "<inputFilePattern>"
     JSONPath = "<JSONPath>"
     outputTable = "<outputTable>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
   }

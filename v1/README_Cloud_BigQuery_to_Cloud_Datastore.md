@@ -15,17 +15,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **readQuery** : A BigQuery SQL query that extracts data from the source. For example, select * from dataset1.sample_table.
-* **datastoreWriteProjectId** : The ID of the Google Cloud project to write the Datastore entities to.
-* **errorWritePath** : The error log output file to use for write failures that occur during processing. (Example: gs://your-bucket/errors/).
+* **readQuery**: A BigQuery SQL query that extracts data from the source. For example, `select * from dataset1.sample_table`.
+* **datastoreWriteProjectId**: The ID of the Google Cloud project to write the Datastore entities to.
+* **errorWritePath**: The error log output file to use for write failures that occur during processing. For example, `gs://your-bucket/errors/`.
 
 ### Optional parameters
 
-* **readIdColumn** : Name of the BigQuery column storing the unique identifier of the row.
-* **invalidOutputPath** : Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path).
-* **datastoreWriteEntityKind** : Datastore kind under which entities will be written in the output Google Cloud project.
-* **datastoreWriteNamespace** : Datastore namespace under which entities will be written in the output Google Cloud project.
-* **datastoreHintNumWorkers** : Hint for the expected number of workers in the Datastore ramp-up throttling step. Default is `500`.
+* **readIdColumn**: Name of the BigQuery column storing the unique identifier of the row.
+* **invalidOutputPath**: Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. For example, `gs://your-bucket/your-path`.
+* **datastoreWriteEntityKind**: Datastore kind under which entities will be written in the output Google Cloud project.
+* **datastoreWriteNamespace**: Datastore namespace under which entities will be written in the output Google Cloud project.
+* **datastoreHintNumWorkers**: Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to `500`.
 
 
 
@@ -213,9 +213,9 @@ resource "google_dataflow_job" "cloud_bigquery_to_cloud_datastore" {
   parameters        = {
     readQuery = "<readQuery>"
     datastoreWriteProjectId = "<datastoreWriteProjectId>"
-    errorWritePath = "gs://your-bucket/errors/"
+    errorWritePath = "<errorWritePath>"
     # readIdColumn = "<readIdColumn>"
-    # invalidOutputPath = "gs://your-bucket/your-path"
+    # invalidOutputPath = "<invalidOutputPath>"
     # datastoreWriteEntityKind = "<datastoreWriteEntityKind>"
     # datastoreWriteNamespace = "<datastoreWriteNamespace>"
     # datastoreHintNumWorkers = "500"

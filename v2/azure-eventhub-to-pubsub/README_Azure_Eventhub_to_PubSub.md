@@ -16,10 +16,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **brokerServer** : Server IP or DNS for Azure Eventhub Endpoint (Example: mynamespace.servicebus.windows.net:9093).
-* **inputTopic** : Azure Eventhub topic(s) to read the input from (Example: topic).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **secret** : Secret Version, it can be a number like 1,2 or 3 or can be 'latest' (Example: projects/{project}/secrets/{secret}/versions/{secret_version}).
+* **brokerServer**: Server IP or DNS for Azure Eventhub Endpoint For example, `mynamespace.servicebus.windows.net:9093`.
+* **inputTopic**: Azure Eventhub topic(s) to read the input from For example, `topic`.
+* **outputTopic**: The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' For example, `projects/your-project-id/topics/your-topic-name`.
+* **secret**: Secret Version, it can be a number like 1,2 or 3 or can be 'latest' For example, `projects/{project}/secrets/{secret}/versions/{secret_version}`.
 
 ### Optional parameters
 
@@ -193,10 +193,10 @@ resource "google_dataflow_flex_template_job" "azure_eventhub_to_pubsub" {
   name              = "azure-eventhub-to-pubsub"
   region            = var.region
   parameters        = {
-    brokerServer = "mynamespace.servicebus.windows.net:9093"
-    inputTopic = "topic"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
-    secret = "projects/{project}/secrets/{secret}/versions/{secret_version}"
+    brokerServer = "<brokerServer>"
+    inputTopic = "<inputTopic>"
+    outputTopic = "<outputTopic>"
+    secret = "<secret>"
   }
 }
 ```

@@ -109,8 +109,8 @@ public abstract class JavascriptTextTransformer {
                 + "is greater than 0, Dataflow periodically checks the UDF file in "
                 + "Cloud Storage, and reloads the UDF if the file is modified. "
                 + "This parameter allows you to update the UDF while the pipeline is running, "
-                + "without needing to restart the job. If the value is 0, UDF reloading is "
-                + "disabled. The default value is 0.")
+                + "without needing to restart the job. If the value is `0`, UDF reloading is "
+                + "disabled. The default value is `0`.")
     @Default.Integer(0)
     Integer getJavascriptTextTransformReloadIntervalMinutes();
 

@@ -19,19 +19,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProject** : The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.
-* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Bigtable table to export.
-* **destinationPath** : The Cloud Storage path where data is written. (Example: gs://your-bucket/your-path/).
-* **filenamePrefix** : The prefix of the SequenceFile filename. (Example: output-).
+* **bigtableProject**: The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.
+* **bigtableInstanceId**: The ID of the Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Bigtable table to export.
+* **destinationPath**: The Cloud Storage path where data is written. For example, `gs://your-bucket/your-path/`.
+* **filenamePrefix**: The prefix of the SequenceFile filename. For example, `output-`.
 
 ### Optional parameters
 
-* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
-* **bigtableStartRow** : The row where to start the export from, defaults to the first row.
-* **bigtableStopRow** : The row where to stop the export, defaults to the last row.
-* **bigtableMaxVersions** : Maximum number of cell versions. Defaults to: 2147483647.
-* **bigtableFilter** : Filter string. See: http://hbase.apache.org/book.html#thrift. Defaults to empty.
+* **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
+* **bigtableStartRow**: The row where to start the export from, defaults to the first row.
+* **bigtableStopRow**: The row where to stop the export, defaults to the last row.
+* **bigtableMaxVersions**: Maximum number of cell versions. Defaults to: 2147483647.
+* **bigtableFilter**: Filter string. See: http://hbase.apache.org/book.html#thrift. Defaults to empty.
 
 
 
@@ -226,8 +226,8 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_sequencefile" {
     bigtableProject = "<bigtableProject>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    destinationPath = "gs://your-bucket/your-path/"
-    filenamePrefix = "output-"
+    destinationPath = "<destinationPath>"
+    filenamePrefix = "<filenamePrefix>"
     # bigtableAppProfileId = "<bigtableAppProfileId>"
     # bigtableStartRow = ""
     # bigtableStopRow = ""

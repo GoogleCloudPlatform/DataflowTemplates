@@ -152,7 +152,7 @@ public class CdcToBigQueryChangeApplierPipeline {
         optional = true,
         description = "Whether to use a single topic for all MySQL table changes.",
         helpText =
-            "Set this to true if you have configured your Debezium connector to publish all table"
+            "Set this to `true` if you configure your Debezium connector to publish all table"
                 + " updates to a single topic")
     @Default.Boolean(false)
     Boolean getUseSingleTopic();

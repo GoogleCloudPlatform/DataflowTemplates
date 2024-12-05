@@ -13,15 +13,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **secretId1** : First Secret ID containing aws key id.
-* **secretId2** : Second Secret ID containing aws key id.
-* **awsRegion** : AWS Region.
-* **kinesisDataStream** : Name of the Kinesis Data stream to read from. Enter the full name of the Kinesis Data stream.
-* **outputPubsubTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **secretId1**: First Secret ID containing aws key id.
+* **secretId2**: Second Secret ID containing aws key id.
+* **awsRegion**: AWS Region.
+* **kinesisDataStream**: Name of the Kinesis Data stream to read from. Enter the full name of the Kinesis Data stream.
+* **outputPubsubTopic**: The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' For example, `projects/your-project-id/topics/your-topic-name`.
 
 ### Optional parameters
 
-* **awsDataFormat** : Data format of input.
+* **awsDataFormat**: Data format of input.
 
 
 
@@ -202,7 +202,7 @@ resource "google_dataflow_flex_template_job" "kinesis_to_pubsub" {
     secretId2 = "<secretId2>"
     awsRegion = "<awsRegion>"
     kinesisDataStream = "<kinesisDataStream>"
-    outputPubsubTopic = "projects/your-project-id/topics/your-topic-name"
+    outputPubsubTopic = "<outputPubsubTopic>"
     # awsDataFormat = "<awsDataFormat>"
   }
 }

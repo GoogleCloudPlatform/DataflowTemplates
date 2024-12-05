@@ -13,33 +13,33 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **hbaseRootDir** : Hbase root directory, corresponds to hbase.rootdir.
-* **hbaseZookeeperQuorumHost** : Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host.
-* **bigtableChangeStreamAppProfile** : The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.
-* **bigtableReadInstanceId** : The source Bigtable instance ID.
-* **bigtableReadTableId** : The source Bigtable table ID.
+* **hbaseRootDir**: Hbase root directory, corresponds to hbase.rootdir.
+* **hbaseZookeeperQuorumHost**: Zookeeper quorum host, corresponds to hbase.zookeeper.quorum host.
+* **bigtableChangeStreamAppProfile**: The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.
+* **bigtableReadInstanceId**: The source Bigtable instance ID.
+* **bigtableReadTableId**: The source Bigtable table ID.
 
 ### Optional parameters
 
-* **bidirectionalReplicationEnabled** : Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations. Defaults to: false.
-* **cbtQualifier** : Bidirectional replication source CBT qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_CBT.
-* **dryRunEnabled** : When dry run is enabled, pipeline will not write to Hbase. Defaults to: false.
-* **filterGCMutations** : Filters out garbage collection Delete mutations from CBT. Defaults to: false.
-* **hbaseQualifier** : Bidirectional replication source Hbase qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_HBASE.
-* **hbaseZookeeperQuorumPort** : Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port. Defaults to: 2181.
-* **bigtableChangeStreamMetadataInstanceId** : The Bigtable change streams metadata instance ID. Defaults to empty.
-* **bigtableChangeStreamMetadataTableTableId** : The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
-* **bigtableChangeStreamCharset** : The Bigtable change streams charset name. Defaults to: UTF-8.
-* **bigtableChangeStreamStartTimestamp** : The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
-* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family name changes to ignore. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column name changes to ignore. Defaults to empty.
-* **bigtableChangeStreamName** : A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
-* **bigtableChangeStreamResume** : When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
-* **bigtableReadProjectId** : The Bigtable project ID. The default is the project for the Dataflow job.
-* **bigtableReadAppProfile** : Bigtable App Profile to use for reads. The default for this parameter is the Bigtable instance's default app profile.
-* **bigtableRpcAttemptTimeoutMs** : The timeout for each Bigtable RPC attempt in milliseconds.
-* **bigtableRpcTimeoutMs** : The total timeout for a Bigtable RPC operation in milliseconds.
-* **bigtableAdditionalRetryCodes** : The additional retry codes. (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED).
+* **bidirectionalReplicationEnabled**: Whether bidirectional replication between hbase and bigtable is enabled, adds additional logic to filter out hbase-replicated mutations. Defaults to: false.
+* **cbtQualifier**: Bidirectional replication source CBT qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_CBT.
+* **dryRunEnabled**: When dry run is enabled, pipeline will not write to Hbase. Defaults to: false.
+* **filterGCMutations**: Filters out garbage collection Delete mutations from CBT. Defaults to: false.
+* **hbaseQualifier**: Bidirectional replication source Hbase qualifier. Defaults to: BIDIRECTIONAL_REPL_SOURCE_HBASE.
+* **hbaseZookeeperQuorumPort**: Zookeeper quorum port, corresponds to hbase.zookeeper.quorum port. Defaults to: 2181.
+* **bigtableChangeStreamMetadataInstanceId**: The Bigtable change streams metadata instance ID. Defaults to empty.
+* **bigtableChangeStreamMetadataTableTableId**: The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
+* **bigtableChangeStreamCharset**: The Bigtable change streams charset name. Defaults to: UTF-8.
+* **bigtableChangeStreamStartTimestamp**: The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
+* **bigtableChangeStreamIgnoreColumnFamilies**: A comma-separated list of column family name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns**: A comma-separated list of column name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamName**: A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
+* **bigtableChangeStreamResume**: When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
+* **bigtableReadProjectId**: The Bigtable project ID. The default is the project for the Dataflow job.
+* **bigtableReadAppProfile**: Bigtable App Profile to use for reads. The default for this parameter is the Bigtable instance's default app profile.
+* **bigtableRpcAttemptTimeoutMs**: The timeout for each Bigtable RPC attempt in milliseconds.
+* **bigtableRpcTimeoutMs**: The total timeout for a Bigtable RPC operation in milliseconds.
+* **bigtableAdditionalRetryCodes**: The additional retry codes. For example, `RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED`.
 
 
 
@@ -293,7 +293,7 @@ resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_hbase" 
     # bigtableReadAppProfile = "default"
     # bigtableRpcAttemptTimeoutMs = "<bigtableRpcAttemptTimeoutMs>"
     # bigtableRpcTimeoutMs = "<bigtableRpcTimeoutMs>"
-    # bigtableAdditionalRetryCodes = "RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED"
+    # bigtableAdditionalRetryCodes = "<bigtableAdditionalRetryCodes>"
   }
 }
 ```

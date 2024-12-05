@@ -20,14 +20,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **tableRef** : The BigQuery input table location. (Example: your-project:your-dataset.your-table-name).
-* **bucket** : The Cloud Storage folder to write the Parquet files to. (Example: gs://your-bucket/export/).
+* **tableRef**: The BigQuery input table location. For example, `your-project:your-dataset.your-table-name`.
+* **bucket**: The Cloud Storage folder to write the Parquet files to. For example, `gs://your-bucket/export/`.
 
 ### Optional parameters
 
-* **numShards** : The number of output file shards. The default value is 1.
-* **fields** : A comma-separated list of fields to select from the input BigQuery table.
-* **rowRestriction** : Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
+* **numShards**: The number of output file shards. The default value is `1`.
+* **fields**: A comma-separated list of fields to select from the input BigQuery table.
+* **rowRestriction**: Read only rows which match the specified filter, which must be a SQL expression compatible with Google standard SQL (https://cloud.google.com/bigquery/docs/reference/standard-sql). If no value is specified, then all rows are returned.
 
 
 
@@ -201,8 +201,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_parquet" {
   name              = "bigquery-to-parquet"
   region            = var.region
   parameters        = {
-    tableRef = "your-project:your-dataset.your-table-name"
-    bucket = "gs://your-bucket/export/"
+    tableRef = "<tableRef>"
+    bucket = "<bucket>"
     # numShards = "0"
     # fields = "<fields>"
     # rowRestriction = "<rowRestriction>"

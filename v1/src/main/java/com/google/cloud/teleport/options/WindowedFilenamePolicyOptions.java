@@ -72,7 +72,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       helpText =
           "Pattern for formatting the year. Must be one or more of `y` or `Y`. Case makes no"
               + " difference in the year. Optionally, wrap the pattern with characters that"
-              + " aren't alphanumeric or the directory ('/') character. Defaults to `YYYY`.")
+              + " aren't alphanumeric or the directory (`/`) character. Defaults to `YYYY`.")
   ValueProvider<String> getYearPattern();
 
   void setYearPattern(ValueProvider<String> yearPattern);
@@ -85,7 +85,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       helpText =
           "Pattern for formatting the month. Must be one or more of the `M` character. "
               + "Optionally, wrap the pattern with characters that aren't alphanumeric or the "
-              + "directory ('/') character. Defaults to `MM`.")
+              + "directory (`/`) character. Defaults to `MM`.")
   ValueProvider<String> getMonthPattern();
 
   void setMonthPattern(ValueProvider<String> monthPattern);
@@ -98,7 +98,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       helpText =
           "Pattern for formatting the day. Must be one or more of `d` for day of month or `D` for"
               + " day of year. Optionally,"
-              + " wrap the pattern with characters that aren't alphanumeric or the directory ('/')"
+              + " wrap the pattern with characters that aren't alphanumeric or the directory (`/`)"
               + " character. Defaults to `dd`.")
   ValueProvider<String> getDayPattern();
 
@@ -112,7 +112,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       helpText =
           "Pattern for formatting the hour. Must be one or more of the `H` character. Optionally,"
               + " wrap the pattern with characters that aren't alphanumeric or the directory"
-              + " ('/') character. Defaults to `HH`.")
+              + " (`/`) character. Defaults to `HH`.")
   ValueProvider<String> getHourPattern();
 
   void setHourPattern(ValueProvider<String> hourPattern);
@@ -125,7 +125,7 @@ public interface WindowedFilenamePolicyOptions extends PipelineOptions {
       helpText =
           "Pattern for formatting the minute. Must be one or more of the `m` character. Optionally,"
               + " wrap the pattern with characters that aren't alphanumeric or the directory"
-              + " ('/') character. Defaults to `mm`.")
+              + " (`/`) character. Defaults to `mm`.")
   ValueProvider<String> getMinutePattern();
 
   void setMinutePattern(ValueProvider<String> minutePattern);

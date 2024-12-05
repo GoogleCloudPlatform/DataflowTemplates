@@ -19,17 +19,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The gs:// path to the text in Cloud Storage you'd like to process. (Example: gs://your-bucket/your-file.txt).
-* **JSONPath** : The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage. (Example: gs://your-bucket/your-schema.json).
-* **outputTable** : The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten. (Example: <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>).
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir).
+* **inputFilePattern**: The gs:// path to the text in Cloud Storage you'd like to process. For example, `gs://your-bucket/your-file.txt`.
+* **JSONPath**: The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage. For example, `gs://your-bucket/your-schema.json`.
+* **outputTable**: The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.
+* **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process. For example, `gs://your-bucket/your-files/temp-dir`.
 
 ### Optional parameters
 
-* **useStorageWriteApi** : If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
-* **pythonExternalTextTransformGcsPath** : The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py).
-* **pythonExternalTextTransformFunctionName** : The name of the function to call from your Python file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1').
+* **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **pythonExternalTextTransformGcsPath**: The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-function.py`.
+* **pythonExternalTextTransformFunctionName**: The name of the function to call from your Python file. Use only letters, digits, and underscores. For example, `'transform' or 'transform_udf1'`.
 
 
 
@@ -212,14 +212,14 @@ resource "google_dataflow_flex_template_job" "gcs_text_to_bigquery_xlang" {
   name              = "gcs-text-to-bigquery-xlang"
   region            = var.region
   parameters        = {
-    inputFilePattern = "gs://your-bucket/your-file.txt"
-    JSONPath = "gs://your-bucket/your-schema.json"
-    outputTable = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp-dir"
+    inputFilePattern = "<inputFilePattern>"
+    JSONPath = "<JSONPath>"
+    outputTable = "<outputTable>"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
-    # pythonExternalTextTransformGcsPath = "gs://your-bucket/your-function.py"
-    # pythonExternalTextTransformFunctionName = "'transform' or 'transform_udf1'"
+    # pythonExternalTextTransformGcsPath = "<pythonExternalTextTransformGcsPath>"
+    # pythonExternalTextTransformFunctionName = "<pythonExternalTextTransformFunctionName>"
   }
 }
 ```

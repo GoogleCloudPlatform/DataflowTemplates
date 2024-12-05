@@ -42,26 +42,26 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **spannerInstanceId** : The Spanner instance ID to read change streams data from.
-* **spannerDatabase** : The Spanner database to read change streams data from.
-* **spannerMetadataInstanceId** : The Spanner instance ID to use for the change streams connector metadata table.
-* **spannerMetadataDatabase** : The Spanner database to use for the change streams connector metadata table.
-* **spannerChangeStreamName** : The name of the Spanner change stream to read from.
-* **gcsOutputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
+* **spannerInstanceId**: The Spanner instance ID to read change streams data from.
+* **spannerDatabase**: The Spanner database to read change streams data from.
+* **spannerMetadataInstanceId**: The Spanner instance ID to use for the change streams connector metadata table.
+* **spannerMetadataDatabase**: The Spanner database to use for the change streams connector metadata table.
+* **spannerChangeStreamName**: The name of the Spanner change stream to read from.
+* **gcsOutputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path`.
 
 ### Optional parameters
 
-* **spannerProjectId** : The ID of the Google Cloud project that contains the Spanner database to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.
-* **spannerDatabaseRole** : The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
-* **spannerMetadataTableName** : The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during pipeline execution. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.
-* **startTimestamp** : The starting DateTime, inclusive, to use for reading change streams, in the format Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
-* **endTimestamp** : The ending DateTime, inclusive, to use for reading change streams. For example, Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://spanner.googleapis.com). Defaults to: https://spanner.googleapis.com.
-* **outputFileFormat** : The format of the output Cloud Storage file. Allowed formats are TEXT and AVRO. Defaults to AVRO.
-* **windowDuration** : The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). (Example: 5m).
-* **rpcPriority** : The request priority for Spanner calls. The value must be HIGH, MEDIUM, or LOW. Defaults to HIGH.
-* **outputFilenamePrefix** : The prefix to place on each windowed file. (Example: output-). Defaults to: output.
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 20.
+* **spannerProjectId**: The ID of the Google Cloud project that contains the Spanner database to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.
+* **spannerDatabaseRole**: The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
+* **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during pipeline execution. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.
+* **startTimestamp**: The starting DateTime, inclusive, to use for reading change streams, in the format `Ex-2021-10-12T07:20:50.52Z`. Defaults to the timestamp when the pipeline starts, that is, the current time.
+* **endTimestamp**: The ending DateTime, inclusive, to use for reading change streams. For example, `Ex-2021-10-12T07:20:50.52Z`. Defaults to an infinite time in the future.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://spanner.googleapis.com`. Defaults to: https://spanner.googleapis.com.
+* **outputFileFormat**: The format of the output Cloud Storage file. Allowed formats are `TEXT` and `AVRO`. Defaults to `AVRO`.
+* **windowDuration**: The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). For example, `5m`.
+* **rpcPriority**: The request priority for Spanner calls. The value must be `HIGH`, `MEDIUM`, or `LOW`. Defaults to `HIGH`.
+* **outputFilenamePrefix**: The prefix to place on each windowed file. For example, `output-`. Defaults to: output.
+* **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 20.
 
 
 
@@ -276,7 +276,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_google_c
     spannerMetadataInstanceId = "<spannerMetadataInstanceId>"
     spannerMetadataDatabase = "<spannerMetadataDatabase>"
     spannerChangeStreamName = "<spannerChangeStreamName>"
-    gcsOutputDirectory = "gs://your-bucket/your-path"
+    gcsOutputDirectory = "<gcsOutputDirectory>"
     # spannerProjectId = ""
     # spannerDatabaseRole = "<spannerDatabaseRole>"
     # spannerMetadataTableName = "<spannerMetadataTableName>"
@@ -286,7 +286,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_google_c
     # outputFileFormat = "AVRO"
     # windowDuration = "5m"
     # rpcPriority = "HIGH"
-    # outputFilenamePrefix = "output-"
+    # outputFilenamePrefix = "output"
     # numShards = "20"
   }
 }
