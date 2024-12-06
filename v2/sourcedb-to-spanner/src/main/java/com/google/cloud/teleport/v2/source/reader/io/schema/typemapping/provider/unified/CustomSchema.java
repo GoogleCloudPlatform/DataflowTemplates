@@ -70,6 +70,70 @@ public final class CustomSchema {
     private Interval() {}
   }
 
+  /**
+   * There's no out of box support for nanoseconds epoch, which is needed for Cassandra. The ones
+   * supported by Avro out of box are in micro seconds.
+   */
+  public static final class Epoch {
+    public static final String RECORD_NAME = "epoch";
+    public static final String SECONDS_FIELD_NAME = "seconds";
+    public static final String NANOS_FIELD_NAME = "nanos";
+    public static final Schema SCHEMA =
+        SchemaBuilder.builder()
+            .record(RECORD_NAME)
+            .fields()
+            .name(NANOS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(SECONDS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .endRecord();
+
+    /** Static final class wrapping only constants. * */
+    private Epoch() {}
+  }
+
+  public static final class IntervalNano {
+    public static final String RECORD_NAME = "intervalNano";
+    public static final String YEARS_FIELD_NAME = "years";
+    public static final String MONTHS_FIELD_NAME = "months";
+    public static final String DAYS_FIELD_NAME = "days";
+    public static final String HOURS_FIELD_NAME = "hours";
+    public static final String MINUTES_FIELD_NAME = "minutes";
+    public static final String SECONDS_FIELD_NAME = "seconds";
+    public static final String NANOS_FIELD_NAME = "nanos";
+    public static final Schema SCHEMA =
+        SchemaBuilder.builder()
+            .record(RECORD_NAME)
+            .fields()
+            .name(YEARS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(MONTHS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(DAYS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(HOURS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(MINUTES_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(SECONDS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(NANOS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .endRecord();
+
+    /** Static final class wrapping only constants. * */
+    private IntervalNano() {}
+  }
+
   public static final class TimeStampTz {
     public static final String RECORD_NAME = "timestampTz";
     public static final String TIMESTAMP_FIELD_NAME = "timestamp";
