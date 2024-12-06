@@ -19,6 +19,7 @@ import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationExce
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -134,6 +135,11 @@ public class CustomTransformationWithShardForBulkIT implements ISpannerMigration
       }
       if (row.containsKey("json_column")) {
         row.put("json_column", "{\"k1\": \"v1\", \"k2\": \"v2\"}");
+      }
+      if (row.containsKey("bigint_unsigned_column")) {
+        BigInteger bigInteger = new BigInteger((String) row.get("bigint_unsigned_column"));
+        bigInteger = bigInteger.add(BigInteger.ONE);
+        row.put("bigint_unsigned_column", bigInteger.toString());
       }
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;

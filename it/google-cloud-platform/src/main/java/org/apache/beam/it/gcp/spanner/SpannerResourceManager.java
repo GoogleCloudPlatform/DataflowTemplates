@@ -382,7 +382,11 @@ public final class SpannerResourceManager implements ResourceManager {
       }
       ImmutableList<Struct> tableRecords = tableRecordsBuilder.build();
 
-      LOG.info("Loaded {} rows from {}", tableRecords.size(), query);
+      LOG.info(
+          "Loaded {} rows from {}\n initial record: {}",
+          tableRecords.size(),
+          query,
+          (tableRecords.size() < 2) ? tableRecords : tableRecords.get(0));
       return tableRecords;
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to read query " + query, e);
