@@ -26,6 +26,7 @@ const (
 	DEFAULT = "DEFAULT" // Modules other than those excluded
 	KAFKA   = "KAFKA"
 	SPANNER = "SPANNER"
+	YAML    = "YAML"
 )
 
 // Avoid making these vars public.
@@ -48,6 +49,9 @@ var (
 			"v2/spanner-to-sourcedb/",
 			"v2/spanner-custom-shard",
 			"plugins/templates-maven-plugin"},
+		YAML: {"yaml/",
+			"plugins/templates-maven-plugin",
+		},
 	}
 )
 
