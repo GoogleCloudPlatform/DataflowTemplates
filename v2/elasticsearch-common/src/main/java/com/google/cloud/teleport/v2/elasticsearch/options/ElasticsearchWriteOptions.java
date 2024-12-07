@@ -325,4 +325,14 @@ public interface ElasticsearchWriteOptions extends PipelineOptions {
   Integer getSocketTimeout();
 
   void setSocketTimeout(Integer socketTimeout);
+
+  @TemplateParameter.Boolean(
+      order = 28,
+      optional = true,
+      description = "Enable compression of requests.",
+      helpText = "Whether to compress requests to Elasticsearch. Defaults to: true.")
+  @Default.Boolean(true)
+  Boolean getCompressionEnabled();
+
+  void setCompressionEnabled(Boolean compressionEnabled);
 }
