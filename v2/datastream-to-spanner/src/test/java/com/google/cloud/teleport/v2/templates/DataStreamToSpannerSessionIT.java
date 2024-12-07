@@ -111,8 +111,9 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
     ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
+  /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */
   @Test
-  public void migrationTestWithRenameAndDropColumn() {
+  public void migrationTestWithRenameAndDrops() {
     // Construct a ChainedConditionCheck with 4 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
