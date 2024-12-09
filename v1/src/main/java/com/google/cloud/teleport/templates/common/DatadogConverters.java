@@ -102,8 +102,8 @@ public class DatadogConverters {
         order = 2,
         description = "Datadog Logs API URL.",
         helpText =
-            "The Datadog Logs API URL. This URL must be routable from the VPC that the pipeline runs in. See Send logs (https://docs.datadoghq.com/api/latest/logs/#send-logs) in the Datadog documentation for more information.",
-        example = "https://http-intake.logs.datadoghq.com")
+            "The Datadog Logs API URL. This URL must be routable from the VPC that the pipeline runs in. For more information, See Send logs (https://docs.datadoghq.com/api/latest/logs/#send-logs) in the Datadog documentation.",
+        example = "`https://http-intake.logs.datadoghq.com`")
     ValueProvider<String> getUrl();
 
     void setUrl(ValueProvider<String> url);

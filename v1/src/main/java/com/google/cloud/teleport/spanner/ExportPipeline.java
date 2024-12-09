@@ -128,8 +128,8 @@ public class ExportPipeline {
         optional = true,
         description = "Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
-        example = "https://batch-spanner.googleapis.com")
-    @Default.String("https://batch-spanner.googleapis.com")
+        example = "`https://batch-spanner.googleapis.com`")
+    @Default.String("`https://batch-spanner.googleapis.com`")
     ValueProvider<String> getSpannerHost();
 
     void setSpannerHost(ValueProvider<String> value);

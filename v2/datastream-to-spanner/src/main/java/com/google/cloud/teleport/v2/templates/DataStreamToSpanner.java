@@ -219,7 +219,7 @@ public class DataStreamToSpanner {
         optional = true,
         description = "The Cloud Spanner Endpoint to call",
         helpText = "The Cloud Spanner endpoint to call in the template.",
-        example = "https://batch-spanner.googleapis.com")
+        example = "`https://batch-spanner.googleapis.com`")
     @Default.String("https://batch-spanner.googleapis.com")
     String getSpannerHost();
 
