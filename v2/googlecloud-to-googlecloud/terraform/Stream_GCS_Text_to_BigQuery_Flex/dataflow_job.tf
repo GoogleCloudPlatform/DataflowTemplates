@@ -35,51 +35,7 @@ variable "region" {
 
 variable "outputDeadletterTable" {
   type        = string
-  description = <<EOT
-BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name)
-EOT
-  default     = null
-}
-
-variable "inputFilePattern" {
-  type        = string
-  description = "The path to the Cloud Storage text to read. (Example: gs://your-bucket/your-file.txt)"
-
-}
-
-variable "JSONPath" {
-  type        = string
-  description = "The Cloud Storage path to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json)"
-
-}
-
-variable "outputTable" {
-  type        = string
-  description = "The location of the BigQuery table in which to store your processed data. If you reuse an existing table, it will be overwritten. (Example: your-project:your-dataset.your-table)"
-
-}
-
-variable "javascriptTextTransformGcsPath" {
-  type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js)"
-
-}
-
-variable "javascriptTextTransformFunctionName" {
-  type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
-
-}
-
-variable "bigQueryLoadingTemporaryDirectory" {
-  type        = string
-  description = "Temporary directory for the BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir)"
-
-}
-
-variable "useStorageWriteApi" {
-  type        = bool
-  description = "If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false."
+  description = "Table for messages that failed to reach the output table. If a table doesn't exist, it is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. (Example: <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>)"
   default     = null
 }
 
@@ -91,21 +47,69 @@ EOT
   default     = null
 }
 
+variable "inputFilePattern" {
+  type        = string
+  description = "The gs:// path to the text in Cloud Storage you'd like to process. (Example: gs://your-bucket/your-file.txt)"
+
+}
+
+variable "JSONPath" {
+  type        = string
+  description = "The gs:// path to the JSON file that defines your BigQuery schema, stored in Cloud Storage. (Example: gs://your-bucket/your-schema.json)"
+
+}
+
+variable "outputTable" {
+  type        = string
+  description = "The location of the BigQuery table to use to store the processed data. If you reuse an existing table, it is overwritten. (Example: <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>)"
+
+}
+
+variable "javascriptTextTransformGcsPath" {
+  type        = string
+  description = "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) you want to use. (Example: gs://your-bucket/your-transforms/*.js)"
+
+}
+
+variable "javascriptTextTransformFunctionName" {
+  type        = string
+  description = "The name of the JavaScript user-defined function (UDF) that you want to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples) (Example: transform_udf1)"
+
+}
+
+variable "bigQueryLoadingTemporaryDirectory" {
+  type        = string
+  description = "Temporary directory for BigQuery loading process. (Example: gs://your-bucket/your-files/temp-dir)"
+
+}
+
+variable "useStorageWriteApi" {
+  type        = bool
+  description = "If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
+  default     = null
+}
+
 variable "numStorageWriteApiStreams" {
   type        = number
-  description = "Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0."
+  description = "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0."
   default     = null
 }
 
 variable "storageWriteApiTriggeringFrequencySec" {
   type        = number
-  description = "Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values."
+  description = "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter."
+  default     = null
+}
+
+variable "pythonExternalTextTransformGcsPath" {
+  type        = string
+  description = "The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-function.py)"
   default     = null
 }
 
 variable "javascriptTextTransformReloadIntervalMinutes" {
   type        = number
-  description = "Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0."
+  description = "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0."
   default     = null
 }
 
@@ -235,6 +239,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Stream_GCS_Text_to_BigQuery_Flex"
   parameters = {
     outputDeadletterTable                        = var.outputDeadletterTable
+    useStorageWriteApiAtLeastOnce                = tostring(var.useStorageWriteApiAtLeastOnce)
     inputFilePattern                             = var.inputFilePattern
     JSONPath                                     = var.JSONPath
     outputTable                                  = var.outputTable
@@ -242,9 +247,9 @@ resource "google_dataflow_flex_template_job" "generated" {
     javascriptTextTransformFunctionName          = var.javascriptTextTransformFunctionName
     bigQueryLoadingTemporaryDirectory            = var.bigQueryLoadingTemporaryDirectory
     useStorageWriteApi                           = tostring(var.useStorageWriteApi)
-    useStorageWriteApiAtLeastOnce                = tostring(var.useStorageWriteApiAtLeastOnce)
     numStorageWriteApiStreams                    = tostring(var.numStorageWriteApiStreams)
     storageWriteApiTriggeringFrequencySec        = tostring(var.storageWriteApiTriggeringFrequencySec)
+    pythonExternalTextTransformGcsPath           = var.pythonExternalTextTransformGcsPath
     javascriptTextTransformReloadIntervalMinutes = tostring(var.javascriptTextTransformReloadIntervalMinutes)
   }
 
