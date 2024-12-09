@@ -105,7 +105,7 @@ public class MongoDbToBigQueryOptions {
         groupName = "Source",
         description = "Pub/Sub input topic",
         helpText =
-            "The Pub/Sub input topic to read from, in the format of projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
+            "The Pub/Sub input topic to read from, in the format of `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.")
     String getInputTopic();
 
     void setInputTopic(String inputTopic);

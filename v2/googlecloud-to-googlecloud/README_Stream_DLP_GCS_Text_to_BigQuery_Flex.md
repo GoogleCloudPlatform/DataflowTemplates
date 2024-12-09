@@ -34,19 +34,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.csv).
-* **deidentifyTemplateName** : Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
-* **datasetName** : BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset.
-* **dlpProjectId** : Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project.
+* **inputFilePattern**: The Cloud Storage location of the files you'd like to process. For example, `gs://your-bucket/your-files/*.csv`.
+* **deidentifyTemplateName**: Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. For example, `projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id`.
+* **datasetName**: BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset.
+* **dlpProjectId**: Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project.
 
 ### Optional parameters
 
-* **inspectTemplateName** : Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
-* **batchSize** : Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
-* **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **useStorageWriteApiAtLeastOnce** :  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
-* **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
+* **inspectTemplateName**: Cloud DLP template to inspect contents. For example, `projects/your-project-id/locations/global/inspectTemplates/generated_template_id`.
+* **batchSize**: Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**:  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
 
 
 
@@ -235,11 +235,11 @@ resource "google_dataflow_flex_template_job" "stream_dlp_gcs_text_to_bigquery_fl
   name              = "stream-dlp-gcs-text-to-bigquery-flex"
   region            = var.region
   parameters        = {
-    inputFilePattern = "gs://your-bucket/your-files/*.csv"
-    deidentifyTemplateName = "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id"
+    inputFilePattern = "<inputFilePattern>"
+    deidentifyTemplateName = "<deidentifyTemplateName>"
     datasetName = "<datasetName>"
     dlpProjectId = "<dlpProjectId>"
-    # inspectTemplateName = "projects/your-project-id/locations/global/inspectTemplates/generated_template_id"
+    # inspectTemplateName = "<inspectTemplateName>"
     # batchSize = "100"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"

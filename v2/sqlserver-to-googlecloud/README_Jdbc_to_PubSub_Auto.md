@@ -15,23 +15,23 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **driverClassName** : JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
-* **connectionUrl** : Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **driverJars** : Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **query** : Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table).
-* **outputTopic** : The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
+* **driverClassName**: JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`.
+* **connectionUrl**: Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **driverJars**: Comma separate Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
+* **query**: Query to be executed on the source to extract the data. For example, `select * from sampledb.sample_table`.
+* **outputTopic**: The name of the topic to publish data to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 
-* **username** : User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **password** : Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **connectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
-* **KMSEncryptionKey** : If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **partitionColumn** : If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.
-* **table** : Table to read from using partitions. This parameter also accepts a subquery in parentheses. (Example: (select id, name from Person) as subq).
-* **numPartitions** : The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
-* **lowerBound** : Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
-* **upperBound** : Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
+* **username**: User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **password**: Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **connectionProperties**: Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`.
+* **KMSEncryptionKey**: If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **partitionColumn**: If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.
+* **table**: Table to read from using partitions. This parameter also accepts a subquery in parentheses. For example, `(select id, name from Person) as subq`.
+* **numPartitions**: The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
+* **lowerBound**: Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
+* **upperBound**: Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
 
 
 
@@ -232,17 +232,17 @@ resource "google_dataflow_flex_template_job" "jdbc_to_pubsub_auto" {
   name              = "jdbc-to-pubsub-auto"
   region            = var.region
   parameters        = {
-    driverClassName = "com.mysql.jdbc.Driver"
-    connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
-    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
-    query = "select * from sampledb.sample_table"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    driverClassName = "<driverClassName>"
+    connectionUrl = "<connectionUrl>"
+    driverJars = "<driverJars>"
+    query = "<query>"
+    outputTopic = "<outputTopic>"
     # username = "<username>"
     # password = "<password>"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # connectionProperties = "<connectionProperties>"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
     # partitionColumn = "<partitionColumn>"
-    # table = "(select id, name from Person) as subq"
+    # table = "<table>"
     # numPartitions = "<numPartitions>"
     # lowerBound = "<lowerBound>"
     # upperBound = "<upperBound>"

@@ -119,7 +119,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "The timestamp to read change streams from",
       helpText =
-          "The starting DateTime, inclusive, to use for reading change streams, in the format Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.")
+          "The starting DateTime, inclusive, to use for reading change streams, in the format `Ex-2021-10-12T07:20:50.52Z`. Defaults to the timestamp when the pipeline starts, that is, the current time.")
   @Default.String("")
   String getStartTimestamp();
 
@@ -130,7 +130,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "The timestamp to read change streams to",
       helpText =
-          "The ending DateTime, inclusive, to use for reading change streams. For example, Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.")
+          "The ending DateTime, inclusive, to use for reading change streams. For example, `Ex-2021-10-12T07:20:50.52Z`. Defaults to an infinite time in the future.")
   @Default.String("")
   String getEndTimestamp();
 
@@ -153,7 +153,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Output file format",
       helpText =
-          "The format of the output Cloud Storage file. Allowed formats are TEXT and AVRO. Defaults to AVRO.")
+          "The format of the output Cloud Storage file. Allowed formats are `TEXT` and `AVRO`. Defaults to `AVRO`.")
   @Default.Enum("AVRO")
   FileFormat getOutputFileFormat();
 
@@ -181,7 +181,7 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Priority for Spanner RPC invocations",
       helpText =
-          "The request priority for Spanner calls. The value must be HIGH, MEDIUM, or LOW. Defaults to HIGH.")
+          "The request priority for Spanner calls. The value must be `HIGH`, `MEDIUM`, or `LOW`. Defaults to `HIGH`.")
   @Default.Enum("HIGH")
   RpcPriority getRpcPriority();
 

@@ -495,7 +495,7 @@ public class TextToBigQueryStreaming {
         parentTriggerValues = {"true"},
         description = "Use at at-least-once semantics in BigQuery Storage Write API",
         helpText =
-            "This parameter takes effect only if \"Use BigQuery Storage Write API\" is enabled. If"
+            "This parameter takes effect only if `Use BigQuery Storage Write API` is enabled. If"
                 + " enabled the at-least-once semantics will be used for Storage Write API, otherwise"
                 + " exactly-once semantics will be used.",
         hiddenUi = true)

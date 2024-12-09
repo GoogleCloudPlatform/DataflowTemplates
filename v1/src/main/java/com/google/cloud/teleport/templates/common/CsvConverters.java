@@ -75,7 +75,7 @@ public class CsvConverters {
         order = 1,
         optional = true,
         description = "Whether input CSV files contain a header record.",
-        helpText = "Whether headers are included in the CSV file. Defaults to: false.")
+        helpText = "Whether headers are included in the CSV file. Defaults to: `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getContainsHeaders();
 
@@ -93,7 +93,7 @@ public class CsvConverters {
     @TemplateParameter.Text(
         order = 3,
         description = "CSV Format to use for parsing records.",
-        helpText = "The CSV format according to Apache Commons CSV format. Defaults to: Default.")
+        helpText = "The CSV format according to Apache Commons CSV format. Defaults to: `Default`.")
     ValueProvider<String> getCsvFormat();
 
     void setCsvFormat(ValueProvider<String> csvFormat);
@@ -104,7 +104,7 @@ public class CsvConverters {
         regexes = {"^(US-ASCII|ISO-8859-1|UTF-8|UTF-16)$"},
         description = "CSV file encoding",
         helpText =
-            "The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16.")
+            "The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`.")
     @Default.String("UTF-8")
     ValueProvider<String> getCsvFileEncoding();
 

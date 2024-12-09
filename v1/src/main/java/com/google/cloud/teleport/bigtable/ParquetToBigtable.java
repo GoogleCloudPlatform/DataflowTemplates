@@ -129,7 +129,7 @@ public class ParquetToBigtable {
         optional = true,
         description = "If true, large rows will be split into multiple MutateRows requests",
         helpText =
-            "The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. ")
+            "The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic.")
     ValueProvider<Boolean> getSplitLargeRows();
 
     void setSplitLargeRows(ValueProvider<Boolean> splitLargeRows);
