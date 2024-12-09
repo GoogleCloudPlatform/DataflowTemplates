@@ -206,9 +206,9 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       Map<String, Object> responseRow = new HashMap<>();
       Map<String, Object> requestRow = request.getRequestRow();
       String name = requestRow.get("name").toString();
-      String[] name_array = name.split(" ");
-      responseRow.put("first_name", name_array[0]);
-      responseRow.put("last_name", name_array[1]);
+      String[] nameArray = name.split(" ");
+      responseRow.put("first_name", nameArray[0]);
+      responseRow.put("last_name", nameArray[1]);
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);
       return response;
