@@ -53,7 +53,10 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link SpannerToSourceDb} Flex template. */
+/**
+ * Integration test for {@link SpannerToSourceDb} Flex template with custom transformation jar
+ * supplied.
+ */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -162,7 +165,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private void writeRowInSpanner() {
-    // Write a single record to Spanner
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("Users").set("id").to(1).set("name").to("AA BB").build();
     spannerResourceManager.write(m);
