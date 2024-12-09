@@ -82,7 +82,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
-            dmlGeneratorRequest.getSourceDbTimezoneOffset());
+            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+            dmlGeneratorRequest.getCustomTransformationResponse());
     if (pkcolumnNameValues == null) {
       LOG.warn(
           "Cannot reverse replicate for table {} without primary key, skipping the record",
@@ -194,7 +195,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
-            dmlGeneratorRequest.getSourceDbTimezoneOffset());
+            dmlGeneratorRequest.getSourceDbTimezoneOffset(),
+            dmlGeneratorRequest.getCustomTransformationResponse());
     return getUpsertStatement(
         sourceTable.getName(),
         sourceTable.getPrimaryKeySet(),
@@ -207,7 +209,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       SourceTable sourceTable,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset) {
+      String sourceDbTimezoneOffset,
+      Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
 
     /*
@@ -224,12 +227,20 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       as the column will be stored with default/null values
     */
     Set<String> sourcePKs = sourceTable.getPrimaryKeySet();
+    Set<String> customTransformColumns = null;
+    if (customTransformationResponse != null) {
+      customTransformColumns = customTransformationResponse.keySet();
+    }
     for (Map.Entry<String, SourceColumnDefinition> entry : sourceTable.getColDefs().entrySet()) {
       SourceColumnDefinition sourceColDef = entry.getValue();
 
       String colName = sourceColDef.getName();
       if (sourcePKs.contains(colName)) {
         continue; // we only need non-primary keys
+      }
+      if (customTransformColumns != null && customTransformColumns.contains(colName)) {
+        response.put(colName, customTransformationResponse.get(colName).toString());
+        continue;
       }
 
       String colId = entry.getKey();
@@ -272,7 +283,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       SourceTable sourceTable,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
-      String sourceDbTimezoneOffset) {
+      String sourceDbTimezoneOffset,
+      Map<String, Object> customTransformationResponse) {
     Map<String, String> response = new HashMap<>();
     /*
     Get all primary key col ids from source table
@@ -286,6 +298,10 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if the column does not exist in any of the JSON - return null
     */
     ColumnPK[] sourcePKs = sourceTable.getPrimaryKeys();
+    Set<String> customTransformColumns = null;
+    if (customTransformationResponse != null) {
+      customTransformColumns = customTransformationResponse.keySet();
+    }
 
     for (int i = 0; i < sourcePKs.length; i++) {
       ColumnPK currentSourcePK = sourcePKs[i];
@@ -297,6 +313,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             "The corresponding primary key column {} was not found in Spanner",
             sourceColDef.getName());
         return null;
+      }
+      if (customTransformColumns != null
+          && customTransformColumns.contains(sourceColDef.getName())) {
+        response.put(
+            sourceColDef.getName(),
+            customTransformationResponse.get(sourceColDef.getName()).toString());
+        continue;
       }
       String spannerColumnName = spannerColDef.getName();
       String columnValue = "";

@@ -1299,6 +1299,92 @@ public class ImportFromAvroTest {
   }
 
   @Test
+  public void propertyGraphs() throws Exception {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"aml\",\n"
+            + "  \"namespace\": \"spannerexport\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"Test\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"Test\",\n"
+            + "  \"spannerName\": \"aml\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"Test\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"Id\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"Id\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"spannerGraphNodeTable_0_KIND\": \"NODE\",\n"
+            + "  \"spannerGraphLabel_0_NAME\": \"Test\",\n"
+            + "  \"googleFormatVersion\": \"1.0.0\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"Id\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_NAME\": \"Id\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_TYPE\": \"INT64\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_0\": \"Id\"\n"
+            + "}";
+
+    String fileName = "PropertyGraphAll.avro";
+    Schema schema = new Schema.Parser().parse(avroString);
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    exportProtoBuilder.addTables(
+        ExportProtos.Export.Table.newBuilder()
+            .setName(schema.getName())
+            .addDataFiles(fileName)
+            .build());
+
+    // Create the Avro files to be imported.
+    File avroFile = tmpDir.newFile(fileName);
+    try (DataFileWriter<GenericRecord> fileWriter =
+        new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+      fileWriter.create(schema, avroFile);
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    // Create the target database.
+    String spannerSchema = "CREATE TABLE Test (\n" + "  Id INT64 NOT NULL,\n" + ") PRIMARY KEY(Id)";
+    SPANNER_SERVER.createDatabase(dbName, Collections.singleton(spannerSchema));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+
+    String expectedPropertyGraph =
+        "CREATE TABLE `Test` (\n"
+            + "\t`Id` INT64 NOT NULL,\n"
+            + ") PRIMARY KEY (`Id` ASC)\n"
+            + "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "Test AS Test\n"
+            + " KEY (Id)\n"
+            + "LABEL Test PROPERTIES(Id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPropertyGraph));
+  }
+
+  @Test
   public void changeStreams() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(

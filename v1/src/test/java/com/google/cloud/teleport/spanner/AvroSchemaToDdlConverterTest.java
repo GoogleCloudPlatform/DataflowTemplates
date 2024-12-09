@@ -454,6 +454,72 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void propertyGraphs() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"testGraph\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"nodeAlias\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerName\": \"testGraph\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"dummyLabelName1\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"spannerGraphLabel_1_NAME\": \"dummyLabelName2\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"edgePrimaryKey\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"otherNodeKey\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"nodeKey\",\n"
+            + "  \"spannerGraphNodeTable_0_KIND\": \"NODE\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_1_NAME\": \"dummyLabelName2\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"edgeAlias\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"edgeBaseTable\",\n"
+            + "  \"spannerGraphEdgeTable_0_KIND\": \"EDGE\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_1\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_NAME\": \"dummyLabelName3\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"primaryKey\",\n"
+            + "  \"spannerGraphLabel_2_NAME\": \"dummyLabelName3\",\n"
+            + "  \"spannerGraphLabel_0_PROPERTY_0\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"sourceEdgeKey\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"destEdgeKey\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"dummyPropName\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"baseTable\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"CONCAT(CAST(test_col AS STRING), \\\":\\\", \\\"dummyColumn\\\")\",\n"
+            + "  \"spannerGraphLabel_0_NAME\": \"dummyLabelName1\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_1_TYPE\": \"dummyPropType\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_NAME\": \"aliasedPropName\",\n"
+            + "  \"spannerGraphPropertyDeclaration_0_TYPE\": \"dummyPropType\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "NODE TABLES(\n"
+            + "baseTable AS nodeAlias\n"
+            + " KEY (primaryKey)\n"
+            + "LABEL dummyLabelName1 PROPERTIES(dummyPropName, CONCAT(CAST(test_col AS STRING), \":\", \"dummyColumn\") AS aliasedPropName)\n"
+            + "LABEL dummyLabelName2 NO PROPERTIES)\n"
+            + "EDGE TABLES(\n"
+            + "edgeBaseTable AS edgeAlias\n"
+            + " KEY (edgePrimaryKey)\n"
+            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable DESTINATION KEY(destEdgeKey) REFERENCES baseTable\n"
+            + "LABEL dummyLabelName3 NO PROPERTIES)";
+
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  @Test
   public void models() {
     String modelAllString =
         "{"

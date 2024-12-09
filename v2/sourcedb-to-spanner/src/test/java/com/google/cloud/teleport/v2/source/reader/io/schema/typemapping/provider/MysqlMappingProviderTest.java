@@ -49,9 +49,7 @@ public class MysqlMappingProviderTest {
   private ImmutableMap<String, String> expectedMapping() {
     return ImmutableMap.<String, String>builder()
         .put("BIGINT", "\"long\"")
-        .put(
-            "BIGINT UNSIGNED",
-            "{\"type\":\"bytes\",\"logicalType\":\"decimal\",\"precision\":1,\"scale\":1}")
+        .put("BIGINT UNSIGNED", "{\"type\":\"string\",\"logicalType\":\"number\"}")
         .put("BINARY", "\"string\"")
         .put("BIT", "\"long\"")
         .put("BLOB", "\"string\"")

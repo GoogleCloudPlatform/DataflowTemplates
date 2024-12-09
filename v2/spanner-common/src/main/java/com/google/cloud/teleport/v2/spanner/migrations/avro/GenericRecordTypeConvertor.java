@@ -47,6 +47,7 @@ import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.kerby.util.Hex;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -252,15 +253,20 @@ public class GenericRecordTypeConvertor {
       switch (fieldType) {
         case INT:
         case LONG:
+          fieldValue = Long.valueOf(fieldValue.toString());
+          break;
         case BOOLEAN:
-          fieldValue = (fieldValue == null) ? null : Long.valueOf(fieldValue.toString());
+          fieldValue = Boolean.valueOf(fieldValue.toString());
           break;
         case FLOAT:
         case DOUBLE:
-          fieldValue = (fieldValue == null) ? null : Double.valueOf(fieldValue.toString());
+          fieldValue = Double.valueOf(fieldValue.toString());
+          break;
+        case BYTES:
+          fieldValue = Hex.encode(((ByteBuffer) fieldValue).array());
           break;
         default:
-          fieldValue = (fieldValue == null) ? null : fieldValue.toString();
+          fieldValue = fieldValue.toString();
       }
       map.put(fieldName, fieldValue);
     }

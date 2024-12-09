@@ -59,6 +59,9 @@ public class Constants {
   // The Tag for skipped records
   public static final TupleTag<String> SKIPPED_TAG = new TupleTag<String>() {};
 
+  // The Tag for records filtered via custom transformation.
+  public static final TupleTag<String> FILTERED_TAG = new TupleTag<String>() {};
+
   // Message written to the file for skipped records
   public static final String SKIPPED_TAG_MESSAGE = "Skipped record from reverse replication";
 
@@ -72,4 +75,8 @@ public class Constants {
   public static final String DEFAULT_SHARD_ID = "single_shard";
 
   public static final String SOURCE_MYSQL = "mysql";
+
+  // Message written to the file for filtered records
+  public static final String FILTERED_TAG_MESSAGE =
+      "Filtered record from custom transformation in reverse replication";
 }

@@ -23,7 +23,9 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
@@ -369,6 +371,116 @@ public class InformationSchemaScannerIT {
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
   }
+
+  @Test
+  public void simplePropertyGraph() throws Exception {
+    String nodeTableDef =
+        "CREATE TABLE NodeTest (\n" + "  Id INT64 NOT NULL,\n" + ") PRIMARY KEY(Id)";
+    String edgeTableDef =
+        "CREATE TABLE EdgeTest (\n"
+            + "FromId INT64 NOT NULL,\n"
+            + "ToId INT64 NOT NULL,\n"
+            + ") PRIMARY KEY(FromId, ToId)";
+    String propertyGraphDef =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "  NODE TABLES(\n"
+            + "    NodeTest\n"
+            + "      KEY(Id)\n"
+            + "      LABEL Test PROPERTIES(\n"
+            + "        Id))"
+            + "  EDGE TABLES(\n"
+            + "    EdgeTest\n"
+            + "      KEY(FromId, ToId)\n"
+            + "      SOURCE KEY(FromId) REFERENCES NodeTest(Id)\n"
+            + "      DESTINATION KEY(ToId) REFERENCES NodeTest(Id)\n"
+            + "      DEFAULT LABEL PROPERTIES ALL COLUMNS)";
+
+    SPANNER_SERVER.createDatabase(
+        dbId, Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(ddl.table("NodeTest"), notNullValue());
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    PropertyGraph testGraph = ddl.propertyGraph("testGraph");
+
+    assertEquals(testGraph.name(), "testGraph");
+    assertThat(testGraph.propertyDeclarations(), hasSize(3));
+    assertThat(testGraph.getPropertyDeclaration("Id"), notNullValue());
+    assertThat(testGraph.getPropertyDeclaration("FromId"), notNullValue());
+    assertThat(testGraph.getPropertyDeclaration("ToId"), notNullValue());
+
+    assertThat(testGraph.labels(), hasSize(2));
+    assertThat(testGraph.getLabel("Test"), notNullValue());
+    assertThat(testGraph.getLabel("EdgeTest"), notNullValue());
+
+    assertThat(testGraph.nodeTables(), hasSize(1));
+    assertThat(testGraph.getNodeTable("NodeTest"), notNullValue());
+
+    assertThat(testGraph.edgeTables(), hasSize(1));
+    assertThat(testGraph.getEdgeTable("EdgeTest"), notNullValue());
+
+    // --- Assertions for Node Table ---
+    GraphElementTable nodeTestTable = testGraph.getNodeTable("NodeTest");
+    assertThat(nodeTestTable, notNullValue());
+    assertThat(nodeTestTable.name(), equalTo("NodeTest"));
+    assertThat(nodeTestTable.baseTableName(), equalTo("NodeTest"));
+    assertThat(nodeTestTable.kind(), equalTo(GraphElementTable.Kind.NODE));
+    assertIterableEquals(List.of("Id"), nodeTestTable.keyColumns());
+
+    assertThat(nodeTestTable.labelToPropertyDefinitions(), hasSize(1));
+    GraphElementTable.LabelToPropertyDefinitions nodeTestLabel =
+        nodeTestTable.getLabelToPropertyDefinitions("Test");
+    assertThat(nodeTestLabel, notNullValue());
+    assertThat(nodeTestLabel.labelName, equalTo("Test"));
+    assertThat(nodeTestLabel.propertyDefinitions(), hasSize(1));
+    GraphElementTable.PropertyDefinition nodeTestIdProperty =
+        nodeTestLabel.getPropertyDefinition("Id");
+    assertThat(nodeTestIdProperty, notNullValue());
+    assertThat(nodeTestIdProperty.name, equalTo("Id"));
+    assertThat(nodeTestIdProperty.valueExpressionString, equalTo("Id"));
+
+    // --- Assertions for Edge Table ---
+    GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
+    assertThat(edgeTestTable, notNullValue());
+    assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
+    assertThat(edgeTestTable.baseTableName(), equalTo("EdgeTest"));
+    assertThat(edgeTestTable.kind(), equalTo(GraphElementTable.Kind.EDGE));
+    assertIterableEquals(List.of("FromId", "ToId"), edgeTestTable.keyColumns());
+
+    assertThat(edgeTestTable.labelToPropertyDefinitions(), hasSize(1));
+    GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
+        edgeTestTable.getLabelToPropertyDefinitions("EdgeTest");
+    assertThat(edgeTestLabel, notNullValue());
+    assertThat(edgeTestLabel.labelName, equalTo("EdgeTest"));
+    assertThat(edgeTestLabel.propertyDefinitions(), hasSize(2)); // FromId and ToId
+
+    GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
+        edgeTestLabel.getPropertyDefinition("FromId");
+    assertThat(edgeTestFromIdProperty, notNullValue());
+    assertThat(edgeTestFromIdProperty.name, equalTo("FromId"));
+    assertThat(edgeTestFromIdProperty.valueExpressionString, equalTo("FromId"));
+
+    GraphElementTable.PropertyDefinition edgeTestToIdProperty =
+        edgeTestLabel.getPropertyDefinition("ToId");
+    assertThat(edgeTestToIdProperty, notNullValue());
+    assertThat(edgeTestToIdProperty.name, equalTo("ToId"));
+    assertThat(edgeTestToIdProperty.valueExpressionString, equalTo("ToId"));
+
+    // --- Assertions for Edge Table References ---
+    assertThat(edgeTestTable.sourceNodeTable().nodeTableName, equalTo("NodeTest"));
+    assertIterableEquals(List.of("Id"), edgeTestTable.sourceNodeTable().nodeKeyColumns);
+
+    assertIterableEquals(List.of("FromId"), edgeTestTable.sourceNodeTable().edgeKeyColumns);
+
+    assertThat(edgeTestTable.targetNodeTable().nodeTableName, equalTo("NodeTest"));
+    assertIterableEquals(List.of("Id"), edgeTestTable.targetNodeTable().nodeKeyColumns);
+    assertIterableEquals(List.of("ToId"), edgeTestTable.targetNodeTable().edgeKeyColumns);
+  }
+
+  @Test
+  public void complexPropertyGraph() throws Exception {}
 
   @Test
   public void simpleView() throws Exception {

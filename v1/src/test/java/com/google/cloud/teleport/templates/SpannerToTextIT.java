@@ -32,21 +32,21 @@ import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /** Integration test for {@link SpannerToText Spanner to GCS Text} template. */
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerToText.class)
-@RunWith(JUnit4.class)
-public class SpannerToTextIT extends TemplateTestBase {
+@RunWith(Parameterized.class)
+public class SpannerToTextIT extends SpannerTemplateITBase {
 
   private static final int MESSAGES_COUNT = 100;
 
@@ -62,16 +62,7 @@ public class SpannerToTextIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
-            .build();
-    testSpannerToGCSTextBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerToGCSTextStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerToGCSTextBase(
         paramAdder ->
@@ -145,16 +136,7 @@ public class SpannerToTextIT extends TemplateTestBase {
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
-            .build();
-    testPostgresSpannerToGCSTextBase(Function.identity());
-  }
-
-  @Test
-  public void testPostgresSpannerToGCSTextStaging() throws IOException {
-    spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
-            .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testPostgresSpannerToGCSTextBase(
         paramAdder ->

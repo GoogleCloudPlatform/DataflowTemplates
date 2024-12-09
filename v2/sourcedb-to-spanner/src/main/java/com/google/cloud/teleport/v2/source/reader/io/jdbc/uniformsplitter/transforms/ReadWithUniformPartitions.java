@@ -34,6 +34,8 @@ import javax.annotation.Nullable;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadAll;
+import org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -103,6 +105,14 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
    * @see org.apache.beam.sdk.io.jdbc.JdbcIO.RowMapper RowMapper.
    */
   abstract JdbcIO.RowMapper<T> rowMapper();
+
+  /**
+   * Max fetch size for jdbc read. * If Null, {@link JdbcIO JdbcIO's} default fetch size of 50_000
+   * gets used. {@link JdbcIO.Read#withFetchSize(int)} recommends setting this manually only if the
+   * default value gives out of memory errors.
+   */
+  @Nullable
+  abstract Integer fetchSize();
 
   /**
    * Hint for Maximum number of partitions of the source key space. If not set, it is auto inferred
@@ -221,12 +231,34 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
             Reshuffle.<Range>viaRandomKey().withNumBuckets(dbParallelizationForReads()))
         .apply(
             getTransformName("RangeRead", null),
-            JdbcIO.<Range, T>readAll()
-                .withOutputParallelization(false)
-                .withQuery(dbAdapter().getReadQuery(tableName(), colNames))
-                .withParameterSetter(rangePrepareator)
-                .withDataSourceProviderFn(dataSourceProviderFn())
-                .withRowMapper(rowMapper()));
+            buildJdbcIO(
+                JdbcIO.<Range, T>readAll(),
+                dbAdapter().getReadQuery(tableName(), colNames),
+                rangePrepareator,
+                dataSourceProviderFn(),
+                rowMapper(),
+                fetchSize()));
+  }
+
+  @VisibleForTesting
+  protected static <T> JdbcIO.ReadAll<Range, T> buildJdbcIO(
+      JdbcIO.ReadAll<Range, T> readAll,
+      String readQuery,
+      PreparedStatementSetter<Range> rangePrepareator,
+      SerializableFunction<Void, DataSource> dataSourceProviderFn,
+      RowMapper<T> rowMapper,
+      Integer fetchSize) {
+    ReadAll<Range, T> ret =
+        readAll
+            .withOutputParallelization(false)
+            .withQuery(readQuery)
+            .withParameterSetter(rangePrepareator)
+            .withDataSourceProviderFn(dataSourceProviderFn)
+            .withRowMapper(rowMapper);
+    if (fetchSize != null) {
+      ret = ret.withFetchSize(fetchSize);
+    }
+    return ret;
   }
 
   public static <T> Builder<T> builder() {
@@ -234,6 +266,7 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
         .setCountQueryTimeoutMillis(SPLITTER_DEFAULT_COUNT_QUERY_TIMEOUT_MILLIS)
         .setDbParallelizationForSplitProcess(null)
         .setDbParallelizationForReads(null)
+        .setFetchSize(null)
         .setAutoAdjustMaxPartitions(true);
   }
 
@@ -450,6 +483,8 @@ public abstract class ReadWithUniformPartitions<T> extends PTransform<PBegin, PC
     public abstract Builder<T> setDbParallelizationForReads(@Nullable Integer value);
 
     public abstract Builder<T> setRowMapper(JdbcIO.RowMapper<T> value);
+
+    public abstract Builder<T> setFetchSize(@Nullable Integer value);
 
     public abstract Builder<T> setAdditionalOperationsOnRanges(
         @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);

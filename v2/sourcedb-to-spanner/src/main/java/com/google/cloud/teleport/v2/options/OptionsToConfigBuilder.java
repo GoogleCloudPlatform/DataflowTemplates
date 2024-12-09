@@ -32,6 +32,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map.Entry;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -76,7 +77,8 @@ public final class OptionsToConfigBuilder {
         jdbcDriverJars,
         maxConnections,
         numPartitions,
-        waitOn);
+        waitOn,
+        options.getFetchSize());
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
@@ -95,7 +97,8 @@ public final class OptionsToConfigBuilder {
       String jdbcDriverJars,
       long maxConnections,
       Integer numPartitions,
-      Wait.OnSignal<?> waitOn) {
+      Wait.OnSignal<?> waitOn,
+      Integer fetchSize) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     SourceSchemaReference sourceSchemaReference =
         sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
@@ -126,6 +129,7 @@ public final class OptionsToConfigBuilder {
             MySqlConfigDefaults.DEFAULT_MYSQL_URL_PROPERTIES.entrySet()) {
           sourceDbURL = addParamToJdbcUrl(sourceDbURL, entry.getKey(), entry.getValue());
         }
+        sourceDbURL = mysqlSetCursorModeIfNeeded(sqlDialect, sourceDbURL, fetchSize);
         break;
       case POSTGRESQL:
         if (sourceDbURL == null) {
@@ -149,7 +153,34 @@ public final class OptionsToConfigBuilder {
 
     builder.setMaxPartitions(numPartitions);
     builder = builder.setTables(ImmutableList.copyOf(tables));
+    builder = builder.setMaxFetchSize(fetchSize);
     return builder.build();
+  }
+
+  /**
+   * For MySQL Dialect, if Fetchsize is expecitly set by the user, enables `useCursorFetch`.
+   *
+   * @param sqlDialect Sql Dialect.
+   * @param url DB Url from passed configs.
+   * @param fetchSize FetchSize Setting (Null if user has not explicitly set)
+   * @return Updated URL with `useCursorFetch` only if dialect is MySql and Fetchsize is not null.
+   *     Same as input URL in all other cases.
+   */
+  @VisibleForTesting
+  @Nullable
+  protected static String mysqlSetCursorModeIfNeeded(
+      SQLDialect sqlDialect, String url, @Nullable Integer fetchSize) {
+    if (fetchSize == null) {
+      LOG.info(
+          "FetchSize is not explicitly configured. In case of out of memory errors, please set `FetchSize` according to the available memory and maximum size of a row.");
+      return url;
+    }
+    if (sqlDialect != SQLDialect.MYSQL) {
+      return url;
+    }
+    LOG.info("For Mysql, Fetchsize is explicitly configured. So setting `useCursorMode=true`.");
+    String updatedUrl = addParamToJdbcUrl(url, "useCursorFetch", "true");
+    return updatedUrl;
   }
 
   @VisibleForTesting
