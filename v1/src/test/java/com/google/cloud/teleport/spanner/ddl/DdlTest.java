@@ -240,7 +240,7 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( version_retention_period = \"4d\" )"));
     assertThat(
-        statements.get(6),
+        statements.get(8),
         equalToCompressingWhiteSpace(
             "ALTER DATABASE `%db_name%` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )"));
     assertNotNull(ddl.hashCode());
