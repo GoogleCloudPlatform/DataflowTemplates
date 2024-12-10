@@ -1,4 +1,4 @@
-    /*
+/*
  * Copyright (C) 2020 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
@@ -15,11 +15,10 @@
  */
 package com.google.cloud.teleport.v2.kafka.options;
 
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
-
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.PipelineOptions;
 
 /**
  * The {@link KafkaReadOptions} interface provides the custom execution options passed by the
