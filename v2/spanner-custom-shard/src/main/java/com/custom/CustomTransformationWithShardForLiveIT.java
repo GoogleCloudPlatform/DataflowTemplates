@@ -202,7 +202,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);
       return response;
-    } else if (request.getTableName().equals("Users")) {
+    } else if (request.getTableName().equals("Users1")) {
       Map<String, Object> responseRow = new HashMap<>();
       Map<String, Object> requestRow = request.getRequestRow();
       String name = requestRow.get("name").toString();

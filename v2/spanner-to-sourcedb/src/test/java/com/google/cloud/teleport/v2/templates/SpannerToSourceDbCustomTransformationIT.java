@@ -166,7 +166,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
 
   private void writeRowInSpanner() {
     Mutation m =
-        Mutation.newInsertOrUpdateBuilder("Users").set("id").to(1).set("name").to("AA BB").build();
+        Mutation.newInsertOrUpdateBuilder("Users1").set("id").to(1).set("name").to("AA BB").build();
     spannerResourceManager.write(m);
     m =
         Mutation.newInsertOrUpdateBuilder("AllDatatypeTransformation")

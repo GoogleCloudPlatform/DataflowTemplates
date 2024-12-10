@@ -1,4 +1,4 @@
-CREATE TABLE Users (
+CREATE TABLE Users1 (
     id INT NOT NULL,
     first_name VARCHAR(25),
     last_name VARCHAR(25),
