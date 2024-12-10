@@ -106,6 +106,7 @@
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
     <direct-runner.tests>com.google.cloud.teleport.metadata.DirectRunnerTest</direct-runner.tests>
     <excluded.spanner.tests></excluded.spanner.tests>
+    <spanner.staging.tests>com.google.cloud.teleport.metadata.SpannerStagingTest</spanner.staging.tests>
 
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
@@ -448,6 +449,56 @@
               <excludedGroups>${direct-runner.tests}</excludedGroups>
               <groups>
                 ${integration.tests}
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>spannerStagingIntegrationTests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <systemProperties>
+                <property>
+                  <name>beamPythonVersion</name>
+                  <value>${beam-python.version}</value>
+                </property>
+                <property>
+                  <name>beamJavaVersion</name>
+                  <value>${beam.version}</value>
+                </property>
+                <property>
+                  <name>beamMavenRepo</name>
+                  <value>${beam-maven-repo}</value>
+                </property>
+              </systemProperties>
+              <includes>
+                <include>**/*.java</include>
+              </includes>
+              <groups>
+                ${spanner.staging.tests}
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>

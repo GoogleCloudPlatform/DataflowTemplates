@@ -101,10 +101,10 @@ func PrivateConnectivity() string {
 }
 
 func SpannerHost() string {
-	if dSpannerHost == "" {
-		return "-DspannerHost=" + "https://staging-wrenchworks.sandbox.googleapis.com/"
+	if dSpannerHost != "" {
+		return "-DspannerHost=" + dSpannerHost
 	}
-	return "-DspannerHost=" + dSpannerHost
+	return ""
 }
 
 func FailureMode() string {
