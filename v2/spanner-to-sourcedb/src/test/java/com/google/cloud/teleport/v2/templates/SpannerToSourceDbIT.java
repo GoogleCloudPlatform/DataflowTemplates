@@ -113,6 +113,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
+                null,
                 null);
       }
     }

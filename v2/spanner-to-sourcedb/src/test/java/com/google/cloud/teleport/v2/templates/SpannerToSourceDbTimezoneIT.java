@@ -112,7 +112,8 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                "+10:00");
+                "+10:00",
+                null);
       }
     }
   }
