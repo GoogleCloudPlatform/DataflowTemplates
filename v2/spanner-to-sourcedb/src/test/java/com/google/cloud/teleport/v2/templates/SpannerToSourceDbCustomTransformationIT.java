@@ -71,7 +71,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbCustomTransformationIT/mysql-schema.sql";
 
-  private static final String TABLE = "Users";
+  private static final String TABLE = "Users1";
 
   private static final String TABLE2 = "AllDatatypeTransformation";
   private static final HashSet<SpannerToSourceDbCustomTransformationIT> testInstances =
