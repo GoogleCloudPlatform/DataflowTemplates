@@ -199,7 +199,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(9));
+    assertThat(fields, hasSize(10));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null

@@ -188,7 +188,7 @@ public class DdlTest {
                 + " FOREIGN KEY (`last_name`) REFERENCES "
                 + "`AllowedNames` (`last_name`) ENFORCED"));
     List<String> statements = ddl.statements();
-    assertEquals(8, statements.size());
+    assertEquals(9, statements.size());
     assertThat(
         statements.get(0),
         equalToCompressingWhiteSpace(
