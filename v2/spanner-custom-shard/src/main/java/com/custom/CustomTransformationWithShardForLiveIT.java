@@ -131,7 +131,6 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
       Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
       Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
-      Long timeColumn = Long.parseLong((String) requestRow.get("time_column")) + 1000;
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
       BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");
@@ -143,7 +142,6 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
       Double value = Double.parseDouble((String) requestRow.get("decimal_column"));
       responseRow.put("decimal_column", String.valueOf(value - 1));
-      responseRow.put("time_column", "\'" + timeColumn + "\'");
       responseRow.put("bool_column", "false");
       responseRow.put("enum_column", "\'3\'");
       responseRow.put(
@@ -191,11 +189,26 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
             "CONVERT_TZ(\'"
                 + timestampColumn.substring(0, timestampColumn.length() - 1)
                 + "\','+00:00','+00:00')");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+        LocalTime time = LocalTime.parse((String) requestRow.get("time_column"), formatter);
+
+        LocalTime newTime = time.plusMinutes(10);
+        responseRow.put("time_column", "\'" + newTime.format(formatter) + "\'");
 
       } catch (Exception e) {
         throw new InvalidTransformationException(e);
       }
 
+      MigrationTransformationResponse response =
+          new MigrationTransformationResponse(responseRow, false);
+      return response;
+    } else if (request.getTableName().equals("Users1")) {
+      Map<String, Object> responseRow = new HashMap<>();
+      Map<String, Object> requestRow = request.getRequestRow();
+      String name = requestRow.get("name").toString();
+      String[] nameArray = name.split(" ");
+      responseRow.put("first_name", "\'" + nameArray[0] + "\'");
+      responseRow.put("last_name", "\'" + nameArray[1] + "\'");
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);
       return response;
