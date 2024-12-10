@@ -104,29 +104,57 @@ class CassandraTypeHandler {
     }
 
     /**
-     * Generates a Type based on the provided {@link CassandraTypeHandler}.
+     * Generates a {@link LocalDate} based on the provided {@link CassandraTypeHandler}.
+     * <p>
+     * This method processes the given JSON object to extract a date value using the specified
+     * column name and formatter. It specifically handles the "Cassandra Date" format (yyyy-MM-dd).
+     * The resulting {@link LocalDate} represents the date value associated with the column.
+     * </p>
      *
-     * @param colName - which is used to fetch Key from valueJSON.
-     * @param valuesJson - contains all the key value for current incoming stream.
+     * @param colName - the key used to fetch the value from the provided {@link JSONObject}.
+     * @param valuesJson - the JSON object containing all key-value pairs for the current incoming data stream.
      *
-     * @return a {@link LocalDate} object containing the value represented in cassandra type.
+     * @return a {@link LocalDate} object containing the date value represented in Cassandra type format.
+     * If the column is missing or contains an invalid value, this will return {@code null}.
      */
     public static LocalDate handleCassandraDateType(String colName, JSONObject valuesJson) {
         return handleCassandraGenericDateType(colName, valuesJson, "yyyy-MM-dd");
     }
 
     /**
-     * Generates a Type based on the provided {@link CassandraTypeHandler}.
+     * Generates a {@link LocalDate} based on the provided {@link CassandraTypeHandler}.
+     * <p>
+     * This method processes the given JSON object to extract a timestamp value using the specified
+     * column name and formatter. It specifically handles the "Cassandra Timestamp" format (yyyy-MM-dd'T'HH:mm:ss.SSSZ).
+     * The resulting {@link LocalDate} represents the date part of the timestamp value associated with the column.
+     * </p>
      *
-     * @param colName - which is used to fetch Key from valueJSON.
-     * @param valuesJson - contains all the key value for current incoming stream.
+     * @param colName - the key used to fetch the value from the provided {@link JSONObject}.
+     * @param valuesJson - the JSON object containing all key-value pairs for the current incoming data stream.
      *
-     * @return a {@link LocalDate} object containing timestamp as value represented in cassandra type.
+     * @return a {@link LocalDate} object containing the date value extracted from the timestamp in Cassandra type format.
+     * If the column is missing or contains an invalid value, this will return {@code null}.
      */
     public static LocalDate handleCassandraTimestampType(String colName, JSONObject valuesJson) {
         return handleCassandraGenericDateType(colName, valuesJson, "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     }
 
+    /**
+     * A helper method that handles the conversion of a given column value to a {@link LocalDate} based on
+     * the specified date format (formatter).
+     * <p>
+     * This method extracts the value for the given column name from the provided JSON object and parses it
+     * into a {@link LocalDate} based on the provided date format. If the value is in an unsupported type or format,
+     * an exception is thrown.
+     * </p>
+     *
+     * @param colName - the key used to fetch the value from the provided {@link JSONObject}.
+     * @param valuesJson - the JSON object containing all key-value pairs for the current incoming data stream.
+     * @param formatter - the date format pattern used to parse the value (e.g., "yyyy-MM-dd").
+     *
+     * @return a {@link LocalDate} object containing the parsed date value. If the column is missing or invalid,
+     *         this method returns {@code null}.
+     */
     private static LocalDate handleCassandraGenericDateType(String colName, JSONObject valuesJson, String formatter) {
         Object colValue = valuesJson.opt(colName);
         if (colValue == null) {
@@ -140,6 +168,22 @@ class CassandraTypeHandler {
         return parseDate(colName, colValue, formatter);
     }
 
+    /**
+     * Parses a column value (String, {@link java.util.Date}, or {@code Long}) into a {@link LocalDate}
+     * using the specified date format.
+     * <p>
+     * This method handles different data types (String, Date, Long) by converting them into a {@link LocalDate}.
+     * The provided formatter is used to parse date strings, while other types are converted based on their
+     * corresponding representations.
+     * </p>
+     *
+     * @param colName - the key used to fetch the value from the provided {@link JSONObject}.
+     * @param colValue - the value to be parsed into a {@link LocalDate}.
+     * @param formatter - the date format pattern used to parse date strings.
+     *
+     * @return a {@link LocalDate} object parsed from the given value.
+     * @throws IllegalArgumentException if the value cannot be parsed or is of an unsupported type.
+     */
     private static LocalDate parseDate(String colName, Object colValue, String formatter) {
         LocalDate localDate;
         if (colValue instanceof String) {
