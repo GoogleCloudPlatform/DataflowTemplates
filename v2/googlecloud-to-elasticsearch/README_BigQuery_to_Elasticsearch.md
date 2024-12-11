@@ -30,6 +30,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **useLegacySql** : Set to true to use legacy SQL. This parameter only applies when using the `query` parameter. Defaults to: false.
 * **queryLocation** : Needed when reading from an authorized view without underlying table's permission. (Example: US).
 * **queryTempDataset** : With this option, you can set an existing dataset to create the temporary table to store the results of the query. (Example: temp_dataset).
+* **KMSEncryptionKey** : If reading from BigQuery using query source, use this Cloud KMS key to encrypt any temporary tables created. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
 * **elasticsearchUsername** : The Elasticsearch username to authenticate with. If specified, the value of 'apiKey' is ignored.
 * **elasticsearchPassword** : The Elasticsearch password to authenticate with. If specified, the value of 'apiKey' is ignored.
 * **batchSize** : The batch size in number of documents. Defaults to: 1000.
@@ -155,6 +156,7 @@ export QUERY=<query>
 export USE_LEGACY_SQL=false
 export QUERY_LOCATION=<queryLocation>
 export QUERY_TEMP_DATASET=<queryTempDataset>
+export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
@@ -192,6 +194,7 @@ gcloud dataflow flex-template run "bigquery-to-elasticsearch-job" \
   --parameters "useLegacySql=$USE_LEGACY_SQL" \
   --parameters "queryLocation=$QUERY_LOCATION" \
   --parameters "queryTempDataset=$QUERY_TEMP_DATASET" \
+  --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
   --parameters "connectionUrl=$CONNECTION_URL" \
   --parameters "apiKey=$API_KEY" \
   --parameters "elasticsearchUsername=$ELASTICSEARCH_USERNAME" \
@@ -250,6 +253,7 @@ export QUERY=<query>
 export USE_LEGACY_SQL=false
 export QUERY_LOCATION=<queryLocation>
 export QUERY_TEMP_DATASET=<queryTempDataset>
+export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export ELASTICSEARCH_USERNAME=<elasticsearchUsername>
 export ELASTICSEARCH_PASSWORD=<elasticsearchPassword>
 export BATCH_SIZE=1000
@@ -284,7 +288,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-to-elasticsearch-job" \
 -DtemplateName="BigQuery_to_Elasticsearch" \
--Dparameters="inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,socketTimeout=$SOCKET_TIMEOUT,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
+-Dparameters="inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,connectionUrl=$CONNECTION_URL,apiKey=$API_KEY,elasticsearchUsername=$ELASTICSEARCH_USERNAME,elasticsearchPassword=$ELASTICSEARCH_PASSWORD,index=$INDEX,batchSize=$BATCH_SIZE,batchSizeBytes=$BATCH_SIZE_BYTES,maxRetryAttempts=$MAX_RETRY_ATTEMPTS,maxRetryDuration=$MAX_RETRY_DURATION,propertyAsIndex=$PROPERTY_AS_INDEX,javaScriptIndexFnGcsPath=$JAVA_SCRIPT_INDEX_FN_GCS_PATH,javaScriptIndexFnName=$JAVA_SCRIPT_INDEX_FN_NAME,propertyAsId=$PROPERTY_AS_ID,javaScriptIdFnGcsPath=$JAVA_SCRIPT_ID_FN_GCS_PATH,javaScriptIdFnName=$JAVA_SCRIPT_ID_FN_NAME,javaScriptTypeFnGcsPath=$JAVA_SCRIPT_TYPE_FN_GCS_PATH,javaScriptTypeFnName=$JAVA_SCRIPT_TYPE_FN_NAME,javaScriptIsDeleteFnGcsPath=$JAVA_SCRIPT_IS_DELETE_FN_GCS_PATH,javaScriptIsDeleteFnName=$JAVA_SCRIPT_IS_DELETE_FN_NAME,usePartialUpdate=$USE_PARTIAL_UPDATE,bulkInsertMethod=$BULK_INSERT_METHOD,trustSelfSignedCerts=$TRUST_SELF_SIGNED_CERTS,disableCertificateValidation=$DISABLE_CERTIFICATE_VALIDATION,apiKeyKMSEncryptionKey=$API_KEY_KMSENCRYPTION_KEY,apiKeySecretId=$API_KEY_SECRET_ID,apiKeySource=$API_KEY_SOURCE,socketTimeout=$SOCKET_TIMEOUT,javascriptTextTransformGcsPath=$JAVASCRIPT_TEXT_TRANSFORM_GCS_PATH,javascriptTextTransformFunctionName=$JAVASCRIPT_TEXT_TRANSFORM_FUNCTION_NAME" \
 -f v2/googlecloud-to-elasticsearch
 ```
 
@@ -338,6 +342,7 @@ resource "google_dataflow_flex_template_job" "bigquery_to_elasticsearch" {
     # useLegacySql = "false"
     # queryLocation = "US"
     # queryTempDataset = "temp_dataset"
+    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
     # elasticsearchUsername = "<elasticsearchUsername>"
     # elasticsearchPassword = "<elasticsearchPassword>"
     # batchSize = "1000"

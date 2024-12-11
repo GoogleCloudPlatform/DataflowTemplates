@@ -42,6 +42,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **password** : The password to be used for the JDBC connection. Defaults to empty.
 * **tables** : Tables to migrate from source. Defaults to empty.
 * **numPartitions** : The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0.
+* **fetchSize** : The number of rows to fetch per page read for JDBC source. If not set, the default of JdbcIO of 50_000 rows gets used. If source dialect is Mysql, please see the note below. This ultimately translated to Statement.setFetchSize call at Jdbc layer. It should ONLY be used if the default value throws memory errors.Note for MySql Source:  FetchSize is ignored by the Mysql connector unless, `useCursorFetch=true` is also part of the connection properties.In case, the fetchSize parameter is explicitly set, for MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default.
 * **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
 * **maxConnections** : Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. (Example: -1). Defaults to: 0.
 * **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty.
@@ -143,6 +144,7 @@ export USERNAME=""
 export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
+export FETCH_SIZE=<fetchSize>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export MAX_CONNECTIONS=0
 export SESSION_FILE_PATH=""
@@ -165,6 +167,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "password=$PASSWORD" \
   --parameters "tables=$TABLES" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
+  --parameters "fetchSize=$FETCH_SIZE" \
   --parameters "instanceId=$INSTANCE_ID" \
   --parameters "databaseId=$DATABASE_ID" \
   --parameters "projectId=$PROJECT_ID" \
@@ -210,6 +213,7 @@ export USERNAME=""
 export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
+export FETCH_SIZE=<fetchSize>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export MAX_CONNECTIONS=0
 export SESSION_FILE_PATH=""
@@ -227,7 +231,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -284,6 +288,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # password = ""
     # tables = ""
     # numPartitions = "0"
+    # fetchSize = "<fetchSize>"
     # spannerHost = "https://batch-spanner.googleapis.com"
     # maxConnections = "-1"
     # sessionFilePath = ""

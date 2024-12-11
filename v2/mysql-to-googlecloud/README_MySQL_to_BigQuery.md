@@ -47,6 +47,7 @@ Type casting may be required if your schemas do not match. This parameter can be
 * **fetchSize** : The number of rows to be fetched from database at a time. Not used for partitioned reads. Defaults to: 50000.
 * **createDisposition** : The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **bigQuerySchemaPath** : The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
+* **outputDeadletterTable** : The BigQuery table to use for messages that failed to reach the output table, formatted as `"PROJECT_ID:DATASET_NAME.TABLE_NAME"`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the pipeline will fail on write errors.This parameter can only be specified if `useStorageWriteApi` or `useStorageWriteApiAtLeastOnce` is set to true.
 * **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
 * **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
 * **useStorageWriteApi** : If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
@@ -149,6 +150,7 @@ export UPPER_BOUND=<upperBound>
 export FETCH_SIZE=50000
 export CREATE_DISPOSITION=CREATE_NEVER
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 export USE_STORAGE_WRITE_API=false
@@ -176,6 +178,7 @@ gcloud dataflow flex-template run "mysql-to-bigquery-job" \
   --parameters "fetchSize=$FETCH_SIZE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH" \
+  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
@@ -218,6 +221,7 @@ export UPPER_BOUND=<upperBound>
 export FETCH_SIZE=50000
 export CREATE_DISPOSITION=CREATE_NEVER
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 export USE_STORAGE_WRITE_API=false
@@ -230,7 +234,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="mysql-to-bigquery-job" \
 -DtemplateName="MySQL_to_BigQuery" \
--Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+-Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -f v2/mysql-to-googlecloud
 ```
 
@@ -293,6 +297,7 @@ resource "google_dataflow_flex_template_job" "mysql_to_bigquery" {
     # fetchSize = "50000"
     # createDisposition = "CREATE_NEVER"
     # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
+    # outputDeadletterTable = "<outputDeadletterTable>"
     # disabledAlgorithms = "SSLv3, RC4"
     # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
     # useStorageWriteApi = "false"
