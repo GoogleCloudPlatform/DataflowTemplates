@@ -123,3 +123,10 @@ CREATE TABLE `AllDatatypeTransformation` (
  `bit_column` bit(7),                   -- To: bit_column BYTES(MAX)
  PRIMARY KEY (`varchar_column`)
 );
+
+CREATE TABLE `Singers` (
+    `singer_id` int NOT NULL AUTO_INCREMENT,
+    `first_name` varchar(1024),
+    `last_name` varchar(1024),
+    PRIMARY KEY (`singer_id`)
+);
