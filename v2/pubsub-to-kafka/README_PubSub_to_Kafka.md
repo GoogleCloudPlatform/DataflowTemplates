@@ -14,18 +14,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputTopic** : The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name).
-* **outputTopic** : Kafka topic to write the input from pubsub. (Example: topic).
-* **outputDeadLetterTopic** : The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
+* **inputTopic**: The name of the topic from which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' For example, `projects/your-project-id/topics/your-topic-name`.
+* **outputTopic**: Kafka topic to write the input from pubsub. For example, `topic`.
+* **outputDeadLetterTopic**: The Pub/Sub topic to publish deadletter records to. The name should be in the format of projects/your-project-id/topics/your-topic-name.
 
 ### Optional parameters
 
-* **bootstrapServer** : Kafka Bootstrap Server  (Example: localhost:9092).
-* **secretStoreUrl** : URL to credentials in Vault.
-* **vaultToken** : Token to use for Vault.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
+* **bootstrapServer**: Kafka Bootstrap Server  For example, `localhost:9092`.
+* **secretStoreUrl**: URL to credentials in Vault.
+* **vaultToken**: Token to use for Vault.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
 
 ## User-Defined functions (UDFs)
@@ -221,13 +221,13 @@ resource "google_dataflow_flex_template_job" "pubsub_to_kafka" {
   name              = "pubsub-to-kafka"
   region            = var.region
   parameters        = {
-    inputTopic = "projects/your-project-id/topics/your-topic-name"
-    outputTopic = "topic"
+    inputTopic = "<inputTopic>"
+    outputTopic = "<outputTopic>"
     outputDeadLetterTopic = "<outputDeadLetterTopic>"
-    # bootstrapServer = "localhost:9092"
+    # bootstrapServer = "<bootstrapServer>"
     # secretStoreUrl = "<secretStoreUrl>"
     # vaultToken = "<vaultToken>"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }

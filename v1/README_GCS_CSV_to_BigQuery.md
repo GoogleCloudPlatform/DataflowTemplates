@@ -16,18 +16,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The Cloud Storage path to the CSV file that contains the text to process. (Example: gs://your-bucket/path/*.csv).
-* **schemaJSONPath** : The Cloud Storage path to the JSON file that defines your BigQuery schema.
-* **outputTable** : The name of the BigQuery table that stores your processed data. If you reuse an existing BigQuery table, the data is appended to the destination table.
-* **bigQueryLoadingTemporaryDirectory** : The temporary directory to use during the BigQuery loading process. (Example: gs://your-bucket/your-files/temp_dir).
-* **badRecordsOutputTable** : The name of the BigQuery table to use to store the rejected data when processing the CSV files. If you reuse an existing BigQuery table, the data is appended to the destination table. The schema of this table must match the error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).
-* **delimiter** : The column delimiter that the CSV file uses. (Example: ,).
-* **csvFormat** : The CSV format according to Apache Commons CSV format. Defaults to: Default.
+* **inputFilePattern**: The Cloud Storage path to the CSV file that contains the text to process. For example, `gs://your-bucket/path/*.csv`.
+* **schemaJSONPath**: The Cloud Storage path to the JSON file that defines your BigQuery schema.
+* **outputTable**: The name of the BigQuery table that stores your processed data. If you reuse an existing BigQuery table, the data is appended to the destination table.
+* **bigQueryLoadingTemporaryDirectory**: The temporary directory to use during the BigQuery loading process. For example, `gs://your-bucket/your-files/temp_dir`.
+* **badRecordsOutputTable**: The name of the BigQuery table to use to store the rejected data when processing the CSV files. If you reuse an existing BigQuery table, the data is appended to the destination table. The schema of this table must match the error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema).
+* **delimiter**: The column delimiter that the CSV file uses. For example, `,`.
+* **csvFormat**: The CSV format according to Apache Commons CSV format. Defaults to: `Default`.
 
 ### Optional parameters
 
-* **containsHeaders** : Whether headers are included in the CSV file. Defaults to: false.
-* **csvFileEncoding** : The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8.
+* **containsHeaders**: Whether headers are included in the CSV file. Defaults to: `false`.
+* **csvFileEncoding**: The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8.
 
 
 
@@ -216,12 +216,12 @@ resource "google_dataflow_job" "gcs_csv_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://your-bucket/path/*.csv"
+    inputFilePattern = "<inputFilePattern>"
     schemaJSONPath = "<schemaJSONPath>"
     outputTable = "<outputTable>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
     badRecordsOutputTable = "<badRecordsOutputTable>"
-    delimiter = ","
+    delimiter = "<delimiter>"
     csvFormat = "<csvFormat>"
     # containsHeaders = "false"
     # csvFileEncoding = "UTF-8"

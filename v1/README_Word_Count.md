@@ -14,8 +14,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFile** : The input file pattern Dataflow reads from. Use the example file (gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own using the same format: gs://your-bucket/your-file.txt.
-* **output** : Path and filename prefix for writing output files. Ex: gs://your-bucket/counts.
+* **inputFile**: The input file pattern Dataflow reads from. Use the example file (gs://dataflow-samples/shakespeare/kinglear.txt) or enter the path to your own using the same format: gs://your-bucket/your-file.txt.
+* **output**: Path and filename prefix for writing output files. Ex: gs://your-bucket/counts.
 
 ### Optional parameters
 

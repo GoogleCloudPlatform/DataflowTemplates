@@ -34,15 +34,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern** : The CSV files to read input data records from. Wildcards are also accepted. (Example: gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv).
-* **deidentifyTemplateName** : The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id).
-* **datasetName** : The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution.
-* **dlpProjectId** : The ID for the Google Cloud project that owns the DLP API resource. This project can be the same project that owns the Sensitive Data Protection templates, or it can be a separate project.
+* **inputFilePattern**: The CSV files to read input data records from. Wildcards are also accepted. For example, `gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv`.
+* **deidentifyTemplateName**: The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>`. For example, `projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id`.
+* **datasetName**: The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution.
+* **dlpProjectId**: The ID for the Google Cloud project that owns the DLP API resource. This project can be the same project that owns the Sensitive Data Protection templates, or it can be a separate project.
 
 ### Optional parameters
 
-* **inspectTemplateName** : The Sensitive Data Protection inspection template to use for API requests, specified with the pattern projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id).
-* **batchSize** : The chunking or batch size to use for sending data to inspect and detokenize. For a CSV file, the value of `batchSize` is the number of rows in a batch. Determine the batch size based on the size of the records and the sizing of the file. The DLP API has a payload size limit of 524 KB per API call.
+* **inspectTemplateName**: The Sensitive Data Protection inspection template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>`. For example, `projects/your-project-id/locations/global/inspectTemplates/generated_template_id`.
+* **batchSize**: The chunking or batch size to use for sending data to inspect and detokenize. For a CSV file, the value of `batchSize` is the number of rows in a batch. Determine the batch size based on the size of the records and the sizing of the file. The DLP API has a payload size limit of 524 KB per API call.
 
 
 
@@ -222,11 +222,11 @@ resource "google_dataflow_job" "stream_dlp_gcs_text_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputFilePattern = "gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv"
-    deidentifyTemplateName = "projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id"
+    inputFilePattern = "<inputFilePattern>"
+    deidentifyTemplateName = "<deidentifyTemplateName>"
     datasetName = "<datasetName>"
     dlpProjectId = "<dlpProjectId>"
-    # inspectTemplateName = "projects/your-project-id/locations/global/inspectTemplates/generated_template_id"
+    # inspectTemplateName = "<inspectTemplateName>"
     # batchSize = "<batchSize>"
   }
 }

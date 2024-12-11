@@ -26,20 +26,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : The Pub/Sub subscription to read the input from, in the format projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>. (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **redisHost** : The Redis database host. (Example: your.cloud.db.redislabs.com). Defaults to: 127.0.0.1.
-* **redisPort** : The Redis database port. (Example: 12345). Defaults to: 6379.
-* **redisPassword** : The Redis database password. Defaults to empty.
+* **inputSubscription**: The Pub/Sub subscription to read the input from. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`.
+* **redisHost**: The Redis database host. For example, `your.cloud.db.redislabs.com`. Defaults to: 127.0.0.1.
+* **redisPort**: The Redis database port. For example, `12345`. Defaults to: 6379.
+* **redisPassword**: The Redis database password. Defaults to `empty`.
 
 ### Optional parameters
 
-* **sslEnabled** : The Redis database SSL parameter. Defaults to: false.
-* **redisSinkType** : The Redis sink. Supported values are `STRING_SINK, HASH_SINK, STREAMS_SINK, and LOGGING_SINK`. (Example: STRING_SINK). Defaults to: STRING_SINK.
-* **connectionTimeout** : The Redis connection timeout in milliseconds.  (Example: 2000). Defaults to: 2000.
-* **ttl** : The key expiration time in seconds. The `ttl` default for `HASH_SINK` is -1, which means it never expires.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
+* **sslEnabled**: The Redis database SSL parameter. Defaults to: false.
+* **redisSinkType**: The Redis sink. Supported values are `STRING_SINK, HASH_SINK, STREAMS_SINK, and LOGGING_SINK`. For example, `STRING_SINK`. Defaults to: STRING_SINK.
+* **connectionTimeout**: The Redis connection timeout in milliseconds.  For example, `2000`. Defaults to: 2000.
+* **ttl**: The key expiration time in seconds. The `ttl` default for `HASH_SINK` is -1, which means it never expires.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
 
 ## User-Defined functions (UDFs)
@@ -241,15 +241,15 @@ resource "google_dataflow_flex_template_job" "cloud_pubsub_to_redis" {
   name              = "cloud-pubsub-to-redis"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    redisHost = "your.cloud.db.redislabs.com"
-    redisPort = "12345"
+    inputSubscription = "<inputSubscription>"
+    redisHost = "127.0.0.1"
+    redisPort = "6379"
     redisPassword = ""
     # sslEnabled = "false"
     # redisSinkType = "STRING_SINK"
     # connectionTimeout = "2000"
     # ttl = "-1"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }

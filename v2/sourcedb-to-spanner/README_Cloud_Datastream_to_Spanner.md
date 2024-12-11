@@ -42,41 +42,37 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **instanceId** : The Spanner instance where the changes are replicated.
-* **databaseId** : The Spanner database where the changes are replicated.
+* **instanceId**: The Spanner instance where the changes are replicated.
+* **databaseId**: The Spanner database where the changes are replicated.
+* **streamName**: The name or template for the stream to poll for schema information and source type.
 
 ### Optional parameters
 
-* **inputFilePattern** : The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled.
-* **inputFileFormat** : The format of the output file produced by Datastream. For example `avro,json`. Default, `avro`.
-* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge.
-* **projectId** : The Spanner project ID.
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **gcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>.
-* **streamName** : The name or template for the stream to poll for schema information and source type.
-* **shadowTablePrefix** : The prefix used to name shadow tables. Default: `shadow_`.
-* **shouldCreateShadowTables** : This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
-* **rfcStartDateTime** : The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
-* **fileReadConcurrency** : The number of concurrent DataStream files to read. Defaults to: 30.
-* **deadLetterQueueDirectory** : The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
-* **dlqRetryMinutes** : The number of minutes between dead letter queue retries. Defaults to 10.
-* **dlqMaxRetryCount** : The max number of times temporary errors can be retried through DLQ. Defaults to 500.
-* **dataStreamRootUrl** : Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
-* **datastreamSourceType** : This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
-* **roundJsonDecimals** : This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
-* **runMode** : This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
-* **transformationContextFilePath** : Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
-* **directoryWatchDurationInMinutes** : The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
-* **spannerPriority** : The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH.
-* **dlqGcsPubSubSubscription** : The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
-* **transformationJarPath** : Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in forward migration. Defaults to empty.
-* **transformationClassName** : Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
-* **transformationCustomParameters** : String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
-* **filteredEventsDirectory** : This is the file path to store the events filtered via custom transformation. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
-* **shardingContextFilePath** : Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard.It is of the format Map<stream_name, Map<db_name, shard_id>>.
-* **tableOverrides** : These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. (Example: [{Singers, Vocalists}, {Albums, Records}]). Defaults to empty.
-* **columnOverrides** : These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. (Example: [{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]). Defaults to empty.
-* **schemaOverridesFilePath** : A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
+* **inputFilePattern**: The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled.
+* **inputFileFormat**: The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`.
+* **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge.
+* **projectId**: The Spanner project ID.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
+* **gcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
+* **shadowTablePrefix**: The prefix used to name shadow tables. Default: `shadow_`.
+* **shouldCreateShadowTables**: This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
+* **rfcStartDateTime**: The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
+* **fileReadConcurrency**: The number of concurrent DataStream files to read. Defaults to: 30.
+* **deadLetterQueueDirectory**: The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
+* **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to `10`.
+* **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to `500`.
+* **dataStreamRootUrl**: Datastream API Root URL. Defaults to: https://datastream.googleapis.com/.
+* **datastreamSourceType**: This is the type of source database that Datastream connects to. Example - mysql/oracle. Need to be set when testing without an actual running Datastream.
+* **roundJsonDecimals**: This flag if set, rounds the decimal values in json columns to a number that can be stored without loss of precision. Defaults to: false.
+* **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
+* **transformationContextFilePath**: Transformation context file path in cloud storage used to populate data used in transformations performed during migrations   Eg: The shard id to db name to identify the db from which a row was migrated.
+* **directoryWatchDurationInMinutes**: The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
+* **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
+* **dlqGcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
+* **transformationJarPath**: Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records in forward migration. Defaults to empty.
+* **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **filteredEventsDirectory**: This is the file path to store the events filtered via custom transformation. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
 
 
 
@@ -157,6 +153,7 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Datastream_
 ### Required
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
+export STREAM_NAME=<streamName>
 
 ### Optional
 export INPUT_FILE_PATTERN=<inputFilePattern>
@@ -165,7 +162,6 @@ export SESSION_FILE_PATH=<sessionFilePath>
 export PROJECT_ID=<projectId>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export STREAM_NAME=<streamName>
 export SHADOW_TABLE_PREFIX=shadow_
 export SHOULD_CREATE_SHADOW_TABLES=true
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
@@ -185,10 +181,6 @@ export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export FILTERED_EVENTS_DIRECTORY=""
-export SHARDING_CONTEXT_FILE_PATH=<shardingContextFilePath>
-export TABLE_OVERRIDES=""
-export COLUMN_OVERRIDES=""
-export SCHEMA_OVERRIDES_FILE_PATH=""
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -221,11 +213,7 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
   --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
-  --parameters "filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
-  --parameters "shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH" \
-  --parameters "tableOverrides=$TABLE_OVERRIDES" \
-  --parameters "columnOverrides=$COLUMN_OVERRIDES" \
-  --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH"
+  --parameters "filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY"
 ```
 
 For more information about the command, please check:
@@ -246,6 +234,7 @@ export REGION=us-central1
 ### Required
 export INSTANCE_ID=<instanceId>
 export DATABASE_ID=<databaseId>
+export STREAM_NAME=<streamName>
 
 ### Optional
 export INPUT_FILE_PATTERN=<inputFilePattern>
@@ -254,7 +243,6 @@ export SESSION_FILE_PATH=<sessionFilePath>
 export PROJECT_ID=<projectId>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export GCS_PUB_SUB_SUBSCRIPTION=<gcsPubSubSubscription>
-export STREAM_NAME=<streamName>
 export SHADOW_TABLE_PREFIX=shadow_
 export SHOULD_CREATE_SHADOW_TABLES=true
 export RFC_START_DATE_TIME=1970-01-01T00:00:00.00Z
@@ -274,10 +262,6 @@ export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export FILTERED_EVENTS_DIRECTORY=""
-export SHARDING_CONTEXT_FILE_PATH=<shardingContextFilePath>
-export TABLE_OVERRIDES=""
-export COLUMN_OVERRIDES=""
-export SCHEMA_OVERRIDES_FILE_PATH=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -286,7 +270,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY,shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY" \
 -f v2/datastream-to-spanner
 ```
 
@@ -333,13 +317,13 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
   parameters        = {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
+    streamName = "<streamName>"
     # inputFilePattern = "<inputFilePattern>"
     # inputFileFormat = "avro"
     # sessionFilePath = "<sessionFilePath>"
     # projectId = "<projectId>"
     # spannerHost = "https://batch-spanner.googleapis.com"
     # gcsPubSubSubscription = "<gcsPubSubSubscription>"
-    # streamName = "<streamName>"
     # shadowTablePrefix = "shadow_"
     # shouldCreateShadowTables = "true"
     # rfcStartDateTime = "1970-01-01T00:00:00.00Z"
@@ -359,10 +343,6 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # transformationClassName = ""
     # transformationCustomParameters = ""
     # filteredEventsDirectory = ""
-    # shardingContextFilePath = "<shardingContextFilePath>"
-    # tableOverrides = "[{Singers, Vocalists}, {Albums, Records}]"
-    # columnOverrides = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]"
-    # schemaOverridesFilePath = ""
   }
 }
 ```

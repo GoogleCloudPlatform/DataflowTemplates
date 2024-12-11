@@ -28,17 +28,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **astraToken** : The token value or secret resource ID. (Example: AstraCS:abcdefghij).
-* **astraDatabaseId** : The database unique identifier (UUID). (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7).
-* **astraKeyspace** : The name of the Cassandra keyspace inside of the Astra database.
-* **astraTable** : The name of the table inside of the Cassandra database. (Example: my_table).
+* **astraToken**: The token value or secret resource ID. For example, `AstraCS:abcdefghij`.
+* **astraDatabaseId**: The database unique identifier (UUID). For example, `cf7af129-d33a-498f-ad06-d97a6ee6eb7`.
+* **astraKeyspace**: The name of the Cassandra keyspace inside of the Astra database.
+* **astraTable**: The name of the table inside of the Cassandra database. For example, `my_table`.
 
 ### Optional parameters
 
-* **astraQuery** : The query to use to filter rows instead of reading the whole table.
-* **astraDatabaseRegion** : If not provided, a default is chosen, which is useful with multi-region databases.
-* **minTokenRangesCount** : The minimal number of splits to use to distribute the query.
-* **outputTableSpec** : The BigQuery table location to write the output to. Use the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match the input objects.
+* **astraQuery**: The query to use to filter rows instead of reading the whole table.
+* **astraDatabaseRegion**: If not provided, a default is chosen, which is useful with multi-region databases.
+* **minTokenRangesCount**: The minimal number of splits to use to distribute the query.
+* **outputTableSpec**: The BigQuery table location to write the output to. Use the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match the input objects.
 
 
 
@@ -221,10 +221,10 @@ resource "google_dataflow_flex_template_job" "astradb_to_bigquery" {
   name              = "astradb-to-bigquery"
   region            = var.region
   parameters        = {
-    astraToken = "AstraCS:abcdefghij"
-    astraDatabaseId = "cf7af129-d33a-498f-ad06-d97a6ee6eb7"
+    astraToken = "<astraToken>"
+    astraDatabaseId = "<astraDatabaseId>"
     astraKeyspace = "<astraKeyspace>"
-    astraTable = "my_table"
+    astraTable = "<astraTable>"
     # astraQuery = "<astraQuery>"
     # astraDatabaseRegion = "<astraDatabaseRegion>"
     # minTokenRangesCount = "<minTokenRangesCount>"

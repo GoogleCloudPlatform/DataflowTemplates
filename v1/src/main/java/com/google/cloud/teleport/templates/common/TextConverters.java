@@ -61,7 +61,7 @@ public class TextConverters {
         description = "Output file directory in Cloud Storage",
         helpText =
             "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters.",
-        example = "gs://your-bucket/your-path")
+        example = "gs://your-bucket/your-path/")
     @Validation.Required
     ValueProvider<String> getOutputDirectory();
 

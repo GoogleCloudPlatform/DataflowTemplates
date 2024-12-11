@@ -33,21 +33,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **instanceId** : The instance ID of the Spanner database that you want to export.
-* **databaseId** : The database ID of the Spanner database that you want to export.
-* **outputDir** : The Cloud Storage path to export Avro files to. The export job creates a new directory under this path that contains the exported files. (Example: gs://your-bucket/your-path).
+* **instanceId**: The instance ID of the Spanner database that you want to export.
+* **databaseId**: The database ID of the Spanner database that you want to export.
+* **outputDir**: The Cloud Storage path to export Avro files to. The export job creates a new directory under this path that contains the exported files. For example, `gs://your-bucket/your-path`.
 
 ### Optional parameters
 
-* **avroTempDirectory** : The Cloud Storage path where temporary Avro files are written.
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com.
-* **snapshotTime** : The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified by using RFC 3339 UTC `Zulu` format. The timestamp must be in the past, and maximum timestamp staleness applies. (Example: 1990-12-31T23:59:60Z). Defaults to empty.
-* **spannerProjectId** : The ID of the Google Cloud project that contains the Spanner database that you want to read data from.
-* **shouldExportTimestampAsLogicalType** : If true, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, this parameter is set to `false` and timestamps are exported as ISO-8601 strings at nanosecond precision.
-* **tableNames** : A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`.If the table is in named schema, please use fully qualified name. For example: `sch1.foo` in which `sch1` is the schema name and `foo` is the table name. Defaults to empty.
-* **shouldExportRelatedTables** : Whether to include related tables. This parameter is used in conjunction with the `tableNames` parameter. Defaults to: false.
-* **spannerPriority** : The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.
-* **dataBoostEnabled** : Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. When set to `true`, you also need the `spanner.databases.useDataBoost` IAM permission. For more information, see the Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.
+* **avroTempDirectory**: The Cloud Storage path where temporary Avro files are written.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
+* **snapshotTime**: The timestamp that corresponds to the version of the Spanner database that you want to read. The timestamp must be specified by using RFC 3339 UTC `Zulu` format. The timestamp must be in the past, and maximum timestamp staleness applies. For example, `1990-12-31T23:59:60Z`. Defaults to empty.
+* **spannerProjectId**: The ID of the Google Cloud project that contains the Spanner database that you want to read data from.
+* **shouldExportTimestampAsLogicalType**: If `true`, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, this parameter is set to `false` and timestamps are exported as ISO-8601 strings at nanosecond precision.
+* **tableNames**: A comma-separated list of tables specifying the subset of the Spanner database to export. If you set this parameter, you must either include all of the related tables (parent tables and foreign key referenced tables) or set the `shouldExportRelatedTables` parameter to `true`.If the table is in named schema, please use fully qualified name. For example: `sch1.foo` in which `sch1` is the schema name and `foo` is the table name. Defaults to empty.
+* **shouldExportRelatedTables**: Whether to include related tables. This parameter is used in conjunction with the `tableNames` parameter. Defaults to: false.
+* **spannerPriority**: The request priority for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.
+* **dataBoostEnabled**: Set to `true` to use the compute resources of Spanner Data Boost to run the job with near-zero impact on Spanner OLTP workflows. When set to `true`, you also need the `spanner.databases.useDataBoost` IAM permission. For more information, see the Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.
 
 
 
@@ -247,10 +247,10 @@ resource "google_dataflow_job" "cloud_spanner_to_gcs_avro" {
   parameters        = {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
-    outputDir = "gs://your-bucket/your-path"
+    outputDir = "<outputDir>"
     # avroTempDirectory = "<avroTempDirectory>"
     # spannerHost = "https://batch-spanner.googleapis.com"
-    # snapshotTime = "1990-12-31T23:59:60Z"
+    # snapshotTime = ""
     # spannerProjectId = "<spannerProjectId>"
     # shouldExportTimestampAsLogicalType = "false"
     # tableNames = ""

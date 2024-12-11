@@ -134,7 +134,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "JSON file prefix",
         helpText =
-            "The prefix of the JSON filename. For example: \"table1-\". If no value is provided, defaults to \"part\".")
+            "The prefix of the JSON filename. For example: `table1-`. If no value is provided, defaults to `part`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 
@@ -145,7 +145,7 @@ public class BigtableToVectorEmbeddings {
         order = 6,
         description = "ID column",
         helpText =
-            "The fully qualified column name where the ID is stored. In the format cf:col or _key.")
+            "The fully qualified column name where the ID is stored. In the format `cf:col` or `_key`.")
     ValueProvider<String> getIdColumn();
 
     @SuppressWarnings("unused")
@@ -155,7 +155,7 @@ public class BigtableToVectorEmbeddings {
         order = 7,
         description = "Embedding column",
         helpText =
-            "The fully qualified column name where the embeddings are stored. In the format cf:col or _key.")
+            "The fully qualified column name where the embeddings are stored. In the format `cf:col` or `_key`.")
     ValueProvider<String> getEmbeddingColumn();
 
     @SuppressWarnings("unused")
@@ -166,7 +166,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Crowding tag column",
         helpText =
-            "The fully qualified column name where the crowding tag is stored. In the format cf:col or _key.")
+            "The fully qualified column name where the crowding tag is stored. In the format `cf:col` or `_key`.")
     ValueProvider<String> getCrowdingTagColumn();
 
     @SuppressWarnings("unused")
@@ -177,7 +177,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "The byte size of the embeddings array. Can be 4 or 8.",
         helpText =
-            "The byte size of each entry in the embeddings array. For float, use the value 4. For double, use the value 8. Defaults to 4.")
+            "The byte size of each entry in the embeddings array. For float, use the value `4`. For double, use the value `8`. Defaults to `4`.")
     @Default.Integer(4)
     ValueProvider<Integer> getEmbeddingByteSize();
 
@@ -189,7 +189,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Allow restricts mappings",
         helpText =
-            "The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format `cf:col->alias`.")
     ValueProvider<String> getAllowRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -200,7 +200,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Deny restricts mappings",
         helpText =
-            "The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format `cf:col->alias`.")
     ValueProvider<String> getDenyRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -211,7 +211,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Integer numeric restricts mappings",
         helpText =
-            "The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format `cf:col->alias`.")
     ValueProvider<String> getIntNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -222,7 +222,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Float numeric restricts mappings",
         helpText =
-            "The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`.")
     ValueProvider<String> getFloatNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
@@ -233,7 +233,7 @@ public class BigtableToVectorEmbeddings {
         optional = true,
         description = "Double numeric restricts mappings",
         helpText =
-            "The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format cf:col->alias.")
+            "The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`.")
     ValueProvider<String> getDoubleNumericRestrictsMappings();
 
     @SuppressWarnings("unused")
