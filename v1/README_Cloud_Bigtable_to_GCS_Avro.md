@@ -18,15 +18,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProjectId** : The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.
-* **bigtableInstanceId** : The ID of the Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Bigtable table to export.
-* **outputDirectory** : The Cloud Storage path where data is written. (Example: gs://mybucket/somefolder).
-* **filenamePrefix** : The prefix of the Avro filename. For example, `output-`. Defaults to: part.
+* **bigtableProjectId**: The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.
+* **bigtableInstanceId**: The ID of the Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Bigtable table to export.
+* **outputDirectory**: The Cloud Storage path where data is written. For example, `gs://mybucket/somefolder`.
+* **filenamePrefix**: The prefix of the Avro filename. For example, `output-`. Defaults to: part.
 
 ### Optional parameters
 
-* **bigtableAppProfileId** : The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
+* **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
 
 
 
@@ -209,7 +209,7 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_avro" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    outputDirectory = "gs://mybucket/somefolder"
+    outputDirectory = "<outputDirectory>"
     filenamePrefix = "part"
     # bigtableAppProfileId = "default"
   }

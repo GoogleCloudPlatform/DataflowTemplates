@@ -17,29 +17,29 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **changeStreamName** : This is the name of the Spanner change stream that the pipeline will read from.
-* **instanceId** : This is the name of the Cloud Spanner instance where the changestream is present.
-* **databaseId** : This is the name of the Cloud Spanner database that the changestream is monitoring.
-* **spannerProjectId** : This is the name of the Cloud Spanner project.
-* **metadataInstance** : This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
-* **metadataDatabase** : This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
-* **gcsOutputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path/).
-* **sourceShardsFilePath** : Source shard details file path in Cloud Storage that contains connection profile of source shards. Atleast one shard information is expected.
-* **runIdentifier** : The identifier to distinguish between different runs of reverse replication flows.
+* **changeStreamName**: This is the name of the Spanner change stream that the pipeline will read from.
+* **instanceId**: This is the name of the Cloud Spanner instance where the changestream is present.
+* **databaseId**: This is the name of the Cloud Spanner database that the changestream is monitoring.
+* **spannerProjectId**: This is the name of the Cloud Spanner project.
+* **metadataInstance**: This is the instance to store the metadata used by the connector to control the consumption of the change stream API data.
+* **metadataDatabase**: This is the database to store the metadata used by the connector to control the consumption of the change stream API data.
+* **gcsOutputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path/`.
+* **sourceShardsFilePath**: Source shard details file path in Cloud Storage that contains connection profile of source shards. Atleast one shard information is expected.
+* **runIdentifier**: The identifier to distinguish between different runs of reverse replication flows.
 
 ### Optional parameters
 
-* **startTimestamp** : Read changes from the given timestamp. Defaults to empty.
-* **endTimestamp** : Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
-* **sessionFilePath** : Session file path in Cloud Storage that contains mapping information from HarbourBridge. Needed when doing sharded reverse replication.
-* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 10s.
-* **filtrationMode** : Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
-* **metadataTableSuffix** : Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
-* **skipDirectoryName** : Records skipped from reverse replication are written to this directory. Default directory name is skip.
-* **runMode** : Regular starts from input start time, resume start from last processed time. Defaults to: regular.
-* **shardingCustomJarPath** : Custom jar location in Cloud Storage that contains the customization logic for fetching shard id. Defaults to empty.
-* **shardingCustomClassName** : Fully qualified class name having the custom shard id implementation.  It is a mandatory field in case shardingCustomJarPath is specified. Defaults to empty.
-* **shardingCustomParameters** : String containing any custom parameters to be passed to the custom sharding class. Defaults to empty.
+* **startTimestamp**: Read changes from the given timestamp. Defaults to empty.
+* **endTimestamp**: Read changes until the given timestamp. If no timestamp provided, reads indefinitely. Defaults to empty.
+* **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge. Needed when doing sharded reverse replication.
+* **windowDuration**: The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `5m`. Defaults to: 10s.
+* **filtrationMode**: Mode of Filtration, decides how to drop certain records based on a criteria. Currently supported modes are: none (filter nothing), forward_migration (filter records written via the forward migration pipeline). Defaults to forward_migration.
+* **metadataTableSuffix**: Suffix appended to the spanner_to_gcs_metadata and shard_file_create_progress metadata tables.Useful when doing multiple runs.Only alpha numeric and underscores are allowed. Defaults to empty.
+* **skipDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
+* **runMode**: Regular starts from input start time, resume start from last processed time. Defaults to: regular.
+* **shardingCustomJarPath**: Custom jar location in Cloud Storage that contains the customization logic for fetching shard id. Defaults to empty.
+* **shardingCustomClassName**: Fully qualified class name having the custom shard id implementation.  It is a mandatory field in case shardingCustomJarPath is specified. Defaults to empty.
+* **shardingCustomParameters**: String containing any custom parameters to be passed to the custom sharding class. Defaults to empty.
 
 
 
@@ -264,13 +264,13 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_sharded_
     spannerProjectId = "<spannerProjectId>"
     metadataInstance = "<metadataInstance>"
     metadataDatabase = "<metadataDatabase>"
-    gcsOutputDirectory = "gs://your-bucket/your-path/"
+    gcsOutputDirectory = "<gcsOutputDirectory>"
     sourceShardsFilePath = "<sourceShardsFilePath>"
     runIdentifier = "<runIdentifier>"
     # startTimestamp = ""
     # endTimestamp = ""
     # sessionFilePath = "<sessionFilePath>"
-    # windowDuration = "5m"
+    # windowDuration = "10s"
     # filtrationMode = "forward_migration"
     # metadataTableSuffix = ""
     # skipDirectoryName = "skip"

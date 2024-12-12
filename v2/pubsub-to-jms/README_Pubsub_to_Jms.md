@@ -14,15 +14,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputName** : JMS Queue/Topic Name to write the input to. (Example: queue).
-* **outputType** : JMS Destination Type to Write the input to. (Example: queue).
-* **username** : JMS username for authentication with JMS server (Example: sampleusername).
-* **password** : Password for username provided for authentication with JMS server (Example: samplepassword).
+* **inputSubscription**: Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **outputName**: JMS Queue/Topic Name to write the input to. For example, `queue`.
+* **outputType**: JMS Destination Type to Write the input to. For example, `queue`.
+* **username**: JMS username for authentication with JMS server For example, `sampleusername`.
+* **password**: Password for username provided for authentication with JMS server For example, `samplepassword`.
 
 ### Optional parameters
 
-* **jmsServer** : Server IP for JMS Host (Example: host:5672).
+* **jmsServer**: Server IP for JMS Host For example, `host:5672`.
 
 
 
@@ -199,12 +199,12 @@ resource "google_dataflow_flex_template_job" "pubsub_to_jms" {
   name              = "pubsub-to-jms"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    outputName = "queue"
-    outputType = "queue"
-    username = "sampleusername"
-    password = "samplepassword"
-    # jmsServer = "host:5672"
+    inputSubscription = "<inputSubscription>"
+    outputName = "<outputName>"
+    outputType = "<outputType>"
+    username = "<username>"
+    password = "<password>"
+    # jmsServer = "<jmsServer>"
   }
 }
 ```

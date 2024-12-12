@@ -172,7 +172,7 @@ public class ExportPipeline {
         optional = true,
         description = "Export Timestamps as Timestamp-micros type",
         helpText =
-            "If true, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, this parameter is set to `false` and timestamps are exported as ISO-8601 strings at nanosecond precision.")
+            "If `true`, timestamps are exported as a `long` type with `timestamp-micros` logical type. By default, this parameter is set to `false` and timestamps are exported as ISO-8601 strings at nanosecond precision.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getShouldExportTimestampAsLogicalType();
 

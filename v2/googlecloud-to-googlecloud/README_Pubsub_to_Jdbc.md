@@ -18,21 +18,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : The Pub/Sub input subscription to read from, in the format of 'projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>' (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **driverClassName** : The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **connectionUrl** : The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **driverJars** : Comma separated Cloud Storage paths for JDBC drivers.  (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **statement** : The statement to run against the database. The statement must specify the column names of the table in any order. Only the values of the specified column names are read from the JSON and added to the statement.  (Example: INSERT INTO tableName (column1, column2) VALUES (?,?)).
-* **outputDeadletterTopic** : The Pub/Sub topic to forward undeliverable messages to.  (Example: projects/<PROJECT_ID>/topics/<TOPIC_NAME>).
+* **inputSubscription**: The Pub/Sub input subscription to read from. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
+* **driverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`.
+* **connectionUrl**: The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string. For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **driverJars**: Comma separated Cloud Storage paths for JDBC drivers.  For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
+* **statement**: The statement to run against the database. The statement must specify the column names of the table in any order. Only the values of the specified column names are read from the JSON and added to the statement.  For example, `INSERT INTO tableName (column1, column2) VALUES (?,?)`.
+* **outputDeadletterTopic**: The Pub/Sub topic to forward undeliverable messages to.  For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 
-* **username** : The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.
-* **password** : The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.
-* **connectionProperties** : The properties string to use for the JDBC connection. The string must use the format `[propertyName=property;]*`.  (Example: unicode=true;characterEncoding=UTF-8).
-* **KMSEncryptionKey** : The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted. (Example: projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}).
-* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
+* **username**: The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.
+* **password**: The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded.
+* **connectionProperties**: The properties string to use for the JDBC connection. The string must use the format `[propertyName=property;]*`.  For example, `unicode=true;characterEncoding=UTF-8`.
+* **KMSEncryptionKey**: The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted. For example, `projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}`.
+* **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
 
 
@@ -227,18 +227,18 @@ resource "google_dataflow_flex_template_job" "pubsub_to_jdbc" {
   name              = "pubsub-to-jdbc"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    driverClassName = "com.mysql.jdbc.Driver"
-    connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
-    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
-    statement = "INSERT INTO tableName (column1, column2) VALUES (?,?)"
-    outputDeadletterTopic = "projects/<PROJECT_ID>/topics/<TOPIC_NAME>"
+    inputSubscription = "<inputSubscription>"
+    driverClassName = "<driverClassName>"
+    connectionUrl = "<connectionUrl>"
+    driverJars = "<driverJars>"
+    statement = "<statement>"
+    outputDeadletterTopic = "<outputDeadletterTopic>"
     # username = "<username>"
     # password = "<password>"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
-    # KMSEncryptionKey = "projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}"
-    # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # connectionProperties = "<connectionProperties>"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
   }
 }
 ```
