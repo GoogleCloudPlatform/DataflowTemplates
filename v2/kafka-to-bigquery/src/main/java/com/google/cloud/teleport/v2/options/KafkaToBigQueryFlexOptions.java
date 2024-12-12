@@ -47,7 +47,7 @@ public interface KafkaToBigQueryFlexOptions
   void setReadBootstrapServerAndTopic(String value);
 
   @TemplateParameter.Boolean(
-      order = 3,
+      order = 2,
       groupName = "Source",
       optional = true,
       description = "Persist the Kafka Message Key to the BigQuery table",
@@ -57,6 +57,18 @@ public interface KafkaToBigQueryFlexOptions
   Boolean getPersistKafkaKey();
 
   void setPersistKafkaKey(Boolean value);
+
+  @TemplateParameter.Boolean(
+      order = 3,
+      groupName = "Source",
+      optional = true,
+      description = "Persist the Kafka Message Topic to the BigQuery table",
+      helpText =
+          "If true, the pipeline will persist the Kafka message topic in the BigQuery table, in a `_topic` field of type `STRING`. Default is `false` (Topic is ignored).")
+  @Default.Boolean(false)
+  Boolean getPersistKafkaTopic();
+
+  void setPersistKafkaTopic(Boolean value);
 
   @TemplateParameter.Enum(
       order = 4,

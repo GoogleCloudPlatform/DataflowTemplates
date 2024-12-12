@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.kafka.utils;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class KafkaTopicUtils {
 
@@ -27,10 +29,8 @@ public class KafkaTopicUtils {
   public static List<String> getBootstrapServerAndTopic(
       String bootstrapServerAndTopicString, String project) {
     Matcher matcher = GMK_PATTERN.matcher(bootstrapServerAndTopicString);
-    String bootstrapServer = null;
-    String topicName = null;
     if (matcher.matches()) {
-      bootstrapServer =
+      String bootstrapServer =
           "bootstrap."
               + matcher.group(3)
               + "."
@@ -38,12 +38,13 @@ public class KafkaTopicUtils {
               + ".managedkafka."
               + project
               + ".cloud.goog:9092";
-      topicName = matcher.group(4);
-    } else {
-      String[] list = bootstrapServerAndTopicString.split(";");
-      bootstrapServer = list[0];
-      topicName = list[1];
+      String topicName = matcher.group(4);
+      return List.of(bootstrapServer, topicName);
     }
-    return List.of(bootstrapServer, topicName);
+    String[] list = bootstrapServerAndTopicString.split(";");
+    String bootstrapServer = list[0];
+    String[] topicNames = list[1].split(",");
+    return Stream.concat(Stream.of(bootstrapServer), Stream.of(topicNames))
+        .collect(Collectors.toList());
   }
 }
