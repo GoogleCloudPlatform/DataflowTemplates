@@ -28,8 +28,8 @@ import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -125,13 +125,14 @@ public class KafkaToKafka {
           "Authentication method not supported: " + options.getKafkaWriteAuthenticationMethod());
     }
 
-    String sourceTopic;
+    List<String> sourceTopics;
     String sourceBootstrapServers;
     if (options.getReadBootstrapServerAndTopic() != null) {
       List<String> sourceBootstrapServerAndTopicList =
           KafkaTopicUtils.getBootstrapServerAndTopic(
               options.getReadBootstrapServerAndTopic(), options.getProject());
-      sourceTopic = sourceBootstrapServerAndTopicList.get(1);
+      sourceTopics =
+          sourceBootstrapServerAndTopicList.stream().skip(1).collect(Collectors.toList());
       sourceBootstrapServers = sourceBootstrapServerAndTopicList.get(0);
     } else {
       throw new IllegalArgumentException(
@@ -157,7 +158,7 @@ public class KafkaToKafka {
             "Read from Kafka",
             KafkaTransform.readBytesFromKafka(
                     sourceBootstrapServers,
-                    Collections.singletonList(sourceTopic),
+                    sourceTopics,
                     KafkaConfig.fromReadOptions(options),
                     options.getEnableCommitOffsets())
                 .withoutMetadata())

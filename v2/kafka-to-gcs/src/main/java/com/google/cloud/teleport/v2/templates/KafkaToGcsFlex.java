@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.transforms.WriteTransform;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -135,7 +136,7 @@ public class KafkaToGcsFlex {
       List<String> bootstrapServerAndTopicList =
           KafkaTopicUtils.getBootstrapServerAndTopic(
               options.getReadBootstrapServerAndTopic(), options.getProject());
-      topicsList = List.of(bootstrapServerAndTopicList.get(1));
+      topicsList = bootstrapServerAndTopicList.stream().skip(1).collect(Collectors.toList());
       bootstrapServes = bootstrapServerAndTopicList.get(0);
     } else {
       throw new IllegalArgumentException(
