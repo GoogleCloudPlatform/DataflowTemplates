@@ -245,6 +245,7 @@ public class PubsubToAvro {
     @ProcessElement
     public void processElement(ProcessContext context) {
       PubsubMessage message = context.element();
+
       context.output(
           new AvroPubsubMessageRecord(
               message.getPayload(), message.getAttributeMap(), context.timestamp().getMillis()));

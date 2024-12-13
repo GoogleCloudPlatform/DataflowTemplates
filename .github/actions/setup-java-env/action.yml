@@ -30,7 +30,7 @@ inputs:
     type: string
     description: 'The version of Java to install'
     required: false
-    default: '11'
+    default: '17'
 outputs:
   cache-hit:
     description: 'Whether or not there was a cache hit'
@@ -44,6 +44,19 @@ runs:
       with:
         distribution: 'temurin'
         java-version: ${{ inputs.java-version }}
+#     - name: Configure JAVA_HOME
+#       shell: bash
+#       env:
+#         JAVA_VERSION: ${{ inputs.java-version }}
+#       run: |
+#         TEMURIN_VERSION=$(ls /home/runner/actions-runner/_work/_tool/Java_Temurin-Hotspot_jdk/ | grep "$JAVA_VERSION." | sort -nr | sed -n '1p')
+#         TEMURIN_FULL_PATH="/home/runner/actions-runner/_work/_tool/Java_Temurin-Hotspot_jdk/$TEMURIN_VERSION/x64"
+#         touch .bashrc
+#         if grep -q "^export JAVA_HOME=" ~/.bashrc; then
+#           sed -i "s/^export JAVA_HOME=.*/export JAVA_HOME=$(echo "$TEMURIN_FULL_PATH" | sed 's/[\/&]/\\&/g')/" ~/.bashrc
+#         else
+#           echo "export JAVA_HOME=$TEMURIN_FULL_PATH" >> ~/.bashrc
+#         fi
     - name: Prepare Key
       shell: bash
       env:
