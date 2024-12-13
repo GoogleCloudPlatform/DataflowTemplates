@@ -17,15 +17,15 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputName** : The name of the JMS topic or queue that data is read from. (Example: queue).
-* **inputType** : The JMS destination type to read data from. Can be a queue or a topic. (Example: queue).
-* **outputTopic** : The name of the Pub/Sub topic to publish data to, in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. (Example: projects/your-project-id/topics/your-topic-name).
-* **username** : The username to use for authentication on the JMS server. (Example: sampleusername).
-* **password** : The password associated with the provided username. (Example: samplepassword).
+* **inputName**: The name of the JMS topic or queue that data is read from. For example, `queue`.
+* **inputType**: The JMS destination type to read data from. Can be a queue or a topic. For example, `queue`.
+* **outputTopic**: The name of the Pub/Sub topic to publish data to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **username**: The username to use for authentication on the JMS server. For example, `sampleusername`.
+* **password**: The password associated with the provided username. For example, `samplepassword`.
 
 ### Optional parameters
 
-* **jmsServer** : The JMS (ActiveMQ) Server IP. (Example: tcp://10.0.0.1:61616).
+* **jmsServer**: The JMS (ActiveMQ) Server IP. For example, `tcp://10.0.0.1:61616`.
 
 
 
@@ -202,12 +202,12 @@ resource "google_dataflow_flex_template_job" "jms_to_pubsub" {
   name              = "jms-to-pubsub"
   region            = var.region
   parameters        = {
-    inputName = "queue"
-    inputType = "queue"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
-    username = "sampleusername"
-    password = "samplepassword"
-    # jmsServer = "tcp://10.0.0.1:61616"
+    inputName = "<inputName>"
+    inputType = "<inputType>"
+    outputTopic = "<outputTopic>"
+    username = "<username>"
+    password = "<password>"
+    # jmsServer = "<jmsServer>"
   }
 }
 ```

@@ -14,32 +14,32 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **gcsOutputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path).
-* **bigtableChangeStreamAppProfile** : The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.
-* **bigtableReadInstanceId** : The source Bigtable instance ID.
-* **bigtableReadTableId** : The source Bigtable table ID.
+* **gcsOutputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path`.
+* **bigtableChangeStreamAppProfile**: The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions.
+* **bigtableReadInstanceId**: The source Bigtable instance ID.
+* **bigtableReadTableId**: The source Bigtable table ID.
 
 ### Optional parameters
 
-* **outputFileFormat** : The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Defaults to AVRO.
-* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 1h). Defaults to: 1h.
-* **bigtableMetadataTableTableId** : Table ID used for creating the metadata table.
-* **schemaOutputFormat** : Schema chosen for outputting data to GCS. CHANGELOG_ENTRY support TEXT and AVRO output formats, BIGTABLE_ROW only supports AVRO output. Defaults to: CHANGELOG_ENTRY.
-* **outputFilenamePrefix** : The prefix to place on each windowed file. Defaults to "changelog-" (Example: changelog-).
-* **outputBatchSize** : Batching mutations reduces overhead and cost. Depending on the size of values written to Cloud Bigtable the batch size might need to be adjusted lower to avoid memory pressures on the worker fleet. Defaults to 10000.
-* **outputShardsCount** : The maximum number of output shards produced when writing to Cloud Storage. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 20.
-* **useBase64Rowkeys** : Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeysDefaults to false.
-* **useBase64ColumnQualifiers** : Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
-* **useBase64Values** : Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
-* **bigtableChangeStreamMetadataInstanceId** : The Bigtable change streams metadata instance ID. Defaults to empty.
-* **bigtableChangeStreamMetadataTableTableId** : The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
-* **bigtableChangeStreamCharset** : The Bigtable change streams charset name. Defaults to: UTF-8.
-* **bigtableChangeStreamStartTimestamp** : The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
-* **bigtableChangeStreamIgnoreColumnFamilies** : A comma-separated list of column family name changes to ignore. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns** : A comma-separated list of column name changes to ignore. Defaults to empty.
-* **bigtableChangeStreamName** : A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
-* **bigtableChangeStreamResume** : When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
-* **bigtableReadProjectId** : The Bigtable project ID. The default is the project for the Dataflow job.
+* **outputFileFormat**: The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Defaults to AVRO.
+* **windowDuration**: The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `1h`. Defaults to: 1h.
+* **bigtableMetadataTableTableId**: Table ID used for creating the metadata table.
+* **schemaOutputFormat**: Schema chosen for outputting data to GCS. CHANGELOG_ENTRY support TEXT and AVRO output formats, BIGTABLE_ROW only supports AVRO output. Defaults to: CHANGELOG_ENTRY.
+* **outputFilenamePrefix**: The prefix to place on each windowed file. Defaults to "changelog-" For example, `changelog-`.
+* **outputBatchSize**: Batching mutations reduces overhead and cost. Depending on the size of values written to Cloud Bigtable the batch size might need to be adjusted lower to avoid memory pressures on the worker fleet. Defaults to 10000.
+* **outputShardsCount**: The maximum number of output shards produced when writing to Cloud Storage. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 20.
+* **useBase64Rowkeys**: Only supported for the TEXT output file format. When set to true, rowkeys will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String rowkeysDefaults to false.
+* **useBase64ColumnQualifiers**: Only supported for the TEXT output file format. When set to true, column qualifiers will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String column qualifiersDefaults to false.
+* **useBase64Values**: Only supported for the TEXT output file format. When set to true, values will be written as Base64-encoded strings. Otherwise bigtableChangeStreamCharset charset will be used to decode binary values into String valuesDefaults to false.
+* **bigtableChangeStreamMetadataInstanceId**: The Bigtable change streams metadata instance ID. Defaults to empty.
+* **bigtableChangeStreamMetadataTableTableId**: The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty.
+* **bigtableChangeStreamCharset**: The Bigtable change streams charset name. Defaults to: UTF-8.
+* **bigtableChangeStreamStartTimestamp**: The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
+* **bigtableChangeStreamIgnoreColumnFamilies**: A comma-separated list of column family name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns**: A comma-separated list of column name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamName**: A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
+* **bigtableChangeStreamResume**: When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
+* **bigtableReadProjectId**: The Bigtable project ID. The default is the project for the Dataflow job.
 
 
 
@@ -267,7 +267,7 @@ resource "google_dataflow_flex_template_job" "bigtable_change_streams_to_google_
   name              = "bigtable-change-streams-to-google-cloud-storage"
   region            = var.region
   parameters        = {
-    gcsOutputDirectory = "gs://your-bucket/your-path"
+    gcsOutputDirectory = "<gcsOutputDirectory>"
     bigtableChangeStreamAppProfile = "<bigtableChangeStreamAppProfile>"
     bigtableReadInstanceId = "<bigtableReadInstanceId>"
     bigtableReadTableId = "<bigtableReadTableId>"

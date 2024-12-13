@@ -18,20 +18,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **driverClassName** : The JDBC driver class name. (Example: com.mysql.jdbc.Driver).
-* **connectionUrl** : The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example: 'echo -n "jdbc:mysql://some-host:3306/sampledb" | gcloud kms encrypt --location=<location> --keyring=<keyring> --key=<key> --plaintext-file=- --ciphertext-file=- | base64' (Example: jdbc:mysql://some-host:3306/sampledb).
-* **driverJars** : Comma-separated Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **query** : The query to run on the source to extract the data. (Example: select * from sampledb.sample_table).
-* **outputTopic** : The Pub/Sub topic to publish to, in the format projects/<PROJECT_ID>/topics/<TOPIC_NAME>. (Example: projects/your-project-id/topics/your-topic-name).
+* **driverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`.
+* **connectionUrl**: The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example: 'echo -n "jdbc:mysql://some-host:3306/sampledb" | gcloud kms encrypt --location=<location> --keyring=<keyring> --key=<key> --plaintext-file=- --ciphertext-file=- | base64' For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **driverJars**: Comma-separated Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
+* **query**: The query to run on the source to extract the data. For example, `select * from sampledb.sample_table`.
+* **outputTopic**: The Pub/Sub topic to publish to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 
-* **username** : The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_username' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`.
-* **password** : The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_password' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`.
-* **connectionProperties** : The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.  (Example: unicode=true;characterEncoding=UTF-8).
-* **KMSEncryptionKey** : The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted and base64 encoded. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
+* **username**: The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_username' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`.
+* **password**: The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_password' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`.
+* **connectionProperties**: The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.  For example, `unicode=true;characterEncoding=UTF-8`.
+* **KMSEncryptionKey**: The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted and base64 encoded. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
 
 
@@ -223,17 +223,17 @@ resource "google_dataflow_flex_template_job" "jdbc_to_pubsub" {
   name              = "jdbc-to-pubsub"
   region            = var.region
   parameters        = {
-    driverClassName = "com.mysql.jdbc.Driver"
-    connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
-    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
-    query = "select * from sampledb.sample_table"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    driverClassName = "<driverClassName>"
+    connectionUrl = "<connectionUrl>"
+    driverJars = "<driverJars>"
+    query = "<query>"
+    outputTopic = "<outputTopic>"
     # username = "<username>"
     # password = "<password>"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
-    # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # connectionProperties = "<connectionProperties>"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
   }
 }
 ```

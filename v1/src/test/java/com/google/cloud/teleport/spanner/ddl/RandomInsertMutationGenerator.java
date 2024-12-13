@@ -155,7 +155,7 @@ public class RandomInsertMutationGenerator {
         }
       }
       for (Column column : table.columns()) {
-        if (!column.isGenerated()) {
+        if (!column.isGenerated() && !column.isIdentityColumn()) {
           valueGenerators.put(
               column.name(),
               randomValueGenerator

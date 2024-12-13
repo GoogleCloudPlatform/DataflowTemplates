@@ -19,14 +19,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputTopic** : The name of the MQTT topic that data is read from. (Example: topic).
-* **outputTopic** : The name of the output Pub/Sub topic that data is written to. (Example: projects/your-project-id/topics/your-topic-name).
-* **username** : The username to use for authentication on the MQTT server. (Example: sampleusername).
-* **password** : The password associated with the provided username. (Example: samplepassword).
+* **inputTopic**: The name of the MQTT topic that data is read from. For example, `topic`.
+* **outputTopic**: The name of the output Pub/Sub topic that data is written to. For example, `projects/your-project-id/topics/your-topic-name`.
+* **username**: The username to use for authentication on the MQTT server. For example, `sampleusername`.
+* **password**: The password associated with the provided username. For example, `samplepassword`.
 
 ### Optional parameters
 
-* **brokerServer** : The MQTT broker server IP or host. (Example: tcp://host:1883).
+* **brokerServer**: The MQTT broker server IP or host. For example, `tcp://host:1883`.
 
 
 
@@ -200,11 +200,11 @@ resource "google_dataflow_flex_template_job" "mqtt_to_pubsub" {
   name              = "mqtt-to-pubsub"
   region            = var.region
   parameters        = {
-    inputTopic = "topic"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
-    username = "sampleusername"
-    password = "samplepassword"
-    # brokerServer = "tcp://host:1883"
+    inputTopic = "<inputTopic>"
+    outputTopic = "<outputTopic>"
+    username = "<username>"
+    password = "<password>"
+    # brokerServer = "<brokerServer>"
   }
 }
 ```
