@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.text.ParseException;
@@ -45,14 +46,13 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
-
+public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlSourceLT.class);
 
   private String generatorSchemaPath;
   private final String artifactBucket = TestProperties.artifactBucket();
   private final String spannerDdlResource = "SpannerToMySqlSourceLT/spanner-schema.sql";
-  private final String sessionFileResource = "SpannerToMySqlSourceLT/session.json";
+  private final String sessionFileResource = "SpannerToMySqlCustomTransformationLT/session.json";
   private final String dataGeneratorSchemaResource =
       "SpannerToMySqlSourceLT/datagenerator-schema.json";
   private final String table = "Person";
@@ -63,7 +63,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private final int numShards = 1;
 
   @Before
-  public void setup() throws IOException {
+  public void setup() throws IOException, InterruptedException {
     setupResourceManagers(spannerDdlResource, sessionFileResource, artifactBucket);
     setupMySQLResourceManager(numShards);
     generatorSchemaPath =
@@ -76,7 +76,12 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
-    jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers, null);
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                "input/customShard.jar", "com.custom.CustomTransformationWithShardForLiveIT")
+            .build();
+    createAndUploadJarToGcs(gcsResourceManager);
+    jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers, customTransformation);
   }
 
   @After
@@ -134,10 +139,13 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("first_name1", "varchar(500)");
     columns.put("last_name1", "varchar(500)");
+    columns.put("full_name1", "varchar(500)");
     columns.put("first_name2", "varchar(500)");
     columns.put("last_name2", "varchar(500)");
+    columns.put("full_name2", "varchar(500)");
     columns.put("first_name3", "varchar(500)");
     columns.put("last_name3", "varchar(500)");
+    columns.put("full_name3", "varchar(500)");
     columns.put("ID", "varchar(100) NOT NULL");
 
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "ID");
