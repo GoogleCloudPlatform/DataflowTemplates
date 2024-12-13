@@ -101,11 +101,13 @@ public final class ArtifactsSubject extends Subject {
    */
   public void hasHash(String hash) {
     if (actual.stream()
-            .noneMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
-      actual.stream().forEach(artifact -> {
-        String calculatedHash = sha256().hashBytes(artifact.contents()).toString();
-        LOG.info("Calculated Hash (no match found): {}", calculatedHash);
-      });
+        .noneMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
+      actual.stream()
+          .forEach(
+              artifact -> {
+                String calculatedHash = sha256().hashBytes(artifact.contents()).toString();
+                LOG.info("Calculated Hash (no match found): {}", calculatedHash);
+              });
       failWithActual("expected to contain hash", hash);
     }
   }
