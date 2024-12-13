@@ -96,7 +96,7 @@ public class CassandraTypeHandlerTest {
     String newValuesString = "{\"isAdmin\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     String colKey = "isAdmin";
-      assertEquals(false, handleCassandraBoolType(colKey, newValuesJson));
+    assertEquals(false, handleCassandraBoolType(colKey, newValuesJson));
   }
 
   @Test
@@ -328,13 +328,14 @@ public class CassandraTypeHandlerTest {
     handleCassandraFloatType(colKey, newValuesJson);
   }
 
-    @Test
-    public void convertSpannerValueJsonToInvalidDoubleType() {
-        String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\", \"salary\":\"invalid_value\"}";
-        JSONObject newValuesJson = new JSONObject(newValuesString);
-        String colKey = "salary";
-        handleCassandraDoubleType(colKey, newValuesJson);
-    }
+  @Test
+  public void convertSpannerValueJsonToInvalidDoubleType() {
+    String newValuesString =
+        "{\"FirstName\":\"kk\",\"LastName\":\"ll\", \"salary\":\"invalid_value\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String colKey = "salary";
+    handleCassandraDoubleType(colKey, newValuesJson);
+  }
 
   @Test
   public void convertSpannerValueJsonToBlobType_MissingColumn() {
@@ -751,7 +752,8 @@ public class CassandraTypeHandlerTest {
     JSONObject newValuesJson = new JSONObject();
     newValuesJson.put("data", newValuesString);
     String colKey = "data";
-    assertThrows(IllegalArgumentException.class, () -> handleStringifiedJsonToSet(colKey, newValuesJson));
+    assertThrows(
+        IllegalArgumentException.class, () -> handleStringifiedJsonToSet(colKey, newValuesJson));
   }
 
   @Test
@@ -848,6 +850,7 @@ public class CassandraTypeHandlerTest {
     String result = convertToCassandraTimestamp(value, timezoneOffset);
     assertEquals(expected, result);
   }
+
   @Test
   public void testConvertToCassandraDateWithValidDate() {
     String dateString = "2024-12-12T10:15:30Z";
@@ -977,5 +980,4 @@ public class CassandraTypeHandlerTest {
     boolean result = isValidJSON(nullString);
     assertFalse(result);
   }
-
 }
