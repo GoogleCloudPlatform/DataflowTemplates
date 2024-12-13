@@ -20,4 +20,5 @@ public class BigQueryConstants {
   private BigQueryConstants() {}
 
   public static final String KAFKA_KEY_FIELD = "_key";
+  public static final String KAFKA_TOPIC_FIELD = "_topic";
 }
