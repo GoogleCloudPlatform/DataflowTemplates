@@ -20,11 +20,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableProjectId**: The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from.
 * **bigtableInstanceId**: The ID of the Bigtable instance that contains the table.
 * **bigtableTableId**: The ID of the Bigtable table to read from.
-* **filenamePrefix**: The prefix of the JSON file name. For example, `table1-`. If no value is provided, defaults to `part`.
+* **outputDirectory**: The Cloud Storage path where the output JSON files are stored. For example, `gs://your-bucket/your-path/`.
 
 ### Optional parameters
 
-* **outputDirectory**: The Cloud Storage path where the output JSON files are stored. For example, `gs://your-bucket/your-path/`.
+* **filenamePrefix**: The prefix of the JSON file name. For example, `table1-`. If no value is provided, defaults to `part`.
 * **userOption**: Possible values are `FLATTEN` or `NONE`. `FLATTEN` flattens the row to the single level. `NONE` stores the whole row as a JSON string. Defaults to `NONE`.
 * **columnsAliases**: A comma-separated list of columns that are required for the Vertex AI Vector Search index. The columns `id` and `embedding` are required for Vertex AI Vector Search. You can use the notation `fromfamily:fromcolumn;to`. For example, if the columns are `rowkey` and `cf:my_embedding`, where `rowkey` has a different name than the embedding column, specify `cf:my_embedding;embedding` and, `rowkey;id`. Only use this option when the value for `userOption` is `FLATTEN`.
 * **bigtableAppProfileId**: The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.
@@ -216,8 +216,8 @@ resource "google_dataflow_job" "cloud_bigtable_to_gcs_json" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    filenamePrefix = "part"
-    # outputDirectory = "<outputDirectory>"
+    outputDirectory = "<outputDirectory>"
+    # filenamePrefix = "part"
     # userOption = "NONE"
     # columnsAliases = "<columnsAliases>"
     # bigtableAppProfileId = "default"

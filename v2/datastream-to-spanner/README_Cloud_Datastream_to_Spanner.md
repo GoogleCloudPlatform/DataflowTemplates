@@ -44,7 +44,6 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **instanceId**: The Spanner instance where the changes are replicated.
 * **databaseId**: The Spanner database where the changes are replicated.
-* **streamName**: The name or template for the stream to poll for schema information and source type.
 
 ### Optional parameters
 
@@ -54,6 +53,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **projectId**: The Spanner project ID.
 * **spannerHost**: The Cloud Spanner endpoint to call in the template. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
 * **gcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.
+* **streamName**: The name or template for the stream to poll for schema information and source type.
 * **shadowTablePrefix**: The prefix used to name shadow tables. Default: `shadow_`.
 * **shouldCreateShadowTables**: This flag indicates whether shadow tables must be created in Cloud Spanner database. Defaults to: true.
 * **rfcStartDateTime**: The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z.
@@ -73,6 +73,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
 * **filteredEventsDirectory**: This is the file path to store the events filtered via custom transformation. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions.
+* **shardingContextFilePath**: Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard.It is of the format Map<stream_name, Map<db_name, shard_id>>.
+* **tableOverrides**: These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
+* **columnOverrides**: These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
+* **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
 
 
 
@@ -329,7 +333,6 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
   parameters        = {
     instanceId = "<instanceId>"
     databaseId = "<databaseId>"
-    streamName = "<streamName>"
     # inputFilePattern = "<inputFilePattern>"
     # inputFileFormat = "avro"
     # sessionFilePath = "<sessionFilePath>"
@@ -357,8 +360,8 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # transformationCustomParameters = ""
     # filteredEventsDirectory = ""
     # shardingContextFilePath = "<shardingContextFilePath>"
-    # tableOverrides = "[{Singers, Vocalists}, {Albums, Records}]"
-    # columnOverrides = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]"
+    # tableOverrides = ""
+    # columnOverrides = ""
     # schemaOverridesFilePath = ""
   }
 }
