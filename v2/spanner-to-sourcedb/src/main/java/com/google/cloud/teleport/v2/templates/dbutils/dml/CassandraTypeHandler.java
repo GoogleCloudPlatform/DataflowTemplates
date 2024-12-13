@@ -393,12 +393,12 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<Long>} object containing a list of long values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<Long>} object containing List<Long> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<Long>} object containing a list of long values represented in Cassandra.
    */
   public static List<Long> handleInt64ArrayType(String colName, JSONObject valuesJson) {
     return handleArrayType(
@@ -420,23 +420,26 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<Long>} object containing a set of long values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<Long>} object containing Set<Long> as value represented in cassandra type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<Long>} object containing a set of long values represented in Cassandra.
    */
   public static Set<Long> handleInt64SetType(String colName, JSONObject valuesJson) {
     return new HashSet<>(handleInt64ArrayType(colName, valuesJson));
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<Integer>} object containing a list of integer values from Cassandra by
+   * converting long values to int.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<Integer>} object containing Set<Long> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<Integer>} object containing a list of integer values represented in
+   *     Cassandra.
    */
   public static List<Integer> handleInt64ArrayAsInt32Array(String colName, JSONObject valuesJson) {
     return handleInt64ArrayType(colName, valuesJson).stream()
@@ -445,12 +448,14 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<Integer>} object containing a set of integer values from Cassandra by
+   * converting long values to int.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<Integer>} object containing Set<Integer> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<Integer>} object containing a set of integer values represented in
+   *     Cassandra.
    */
   public static Set<Integer> handleInt64ArrayAsInt32Set(String colName, JSONObject valuesJson) {
     return handleInt64ArrayType(colName, valuesJson).stream()
@@ -459,36 +464,39 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<String>} object containing a set of string values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<String>} object containing Set<String> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<String>} object containing a set of string values represented in
+   *     Cassandra.
    */
   public static Set<String> handleStringSetType(String colName, JSONObject valuesJson) {
     return new HashSet<>(handleStringArrayType(colName, valuesJson));
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<String>} object containing a list of string values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<String>} object containing List<String> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<String>} object containing a list of string values represented in
+   *     Cassandra.
    */
   public static List<String> handleStringArrayType(String colName, JSONObject valuesJson) {
     return handleArrayType(colName, valuesJson, String::valueOf);
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<Boolean>} object containing a list of boolean values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<Boolean>} object containing List<Boolean> as value represented in
-   *     cassandra type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<Boolean>} object containing a list of boolean values represented in
+   *     Cassandra.
    */
   public static List<Boolean> handleBoolArrayType(String colName, JSONObject valuesJson) {
     return handleArrayType(
@@ -496,24 +504,26 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<Boolean>} object containing a set of boolean values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<Boolean>} object containing Set<Boolean> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<Boolean>} object containing a set of boolean values represented in
+   *     Cassandra.
    */
   public static Set<Boolean> handleBoolSetTypeString(String colName, JSONObject valuesJson) {
     return new HashSet<>(handleBoolArrayType(colName, valuesJson));
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<Double>} object containing a list of double values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<Double>} object containing List<Double> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<Double>} object containing a list of double values represented in
+   *     Cassandra.
    */
   public static List<Double> handleFloat64ArrayType(String colName, JSONObject valuesJson) {
     return handleArrayType(
@@ -535,24 +545,26 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<Double>} object containing a set of double values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<Double>} object containing Set<Double> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<Double>} object containing a set of double values represented in
+   *     Cassandra.
    */
   public static Set<Double> handleFloat64SetType(String colName, JSONObject valuesJson) {
     return new HashSet<>(handleFloat64ArrayType(colName, valuesJson));
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<Float>} object containing a list of float values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<Float>} object containing List<Float> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<Float>} object containing a list of float values represented in
+   *     Cassandra.
    */
   public static List<Float> handleFloatArrayType(String colName, JSONObject valuesJson) {
     return handleFloat64ArrayType(colName, valuesJson).stream()
@@ -561,12 +573,12 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<Float>} object containing a set of float values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<Float>} object containing Set<Float> as value represented in cassandra
-   *     type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<Float>} object containing a set of float values represented in Cassandra.
    */
   public static Set<Float> handleFloatSetType(String colName, JSONObject valuesJson) {
     return handleFloat64SetType(colName, valuesJson).stream()
@@ -575,36 +587,42 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<LocalDate>} object containing a list of LocalDate values from
+   * Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<LocalDate>} object containing List<LocalDate> as value represented in
-   *     cassandra type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<LocalDate>} object containing a list of LocalDate values represented in
+   *     Cassandra.
    */
   public static List<LocalDate> handleDateArrayType(String colName, JSONObject valuesJson) {
-    return handleArrayType(colName, valuesJson, obj -> parseDate(colName, obj, "yyyy-MM-dd"));
+    return handleArrayType(
+        colName, valuesJson, obj -> LocalDate.parse(obj.toString(), DateTimeFormatter.ISO_DATE));
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<LocalDate>} object containing a set of LocalDate values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<LocalDate>} object containing Set<LocalDate> as value represented in
-   *     cassandra type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<LocalDate>} object containing a set of LocalDate values represented in
+   *     Cassandra.
    */
   public static Set<LocalDate> handleDateSetType(String colName, JSONObject valuesJson) {
     return new HashSet<>(handleDateArrayType(colName, valuesJson));
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link List<Timestamp>} object containing a list of Timestamp values from
+   * Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<Timestamp>} object containing List<Timestamp> as value represented in
-   *     cassandra type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link List<Timestamp>} object containing a list of Timestamp values represented in
+   *     Cassandra.
    */
   public static List<Timestamp> handleTimestampArrayType(String colName, JSONObject valuesJson) {
     return handleArrayType(
@@ -616,12 +634,13 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a Type based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link Set<Timestamp>} object containing a set of Timestamp values from Cassandra.
    *
-   * @param colName - which is used to fetch Key from valueJSON.
-   * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<Timestamp>} object containing Set<Timestamp> as value represented in
-   *     cassandra type.
+   * @param colName - The column name used to fetch the key from {@code valuesJson}.
+   * @param valuesJson - The {@link JSONObject} containing key-value pairs for the current incoming
+   *     stream.
+   * @return a {@link Set<Timestamp>} object containing a set of Timestamp values represented in
+   *     Cassandra.
    */
   public static Set<Timestamp> handleTimestampSetType(String colName, JSONObject valuesJson) {
     return new HashSet<>(handleTimestampArrayType(colName, valuesJson));
@@ -632,7 +651,7 @@ class CassandraTypeHandler {
    *
    * @param colName - which is used to fetch Key from valueJSON.
    * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link List<ByteBuffer>} object containing List<ByteBuffer> as value represented in
+   * @return a {@link List<ByteBuffer>} object containing List of ByteBuffer as value represented in
    *     cassandra type.
    */
   public static List<ByteBuffer> handleByteArrayType(String colName, JSONObject valuesJson) {
@@ -659,7 +678,7 @@ class CassandraTypeHandler {
    *
    * @param colName - which is used to fetch Key from valueJSON.
    * @param valuesJson - contains all the key value for current incoming stream.
-   * @return a {@link Set<ByteBuffer>} object containing Set<ByteBuffer> as value represented in
+   * @return a {@link Set<ByteBuffer>} object containing Set of ByteBuffer as value represented in
    *     cassandra type.
    */
   public static Set<ByteBuffer> handleByteSetType(String colName, JSONObject valuesJson) {
