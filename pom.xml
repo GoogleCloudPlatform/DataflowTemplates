@@ -31,7 +31,7 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <java.version>11</java.version>
+    <java.version>17</java.version>
 <!--    <os.detected.classifier>osx-x86_64</os.detected.classifier>-->
     <!-- Plugins -->
     <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
