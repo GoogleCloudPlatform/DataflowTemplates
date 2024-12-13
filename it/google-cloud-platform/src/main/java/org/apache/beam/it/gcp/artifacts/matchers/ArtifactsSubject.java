@@ -36,6 +36,8 @@ import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.artifacts.utils.JsonTestUtil;
 import org.apache.beam.it.gcp.artifacts.utils.ParquetTestUtil;
 import org.apache.beam.it.truthmatchers.RecordsSubject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Subject that has assertion operations for artifact lists (GCS files), usually coming from the
@@ -45,6 +47,8 @@ import org.apache.beam.it.truthmatchers.RecordsSubject;
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
 public final class ArtifactsSubject extends Subject {
+
+  private static final Logger LOG = LoggerFactory.getLogger(ArtifactsSubject.class);
 
   private final List<Artifact> actual;
 
@@ -97,7 +101,11 @@ public final class ArtifactsSubject extends Subject {
    */
   public void hasHash(String hash) {
     if (actual.stream()
-        .noneMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
+            .noneMatch(artifact -> sha256().hashBytes(artifact.contents()).toString().equals(hash))) {
+      actual.stream().forEach(artifact -> {
+        String calculatedHash = sha256().hashBytes(artifact.contents()).toString();
+        LOG.info("Calculated Hash (no match found): {}", calculatedHash);
+      });
       failWithActual("expected to contain hash", hash);
     }
   }
