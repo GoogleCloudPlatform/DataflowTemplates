@@ -28,6 +28,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **query**: The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `select * from sampledb.sample_table`.
 * **useLegacySql**: Set to `true` to use legacy SQL. This parameter only applies when using the `query` parameter. Defaults to `false`.
 * **queryLocation**: Needed when reading from an authorized view without underlying table's permission. For example, `US`.
+* **queryTempDataset**: With this option, you can set an existing dataset to create the temporary table to store the results of the query. For example, `temp_dataset`.
+* **KMSEncryptionKey**: If reading from BigQuery using query source, use this Cloud KMS key to encrypt any temporary tables created. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
 * **bigtableRpcAttemptTimeoutMs**: The timeout for each Bigtable RPC attempt in milliseconds.
 * **bigtableRpcTimeoutMs**: The total timeout for a Bigtable RPC operation in milliseconds.
 * **bigtableAdditionalRetryCodes**: The additional retry codes. For example, `RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED`.
@@ -126,6 +128,7 @@ export QUERY=<query>
 export USE_LEGACY_SQL=false
 export QUERY_LOCATION=<queryLocation>
 export QUERY_TEMP_DATASET=<queryTempDataset>
+export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
 export BIGTABLE_RPC_TIMEOUT_MS=<bigtableRpcTimeoutMs>
 export BIGTABLE_ADDITIONAL_RETRY_CODES=<bigtableAdditionalRetryCodes>
@@ -146,6 +149,7 @@ gcloud dataflow flex-template run "bigquery-to-bigtable-job" \
   --parameters "useLegacySql=$USE_LEGACY_SQL" \
   --parameters "queryLocation=$QUERY_LOCATION" \
   --parameters "queryTempDataset=$QUERY_TEMP_DATASET" \
+  --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
   --parameters "bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS" \
   --parameters "bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS" \
   --parameters "bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES" \
@@ -187,6 +191,7 @@ export QUERY=<query>
 export USE_LEGACY_SQL=false
 export QUERY_LOCATION=<queryLocation>
 export QUERY_TEMP_DATASET=<queryTempDataset>
+export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS=<bigtableRpcAttemptTimeoutMs>
 export BIGTABLE_RPC_TIMEOUT_MS=<bigtableRpcTimeoutMs>
 export BIGTABLE_ADDITIONAL_RETRY_CODES=<bigtableAdditionalRetryCodes>
@@ -203,7 +208,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-to-bigtable-job" \
 -DtemplateName="BigQuery_to_Bigtable" \
--Dparameters="readIdColumn=$READ_ID_COLUMN,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
+-Dparameters="readIdColumn=$READ_ID_COLUMN,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
 -f v2/bigquery-to-bigtable
 ```
 
@@ -257,6 +262,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
     # query = "<query>"
     # useLegacySql = "false"
     # queryLocation = "<queryLocation>"
+    # queryTempDataset = "<queryTempDataset>"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
     # bigtableRpcAttemptTimeoutMs = "<bigtableRpcAttemptTimeoutMs>"
     # bigtableRpcTimeoutMs = "<bigtableRpcTimeoutMs>"
     # bigtableAdditionalRetryCodes = "<bigtableAdditionalRetryCodes>"

@@ -4,7 +4,9 @@ Pub/Sub to Datadog template
 The Pub/Sub to Datadog template is a streaming pipeline that reads messages from
 a Pub/Sub subscription and writes the message payload to Datadog by using a
 Datadog endpoint. The most common use case for this template is to export log
-files to Datadog.
+files to Datadog. For more information check out <a
+href="https://docs.datadoghq.com/integrations/google_cloud_platform/?tab=project#log-collection">Datadog's
+log collection process</a>.
 
 Before writing to Datadog, you can apply a JavaScript user-defined function to
 the message payload. Any messages that experience processing failures are

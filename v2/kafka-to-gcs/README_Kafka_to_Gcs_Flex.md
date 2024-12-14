@@ -16,7 +16,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **readBootstrapServerAndTopic**: Kafka Topic to read the input from.
 * **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. For example, `gs://your-bucket/your-path/`.
-* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `NONE` for no authentication, `SASL_PLAIN` for SASL/PLAIN username and password, and `TLS` for certificate-based authentication. Apache Kafka for BigQuery only supports the `SASL_PLAIN` authentication mode. Defaults to: SASL_PLAIN.
+* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `KafkaAuthenticationMethod.NONE` for no authentication, `KafkaAuthenticationMethod.SASL_PLAIN` for SASL/PLAIN username and password, and `KafkaAuthenticationMethod.TLS` for certificate-based authentication. `KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Apache Kafka for BigQuery cluster, it allows to authenticate using application default credentials.
 * **messageFormat**: The format of the Kafka messages to read. The supported values are `AVRO_CONFLUENT_WIRE_FORMAT` (Confluent Schema Registry encoded Avro), `AVRO_BINARY_ENCODING` (Plain binary Avro), and `JSON`. Defaults to: AVRO_CONFLUENT_WIRE_FORMAT.
 * **useBigQueryDLQ**: If true, failed messages will be written to BigQuery with extra error information. Defaults to: false.
 
