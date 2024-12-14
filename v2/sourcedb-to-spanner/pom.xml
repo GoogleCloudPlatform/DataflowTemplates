@@ -142,5 +142,15 @@
         <version>5.0.0</version>
         <scope>test</scope>
       </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-cassandra</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
+      <version>4.1</version>
+      <scope>compile</scope>
+    </dependency>
   </dependencies>
 </project>
