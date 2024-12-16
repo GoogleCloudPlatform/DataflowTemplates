@@ -15,9 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
+import com.google.common.net.InetAddresses;
 import java.math.BigInteger;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -146,9 +146,8 @@ class CassandraTypeHandler {
    * @return a {@link InetAddress} object containing InetAddress as value represented in cassandra
    *     type.
    */
-  public static InetAddress handleCassandraInetAddressType(String colName, JSONObject valuesJson)
-      throws UnknownHostException {
-    return InetAddress.getByName(valuesJson.getString(colName));
+  public static InetAddress handleCassandraInetAddressType(String colName, JSONObject valuesJson) {
+    return InetAddresses.forString(valuesJson.getString(colName));
   }
 
   /**
@@ -405,7 +404,9 @@ class CassandraTypeHandler {
         colName,
         valuesJson,
         obj -> {
-          if (obj instanceof Number) {
+          if (obj instanceof Long) {
+            return (Long) obj;
+          } else if (obj instanceof Number) {
             return ((Number) obj).longValue();
           } else if (obj instanceof String) {
             try {
@@ -891,8 +892,8 @@ class CassandraTypeHandler {
   /**
    * Validates if the given string represents a valid IP address.
    *
-   * <p>This method attempts to resolve the provided string as an {@link InetAddress} using {@link
-   * InetAddress#getByName(String)}. If successful, it returns {@code true}, indicating that the
+   * <p>This method attempts to resolve the provided string as an {@link InetAddresses} using {@link
+   * InetAddresses#forString(String)}. If successful, it returns {@code true}, indicating that the
    * string is a valid IP address. Otherwise, it returns {@code false}.
    *
    * @param value The string to check if it represents a valid IP address.
@@ -900,9 +901,9 @@ class CassandraTypeHandler {
    */
   public static boolean isValidIPAddress(String value) {
     try {
-      InetAddress.getByName(value);
+      InetAddresses.forString(value);
       return true;
-    } catch (UnknownHostException e) {
+    } catch (Exception e) {
       return false;
     }
   }
