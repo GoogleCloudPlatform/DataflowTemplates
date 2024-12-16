@@ -53,6 +53,7 @@ import static com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHa
 import static com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHandler.isValidUUID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -69,6 +70,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -726,12 +728,13 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testHandleValidIPv6Address() throws UnknownHostException {
+  public void testHandleValidIPv6Address() throws Exception {
     String newValuesString = "{\"ipAddress\":\"2001:0db8:85a3:0000:0000:8a2e:0370:7334\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     String colKey = "ipAddress";
+    InetAddress actual = CassandraTypeHandler.handleCassandraInetAddressType(colKey, newValuesJson);
     InetAddress expected = InetAddress.getByName("2001:0db8:85a3:0000:0000:8a2e:0370:7334");
-    assertEquals(expected, handleCassandraInetAddressType(colKey, newValuesJson));
+    assertEquals(expected, actual);
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -1090,5 +1093,226 @@ public class CassandraTypeHandlerTest {
     String nullString = null;
     boolean result = isValidJSON(nullString);
     assertFalse(result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_validDateString() {
+    String dateString = "2024-12-16T14:30:00Z";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(dateString);
+    assertEquals("The parsed LocalDate should be '2024-12-16'", LocalDate.of(2024, 12, 16), result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_leapYear() {
+    String dateString = "2024-02-29T00:00:00Z";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(dateString);
+    assertEquals("The parsed LocalDate should be '2024-02-29'", LocalDate.of(2024, 2, 29), result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_validDateWithMilliseconds() {
+    String dateString = "2024-12-16T14:30:00.123Z";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(dateString);
+    assertEquals("The parsed LocalDate should be '2024-12-16'", LocalDate.of(2024, 12, 16), result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_timezoneOffsetImpact() {
+    String dateString = "2024-12-16T14:30:00+01:00";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(dateString);
+    assertEquals(
+        "The parsed LocalDate should be '2024-12-16' regardless of timezone.",
+        LocalDate.of(2024, 12, 16),
+        result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_validDateWithOffset() {
+    String dateString = "2024-12-16T14:30:00+01:00";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(dateString);
+    assertEquals("The parsed LocalDate should be '2024-12-16'", LocalDate.of(2024, 12, 16), result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_withTimeZoneOffset() {
+    String validDateWithOffset = "2024-12-16T14:30:00+02:00";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(validDateWithOffset);
+    assertNotNull(String.valueOf(result), "The result should not be null");
+    assertEquals(
+        "The parsed LocalDate should match the expected value (timezone offset ignored).",
+        LocalDate.of(2024, 12, 16),
+        result);
+  }
+
+  @Test
+  public void testConvertToCassandraDate_endOfMonth() {
+    String endOfMonthDate = "2024-01-31T12:00:00Z";
+    LocalDate result = CassandraTypeHandler.convertToCassandraDate(endOfMonthDate);
+    assertNotNull(String.valueOf(result), "The result should not be null");
+    assertEquals(
+        "The parsed LocalDate should be correct for end of month.",
+        LocalDate.of(2024, 1, 31),
+        result);
+  }
+
+  @Test
+  public void testParseDate_validStringWithCustomFormatter() {
+    String dateStr = "2024-12-16T14:30:00.000";
+    String formatter = "yyyy-MM-dd'T'HH:mm:ss.SSS";
+    String colName = "testDate";
+
+    LocalDate result = CassandraTypeHandler.parseDate(colName, dateStr, formatter);
+
+    assertNotNull(String.valueOf(result), "The parsed LocalDate should not be null.");
+    assertEquals(
+        "The parsed LocalDate should match the expected value.",
+        LocalDate.of(2024, 12, 16),
+        result);
+  }
+
+  @Test
+  public void testParseDate_validString() {
+    String validDateStr = "2024-12-16T14:30:00.000+0000";
+    String formatter = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
+    String colName = "testDate";
+    LocalDate result = CassandraTypeHandler.parseDate(colName, validDateStr, formatter);
+    assertNotNull(result);
+    assertEquals(LocalDate.of(2024, 12, 16), result);
+  }
+
+  @Test
+  public void testParseDate_validDate() {
+    Date date = new Date(1700000000000L);
+    String colName = "testDate";
+
+    LocalDate result = CassandraTypeHandler.parseDate(colName, date, "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+
+    assertNotNull(result);
+    assertNotEquals(LocalDate.of(2024, 12, 15), result);
+  }
+
+  @Test
+  public void testHandleCassandraGenericDateType_NullFormatter() {
+    String newValuesString = "{\"date\":\"2024-12-16T10:15:30.000+0000\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String colKey = "date";
+    LocalDate result =
+        CassandraTypeHandler.handleCassandraGenericDateType(colKey, newValuesJson, null);
+    assertEquals(LocalDate.of(2024, 12, 16), result);
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToList_InvalidFormat() {
+    String newValuesString = "{\"column\": \"{\\\"key\\\":\\\"value\\\"}\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String colKey = "column";
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              CassandraTypeHandler.handleStringifiedJsonToList(colKey, newValuesJson);
+            });
+    assertTrue(thrown.getMessage().contains("Invalid stringified JSON array format"));
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToList_NullInput() {
+    JSONObject newValuesJson = null;
+    String colKey = "column";
+    assertThrows(
+        NullPointerException.class,
+        () -> {
+          CassandraTypeHandler.handleStringifiedJsonToList(colKey, newValuesJson);
+        });
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToMap_EmptyString() {
+    // Test case with an empty string as input, which is also an invalid JSON format
+    String newValuesString = "{\"column\": \"\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String colKey = "column";
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              CassandraTypeHandler.handleStringifiedJsonToMap(colKey, newValuesJson);
+            });
+    assertTrue(thrown.getMessage().contains("Invalid stringified JSON format for column"));
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToMap_NonJsonString() {
+    String newValuesString = "{\"column\": \"just a plain string\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String colKey = "column";
+    IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              CassandraTypeHandler.handleStringifiedJsonToMap(colKey, newValuesJson);
+            });
+    assertTrue(thrown.getMessage().contains("Invalid stringified JSON format for column"));
+  }
+
+  @Test
+  public void testHandleCassandraVarintType_ValidByteArray() {
+    JSONObject valuesJson = new JSONObject();
+    byte[] byteArray = new BigInteger("12345678901234567890").toByteArray();
+    valuesJson.put("varint", byteArray);
+    BigInteger result = CassandraTypeHandler.handleCassandraVarintType("varint", valuesJson);
+    BigInteger expected = new BigInteger(byteArray);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void testHandleCassandraVarintType_InvalidStringFormat() {
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("col1", "invalid-number");
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              handleCassandraVarintType("col1", valuesJson);
+            });
+    assertTrue(exception.getMessage().contains("Invalid varint format (string) for column: col1"));
+  }
+
+  @Test
+  public void testParseDate_UnsupportedType() {
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("col1", 12345);
+    String formatter = "yyyy-MM-dd";
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              CassandraTypeHandler.parseDate("col1", valuesJson.get("col1"), formatter);
+            });
+    assertTrue(exception.getMessage().contains("Unsupported type for column col1"));
+  }
+
+  @Test
+  public void testHandleCassandraUuidType_ValidUuidString() {
+    JSONObject valuesJson = new JSONObject();
+    String validUuidString = "123e4567-e89b-12d3-a456-426614174000";
+    valuesJson.put("col1", validUuidString);
+    UUID result = handleCassandraUuidType("col1", valuesJson);
+    UUID expectedUuid = UUID.fromString(validUuidString);
+    assertEquals(expectedUuid, result);
+  }
+
+  @Test
+  public void testHandleCassandraInetAddressType_Hostname() {
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("col1", "www.google.com");
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              CassandraTypeHandler.handleCassandraInetAddressType("col1", valuesJson);
+            });
+    assertTrue(exception.getMessage().contains("Invalid IP address format for column: col1"));
+    assertTrue(exception.getMessage().contains("www.google.com"));
   }
 }

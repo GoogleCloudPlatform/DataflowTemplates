@@ -147,7 +147,15 @@ class CassandraTypeHandler {
    *     type.
    */
   public static InetAddress handleCassandraInetAddressType(String colName, JSONObject valuesJson) {
-    return InetAddresses.forString(valuesJson.getString(colName));
+    String inetString = valuesJson.optString(colName, null);
+    if (inetString == null) {
+      return null;
+    }
+    try {
+      return InetAddresses.forString(inetString);
+    } catch (IllegalArgumentException e) {
+      throw new IllegalArgumentException("Invalid IP address format for column: " + colName, e);
+    }
   }
 
   /**
@@ -287,7 +295,7 @@ class CassandraTypeHandler {
    * @return a {@link LocalDate} object containing the parsed date value. If the column is missing
    *     or invalid, this method returns {@code null}.
    */
-  private static LocalDate handleCassandraGenericDateType(
+  public static LocalDate handleCassandraGenericDateType(
       String colName, JSONObject valuesJson, String formatter) {
     Object colValue = valuesJson.opt(colName);
     if (colValue == null) {
@@ -315,7 +323,7 @@ class CassandraTypeHandler {
    * @return a {@link LocalDate} object parsed from the given value.
    * @throws IllegalArgumentException if the value cannot be parsed or is of an unsupported type.
    */
-  private static LocalDate parseDate(String colName, Object colValue, String formatter) {
+  public static LocalDate parseDate(String colName, Object colValue, String formatter) {
     LocalDate localDate;
     if (colValue instanceof String) {
       try {
