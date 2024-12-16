@@ -18,17 +18,21 @@ package com.google.cloud.teleport.v2.datastream.transforms;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.teleport.v2.datastream.transforms.FormatDatastreamRecordToJson.UnifiedTypesFormatter;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.avro.file.DataFileReader;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
@@ -210,5 +214,129 @@ public class FormatDatastreamRecordToJsonTest {
     FormatDatastreamRecordToJson.UnifiedTypesFormatter.handleLogicalFieldType(
         fieldNamePositiveNumber, fieldSchema, element, jsonObject);
     assertTrue(jsonObject.get(fieldNamePositiveNumber).asText().equals("1981-11-21T11:45:11Z"));
+  }
+
+  @Test
+  public void testIntervalNano() throws JsonProcessingException {
+
+    ObjectNode objectNode = new ObjectNode(new JsonNodeFactory(true));
+
+    /* Basic Test. */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "basic",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(1000L, 1000L, 3890L, 25L, 331L, 12L, 9L),
+        objectNode);
+
+    /* Test with any field set as null gets treated as 0. */
+
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "null_minute",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(1000L, 1000L, 3890L, 25L, null, 12L, 9L),
+        objectNode);
+
+    /* Basic test for negative field. */
+
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "neg_field_basic",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(1000L, -1000L, 3890L, 25L, 31L, 12L, 9L),
+        objectNode);
+
+    /* Test that negative nanos subtract from the fractional seconds, for example 12 Seconds -1 Nanos becomes 11.999999991s. */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "neg_fractional_seconds",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(1000L, 31L, 3890L, 25L, 31L, 12L, -9L),
+        objectNode);
+
+    /* Test 0 interval. */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "zero_interval",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 0L),
+        objectNode);
+
+    /* Test almost zero interval with only nanos set. */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "one_nano_interval",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 1L),
+        objectNode);
+    /* Test with large values. */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "large_values",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(
+            2147483647L, 11L, 2147483647L, 2147483647L, 2147483647L, 2147483647L, 999999999L),
+        objectNode);
+
+    /* Test with large negative values. */
+    UnifiedTypesFormatter.handleDatastreamRecordType(
+        "large_negative_values",
+        generateIntervalNanosSchema(),
+        generateIntervalNanosRecord(
+            -2147483647L,
+            -11L,
+            -2147483647L,
+            -2147483647L,
+            -2147483647L,
+            -2147483647L,
+            -999999999L),
+        objectNode);
+    String expected =
+        "{\"basic\":\"P1000Y1000M3890DT30H31M12.000000009S\","
+            + "\"null_minute\":\"P1000Y1000M3890DT25H12.000000009S\","
+            + "\"neg_field_basic\":\"P1000Y-1000M3890DT25H31M12.000000009S\","
+            + "\"neg_fractional_seconds\":\"P1000Y31M3890DT25H31M11.999999991S\","
+            + "\"zero_interval\":\"P0D\","
+            + "\"one_nano_interval\":\"P0DT0.000000001S\","
+            + "\"large_values\":\"P2147483647Y11M2147483647DT2183871564H21M7.999999999S\","
+            + "\"large_negative_values\":\"P-2147483647Y-11M-2147483647DT-2183871564H-21M-7.999999999S\"}";
+    assertEquals(expected, new ObjectMapper().writeValueAsString(objectNode));
+  }
+
+  private GenericRecord generateIntervalNanosRecord(
+      Long years, Long months, Long days, Long hours, Long minutes, Long seconds, Long nanos) {
+
+    GenericRecord genericRecord = new GenericData.Record(generateIntervalNanosSchema());
+    genericRecord.put("years", years);
+    genericRecord.put("months", months);
+    genericRecord.put("days", days);
+    genericRecord.put("hours", hours);
+    genericRecord.put("minutes", minutes);
+    genericRecord.put("seconds", seconds);
+    genericRecord.put("nanos", nanos);
+    return genericRecord;
+  }
+
+  private Schema generateIntervalNanosSchema() {
+
+    return SchemaBuilder.builder()
+        .record("intervalNano")
+        .fields()
+        .name("years")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("months")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("days")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("hours")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("minutes")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("seconds")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .name("nanos")
+        .type(SchemaBuilder.builder().longType())
+        .withDefault(0L)
+        .endRecord();
   }
 }

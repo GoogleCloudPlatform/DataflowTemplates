@@ -67,6 +67,7 @@ func main() {
 		flags.StageBucket(),
 		flags.HostIp(),
 		flags.PrivateConnectivity(),
+		flags.SpannerHost(),
 		flags.FailureMode(),
 		flags.RetryFailures(),
 		flags.StaticOracleHost(),

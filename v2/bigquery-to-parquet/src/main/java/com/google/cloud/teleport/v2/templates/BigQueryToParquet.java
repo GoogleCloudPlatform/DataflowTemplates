@@ -169,7 +169,7 @@ public class BigQueryToParquet {
         order = 3,
         optional = true,
         description = "Maximum output shards",
-        helpText = "The number of output file shards. The default value is 1.")
+        helpText = "The number of output file shards. The default value is `1`.")
     @Default.Integer(0)
     Integer getNumShards();
 

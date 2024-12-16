@@ -25,6 +25,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -43,6 +44,7 @@ import org.apache.avro.data.TimeConversions.DateConversion;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -563,6 +565,48 @@ public class FormatDatastreamRecordToJson
                   .withZoneSameInstant(ZoneId.of("UTC"))
                   .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
+          /*
+           * The `intervalNano` maps to nano second precision interval type used by Cassandra Interval.
+           * On spanner this will map to `string` or `Interval` type.
+           * This is added here for DQL retrials for sourcedb-to-spanner.
+           *
+           * TODO(b/383689307):
+           * There's a lot of commonality in handling avro types between {@link FormatDatastreamRecordToJson} and {@link com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor}.
+           * Adding inter-package dependency might not be the best route, and we might eventually want to build a common package for handling common logic between the two.
+           */
+        case "intervalNano":
+          Period period =
+              Period.ZERO
+                  .plusYears(getOrDefault(element, "years", 0L))
+                  .plusMonths(getOrDefault(element, "months", 0L))
+                  .plusDays(getOrDefault(element, "days", 0L));
+          /*
+           * Convert the period to a ISO-8601 period formatted String, such as P6Y3M1D.
+           * A zero period will be represented as zero days, 'P0D'.
+           * Refer to javadoc for Period#toString.
+           */
+          String periodIso8061 = period.toString();
+          java.time.Duration duration =
+              java.time.Duration.ZERO
+                  .plusHours(getOrDefault(element, "hours", 0L))
+                  .plusMinutes(getOrDefault(element, "minutes", 0L))
+                  .plusSeconds(getOrDefault(element, "seconds", 0L))
+                  .plusNanos(getOrDefault(element, "nanos", 0L));
+          /*
+           * Convert the duration to a ISO-8601 period formatted String, such as  PT8H6M12.345S
+           * refer to javadoc for Duration#toString.
+           */
+          String durationIso8610 = duration.toString();
+          // Convert to ISO-8601 period format.
+          String convertedIntervalNano;
+          if (duration.isZero()) {
+            convertedIntervalNano = periodIso8061;
+          } else {
+            convertedIntervalNano =
+                periodIso8061 + StringUtils.removeStartIgnoreCase(durationIso8610, "P");
+          }
+          jsonObject.put(fieldName, convertedIntervalNano);
+          break;
         default:
           LOG.warn(
               "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, element);
@@ -577,6 +621,13 @@ public class FormatDatastreamRecordToJson
           }
           break;
       }
+    }
+
+    private static <T> T getOrDefault(GenericRecord element, String name, T def) {
+      if (element.get(name) == null) {
+        return def;
+      }
+      return (T) element.get(name);
     }
   }
 }

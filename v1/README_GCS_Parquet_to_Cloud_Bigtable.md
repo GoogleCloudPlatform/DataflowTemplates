@@ -18,14 +18,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **bigtableProjectId** : The Google Cloud project ID associated with the Bigtable instance.
-* **bigtableInstanceId** : The ID of the Cloud Bigtable instance that contains the table.
-* **bigtableTableId** : The ID of the Bigtable table to import.
-* **inputFilePattern** : The Cloud Storage path with the files that contain the data. (Example: gs://your-bucket/your-files/*.parquet).
+* **bigtableProjectId**: The Google Cloud project ID associated with the Bigtable instance.
+* **bigtableInstanceId**: The ID of the Cloud Bigtable instance that contains the table.
+* **bigtableTableId**: The ID of the Bigtable table to import.
+* **inputFilePattern**: The Cloud Storage path with the files that contain the data. For example, `gs://your-bucket/your-files/*.parquet`.
 
 ### Optional parameters
 
-* **splitLargeRows** : The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic. .
+* **splitLargeRows**: The flag for enabling splitting of large rows into multiple MutateRows requests. Note that when a large row is split between multiple API calls, the updates to the row are not atomic.
 
 
 
@@ -205,7 +205,7 @@ resource "google_dataflow_job" "gcs_parquet_to_cloud_bigtable" {
     bigtableProjectId = "<bigtableProjectId>"
     bigtableInstanceId = "<bigtableInstanceId>"
     bigtableTableId = "<bigtableTableId>"
-    inputFilePattern = "gs://your-bucket/your-files/*.parquet"
+    inputFilePattern = "<inputFilePattern>"
     # splitLargeRows = "<splitLargeRows>"
   }
 }

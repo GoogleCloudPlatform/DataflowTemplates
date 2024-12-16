@@ -333,7 +333,7 @@ public class BigQueryToTFRecord {
         groupName = "Target",
         description = "Output Cloud Storage directory.",
         helpText =
-            "The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output/train`",
+            "The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`.",
         example = "gs://mybucket/output")
     ValueProvider<String> getOutputDirectory();
 
@@ -357,7 +357,7 @@ public class BigQueryToTFRecord {
         optional = true,
         description = "Percentage of data to be in the training set ",
         helpText =
-            "The percentage of query data allocated to training TFRecord files. The default value is 1, or 100%.")
+            "The percentage of query data allocated to training TFRecord files. The default value is `1`, or `100%`.")
     @Default.Float(1)
     ValueProvider<Float> getTrainingPercentage();
 
@@ -368,7 +368,7 @@ public class BigQueryToTFRecord {
         optional = true,
         description = "Percentage of data to be in the testing set ",
         helpText =
-            "The percentage of query data allocated to testing TFRecord files. The default value is 0, or 0%.")
+            "The percentage of query data allocated to testing TFRecord files. The default value is `0`, or `0%`.")
     @Default.Float(0)
     ValueProvider<Float> getTestingPercentage();
 
@@ -379,7 +379,7 @@ public class BigQueryToTFRecord {
         optional = true,
         description = "Percentage of data to be in the validation set ",
         helpText =
-            "The percentage of query data allocated to validation TFRecord files. The default value is 0, or 0%.")
+            "The percentage of query data allocated to validation TFRecord files. The default value is `0`, or `0%`.")
     @Default.Float(0)
     ValueProvider<Float> getValidationPercentage();
 

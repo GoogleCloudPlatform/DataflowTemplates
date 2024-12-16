@@ -20,17 +20,17 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **jobSpecUri** : The path to the job specification file, which contains the configuration for source and target metadata.
+* **jobSpecUri**: The path to the job specification file, which contains the JSON description of data sources, Neo4j targets and actions.
 
 ### Optional parameters
 
-* **neo4jConnectionUri** : The path to the Neo4j connection metadata JSON file.
-* **neo4jConnectionSecretId** : The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option.
-* **optionsJson** : Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty.
-* **readQuery** : Override SQL query. Defaults to empty.
-* **inputFilePattern** : Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty.
-* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
+* **neo4jConnectionUri**: The path to the Neo4j connection JSON file.
+* **neo4jConnectionSecretId**: The secret ID for the Neo4j connection metadata. You can use this value as an alternative to the `neo4jConnectionUri`.
+* **optionsJson**: A JSON object that is also called runtime tokens For example, `{token1:value1,token2:value2}. Spec can refer to $token1 and $token2.`. Defaults to empty.
+* **readQuery**: SQL query override. Defaults to empty.
+* **inputFilePattern**: The text file path override For example, `gs://your-bucket/path/*.json`. Defaults to empty.
+* **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
 
 
@@ -216,11 +216,11 @@ resource "google_dataflow_flex_template_job" "google_cloud_to_neo4j" {
     jobSpecUri = "<jobSpecUri>"
     # neo4jConnectionUri = "<neo4jConnectionUri>"
     # neo4jConnectionSecretId = "<neo4jConnectionSecretId>"
-    # optionsJson = "{token1:value1,token2:value2}"
+    # optionsJson = ""
     # readQuery = ""
-    # inputFilePattern = "gs://your-bucket/path/*.json"
-    # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # inputFilePattern = ""
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
   }
 }
 ```

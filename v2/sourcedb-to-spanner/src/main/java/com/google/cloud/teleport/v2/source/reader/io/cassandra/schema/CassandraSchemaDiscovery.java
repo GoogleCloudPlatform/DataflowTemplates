@@ -113,7 +113,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
       DataSource dataSource, SourceSchemaReference schemaReference, ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     Log.info(
-        "CassandraSchemaDiscovery discoverTableSchema started dataSource = {}, sourceSchemaReference = {}, talbes = {}",
+        "CassandraSchemaDiscovery discoverTableSchema started dataSource = {}, sourceSchemaReference = {}, tables = {}",
         dataSource,
         schemaReference,
         tables);
@@ -123,7 +123,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> schema =
         this.discoverTableSchema(dataSource.cassandra(), schemaReference.cassandra(), tables);
     Log.info(
-        "CassandraSchemaDiscovery discoverTableSchema completed dataSource = {}, sourceSchemaReference = {}, talbes = {}, schema = {}",
+        "CassandraSchemaDiscovery discoverTableSchema completed dataSource = {}, sourceSchemaReference = {}, tables = {}, schema = {}",
         dataSource,
         schemaReference,
         tables,
@@ -147,7 +147,7 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
       return builder.build();
     } catch (DriverException e) {
       Log.error(
-          "CassandraSchemaDiscovery discoverTableSchema dataSource = {}, sourceSchemaReference = {}, talbes = {}",
+          "CassandraSchemaDiscovery discoverTableSchema dataSource = {}, sourceSchemaReference = {}, tables = {}",
           dataSource,
           schemaReference,
           tables,

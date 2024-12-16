@@ -906,9 +906,111 @@ public class CopyDbTest {
   }
 
   @Test
+  public void identityColumn() throws Exception {
+    // spotless:off
+    Ddl.Builder ddlBuilder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder
+        .createTable("IdentityTable")
+          .column("id")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("non_key_column")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("no_sequence_kind_column")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("default")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("value").int64().endColumn()
+          .primaryKey().asc("id").end()
+        .endTable()
+        .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 10);
+    runTest();
+  }
+
+  @Test
+  public void pgIdentityColumn() throws Exception {
+    // spotless:off
+    Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
+    Ddl ddl = ddlBuilder
+        .createTable("IdentityTable")
+          .column("id")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("non_key_column")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("bit_reversed_positive")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("no_sequence_kind_column")
+            .int64()
+            .isIdentityColumn(true)
+            .sequenceKind("default")
+            .counterStartValue(1000L)
+            .skipRangeMin(2000L)
+            .skipRangeMax(3000L)
+          .endColumn()
+          .column("value").int64().endColumn()
+          .primaryKey().asc("id").end()
+        .endTable()
+        .build();
+    // spotless:on
+
+    createAndPopulate(ddl, 10);
+    runTest(Dialect.POSTGRESQL);
+  }
+
+  @Test
   public void sequences() throws Exception {
+    Ddl.Builder ddlBuilder = Ddl.builder();
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
     Ddl ddl =
-        Ddl.builder()
+        ddlBuilder
             .createSequence("Sequence1")
             .options(
                 ImmutableList.of(
@@ -924,6 +1026,14 @@ public class CopyDbTest {
             .endSequence()
             .createSequence("Sequence3")
             .options(ImmutableList.of("sequence_kind=\"bit_reversed_positive\""))
+            .endSequence()
+            .createSequence("Sequence4")
+            .options(
+                ImmutableList.of(
+                    "sequence_kind=\"default\"",
+                    "skip_range_min=0",
+                    "skip_range_max=1000",
+                    "start_with_counter=50"))
             .endSequence()
             .createTable("UsersWithSequenceId")
             .column("id")
@@ -946,8 +1056,16 @@ public class CopyDbTest {
 
   @Test
   public void pgSequences() throws Exception {
+    Ddl.Builder ddlBuilder = Ddl.builder(Dialect.POSTGRESQL);
+    List<Export.DatabaseOption> dbOptionList = new ArrayList<>();
+    dbOptionList.add(
+        Export.DatabaseOption.newBuilder()
+            .setOptionName("default_sequence_kind")
+            .setOptionValue("\"bit_reversed_positive\"")
+            .build());
+    ddlBuilder.mergeDatabaseOptions(dbOptionList);
     Ddl ddl =
-        Ddl.builder(Dialect.POSTGRESQL)
+        ddlBuilder
             .createSequence("PGSequence1")
             .sequenceKind("bit_reversed_positive")
             .counterStartValue(Long.valueOf(50))
@@ -960,6 +1078,12 @@ public class CopyDbTest {
             .endSequence()
             .createSequence("PGSequence3")
             .sequenceKind("bit_reversed_positive")
+            .endSequence()
+            .createSequence("PGSequence4")
+            .sequenceKind("default")
+            .counterStartValue(Long.valueOf(50))
+            .skipRangeMin(Long.valueOf(0))
+            .skipRangeMax(Long.valueOf(1000))
             .endSequence()
             .createTable("PGUsersWithSequenceId")
             .column("id")

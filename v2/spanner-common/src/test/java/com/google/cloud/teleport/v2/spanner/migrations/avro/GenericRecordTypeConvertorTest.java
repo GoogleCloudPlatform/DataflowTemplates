@@ -337,6 +337,101 @@ public class GenericRecordTypeConvertorTest {
                 AvroTestingHelper.UNSUPPORTED_SCHEMA));
   }
 
+  /*
+   * Test conversion of Interval Nano to String for various cases.
+   */
+  @Test
+  public void testIntervalNanos() {
+    String result;
+
+    /* Basic Test. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 1000L, 3890L, 25L, 331L, 12L, 9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #1 interval nano conversion:", "P1000Y1000M3890DT30H31M12.000000009S", result);
+
+    /* Test with any field set as null gets treated as 0. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 1000L, 3890L, 25L, null, 12L, 9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #2 interval nano conversion with null minutes:",
+        "P1000Y1000M3890DT25H12.000000009S",
+        result);
+
+    /* Basic test for negative field. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, -1000L, 3890L, 25L, 31L, 12L, 9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #3 interval nano conversion with negative months:",
+        "P1000Y-1000M3890DT25H31M12.000000009S",
+        result);
+
+    /* Test that negative nanos subtract from the fractional seconds, for example 12 Seconds -1 Nanos becomes 11.999999991s. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 31L, 3890L, 25L, 31L, 12L, -9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #4 interval nano conversion with negative nanos:",
+        "P1000Y31M3890DT25H31M11.999999991S",
+        result);
+
+    /* Test 0 interval. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #5 interval nano conversion with all zeros", "P0D", result);
+
+    /* Test almost zero interval with only nanos set. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 1L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #6 interval nano conversion with only nanos", "P0DT0.000000001S", result);
+    /* Test with large values. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(
+                2147483647L, 11L, 2147483647L, 2147483647L, 2147483647L, 2147483647L, 999999999L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #6 interval nano conversion with INT.MAX values",
+        "P2147483647Y11M2147483647DT2183871564H21M7.999999999S",
+        result);
+
+    /* Test with large negative values. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(
+                -2147483647L,
+                -11L,
+                -2147483647L,
+                -2147483647L,
+                -2147483647L,
+                -2147483647L,
+                -999999999L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #6 interval nano conversion with -INT.MAX values",
+        "P-2147483647Y-11M-2147483647DT-2183871564H-21M-7.999999999S",
+        result);
+  }
+
   @Test
   public void testHandleRecordFieldType_nullInput() {
     assertNull(
