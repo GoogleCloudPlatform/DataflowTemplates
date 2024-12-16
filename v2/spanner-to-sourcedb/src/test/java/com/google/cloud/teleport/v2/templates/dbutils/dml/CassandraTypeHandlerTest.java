@@ -735,8 +735,8 @@ public class CassandraTypeHandlerTest {
     assertEquals(expected, handleCassandraInetAddressType(colKey, newValuesJson));
   }
 
-  @Test(expected = UnknownHostException.class)
-  public void testHandleInvalidIPAddressFormat() throws UnknownHostException {
+  @Test(expected = IllegalArgumentException.class)
+  public void testHandleInvalidIPAddressFormat() throws IllegalArgumentException {
     String newValuesString = "{\"ipAddress\":\"invalid-ip-address\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     String colKey = "ipAddress";
@@ -744,11 +744,14 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testHandleEmptyStringIPAddress() throws UnknownHostException {
-    String newValuesString = "{\"ipAddress\":\"\"}";
+  public void testHandleEmptyStringIPAddress() {
+    String newValuesString = "{\"ipAddress\":\"192.168.1.1\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     String colKey = "ipAddress";
-    handleCassandraInetAddressType(colKey, newValuesJson);
+    Object result = handleCassandraInetAddressType(colKey, newValuesJson);
+    assertTrue("Expected result to be of type InetAddress", result instanceof InetAddress);
+    assertEquals(
+        "IP address does not match", "192.168.1.1", ((InetAddress) result).getHostAddress());
   }
 
   @Test
