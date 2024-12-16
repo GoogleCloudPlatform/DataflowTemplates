@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -105,7 +106,7 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
   }
 
   @Test
-  public void mixedMigrationTest() {
+  public void mixedMigrationTest() throws InterruptedException {
     // Construct a ChainedConditionCheck with 2 stages.
     // 1. Send initial wave of events
     // 2. Wait on Spanner to have events
@@ -132,6 +133,7 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
 
+    TimeUnit.MINUTES.sleep(1);
     // Assert Conditions
     assertThatResult(result).meetsConditions();
 
@@ -201,12 +203,12 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
     bookRow1.put("title", "Pride and Prejudice");
 
     Map<String, Object> bookRow2 = new HashMap<>();
-    bookRow2.put("id", 1);
-    bookRow2.put("title", "Pride and Prejudice");
+    bookRow2.put("id", 2);
+    bookRow2.put("title", "Oliver Twist");
 
     Map<String, Object> bookRow3 = new HashMap<>();
-    bookRow3.put("id", 1);
-    bookRow3.put("title", "Pride and Prejudice");
+    bookRow3.put("id", 3);
+    bookRow3.put("title", "War and Peace");
 
     bookEvents.add(bookRow1);
     bookEvents.add(bookRow2);
