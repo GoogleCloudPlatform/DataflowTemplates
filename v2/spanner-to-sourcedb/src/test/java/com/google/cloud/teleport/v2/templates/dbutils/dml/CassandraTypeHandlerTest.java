@@ -577,11 +577,11 @@ public class CassandraTypeHandlerTest {
     handleCassandraTimestampType("createdAt", newValuesJson);
   }
 
-  @Test
+  @Test(expected = IllegalArgumentException.class)
   public void testHandleCassandraTimestampInvalidFormatColNull() {
     String newValuesString = "{\"createdAt\":\"2024-12-05 10:15:30.123\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    handleCassandraTimestampType(null, newValuesJson);
+    handleCassandraTimestampType("timestamp", newValuesJson);
   }
 
   @Test(expected = IllegalArgumentException.class)

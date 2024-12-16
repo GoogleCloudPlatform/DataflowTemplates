@@ -243,22 +243,46 @@ class CassandraTypeHandler {
   }
 
   /**
-   * Generates a {@link LocalDate} based on the provided {@link CassandraTypeHandler}.
+   * Parses a timestamp value from a JSON object and returns it as an {@link Instant} in UTC.
    *
-   * <p>This method processes the given JSON object to extract a timestamp value using the specified
-   * column name and formatter. It specifically handles the "Cassandra Timestamp" format
-   * (yyyy-MM-dd'T'HH:mm:ss.SSSZ). The resulting {@link LocalDate} represents the date part of the
-   * timestamp value associated with the column.
+   * <p>This method extracts a timestamp value associated with the given column name from the
+   * provided {@link JSONObject}. The timestamp is expected to be in an ISO-8601 compatible format
+   * (e.g., "yyyy-MM-dd'T'HH:mm:ss.SSSZ"). The method ensures that the returned {@link Instant} is
+   * always in UTC, regardless of the time zone present in the input.
    *
-   * @param colName - the key used to fetch the value from the provided {@link JSONObject}.
-   * @param valuesJson - the JSON object containing all key-value pairs for the current incoming
-   *     data stream.
-   * @return a {@link LocalDate} object containing the date value extracted from the timestamp in
-   *     Cassandra type format. If the column is missing or contains an invalid value, this will
-   *     return {@code null}.
+   * <p>If the input timestamp cannot be parsed directly as an {@link Instant}, the method attempts
+   * to parse it as a {@link ZonedDateTime} and normalizes it to UTC before converting it to an
+   * {@link Instant}. If parsing fails, an {@link IllegalArgumentException} is thrown.
+   *
+   * <p>This method is particularly useful for processing timestamp data stored in Cassandra, where
+   * timestamps are often stored as ISO-8601 strings.
+   *
+   * @param colName the key used to fetch the value from the provided {@link JSONObject}.
+   * @param valuesJson the JSON object containing key-value pairs, including the timestamp value.
+   * @return an {@link Instant} representing the parsed timestamp value in UTC.
+   * @throws IllegalArgumentException if the column value is missing, empty, or cannot be parsed as
+   *     a valid timestamp.
    */
-  public static LocalDate handleCassandraTimestampType(String colName, JSONObject valuesJson) {
-    return handleCassandraGenericDateType(colName, valuesJson, "yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+  public static Instant handleCassandraTimestampType(String colName, JSONObject valuesJson) {
+    String timestampValue = valuesJson.optString(colName, null);
+    if (timestampValue == null || timestampValue.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Timestamp value for column " + colName + " is null or empty.");
+    }
+
+    try {
+      return Instant.parse(timestampValue);
+    } catch (DateTimeParseException e) {
+      try {
+        return ZonedDateTime.parse(timestampValue)
+            .withZoneSameInstant(java.time.ZoneOffset.UTC)
+            .toInstant();
+      } catch (DateTimeParseException nestedException) {
+        throw new IllegalArgumentException(
+            "Failed to parse timestamp value for column " + colName + ": " + timestampValue,
+            nestedException);
+      }
+    }
   }
 
   /**
