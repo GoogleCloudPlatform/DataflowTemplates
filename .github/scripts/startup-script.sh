@@ -27,6 +27,9 @@ sudo add-apt-repository ppa:git-core/ppa -y
 sudo apt update
 sudo apt install git -y
 
+# update Java version to 17
+sudo apt install openjdk-17-jdk-headless -y
+
 # install jq
 sudo apt install jq -y
 
