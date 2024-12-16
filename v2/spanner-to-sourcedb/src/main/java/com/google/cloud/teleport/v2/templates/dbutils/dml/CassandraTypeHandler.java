@@ -862,7 +862,7 @@ class CassandraTypeHandler {
    * @return The {@link LocalDate} representation of the date.
    */
   public static LocalDate convertToCassandraDate(String dateString) {
-    Instant instant = Instant.parse(dateString);
+    Instant instant = convertToCassandraTimestamp(dateString);
     Date date = Date.from(instant);
     return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
   }

@@ -67,7 +67,6 @@ import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
@@ -987,7 +986,7 @@ public class CassandraTypeHandlerTest {
     assertEquals(expected, result);
   }
 
-  @Test(expected = DateTimeParseException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testConvertToCassandraDateWithInvalidDate() {
     String dateString = "2024-13-12T10:15:30Z";
     convertToCassandraDate(dateString);
