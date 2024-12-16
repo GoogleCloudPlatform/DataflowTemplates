@@ -269,20 +269,7 @@ class CassandraTypeHandler {
       throw new IllegalArgumentException(
           "Timestamp value for column " + colName + " is null or empty.");
     }
-
-    try {
-      return Instant.parse(timestampValue);
-    } catch (DateTimeParseException e) {
-      try {
-        return ZonedDateTime.parse(timestampValue)
-            .withZoneSameInstant(java.time.ZoneOffset.UTC)
-            .toInstant();
-      } catch (DateTimeParseException nestedException) {
-        throw new IllegalArgumentException(
-            "Failed to parse timestamp value for column " + colName + ": " + timestampValue,
-            nestedException);
-      }
-    }
+    return convertToCassandraTimestamp(timestampValue);
   }
 
   /**
@@ -887,11 +874,22 @@ class CassandraTypeHandler {
    * <p>The method parses the {@code dateString} into an {@link Instant}, which represents an
    * instantaneous point in time and is compatible with Cassandra timestamp types.
    *
-   * @param dateString The timestamp string in ISO-8601 format (e.g., "2024-12-05T10:15:30Z").
+   * @param timestampValue The timestamp string in ISO-8601 format (e.g., "2024-12-05T10:15:30Z").
    * @return The {@link Instant} representation of the timestamp.
    */
-  public static Instant convertToCassandraTimestamp(String dateString) {
-    return Instant.parse(dateString);
+  public static Instant convertToCassandraTimestamp(String timestampValue) {
+    try {
+      return Instant.parse(timestampValue);
+    } catch (DateTimeParseException e) {
+      try {
+        return ZonedDateTime.parse(timestampValue)
+            .withZoneSameInstant(java.time.ZoneOffset.UTC)
+            .toInstant();
+      } catch (DateTimeParseException nestedException) {
+        throw new IllegalArgumentException(
+            "Failed to parse timestamp value" + timestampValue, nestedException);
+      }
+    }
   }
 
   /**

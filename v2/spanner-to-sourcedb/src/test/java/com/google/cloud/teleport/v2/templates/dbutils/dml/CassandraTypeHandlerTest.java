@@ -1017,7 +1017,7 @@ public class CassandraTypeHandlerTest {
     assertEquals(expected, result);
   }
 
-  @Test(expected = DateTimeParseException.class)
+  @Test(expected = IllegalArgumentException.class)
   public void testConvertToCassandraTimestampWithInvalidDate() {
     String dateString = "2024-13-12T10:15:30Z";
     convertToCassandraTimestamp(dateString);
