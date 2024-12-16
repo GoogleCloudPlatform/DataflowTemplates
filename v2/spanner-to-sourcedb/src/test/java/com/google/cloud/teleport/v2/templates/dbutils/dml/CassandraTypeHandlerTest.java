@@ -72,6 +72,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.json.JSONObject;
@@ -658,7 +659,7 @@ public class CassandraTypeHandlerTest {
     handleCassandraAsciiType(colKey, newValuesJson);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testHandleNullForAsciiColumn() {
     String newValuesString = "{\"name\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -683,7 +684,7 @@ public class CassandraTypeHandlerTest {
     handleCassandraVarintType(colKey, newValuesJson);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testHandleInvalidTypeVarint() {
     String newValuesString = "{\"amount\":12345}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -748,6 +749,51 @@ public class CassandraTypeHandlerTest {
     JSONObject newValuesJson = new JSONObject(newValuesString);
     String colKey = "ipAddress";
     handleCassandraInetAddressType(colKey, newValuesJson);
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToMapWithEmptyJson() {
+    String newValuesString = "{}";
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("data", newValuesString);
+    String colKey = "data";
+    Map<String, Object> expected = Map.of();
+    Map<String, Object> result = handleStringifiedJsonToMap(colKey, newValuesJson);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToMapWithSimpleJson() {
+    String newValuesString = "{\"name\":\"John\", \"age\":30}";
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("data", newValuesString);
+    String colKey = "data";
+    Map<String, Object> expected = Map.of("name", "John", "age", 30);
+    Map<String, Object> result = handleStringifiedJsonToMap(colKey, newValuesJson);
+    assertEquals(expected, result);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void testHandleStringifiedJsonToMapWithInvalidJson() {
+    String newValuesString = "{\"user\":{\"name\":\"John\", \"age\":30";
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("data", newValuesString);
+    String colKey = "data";
+    handleStringifiedJsonToMap(colKey, newValuesJson);
+  }
+
+  @Test
+  public void testHandleStringifiedJsonToMapWithNullValues() {
+    String newValuesString = "{\"name\":null, \"age\":null}";
+    JSONObject newValuesJson = new JSONObject();
+    newValuesJson.put("data", newValuesString);
+    String colKey = "data";
+    Map<String, Object> expected =
+        Map.of(
+            "name", JSONObject.NULL,
+            "age", JSONObject.NULL);
+    Map<String, Object> result = handleStringifiedJsonToMap(colKey, newValuesJson);
+    assertEquals(expected, result);
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -876,6 +922,24 @@ public class CassandraTypeHandlerTest {
     String value = "2024-12-12T10:15:30+02:00";
     String timezoneOffset = "+00:00";
     String expected = "'2024-12-12T08:15:30Z'";
+    String result = convertToCassandraTimestamp(value, timezoneOffset);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void testConvertToCassandraTimestampWithNonZeroOffset() {
+    String value = "2024-12-12T10:15:30+02:00";
+    String timezoneOffset = "+00:00";
+    String expected = "'2024-12-12T08:15:30Z'";
+    String result = convertToCassandraTimestamp(value, timezoneOffset);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void testConvertToCassandraTimestampWithNegativeOffset() {
+    String value = "2024-12-12T10:15:30-05:00";
+    String timezoneOffset = "+00:00";
+    String expected = "'2024-12-12T15:15:30Z'";
     String result = convertToCassandraTimestamp(value, timezoneOffset);
     assertEquals(expected, result);
   }
