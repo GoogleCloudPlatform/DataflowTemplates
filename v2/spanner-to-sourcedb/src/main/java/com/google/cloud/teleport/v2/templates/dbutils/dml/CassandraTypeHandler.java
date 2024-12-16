@@ -863,8 +863,8 @@ class CassandraTypeHandler {
    */
   public static LocalDate convertToCassandraDate(String dateString) {
     Instant instant = convertToCassandraTimestamp(dateString);
-    Date date = Date.from(instant);
-    return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+    ZonedDateTime zonedDateTime = instant.atZone(ZoneId.systemDefault());
+    return zonedDateTime.toLocalDate();
   }
 
   /**
