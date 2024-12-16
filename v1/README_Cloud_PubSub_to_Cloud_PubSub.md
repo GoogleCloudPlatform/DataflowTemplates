@@ -21,13 +21,13 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : The Pub/Sub subscription to read the input from. (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **outputTopic** : The Pub/Sub topic to write the output to. (Example: projects/your-project-id/topics/your-topic-name).
+* **inputSubscription**: The Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **outputTopic**: The Pub/Sub topic to write the output to. For example, `projects/your-project-id/topics/your-topic-name`.
 
 ### Optional parameters
 
-* **filterKey** : The attribute key to use to filter events. No filters are applied if `filterKey` is not specified.
-* **filterValue** : The attribute value to use to filter events when a `filterKey` is provided. By default, a null `filterValue` is used.
+* **filterKey**: The attribute key to use to filter events. No filters are applied if `filterKey` is not specified.
+* **filterValue**: The attribute value to use to filter events when a `filterKey` is provided. By default, a null `filterValue` is used.
 
 
 
@@ -201,8 +201,8 @@ resource "google_dataflow_job" "cloud_pubsub_to_cloud_pubsub" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    outputTopic = "projects/your-project-id/topics/your-topic-name"
+    inputSubscription = "<inputSubscription>"
+    outputTopic = "<outputTopic>"
     # filterKey = "<filterKey>"
     # filterValue = "<filterValue>"
   }

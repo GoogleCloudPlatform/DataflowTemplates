@@ -80,7 +80,7 @@ public interface BigtableChangeStreamsToPubSubOptions
       optional = true,
       description = "Strip values for SetCell mutation",
       helpText =
-          "When set to true, the SET_CELL mutations are returned without new values set. Defaults to false. This parameter is useful when you don't need a new value to be present, also known as cache invalidation, or when values are extremely large and exceed Pub/Sub message size limits.")
+          "When set to `true`, the `SET_CELL` mutations are returned without new values set. Defaults to `false`. This parameter is useful when you don't need a new value to be present, also known as cache invalidation, or when values are extremely large and exceed Pub/Sub message size limits.")
   @Default.Boolean(false)
   Boolean getStripValues();
 

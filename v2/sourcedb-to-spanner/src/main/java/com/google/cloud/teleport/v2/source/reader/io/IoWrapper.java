@@ -23,8 +23,12 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
 
+/** IO Wrapper Interface for adding new IO sources. */
 public interface IoWrapper {
+
+  /** Get a list of reader transforms. */
   ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> getTableReaders();
 
+  /** Discover source schema. */
   SourceSchema discoverTableSchema();
 }

@@ -24,13 +24,13 @@ import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSe
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -119,7 +119,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public ImmutableList<String> discoverTables(
-      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
+      DataSource dataSource, JdbcSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
 
     logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
@@ -184,12 +184,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
+            "Discovering table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
             dataSource, sourceSchemaReference, tables));
 
     String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference);
@@ -229,7 +229,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableSchemaBuilder.build();
     logger.info(
         String.format(
-            "Discovered table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
+            "Discovered table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s, schema: %s",
             dataSource, sourceSchemaReference, tables, tableSchema));
 
     return tableSchema;
@@ -248,12 +248,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering Indexes for DataSource: %s, SourceSchemaReference: %s, Tables: %s",
+            "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
             dataSource, sourceSchemaReference, tables));
     String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference);
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
@@ -292,12 +292,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableIndexesBuilder.build();
     logger.info(
         String.format(
-            "Discovered Indexes for DataSource: %s, SourceSchemaReference: %s, Tables: %s.\nIndexes: %s",
+            "Discovered Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s.\nIndexes: %s",
             dataSource, sourceSchemaReference, tables, tableIndexes));
     return tableIndexes;
   }
 
-  protected static String getSchemaDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+  protected static String getSchemaDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
     return "SELECT "
         + String.join(",", InformationSchemaCols.colList())
         + " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = "
@@ -315,7 +315,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @param sourceSchemaReference
    * @return
    */
-  protected static String getIndexDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+  protected static String getIndexDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
     return "SELECT *"
         + " FROM INFORMATION_SCHEMA.STATISTICS stats"
         + " JOIN "
@@ -382,7 +382,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   /**
    * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
-   * #getIndexDiscoveryQuery(SourceSchemaReference)}. This method takes care of the fact that older
+   * #getIndexDiscoveryQuery(JdbcSchemaReference)}. This method takes care of the fact that older
    * versions of MySQL notably Mysql5.7 don't have a {@link
    * InformationSchemaStatsCols#PAD_SPACE_COL} column and default to PAD SPACE comparisons.
    */

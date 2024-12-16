@@ -26,6 +26,7 @@ import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
@@ -320,6 +321,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allPropertyGraphNames =
+        ddl.apply(
+            "List all property graph names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (PropertyGraph graph : ddl.propertyGraphs()) {
+                      c.output(graph.name());
+                    }
+                  }
+                }));
+
     PCollection<String> allChangeStreamNames =
         ddl.apply(
             "List all change stream names",
@@ -515,6 +531,24 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> propertyGraphs =
+        allPropertyGraphNames.apply(
+            "Export property graphs",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String propertyGraphName = c.element();
+                    LOG.info("Exporting property graph: " + propertyGraphName);
+                    // This file will contain the schema definition for the propertyGraph.
+                    c.output(
+                        KV.of(
+                            propertyGraphName,
+                            Collections.singleton(propertyGraphName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     PCollection<KV<String, Iterable<String>>> changeStreams =
         allChangeStreamNames.apply(
             "Export change streams",
@@ -596,6 +630,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .and(sequences)
             .and(namedSchemas)
             .and(placements)
+            .and(propertyGraphs)
             .apply("Combine all empty schema files", Flatten.pCollections());
 
     emptySchemaFiles =

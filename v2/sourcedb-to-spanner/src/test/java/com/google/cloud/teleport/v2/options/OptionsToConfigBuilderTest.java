@@ -66,6 +66,16 @@ public class OptionsToConfigBuilderTest {
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
     assertThat(config.waitOn()).isNotNull();
+    assertThat(config.maxFetchSize()).isNull();
+    sourceDbToSpannerOptions.setFetchSize(42);
+    assertThat(
+            OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
+                    sourceDbToSpannerOptions,
+                    List.of("table1", "table2"),
+                    null,
+                    Wait.on(dummyPCollection))
+                .maxFetchSize())
+        .isEqualTo(42);
   }
 
   @Test
@@ -89,7 +99,8 @@ public class OptionsToConfigBuilderTest {
             "mysql-jar",
             10,
             0,
-            Wait.on(dummyPCollection));
+            Wait.on(dummyPCollection),
+            null);
 
     JdbcIOWrapperConfig configWithoutConnectionProperties =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
@@ -108,7 +119,8 @@ public class OptionsToConfigBuilderTest {
             "mysql-jar",
             10,
             0,
-            Wait.on(dummyPCollection));
+            Wait.on(dummyPCollection),
+            null);
 
     assertThat(configWithConnectionProperties.sourceDbURL())
         .isEqualTo(
@@ -172,7 +184,8 @@ public class OptionsToConfigBuilderTest {
             "mysql-jar",
             10,
             0,
-            Wait.on(dummyPCollection));
+            Wait.on(dummyPCollection),
+            null);
     JdbcIOWrapperConfig configWithoutConnectionParameters =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
@@ -190,7 +203,8 @@ public class OptionsToConfigBuilderTest {
             "mysql-jar",
             10,
             0,
-            Wait.on(dummyPCollection));
+            Wait.on(dummyPCollection),
+            null);
     assertThat(configWithoutConnectionParameters.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public");
     assertThat(configWithConnectionParameters.sourceDbURL())
@@ -218,7 +232,8 @@ public class OptionsToConfigBuilderTest {
             "mysql-jar",
             10,
             0,
-            Wait.on(dummyPCollection));
+            Wait.on(dummyPCollection),
+            null);
     assertThat(configWithNamespace.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=mynamespace");
   }
@@ -271,5 +286,21 @@ public class OptionsToConfigBuilderTest {
                 "jdbc:mysql://localhost:3306/testDB?useSSL=true&autoReconnect=true&allowMultiQueries=false",
                 "allowMultiQueries",
                 "true"));
+  }
+
+  @Test
+  public void testMySqlSetCursorModeIfNeeded() {
+    assertThat(
+            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
+                SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true&useCursorFetch=true");
+    assertThat(
+            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
+                SQLDialect.MYSQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", null))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
+    assertThat(
+            OptionsToConfigBuilder.mysqlSetCursorModeIfNeeded(
+                SQLDialect.POSTGRESQL, "jdbc:mysql://localhost:3306/testDB?useSSL=true", 42))
+        .isEqualTo("jdbc:mysql://localhost:3306/testDB?useSSL=true");
   }
 }

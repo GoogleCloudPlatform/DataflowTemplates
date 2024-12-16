@@ -22,12 +22,12 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.ResourceUtils;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.postgresql.PostgreSQLDialectAdapter.PostgreSQLVersion;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -57,13 +57,13 @@ public class PostgreSQLDialectAdapterTest {
 
   @Mock ResultSet mockResultSet;
 
-  private SourceSchemaReference sourceSchemaReference;
+  private JdbcSchemaReference sourceSchemaReference;
   private PostgreSQLDialectAdapter adapter;
 
   @Before
   public void setUp() throws Exception {
     sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").setNamespace("public").build();
+        JdbcSchemaReference.builder().setDbName("testDB").setNamespace("public").build();
     adapter = new PostgreSQLDialectAdapter(PostgreSQLVersion.DEFAULT);
   }
 
@@ -82,8 +82,8 @@ public class PostgreSQLDialectAdapterTest {
 
   @Test
   public void testDiscoverTableExceptions() throws SQLException {
-    final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -158,8 +158,8 @@ public class PostgreSQLDialectAdapterTest {
   @Test
   public void testDiscoverTableSchemaExceptions() throws SQLException {
     final String testTable = "testTable";
-    final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))
@@ -277,8 +277,8 @@ public class PostgreSQLDialectAdapterTest {
   @Test
   public void testDiscoverTableIndexesExceptions() throws SQLException {
     final String testTable = "testTable";
-    final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName("testDB").build();
+    final JdbcSchemaReference sourceSchemaReference =
+        JdbcSchemaReference.builder().setDbName("testDB").build();
 
     when(mockDataSource.getConnection())
         .thenThrow(new SQLTransientConnectionException("test"))

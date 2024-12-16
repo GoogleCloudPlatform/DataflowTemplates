@@ -28,7 +28,7 @@
           "Id": "c142"
         },
         "c143": {
-          "Name": "name",
+          "Name": "full_name",
           "T": {
             "Name": "STRING",
             "Len": 25,

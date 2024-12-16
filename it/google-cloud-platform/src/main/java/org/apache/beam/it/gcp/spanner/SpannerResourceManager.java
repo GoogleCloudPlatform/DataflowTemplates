@@ -81,7 +81,9 @@ public final class SpannerResourceManager implements ResourceManager {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerResourceManager.class);
   private static final int MAX_BASE_ID_LENGTH = 30;
 
-  private static final String DEFAULT_SPANNER_HOST = "https://batch-spanner.googleapis.com";
+  public static final String DEFAULT_SPANNER_HOST = "https://batch-spanner.googleapis.com";
+  public static final String STAGING_SPANNER_HOST =
+      "https://staging-wrenchworks.sandbox.googleapis.com";
 
   // Retry settings for instance creation
   private static final int CREATE_MAX_RETRIES = 5;
@@ -232,7 +234,11 @@ public final class SpannerResourceManager implements ResourceManager {
 
   private static <T> RetryPolicy<T> retryOnQuotaException() {
     return RetryPolicy.<T>builder()
-        .handleIf(exception -> ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED"))
+        .handleIf(
+            exception -> {
+              LOG.warn("Error from spanner:", exception);
+              return ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED");
+            })
         .withMaxRetries(CREATE_MAX_RETRIES)
         .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
         .withJitter(CREATE_BACKOFF_JITTER)
@@ -597,15 +603,13 @@ public final class SpannerResourceManager implements ResourceManager {
     }
 
     /**
-     * Looks at the system properties if there's a Spanner host override, uses it for Spanner API
-     * calls.
+     * Overrides spanner host, uses it for Spanner API calls.
      *
+     * @param spannerHost spanner host URL
      * @return this builder with host set.
      */
-    public Builder maybeUseCustomHost() {
-      if (System.getProperty("spannerHost") != null) {
-        this.host = System.getProperty("spannerHost");
-      }
+    public Builder useCustomHost(String spannerHost) {
+      this.host = spannerHost;
       return this;
     }
 

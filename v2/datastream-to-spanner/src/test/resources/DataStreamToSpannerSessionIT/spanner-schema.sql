@@ -8,4 +8,5 @@ CREATE TABLE Books (
    title STRING(200),
    author_id INT64,
    synth_id STRING(50),
-) PRIMARY KEY (synth_id);
+   extraCol1 INT64,
+) PRIMARY KEY(synth_id);

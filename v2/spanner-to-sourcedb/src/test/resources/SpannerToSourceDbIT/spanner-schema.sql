@@ -1,8 +1,13 @@
 CREATE TABLE IF NOT EXISTS Users (
     id INT64 NOT NULL,
-    name STRING(25),
+    full_name STRING(25),
     `from` STRING(25)
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS Users2 (
+    id INT64 NOT NULL,
+    name STRING(25),
+    ) PRIMARY KEY(id);
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (

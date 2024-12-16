@@ -33,6 +33,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.common.io.Resources;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -46,6 +49,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.collections.map.HashedMap;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -333,6 +337,101 @@ public class GenericRecordTypeConvertorTest {
                 AvroTestingHelper.UNSUPPORTED_SCHEMA));
   }
 
+  /*
+   * Test conversion of Interval Nano to String for various cases.
+   */
+  @Test
+  public void testIntervalNanos() {
+    String result;
+
+    /* Basic Test. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 1000L, 3890L, 25L, 331L, 12L, 9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #1 interval nano conversion:", "P1000Y1000M3890DT30H31M12.000000009S", result);
+
+    /* Test with any field set as null gets treated as 0. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 1000L, 3890L, 25L, null, 12L, 9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #2 interval nano conversion with null minutes:",
+        "P1000Y1000M3890DT25H12.000000009S",
+        result);
+
+    /* Basic test for negative field. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, -1000L, 3890L, 25L, 31L, 12L, 9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #3 interval nano conversion with negative months:",
+        "P1000Y-1000M3890DT25H31M12.000000009S",
+        result);
+
+    /* Test that negative nanos subtract from the fractional seconds, for example 12 Seconds -1 Nanos becomes 11.999999991s. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 31L, 3890L, 25L, 31L, 12L, -9L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #4 interval nano conversion with negative nanos:",
+        "P1000Y31M3890DT25H31M11.999999991S",
+        result);
+
+    /* Test 0 interval. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #5 interval nano conversion with all zeros", "P0D", result);
+
+    /* Test almost zero interval with only nanos set. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 1L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #6 interval nano conversion with only nanos", "P0DT0.000000001S", result);
+    /* Test with large values. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(
+                2147483647L, 11L, 2147483647L, 2147483647L, 2147483647L, 2147483647L, 999999999L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #6 interval nano conversion with INT.MAX values",
+        "P2147483647Y11M2147483647DT2183871564H21M7.999999999S",
+        result);
+
+    /* Test with large negative values. */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(
+                -2147483647L,
+                -11L,
+                -2147483647L,
+                -2147483647L,
+                -2147483647L,
+                -2147483647L,
+                -999999999L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #6 interval nano conversion with -INT.MAX values",
+        "P-2147483647Y-11M-2147483647DT-2183871564H-21M-7.999999999S",
+        result);
+  }
+
   @Test
   public void testHandleRecordFieldType_nullInput() {
     assertNull(
@@ -393,9 +492,14 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("bytes_col", ByteBuffer.wrap(new byte[] {10, 20, 30}));
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
+
+    GenericRecord genericRecordAllNulls = new GenericData.Record(getAllSpannerTypesSchema());
+    getAllSpannerTypesSchema().getFields().stream()
+        .forEach(f -> genericRecordAllNulls.put(f.name(), null));
+
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null, null);
-    Map<String, Value> actual =
+    Map<String, Value> actualWithoutCustomTransform =
         genericRecordTypeConvertor.transformChangeEvent(genericRecord, "all_types");
     Map<String, Value> expected =
         Map.of(
@@ -408,7 +512,72 @@ public class GenericRecordTypeConvertorTest {
             "timestamp_col",
                 Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056483Z")),
             "date_col", Value.date(com.google.cloud.Date.parseDate("3993-04-16")));
-    assertEquals(expected, actual);
+    // Implementation Detail, the transform returns Spanner values, and Value.Null is not equal to
+    // java null,
+    // So simple transform for expected map to have null values does not work for us.
+    Map<String, Value> expectedNulls =
+        Map.of(
+            "bool_col",
+            Value.bool(null),
+            "int_col",
+            Value.int64(null),
+            "float_col",
+            Value.float64(null),
+            "string_col",
+            Value.string(null),
+            "numeric_col",
+            Value.numeric(null),
+            "bytes_col",
+            Value.bytes(null),
+            "timestamp_col",
+            Value.timestamp(null),
+            "date_col",
+            Value.date(null));
+    Map<String, Value> actualWithCustomTransform =
+        new GenericRecordTypeConvertor(
+                new IdentityMapper(getIdentityDdl()),
+                "",
+                null,
+                new TestCustomTransform(expected, false, false))
+            .transformChangeEvent(genericRecord, "all_types");
+
+    /* Checks that when there's no custom transform, output is as expected */
+    assertEquals(expected, actualWithoutCustomTransform);
+
+    /* Checks for the part of the code that supplies inputs to custom transforms */
+
+    /* Check correct input map generated when using customTransform */
+    assertEquals(expected, actualWithCustomTransform);
+
+    /* Checks that if any fields is made null by the custom transform, we get output with values as Value.NULL */
+    assertEquals(
+        expectedNulls,
+        new GenericRecordTypeConvertor(
+                new IdentityMapper(getIdentityDdl()),
+                "",
+                null,
+                new TestCustomTransform(expected, false, true))
+            .transformChangeEvent(genericRecord, "all_types"));
+
+    /* Checks that if event is filtered by the custom transform, output is null. */
+    assertEquals(
+        null,
+        new GenericRecordTypeConvertor(
+                new IdentityMapper(getIdentityDdl()),
+                "",
+                null,
+                new TestCustomTransform(expected, true, false))
+            .transformChangeEvent(genericRecord, "all_types"));
+
+    /* Checks that if any field in generic record is null, we get custom transform input map entry with value as Value.NULL */
+    assertEquals(
+        expectedNulls,
+        new GenericRecordTypeConvertor(
+                new IdentityMapper(getIdentityDdl()),
+                "",
+                null,
+                new TestCustomTransform(expected, false, false))
+            .transformChangeEvent(genericRecordAllNulls, "all_types"));
   }
 
   @Test
@@ -795,5 +964,41 @@ public class GenericRecordTypeConvertorTest {
     // Check that the synthetic primary key column exists in the result set.
     assertTrue(actual.containsKey("synth_id"));
     assertEquals(Value.string("name1"), actual.get("new_name"));
+  }
+
+  private class TestCustomTransform implements ISpannerMigrationTransformer {
+
+    private Map<String, Value> expected;
+    private Boolean isFiltered;
+    private Boolean nullify;
+
+    public TestCustomTransform(Map<String, Value> expected, boolean isFiltered, boolean nullify) {
+      this.expected = expected;
+      this.isFiltered = isFiltered;
+      this.nullify = nullify;
+    }
+
+    @Override
+    public void init(String customParameters) {}
+
+    @Override
+    public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
+        throws InvalidTransformationException {
+      if (!nullify) {
+        return new MigrationTransformationResponse(request.getRequestRow(), isFiltered);
+      } else {
+        Map<String, Object> allNulls = new HashedMap();
+        for (String k : request.getRequestRow().keySet()) {
+          allNulls.put(k, null);
+        }
+        return new MigrationTransformationResponse(allNulls, isFiltered);
+      }
+    }
+
+    @Override
+    public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
+        throws InvalidTransformationException {
+      return null;
+    }
   }
 }

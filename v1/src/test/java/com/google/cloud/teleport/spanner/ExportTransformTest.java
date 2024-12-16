@@ -147,7 +147,9 @@ public class ExportTransformTest {
             "sequence",
             "sequence manifest",
             "placement",
-            "placement manifest");
+            "placement manifest",
+            "propertyGraph1",
+            "propertyGraph1 manifest");
 
     FileDescriptorProto.Builder builder = FileDescriptorProto.newBuilder();
     builder
@@ -179,6 +181,7 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
+    ddlBuilder.createPropertyGraph("propertyGraph1").endPropertyGraph();
     ddlBuilder
         .createPlacement("placement")
         .options(
@@ -218,9 +221,12 @@ public class ExportTransformTest {
                   assertEquals(protoDescriptorsResult, manifestProto.getProtoDescriptors());
                   assertEquals(protoBundle, new HashSet<>(manifestProto.getProtoBundleList()));
 
-                  assertThat(manifestProto.getTablesCount(), is(3));
+                  assertThat(manifestProto.getTablesCount(), is(4));
                   for (Table table : manifestProto.getTablesList()) {
-                    assertThat(table.getName(), anyOf(startsWith("table"), startsWith("model")));
+                    assertThat(
+                        table.getName(),
+                        anyOf(
+                            startsWith("table"), startsWith("model"), startsWith("propertyGraph")));
                     assertThat(table.getManifestFile(), is(table.getName() + "-manifest.json"));
                   }
 

@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -356,6 +357,64 @@ public class SpannerToSourceDb {
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
+
+    @TemplateParameter.Enum(
+        order = 24,
+        optional = true,
+        description = "Source database type, ex: mysql",
+        enumOptions = {@TemplateEnumOption("mysql")},
+        helpText = "The type of source database to reverse replicate to.")
+    @Default.String("mysql")
+    String getSourceType();
+
+    void setSourceType(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 25,
+        optional = true,
+        description = "Custom transformation jar location in Cloud Storage",
+        helpText =
+            "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records"
+                + " in reverse replication.")
+    @Default.String("")
+    String getTransformationJarPath();
+
+    void setTransformationJarPath(String value);
+
+    @TemplateParameter.Text(
+        order = 26,
+        optional = true,
+        description = "Custom class name for transformation",
+        helpText =
+            "Fully qualified class name having the custom transformation logic.  It is a"
+                + " mandatory field in case transformationJarPath is specified")
+    @Default.String("")
+    String getTransformationClassName();
+
+    void setTransformationClassName(String value);
+
+    @TemplateParameter.Text(
+        order = 27,
+        optional = true,
+        description = "Custom parameters for transformation",
+        helpText =
+            "String containing any custom parameters to be passed to the custom transformation class.")
+    @Default.String("")
+    String getTransformationCustomParameters();
+
+    void setTransformationCustomParameters(String value);
+
+    @TemplateParameter.Text(
+        order = 28,
+        optional = true,
+        description = "Directory name for holding filtered records",
+        helpText =
+            "Records skipped from reverse replication are written to this directory. Default"
+                + " directory name is skip.")
+    @Default.String("filteredEvents")
+    String getFilterEventsDirectoryName();
+
+    void setFilterEventsDirectoryName(String value);
   }
 
   /**
@@ -454,9 +513,16 @@ public class SpannerToSourceDb {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
     List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-    String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
-    if (shards.size() > 1) {
-      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    String shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+    if (shards.size() == 1) {
+      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+
+      Shard singleShard = shards.get(0);
+      if (singleShard.getLogicalShardId() == null) {
+        singleShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+        LOG.info(
+            "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
+      }
     }
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
@@ -523,6 +589,11 @@ public class SpannerToSourceDb {
     } else {
       mergedRecords = dlqRecords;
     }
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                options.getTransformationJarPath(), options.getTransformationClassName())
+            .setCustomParameters(options.getTransformationCustomParameters())
+            .build();
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -559,7 +630,9 @@ public class SpannerToSourceDb {
                     ddl,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
-                    connectionPoolSizePerWorker));
+                    connectionPoolSizePerWorker,
+                    options.getSourceType(),
+                    customTransformation));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements

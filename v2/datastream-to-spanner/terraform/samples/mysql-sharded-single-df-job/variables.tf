@@ -14,6 +14,7 @@ variable "common_params" {
       target_connection_profile_id  = optional(string, "target-gcs")
       gcs_root_path                 = optional(string, "/")
       source_type                   = optional(string, "mysql")
+      enable_backfill               = optional(bool, true)
       max_concurrent_cdc_tasks      = optional(number, 5)
       max_concurrent_backfill_tasks = optional(number, 20)
       private_connectivity_id       = optional(string)
@@ -28,6 +29,7 @@ variable "common_params" {
       }))
     })
     dataflow_params = object({
+      skip_dataflow = optional(bool, false)
       template_params = object({
         shadow_table_prefix                 = optional(string)
         create_shadow_tables                = optional(bool)

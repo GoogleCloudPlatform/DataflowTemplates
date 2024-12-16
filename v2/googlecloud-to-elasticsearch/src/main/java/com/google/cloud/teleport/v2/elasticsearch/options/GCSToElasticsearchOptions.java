@@ -45,7 +45,7 @@ public interface GCSToElasticsearchOptions
       optional = true,
       regexes = {"[a-zA-Z0-9._-]+"},
       description = "Input file format",
-      helpText = "Input file format. Default is: CSV")
+      helpText = "The input file format. Defaults to `CSV`.")
   @Default.String("csv")
   String getInputFormat();
 

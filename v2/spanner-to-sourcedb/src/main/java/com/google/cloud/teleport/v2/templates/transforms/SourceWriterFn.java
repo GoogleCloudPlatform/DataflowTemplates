@@ -23,26 +23,30 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionException;
-import com.google.cloud.teleport.v2.templates.utils.ConnectionHelper;
-import com.google.cloud.teleport.v2.templates.utils.InputRecordProcessor;
-import com.google.cloud.teleport.v2.templates.utils.MySqlDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
-import com.google.cloud.teleport.v2.templates.utils.SpannerDao;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -50,8 +54,6 @@ import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
-import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
-import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
@@ -76,7 +78,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final Distribution lagMetric =
       Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
-  private transient Map<String, MySqlDao> mySqlDaoMap = new HashMap<>();
+
+  private final Counter invalidTransformationException =
+      Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
 
   private final Schema schema;
   private final String sourceDbTimezoneOffset;
@@ -87,6 +91,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
+  private final String source;
+  private SourceProcessor sourceProcessor;
+  private final CustomTransformation customTransformation;
+  private ISpannerMigrationTransformer spannerToSourceTransformer;
 
   public SourceWriterFn(
       List<Shard> shards,
@@ -96,7 +104,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       Ddl ddl,
       String shadowTablePrefix,
       String skipDirName,
-      int maxThreadPerDataflowWorker) {
+      int maxThreadPerDataflowWorker,
+      String source,
+      CustomTransformation customTransformation) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -106,6 +116,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
+    this.source = source;
+    this.customTransformation = customTransformation;
   }
 
   // for unit testing purposes
@@ -114,37 +126,38 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   }
 
   // for unit testing purposes
-  public void setMySqlDaoMap(Map<String, MySqlDao> mySqlDaoMap) {
-    this.mySqlDaoMap = mySqlDaoMap;
-  }
-
-  // for unit testing purposes
   public void setObjectMapper(ObjectMapper mapper) {
     this.mapper = mapper;
   }
 
+  // for unit testing purposes
+  public void setSourceProcessor(SourceProcessor sourceProcessor) {
+    this.sourceProcessor = sourceProcessor;
+  }
+
+  // for unit testing purposes
+  public void setSpannerToSourceTransformer(
+      ISpannerMigrationTransformer spannerToSourceTransformer) {
+    this.spannerToSourceTransformer = spannerToSourceTransformer;
+  }
+
   /** Setup function connects to Cloud Spanner. */
   @Setup
-  public void setup() {
+  public void setup() throws UnsupportedSourceException {
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-    ConnectionHelper.init(shards, null, maxThreadPerDataflowWorker);
-    mySqlDaoMap = new HashMap<>();
-    for (Shard shard : shards) {
-      String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
-      mySqlDaoMap.put(
-          shard.getLogicalShardId(),
-          new MySqlDao(sourceConnectionUrl, shard.getUserName(), shard.getPassword()));
-    }
+    sourceProcessor =
+        SourceProcessorFactory.createSourceProcessor(source, shards, maxThreadPerDataflowWorker);
     spannerDao = new SpannerDao(spannerConfig);
+    spannerToSourceTransformer =
+        CustomTransformationImplFetcher.getCustomTransformationLogicImpl(customTransformation);
   }
 
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() throws Exception {
     spannerDao.close();
-    mySqlDaoMap.clear();
+    sourceProcessor.close();
   }
 
   @ProcessElement
@@ -188,10 +201,20 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             > Long.parseLong(spannerRec.getRecordSequence())));
 
         if (!isSourceAhead) {
-          MySqlDao mySqlDao = mySqlDaoMap.get(shardId);
+          IDao sourceDao = sourceProcessor.getSourceDao(shardId);
 
-          InputRecordProcessor.processRecord(
-              spannerRec, schema, mySqlDao, shardId, sourceDbTimezoneOffset);
+          boolean isEventFiltered =
+              InputRecordProcessor.processRecord(
+                  spannerRec,
+                  schema,
+                  sourceDao,
+                  shardId,
+                  sourceDbTimezoneOffset,
+                  sourceProcessor.getDmlGenerator(),
+                  spannerToSourceTransformer);
+          if (isEventFiltered) {
+            outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
+          }
 
           spannerDao.updateShadowTable(
               getShadowTableMutation(
@@ -207,6 +230,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         }
         com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
         c.output(Constants.SUCCESS_TAG, timestamp.toString());
+      } catch (InvalidTransformationException ex) {
+        invalidTransformationException.inc();
+        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (ChangeEventConvertorException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (SpannerException

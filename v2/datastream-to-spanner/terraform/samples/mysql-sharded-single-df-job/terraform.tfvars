@@ -9,6 +9,7 @@ common_params = {
 
   datastream_params = {
     stream_prefix_path            = "<YOUR_STREAM_PREFIX>"                # Prefix for Datastream stream IDs (e.g., "data")
+    enable_backfill               = true                                  # This should always be enabled unless using sourcedb-to-spanner template for bulk migrations.
     max_concurrent_cdc_tasks      = "<YOUR_CDC_TASKS>"                    # Maximum concurrent CDC tasks (e.g., 5)
     max_concurrent_backfill_tasks = "<YOUR_BACKFILL_TASKS>"               # Maximum concurrent backfill tasks (e.g., 15)
     private_connectivity_id       = "<YOUR_PRIVATE_CONNECTIVITY_ID>"      # If using Private Service Connect
@@ -33,6 +34,7 @@ common_params = {
   }
 
   dataflow_params = {
+    skip_dataflow = false
     template_params = {
       shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>"            # Prefix for shadow tables (e.g., "shadow_")
       create_shadow_tables                = "<TRUE/FALSE>"                          # Whether to create shadow tables in Spanner

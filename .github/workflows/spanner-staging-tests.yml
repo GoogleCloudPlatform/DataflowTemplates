@@ -1,0 +1,51 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Spanner Staging integration tests
+
+on:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  spanner_java_integration_tests_templates:
+    name: Spanner Dataflow Templates Integration Tests
+    timeout-minutes: 180
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [ self-hosted, it ]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Integration Tests
+      run: |
+        ./cicd/run-it-tests \
+        --modules-to-build="ALL" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/"
+    - name: Upload Integration Tests Report
+      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-test-results
+        path: '**/surefire-reports/TEST-*.xml'
+        retention-days: 1
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env

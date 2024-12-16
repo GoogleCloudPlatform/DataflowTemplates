@@ -14,6 +14,7 @@ datastream_params = {
   target_gcs_bucket_name        = "live-migration"    # Or provide a custom bucket name
   pubsub_topic_name             = "live-migration"    # Or provide a custom topic name
   stream_id                     = "postgresql-stream" # Or provide a custom stream ID
+  enable_backfill               = true                # This should always be enabled unless using sourcedb-to-spanner template for bulk migrations.
   max_concurrent_cdc_tasks      = 50                  # Adjust as needed
   max_concurrent_backfill_tasks = 50                  # Adjust as needed
   postgresql_host               = "<YOUR_POSTGRESQL_HOST_IP_ADDRESS>"
@@ -84,6 +85,10 @@ dataflow_params = {
     transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Optional
     transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
     filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # Optional
+    table_overrides                     = "<YOUR_TABLE_NAME_OVERRIDES"
+    column_overrides                    = "<YOUR_COLUMN_NAME_OVERRIDES"
+    local_schema_overrides_file_path    = "<YOUR_LOCAL_SCHEMA_OVERRIDES_FILE_PATH>"
+    #One of string based overrides should be used or the file based overrides; not both.
   }
 
   runner_params = {

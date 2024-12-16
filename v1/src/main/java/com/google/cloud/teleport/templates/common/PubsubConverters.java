@@ -58,7 +58,7 @@ public class PubsubConverters {
         order = 1,
         description = "Output deadletter Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to forward undeliverable messages to. For example, projects/<PROJECT_ID>/topics/<TOPIC_NAME>.")
+            "The Pub/Sub topic to forward undeliverable messages to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.")
     @Validation.Required
     ValueProvider<String> getOutputDeadletterTopic();
 

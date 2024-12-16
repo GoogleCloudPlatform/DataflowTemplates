@@ -38,11 +38,11 @@ import org.apache.avro.reflect.ReflectData;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.artifacts.utils.JsonTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -50,15 +50,15 @@ import org.junit.After;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /**
  * Integration test for {@link SpannerChangeStreamsToGcs Spanner Change Streams to GCS} template.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToGcs.class)
-@RunWith(JUnit4.class)
-public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
+@RunWith(Parameterized.class)
+public class SpannerChangeStreamsToGcsIT extends SpannerTemplateITBase {
 
   private static final int MESSAGES_COUNT = 20;
   private static final Pattern RESULT_REGEX = Pattern.compile(".*result-.*");
@@ -73,16 +73,9 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
   @Test
   public void testSpannerChangeStreamsToGcs() throws IOException {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-    testSpannerChangeStreamsToGcsBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerChangeStreamsToGcsStaging() throws IOException {
-    spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION)
             .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerChangeStreamsToGcsBase(
         paramAdder ->
@@ -191,16 +184,9 @@ public class SpannerChangeStreamsToGcsIT extends TemplateTestBase {
   @Test
   public void testSpannerChangeStreamsToGcsAvro() throws IOException {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
-    testSpannerChangeStreamsToGcsAvroBase(Function.identity());
-  }
-
-  @Test
-  public void testSpannerChangeStreamsToGcsAvroStaging() throws IOException {
-    spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION)
             .maybeUseStaticInstance()
-            .maybeUseCustomHost()
+            .useCustomHost(spannerHost)
             .build();
     testSpannerChangeStreamsToGcsAvroBase(
         paramAdder ->

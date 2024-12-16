@@ -70,6 +70,62 @@ public final class CustomSchema {
     private Interval() {}
   }
 
+  /** Schema to represent Interval from years upto nanoseconds precision. */
+  public static final class IntervalNano {
+    public static final String RECORD_NAME = "intervalNano";
+
+    /** Years in the duration. * */
+    public static final String YEARS_FIELD_NAME = "years";
+
+    /** Months in the duration. * */
+    public static final String MONTHS_FIELD_NAME = "months";
+
+    /** Days in the duration. * */
+    public static final String DAYS_FIELD_NAME = "days";
+
+    /** Hours in the duration. * */
+    public static final String HOURS_FIELD_NAME = "hours";
+
+    /** Minutes in the duration. * */
+    public static final String MINUTES_FIELD_NAME = "minutes";
+
+    /** Seconds in the duration. * */
+    public static final String SECONDS_FIELD_NAME = "seconds";
+
+    /** Nano Seconds in the duration. * */
+    public static final String NANOS_FIELD_NAME = "nanos";
+
+    public static final Schema SCHEMA =
+        SchemaBuilder.builder()
+            .record(RECORD_NAME)
+            .fields()
+            .name(YEARS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(MONTHS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(DAYS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(HOURS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(MINUTES_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(SECONDS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .name(NANOS_FIELD_NAME)
+            .type(SchemaBuilder.builder().longType())
+            .withDefault(0L)
+            .endRecord();
+
+    /** Static final class wrapping only constants. * */
+    private IntervalNano() {}
+  }
+
   public static final class TimeStampTz {
     public static final String RECORD_NAME = "timestampTz";
     public static final String TIMESTAMP_FIELD_NAME = "timestamp";

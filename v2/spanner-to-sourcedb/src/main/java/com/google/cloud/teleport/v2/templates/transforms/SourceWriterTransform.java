@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.base.Preconditions;
@@ -51,6 +52,8 @@ public class SourceWriterTransform
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
+  private final String source;
+  private final CustomTransformation customTransformation;
 
   public SourceWriterTransform(
       List<Shard> shards,
@@ -60,7 +63,9 @@ public class SourceWriterTransform
       Ddl ddl,
       String shadowTablePrefix,
       String skipDirName,
-      int maxThreadPerDataflowWorker) {
+      int maxThreadPerDataflowWorker,
+      String source,
+      CustomTransformation customTransformation) {
 
     this.schema = schema;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
@@ -70,6 +75,8 @@ public class SourceWriterTransform
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
+    this.source = source;
+    this.customTransformation = customTransformation;
   }
 
   @Override
@@ -87,18 +94,22 @@ public class SourceWriterTransform
                         this.ddl,
                         this.shadowTablePrefix,
                         this.skipDirName,
-                        this.maxThreadPerDataflowWorker))
+                        this.maxThreadPerDataflowWorker,
+                        this.source,
+                        this.customTransformation))
                 .withOutputTags(
                     Constants.SUCCESS_TAG,
                     TupleTagList.of(Constants.PERMANENT_ERROR_TAG)
                         .and(Constants.RETRYABLE_ERROR_TAG)
-                        .and(Constants.SKIPPED_TAG)));
+                        .and(Constants.SKIPPED_TAG)
+                        .and(Constants.FILTERED_TAG)));
 
     return Result.create(
         sourceWriteResults.get(Constants.SUCCESS_TAG),
         sourceWriteResults.get(Constants.PERMANENT_ERROR_TAG),
         sourceWriteResults.get(Constants.RETRYABLE_ERROR_TAG),
-        sourceWriteResults.get(Constants.SKIPPED_TAG));
+        sourceWriteResults.get(Constants.SKIPPED_TAG),
+        sourceWriteResults.get(Constants.FILTERED_TAG));
   }
 
   /** Container class for the results of this transform. */
@@ -109,13 +120,18 @@ public class SourceWriterTransform
         PCollection<String> successfulSourceWrites,
         PCollection<String> permanentErrors,
         PCollection<String> retryableErrors,
-        PCollection<String> skippedSourceWrites) {
+        PCollection<String> skippedSourceWrites,
+        PCollection<String> filteredWrites) {
       Preconditions.checkNotNull(successfulSourceWrites);
       Preconditions.checkNotNull(permanentErrors);
       Preconditions.checkNotNull(retryableErrors);
       Preconditions.checkNotNull(skippedSourceWrites);
       return new AutoValue_SourceWriterTransform_Result(
-          successfulSourceWrites, permanentErrors, retryableErrors, skippedSourceWrites);
+          successfulSourceWrites,
+          permanentErrors,
+          retryableErrors,
+          skippedSourceWrites,
+          filteredWrites);
     }
 
     public abstract PCollection<String> successfulSourceWrites();
@@ -125,6 +141,8 @@ public class SourceWriterTransform
     public abstract PCollection<String> retryableErrors();
 
     public abstract PCollection<String> skippedSourceWrites();
+
+    public abstract PCollection<String> filteredWrites();
 
     @Override
     public void finishSpecifyingOutput(
@@ -147,7 +165,9 @@ public class SourceWriterTransform
           Constants.RETRYABLE_ERROR_TAG,
           retryableErrors(),
           Constants.SKIPPED_TAG,
-          skippedSourceWrites());
+          skippedSourceWrites(),
+          Constants.FILTERED_TAG,
+          filteredWrites());
     }
   }
 }

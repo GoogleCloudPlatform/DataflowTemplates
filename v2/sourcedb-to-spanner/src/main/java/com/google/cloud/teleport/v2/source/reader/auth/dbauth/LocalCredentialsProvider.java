@@ -43,6 +43,11 @@ public abstract class LocalCredentialsProvider implements DbAuth {
     return new AutoValue_LocalCredentialsProvider.Builder();
   }
 
+  @Override
+  public String toString() {
+    return "LocalCredentialsProvider{}";
+  }
+
   @AutoValue.Builder
   public abstract static class Builder {
 

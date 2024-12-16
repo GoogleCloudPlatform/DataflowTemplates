@@ -272,7 +272,7 @@ public class JdbcSourceRowMapperTest {
                 .derbyColumnType("BIGINT")
                 .sourceColumnType("BIGINT UNSIGNED", new Long[] {20L, 0L})
                 .inputValue(12345L)
-                .mappedValue(ByteBuffer.wrap(new byte[] {(byte) 0x30, (byte) 0x39}))
+                .mappedValue("12345")
                 .build())
         .add(
             Column.builder()

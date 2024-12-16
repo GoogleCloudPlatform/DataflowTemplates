@@ -15,12 +15,12 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.schema;
 
+import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import javax.sql.DataSource;
 
 /**
  * Discover the schema of tables to migrate. Implementation must adapt to requirements of the source
@@ -39,7 +39,7 @@ public interface RetriableSchemaDiscovery {
    * Discover Tables to migrate. This method could be used to auto infer tables to migrate if not
    * passed via options.
    *
-   * @param dataSource Provider for JDBC connection.
+   * @param dataSource Provider for source connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
    * @return The list of table names for the given database.
    * @throws SchemaDiscoveryException - Fatal exception during Schema Discovery.
@@ -54,7 +54,7 @@ public interface RetriableSchemaDiscovery {
   /**
    * Discover the schema of tables to migrate.
    *
-   * @param dataSource Provider for JDBC connection.
+   * @param dataSource Provider for source connection.
    * @param schemaReference Source database name and (optionally namespace)
    * @param tables Tables to migrate.
    * @return The discovered schema.
@@ -70,7 +70,7 @@ public interface RetriableSchemaDiscovery {
   /**
    * Discover the indexes of tables to migrate.
    *
-   * @param dataSource Provider for JDBC connection.
+   * @param dataSource Provider for source connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
    * @param tables Tables to migrate.
    * @return The discovered indexes.

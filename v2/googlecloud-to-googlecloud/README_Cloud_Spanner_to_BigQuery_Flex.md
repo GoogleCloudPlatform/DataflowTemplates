@@ -17,21 +17,21 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **spannerInstanceId** : The instance ID of the Spanner database to read from.
-* **spannerDatabaseId** : The database ID of the Spanner database to export.
-* **outputTableSpec** : The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
+* **spannerInstanceId**: The instance ID of the Spanner database to read from.
+* **spannerDatabaseId**: The database ID of the Spanner database to export.
+* **outputTableSpec**: The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
 
 ### Optional parameters
 
-* **spannerProjectId** : The ID of the project that the Spanner database resides in. The default value for this parameter is the project where the Dataflow pipeline is running.
-* **spannerTableId** : The table name of the Spanner database to export. Ignored if sqlQuery is set.
-* **spannerRpcPriority** : The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `HIGH`.
-* **sqlQuery** : The SQL query to use to read data from the Spanner database. Required if spannerTableId is empty.
-* **bigQuerySchemaPath** : The Cloud Storage path (gs://) to the JSON file that defines your BigQuery schema. (Example: gs://your-bucket/your-schema.json).
-* **writeDisposition** : The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.
-* **createDisposition** : The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
-* **useStorageWriteApi** : If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **spannerProjectId**: The ID of the project that the Spanner database resides in. The default value for this parameter is the project where the Dataflow pipeline is running.
+* **spannerTableId**: The table name of the Spanner database to export. Ignored if sqlQuery is set.
+* **spannerRpcPriority**: The request priority (https://cloud.google.com/spanner/docs/reference/rest/v1/RequestOptions) for Spanner calls. Possible values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `HIGH`.
+* **sqlQuery**: The SQL query to use to read data from the Spanner database. Required if spannerTableId is empty.
+* **bigQuerySchemaPath**: The Cloud Storage path (gs://) to the JSON file that defines your BigQuery schema. This is required if the Create Disposition is not CREATE_NEVER For example, `gs://your-bucket/your-schema.json`.
+* **writeDisposition**: The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.
+* **createDisposition**: The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
+* **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 
 
 
@@ -233,7 +233,7 @@ resource "google_dataflow_flex_template_job" "cloud_spanner_to_bigquery_flex" {
     # spannerTableId = "<spannerTableId>"
     # spannerRpcPriority = "<spannerRpcPriority>"
     # sqlQuery = "<sqlQuery>"
-    # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
+    # bigQuerySchemaPath = "<bigQuerySchemaPath>"
     # writeDisposition = "WRITE_APPEND"
     # createDisposition = "CREATE_IF_NEEDED"
     # useStorageWriteApi = "false"

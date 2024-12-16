@@ -122,6 +122,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
                 getClass().getSimpleName(),
                 "input/customShard.jar",
                 "com.custom.CustomShardIdFetcherForIT",
+                null,
                 null);
       }
     }

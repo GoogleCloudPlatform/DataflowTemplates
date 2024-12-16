@@ -23,24 +23,24 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : Name of the Pub/Sub subscription. (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **mongoDBUri** : Comma separated list of MongoDB servers. (Example: host1:port,host2:port,host3:port).
-* **database** : Database in MongoDB to store the collection. (Example: my-db).
-* **collection** : Name of the collection in the MongoDB database. (Example: my-collection).
-* **deadletterTable** : The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on. (Example: your-project-id:your-dataset.your-table-name).
+* **inputSubscription**: Name of the Pub/Sub subscription. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **mongoDBUri**: Comma separated list of MongoDB servers. For example, `host1:port,host2:port,host3:port`.
+* **database**: Database in MongoDB to store the collection. For example, `my-db`.
+* **collection**: Name of the collection in the MongoDB database. For example, `my-collection`.
+* **deadletterTable**: The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on. For example, `your-project-id:your-dataset.your-table-name`.
 
 ### Optional parameters
 
-* **batchSize** : Batch size used for batch insertion of documents into MongoDB. Defaults to: 1000.
-* **batchSizeBytes** : Batch size in bytes. Defaults to: 5242880.
-* **maxConnectionIdleTime** : Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
-* **sslEnabled** : Boolean value indicating whether the connection to MongoDB is SSL enabled. Defaults to: true.
-* **ignoreSSLCertificate** : Boolean value indicating whether to ignore the SSL certificate. Defaults to: true.
-* **withOrdered** : Boolean value enabling ordered bulk insertions into MongoDB. Defaults to: true.
-* **withSSLInvalidHostNameAllowed** : Boolean value indicating whether an invalid hostname is allowed for the SSL connection. Defaults to: true.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
+* **batchSize**: Batch size used for batch insertion of documents into MongoDB. Defaults to: 1000.
+* **batchSizeBytes**: Batch size in bytes. Defaults to: 5242880.
+* **maxConnectionIdleTime**: Maximum idle time allowed in seconds before connection timeout occurs. Defaults to: 60000.
+* **sslEnabled**: Boolean value indicating whether the connection to MongoDB is SSL enabled. Defaults to: true.
+* **ignoreSSLCertificate**: Boolean value indicating whether to ignore the SSL certificate. Defaults to: true.
+* **withOrdered**: Boolean value enabling ordered bulk insertions into MongoDB. Defaults to: true.
+* **withSSLInvalidHostNameAllowed**: Boolean value indicating whether an invalid hostname is allowed for the SSL connection. Defaults to: true.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
 
 
 ## User-Defined functions (UDFs)
@@ -254,11 +254,11 @@ resource "google_dataflow_flex_template_job" "cloud_pubsub_to_mongodb" {
   name              = "cloud-pubsub-to-mongodb"
   region            = var.region
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    mongoDBUri = "host1:port,host2:port,host3:port"
-    database = "my-db"
-    collection = "my-collection"
-    deadletterTable = "your-project-id:your-dataset.your-table-name"
+    inputSubscription = "<inputSubscription>"
+    mongoDBUri = "<mongoDBUri>"
+    database = "<database>"
+    collection = "<collection>"
+    deadletterTable = "<deadletterTable>"
     # batchSize = "1000"
     # batchSizeBytes = "5242880"
     # maxConnectionIdleTime = "60000"
@@ -266,7 +266,7 @@ resource "google_dataflow_flex_template_job" "cloud_pubsub_to_mongodb" {
     # ignoreSSLCertificate = "true"
     # withOrdered = "true"
     # withSSLInvalidHostNameAllowed = "true"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
   }
