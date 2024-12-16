@@ -3,7 +3,6 @@ com.google.cloud.teleport.v2.neo4j.model.validation.BigQuerySourceProjectDataset
 com.google.cloud.teleport.v2.neo4j.model.validation.DuplicateAggregateFieldNameValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.DuplicateTextHeaderValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.InlineSourceDataValidator
-com.google.cloud.teleport.v2.neo4j.model.validation.NodeKeyValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.TextColumnMappingValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.WriteModeValidator
 com.google.cloud.teleport.v2.neo4j.model.validation.NodeMatchModeValidator
