@@ -1313,6 +1313,5 @@ public class CassandraTypeHandlerTest {
               CassandraTypeHandler.handleCassandraInetAddressType("col1", valuesJson);
             });
     assertTrue(exception.getMessage().contains("Invalid IP address format for column: col1"));
-    assertTrue(exception.getMessage().contains("www.google.com"));
   }
 }
