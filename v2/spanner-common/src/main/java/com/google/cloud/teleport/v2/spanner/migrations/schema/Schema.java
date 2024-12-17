@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
  */
 public class Schema implements Serializable {
   /** Maps the HarbourBridge table ID to the Spanner table details. */
-  private final Map<String, SpannerTable> spSchema;
+  private Map<String, SpannerTable> spSchema;
 
   /** Maps the Spanner table ID to the synthetic PK. */
   private final Map<String, SyntheticPKey> syntheticPKeys;
@@ -78,6 +78,10 @@ public class Schema implements Serializable {
 
   public Map<String, SpannerTable> getSpSchema() {
     return spSchema;
+  }
+
+  public Map<String, SpannerTable> setSpSchema(Map<String, SpannerTable> spSchema) {
+    return this.spSchema = spSchema;
   }
 
   public Map<String, SyntheticPKey> getSyntheticPks() {

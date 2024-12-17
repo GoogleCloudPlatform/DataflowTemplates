@@ -120,7 +120,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
     Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
@@ -145,7 +147,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
     assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
@@ -166,7 +170,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -198,7 +204,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -230,7 +238,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("test");
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "test";
@@ -256,7 +266,9 @@ public class AssignShardIdFnTest {
             customJarPath,
             shardingCustomClassName,
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     assignShardIdFn.setShardIdFetcher(
         ShardingLogicImplFetcher.getShardingLogicImpl(
             customJarPath, shardingCustomClassName, "", getSchemaObject(), "skip"));
@@ -310,7 +322,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -344,7 +358,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -378,7 +394,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     record.setShard("skip");
@@ -405,7 +423,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     ShardIdFetcherImpl shardIdFetcher =
@@ -431,7 +451,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     ShardIdFetcherImpl shardIdFetcher =
@@ -457,7 +479,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     ShardIdFetcherImpl shardIdFetcher =
@@ -482,7 +506,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -519,7 +545,9 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            "mysql",
+            1000L);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
