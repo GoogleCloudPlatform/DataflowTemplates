@@ -35,7 +35,7 @@ variable "region" {
 
 variable "mongoDbUri" {
   type        = string
-  description = "URI to connect to MongoDB Atlas."
+  description = "The MongoDB connection URI in the format mongodb+srv://:@."
 
 }
 
@@ -47,13 +47,13 @@ variable "database" {
 
 variable "collection" {
   type        = string
-  description = "Name of the collection inside MongoDB database. (Example: my-collection)"
+  description = "The name of the collection in the MongoDB database. (Example: my-collection)"
 
 }
 
 variable "inputTableSpec" {
   type        = string
-  description = "BigQuery source table spec. (Example: bigquery-project:dataset.input_table)"
+  description = "The BigQuery table to read from. (Example: bigquery-project:dataset.input_table)"
 
 }
 

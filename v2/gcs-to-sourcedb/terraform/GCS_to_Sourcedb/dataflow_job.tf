@@ -57,7 +57,7 @@ variable "sourceDbTimezoneOffset" {
   default     = null
 }
 
-variable "timerInterval" {
+variable "timerIntervalInMilliSec" {
   type        = number
   description = "Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1."
   default     = null
@@ -115,6 +115,30 @@ variable "runIdentifier" {
   type        = string
   description = "The identifier to distinguish between different runs of reverse replication flows."
 
+}
+
+variable "transformationJarPath" {
+  type        = string
+  description = "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty."
+  default     = null
+}
+
+variable "transformationClassName" {
+  type        = string
+  description = "Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty."
+  default     = null
+}
+
+variable "transformationCustomParameters" {
+  type        = string
+  description = "String containing any custom parameters to be passed to the custom transformation class. Defaults to empty."
+  default     = null
+}
+
+variable "writeFilteredEventsToGcs" {
+  type        = bool
+  description = "This is a flag which if set to true will write filtered events from custom transformation to GCS. Defaults to: false."
+  default     = null
 }
 
 
@@ -242,20 +266,24 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_to_Sourcedb"
   parameters = {
-    sourceShardsFilePath   = var.sourceShardsFilePath
-    sessionFilePath        = var.sessionFilePath
-    sourceType             = var.sourceType
-    sourceDbTimezoneOffset = var.sourceDbTimezoneOffset
-    timerInterval          = tostring(var.timerInterval)
-    startTimestamp         = var.startTimestamp
-    windowDuration         = var.windowDuration
-    GCSInputDirectoryPath  = var.GCSInputDirectoryPath
-    spannerProjectId       = var.spannerProjectId
-    metadataInstance       = var.metadataInstance
-    metadataDatabase       = var.metadataDatabase
-    runMode                = var.runMode
-    metadataTableSuffix    = var.metadataTableSuffix
-    runIdentifier          = var.runIdentifier
+    sourceShardsFilePath           = var.sourceShardsFilePath
+    sessionFilePath                = var.sessionFilePath
+    sourceType                     = var.sourceType
+    sourceDbTimezoneOffset         = var.sourceDbTimezoneOffset
+    timerIntervalInMilliSec        = tostring(var.timerIntervalInMilliSec)
+    startTimestamp                 = var.startTimestamp
+    windowDuration                 = var.windowDuration
+    GCSInputDirectoryPath          = var.GCSInputDirectoryPath
+    spannerProjectId               = var.spannerProjectId
+    metadataInstance               = var.metadataInstance
+    metadataDatabase               = var.metadataDatabase
+    runMode                        = var.runMode
+    metadataTableSuffix            = var.metadataTableSuffix
+    runIdentifier                  = var.runIdentifier
+    transformationJarPath          = var.transformationJarPath
+    transformationClassName        = var.transformationClassName
+    transformationCustomParameters = var.transformationCustomParameters
+    writeFilteredEventsToGcs       = tostring(var.writeFilteredEventsToGcs)
   }
 
   additional_experiments       = var.additional_experiments

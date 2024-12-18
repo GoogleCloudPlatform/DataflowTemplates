@@ -35,25 +35,25 @@ variable "region" {
 
 variable "tableRef" {
   type        = string
-  description = "BigQuery table location to export in the format <project>:<dataset>.<table>. (Example: your-project:your-dataset.your-table-name)"
+  description = "The BigQuery input table location. (Example: your-project:your-dataset.your-table-name)"
 
 }
 
 variable "bucket" {
   type        = string
-  description = "Path and filename prefix for writing output files. (Example: gs://your-bucket/export/)"
+  description = "The Cloud Storage folder to write the Parquet files to. (Example: gs://your-bucket/export/)"
 
 }
 
 variable "numShards" {
   type        = number
-  description = "The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Defaults to: 0."
+  description = "The number of output file shards. The default value is 1."
   default     = null
 }
 
 variable "fields" {
   type        = string
-  description = "Comma separated list of fields to select from the table."
+  description = "A comma-separated list of fields to select from the input BigQuery table."
   default     = null
 }
 

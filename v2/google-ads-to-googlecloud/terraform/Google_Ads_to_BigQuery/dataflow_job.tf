@@ -35,73 +35,73 @@ variable "region" {
 
 variable "loginCustomerId" {
   type        = number
-  description = "A Google Ads manager account ID for which to access the account IDs. (Example: 12345)"
+  description = "A Google Ads manager account ID to use to access the account IDs. (Example: 12345)"
   default     = null
 }
 
 variable "customerIds" {
   type        = string
-  description = "A list of Google Ads account IDs for which to execute the query. (Example: 12345,67890)"
+  description = "A list of Google Ads account IDs to use to execute the query. (Example: 12345,67890)"
 
 }
 
 variable "query" {
   type        = string
-  description = "See https://developers.google.com/google-ads/api/docs/query/overview. (Example: SELECT campaign.id, campaign.name FROM campaign)"
+  description = "The query to use to get the data. See Google Ads Query Language. For example: `SELECT campaign.id, campaign.name FROM campaign`. (Example: SELECT campaign.id, campaign.name FROM campaign)"
 
 }
 
 variable "qpsPerWorker" {
   type        = number
-  description = "Indicates rate of query requests per second to be submitted to Google Ads. Divide the desired per pipeline QPS by the maximum number of workers. Avoid exceeding per account or developer token limits. See https://developers.google.com/google-ads/api/docs/best-practices/rate-limits."
+  description = "The rate of query requests per second (QPS) to submit to Google Ads.  Divide the desired per pipeline QPS by the maximum number of workers. Avoid exceeding per-account or developer token limits. See Rate Limits (https://developers.google.com/google-ads/api/docs/best-practices/rate-limits)."
 
 }
 
 variable "bigQueryTableSchemaPath" {
   type        = string
-  description = "Cloud Storage path to the BigQuery schema JSON file. If this is not set, then the schema is inferred from the Proto schema. (Example: gs://MyBucket/bq_schema.json)"
+  description = "The Cloud Storage path to the BigQuery schema JSON file. If this value is not set, then the schema is inferred from the Proto schema. (Example: gs://MyBucket/bq_schema.json)"
   default     = null
 }
 
 variable "googleAdsClientId" {
   type        = string
-  description = "See https://developers.google.com/google-ads/api/docs/oauth/overview."
+  description = "The OAuth 2.0 client ID that identifies the application. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret)."
 
 }
 
 variable "googleAdsClientSecret" {
   type        = string
-  description = "See https://developers.google.com/google-ads/api/docs/oauth/overview."
+  description = "The OAuth 2.0 client secret that corresponds to the specified client ID. See Create a client ID and client secret (https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret)."
 
 }
 
 variable "googleAdsRefreshToken" {
   type        = string
-  description = "See https://developers.google.com/google-ads/api/docs/oauth/overview."
+  description = "The OAuth 2.0 refresh token to use to connect to the Google Ads API. See 2-Step Verification (https://developers.google.com/google-ads/api/docs/oauth/2sv)."
 
 }
 
 variable "googleAdsDeveloperToken" {
   type        = string
-  description = "See https://developers.google.com/google-ads/api/docs/get-started/dev-token."
+  description = "The Google Ads developer token to use to connect to the Google Ads API. See Obtain a developer token (https://developers.google.com/google-ads/api/docs/get-started/dev-token)."
 
 }
 
 variable "outputTableSpec" {
   type        = string
-  description = "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects."
+  description = "The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema."
 
 }
 
 variable "writeDisposition" {
   type        = string
-  description = "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND."
+  description = "The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`."
   default     = null
 }
 
 variable "createDisposition" {
   type        = string
-  description = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED."
+  description = "The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`."
   default     = null
 }
 

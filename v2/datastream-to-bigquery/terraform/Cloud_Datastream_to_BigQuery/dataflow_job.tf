@@ -35,7 +35,7 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "This is the file location for Datastream file output in Cloud Storage, in the format: gs://${BUCKET}/${ROOT_PATH}/."
+  description = "The file location for Datastream file output in Cloud Storage, in the format: gs://<BUCKET_NAME>/<ROOT_PATH>/."
 
 }
 
@@ -47,19 +47,19 @@ variable "inputFileFormat" {
 
 variable "gcsPubSubSubscription" {
   type        = string
-  description = "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: projects/{PROJECT_NAME}/subscriptions/{SUBSCRIPTION_NAME}"
+  description = "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>."
 
 }
 
 variable "streamName" {
   type        = string
-  description = "This is the name or template for the stream to poll for schema information. Default is {_metadata_stream}. The default value is enough under most conditions."
+  description = "The name or the template for the stream to poll for schema information. Defaults to: {_metadata_stream}. The default value is usually enough."
   default     = null
 }
 
 variable "rfcStartDateTime" {
   type        = string
-  description = "The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z."
+  description = "The starting DateTime to use to fetch data from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: 1970-01-01T00:00:00.00Z."
   default     = null
 }
 
@@ -71,105 +71,105 @@ variable "fileReadConcurrency" {
 
 variable "outputProjectId" {
   type        = string
-  description = "Project for BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running."
+  description = "The ID of the Google Cloud project that contains the BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running."
   default     = null
 }
 
 variable "outputStagingDatasetTemplate" {
   type        = string
-  description = "This is the name for the dataset to contain staging tables. This parameter supports templates (e.g. {_metadata_dataset}_log or my_dataset_log). Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}."
+  description = "The name of the dataset that contains staging tables. This parameter supports templates, for example {_metadata_dataset}_log or my_dataset_log. Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}."
   default     = "{_metadata_dataset}"
 }
 
 variable "outputStagingTableNameTemplate" {
   type        = string
-  description = "This is the template for the name of staging tables (e.g. {_metadata_table}). Default is {_metadata_table}_log."
+  description = "The template to use to name the staging tables. For example, {_metadata_table}). Defaults to: {_metadata_table}_log."
   default     = null
 }
 
 variable "outputDatasetTemplate" {
   type        = string
-  description = "This is the name for the dataset to contain replica tables. This parameter supports templates (e.g. {_metadata_dataset} or my_dataset). Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}."
+  description = "The name of the dataset that contains the replica tables. This parameter supports templates, for example {_metadata_dataset} or my_dataset. Normally, this parameter is a dataset name. Defaults to: {_metadata_dataset}."
   default     = "{_metadata_dataset}"
 }
 
 variable "outputTableNameTemplate" {
   type        = string
-  description = "This is the template for the name of replica tables (e.g. {_metadata_table}). Default is {_metadata_table}."
+  description = "The template to use for the name of the replica tables, for example {_metadata_table}. Defaults to: {_metadata_table}."
   default     = null
 }
 
 variable "ignoreFields" {
   type        = string
-  description = "Fields to ignore in BigQuery (comma separator). (Example: _metadata_stream,_metadata_schema). Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count."
+  description = "Comma-separated fields to ignore in BigQuery. Defaults to: _metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count. (Example: _metadata_stream,_metadata_schema)"
   default     = null
 }
 
 variable "mergeFrequencyMinutes" {
-  type        = string
+  type        = number
   description = "The number of minutes between merges for a given table. Defaults to: 5."
   default     = null
 }
 
 variable "deadLetterQueueDirectory" {
   type        = string
-  description = "This is the file path for Dataflow to write the dead letter queue output. This path should not be in the same path as the Datastream file output. Defaults to empty."
+  description = "The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to empty."
   default     = ""
 }
 
 variable "dlqRetryMinutes" {
-  type        = string
+  type        = number
   description = "The number of minutes between DLQ Retries. Defaults to: 10."
   default     = null
 }
 
 variable "dataStreamRootUrl" {
   type        = string
-  description = "Datastream API Root URL. Defaults to: https://datastream.googleapis.com/."
+  description = "The Datastream API root URL. Defaults to: https://datastream.googleapis.com/."
   default     = null
 }
 
 variable "applyMerge" {
   type        = bool
-  description = "A switch to disable MERGE queries for the job. Defaults to: true."
+  description = "Whether to disable MERGE queries for the job. Defaults to: true."
   default     = null
 }
 
 variable "mergeConcurrency" {
   type        = number
-  description = "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Default is 30."
+  description = "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Defaults to: 30."
   default     = null
 }
 
 variable "partitionRetentionDays" {
   type        = number
-  description = "The number of days to use for partition retention when running BigQuery merges. Default is 1."
+  description = "The number of days to use for partition retention when running BigQuery merges. Defaults to: 1."
   default     = null
 }
 
 variable "useStorageWriteApiAtLeastOnce" {
   type        = bool
   description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If true, at-least-once semantics are used for the Storage Write API. Otherwise, exactly-once semantics are used. Defaults to: false.
 EOT
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js)"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
 variable "javascriptTextTransformReloadIntervalMinutes" {
   type        = number
-  description = "Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0."
+  description = "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0."
   default     = null
 }
 
@@ -199,21 +199,19 @@ variable "runtimeRetries" {
 
 variable "useStorageWriteApi" {
   type        = bool
-  description = <<EOT
-If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-EOT
+  description = "If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "numStorageWriteApiStreams" {
   type        = number
-  description = "Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0."
+  description = "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0."
   default     = null
 }
 
 variable "storageWriteApiTriggeringFrequencySec" {
   type        = number
-  description = "Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values."
+  description = "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter."
   default     = null
 }
 
@@ -354,9 +352,9 @@ resource "google_dataflow_flex_template_job" "generated" {
     outputDatasetTemplate                        = var.outputDatasetTemplate
     outputTableNameTemplate                      = var.outputTableNameTemplate
     ignoreFields                                 = var.ignoreFields
-    mergeFrequencyMinutes                        = var.mergeFrequencyMinutes
+    mergeFrequencyMinutes                        = tostring(var.mergeFrequencyMinutes)
     deadLetterQueueDirectory                     = var.deadLetterQueueDirectory
-    dlqRetryMinutes                              = var.dlqRetryMinutes
+    dlqRetryMinutes                              = tostring(var.dlqRetryMinutes)
     dataStreamRootUrl                            = var.dataStreamRootUrl
     applyMerge                                   = tostring(var.applyMerge)
     mergeConcurrency                             = tostring(var.mergeConcurrency)
