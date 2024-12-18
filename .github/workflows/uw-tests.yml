@@ -28,7 +28,7 @@ jobs:
         id: variables
         run: |
           echo "unifiedWorkerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
-          echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCLoudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
+          echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCloudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
         env:
           HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
       - name: Checkout code
