@@ -60,6 +60,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
   private static final String TABLE5 = "Users";
   private static final String TABLE6 = "Books";
   private static final String TABLE7 = "Authors";
+  private static final String TABLE8 = "Singers";
 
   private static final String TRANSFORMATION_TABLE = "AllDatatypeTransformation";
 
@@ -409,6 +410,31 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     // Assert Conditions
     assertThatResult(result).meetsConditions();
     assertAuthorsBackfillContents();
+  }
+
+  @Test
+  public void migrationTestWithSequenceColumns() {
+    // Construct a ChainedConditionCheck with 2 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo, TABLE8, "sequence.avro", "DataStreamToSpannerDDLIT/Singers.avro"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE8)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
   }
 
   private void assertAllDatatypeColumnsTableBackfillContents() {
