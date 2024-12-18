@@ -27,14 +27,26 @@ sudo add-apt-repository ppa:git-core/ppa -y
 sudo apt update
 sudo apt install git -y
 
-# update Java version to 17
-sudo apt install openjdk-17-jdk-headless -y
-
 # install jq
 sudo apt install jq -y
 
-# install maven
-sudo apt install git maven -y
+# download maven 3.9.9
+MAVEN_VERSION="3.9.9"
+MAVEN_FILE="apache-maven-$MAVEN_VERSION-bin.tar.gz"
+wget https://dlcdn.apache.org/maven/maven-3/3.9.9/binaries/$MAVEN_FILE -P /tmp
+wget https://downloads.apache.org/maven/maven-3/3.9.9/binaries/$MAVEN_FILE.sha512 -P /tmp
+
+# validate maven checksums
+SOURCE_CHECKSUM=$(sha512sum /tmp/$MAVEN_FILE | awk '{print $1}')
+EXP_CHECKSUM=$(cat /tmp/$MAVEN_FILE.sha512)
+if [ "$SOURCE_CHECKSUM" != "$EXP_CHECKSUM" ]; then
+  exit 1;
+fi
+
+# unpack maven
+sudo tar xf /tmp/apache-maven-*.tar.gz -C /opt
+sudo ln -s /opt/apache-maven-$MAVEN_VERSION /opt/maven
+sudo ln -s /opt/maven/bin/mvn /usr/bin/mvn
 
 # install gh
 sudo apt install curl -y \
