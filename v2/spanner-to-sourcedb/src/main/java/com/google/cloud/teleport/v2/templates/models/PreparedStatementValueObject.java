@@ -15,47 +15,16 @@
  */
 package com.google.cloud.teleport.v2.templates.models;
 
-public class PreparedStatementValueObject<T> {
-  private String dataType;
-  private T value;
+import com.google.auto.value.AutoValue;
 
-  public PreparedStatementValueObject(String dataType, T value) {
-    this.dataType = dataType;
-    this.value = value;
-  }
+@AutoValue
+public abstract class PreparedStatementValueObject<T> {
 
-  public String getDataType() {
-    return dataType;
-  }
+  public abstract String dataType();
 
-  public void setDataType(String dataType) {
-    this.dataType = dataType;
-  }
+  public abstract T value();
 
-  public T getValue() {
-    return value;
-  }
-
-  public void setValue(T value) {
-    this.value = value;
-  }
-
-  // Override toString() for better readability when printing objects
-  @Override
-  public String toString() {
-    return "PreparedStatementValueObject{" + "key='" + dataType + '\'' + ", value=" + value + '}';
-  }
-
-  @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (obj == null || getClass() != obj.getClass()) return false;
-    PreparedStatementValueObject<?> that = (PreparedStatementValueObject<?>) obj;
-    return dataType.equals(that.dataType) && value.equals(that.value);
-  }
-
-  @Override
-  public int hashCode() {
-    return 31 * dataType.hashCode() + (value != null ? value.hashCode() : 0);
+  public static <T> PreparedStatementValueObject<T> create(String dataType, T value) {
+    return new AutoValue_PreparedStatementValueObject<>(dataType, value);
   }
 }
