@@ -27,7 +27,7 @@
   <artifactId>plaintext-logging</artifactId>
 
   <properties>
-    <java.version>11</java.version>
+    <java.version>17</java.version>
     <surefire.version>2.21.0</surefire.version>
   </properties>
 
