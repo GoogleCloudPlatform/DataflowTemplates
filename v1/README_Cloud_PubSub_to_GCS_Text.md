@@ -19,7 +19,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **outputDirectory**: The path and filename prefix for writing output files. For example, `gs://bucket-name/path/`. This value must end in a slash.
+* **outputDirectory**: The path and filename prefix for writing output files. This value must end with a slash, for example, `gs://bucket-name/path/`.
 * **outputFilenamePrefix**: The prefix to place on each windowed file. For example, `output-`. Defaults to: output.
 
 ### Optional parameters

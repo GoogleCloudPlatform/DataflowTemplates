@@ -20,7 +20,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **inputFilePattern**: Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.csv`.
-* **JSONPath**: JSON file with BigQuery Schema description. JSON Example: {
+* **JSONPath**: JSON file with BigQuery Schema description. JSON Example:
+```json
+{
 	"BigQuery Schema": [
 		{
 			"name": "location",
@@ -43,7 +45,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 			"type": "STRING"
 		}
 	]
-}.
+}
+```
 * **outputTable**: BigQuery table location to write the output to. The table's schema must match the input objects.
 * **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`.
 
