@@ -173,6 +173,10 @@ public class ModelUtils {
           for (Column groupByField : groupByFields) {
             statement.addGroupByColumnReference(groupByField);
           }
+          for (Aggregation aggregation : aggregations) {
+            statement.addGroupByColumnReference(
+                new Column(CypherPatterns.sanitize(aggregation.getFieldName())));
+          }
           var limit = transformations.getLimit() != null ? transformations.getLimit() : -1;
           if (limit > -1) {
             statement.setLimit(new Limit().withRowCount(new LongValue(limit)));
