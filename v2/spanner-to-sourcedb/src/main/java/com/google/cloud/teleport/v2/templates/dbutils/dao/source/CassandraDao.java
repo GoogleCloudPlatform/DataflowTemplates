@@ -44,25 +44,16 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
       if (session == null) {
         throw new ConnectionException("Connection is null");
       }
-      if (dmlGeneratorResponse instanceof PreparedStatementGeneratedResponse) {
-        PreparedStatementGeneratedResponse preparedStatementGeneratedResponse =
-            (PreparedStatementGeneratedResponse) dmlGeneratorResponse;
-        try {
-          String dmlStatement = preparedStatementGeneratedResponse.getDmlStatement();
-          PreparedStatement preparedStatement = session.prepare(dmlStatement);
-          BoundStatement boundStatement =
-              preparedStatement.bind(
-                  preparedStatementGeneratedResponse.getValues().stream()
-                      .map(PreparedStatementValueObject::value)
-                      .toArray());
-          session.execute(boundStatement);
-        } catch (Exception e) {
-          throw e;
-        }
-      } else {
-        String simpleStatement = dmlGeneratorResponse.getDmlStatement();
-        session.execute(simpleStatement);
-      }
+      PreparedStatementGeneratedResponse preparedStatementGeneratedResponse =
+          (PreparedStatementGeneratedResponse) dmlGeneratorResponse;
+      String dmlStatement = preparedStatementGeneratedResponse.getDmlStatement();
+      PreparedStatement preparedStatement = session.prepare(dmlStatement);
+      BoundStatement boundStatement =
+          preparedStatement.bind(
+              preparedStatementGeneratedResponse.getValues().stream()
+                  .map(PreparedStatementValueObject::value)
+                  .toArray());
+      session.execute(boundStatement);
     }
   }
 }

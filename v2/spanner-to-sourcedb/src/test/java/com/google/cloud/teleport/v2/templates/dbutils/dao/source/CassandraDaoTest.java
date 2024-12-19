@@ -24,7 +24,6 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
-import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import java.util.Arrays;
@@ -149,20 +148,5 @@ public class CassandraDaoTest {
             ConnectionException.class,
             () -> cassandraDao.write(mockPreparedStatementGeneratedResponse));
     assertEquals("Connection failed", exception.getMessage());
-  }
-
-  @Test
-  public void testWriteWithSimpleStatementExecution() throws Exception {
-    String simpleStatement = "DELETE FROM test WHERE id = 1";
-    DMLGeneratorResponse mockDmlGeneratorResponse = Mockito.mock(DMLGeneratorResponse.class);
-
-    Mockito.when(mockDmlGeneratorResponse.getDmlStatement()).thenReturn(simpleStatement);
-    Mockito.when(mockConnectionHelper.getConnection(ArgumentMatchers.anyString()))
-        .thenReturn(mockSession);
-
-    cassandraDao.write(mockDmlGeneratorResponse);
-
-    Mockito.verify(mockSession).execute(ArgumentMatchers.eq(simpleStatement));
-    Mockito.verify(mockSession, Mockito.never()).prepare(ArgumentMatchers.anyString());
   }
 }
