@@ -311,8 +311,8 @@ public class MysqlDialectAdapterTest {
                 .setOrdinalPosition(2)
                 .setCollationReference(
                     CollationReference.builder()
-                        .setDbCharacterSet("utf8mb4")
-                        .setDbCollation("utf8mb4_0900_ai_ci")
+                        .setDbCharacterSet("`utf8mb4`")
+                        .setDbCollation("`utf8mb4_0900_ai_ci`")
                         .setPadSpace(false)
                         .build())
                 .setStringMaxLength(42)
@@ -323,15 +323,8 @@ public class MysqlDialectAdapterTest {
                 .setIsUnique(true)
                 .setIsPrimary(true)
                 .setCardinality(42L)
-                .setIndexType(IndexType.STRING)
+                .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(3)
-                .setCollationReference(
-                    CollationReference.builder()
-                        .setDbCharacterSet("binary")
-                        .setDbCollation("binary")
-                        .setPadSpace(false)
-                        .build())
-                .setStringMaxLength(100)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColBinary")
@@ -339,15 +332,8 @@ public class MysqlDialectAdapterTest {
                 .setIsUnique(true)
                 .setIsPrimary(true)
                 .setCardinality(42L)
-                .setIndexType(IndexType.STRING)
+                .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(4)
-                .setCollationReference(
-                    CollationReference.builder()
-                        .setDbCharacterSet("binary")
-                        .setDbCollation("binary")
-                        .setPadSpace(false)
-                        .build())
-                .setStringMaxLength(255)
                 .build());
 
     final JdbcSchemaReference sourceSchemaReference =
@@ -406,8 +392,8 @@ public class MysqlDialectAdapterTest {
                 .setOrdinalPosition(2)
                 .setCollationReference(
                     CollationReference.builder()
-                        .setDbCharacterSet("big5")
-                        .setDbCollation("big5_chinese_ci")
+                        .setDbCharacterSet("`big5`")
+                        .setDbCollation("`big5_chinese_ci`")
                         .setPadSpace(true)
                         .build())
                 .setStringMaxLength(42)
@@ -418,15 +404,8 @@ public class MysqlDialectAdapterTest {
                 .setIsUnique(true)
                 .setIsPrimary(true)
                 .setCardinality(42L)
-                .setIndexType(IndexType.STRING)
+                .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(3)
-                .setCollationReference(
-                    CollationReference.builder()
-                        .setDbCharacterSet("binary")
-                        .setDbCollation("binary")
-                        .setPadSpace(false)
-                        .build())
-                .setStringMaxLength(100)
                 .build());
 
     final JdbcSchemaReference sourceSchemaReference =
@@ -512,11 +491,6 @@ public class MysqlDialectAdapterTest {
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       String ret =
           (info.collationReference() == null) ? null : info.collationReference().dbCharacterSet();
-      if (info.columnName() == "testColVarBinary") {
-        // For columns like varBinary, the charset is null in information schema, but the db uses
-        // "binary" charset and collation.
-        ret = null;
-      }
       stubCharSetCol = stubCharSetCol.thenReturn(ret);
     }
     OngoingStubbing stubCollationCol =
@@ -524,11 +498,6 @@ public class MysqlDialectAdapterTest {
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
       String ret =
           (info.collationReference() == null) ? null : info.collationReference().dbCollation();
-      if (info.columnName() == "testColVarBinary") {
-        // For columns like varBinary, the charset is null in information schema, but the db uses
-        // "binary" charset and collation.
-        ret = null;
-      }
       stubCollationCol = stubCollationCol.thenReturn(ret);
     }
     OngoingStubbing stubPadSpaceCol =
@@ -538,11 +507,6 @@ public class MysqlDialectAdapterTest {
           (info.collationReference() == null)
               ? null
               : (info.collationReference().padSpace() ? "PAD SPACE" : "NO PAD");
-      if (info.columnName() == "testColVarBinary") {
-        // For columns like varBinary, the charset is null in information schema, but the db uses
-        // "binary" charset and collation.
-        ret = null;
-      }
       stubPadSpaceCol = stubPadSpaceCol.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());
@@ -761,6 +725,12 @@ public class MysqlDialectAdapterTest {
             .put("int_unsigned_col", new SourceColumnType("INTEGER UNSIGNED", new Long[] {}, null))
             .put("tiny_int_unsigned_col", new SourceColumnType("TINYINT", new Long[] {}, null))
             .build());
+  }
+
+  @Test
+  public void testEscapeMySql() {
+    assertThat(MysqlDialectAdapter.escapeMySql("binary")).isEqualTo("`binary`");
+    assertThat(MysqlDialectAdapter.escapeMySql("`binary`")).isEqualTo("`binary`");
   }
 }
 
