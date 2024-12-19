@@ -41,7 +41,7 @@
     <maven.version>3.9.9</maven.version>
     <dataflow.api.version>0.7.6</dataflow.api.version>
     <mojo.executor.version>2.4.0</mojo.executor.version>
-    <maven-plugin.version>3.8.1</maven-plugin.version>
+    <maven-plugin.version>3.15.1</maven-plugin.version>
   </properties>
 
   <dependencies>
