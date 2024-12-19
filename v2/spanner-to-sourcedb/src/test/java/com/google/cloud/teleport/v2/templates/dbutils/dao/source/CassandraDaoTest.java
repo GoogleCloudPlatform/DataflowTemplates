@@ -67,8 +67,8 @@ public class CassandraDaoTest {
     String preparedDmlStatement = "INSERT INTO test (id, name) VALUES (?, ?)";
     List<PreparedStatementValueObject<?>> values =
         Arrays.asList(
-            new PreparedStatementValueObject<>("", preparedDmlStatement),
-            new PreparedStatementValueObject<>("Test", preparedDmlStatement));
+            PreparedStatementValueObject.create("", preparedDmlStatement),
+            PreparedStatementValueObject.create("Test", preparedDmlStatement));
 
     Mockito.when(mockPreparedStatementGeneratedResponse.getDmlStatement())
         .thenReturn(preparedDmlStatement);
@@ -91,8 +91,8 @@ public class CassandraDaoTest {
     String preparedDmlStatement = "INSERT INTO test (id, name) VALUES (?, ?)";
     List<PreparedStatementValueObject<?>> values =
         Arrays.asList(
-            new PreparedStatementValueObject<>("", preparedDmlStatement),
-            new PreparedStatementValueObject<>("Test", preparedDmlStatement));
+            PreparedStatementValueObject.create("", preparedDmlStatement),
+            PreparedStatementValueObject.create("Test", preparedDmlStatement));
 
     Mockito.when(mockPreparedStatementGeneratedResponse.getDmlStatement())
         .thenReturn(preparedDmlStatement);
