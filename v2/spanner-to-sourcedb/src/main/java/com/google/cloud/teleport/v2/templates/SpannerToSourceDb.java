@@ -649,10 +649,8 @@ public class SpannerToSourceDb {
                         options.getShardingCustomJarPath(),
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
-                        options.getMaxShardConnections() * shards.size(),
-                        options.getSourceType(),
-                        options
-                            .getMaxShardConnections()))) // currently assuming that all mySqlShards
+                        options.getMaxShardConnections()
+                            * shards.size()))) // currently assuming that all mySqlShards
             // accept the same// currently assuming
             // that all shards accept the same
             // number of max connections
