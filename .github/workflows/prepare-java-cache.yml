@@ -47,7 +47,7 @@ jobs:
   cache_dependencies:
     name: Cache Java Dependencies
     timeout-minutes: 60
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, it]
     steps:
       - name: Set Manual Key
         if: ${{ github.event_name == 'workflow_dispatch' }}
