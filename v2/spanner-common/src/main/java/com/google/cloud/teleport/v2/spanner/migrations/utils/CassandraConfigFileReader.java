@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import java.io.IOException;
 import java.io.InputStream;
@@ -31,35 +32,45 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class to read the Cassandra configuration file in GCS and convert it into a CassandraConfig
- * object.
+ * Utility class for reading and parsing a Cassandra configuration file from GCS into a
+ * CassandraShard object.
  */
 public class CassandraConfigFileReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraConfigFileReader.class);
+  private static final Gson GSON =
+      new GsonBuilder().setFieldNamingPolicy(FieldNamingPolicy.IDENTITY).create();
 
+  /**
+   * Reads the Cassandra configuration file from the specified GCS path and converts it into a list
+   * of CassandraShard objects.
+   *
+   * @param cassandraConfigFilePath the GCS path of the Cassandra configuration file.
+   * @return a list containing the parsed CassandraShard.
+   */
   public List<Shard> getCassandraShard(String cassandraConfigFilePath) {
-    try (InputStream stream =
-        Channels.newInputStream(
-            FileSystems.open(FileSystems.matchNewResource(cassandraConfigFilePath, false)))) {
+    try (InputStream stream = getFileInputStream(cassandraConfigFilePath)) {
+      String configContent = IOUtils.toString(stream, StandardCharsets.UTF_8);
+      CassandraShard shard = GSON.fromJson(configContent, CassandraShard.class);
 
-      String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
-      Shard iShard =
-          new GsonBuilder()
-              .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
-              .create()
-              .fromJson(result, CassandraShard.class);
-
-      LOG.info("The Cassandra config is: {}", iShard);
-      return Collections.singletonList(iShard);
-
+      LOG.info("Successfully read Cassandra config: {}", shard);
+      return Collections.singletonList(shard);
     } catch (IOException e) {
-      LOG.error(
-          "Failed to read Cassandra config file. Make sure it is ASCII or UTF-8 encoded and contains a well-formed JSON string.",
-          e);
-      throw new RuntimeException(
-          "Failed to read Cassandra config file. Make sure it is ASCII or UTF-8 encoded and contains a well-formed JSON string.",
-          e);
+      String errorMessage =
+          "Failed to read Cassandra config file. Ensure it is ASCII or UTF-8 encoded and contains a well-formed JSON string.";
+      LOG.error(errorMessage, e);
+      throw new RuntimeException(errorMessage, e);
     }
+  }
+
+  /**
+   * Retrieves an InputStream for the specified GCS file path.
+   *
+   * @param filePath the GCS file path.
+   * @return an InputStream for the file.
+   * @throws IOException if the file cannot be accessed or opened.
+   */
+  private InputStream getFileInputStream(String filePath) throws IOException {
+    return Channels.newInputStream(FileSystems.open(FileSystems.matchNewResource(filePath, false)));
   }
 }
