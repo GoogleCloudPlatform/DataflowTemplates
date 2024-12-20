@@ -43,12 +43,12 @@ public class SpannerSchema {
     SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
     DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
     Dialect dialect =
-            databaseAdminClient
-                    .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
-                    .getDialect();
+        databaseAdminClient
+            .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
+            .getDialect();
     BatchClient batchClient = spannerAccessor.getBatchClient();
     BatchReadOnlyTransaction context =
-            batchClient.batchReadOnlyTransaction(TimestampBound.strong());
+        batchClient.batchReadOnlyTransaction(TimestampBound.strong());
     InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
     Ddl ddl = scanner.scan();
     spannerAccessor.close();
@@ -57,61 +57,61 @@ public class SpannerSchema {
 
   public static Map<String, SpannerTable> convertDDLTableToSpannerTable(Collection<Table> tables) {
     return tables.stream()
-            .collect(
-                    Collectors.toMap(
-                            Table::name, // Use the table name as the key
-                            SpannerSchema::convertTableToSpannerTable // Convert Table to SpannerTable
-                    ));
+        .collect(
+            Collectors.toMap(
+                Table::name, // Use the table name as the key
+                SpannerSchema::convertTableToSpannerTable // Convert Table to SpannerTable
+                ));
   }
 
   public static Map<String, NameAndCols> convertDDLTableToSpannerNameAndColsTable(
-          Collection<Table> tables) {
+      Collection<Table> tables) {
     return tables.stream()
-            .collect(
-                    Collectors.toMap(
-                            Table::name, // Use the table name as the key
-                            SpannerSchema
-                                    ::convertTableToSpannerTableNameAndCols // Convert Table to SpannerTable
-                    ));
+        .collect(
+            Collectors.toMap(
+                Table::name, // Use the table name as the key
+                SpannerSchema
+                    ::convertTableToSpannerTableNameAndCols // Convert Table to SpannerTable
+                ));
   }
 
   private static NameAndCols convertTableToSpannerTableNameAndCols(Table table) {
     return new NameAndCols(
-            table.name(),
-            table.columns().stream()
-                    .collect(
-                            Collectors.toMap(
-                                    Column::name, // Use column IDs as keys
-                                    Column::name)));
+        table.name(),
+        table.columns().stream()
+            .collect(
+                Collectors.toMap(
+                    Column::name, // Use column IDs as keys
+                    Column::name)));
   }
 
   private static SpannerTable convertTableToSpannerTable(Table table) {
     String name = table.name(); // Table name
     // Extract column IDs
     String[] colIds =
-            table.columns().stream()
-                    .map(Column::name) // Assuming Column name as ID
-                    .toArray(String[]::new);
+        table.columns().stream()
+            .map(Column::name) // Assuming Column name as ID
+            .toArray(String[]::new);
 
     // Build column definitions
     Map<String, SpannerColumnDefinition> colDefs =
-            table.columns().stream()
-                    .collect(
-                            Collectors.toMap(
-                                    Column::name, // Use column IDs as keys
-                                    column ->
-                                            new SpannerColumnDefinition(
-                                                    column.name(),
-                                                    new SpannerColumnType(
-                                                            column.typeString(), // Type Code name (e.g., STRING, INT64)
-                                                            false))));
+        table.columns().stream()
+            .collect(
+                Collectors.toMap(
+                    Column::name, // Use column IDs as keys
+                    column ->
+                        new SpannerColumnDefinition(
+                            column.name(),
+                            new SpannerColumnType(
+                                column.typeString(), // Type Code name (e.g., STRING, INT64)
+                                false))));
 
     // Extract primary keys
     AtomicInteger orderCounter = new AtomicInteger(1);
     ColumnPK[] primaryKeys =
-            table.primaryKeys().stream()
-                    .map(pk -> new ColumnPK(pk.name(), orderCounter.getAndIncrement()))
-                    .toArray(ColumnPK[]::new);
+        table.primaryKeys().stream()
+            .map(pk -> new ColumnPK(pk.name(), orderCounter.getAndIncrement()))
+            .toArray(ColumnPK[]::new);
 
     return new SpannerTable(name, colIds, colDefs, primaryKeys, table.name());
   }
