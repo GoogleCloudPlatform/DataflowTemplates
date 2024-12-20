@@ -24,7 +24,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.connection.JdbcConnectionH
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
-import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
+// import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
@@ -53,7 +53,7 @@ public class SourceProcessorFactory {
 
   static {
     dmlGeneratorMap.put(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
-    dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
+    //    dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
 
     connectionHelperMap.put(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
     connectionHelperMap.put(Constants.SOURCE_CASSANDRA, new CassandraConnectionHelper());
