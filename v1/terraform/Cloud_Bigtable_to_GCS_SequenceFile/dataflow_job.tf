@@ -35,25 +35,25 @@ variable "region" {
 
 variable "bigtableProject" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from. Defaults to job project."
+  description = "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Bigtable instance that contains the table."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to export"
+  description = "The ID of the Bigtable table to export."
 
 }
 
 variable "bigtableAppProfileId" {
   type        = string
-  description = "The ID of the Cloud Bigtable application profile to be used for the export"
+  description = "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile."
   default     = null
 }
 
@@ -83,14 +83,14 @@ variable "bigtableFilter" {
 
 variable "destinationPath" {
   type        = string
-  description = "Cloud Storage path where data should be written. (Example: gs://your-bucket/your-path/)"
+  description = "The Cloud Storage path where data is written. (Example: gs://your-bucket/your-path/)"
 
 }
 
 variable "filenamePrefix" {
   type        = string
-  description = "The prefix for each shard in destinationPath. (Example: output-). Defaults to: part."
-  default     = "part"
+  description = "The prefix of the SequenceFile filename. (Example: output-)"
+
 }
 
 

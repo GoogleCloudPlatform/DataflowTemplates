@@ -35,7 +35,7 @@ variable "region" {
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "Name of the Pub/Sub subscription. (Example: projects/your-project-id/subscriptions/your-subscription-name)"
 
 }
 
@@ -53,27 +53,25 @@ variable "database" {
 
 variable "collection" {
   type        = string
-  description = "Name of the collection inside MongoDB database to insert the documents. (Example: my-collection)"
+  description = "Name of the collection in the MongoDB database. (Example: my-collection)"
 
 }
 
 variable "deadletterTable" {
   type        = string
-  description = <<EOT
-BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name)
-EOT
+  description = "The BigQuery table that stores messages caused by failures, such as mismatched schema, malformed JSON, and so on. (Example: your-project-id:your-dataset.your-table-name)"
 
 }
 
 variable "batchSize" {
   type        = number
-  description = "Batch Size used for batch insertion of documents into MongoDB. Defaults to: 1000."
+  description = "Batch size used for batch insertion of documents into MongoDB. Defaults to: 1000."
   default     = null
 }
 
 variable "batchSizeBytes" {
   type        = number
-  description = "Batch Size in bytes used for batch insertion of documents into MongoDB. Defaults to: 5242880."
+  description = "Batch size in bytes. Defaults to: 5242880."
   default     = null
 }
 
@@ -85,43 +83,43 @@ variable "maxConnectionIdleTime" {
 
 variable "sslEnabled" {
   type        = bool
-  description = "Indicates whether connection to MongoDB is ssl enabled. Defaults to: true."
+  description = "Boolean value indicating whether the connection to MongoDB is SSL enabled. Defaults to: true."
   default     = null
 }
 
 variable "ignoreSSLCertificate" {
   type        = bool
-  description = "Indicates whether SSL certificate should be ignored. Defaults to: true."
+  description = "Boolean value indicating whether to ignore the SSL certificate. Defaults to: true."
   default     = null
 }
 
 variable "withOrdered" {
   type        = bool
-  description = "Enables ordered bulk insertions into MongoDB. Defaults to: true."
+  description = "Boolean value enabling ordered bulk insertions into MongoDB. Defaults to: true."
   default     = null
 }
 
 variable "withSSLInvalidHostNameAllowed" {
   type        = bool
-  description = "Indicates whether invalid host name is allowed for ssl connection. Defaults to: true."
+  description = "Boolean value indicating whether an invalid hostname is allowed for the SSL connection. Defaults to: true."
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js)"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
 variable "javascriptTextTransformReloadIntervalMinutes" {
   type        = number
-  description = "Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0."
+  description = "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0."
   default     = null
 }
 

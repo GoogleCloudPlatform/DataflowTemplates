@@ -35,43 +35,43 @@ variable "region" {
 
 variable "spannerProjectId" {
   type        = string
-  description = "Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running."
+  description = "The ID of the Google Cloud project that contains the Spanner database to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running."
   default     = null
 }
 
 variable "spannerInstanceId" {
   type        = string
-  description = "The Spanner instance to read change streams from."
+  description = "The Spanner instance ID to read change streams data from."
 
 }
 
 variable "spannerDatabase" {
   type        = string
-  description = "The Spanner database to read change streams from."
+  description = "The Spanner database to read change streams data from."
 
 }
 
 variable "spannerDatabaseRole" {
   type        = string
-  description = "Database role user assumes while reading from the change stream. The database role should have required privileges to read from change stream. If a database role is not specified, the user should have required IAM permissions to read from the database."
+  description = "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams)."
   default     = null
 }
 
 variable "spannerMetadataInstanceId" {
   type        = string
-  description = "The Spanner instance to use for the change streams connector metadata table."
+  description = "The Spanner instance ID to use for the change streams connector metadata table."
 
 }
 
 variable "spannerMetadataDatabase" {
   type        = string
-  description = "The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database."
+  description = "The Spanner database to use for the change streams connector metadata table."
 
 }
 
 variable "spannerMetadataTableName" {
   type        = string
-  description = "The Cloud Spanner change streams connector metadata table name to use. If not provided, a Cloud Spanner change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise."
+  description = "The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during pipeline execution. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter."
   default     = null
 }
 
@@ -83,13 +83,13 @@ variable "spannerChangeStreamName" {
 
 variable "startTimestamp" {
   type        = string
-  description = "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts."
+  description = "The starting DateTime, inclusive, to use for reading change streams, in the format Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time."
   default     = null
 }
 
 variable "endTimestamp" {
   type        = string
-  description = "The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future."
+  description = "The ending DateTime, inclusive, to use for reading change streams. For example, Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future."
   default     = null
 }
 
@@ -101,19 +101,19 @@ variable "spannerHost" {
 
 variable "outputFileFormat" {
   type        = string
-  description = "The format of the output Cloud Storage file. Allowed formats are TEXT, AVRO. Default is AVRO."
+  description = "The format of the output Cloud Storage file. Allowed formats are TEXT and AVRO. Defaults to AVRO."
   default     = null
 }
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m."
+  description = "The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). (Example: 5m)"
   default     = null
 }
 
 variable "rpcPriority" {
   type        = string
-  description = "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to: HIGH."
+  description = "The request priority for Spanner calls. The value must be HIGH, MEDIUM, or LOW. Defaults to HIGH."
   default     = null
 }
 

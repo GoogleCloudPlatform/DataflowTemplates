@@ -35,7 +35,7 @@ variable "region" {
 
 variable "readQuery" {
   type        = string
-  description = "SQL query in standard SQL to pull data from BigQuery"
+  description = "A BigQuery SQL query that extracts data from the source. For example, select * from dataset1.sample_table."
 
 }
 
@@ -53,7 +53,7 @@ variable "invalidOutputPath" {
 
 variable "datastoreWriteProjectId" {
   type        = string
-  description = "The Google Cloud project ID of where to write Datastore entities"
+  description = "The ID of the Google Cloud project to write the Datastore entities to."
 
 }
 
@@ -70,14 +70,14 @@ variable "datastoreWriteNamespace" {
 }
 
 variable "datastoreHintNumWorkers" {
-  type        = string
-  description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500."
+  type        = number
+  description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Default is `500`."
   default     = null
 }
 
 variable "errorWritePath" {
   type        = string
-  description = "The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/)"
+  description = "The error log output file to use for write failures that occur during processing. (Example: gs://your-bucket/errors/)"
 
 }
 
@@ -184,7 +184,7 @@ resource "google_dataflow_job" "generated" {
     datastoreWriteProjectId  = var.datastoreWriteProjectId
     datastoreWriteEntityKind = var.datastoreWriteEntityKind
     datastoreWriteNamespace  = var.datastoreWriteNamespace
-    datastoreHintNumWorkers  = var.datastoreHintNumWorkers
+    datastoreHintNumWorkers  = tostring(var.datastoreHintNumWorkers)
     errorWritePath           = var.errorWritePath
   }
 

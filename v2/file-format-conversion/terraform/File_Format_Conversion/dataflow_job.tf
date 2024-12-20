@@ -47,7 +47,7 @@ variable "outputFileFormat" {
 
 variable "inputFileSpec" {
   type        = string
-  description = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv"
+  description = "The Cloud Storage file pattern to search for CSV files. Example: gs://mybucket/test-*.csv."
 
 }
 
@@ -77,7 +77,7 @@ variable "csvFormat" {
 
 variable "jsonSchemaPath" {
   type        = string
-  description = "Path to JSON schema. Default: null. (Example: gs://path/to/schema)"
+  description = "The path to the JSON schema. Defaults to: null. (Example: gs://path/to/schema)"
   default     = null
 }
 
@@ -89,7 +89,7 @@ variable "largeNumFiles" {
 
 variable "csvFileEncoding" {
   type        = string
-  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  description = "The CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, and UTF-16. Defaults to: UTF-8."
   default     = null
 }
 
