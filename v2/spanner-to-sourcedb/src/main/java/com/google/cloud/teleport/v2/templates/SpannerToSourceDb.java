@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -30,6 +31,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -415,6 +417,15 @@ public class SpannerToSourceDb {
     String getFilterEventsDirectoryName();
 
     void setFilterEventsDirectoryName(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 10,
+        optional = false,
+        description = "Path to GCS file containing the the Cassandra Config details",
+        helpText = "Path to GCS file containing connection profile info for cassandra.")
+    String getCassandraConfigFilePath();
+
+    void setCassandraConfigFilePath(String value);
   }
 
   /**
@@ -511,17 +522,41 @@ public class SpannerToSourceDb {
 
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-    String shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
-    if (shards.size() == 1) {
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
-
-      Shard singleShard = shards.get(0);
-      if (singleShard.getLogicalShardId() == null) {
-        singleShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
-        LOG.info(
-            "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
+    if (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)) {
+      schema.setSpSchema(SpannerSchema.convertDDLTableToSpannerTable(ddl.allTables()));
+      schema.setToSpanner(SpannerSchema.convertDDLTableToSpannerNameAndColsTable(ddl.allTables()));
+    }
+    List<Shard> shards = new ArrayList<>();
+    String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+    if ("mysql".equals(options.getSourceType())) {
+      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+      if (shards.size() == 1) {
+        shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+        Shard singleMySqlShard = shards.get(0);
+        if (singleMySqlShard.getLogicalShardId() == null) {
+          singleMySqlShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+          LOG.info(
+              "Logical shard id was not found, hence setting it to : "
+                  + Constants.DEFAULT_SHARD_ID);
+        }
+      }
+    } else {
+      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
+      shards = cassandraConfigFileReader.getCassandraShard(options.getCassandraConfigFilePath());
+      LOG.info("Cassandra config is: {}", shards.get(0));
+      if (shards.size() == 1) {
+        shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+        Shard singleCassandraShard = shards.get(0);
+        if (singleCassandraShard.getLogicalShardId() == null) {
+          singleCassandraShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+          LOG.info(
+              "Logical shard id was not found, hence setting it to : "
+                  + Constants.DEFAULT_SHARD_ID);
+        }
+      } else {
+        throw new IllegalArgumentException("We have no options of shards in cassandra");
       }
     }
     boolean isRegularMode = "regular".equals(options.getRunMode());
@@ -613,8 +648,12 @@ public class SpannerToSourceDb {
                         options.getShardingCustomJarPath(),
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
-                        options.getMaxShardConnections()
-                            * shards.size()))) // currently assuming that all shards accept the same
+                        options.getMaxShardConnections() * shards.size(),
+                        options.getSourceType(),
+                        options
+                            .getMaxShardConnections()))) // currently assuming that all mySqlShards
+            // accept the same// currently assuming
+            // that all shards accept the same
             // number of max connections
             .setCoder(
                 KvCoder.of(
