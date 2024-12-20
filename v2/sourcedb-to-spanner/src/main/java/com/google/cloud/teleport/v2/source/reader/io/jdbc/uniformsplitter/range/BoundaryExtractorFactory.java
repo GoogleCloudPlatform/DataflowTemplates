@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -27,21 +26,27 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 /** Factory to construct {@link BoundaryExtractor} for supported {@link class}. */
 public class BoundaryExtractorFactory {
 
+  public static final Class BYTE_ARRAY_CLASS = (new byte[] {}).getClass();
   private static final ImmutableMap<Class, BoundaryExtractor<?>> extractorMap =
       ImmutableMap.of(
           Integer.class,
-              (BoundaryExtractor<Integer>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromIntegers(partitionColumn, resultSet, boundaryTypeMapper),
+          (BoundaryExtractor<Integer>)
+              (partitionColumn, resultSet, boundaryTypeMapper) ->
+                  fromIntegers(partitionColumn, resultSet, boundaryTypeMapper),
           Long.class,
-              (BoundaryExtractor<Long>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromLongs(partitionColumn, resultSet, boundaryTypeMapper),
-          String.class, (BoundaryExtractor<String>) BoundaryExtractorFactory::fromStrings,
-          BigInteger.class,
-              (BoundaryExtractor<BigInteger>)
-                  (partitionColumn, resultSet, boundaryTypeMapper) ->
-                      fromBigIntegers(partitionColumn, resultSet, boundaryTypeMapper));
+          (BoundaryExtractor<Long>)
+              (partitionColumn, resultSet, boundaryTypeMapper) ->
+                  fromLongs(partitionColumn, resultSet, boundaryTypeMapper),
+          String.class,
+          (BoundaryExtractor<String>) BoundaryExtractorFactory::fromStrings,
+          BigDecimal.class,
+          (BoundaryExtractor<BigDecimal>)
+              (partitionColumn, resultSet, boundaryTypeMapper) ->
+                  fromBigDecimals(partitionColumn, resultSet, boundaryTypeMapper),
+          BYTE_ARRAY_CLASS,
+          (BoundaryExtractor<byte[]>)
+              (partitionColumn, resultSet, boundaryTypeMapper) ->
+                  fromBinary(partitionColumn, resultSet, boundaryTypeMapper));
 
   /**
    * Create a {@link BoundaryExtractor} for the required class.
@@ -90,20 +95,38 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
-  private static Boundary<java.math.BigInteger> fromBigIntegers(
+  private static Boundary<BigDecimal> fromBigDecimals(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
       @Nullable BoundaryTypeMapper boundaryTypeMapper)
       throws SQLException {
-    Preconditions.checkArgument(partitionColumn.columnClass().equals(BigInteger.class));
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(BigDecimal.class));
     resultSet.next();
     BigDecimal start = resultSet.getBigDecimal(1);
     BigDecimal end = resultSet.getBigDecimal(2);
-    return Boundary.<java.math.BigInteger>builder()
+    return Boundary.<BigDecimal>builder()
         .setPartitionColumn(partitionColumn)
-        .setStart(start == null ? null : start.toBigInteger())
-        .setEnd(end == null ? null : end.toBigInteger())
-        .setBoundarySplitter(BoundarySplitterFactory.create(BigInteger.class))
+        .setStart(start)
+        .setEnd(end)
+        .setBoundarySplitter(BoundarySplitterFactory.create(BigDecimal.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<byte[]> fromBinary(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(BYTE_ARRAY_CLASS));
+    resultSet.next();
+    byte[] start = resultSet.getBytes(1);
+    byte[] end = resultSet.getBytes(2);
+    return Boundary.<byte[]>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(start)
+        .setEnd(end)
+        .setBoundarySplitter(BoundarySplitterFactory.create(BYTE_ARRAY_CLASS))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

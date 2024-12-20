@@ -228,11 +228,29 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(
         "integer_unsigned", createRows("integer_unsigned", "0", "42", "4294967295", "NULL"));
-    // TODO(Vardhanvthigle): Debug thisfurthur
-    /*
+    expectedData.put(
+        "bigint_pk", createRows("bigint_pk", "-9223372036854775808", "0", "9223372036854775807"));
     expectedData.put(
         "bigint_unsigned_pk", createRows("bigint_unsigned_pk", "0", "42", "18446744073709551615"));
-     */
+    expectedData.put("int_pk", createRows("int_pk", "-2147483648", "0", "2147483647"));
+    expectedData.put("int_unsigned_pk", createRows("int_unsigned_pk", "0", "42", "4294967295"));
+    expectedData.put("medium_int_pk", createRows("medium_int_pk", "-8388608", "0", "8388607"));
+    expectedData.put(
+        "medium_int_unsigned_pk", createRows("medium_int_unsigned_pk", "0", "42", "16777215"));
+    expectedData.put("small_int_pk", createRows("small_int_pk", "-32768", "0", "32767"));
+    expectedData.put(
+        "small_int_unsigned_pk", createRows("small_int_unsigned_pk", "0", "42", "65535"));
+    expectedData.put("tiny_int_pk", createRows("tiny_int_pk", "-128", "0", "127"));
+    expectedData.put("tiny_int_unsigned_pk", createRows("tiny_int_unsigned_pk", "0", "42", "255"));
+    // The binary column is padded with 0s
+    expectedData.put(
+        "binary_pk",
+        createRows("binary_pk", "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "gAAAAAAAAAAAAAAAAAAAAAAAAAA="));
+    expectedData.put("varbinary_pk", createRows("varbinary_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put("tiny_blob_pk", createRows("tiny_blob_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put("char_pk", createRows("char_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put("varchar_pk", createRows("varchar_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put("tiny_text_pk", createRows("tiny_text_pk", "AA==", "gAAAAAAAAAA="));
     return expectedData;
   }
 

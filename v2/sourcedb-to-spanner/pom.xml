@@ -147,6 +147,12 @@
       <artifactId>beam-sdks-java-io-cassandra</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql-jdbc.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-collections4</artifactId>
       <version>4.1</version>

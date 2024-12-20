@@ -15,9 +15,12 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory.BYTE_ARRAY_CLASS;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import org.apache.beam.sdk.transforms.DoFn;
 
@@ -26,18 +29,27 @@ public class BoundarySplitterFactory {
   private static final ImmutableMap<Class, BoundarySplitter<?>> splittermap =
       ImmutableMap.of(
           Integer.class,
-              (BoundarySplitter<Integer>)
-                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
-                      splitIntegers(start, end),
+          (BoundarySplitter<Integer>)
+              (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                  splitIntegers(start, end),
           Long.class,
-              (BoundarySplitter<Long>)
-                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
-                      splitLongs(start, end),
+          (BoundarySplitter<Long>)
+              (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                  splitLongs(start, end),
           BigInteger.class,
-              (BoundarySplitter<BigInteger>)
-                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
-                      splitBigIntegers(start, end),
-          String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings);
+          (BoundarySplitter<BigInteger>)
+              (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                  splitBigIntegers(start, end),
+          BigDecimal.class,
+          (BoundarySplitter<BigDecimal>)
+              (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                  splitBigDecimal(start, end),
+          String.class,
+          (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings,
+          BYTE_ARRAY_CLASS,
+          (BoundarySplitter<byte[]>)
+              (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                  splitBytes(start, end));
 
   /**
    * Creates {@link BoundarySplitter BoundarySplitter&lt;T&gt;} for pass class {@code c} such that
@@ -130,6 +142,26 @@ public class BoundarySplitterFactory {
      * 4.2 therefore, (a+b)/2 = (a&b) + (a^b)>>1. The right side expressions dont have any overflow.
      */
     return (start & end) + ((start ^ end) >> 1);
+  }
+
+  private static BigDecimal splitBigDecimal(BigDecimal start, BigDecimal end) {
+    BigInteger startBigInt = (start == null) ? null : start.toBigInteger();
+    BigInteger endBigInt = (end == null) ? null : end.toBigInteger();
+    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+    if (split == null) {
+      return null;
+    }
+    return new BigDecimal(split);
+  }
+
+  private static byte[] splitBytes(byte[] start, byte[] end) {
+    BigInteger startBigInt = (start == null) ? null : new BigInteger(start);
+    BigInteger endBigInt = (end == null) ? null : new BigInteger(end);
+    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+    if (split == null) {
+      return null;
+    }
+    return split.toByteArray();
   }
 
   private static String splitStrings(
