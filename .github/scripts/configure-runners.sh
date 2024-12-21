@@ -18,7 +18,7 @@
 
 # Defaults
 NAME_SUFFIX="it"
-SIZE=3
+SIZE=5
 BASE_NAME="gitactions-runner"
 REPO_NAME="DataflowTemplates"
 REPO_OWNER="GoogleCloudPlatform"

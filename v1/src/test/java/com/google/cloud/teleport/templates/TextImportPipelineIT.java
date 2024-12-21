@@ -23,6 +23,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
@@ -47,7 +48,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link TextImportPipeline}. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(TextImportPipeline.class)
 @RunWith(JUnit4.class)
 public final class TextImportPipelineIT extends TemplateTestBase {

@@ -178,9 +178,86 @@ CREATE TABLE set_table (
 );
 
 
+CREATE TABLE bigint_pk_table (
+    id BIGINT PRIMARY KEY,
+    bigint_pk_col BIGINT NOT NULL
+);
+
 CREATE TABLE bigint_unsigned_pk_table (
     id BIGINT UNSIGNED PRIMARY KEY,
     bigint_unsigned_pk_col BIGINT UNSIGNED NOT NULL
+);
+
+CREATE TABLE int_pk_table (
+    id INT PRIMARY KEY,
+    int_pk_col INT NOT NULL
+);
+
+CREATE TABLE int_unsigned_pk_table (
+    id INT UNSIGNED PRIMARY KEY,
+    int_unsigned_pk_col INT UNSIGNED NOT NULL
+);
+
+CREATE TABLE medium_int_pk_table (
+    id MEDIUMINT PRIMARY KEY,
+    medium_int_pk_col MEDIUMINT NOT NULL
+);
+
+CREATE TABLE medium_int_unsigned_pk_table (
+    id MEDIUMINT UNSIGNED PRIMARY KEY,
+    medium_int_unsigned_pk_col MEDIUMINT UNSIGNED NOT NULL
+);
+
+CREATE TABLE small_int_pk_table (
+    id SMALLINT PRIMARY KEY,
+    small_int_pk_col SMALLINT NOT NULL
+);
+
+CREATE TABLE small_int_unsigned_pk_table (
+    id SMALLINT UNSIGNED PRIMARY KEY,
+    small_int_unsigned_pk_col SMALLINT UNSIGNED NOT NULL
+);
+
+CREATE TABLE tiny_int_pk_table (
+     id TINYINT PRIMARY KEY,
+     tiny_int_pk_col TINYINT NOT NULL
+);
+
+CREATE TABLE tiny_int_unsigned_pk_table (
+     id TINYINT UNSIGNED PRIMARY KEY,
+     tiny_int_unsigned_pk_col TINYINT UNSIGNED NOT NULL
+);
+
+CREATE TABLE binary_pk_table (
+   id BINARY(20) PRIMARY KEY,
+   binary_pk_col BINARY(20) NOT NULL
+);
+
+CREATE TABLE varbinary_pk_table (
+   id VARBINARY(20) PRIMARY KEY,
+   varbinary_pk_col VARBINARY(20) NOT NULL
+);
+
+CREATE TABLE tiny_blob_pk_table (
+   id TINYBLOB,
+   tiny_blob_pk_col TINYBLOB NOT NULL,
+   CONSTRAINT PRIMARY KEY (id(20))
+);
+
+CREATE TABLE char_pk_table (
+   id CHAR(20) PRIMARY KEY,
+   char_pk_col CHAR(20) NOT NULL
+) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+
+CREATE TABLE varchar_pk_table (
+   id VARCHAR(20) PRIMARY KEY,
+   varchar_pk_col VARCHAR(20) NOT NULL
+) CHARACTER SET utf8mb3 COLLATE utf8mb3_general_ci;
+
+CREATE TABLE tiny_text_pk_table (
+   id TINYTEXT,
+   tiny_text_pk_col TINYTEXT NOT NULL,
+   CONSTRAINT PRIMARY KEY (id(20))
 );
 
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -303,7 +380,22 @@ INSERT INTO `year_table` (`year_col`) VALUES (2022);
 INSERT INTO `year_table` (`year_col`) VALUES (1901);
 INSERT INTO `year_table` (`year_col`) VALUES (2155);
 INSERT INTO `set_table` (`set_col`) VALUES ('v1,v2');
+INSERT INTO `bigint_pk_table` (`id`, `bigint_pk_col`) VALUES ('-9223372036854775808', '-9223372036854775808'), ('0', '0'), ('9223372036854775807', '9223372036854775807');
 INSERT INTO `bigint_unsigned_pk_table` (`id`, `bigint_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('18446744073709551615', '18446744073709551615');
+INSERT INTO `int_pk_table` (`id`, `int_pk_col`) VALUES ('-2147483648', '-2147483648'), ('0', '0'), ('2147483647', '2147483647');
+INSERT INTO `int_unsigned_pk_table` (`id`, `int_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('4294967295', '4294967295');
+INSERT INTO `medium_int_pk_table` (`id`, `medium_int_pk_col`) VALUES ('-8388608', '-8388608'), ('0', '0'), ('8388607', '8388607');
+INSERT INTO `medium_int_unsigned_pk_table` (`id`, `medium_int_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('16777215', '16777215');
+INSERT INTO `small_int_pk_table` (`id`, `small_int_pk_col`) VALUES ('-32768', '-32768'), ('0', '0'), ('32767', '32767');
+INSERT INTO `small_int_unsigned_pk_table` (`id`, `small_int_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('65535', '65535');
+INSERT INTO `tiny_int_pk_table` (`id`, `tiny_int_pk_col`) VALUES ('-128', '-128'), ('0', '0'), ('127', '127');
+INSERT INTO `tiny_int_unsigned_pk_table` (`id`, `tiny_int_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('255', '255');
+INSERT INTO `binary_pk_table` (`id`, `binary_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
+INSERT INTO `varbinary_pk_table` (`id`, `varbinary_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
+INSERT INTO `tiny_blob_pk_table` (`id`, `tiny_blob_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
+INSERT INTO `char_pk_table` (`id`, `char_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
+INSERT INTO `varchar_pk_table` (`id`, `varchar_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
+INSERT INTO `tiny_text_pk_table` (`id`, `tiny_text_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

@@ -128,7 +128,7 @@ public class BigtableToJson {
         optional = true,
         description = "JSON file prefix",
         helpText =
-            "The prefix of the JSON file name. For example, \"table1-\". If no value is provided, defaults to `part`.")
+            "The prefix of the JSON file name. For example, `table1-`. If no value is provided, defaults to `part`.")
     @Default.String("part")
     ValueProvider<String> getFilenamePrefix();
 

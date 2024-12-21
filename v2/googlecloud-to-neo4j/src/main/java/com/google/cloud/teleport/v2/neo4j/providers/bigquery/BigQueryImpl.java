@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.neo4j.providers.bigquery;
 
-import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec;
-import com.google.cloud.teleport.v2.neo4j.model.helpers.SqlQuerySpec.SqlQuerySpecBuilder;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec;
+import com.google.cloud.teleport.v2.neo4j.model.helpers.BigQuerySpec.BigQuerySpecBuilder;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetQuerySpec;
 import com.google.cloud.teleport.v2.neo4j.model.helpers.TargetSequence;
 import com.google.cloud.teleport.v2.neo4j.model.job.OptionsParams;
@@ -33,11 +33,9 @@ import org.slf4j.LoggerFactory;
 
 /** Provider implementation for reading and writing BigQuery. */
 public class BigQueryImpl implements Provider {
-
   private static final Logger LOG = LoggerFactory.getLogger(BigQueryImpl.class);
   private final BigQuerySource source;
   private final TargetSequence targetSequence;
-
   private OptionsParams optionsParams;
 
   public BigQueryImpl(BigQuerySource source, TargetSequence targetSequence) {
@@ -67,7 +65,7 @@ public class BigQueryImpl implements Provider {
 
   @Override
   public PTransform<PBegin, PCollection<Row>> queryMetadata() {
-    return new BqQueryToRow(getMetadataQueryBeamSpec(source));
+    return new BqQueryToRow(getMetadataQueryBeamSpec());
   }
 
   /**
@@ -75,7 +73,7 @@ public class BigQueryImpl implements Provider {
    *
    * @return helper object includes metadata and SQL
    */
-  public SqlQuerySpec getMetadataQueryBeamSpec(BigQuerySource source) {
+  public BigQuerySpec getMetadataQueryBeamSpec() {
 
     String baseQuery = source.getQuery();
 
@@ -85,10 +83,12 @@ public class BigQueryImpl implements Provider {
     String zeroRowSql = "SELECT * FROM (" + baseQuery + ") LIMIT 0";
     LOG.info("Reading BQ metadata with query: {}", zeroRowSql);
 
-    return new SqlQuerySpecBuilder()
+    return new BigQuerySpecBuilder()
         .readDescription("Read from BQ " + source.getName())
         .castDescription("Cast to BeamRow " + source.getName())
         .sql(zeroRowSql)
+        .queryTempProject(source.getQueryTempProject())
+        .queryTempDataset(source.getQueryTempDataset())
         .build();
   }
 
@@ -97,11 +97,13 @@ public class BigQueryImpl implements Provider {
    *
    * @return helper object includes metadata and SQL
    */
-  private SqlQuerySpec getSourceQueryBeamSpec() {
-    return new SqlQuerySpecBuilder()
+  private BigQuerySpec getSourceQueryBeamSpec() {
+    return new BigQuerySpecBuilder()
         .castDescription("Cast to BeamRow " + source.getName())
         .readDescription("Read from BQ " + source.getName())
         .sql(source.getQuery())
+        .queryTempProject(source.getQueryTempProject())
+        .queryTempDataset(source.getQueryTempDataset())
         .build();
   }
 
@@ -110,7 +112,7 @@ public class BigQueryImpl implements Provider {
    *
    * @return helper object includes metadata and SQL
    */
-  private SqlQuerySpec getTargetQueryBeamSpec(TargetQuerySpec spec) {
+  private BigQuerySpec getTargetQueryBeamSpec(TargetQuerySpec spec) {
     var sourceFields = ModelUtils.getBeamFieldSet(spec.getSourceBeamSchema());
     var target = spec.getTarget();
     var startNodeTarget = spec.getStartNodeTarget();
@@ -118,12 +120,14 @@ public class BigQueryImpl implements Provider {
     String sql =
         ModelUtils.getTargetSql(
             target, startNodeTarget, endNodeTarget, sourceFields, true, source.getQuery());
-    return new SqlQuerySpecBuilder()
+    return new BigQuerySpecBuilder()
         .readDescription(
             targetSequence.getSequenceNumber(target) + ": Read from BQ " + target.getName())
         .castDescription(
             targetSequence.getSequenceNumber(target) + ": Cast to BeamRow " + target.getName())
         .sql(sql)
+        .queryTempProject(source.getQueryTempProject())
+        .queryTempDataset(source.getQueryTempDataset())
         .build();
   }
 }

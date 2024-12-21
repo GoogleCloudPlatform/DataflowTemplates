@@ -92,5 +92,15 @@ To run the configuration script:
         -S perf \
         -s 1
       ```
+   
+   * For Release Runner
+      ```
+      ./configure-runners.sh \
+        -p cloud-teleport-testing \
+        -a 269744978479-compute@developer.gserviceaccount.com \
+        -t $GITACTIONS_TOKEN \
+        -S release \
+        -s 1
+      ```
 
 **Note**: To see optional configurable parameters, run `./configure-runners.sh -h`

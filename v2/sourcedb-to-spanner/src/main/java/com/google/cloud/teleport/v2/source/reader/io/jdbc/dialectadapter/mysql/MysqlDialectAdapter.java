@@ -35,7 +35,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.re2j.Pattern;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -59,9 +58,6 @@ import org.slf4j.LoggerFactory;
 public final class MysqlDialectAdapter implements DialectAdapter {
 
   public static final String PAD_SPACE = "PAD SPACE";
-  public static final String NO_PAD = "NO PAD";
-  public static final String BINARY_CHARACTER_SET = "binary";
-  public static final String BINARY_COLLATION = "binary";
   private final MySqlVersion mySqlVersion;
 
   private static final Logger logger = LoggerFactory.getLogger(MysqlDialectAdapter.class);
@@ -370,15 +366,13 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           // String types: Ref https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
           .put("CHAR", IndexType.STRING)
           .put("VARCHAR", IndexType.STRING)
-          .put("BINARY", IndexType.STRING)
-          .put("VARBINARY", IndexType.STRING)
-          .put("BLOB", IndexType.STRING)
-          .put("TEXT", IndexType.STRING)
-          .put("ENUM", IndexType.STRING)
-          .put("SET", IndexType.STRING)
+          // Mapping BINARY, VARBINARY and TINYBLOB to Java bigInteger
+          // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
+          .put("BINARY", IndexType.BINARY)
+          .put("VARBINARY", IndexType.BINARY)
+          .put("TINYBLOB", IndexType.BINARY)
+          .put("TINYTEXT", IndexType.STRING)
           .build();
-
-  private ImmutableSet<String> binaryColumnTypes = ImmutableSet.of("BINARY", "VARBINARY", "BLOB");
 
   /**
    * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
@@ -440,28 +434,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
         IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
-
         CollationReference collationReference = null;
-        // Binary (and similar columns like VarBinary, Blob etc) columns have a fixed character-set
-        // and collation called "binary".
-        // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
-        // In information_schema.columns query, these column types show null as character set.
-        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/3
-        // Also for both mySQL 5.7 and 8.0 binary columns have a NO-PAD comparison.
-        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/0.
-        if (binaryColumnTypes.contains(columType) && characterSet == null) {
-          characterSet = BINARY_CHARACTER_SET;
-          collation = BINARY_COLLATION;
-          padSpace = NO_PAD;
-        }
-        if (characterSet != null) {
+        if (indexType.equals(IndexType.STRING)) {
           collationReference =
               CollationReference.builder()
-                  .setDbCharacterSet(characterSet)
-                  .setDbCollation(collation)
+                  .setDbCharacterSet(escapeMySql(characterSet))
+                  .setDbCollation(escapeMySql(collation))
                   .setPadSpace(
                       (padSpace == null) ? false : padSpace.trim().toUpperCase().equals(PAD_SPACE))
                   .build();
+        } else {
+          stringMaxLength = null;
         }
 
         indexesBuilder.add(
@@ -485,6 +468,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     }
     return indexesBuilder.build();
+  }
+
+  @VisibleForTesting
+  protected static String escapeMySql(String input) {
+    if (input.startsWith("`")) {
+      return input;
+    } else {
+      return "`" + input + "`";
+    }
   }
 
   private SourceColumnType resultSetToSourceColumnType(ResultSet rs) throws SQLException {

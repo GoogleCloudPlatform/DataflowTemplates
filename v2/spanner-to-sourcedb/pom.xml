@@ -88,6 +88,11 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.datastax.oss</groupId>
+            <artifactId>java-driver-core</artifactId>
+            <version>4.17.0</version> <!-- Use the latest version -->
+        </dependency>
         <!--        TODO - Remove when https://github.com/apache/beam/pull/29732 is released. -->
         <dependency>
             <groupId>com.google.cloud.teleport</groupId>

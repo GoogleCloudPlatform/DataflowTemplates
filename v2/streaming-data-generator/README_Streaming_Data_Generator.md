@@ -17,40 +17,40 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **qps** : Indicates rate of messages per second to be published to Pub/Sub.
+* **qps**: Indicates rate of messages per second to be published to Pub/Sub.
 
 ### Optional parameters
 
-* **schemaTemplate** : Pre-existing schema template to use. The value must be one of: [GAME_EVENT].
-* **schemaLocation** : Cloud Storage path of schema location. (Example: gs://<bucket-name>/prefix).
-* **topic** : The name of the topic to which the pipeline should publish data. (Example: projects/<project-id>/topics/<topic-name>).
-* **messagesLimit** : Indicates maximum number of output messages to be generated. 0 means unlimited. Defaults to: 0.
-* **outputType** : The message Output type. Default is JSON.
-* **avroSchemaLocation** : Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or PARQUET. (Example: gs://your-bucket/your-path/schema.avsc).
-* **sinkType** : The message Sink type. Default is PUBSUB.
-* **outputTableSpec** : Output BigQuery table. Mandatory when sinkType is BIGQUERY (Example: <project>:<dataset>.<table_name>).
-* **writeDisposition** : BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
-* **outputDeadletterTable** : Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name).
-* **windowDuration** : The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 1m). Defaults to: 1m.
-* **outputDirectory** : The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path/).
-* **outputFilenamePrefix** : The prefix to place on each windowed file. (Example: output-). Defaults to: output-.
-* **numShards** : The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
-* **driverClassName** : JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
-* **connectionUrl** : Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **username** : User name to be used for the JDBC connection.
-* **password** : Password to be used for the JDBC connection.
-* **connectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
-* **statement** : SQL statement which will be executed to write to the database. The statement must specify the column names of the table in any order. Only the values of the specified column names will be read from the json and added to the statement. (Example: INSERT INTO tableName (column1, column2) VALUES (?,?)).
-* **projectId** : GCP Project Id of where the Spanner table lives.
-* **spannerInstanceName** : Cloud Spanner instance name.
-* **spannerDatabaseName** : Cloud Spanner database name.
-* **spannerTableName** : Cloud Spanner table name.
-* **maxNumMutations** : Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000.
-* **maxNumRows** : Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000.
-* **batchSizeBytes** : Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB.
-* **commitDeadlineSeconds** : Specifies the deadline in seconds for the Commit API call.
-* **bootstrapServer** : Kafka Bootstrap Server  (Example: localhost:9092).
-* **kafkaTopic** : Kafka topic to write to. (Example: topic).
+* **schemaTemplate**: Pre-existing schema template to use. The value must be one of: [GAME_EVENT].
+* **schemaLocation**: Cloud Storage path of schema location. For example, `gs://<bucket-name>/prefix`.
+* **topic**: The name of the topic to which the pipeline should publish data. For example, `projects/<project-id>/topics/<topic-name>`.
+* **messagesLimit**: Indicates maximum number of output messages to be generated. 0 means unlimited. Defaults to: 0.
+* **outputType**: The message Output type. Default is JSON.
+* **avroSchemaLocation**: Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or PARQUET. For example, `gs://your-bucket/your-path/schema.avsc`.
+* **sinkType**: The message Sink type. Default is PUBSUB.
+* **outputTableSpec**: Output BigQuery table. Mandatory when sinkType is BIGQUERY For example, `<project>:<dataset>.<table_name>`.
+* **writeDisposition**: BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND.
+* **outputDeadletterTable**: Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. For example, `your-project-id:your-dataset.your-table-name`.
+* **windowDuration**: The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `1m`. Defaults to: 1m.
+* **outputDirectory**: The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path/`.
+* **outputFilenamePrefix**: The prefix to place on each windowed file. For example, `output-`. Defaults to: output-.
+* **numShards**: The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow.
+* **driverClassName**: JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`.
+* **connectionUrl**: Url connection string to connect to the JDBC source. For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **username**: User name to be used for the JDBC connection.
+* **password**: Password to be used for the JDBC connection.
+* **connectionProperties**: Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`.
+* **statement**: SQL statement which will be executed to write to the database. The statement must specify the column names of the table in any order. Only the values of the specified column names will be read from the json and added to the statement. For example, `INSERT INTO tableName (column1, column2) VALUES (?,?)`.
+* **projectId**: GCP Project Id of where the Spanner table lives.
+* **spannerInstanceName**: Cloud Spanner instance name.
+* **spannerDatabaseName**: Cloud Spanner database name.
+* **spannerTableName**: Cloud Spanner table name.
+* **maxNumMutations**: Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000.
+* **maxNumRows**: Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000.
+* **batchSizeBytes**: Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB.
+* **commitDeadlineSeconds**: Specifies the deadline in seconds for the Commit API call.
+* **bootstrapServer**: Kafka Bootstrap Server  For example, `localhost:9092`.
+* **kafkaTopic**: Kafka topic to write to. For example, `topic`.
 
 
 
@@ -304,25 +304,25 @@ resource "google_dataflow_flex_template_job" "streaming_data_generator" {
   parameters        = {
     qps = "<qps>"
     # schemaTemplate = "<schemaTemplate>"
-    # schemaLocation = "gs://<bucket-name>/prefix"
-    # topic = "projects/<project-id>/topics/<topic-name>"
+    # schemaLocation = "<schemaLocation>"
+    # topic = "<topic>"
     # messagesLimit = "0"
     # outputType = "JSON"
-    # avroSchemaLocation = "gs://your-bucket/your-path/schema.avsc"
+    # avroSchemaLocation = "<avroSchemaLocation>"
     # sinkType = "PUBSUB"
-    # outputTableSpec = "<project>:<dataset>.<table_name>"
+    # outputTableSpec = "<outputTableSpec>"
     # writeDisposition = "WRITE_APPEND"
-    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # outputDeadletterTable = "<outputDeadletterTable>"
     # windowDuration = "1m"
-    # outputDirectory = "gs://your-bucket/your-path/"
+    # outputDirectory = "<outputDirectory>"
     # outputFilenamePrefix = "output-"
     # numShards = "0"
-    # driverClassName = "com.mysql.jdbc.Driver"
-    # connectionUrl = "jdbc:mysql://some-host:3306/sampledb"
+    # driverClassName = "<driverClassName>"
+    # connectionUrl = "<connectionUrl>"
     # username = "<username>"
     # password = "<password>"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
-    # statement = "INSERT INTO tableName (column1, column2) VALUES (?,?)"
+    # connectionProperties = "<connectionProperties>"
+    # statement = "<statement>"
     # projectId = "<projectId>"
     # spannerInstanceName = "<spannerInstanceName>"
     # spannerDatabaseName = "<spannerDatabaseName>"
@@ -331,8 +331,8 @@ resource "google_dataflow_flex_template_job" "streaming_data_generator" {
     # maxNumRows = "<maxNumRows>"
     # batchSizeBytes = "<batchSizeBytes>"
     # commitDeadlineSeconds = "<commitDeadlineSeconds>"
-    # bootstrapServer = "localhost:9092"
-    # kafkaTopic = "topic"
+    # bootstrapServer = "<bootstrapServer>"
+    # kafkaTopic = "<kafkaTopic>"
   }
 }
 ```

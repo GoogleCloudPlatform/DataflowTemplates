@@ -408,7 +408,7 @@ vary on whether the pipeline under test is a `Batch` or `Streaming` pipeline and
 the type of test.
 
 ### Structure
-First extend the test class from the [LoadTestBase](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/com/google/cloud/teleport/it/gcp/LoadTestBase.java)
+First extend the test class from the [LoadTestBase](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/LoadTestBase.java)
 class. LoadTestBase contains helper methods which abstract irrelevant 
 information and make it easier to write load tests. It also defines some 
 clients and variables which are useful for writing tests.
@@ -552,8 +552,8 @@ public void testSteadyState1hr() {
 
 ### Exporting Results
 
-After the pipeline finishes successfully, we can get the performance metrics using [getMetrics](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/com/google/cloud/teleport/it/gcp/LoadTestBase.java#L272)
-method and export the results to BigQuery by calling the [exportMetricsToBigQuery](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/com/google/cloud/teleport/it/gcp/LoadTestBase.java#L127) method.
+After the pipeline finishes successfully, we can get the performance metrics using [getMetrics](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/LoadTestBase.java#L279)
+method and export the results to BigQuery by calling the [exportMetricsToBigQuery](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/it/google-cloud-platform/src/main/java/org/apache/beam/it/gcp/LoadTestBase.java#L139) method.
 
 The BigQuery project, dataset, and table to be used to export the data can be specified in the command line using,
 * `-DexportProject` - BigQuery Project to export metrics (optional, if not provided `-Dproject` is used)

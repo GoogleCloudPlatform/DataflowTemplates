@@ -98,32 +98,32 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **spannerInstanceId** : The Spanner instance to read change streams from.
-* **spannerDatabase** : The Spanner database to read change streams from.
-* **spannerMetadataInstanceId** : The Spanner instance to use for the change streams connector metadata table.
-* **spannerMetadataDatabase** : The Spanner database to use for the change streams connector metadata table.
-* **spannerChangeStreamName** : The name of the Spanner change stream to read from.
-* **bigQueryDataset** : The BigQuery dataset for change streams output.
+* **spannerInstanceId**: The Spanner instance to read change streams from.
+* **spannerDatabase**: The Spanner database to read change streams from.
+* **spannerMetadataInstanceId**: The Spanner instance to use for the change streams connector metadata table.
+* **spannerMetadataDatabase**: The Spanner database to use for the change streams connector metadata table.
+* **spannerChangeStreamName**: The name of the Spanner change stream to read from.
+* **bigQueryDataset**: The BigQuery dataset for change streams output.
 
 ### Optional parameters
 
-* **spannerProjectId** : The project to read change streams from. This value is also the project where the change streams connector metadata table is created. The default value for this parameter is the project where the Dataflow pipeline is running.
-* **spannerDatabaseRole** : The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the SELECT privilege on the change stream and the EXECUTE privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
-* **spannerMetadataTableName** : The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams connector metadata table is automatically created during the pipeline flow. You must provide this parameter when updating an existing pipeline. Otherwise, don't provide this parameter.
-* **rpcPriority** : The request priority for Spanner calls. The value must be one of the following values: `HIGH`, `MEDIUM`, or `LOW`. The default value is `HIGH`.
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com).
-* **startTimestamp** : The starting DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
-* **endTimestamp** : The ending DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams.Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.
-* **bigQueryProjectId** : The BigQuery project. The default value is the project for the Dataflow job.
-* **bigQueryChangelogTableNameTemplate** : The template for the name of the BigQuery table that contains the changelog. Defaults to: {_metadata_spanner_table_name}_changelog.
-* **deadLetterQueueDirectory** : The path to store any unprocessed records. The default path is a directory under the Dataflow job's temp location. The default value is usually sufficient.
-* **dlqRetryMinutes** : The number of minutes between dead-letter queue retries. The default value is 10.
-* **ignoreFields** : A comma-separated list of fields (case sensitive) to ignore. These fields might be fields of watched tables, or metadata fields added by the pipeline. Ignored fields aren't inserted into BigQuery. When you ignore the _metadata_spanner_table_name field, the bigQueryChangelogTableNameTemplate parameter is also ignored. Defaults to empty.
-* **disableDlqRetries** : Whether or not to disable retries for the DLQ. Defaults to: false.
-* **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **useStorageWriteApiAtLeastOnce** :  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
-* **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
+* **spannerProjectId**: The project to read change streams from. This value is also the project where the change streams connector metadata table is created. The default value for this parameter is the project where the Dataflow pipeline is running.
+* **spannerDatabaseRole**: The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
+* **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams connector metadata table is automatically created during the pipeline flow. You must provide this parameter when updating an existing pipeline. Otherwise, don't provide this parameter.
+* **rpcPriority**: The request priority for Spanner calls. The value must be one of the following values: `HIGH`, `MEDIUM`, or `LOW`. The default value is `HIGH`.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`.
+* **startTimestamp**: The starting DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
+* **endTimestamp**: The ending DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams.Ex-2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.
+* **bigQueryProjectId**: The BigQuery project. The default value is the project for the Dataflow job.
+* **bigQueryChangelogTableNameTemplate**: The template for the name of the BigQuery table that contains the changelog. Defaults to: {_metadata_spanner_table_name}_changelog.
+* **deadLetterQueueDirectory**: The path to store any unprocessed records. The default path is a directory under the Dataflow job's temp location. The default value is usually sufficient.
+* **dlqRetryMinutes**: The number of minutes between dead-letter queue retries. The default value is `10`.
+* **ignoreFields**: A comma-separated list of fields (case sensitive) to ignore. These fields might be fields of watched tables, or metadata fields added by the pipeline. Ignored fields aren't inserted into BigQuery. When you ignore the _metadata_spanner_table_name field, the bigQueryChangelogTableNameTemplate parameter is also ignored. Defaults to empty.
+* **disableDlqRetries**: Whether or not to disable retries for the DLQ. Defaults to: false.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**:  When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
 
 
 
@@ -361,7 +361,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_bigquery
     # spannerDatabaseRole = "<spannerDatabaseRole>"
     # spannerMetadataTableName = "<spannerMetadataTableName>"
     # rpcPriority = "HIGH"
-    # spannerHost = "https://batch-spanner.googleapis.com"
+    # spannerHost = "<spannerHost>"
     # startTimestamp = ""
     # endTimestamp = ""
     # bigQueryProjectId = ""

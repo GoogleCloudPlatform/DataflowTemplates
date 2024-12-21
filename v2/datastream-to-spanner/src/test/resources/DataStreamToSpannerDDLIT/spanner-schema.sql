@@ -116,3 +116,11 @@ CREATE TABLE AllDatatypeTransformation (
 	binary_column BYTES(MAX),
 	bit_column BYTES(MAX),
 ) PRIMARY KEY (varchar_column);
+
+CREATE SEQUENCE sequence_id OPTIONS (sequence_kind='bit_reversed_positive', skip_range_min = 0, skip_range_max = 3);
+
+CREATE TABLE Singers (
+    singer_id INT64 NOT NULL  DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE sequence_id)) ,
+    first_name STRING(1024),
+    last_name STRING(1024),
+) PRIMARY KEY (singer_id);

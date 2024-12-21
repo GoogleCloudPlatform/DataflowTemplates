@@ -23,34 +23,32 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **connectionURL** : The JDBC connection URL string. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: jdbc:sqlserver://localhost;databaseName=sampledb).
-* **outputTable** : The BigQuery output table location. (Example: <PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>).
-* **bigQueryLoadingTemporaryDirectory** : The temporary directory for the BigQuery loading process. (Example: gs://your-bucket/your-files/temp_dir).
+* **connectionURL**: The JDBC connection URL string. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}. For example, `jdbc:sqlserver://localhost;databaseName=sampledb`.
+* **outputTable**: The BigQuery output table location. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.
+* **bigQueryLoadingTemporaryDirectory**: The temporary directory for the BigQuery loading process. For example, `gs://your-bucket/your-files/temp_dir`.
 
 ### Optional parameters
 
-* **connectionProperties** : The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.For more information, see Configuration Properties (https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html) in the MySQL documentation. (Example: unicode=true;characterEncoding=UTF-8).
-* **username** : The username to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.
-* **password** : The password to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.
-* **query** : The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. Some important SQL -> BigQuery type mappings to keep in mind are:
-DATETIME --> TIMESTAMP
-
-Type casting may be required if your schemas do not match. This parameter can be set to a gs:// path pointing to a file in Cloud Storage to load the query from. The file encoding should be UTF-8. (Example: select * from sampledb.sample_table).
-* **KMSEncryptionKey** : The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  pass in a Cloud KMS key, you must also encrypt the username, password, and connection string. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **useColumnAlias** : If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`.
-* **isTruncate** : If set to `true`, the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.
-* **partitionColumn** : If this parameter is provided with the name of the `table` defined as an optional parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.
-* **table** : The table to read from when using partitions. This parameter also accepts a subquery in parentheses. (Example: (select id, name from Person) as subq).
-* **numPartitions** : The number of partitions. With the lower and upper bound, this value forms partition strides for generated `WHERE` clause expressions that are used to split the partition column evenly. When the input is less than `1`, the number is set to `1`.
-* **lowerBound** : The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.
-* **upperBound** : The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.
-* **fetchSize** : The number of rows to be fetched from database at a time. Not used for partitioned reads. Defaults to: 50000.
-* **createDisposition** : The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`. Defaults to: CREATE_NEVER.
-* **bigQuerySchemaPath** : The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json).
-* **disabledAlgorithms** : Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
-* **useStorageWriteApi** : If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **useStorageWriteApiAtLeastOnce** : When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
+* **connectionProperties**: The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.For more information, see Configuration Properties (https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html) in the MySQL documentation. For example, `unicode=true;characterEncoding=UTF-8`.
+* **username**: The username to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.
+* **password**: The password to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.
+* **query**: The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. Some important SQL -> BigQuery type mappings to keep in mind are `DATETIME --> TIMESTAMP`. Type casting may be required if your schemas do not match. For example, `select * from sampledb.sample_table`.
+* **KMSEncryptionKey**: The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  pass in a Cloud KMS key, you must also encrypt the username, password, and connection string. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **useColumnAlias**: If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`.
+* **isTruncate**: If set to `true`, the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.
+* **partitionColumn**: If this parameter is provided with the name of the `table` defined as an optional parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.
+* **table**: The table to read from when using partitions. This parameter also accepts a subquery in parentheses. For example, `(select id, name from Person) as subq`.
+* **numPartitions**: The number of partitions. With the lower and upper bound, this value forms partition strides for generated `WHERE` clause expressions that are used to split the partition column evenly. When the input is less than `1`, the number is set to `1`.
+* **lowerBound**: The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.
+* **upperBound**: The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.
+* **fetchSize**: The number of rows to be fetched from database at a time. Not used for partitioned reads. Defaults to: 50000.
+* **createDisposition**: The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`. Defaults to: CREATE_NEVER.
+* **bigQuerySchemaPath**: The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to `CREATE_IF_NEEDED`, this parameter must be specified. For example, `gs://your-bucket/your-schema.json`.
+* **outputDeadletterTable**: The BigQuery table to use for messages that failed to reach the output table, formatted as `"PROJECT_ID:DATASET_NAME.TABLE_NAME"`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the pipeline will fail on write errors.This parameter can only be specified if `useStorageWriteApi` or `useStorageWriteApiAtLeastOnce` is set to true.
+* **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
+* **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **useStorageWriteApiAtLeastOnce**: When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`.
 
 
 
@@ -149,6 +147,7 @@ export UPPER_BOUND=<upperBound>
 export FETCH_SIZE=50000
 export CREATE_DISPOSITION=CREATE_NEVER
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 export USE_STORAGE_WRITE_API=false
@@ -176,6 +175,7 @@ gcloud dataflow flex-template run "sqlserver-to-bigquery-job" \
   --parameters "fetchSize=$FETCH_SIZE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH" \
+  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
@@ -218,6 +218,7 @@ export UPPER_BOUND=<upperBound>
 export FETCH_SIZE=50000
 export CREATE_DISPOSITION=CREATE_NEVER
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 export USE_STORAGE_WRITE_API=false
@@ -230,7 +231,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sqlserver-to-bigquery-job" \
 -DtemplateName="SQLServer_to_BigQuery" \
--Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+-Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -f v2/sqlserver-to-googlecloud
 ```
 
@@ -275,26 +276,27 @@ resource "google_dataflow_flex_template_job" "sqlserver_to_bigquery" {
   name              = "sqlserver-to-bigquery"
   region            = var.region
   parameters        = {
-    connectionURL = "jdbc:sqlserver://localhost;databaseName=sampledb"
-    outputTable = "<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    connectionURL = "<connectionURL>"
+    outputTable = "<outputTable>"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
+    # connectionProperties = "<connectionProperties>"
     # username = "<username>"
     # password = "<password>"
-    # query = "select * from sampledb.sample_table"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # query = "<query>"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
     # useColumnAlias = "false"
     # isTruncate = "false"
     # partitionColumn = "<partitionColumn>"
-    # table = "(select id, name from Person) as subq"
+    # table = "<table>"
     # numPartitions = "<numPartitions>"
     # lowerBound = "<lowerBound>"
     # upperBound = "<upperBound>"
     # fetchSize = "50000"
     # createDisposition = "CREATE_NEVER"
-    # bigQuerySchemaPath = "gs://your-bucket/your-schema.json"
-    # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # bigQuerySchemaPath = "<bigQuerySchemaPath>"
+    # outputDeadletterTable = "<outputDeadletterTable>"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
     # useStorageWriteApi = "false"
     # useStorageWriteApiAtLeastOnce = "false"
   }
