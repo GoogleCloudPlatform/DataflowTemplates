@@ -70,17 +70,15 @@ public class CassandraSourceMetadata {
   /**
    * Converts a ResultSet to a Schema object, updating the provided schema.
    *
-   * @param schema The schema to update.
+   * @param schema    The schema to update.
    * @param resultSet The ResultSet containing schema information.
-   * @return The updated Schema.
    */
-  public static Schema generateSourceSchema(Schema schema, ResultSet resultSet) {
+  public static void generateSourceSchema(Schema schema, ResultSet resultSet) {
     SourceSchema sourceSchema = generateSourceSchema(resultSet);
     Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable> sourceTableMap =
         convertSourceSchemaToMap(sourceSchema);
     schema.setSrcSchema(sourceTableMap);
     schema.setToSource(convertSourceToNameAndColsTable(sourceSchema.tables().values()));
-    return schema;
   }
 
   /**
