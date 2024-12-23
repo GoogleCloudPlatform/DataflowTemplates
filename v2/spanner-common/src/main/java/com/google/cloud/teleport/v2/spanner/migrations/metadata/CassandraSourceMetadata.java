@@ -181,12 +181,7 @@ public class CassandraSourceMetadata {
   private static NameAndCols convertSourceTableToNameAndCols(SourceTable sourceTable) {
     Map<String, String> columnNames =
         sourceTable.columns().stream()
-            .collect(
-                Collectors.toMap(
-                    SourceColumn::name,
-                    SourceColumn
-                        ::name // Could be expanded to map to more useful data, like column types
-                    ));
+            .collect(Collectors.toMap(SourceColumn::name, SourceColumn::name));
 
     return new NameAndCols(sourceTable.name(), columnNames);
   }
