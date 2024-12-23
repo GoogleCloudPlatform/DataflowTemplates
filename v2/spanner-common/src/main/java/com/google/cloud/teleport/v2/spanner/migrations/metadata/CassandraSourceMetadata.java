@@ -40,7 +40,6 @@ public class CassandraSourceMetadata {
   private static SourceSchema generateSourceSchema(ResultSet resultSet) {
     Map<String, Map<String, SourceColumn>> schema = new HashMap<>();
 
-    // Process each row in the ResultSet
     resultSet.forEach(
         row -> {
           String tableName = row.getString("table_name");
@@ -54,7 +53,6 @@ public class CassandraSourceMetadata {
           schema.computeIfAbsent(tableName, k -> new HashMap<>()).put(columnName, sourceColumn);
         });
 
-    // Convert collected data into SourceTable objects
     Map<String, SourceTable> tables =
         schema.entrySet().stream()
             .collect(
