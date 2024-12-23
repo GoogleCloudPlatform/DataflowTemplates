@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
@@ -54,6 +55,25 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
                   .map(PreparedStatementValueObject::value)
                   .toArray());
       session.execute(boundStatement);
+    }
+  }
+
+  public ResultSet readMetadata(String keyspace) throws Exception {
+    if (keyspace == null || keyspace.isEmpty()) {
+      throw new IllegalArgumentException("Keyspace name cannot be null or empty.");
+    }
+
+    String query =
+        "SELECT table_name, column_name, type, kind FROM system_schema.columns WHERE keyspace_name = ?";
+
+    try (CqlSession session = (CqlSession) connectionHelper.getConnection(this.cassandraUrl)) {
+      if (session == null) {
+        throw new ConnectionException("Failed to establish a connection.");
+      }
+
+      PreparedStatement preparedStatement = session.prepare(query);
+      BoundStatement boundStatement = preparedStatement.bind(keyspace);
+      return session.execute(boundStatement);
     }
   }
 }

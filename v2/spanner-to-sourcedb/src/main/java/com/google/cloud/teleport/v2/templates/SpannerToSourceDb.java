@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
@@ -484,8 +485,12 @@ public class SpannerToSourceDb {
               + " incease the max shard connections");
     }
 
-    // Read the session file
-    Schema schema = SessionFileReader.read(options.getSessionFilePath());
+    // Read the session file for Mysql Only
+    Schema schema =
+        MYSQL_SOURCE_TYPE.equals(options.getSourceType())
+            ? SessionFileReader.read(
+                options.getSessionFilePath()) // Read from session file for MYSQL source type
+            : new Schema();
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
