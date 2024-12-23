@@ -70,7 +70,7 @@ public class CassandraSourceMetadata {
   /**
    * Converts a ResultSet to a Schema object, updating the provided schema.
    *
-   * @param schema    The schema to update.
+   * @param schema The schema to update.
    * @param resultSet The ResultSet containing schema information.
    */
   public static void generateSourceSchema(Schema schema, ResultSet resultSet) {
