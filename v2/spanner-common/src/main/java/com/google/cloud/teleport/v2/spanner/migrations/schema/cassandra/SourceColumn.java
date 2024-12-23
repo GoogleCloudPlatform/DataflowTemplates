@@ -36,13 +36,6 @@ public abstract class SourceColumn implements Serializable {
    */
   public static SourceColumn create(
       String name, String kind, String sourceType, boolean isPrimaryKey) {
-    // Validate the parameters before creating the SourceColumn
-    if (name == null || name.isEmpty()) {
-      throw new IllegalArgumentException("Column name cannot be null or empty.");
-    }
-    if (sourceType == null || sourceType.isEmpty()) {
-      throw new IllegalArgumentException("Source type cannot be null or empty.");
-    }
 
     return new AutoValue_SourceColumn(name, kind, sourceType, isPrimaryKey);
   }
