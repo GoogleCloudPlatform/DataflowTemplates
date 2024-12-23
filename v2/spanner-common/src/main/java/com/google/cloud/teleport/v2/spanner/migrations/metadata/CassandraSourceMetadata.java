@@ -89,7 +89,7 @@ public class CassandraSourceMetadata {
    * @param sourceSchema The SourceSchema to convert.
    * @return A map where the key is the table name and the value is the corresponding SourceTable.
    */
-  public static Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable>
+  private static Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable>
       convertSourceSchemaToMap(SourceSchema sourceSchema) {
     return sourceSchema.tables().entrySet().stream()
         .collect(
