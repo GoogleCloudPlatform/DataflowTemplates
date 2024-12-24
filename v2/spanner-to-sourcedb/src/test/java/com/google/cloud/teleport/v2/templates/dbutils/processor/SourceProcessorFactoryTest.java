@@ -18,9 +18,12 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 
+import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.JdbcConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
@@ -81,5 +84,33 @@ public class SourceProcessorFactoryTest {
     int maxConnections = 10;
 
     SourceProcessorFactory.createSourceProcessor("invalid_source", shards, maxConnections);
+  }
+
+  @Test
+  public void testCreateSourceProcessor_cassandra_validSource() throws Exception {
+    CassandraShard mockCassandraShard = Mockito.mock(CassandraShard.class);
+    Mockito.when(mockCassandraShard.getContactPoints()).thenReturn(List.of("localhost:9042"));
+    Mockito.when(mockCassandraShard.getKeySpaceName()).thenReturn("mydatabase");
+    Mockito.when(mockCassandraShard.getLogicalShardId()).thenReturn("shard1");
+    Mockito.when(mockCassandraShard.getConsistencyLevel()).thenReturn("LOCAL_QUORUM");
+    Mockito.when(mockCassandraShard.getProtocolVersion()).thenReturn("v5");
+    Mockito.when(mockCassandraShard.getLocalPoolSize()).thenReturn(1024);
+    Mockito.when(mockCassandraShard.getRemotePoolSize()).thenReturn(1024);
+
+    List<Shard> shards = List.of(mockCassandraShard);
+    int maxConnections = 10;
+    CassandraConnectionHelper mockConnectionHelper = Mockito.mock(CassandraConnectionHelper.class);
+    doNothing().when(mockConnectionHelper).init(any());
+    SourceProcessorFactory.setConnectionHelperMap(
+        Map.of(Constants.SOURCE_CASSANDRA, mockConnectionHelper));
+    SourceProcessor processor =
+        SourceProcessorFactory.createSourceProcessor(
+            Constants.SOURCE_CASSANDRA, shards, maxConnections);
+
+    Assert.assertNotNull(processor);
+    // ToDo this Particular line will get enable in DML PR
+    //    Assert.assertTrue(processor.getDmlGenerator() instanceof CassandraDMLGenerator);
+    Assert.assertEquals(1, processor.getSourceDaoMap().size());
+    Assert.assertTrue(processor.getSourceDaoMap().get("shard1") instanceof CassandraDao);
   }
 }

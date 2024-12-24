@@ -15,124 +15,103 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.shard;
 
+import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import java.util.List;
 import java.util.Objects;
 
 public class CassandraShard extends Shard {
-  private String keyspace;
-  private String consistencyLevel = "LOCAL_QUORUM";
-  private boolean sslOptions = false;
-  private String protocolVersion = "v5";
-  private String dataCenter = "datacenter1";
-  private int localPoolSize = 1024;
-  private int remotePoolSize = 256;
+  private final DriverConfigLoader configLoader;
 
-  public CassandraShard(
-      String logicalShardId,
-      String host,
-      String port,
-      String user,
-      String password,
-      String keyspace,
-      String consistencyLevel,
-      Boolean sslOptions,
-      String protocolVersion,
-      String dataCenter,
-      Integer localPoolSize,
-      Integer remotePoolSize) {
-    super(logicalShardId, host, port, user, password, null, null, null, null);
-    this.keyspace = keyspace;
-    this.consistencyLevel = consistencyLevel;
-    this.sslOptions = sslOptions;
-    this.protocolVersion = protocolVersion;
-    this.dataCenter = dataCenter;
-    this.localPoolSize = localPoolSize;
-    this.remotePoolSize = remotePoolSize;
+  public CassandraShard(DriverConfigLoader configLoader) {
+    super(null, null, null, null, null, null, null, null, null);
+    this.configLoader = configLoader;
+    validateFields();
+    extractAndSetHostAndPort();
   }
 
-  // Getters
+  private void validateFields() {
+    if (getContactPoints() == null || getContactPoints().isEmpty()) {
+      throw new IllegalArgumentException("CONTACT_POINTS cannot be null or empty.");
+    }
+    if (getKeySpaceName() == null || getKeySpaceName().isEmpty()) {
+      throw new IllegalArgumentException("SESSION_KEYSPACE cannot be null or empty.");
+    }
+  }
+
+  private void extractAndSetHostAndPort() {
+    String firstContactPoint = getContactPoints().get(0);
+    String[] parts = firstContactPoint.split(":");
+
+    if (parts.length < 2) {
+      throw new IllegalArgumentException("Invalid contact point format: " + firstContactPoint);
+    }
+
+    String host = parts[0];
+    String port = parts[1];
+
+    setHost(host);
+    setPort(port);
+  }
+
+  private DriverExecutionProfile getProfile() {
+    return configLoader.getInitialConfig().getDefaultProfile();
+  }
+
+  // Getters that fetch data from DriverConfigLoader
+  public List<String> getContactPoints() {
+    return getProfile().getStringList(DefaultDriverOption.CONTACT_POINTS);
+  }
+
   public String getKeySpaceName() {
-    return keyspace;
+    return getProfile().getString(DefaultDriverOption.SESSION_KEYSPACE);
   }
 
   public String getConsistencyLevel() {
-    return consistencyLevel;
+    return getProfile().getString(DefaultDriverOption.REQUEST_CONSISTENCY, "LOCAL_QUORUM");
   }
 
-  public boolean getSSLOptions() {
-    return sslOptions;
+  public boolean isSslEnabled() {
+    return getProfile().getBoolean(DefaultDriverOption.SSL_ENGINE_FACTORY_CLASS, false);
   }
 
   public String getProtocolVersion() {
-    return protocolVersion;
+    return getProfile().getString(DefaultDriverOption.PROTOCOL_VERSION, "V5");
   }
 
   public String getDataCenter() {
-    return dataCenter;
+    return getProfile()
+        .getString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, "datacenter1");
   }
 
   public int getLocalPoolSize() {
-    return localPoolSize;
+    return getProfile().getInt(DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE, 1024);
   }
 
   public int getRemotePoolSize() {
-    return remotePoolSize;
+    return getProfile().getInt(DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE, 256);
   }
 
-  // Setters
-  public void setKeySpaceName(String keySpaceName) {
-    this.keyspace = keySpaceName;
-  }
-
-  public void setConsistencyLevel(String consistencyLevel) {
-    this.consistencyLevel = consistencyLevel;
-  }
-
-  public void setSslOptions(boolean sslOptions) {
-    this.sslOptions = sslOptions;
-  }
-
-  public void setProtocolVersion(String protocolVersion) {
-    this.protocolVersion = protocolVersion;
-  }
-
-  public void setDataCenter(String dataCenter) {
-    this.dataCenter = dataCenter;
-  }
-
-  public void setLocalPoolSize(int localPoolSize) {
-    this.localPoolSize = localPoolSize;
-  }
-
-  public void setRemotePoolSize(int remotePoolSize) {
-    this.remotePoolSize = remotePoolSize;
-  }
-
-  public void validate() {
-    validateField(getHost(), "Host");
-    validateField(getPort(), "Port");
-    validateField(getUserName(), "Username");
-    validateField(getPassword(), "Password");
-    validateField(getKeySpaceName(), "Keyspace");
-  }
-
-  private void validateField(String value, String fieldName) {
-    if (value == null || value.isEmpty()) {
-      throw new IllegalArgumentException(fieldName + " is required");
-    }
+  public DriverConfigLoader getConfigLoader() {
+    return configLoader;
   }
 
   @Override
   public String toString() {
     return String.format(
-        "CassandraShard{logicalShardId='%s', host='%s', port='%s', user='%s', keySpaceName='%s', datacenter='%s', consistencyLevel='%s', protocolVersion='%s'}",
+        "CassandraShard{logicalShardId='%s', contactPoints=%s, keyspace='%s', consistencyLevel='%s', sslOptions=%b, protocolVersion='%s', dataCenter='%s', localPoolSize=%d, remotePoolSize=%d, host='%s', port='%s'}",
         getLogicalShardId(),
-        getHost(),
-        getPort(),
-        getUserName(),
+        getContactPoints(),
         getKeySpaceName(),
-        getDataCenter(),
         getConsistencyLevel(),
-        getProtocolVersion());
+        isSslEnabled(),
+        getProtocolVersion(),
+        getDataCenter(),
+        getLocalPoolSize(),
+        getRemotePoolSize(),
+        getHost(),
+        getPort());
   }
 
   @Override
@@ -140,34 +119,26 @@ public class CassandraShard extends Shard {
     if (this == o) return true;
     if (!(o instanceof CassandraShard)) return false;
     CassandraShard that = (CassandraShard) o;
-    return sslOptions == that.sslOptions
-        && localPoolSize == that.localPoolSize
-        && remotePoolSize == that.remotePoolSize
-        && Objects.equals(getLogicalShardId(), that.getLogicalShardId())
-        && Objects.equals(getHost(), that.getHost())
-        && Objects.equals(getPort(), that.getPort())
-        && Objects.equals(getUserName(), that.getUserName())
-        && Objects.equals(getPassword(), that.getPassword())
-        && Objects.equals(keyspace, that.keyspace)
-        && Objects.equals(dataCenter, that.dataCenter)
-        && Objects.equals(consistencyLevel, that.consistencyLevel)
-        && Objects.equals(protocolVersion, that.protocolVersion);
+    return Objects.equals(getContactPoints(), that.getContactPoints())
+        && Objects.equals(getKeySpaceName(), that.getKeySpaceName())
+        && Objects.equals(getConsistencyLevel(), that.getConsistencyLevel())
+        && Objects.equals(isSslEnabled(), that.isSslEnabled())
+        && Objects.equals(getProtocolVersion(), that.getProtocolVersion())
+        && Objects.equals(getDataCenter(), that.getDataCenter())
+        && Objects.equals(getLocalPoolSize(), that.getLocalPoolSize())
+        && Objects.equals(getRemotePoolSize(), that.getRemotePoolSize());
   }
 
   @Override
   public int hashCode() {
     return Objects.hash(
-        getLogicalShardId(),
-        getHost(),
-        getPort(),
-        getUserName(),
-        getPassword(),
-        keyspace,
-        dataCenter,
-        consistencyLevel,
-        protocolVersion,
-        sslOptions,
-        localPoolSize,
-        remotePoolSize);
+        getContactPoints(),
+        getKeySpaceName(),
+        getConsistencyLevel(),
+        isSslEnabled(),
+        getProtocolVersion(),
+        getDataCenter(),
+        getLocalPoolSize(),
+        getRemotePoolSize());
   }
 }

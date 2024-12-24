@@ -17,7 +17,11 @@ package com.google.cloud.teleport.v2.spanner.migrations.metadata;
 
 import autovalue.shaded.com.google.common.collect.ImmutableList;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.*;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.cassandra.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.cassandra.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.cassandra.SourceTable;
