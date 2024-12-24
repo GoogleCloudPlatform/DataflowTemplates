@@ -29,6 +29,8 @@ import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,7 +55,16 @@ public class SourceProcessorFactory {
 
   static {
     dmlGeneratorMap.put(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
-    //    dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
+    dmlGeneratorMap.put(
+        Constants.SOURCE_CASSANDRA,
+        new IDMLGenerator() {
+          // TODO It will get removed in DML PR added Now for Test case eg: new
+          // CassandraDMLGenerator()
+          @Override
+          public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
+            return new DMLGeneratorResponse("");
+          }
+        });
 
     connectionHelperMap.put(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
     connectionHelperMap.put(Constants.SOURCE_CASSANDRA, new CassandraConnectionHelper());
