@@ -26,6 +26,29 @@ public class CassandraShard extends Shard {
   private int localPoolSize = 1024;
   private int remotePoolSize = 256;
 
+  public CassandraShard(
+      String logicalShardId,
+      String host,
+      String port,
+      String user,
+      String password,
+      String keyspace,
+      String consistencyLevel,
+      Boolean sslOptions,
+      String protocolVersion,
+      String dataCenter,
+      Integer localPoolSize,
+      Integer remotePoolSize) {
+    super(logicalShardId, host, port, user, password, null, null, null, null);
+    this.keyspace = keyspace;
+    this.consistencyLevel = consistencyLevel;
+    this.sslOptions = sslOptions;
+    this.protocolVersion = protocolVersion;
+    this.dataCenter = dataCenter;
+    this.localPoolSize = localPoolSize;
+    this.remotePoolSize = remotePoolSize;
+  }
+
   // Getters
   public String getKeySpaceName() {
     return keyspace;
