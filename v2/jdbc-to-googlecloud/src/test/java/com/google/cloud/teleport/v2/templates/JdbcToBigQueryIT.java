@@ -76,6 +76,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
   private static final String FAKE = "FAKE";
+  private static final String JOIN_TIME = "join_time";
 
   private static final String KMS_REGION = "global";
   private static final String KEYRING_ID = "JDBCToBigQuery";
@@ -118,6 +119,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "DATETIME");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -132,7 +134,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, JOIN_TIME FROM "
                     + testName));
   }
 
@@ -147,7 +149,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(NAME, "VARCHAR(200)");
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
-    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");columns.put(JOIN_TIME, "DATETIME");
+    columns.put(JOIN_TIME, "DATETIME");
     columns.put(FAKE, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
@@ -178,6 +181,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "DATETIME");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     String tableName = "mySqlToBigQueryStorageWrite";
@@ -195,7 +199,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
             config
                 .addParameter(
                     "query",
-                    "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                    "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, JOIN_TIME FROM "
                         + tableName)
                 .addParameter("useStorageWriteApi", "true"));
   }
@@ -211,6 +215,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -225,7 +230,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, JOIN_TIME FROM "
                     + testName));
   }
 
@@ -236,7 +241,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
     gcsClient.createArtifact(
         "input/query.sql",
-        "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+        "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, JOIN_TIME FROM "
             + tableName);
 
     HashMap<String, String> columns = new HashMap<>();
@@ -245,6 +250,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     simpleJdbcToBigQueryTest(
@@ -278,6 +284,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -292,7 +299,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, JOIN_TIME FROM "
                     + testName));
   }
 
@@ -308,6 +315,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "DATETIME");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -322,12 +330,12 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED, JOIN_TIME FROM "
                     + testName));
   }
 
   @Test
-  public void testReadWithPartitions() throws IOException {
+  public void testReadWithPartitionOnLongColumnType() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testId).build();
 
     HashMap<String, String> columns = new HashMap<>();
@@ -336,6 +344,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -347,7 +356,32 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         postgresResourceManager,
         false,
         false,
-        config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID));
+        config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID).addParameter("partitionColumnType", "long"));
+  }
+
+  @Test
+  public void testReadWithPartitionOnDateTimeColumnType() throws IOException {
+    postgresResourceManager = PostgresResourceManager.builder(testId).build();
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "TIMESTAMP");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        false,
+        false,
+        config -> config.addParameter("table", testName).addParameter("partitionColumn", JOIN_TIME).addParameter("partitionColumnType", "datetime"));
   }
 
   private void simpleJdbcToBigQueryTest(
@@ -387,7 +421,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       throws IOException {
 
     // Arrange
-    List<String> columns = new ArrayList<>(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
+    List<String> columns = new ArrayList<>(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, JOIN_TIME));
     if (useDlq) {
       columns.add(FAKE);
     }
@@ -401,7 +435,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
             Field.of(useColumnAlias ? FULL_NAME : NAME, StandardSQLTypeName.STRING),
             Field.of(AGE, StandardSQLTypeName.FLOAT64),
             Field.of(useColumnAlias ? IS_MEMBER : MEMBER, StandardSQLTypeName.STRING),
-            Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
+            Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING),
+            Field.of(JOIN_TIME, StandardSQLTypeName.TIMESTAMP));
     Schema bqSchema = Schema.of(bqSchemaFields);
 
     bigQueryResourceManager.createDataset(REGION);
@@ -472,8 +507,9 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       values.put(columns.get(2), new Random().nextInt(100));
       values.put(columns.get(3), i % 2 == 0 ? "Y" : "N");
       values.put(columns.get(4), Instant.now().toString());
+      values.put(columns.get(5), Instant.now());
       if (useDlq) {
-        values.put(columns.get(5), RandomStringUtils.randomAlphabetic(10));
+        values.put(columns.get(6), RandomStringUtils.randomAlphabetic(10));
       }
       data.add(values);
     }
