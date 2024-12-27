@@ -149,7 +149,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(NAME, "VARCHAR(200)");
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
-    columns.put(ENTRY_ADDED, "VARCHAR(200)");columns.put(JOIN_TIME, "DATETIME");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
     columns.put(JOIN_TIME, "DATETIME");
     columns.put(FAKE, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);

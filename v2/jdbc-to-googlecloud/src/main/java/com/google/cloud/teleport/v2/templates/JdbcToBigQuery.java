@@ -168,7 +168,7 @@ public class JdbcToBigQuery {
       JdbcIO.ReadWithPartitions<TableRow, ?> readIO = null;
       final String partitionColumntype = options.getPartitionColumnType();
       if(partitionColumntype == null ){ 
-        throw new IllegalStateException("Expected non-null partition column type");
+        throw new IllegalStateException("Expected non-null partitionColumnType");
       } else if("long".equals(partitionColumntype)){
         JdbcIO.ReadWithPartitions<TableRow, Long> longTypeReadIO = 
             JdbcIO.<TableRow,Long>readWithPartitions(TypeDescriptors.longs())
@@ -183,7 +183,7 @@ public class JdbcToBigQuery {
               longTypeReadIO.withLowerBound(Long.valueOf(options.getLowerBound())).withUpperBound(Long.valueOf(options.getUpperBound()));
             }
           catch (NumberFormatException e){
-              throw new NumberFormatException("Expected `Long` values for lowerBound and upperBound, received : " + e.getMessage());
+              throw new NumberFormatException("Expected Long values for lowerBound and upperBound, received : " + e.getMessage());
           }
         }
       readIO = longTypeReadIO;
@@ -202,7 +202,7 @@ public class JdbcToBigQuery {
                 dateTimeReadIO.withLowerBound(dateFormatter.parseDateTime(options.getLowerBound())).withUpperBound(dateFormatter.parseDateTime(options.getUpperBound()));
               }
             catch (IllegalArgumentException e) {
-              throw new IllegalArgumentException("Expected `DateTime` values for lowerBound and upperBound, received : " + e.getMessage());
+              throw new IllegalArgumentException("Expected DateTime values for lowerBound and upperBound, received : " + e.getMessage());
             }
           }
         readIO = dateTimeReadIO;

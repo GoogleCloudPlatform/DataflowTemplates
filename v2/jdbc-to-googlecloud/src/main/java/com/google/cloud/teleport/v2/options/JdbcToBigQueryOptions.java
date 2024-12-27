@@ -15,9 +15,8 @@
  */
 package com.google.cloud.teleport.v2.options;
 
-import org.apache.beam.sdk.options.Default;
-
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
 
 /** Interface used by the JdbcToBigQuery pipeline to accept user input. */
 public interface JdbcToBigQueryOptions
@@ -186,7 +185,6 @@ public interface JdbcToBigQueryOptions
       description = "Partition column type.",
       helpText =
           "The type of the `partitionColumn`, accepts either `long` or `datetime`.")
-  //@Default.String("long")
   String getPartitionColumnType();
 
   void setPartitionColumnType(String partitionColumnType);
