@@ -21,26 +21,26 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **outputTableSpec** : The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
+* **outputTableSpec**: The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
 
 ### Optional parameters
 
-* **readBootstrapServers** : Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093).
-* **bootstrapServers** : The host address of the running Apache Kafka broker servers in a comma-separated list. Each host address must be in the format `35.70.252.199:9092`. (Example: localhost:9092,127.0.0.1:9093).
-* **kafkaReadTopics** : Kafka topic(s) to read input from. (Example: topic1,topic2).
-* **inputTopics** : The Apache Kafka input topics to read from in a comma-separated list.  (Example: topic1,topic2).
-* **outputDeadletterTable** : BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name).
-* **messageFormat** : The message format. Can be AVRO or JSON. Defaults to: JSON.
-* **avroSchemaPath** : Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
-* **useStorageWriteApiAtLeastOnce** : This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://my-bucket/my-udfs/my_file.js).
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is 0, UDF reloading is disabled. The default value is 0.
-* **writeDisposition** : The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.
-* **createDisposition** : The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
-* **useStorageWriteApi** : If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
-* **numStorageWriteApiStreams** : When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
-* **storageWriteApiTriggeringFrequencySec** : When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
+* **readBootstrapServers**: Kafka Bootstrap Server list, separated by commas. For example, `localhost:9092,127.0.0.1:9093`.
+* **bootstrapServers**: The host address of the running Apache Kafka broker servers in a comma-separated list. Each host address must be in the format `35.70.252.199:9092`. For example, `localhost:9092,127.0.0.1:9093`.
+* **kafkaReadTopics**: Kafka topic(s) to read input from. For example, `topic1,topic2`.
+* **inputTopics**: The Apache Kafka input topics to read from in a comma-separated list.  For example, `topic1,topic2`.
+* **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`.
+* **messageFormat**: The message format. Can be AVRO or JSON. Defaults to: JSON.
+* **avroSchemaPath**: Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc.
+* **useStorageWriteApiAtLeastOnce**: This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.
+* **writeDisposition**: The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`.
+* **createDisposition**: The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`.
+* **useStorageWriteApi**: If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
+* **numStorageWriteApiStreams**: When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.
+* **storageWriteApiTriggeringFrequencySec**: When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.
 
 
 ## User-Defined functions (UDFs)
@@ -261,15 +261,15 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery" {
   region            = var.region
   parameters        = {
     outputTableSpec = "<outputTableSpec>"
-    # readBootstrapServers = "localhost:9092,127.0.0.1:9093"
-    # bootstrapServers = "localhost:9092,127.0.0.1:9093"
-    # kafkaReadTopics = "topic1,topic2"
-    # inputTopics = "topic1,topic2"
-    # outputDeadletterTable = "your-project-id:your-dataset.your-table-name"
+    # readBootstrapServers = "<readBootstrapServers>"
+    # bootstrapServers = "<bootstrapServers>"
+    # kafkaReadTopics = "<kafkaReadTopics>"
+    # inputTopics = "<inputTopics>"
+    # outputDeadletterTable = "<outputDeadletterTable>"
     # messageFormat = "JSON"
     # avroSchemaPath = "<avroSchemaPath>"
     # useStorageWriteApiAtLeastOnce = "false"
-    # javascriptTextTransformGcsPath = "gs://my-bucket/my-udfs/my_file.js"
+    # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"
     # javascriptTextTransformReloadIntervalMinutes = "0"
     # writeDisposition = "WRITE_APPEND"

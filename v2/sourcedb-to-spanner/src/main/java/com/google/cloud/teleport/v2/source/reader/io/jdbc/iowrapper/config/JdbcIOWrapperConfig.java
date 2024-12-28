@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
 
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkState;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.DbAuth;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.MySqlConfigDefaults;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.defaults.PostgreSQLConfigDefaults;
@@ -24,6 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcValueMap
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
+import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference.Kind;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapper.MapperType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -46,8 +50,12 @@ public abstract class JdbcIOWrapperConfig {
   /** Source URL. */
   public abstract String sourceDbURL();
 
-  /** {@link SourceSchemaReference}. */
+  /** {@link SoucreSchemaReference}. */
   public abstract SourceSchemaReference sourceSchemaReference();
+
+  public JdbcSchemaReference jdbcSourceSchemaReference() {
+    return sourceSchemaReference().jdbc();
+  }
 
   /** List of Tables to migrate. Auto-inferred if emtpy. */
   public abstract ImmutableList<String> tables();
@@ -301,6 +309,10 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setSourceSchemaReference(SourceSchemaReference value);
 
+    public Builder setSourceSchemaReference(JdbcSchemaReference value) {
+      return setSourceSchemaReference(SourceSchemaReference.ofJdbc(value));
+    }
+
     public abstract Builder setTables(ImmutableList<String> value);
 
     public abstract Builder setTableVsPartitionColumns(
@@ -357,6 +369,12 @@ public abstract class JdbcIOWrapperConfig {
 
     public abstract Builder setMaxConnections(Long value);
 
-    public abstract JdbcIOWrapperConfig build();
+    public abstract JdbcIOWrapperConfig autoBuild();
+
+    public JdbcIOWrapperConfig build() {
+      JdbcIOWrapperConfig config = autoBuild();
+      checkState(config.sourceSchemaReference().getKind() == Kind.JDBC);
+      return config;
+    }
   }
 }

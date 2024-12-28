@@ -90,11 +90,13 @@ public abstract class TemplateTestBase {
   public TestRule watcher =
       new TestWatcher() {
         protected void starting(Description description) {
-          LOG.info(
-              "Starting integration test {}.{}",
-              description.getClassName(),
-              description.getMethodName());
           testName = description.getMethodName();
+          // In case of parameterization the testName can contain subscript like testName[paramName]
+          // Converting testName from testName[paramName] to testNameParamName since it is used to
+          // create many resources and it cannot contain special characters.
+          testName = testName.replaceAll("\\[", "");
+          testName = testName.replaceAll("\\]", "");
+          LOG.info("Starting integration test {}.{}", description.getClassName(), testName);
         }
       };
 

@@ -24,12 +24,12 @@ import static com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -100,7 +100,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    */
   @Override
   public ImmutableList<String> discoverTables(
-      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
+      DataSource dataSource, JdbcSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info("Discovering tables for DataSource: {}", dataSource);
 
@@ -158,11 +158,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
-        "Discovering table schema for Datasource: {}, SourceSchemaReference: {}, tables: {}",
+        "Discovering table schema for Datasource: {}, JdbcSchemaReference: {}, tables: {}",
         dataSource,
         sourceSchemaReference,
         tables);
@@ -251,7 +251,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> tableSchema =
         tableSchemaBuilder.build();
     logger.info(
-        "Discovered table schema for Datasource: {}, SourceSchemaReference: {}, tables: {}, schema: {}",
+        "Discovered table schema for Datasource: {}, JdbcSchemaReference: {}, tables: {}, schema: {}",
         dataSource,
         sourceSchemaReference,
         tables,
@@ -274,11 +274,11 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
-        "Discovering Indexes for DataSource: {}, SourceSchemaReference: {}, Tables: {}",
+        "Discovering Indexes for DataSource: {}, JdbcSchemaReference: {}, Tables: {}",
         dataSource,
         sourceSchemaReference,
         tables);
@@ -387,7 +387,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> tableIndexes =
         tableIndexesBuilder.build();
     logger.info(
-        "Discovered Indexes for DataSource: {}, SourceSchemaReference: {}, Tables: {}.\nIndexes: {}",
+        "Discovered Indexes for DataSource: {}, JdbcSchemaReference: {}, Tables: {}.\nIndexes: {}",
         dataSource,
         sourceSchemaReference,
         tables,

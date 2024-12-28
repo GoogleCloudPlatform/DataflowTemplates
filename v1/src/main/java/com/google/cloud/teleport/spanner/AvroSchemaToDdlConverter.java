@@ -18,22 +18,28 @@ package com.google.cloud.teleport.spanner;
 import static com.google.cloud.teleport.spanner.AvroUtil.DEFAULT_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.GENERATION_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
+import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMENT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PARENT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PLACEMENT_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PRIMARY_KEY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_PROPERTY_DECLARATION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_REMOTE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
@@ -53,9 +59,13 @@ import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
+import com.google.cloud.teleport.spanner.ddl.GraphElementTable;
+import com.google.cloud.teleport.spanner.ddl.GraphElementTable.Kind;
 import com.google.cloud.teleport.spanner.ddl.Model;
 import com.google.cloud.teleport.spanner.ddl.NamedSchema;
 import com.google.cloud.teleport.spanner.ddl.Placement;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph.PropertyDeclaration;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.View;
@@ -94,14 +104,13 @@ public class AvroSchemaToDdlConverter {
         builder.addChangeStream(toChangeStream(null, schema));
       } else if (schema.getProp(SPANNER_SEQUENCE_OPTION + "0") != null
           || schema.getProp(SPANNER_SEQUENCE_KIND) != null) {
-        // Cloud Sequence always requires at least one option,
-        // `sequence_kind='bit_reversed_positive`, so `sequenceOption_0` must
-        // always be valid.
         builder.addSequence(toSequence(null, schema));
       } else if (SPANNER_NAMED_SCHEMA.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addSchema(toSchema(null, schema));
       } else if (SPANNER_ENTITY_PLACEMENT.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addPlacement(toPlacement(null, schema));
+      } else if (SPANNER_ENTITY_PROPERTY_GRAPH.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addPropertyGraph(toPropertyGraph(null, schema));
       } else {
         builder.addTable(toTable(null, schema));
       }
@@ -129,6 +138,239 @@ public class AvroSchemaToDdlConverter {
       builder.security(View.SqlSecurity.valueOf(schema.getProp(SPANNER_VIEW_SECURITY)));
     }
     return builder.build();
+  }
+
+  // TODO: Modularize long function implementation using helpers
+  public PropertyGraph toPropertyGraph(String propertyGraphName, Schema schema) {
+    PropertyGraph.Builder propertyGraphBuilder = PropertyGraph.builder();
+    if (propertyGraphName == null) {
+      propertyGraphName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl propertyGraphName {}", propertyGraphName);
+
+    propertyGraphBuilder.name(propertyGraphName);
+
+    // Deserialize nodeTables
+    int nodeTableCount = 0;
+    while (schema.getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_NAME") != null) {
+      GraphElementTable.Builder nodeTableBuilder = GraphElementTable.builder();
+      nodeTableBuilder.name(schema.getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_NAME"));
+      nodeTableBuilder.baseTableName(
+          schema.getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_BASE_TABLE_NAME"));
+      nodeTableBuilder.kind(Kind.NODE);
+
+      // Deserialize keyColumns
+      String[] keyColumns =
+          schema
+              .getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_KEY_COLUMNS")
+              .trim()
+              .split(",");
+      nodeTableBuilder.keyColumns(ImmutableList.copyOf(keyColumns));
+
+      // Deserialize labelToPropertyDefinitions
+      int labelCount = 0;
+      ImmutableList.Builder<GraphElementTable.LabelToPropertyDefinitions> labelsBuilder =
+          ImmutableList.builder();
+      while (schema.getProp(
+              SPANNER_NODE_TABLE + "_" + nodeTableCount + "_LABEL_" + labelCount + "_NAME")
+          != null) {
+        String labelName =
+            schema.getProp(
+                SPANNER_NODE_TABLE + "_" + nodeTableCount + "_LABEL_" + labelCount + "_NAME");
+        ImmutableList.Builder<GraphElementTable.PropertyDefinition> propertyDefinitionsBuilder =
+            ImmutableList.builder();
+        int propertyCount = 0;
+        while (schema.getProp(
+                SPANNER_NODE_TABLE
+                    + "_"
+                    + nodeTableCount
+                    + "_LABEL_"
+                    + labelCount
+                    + "_PROPERTY_"
+                    + propertyCount
+                    + "_NAME")
+            != null) {
+          String propertyName =
+              schema.getProp(
+                  SPANNER_NODE_TABLE
+                      + "_"
+                      + nodeTableCount
+                      + "_LABEL_"
+                      + labelCount
+                      + "_PROPERTY_"
+                      + propertyCount
+                      + "_NAME");
+          String propertyValue =
+              schema.getProp(
+                  SPANNER_NODE_TABLE
+                      + "_"
+                      + nodeTableCount
+                      + "_LABEL_"
+                      + labelCount
+                      + "_PROPERTY_"
+                      + propertyCount
+                      + "_VALUE");
+          propertyDefinitionsBuilder.add(
+              new GraphElementTable.PropertyDefinition(propertyName, propertyValue));
+          propertyCount++;
+        }
+        labelsBuilder.add(
+            new GraphElementTable.LabelToPropertyDefinitions(
+                labelName, propertyDefinitionsBuilder.build()));
+        labelCount++;
+      }
+      nodeTableBuilder.labelToPropertyDefinitions(labelsBuilder.build());
+
+      propertyGraphBuilder.addNodeTable(nodeTableBuilder.autoBuild());
+      nodeTableCount++;
+    }
+
+    // Deserialize edgeTables (similar logic to nodeTables)
+    int edgeTableCount = 0;
+    while (schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_NAME") != null) {
+      GraphElementTable.Builder edgeTableBuilder = GraphElementTable.builder();
+      edgeTableBuilder.name(schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_NAME"));
+      edgeTableBuilder.baseTableName(
+          schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_BASE_TABLE_NAME"));
+      edgeTableBuilder.kind(Kind.EDGE);
+
+      // Deserialize keyColumns
+      String[] keyColumns =
+          schema
+              .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_KEY_COLUMNS")
+              .trim()
+              .split(",");
+      edgeTableBuilder.keyColumns(ImmutableList.copyOf(keyColumns));
+
+      // Deserialize labelToPropertyDefinitions
+      int labelCount = 0;
+      ImmutableList.Builder<GraphElementTable.LabelToPropertyDefinitions> labelsBuilder =
+          ImmutableList.builder();
+      while (schema.getProp(
+              SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_LABEL_" + labelCount + "_NAME")
+          != null) {
+        String labelName =
+            schema.getProp(
+                SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_LABEL_" + labelCount + "_NAME");
+        ImmutableList.Builder<GraphElementTable.PropertyDefinition> propertyDefinitionsBuilder =
+            ImmutableList.builder();
+        int propertyCount = 0;
+        while (schema.getProp(
+                SPANNER_EDGE_TABLE
+                    + "_"
+                    + edgeTableCount
+                    + "_LABEL_"
+                    + labelCount
+                    + "_PROPERTY_"
+                    + propertyCount
+                    + "_NAME")
+            != null) {
+          String propertyName =
+              schema.getProp(
+                  SPANNER_EDGE_TABLE
+                      + "_"
+                      + edgeTableCount
+                      + "_LABEL_"
+                      + labelCount
+                      + "_PROPERTY_"
+                      + propertyCount
+                      + "_NAME");
+          String propertyValue =
+              schema.getProp(
+                  SPANNER_EDGE_TABLE
+                      + "_"
+                      + edgeTableCount
+                      + "_LABEL_"
+                      + labelCount
+                      + "_PROPERTY_"
+                      + propertyCount
+                      + "_VALUE");
+          propertyDefinitionsBuilder.add(
+              new GraphElementTable.PropertyDefinition(propertyName, propertyValue));
+          propertyCount++;
+        }
+        labelsBuilder.add(
+            new GraphElementTable.LabelToPropertyDefinitions(
+                labelName, propertyDefinitionsBuilder.build()));
+        labelCount++;
+      }
+      edgeTableBuilder.labelToPropertyDefinitions(labelsBuilder.build());
+
+      // Deserialize sourceNodeTable and targetNodeTable (always present for edges)
+      String sourceNodeTableName =
+          schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_SOURCE_NODE_TABLE_NAME");
+      String[] sourceNodeKeyColumns =
+          schema
+              .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_SOURCE_NODE_KEY_COLUMNS")
+              .trim()
+              .split(",");
+      String[] sourceEdgeKeyColumns =
+          schema
+              .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_SOURCE_EDGE_KEY_COLUMNS")
+              .trim()
+              .split(",");
+      edgeTableBuilder.sourceNodeTable(
+          new GraphElementTable.GraphNodeTableReference(
+              sourceNodeTableName,
+              ImmutableList.copyOf(sourceNodeKeyColumns),
+              ImmutableList.copyOf(sourceEdgeKeyColumns)));
+
+      String targetNodeTableName =
+          schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_TARGET_NODE_TABLE_NAME");
+      String[] targetNodeKeyColumns =
+          schema
+              .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_TARGET_NODE_KEY_COLUMNS")
+              .trim()
+              .split(",");
+      String[] targetEdgeKeyColumns =
+          schema
+              .getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_TARGET_EDGE_KEY_COLUMNS")
+              .trim()
+              .split(",");
+      edgeTableBuilder.targetNodeTable(
+          new GraphElementTable.GraphNodeTableReference(
+              targetNodeTableName,
+              ImmutableList.copyOf(targetNodeKeyColumns),
+              ImmutableList.copyOf(targetEdgeKeyColumns)));
+
+      propertyGraphBuilder.addEdgeTable(edgeTableBuilder.autoBuild());
+      edgeTableCount++;
+    }
+
+    // Deserialize propertyDeclarations
+    int propertyDeclCount = 0;
+    ImmutableList.Builder<PropertyGraph.PropertyDeclaration> propertyDeclsBuilder =
+        ImmutableList.builder();
+    while (schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount + "_NAME")
+        != null) {
+      String propertyName =
+          schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount + "_NAME");
+      String propertyType =
+          schema.getProp(SPANNER_PROPERTY_DECLARATION + "_" + propertyDeclCount + "_TYPE");
+      propertyGraphBuilder.addPropertyDeclaration(
+          new PropertyDeclaration(propertyName, propertyType));
+      propertyDeclCount++;
+    }
+
+    // Deserialize labels
+    int labelCount = 0;
+    ImmutableList.Builder<PropertyGraph.GraphElementLabel> labelsBuilder = ImmutableList.builder();
+    while (schema.getProp(SPANNER_LABEL + "_" + labelCount + "_NAME") != null) {
+      String labelName = schema.getProp(SPANNER_LABEL + "_" + labelCount + "_NAME");
+      ImmutableList.Builder<String> labelPropertiesBuilder = ImmutableList.builder();
+      int propertyCount = 0;
+      while (schema.getProp(SPANNER_LABEL + "_" + labelCount + "_PROPERTY_" + propertyCount)
+          != null) {
+        labelPropertiesBuilder.add(
+            schema.getProp(SPANNER_LABEL + "_" + labelCount + "_PROPERTY_" + propertyCount));
+        propertyCount++;
+      }
+      propertyGraphBuilder.addLabel(
+          new PropertyGraph.GraphElementLabel(labelName, labelPropertiesBuilder.build()));
+      labelCount++;
+    }
+
+    return propertyGraphBuilder.build();
   }
 
   public Model toModel(String modelName, Schema schema) {
@@ -210,7 +452,8 @@ public class AvroSchemaToDdlConverter {
     LOG.debug("Converting to Ddl sequenceName {}", sequenceName);
     Sequence.Builder builder = Sequence.builder(dialect).name(sequenceName);
 
-    if (schema.getProp(SPANNER_SEQUENCE_KIND) != null) {
+    if (schema.getProp(SPANNER_SEQUENCE_KIND) != null
+        && schema.getProp(SPANNER_SEQUENCE_KIND).equals("bit_reversed_positive")) {
       builder.sequenceKind(schema.getProp(SPANNER_SEQUENCE_KIND));
     }
     if (schema.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN) != null
@@ -225,7 +468,12 @@ public class AvroSchemaToDdlConverter {
 
     ImmutableList.Builder<String> sequenceOptions = ImmutableList.builder();
     for (int i = 0; schema.getProp(SPANNER_SEQUENCE_OPTION + i) != null; i++) {
-      sequenceOptions.add(schema.getProp(SPANNER_SEQUENCE_OPTION + i));
+      String prop = schema.getProp(SPANNER_SEQUENCE_OPTION + i);
+      if (prop.equals("sequence_kind=default")) {
+        // Specify no sequence kind by using the default_sequence_kind database option.
+        continue;
+      }
+      sequenceOptions.add(prop);
     }
     builder.options(sequenceOptions.build());
 
@@ -265,6 +513,22 @@ public class AvroSchemaToDdlConverter {
       Column.Builder column = table.column(f.name());
       String sqlType = f.getProp(SQL_TYPE);
       String expression = f.getProp(GENERATION_EXPRESSION);
+      String identityColumn = f.getProp(IDENTITY_COLUMN);
+      if (identityColumn != null && Boolean.parseBoolean(identityColumn)) {
+        column.isIdentityColumn(true);
+        if (f.getProp(SPANNER_SEQUENCE_KIND) != null) {
+          column.sequenceKind(f.getProp(SPANNER_SEQUENCE_KIND));
+        }
+        if (f.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN) != null
+            && f.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX) != null) {
+          column
+              .skipRangeMin(Long.valueOf(f.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN)))
+              .skipRangeMax(Long.valueOf(f.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX)));
+        }
+        if (f.getProp(SPANNER_SEQUENCE_COUNTER_START) != null) {
+          column.counterStartValue(Long.valueOf(f.getProp(SPANNER_SEQUENCE_COUNTER_START)));
+        }
+      }
       if (expression != null) {
         // This is a generated column.
         if (Strings.isNullOrEmpty(sqlType)) {
@@ -285,10 +549,6 @@ public class AvroSchemaToDdlConverter {
         if (Boolean.parseBoolean(stored)) {
           column.stored();
         }
-        String hidden = f.getProp(HIDDEN);
-        if (Boolean.parseBoolean(hidden)) {
-          column.isHidden(true);
-        }
       } else {
         boolean nullable = false;
         Schema avroType = f.schema();
@@ -305,6 +565,10 @@ public class AvroSchemaToDdlConverter {
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
+      }
+      String hidden = f.getProp(HIDDEN);
+      if (Boolean.parseBoolean(hidden)) {
+        column.isHidden(true);
       }
       String placementKey = f.getProp(SPANNER_PLACEMENT_KEY);
       if (placementKey != null) {

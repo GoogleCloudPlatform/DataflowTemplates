@@ -78,6 +78,7 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Supplier;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Suppliers;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 import org.apache.commons.text.StringSubstitutor;
+import org.apache.parquet.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -167,12 +168,12 @@ public class BigQueryConverters {
         optional = true,
         description = "BigQuery source table",
         helpText =
-            "The BigQuery table to read from. Format: `projectId:datasetId.tablename`. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the"
+            "The BigQuery table to read from. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the"
                 + " BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage)."
                 + " For information about limitations in the Storage Read API, see"
                 + " https://cloud.google.com/bigquery/docs/reference/storage#limitations."
                 + " You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter.",
-        example = "bigquery-project:dataset.input_table")
+        example = "<BIGQUERY_PROJECT>:<DATASET_NAME>.<INPUT_TABLE>")
     String getInputTableSpec();
 
     void setInputTableSpec(String inputTableSpec);
@@ -182,11 +183,10 @@ public class BigQueryConverters {
         optional = true,
         description = "The dead-letter table name to output failed messages to BigQuery",
         helpText =
-            "The BigQuery table for messages that failed to reach the output"
-                + " table, in the format <PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>."
-                + " If a table doesn't exist, is is created during pipeline execution. If"
+            "The BigQuery table for messages that failed to reach the output table."
+                + " If a table doesn't exist, it is created during pipeline execution. If"
                 + " not specified, `<outputTableSpec>_error_records` is used.",
-        example = "your-project-id:your-dataset.your-table-name")
+        example = "<PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String outputDeadletterTable);
@@ -211,8 +211,8 @@ public class BigQueryConverters {
         optional = true,
         description = "Set to true to use legacy SQL",
         helpText =
-            "Set to true to use legacy SQL. This parameter only applies when using"
-                + " the `query` parameter. Defaults to: false.")
+            "Set to `true` to use legacy SQL. This parameter only applies when using"
+                + " the `query` parameter. Defaults to `false`.")
     @Default.Boolean(false)
     Boolean getUseLegacySql();
 
@@ -241,6 +241,18 @@ public class BigQueryConverters {
     String getQueryTempDataset();
 
     void setQueryTempDataset(String queryTempDataset);
+
+    @TemplateParameter.KmsEncryptionKey(
+        order = 7,
+        optional = true,
+        description = "Google Cloud KMS key",
+        helpText =
+            "If reading from BigQuery using query source, use this Cloud KMS key to encrypt any temporary tables created.",
+        example =
+            "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key")
+    String getKMSEncryptionKey();
+
+    void setKMSEncryptionKey(String keyName);
   }
 
   /**
@@ -340,11 +352,17 @@ public class BigQueryConverters {
     @Override
     public PCollection<T> expand(PBegin pipeline) {
 
+      BigQueryIO.TypedRead<T> readFunction = readFunction();
+
+      if (!Strings.isNullOrEmpty(options().getKMSEncryptionKey())) {
+        readFunction = readFunction.withKmsKey(options().getKMSEncryptionKey());
+      }
+
       if (options().getQuery() == null) {
         LOG.info("No query provided, reading directly from: " + options().getInputTableSpec());
         return pipeline.apply(
             "ReadFromBigQuery",
-            readFunction()
+            readFunction
                 .from(options().getInputTableSpec())
                 .withTemplateCompatibility()
                 .withMethod(Method.DIRECT_READ));
@@ -357,7 +375,7 @@ public class BigQueryConverters {
           LOG.info("Using Standard SQL");
           return pipeline.apply(
               "ReadFromBigQueryWithQuery",
-              readFunction()
+              readFunction
                   .fromQuery(options().getQuery())
                   .withTemplateCompatibility()
                   .withQueryLocation(options().getQueryLocation())
@@ -368,7 +386,7 @@ public class BigQueryConverters {
           LOG.info("Using Legacy SQL");
           return pipeline.apply(
               "ReadFromBigQueryWithQuery",
-              readFunction()
+              readFunction
                   .fromQuery(options().getQuery())
                   .withTemplateCompatibility()
                   .withQueryLocation(options().getQueryLocation())

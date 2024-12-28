@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.transform;
 
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
@@ -39,7 +40,7 @@ public class AccumulatingTableReaderTest implements Serializable {
   public void testAccumulatingTableReader() {
     final String dbName = "testDB";
     final SourceSchemaReference sourceSchemaReference =
-        SourceSchemaReference.builder().setDbName(dbName).build();
+        SourceSchemaReference.ofJdbc(JdbcSchemaReference.builder().setDbName(dbName).build());
     final long rowCountPerTable = 10;
     final long tableCount = 1;
     final TupleTag<SourceRow> sourceRowTupleTag = new TupleTag<>();

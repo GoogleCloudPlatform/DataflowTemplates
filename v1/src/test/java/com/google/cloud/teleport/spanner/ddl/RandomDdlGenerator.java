@@ -490,6 +490,9 @@ public abstract class RandomDdlGenerator {
         if (rnd.nextBoolean()) {
           foreignKeyBuilder.referentialAction(Optional.of(generateRandomReferentialAction(rnd)));
         }
+        if (rnd.nextBoolean()) {
+          foreignKeyBuilder.isEnforced(rnd.nextBoolean());
+        }
         ForeignKey foreignKey = foreignKeyBuilder.build();
         if (foreignKey.columns().size() > 0) {
           foreignKeys.add(foreignKey.prettyPrint());

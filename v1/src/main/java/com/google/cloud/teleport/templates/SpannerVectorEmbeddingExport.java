@@ -177,7 +177,7 @@ public class SpannerVectorEmbeddingExport {
         },
         description = "Timestamp to read stale data from a version in the past.",
         helpText =
-            "If set, specifies the time when the database version must be taken. The value is a string in the RFC-3339 date format in Unix epoch time. For example: 1990-12-31T23:59:60Z. The timestamp must be in the past, and maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies. If not set, a strong bound (https://cloud.google.com/spanner/docs/timestamp-bounds#strong) is used to read the latest data. Defaults to empty.",
+            "If set, specifies the time when the database version must be taken. The value is a string in the RFC-3339 date format in Unix epoch time. For example: `1990-12-31T23:59:60Z`. The timestamp must be in the past, and maximum timestamp staleness (https://cloud.google.com/spanner/docs/timestamp-bounds#maximum_timestamp_staleness) applies. If not set, a strong bound (https://cloud.google.com/spanner/docs/timestamp-bounds#strong) is used to read the latest data. Defaults to `empty`.",
         example = "1990-12-31T23:59:60Z")
     @Default.String(value = "")
     ValueProvider<String> getSpannerVersionTime();
@@ -190,7 +190,7 @@ public class SpannerVectorEmbeddingExport {
         optional = true,
         description = "Use independent compute resource (Spanner DataBoost).",
         helpText =
-            "When set to true, the template uses Spanner on-demand compute. The export job runs on independent compute resources that don't impact current Spanner workloads. Using this option incurs additional charges in Spanner. For more information, see Spanner Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: false.")
+            "When set to `true`, the template uses Spanner on-demand compute. The export job runs on independent compute resources that don't impact current Spanner workloads. Using this option incurs additional charges in Spanner. For more information, see Spanner Data Boost overview (https://cloud.google.com/spanner/docs/databoost/databoost-overview). Defaults to: `false`.")
     @Default.Boolean(false)
     ValueProvider<Boolean> getSpannerDataBoostEnabled();
 
@@ -207,7 +207,7 @@ public class SpannerVectorEmbeddingExport {
         optional = true,
         description = "Priority for Spanner RPC invocations",
         helpText =
-            "The request priority for Spanner calls. The allowed values are HIGH, MEDIUM, and LOW. The default value is MEDIUM.")
+            "The request priority for Spanner calls. The allowed values are `HIGH`, `MEDIUM`, and `LOW`. The default value is `MEDIUM`.")
     ValueProvider<RpcPriority> getSpannerPriority();
 
     void setSpannerPriority(ValueProvider<RpcPriority> value);

@@ -33,27 +33,27 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **spannerInstanceId** : The Spanner instance to read change streams from.
-* **spannerDatabase** : The Spanner database to read change streams from.
-* **spannerMetadataInstanceId** : The Spanner instance to use for the change streams connector metadata table.
-* **spannerMetadataDatabase** : The Spanner database to use for the change streams connector metadata table.
-* **spannerChangeStreamName** : The name of the Spanner change stream to read from.
-* **pubsubTopic** : The Pub/Sub topic for change streams output.
+* **spannerInstanceId**: The Spanner instance to read change streams from.
+* **spannerDatabase**: The Spanner database to read change streams from.
+* **spannerMetadataInstanceId**: The Spanner instance to use for the change streams connector metadata table.
+* **spannerMetadataDatabase**: The Spanner database to use for the change streams connector metadata table.
+* **spannerChangeStreamName**: The name of the Spanner change stream to read from.
+* **pubsubTopic**: The Pub/Sub topic for change streams output.
 
 ### Optional parameters
 
-* **spannerProjectId** : The project to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.
-* **spannerDatabaseRole** : The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
-* **spannerMetadataTableName** : The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline. Don't use this parameter for other cases.
-* **startTimestamp** : The starting DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
-* **endTimestamp** : The ending DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.
-* **spannerHost** : The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://spanner.googleapis.com). Defaults to: https://spanner.googleapis.com.
-* **outputDataFormat** : The format of the output. Output is wrapped in many PubsubMessages and sent to a Pub/Sub topic. Allowed formats are JSON and AVRO. Default is JSON.
-* **pubsubAPI** : The Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`. For a small number of queries per second (QPS), `native_client` has less latency. For a large number of QPS, `pubsubio` provides better and more stable performance. The default is `pubsubio`.
-* **pubsubProjectId** : Project of Pub/Sub topic. The default for this parameter is the project where the Dataflow pipeline is running.
-* **rpcPriority** : The request priority for Spanner calls. Allowed values are HIGH, MEDIUM, and LOW. Defaults to: HIGH).
-* **includeSpannerSource** : Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false.
-* **outputMessageMetadata** : The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes).
+* **spannerProjectId**: The project to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running.
+* **spannerDatabaseRole**: The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
+* **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline. Don't use this parameter for other cases.
+* **startTimestamp**: The starting DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
+* **endTimestamp**: The ending DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://spanner.googleapis.com`. Defaults to: https://spanner.googleapis.com.
+* **outputDataFormat**: The format of the output. Output is wrapped in many PubsubMessages and sent to a Pub/Sub topic. Allowed formats are JSON and AVRO. Default is JSON.
+* **pubsubAPI**: The Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`. For a small number of queries per second (QPS), `native_client` has less latency. For a large number of QPS, `pubsubio` provides better and more stable performance. The default is `pubsubio`.
+* **pubsubProjectId**: Project of Pub/Sub topic. The default for this parameter is the project where the Dataflow pipeline is running.
+* **rpcPriority**: The request priority for Spanner calls. Allowed values are HIGH, MEDIUM, and LOW. Defaults to: HIGH).
+* **includeSpannerSource**: Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false.
+* **outputMessageMetadata**: The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes).
 
 
 

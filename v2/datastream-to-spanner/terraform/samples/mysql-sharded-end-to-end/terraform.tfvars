@@ -9,6 +9,7 @@ common_params = {
 
   datastream_params = {
     stream_prefix_path            = "<YOUR_STREAM_PREFIX>"  # Prefix for Datastream stream IDs (e.g., "data")
+    enable_backfill               = true                    # This should always be enabled unless using sourcedb-to-spanner template for bulk migrations.
     max_concurrent_cdc_tasks      = "<YOUR_CDC_TASKS>"      # Maximum concurrent CDC tasks (e.g., 5)
     max_concurrent_backfill_tasks = "<YOUR_BACKFILL_TASKS>" # Maximum concurrent backfill tasks (e.g., 15)
 
@@ -57,6 +58,9 @@ common_params = {
       transformation_custom_parameters    = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"      # Custom parameters used by the transformation JAR(Optional)
       transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
       filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
+      table_overrides                     = "<YOUR_TABLE_NAME_OVERRIDES"
+      column_overrides                    = "<YOUR_COLUMN_NAME_OVERRIDES"
+      local_schema_overrides_file_path    = "<YOUR_LOCAL_SCHEMA_OVERRIDES_FILE_PATH>" #One of string based overrides should be used or the file based overrides; not both.
     }
 
     runner_params = {

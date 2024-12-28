@@ -184,7 +184,7 @@ public class PubSubToBigQuery {
         groupName = "Target",
         description = "BigQuery output table",
         helpText =
-            "The BigQuery table to write to, formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`.")
+            "The BigQuery table to write to, formatted as `PROJECT_ID:DATASET_NAME.TABLE_NAME`.")
     String getOutputTableSpec();
 
     void setOutputTableSpec(String value);
@@ -195,7 +195,7 @@ public class PubSubToBigQuery {
         optional = true,
         description = "Input Pub/Sub topic",
         helpText =
-            "The Pub/Sub topic to read from, formatted as `\"projects/<PROJECT_ID>/topics/<TOPIC_NAME>\"`.")
+            "The Pub/Sub topic to read from, formatted as `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.")
     String getInputTopic();
 
     void setInputTopic(String value);
@@ -207,7 +207,7 @@ public class PubSubToBigQuery {
         description = "Pub/Sub input subscription",
         helpText =
             "The Pub/Sub subscription to read from, "
-                + "formatted as `\"projects/<PROJECT_ID>/subscriptions/<SUBCRIPTION_NAME>\"`.")
+                + "formatted as `projects/<PROJECT_ID>/subscriptions/<SUBCRIPTION_NAME>`.")
     String getInputSubscription();
 
     void setInputSubscription(String value);
@@ -219,10 +219,10 @@ public class PubSubToBigQuery {
             "Table for messages failed to reach the output table (i.e., Deadletter table)",
         helpText =
             "The BigQuery table to use for messages that failed to reach the output table, "
-                + "formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`. If the table "
+                + "formatted as `PROJECT_ID:DATASET_NAME.TABLE_NAME`. If the table "
                 + "doesn't exist, it is created when the pipeline runs. "
                 + "If this parameter is not specified, "
-                + "the value `\"OUTPUT_TABLE_SPEC_error_records\"` is used instead.")
+                + "the value `OUTPUT_TABLE_SPEC_error_records` is used instead.")
     String getOutputDeadletterTable();
 
     void setOutputDeadletterTable(String value);

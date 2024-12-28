@@ -24,18 +24,17 @@ import static org.apache.curator.shaded.com.google.common.collect.Sets.newHashSe
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.DialectAdapter;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.rowmapper.JdbcSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationOrderRow.CollationsOrderQueryColumns;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.IndexType;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.re2j.Pattern;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -59,9 +58,6 @@ import org.slf4j.LoggerFactory;
 public final class MysqlDialectAdapter implements DialectAdapter {
 
   public static final String PAD_SPACE = "PAD SPACE";
-  public static final String NO_PAD = "NO PAD";
-  public static final String BINARY_CHARACTER_SET = "binary";
-  public static final String BINARY_COLLATION = "binary";
   private final MySqlVersion mySqlVersion;
 
   private static final Logger logger = LoggerFactory.getLogger(MysqlDialectAdapter.class);
@@ -119,7 +115,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    */
   @Override
   public ImmutableList<String> discoverTables(
-      DataSource dataSource, SourceSchemaReference sourceSchemaReference)
+      DataSource dataSource, JdbcSchemaReference sourceSchemaReference)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
 
     logger.info(String.format("Discovering tables for DataSource: %s", dataSource));
@@ -184,12 +180,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s",
+            "Discovering table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s",
             dataSource, sourceSchemaReference, tables));
 
     String discoveryQuery = getSchemaDiscoveryQuery(sourceSchemaReference);
@@ -229,7 +225,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableSchemaBuilder.build();
     logger.info(
         String.format(
-            "Discovered table schema for Datasource: %s, SourceSchemaReference: %s, tables: %s, schema: %s",
+            "Discovered table schema for Datasource: %s, JdbcSchemaReference: %s, tables: %s, schema: %s",
             dataSource, sourceSchemaReference, tables, tableSchema));
 
     return tableSchema;
@@ -248,12 +244,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
   @Override
   public ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoverTableIndexes(
       DataSource dataSource,
-      SourceSchemaReference sourceSchemaReference,
+      JdbcSchemaReference sourceSchemaReference,
       ImmutableList<String> tables)
       throws SchemaDiscoveryException, RetriableSchemaDiscoveryException {
     logger.info(
         String.format(
-            "Discovering Indexes for DataSource: %s, SourceSchemaReference: %s, Tables: %s",
+            "Discovering Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s",
             dataSource, sourceSchemaReference, tables));
     String discoveryQuery = getIndexDiscoveryQuery(sourceSchemaReference);
     ImmutableMap.Builder<String, ImmutableList<SourceColumnIndexInfo>> tableIndexesBuilder =
@@ -292,12 +288,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         tableIndexesBuilder.build();
     logger.info(
         String.format(
-            "Discovered Indexes for DataSource: %s, SourceSchemaReference: %s, Tables: %s.\nIndexes: %s",
+            "Discovered Indexes for DataSource: %s, JdbcSchemaReference: %s, Tables: %s.\nIndexes: %s",
             dataSource, sourceSchemaReference, tables, tableIndexes));
     return tableIndexes;
   }
 
-  protected static String getSchemaDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+  protected static String getSchemaDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
     return "SELECT "
         + String.join(",", InformationSchemaCols.colList())
         + " FROM INFORMATION_SCHEMA.Columns WHERE TABLE_SCHEMA = "
@@ -315,7 +311,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
    * @param sourceSchemaReference
    * @return
    */
-  protected static String getIndexDiscoveryQuery(SourceSchemaReference sourceSchemaReference) {
+  protected static String getIndexDiscoveryQuery(JdbcSchemaReference sourceSchemaReference) {
     return "SELECT *"
         + " FROM INFORMATION_SCHEMA.STATISTICS stats"
         + " JOIN "
@@ -370,19 +366,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           // String types: Ref https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
           .put("CHAR", IndexType.STRING)
           .put("VARCHAR", IndexType.STRING)
-          .put("BINARY", IndexType.STRING)
-          .put("VARBINARY", IndexType.STRING)
-          .put("BLOB", IndexType.STRING)
-          .put("TEXT", IndexType.STRING)
-          .put("ENUM", IndexType.STRING)
-          .put("SET", IndexType.STRING)
+          // Mapping BINARY, VARBINARY and TINYBLOB to Java bigInteger
+          // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
+          .put("BINARY", IndexType.BINARY)
+          .put("VARBINARY", IndexType.BINARY)
+          .put("TINYBLOB", IndexType.BINARY)
+          .put("TINYTEXT", IndexType.STRING)
           .build();
-
-  private ImmutableSet<String> binaryColumnTypes = ImmutableSet.of("BINARY", "VARBINARY", "BLOB");
 
   /**
    * Get the PadSpace attribute from {@link ResultSet} for index discovery query {@link
-   * #getIndexDiscoveryQuery(SourceSchemaReference)}. This method takes care of the fact that older
+   * #getIndexDiscoveryQuery(JdbcSchemaReference)}. This method takes care of the fact that older
    * versions of MySQL notably Mysql5.7 don't have a {@link
    * InformationSchemaStatsCols#PAD_SPACE_COL} column and default to PAD SPACE comparisons.
    */
@@ -440,28 +434,17 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
         IndexType indexType = INDEX_TYPE_MAPPING.getOrDefault(columType, IndexType.OTHER);
-
         CollationReference collationReference = null;
-        // Binary (and similar columns like VarBinary, Blob etc) columns have a fixed character-set
-        // and collation called "binary".
-        // Ref https://dev.mysql.com/doc/refman/8.4/en/charset-binary-collations.html
-        // In information_schema.columns query, these column types show null as character set.
-        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/3
-        // Also for both mySQL 5.7 and 8.0 binary columns have a NO-PAD comparison.
-        // Ref: https://www.db-fiddle.com/f/kRVPA5jDwZYNj2rsdtif4K/0.
-        if (binaryColumnTypes.contains(columType) && characterSet == null) {
-          characterSet = BINARY_CHARACTER_SET;
-          collation = BINARY_COLLATION;
-          padSpace = NO_PAD;
-        }
-        if (characterSet != null) {
+        if (indexType.equals(IndexType.STRING)) {
           collationReference =
               CollationReference.builder()
-                  .setDbCharacterSet(characterSet)
-                  .setDbCollation(collation)
+                  .setDbCharacterSet(escapeMySql(characterSet))
+                  .setDbCollation(escapeMySql(collation))
                   .setPadSpace(
                       (padSpace == null) ? false : padSpace.trim().toUpperCase().equals(PAD_SPACE))
                   .build();
+        } else {
+          stringMaxLength = null;
         }
 
         indexesBuilder.add(
@@ -485,6 +468,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       throw new SchemaDiscoveryException(e);
     }
     return indexesBuilder.build();
+  }
+
+  @VisibleForTesting
+  protected static String escapeMySql(String input) {
+    if (input.startsWith("`")) {
+      return input;
+    } else {
+      return "`" + input + "`";
+    }
   }
 
   private SourceColumnType resultSetToSourceColumnType(ResultSet rs) throws SQLException {

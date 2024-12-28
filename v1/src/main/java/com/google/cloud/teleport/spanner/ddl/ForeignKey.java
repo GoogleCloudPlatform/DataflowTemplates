@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.spanner.Dialect.GOOGLE_STANDARD_SQL;
 import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier;
 import static com.google.common.base.Strings.isNullOrEmpty;
 
@@ -25,11 +26,12 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 
 /** Cloud Spanner foreign key definition. */
 @AutoValue
 public abstract class ForeignKey implements Serializable {
-  private static final long serialVersionUID = 519932875L;
+  private static final long serialVersionUID = 779301367L;
 
   /** Referential actions supported in Foreign Keys. */
   public enum ReferentialAction {
@@ -92,6 +94,9 @@ public abstract class ForeignKey implements Serializable {
 
   abstract Optional<ReferentialAction> referentialAction();
 
+  @Nullable
+  abstract Boolean isEnforced();
+
   public static Builder builder(Dialect dialect) {
     return new AutoValue_ForeignKey.Builder().dialect(dialect);
   }
@@ -133,6 +138,10 @@ public abstract class ForeignKey implements Serializable {
               "Foreign Key action not supported: " + action.get().getSqlString());
       }
     }
+    if (dialect() == GOOGLE_STANDARD_SQL && isEnforced() != null && !isEnforced()) {
+      // TODO: Add Postgresql support for NOT ENFORCED foreign keys
+      appendable.append(" NOT ENFORCED");
+    }
   }
 
   public String prettyPrint() {
@@ -167,6 +176,8 @@ public abstract class ForeignKey implements Serializable {
     public abstract ImmutableList.Builder<String> referencedColumnsBuilder();
 
     public abstract Builder referentialAction(Optional<ReferentialAction> action);
+
+    public abstract Builder isEnforced(Boolean enforced);
 
     public abstract ForeignKey build();
   }

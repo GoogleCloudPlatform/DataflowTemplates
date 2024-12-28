@@ -29,6 +29,7 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -42,6 +43,7 @@ import org.apache.beam.it.elasticsearch.ElasticsearchResourceManager;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.utils.BigQueryTestUtil;
+import org.apache.beam.it.gcp.kms.KMSResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -57,6 +59,14 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
 
   private BigQueryResourceManager bigQueryClient;
   private ElasticsearchResourceManager elasticsearchResourceManager;
+  private KMSResourceManager kmsResourceManager;
+
+  // Used by BigQueryIO to encrypt data in temporary tables
+  CryptoKey cryptoKey;
+
+  private static final String KMS_REGION = "global";
+  private static final String KEYRING_ID = "BigQueryToElasticsearch";
+  private static final String CRYPTO_KEY_NAME = "key1";
 
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
@@ -72,11 +82,16 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
   public void setup() {
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
     elasticsearchResourceManager = ElasticsearchResourceManager.builder(testId).build();
+    kmsResourceManager =
+        KMSResourceManager.builder(PROJECT, credentialsProvider).setRegion(KMS_REGION).build();
+
+    cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(bigQueryClient, elasticsearchResourceManager);
+    ResourceManagerUtils.cleanResources(
+        bigQueryClient, elasticsearchResourceManager, kmsResourceManager);
   }
 
   @Test
@@ -111,7 +126,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(BIGQUERY_NUM_ROWS);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(bigQueryRowsToRecords(bigQueryRows));
   }
@@ -143,7 +158,8 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
                 .addParameter("connectionUrl", elasticsearchResourceManager.getUri())
                 .addParameter("disableCertificateValidation", "true")
                 .addParameter("index", indexName)
-                .addParameter("apiKey", "elastic"));
+                .addParameter("apiKey", "elastic")
+                .addParameter("KMSEncryptionKey", cryptoKey.getName()));
     assertThatPipeline(info).isRunning();
 
     Result result = pipelineOperator().waitUntilDone(createConfig(info));
@@ -151,7 +167,7 @@ public final class BigQueryToElasticsearchIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(20);
+    assertThat(elasticsearchResourceManager.count(indexName)).isEqualTo(BIGQUERY_NUM_ROWS);
     assertThatRecords(elasticsearchResourceManager.fetchAll(indexName))
         .hasRecordsUnordered(bigQueryRowsToRecords(bigQueryRows));
   }

@@ -150,7 +150,7 @@ public class BeamUtils {
   public static Schema textToBeamSchema(List<String> fields) {
     return new Schema(
         fields.stream()
-            .map(field -> Schema.Field.of(field, FieldType.STRING))
+            .map(field -> Schema.Field.of(field, FieldType.STRING).withNullable(true))
             .collect(Collectors.toList()));
   }
 

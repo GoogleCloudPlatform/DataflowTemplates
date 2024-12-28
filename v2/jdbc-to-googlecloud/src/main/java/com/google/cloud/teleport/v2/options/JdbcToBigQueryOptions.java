@@ -103,11 +103,8 @@ public interface JdbcToBigQueryOptions
       description = "JDBC source SQL query",
       helpText =
           "The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. "
-              + "Some important SQL -> BigQuery type mappings to keep in mind are:\n"
-              + "DATETIME --> TIMESTAMP\n"
-              + "\nType casting may be required if your schemas do not match. "
-              + "This parameter can be set to a gs:// path pointing to a file in Cloud Storage to load the query from. "
-              + "The file encoding should be UTF-8.",
+              + "Some important SQL -> BigQuery type mappings to keep in mind are `DATETIME --> TIMESTAMP`."
+              + " Type casting may be required if your schemas do not match.",
       example = "select * from sampledb.sample_table")
   String getQuery();
 
@@ -251,9 +248,24 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =
-          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to CREATE_IF_NEEDED, this parameter must be specified.",
+          "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to `CREATE_IF_NEEDED`, this parameter must be specified.",
       example = "gs://your-bucket/your-schema.json")
   String getBigQuerySchemaPath();
 
   void setBigQuerySchemaPath(String path);
+
+  @TemplateParameter.BigQueryTable(
+      order = 21,
+      optional = true,
+      description =
+          "Table for messages that failed to reach the output table (i.e., Deadletter table) when using Storage Write API",
+      helpText =
+          "The BigQuery table to use for messages that failed to reach the output table, "
+              + "formatted as `\"PROJECT_ID:DATASET_NAME.TABLE_NAME\"`. If the table "
+              + "doesn't exist, it is created when the pipeline runs. "
+              + "If this parameter is not specified, the pipeline will fail on write errors."
+              + "This parameter can only be specified if `useStorageWriteApi` or `useStorageWriteApiAtLeastOnce` is set to true.")
+  String getOutputDeadletterTable();
+
+  void setOutputDeadletterTable(String value);
 }

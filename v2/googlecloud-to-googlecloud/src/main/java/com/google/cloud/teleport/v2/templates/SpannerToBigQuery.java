@@ -79,6 +79,11 @@ public final class SpannerToBigQuery {
     } else {
       throw new IllegalArgumentException("either sqlQuery or spannerTableId required");
     }
+    if (Strings.isNullOrEmpty(options.getBigQuerySchemaPath())
+        && CreateDisposition.valueOf(options.getCreateDisposition()) != CREATE_NEVER) {
+      throw new IllegalArgumentException(
+          "bigQuerySchemaPath is required if CreateDisposition is not CREATE_NEVER");
+    }
     pipeline
         .apply(read)
         .apply(new StructToJson())

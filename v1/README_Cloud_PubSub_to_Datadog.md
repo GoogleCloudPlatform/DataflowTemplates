@@ -33,22 +33,22 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputSubscription** : The Pub/Sub subscription to read the input from. (Example: projects/your-project-id/subscriptions/your-subscription-name).
-* **url** : The Datadog Logs API URL. This URL must be routable from the VPC that the pipeline runs in. See Send logs (https://docs.datadoghq.com/api/latest/logs/#send-logs) in the Datadog documentation for more information. (Example: https://http-intake.logs.datadoghq.com).
-* **outputDeadletterTopic** : The Pub/Sub topic to forward undeliverable messages to. For example, projects/<PROJECT_ID>/topics/<TOPIC_NAME>.
+* **inputSubscription**: The Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`.
+* **url**: The Datadog Logs API URL. This URL must be routable from the VPC that the pipeline runs in. See Send logs (https://docs.datadoghq.com/api/latest/logs/#send-logs) in the Datadog documentation for more information. For example, `https://http-intake.logs.datadoghq.com`.
+* **outputDeadletterTopic**: The Pub/Sub topic to forward undeliverable messages to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 
-* **apiKey** : The Datadog API key. You must provide this value if the `apiKeySource` is set to `PLAINTEXT` or `KMS`. For more information, see API and Application Keys (https://docs.datadoghq.com/account_management/api-app-keys/) in the Datadog documentation.
-* **batchCount** : The batch size for sending multiple events to Datadog. The default is `1` (no batching).
-* **parallelism** : The maximum number of parallel requests. The default is `1` (no parallelism).
-* **includePubsubMessage** : Whether to include the full Pub/Sub message in the payload. The default is `true` (all elements, including the data element, are included in the payload).
-* **apiKeyKMSEncryptionKey** : The Cloud KMS key to use to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key. (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name).
-* **apiKeySecretId** : The Secret Manager secret ID for the API Key. You must provide this parameter if the `apiKeySource` is set to `SECRET_MANAGER`. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version).
-* **apiKeySource** : The source of the API key. The following values are supported: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter if you're using Secret Manager. If `apiKeySource` is set to `KMS`, you must also provide `apiKeyKMSEncryptionKey` and encrypted `API Key`. If `apiKeySource` is set to `SECRET_MANAGER`, you must also provide `apiKeySecretId`. If `apiKeySource` is set to `PLAINTEXT`, you must also provide `apiKey`.
-* **javascriptTextTransformGcsPath** : The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
-* **javascriptTextTransformFunctionName** : The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
-* **javascriptTextTransformReloadIntervalMinutes** : Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
+* **apiKey**: The Datadog API key. You must provide this value if the `apiKeySource` is set to `PLAINTEXT` or `KMS`. For more information, see API and Application Keys (https://docs.datadoghq.com/account_management/api-app-keys/) in the Datadog documentation.
+* **batchCount**: The batch size for sending multiple events to Datadog. The default is `1` (no batching).
+* **parallelism**: The maximum number of parallel requests. The default is `1` (no parallelism).
+* **includePubsubMessage**: Whether to include the full Pub/Sub message in the payload. The default is `true` (all elements, including the data element, are included in the payload).
+* **apiKeyKMSEncryptionKey**: The Cloud KMS key to use to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key. For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`.
+* **apiKeySecretId**: The Secret Manager secret ID for the API Key. You must provide this parameter if the `apiKeySource` is set to `SECRET_MANAGER`. For example, `projects/your-project-id/secrets/your-secret/versions/your-secret-version`.
+* **apiKeySource**: The source of the API key. The following values are supported: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter if you're using Secret Manager. If `apiKeySource` is set to `KMS`, you must also provide `apiKeyKMSEncryptionKey` and encrypted `API Key`. If `apiKeySource` is set to `SECRET_MANAGER`, you must also provide `apiKeySecretId`. If `apiKeySource` is set to `PLAINTEXT`, you must also provide `apiKey`.
+* **javascriptTextTransformGcsPath**: The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`.
+* **javascriptTextTransformFunctionName**: The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).
+* **javascriptTextTransformReloadIntervalMinutes**: Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0.
 
 
 ## User-Defined functions (UDFs)
@@ -259,15 +259,15 @@ resource "google_dataflow_job" "cloud_pubsub_to_datadog" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    inputSubscription = "projects/your-project-id/subscriptions/your-subscription-name"
-    url = "https://http-intake.logs.datadoghq.com"
+    inputSubscription = "<inputSubscription>"
+    url = "<url>"
     outputDeadletterTopic = "<outputDeadletterTopic>"
     # apiKey = "<apiKey>"
     # batchCount = "<batchCount>"
     # parallelism = "<parallelism>"
     # includePubsubMessage = "true"
-    # apiKeyKMSEncryptionKey = "projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name"
-    # apiKeySecretId = "projects/your-project-id/secrets/your-secret/versions/your-secret-version"
+    # apiKeyKMSEncryptionKey = "<apiKeyKMSEncryptionKey>"
+    # apiKeySecretId = "<apiKeySecretId>"
     # apiKeySource = "<apiKeySource>"
     # javascriptTextTransformGcsPath = "<javascriptTextTransformGcsPath>"
     # javascriptTextTransformFunctionName = "<javascriptTextTransformFunctionName>"

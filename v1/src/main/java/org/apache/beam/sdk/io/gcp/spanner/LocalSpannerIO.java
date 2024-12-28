@@ -25,7 +25,6 @@ import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsCons
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_RPC_PRIORITY;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.MAX_INCLUSIVE_END_AT;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.THROUGHPUT_WINDOW_SECONDS;
-import static org.apache.beam.sdk.io.gcp.spanner.changestreams.NameGenerator.generatePartitionMetadataTableName;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkNotNull;
 
@@ -60,6 +59,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.runners.core.metrics.GcpResourceIdentifiers;
@@ -70,6 +70,7 @@ import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.action.ActionFactory;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.DaoFactory;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.PartitionMetadataTableNames;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.CleanUpReadChangeStreamDoFn;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.DetectNewPartitionsDoFn;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.InitializeDoFn;
@@ -1551,9 +1552,13 @@ public class LocalSpannerIO {
               getSpannerConfig().getProjectId().get(),
               partitionMetadataInstanceId,
               partitionMetadataDatabaseId);
-      final String partitionMetadataTableName =
-          MoreObjects.firstNonNull(
-              getMetadataTable(), generatePartitionMetadataTableName(partitionMetadataDatabaseId));
+      PartitionMetadataTableNames partitionMetadataTableNames =
+          Optional.ofNullable(getMetadataTable())
+              .map(
+                  table ->
+                      PartitionMetadataTableNames.fromExistingTable(
+                          partitionMetadataDatabaseId, table))
+              .orElse(PartitionMetadataTableNames.generateRandom(partitionMetadataDatabaseId));
 
       SpannerConfig changeStreamSpannerConfig = getSpannerConfig();
       // Set default retryable errors for ReadChangeStream
@@ -1609,7 +1614,7 @@ public class LocalSpannerIO {
               changeStreamSpannerConfig,
               changeStreamName,
               partitionMetadataSpannerConfig,
-              partitionMetadataTableName,
+              partitionMetadataTableNames,
               rpcPriority,
               input.getPipeline().getOptions().getJobName(),
               changeStreamDatabaseDialect,
@@ -1625,12 +1630,13 @@ public class LocalSpannerIO {
       final PostProcessingMetricsDoFn postProcessingMetricsDoFn =
           new PostProcessingMetricsDoFn(metrics);
 
-      LOG.info("Partition metadata table that will be used is " + partitionMetadataTableName);
+      LOG.info(
+          "Partition metadata table that will be used is " + partitionMetadataTableNames.getTableName());
       input
           .getPipeline()
           .getOptions()
           .as(SpannerChangeStreamOptions.class)
-          .setMetadataTable(partitionMetadataTableName);
+          .setMetadataTable(partitionMetadataTableNames.getTableName());
 
       PCollection<byte[]> impulseOut = input.apply(Impulse.create());
       PCollection<DataChangeRecord> results =

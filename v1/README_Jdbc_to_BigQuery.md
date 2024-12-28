@@ -25,22 +25,22 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **driverJars** : Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
-* **driverClassName** : JDBC driver class name to use. (Example: com.mysql.jdbc.Driver).
-* **connectionURL** : Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb).
-* **query** : Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. (Example: select * from sampledb.sample_table).
-* **outputTable** : BigQuery table location to write the output to. The table's schema must match the input objects.
-* **bigQueryLoadingTemporaryDirectory** : Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir).
+* **driverJars**: Comma separate Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
+* **driverClassName**: JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`.
+* **connectionURL**: Url connection string to connect to the JDBC source. For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **query**: Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. For example, `select * from sampledb.sample_table`.
+* **outputTable**: BigQuery table location to write the output to. The table's schema must match the input objects.
+* **bigQueryLoadingTemporaryDirectory**: Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`.
 
 ### Optional parameters
 
-* **connectionProperties** : Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8).
-* **username** : User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **password** : Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **KMSEncryptionKey** : If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key).
-* **useColumnAlias** : If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
-* **disabledAlgorithms** : Comma-separated list of algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4).
-* **extraFilesToStage** : Comma-separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>).
+* **connectionProperties**: Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`.
+* **username**: User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **password**: Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
+* **KMSEncryptionKey**: If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **useColumnAlias**: If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
+* **disabledAlgorithms**: Comma-separated list of algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma-separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
 
 
@@ -241,19 +241,19 @@ resource "google_dataflow_job" "jdbc_to_bigquery" {
   region            = var.region
   temp_gcs_location = "gs://bucket-name-here/temp"
   parameters        = {
-    driverJars = "gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar"
-    driverClassName = "com.mysql.jdbc.Driver"
-    connectionURL = "jdbc:mysql://some-host:3306/sampledb"
-    query = "select * from sampledb.sample_table"
+    driverJars = "<driverJars>"
+    driverClassName = "<driverClassName>"
+    connectionURL = "<connectionURL>"
+    query = "<query>"
     outputTable = "<outputTable>"
-    bigQueryLoadingTemporaryDirectory = "gs://your-bucket/your-files/temp_dir"
-    # connectionProperties = "unicode=true;characterEncoding=UTF-8"
+    bigQueryLoadingTemporaryDirectory = "<bigQueryLoadingTemporaryDirectory>"
+    # connectionProperties = "<connectionProperties>"
     # username = "<username>"
     # password = "<password>"
-    # KMSEncryptionKey = "projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key"
+    # KMSEncryptionKey = "<KMSEncryptionKey>"
     # useColumnAlias = "false"
-    # disabledAlgorithms = "SSLv3, RC4"
-    # extraFilesToStage = "gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
   }
 }
 ```

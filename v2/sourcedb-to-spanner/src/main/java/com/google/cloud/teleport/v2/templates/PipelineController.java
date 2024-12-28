@@ -294,7 +294,8 @@ public class PipelineController {
           options.getJdbcDriverJars(),
           options.getMaxConnections(),
           options.getNumPartitions(),
-          waitOnSignal);
+          waitOnSignal,
+          options.getFetchSize());
     }
 
     @Override

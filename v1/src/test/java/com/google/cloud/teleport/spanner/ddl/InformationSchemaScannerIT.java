@@ -23,7 +23,9 @@ import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.sameInstance;
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 
 import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
@@ -156,6 +158,7 @@ public class InformationSchemaScannerIT {
             + " `arr_proto_field_2`     ARRAY<`com.google.cloud.teleport.spanner.tests.Order`>,"
             + " `arr_nested_enum`       ARRAY<`com.google.cloud.teleport.spanner.tests.Order.PaymentMode`>,"
             + " `arr_enum_field`        ARRAY<`com.google.cloud.teleport.spanner.tests.TestEnum`>,"
+            + " `hidden_column`         STRING(MAX) HIDDEN,"
             + " ) PRIMARY KEY (`first_name` ASC, `last_name` DESC, `id` ASC)";
 
     FileDescriptorSet.Builder fileDescriptorSetBuilder = FileDescriptorSet.newBuilder();
@@ -174,7 +177,7 @@ public class InformationSchemaScannerIT {
     assertThat(ddl.table("aLlTYPeS"), notNullValue());
 
     Table table = ddl.table("alltypes");
-    assertThat(table.columns(), hasSize(28));
+    assertThat(table.columns(), hasSize(29));
 
     // Check case sensitiveness.
     assertThat(table.column("first_name"), notNullValue());
@@ -231,6 +234,8 @@ public class InformationSchemaScannerIT {
     assertThat(
         table.column("arr_enum_field").type(),
         equalTo(Type.array(Type.protoEnum("com.google.cloud.teleport.spanner.tests.TestEnum"))));
+    assertThat(table.column("hidden_column").type(), equalTo(Type.string()));
+    assertThat(table.column("hidden_column").isHidden(), is(true));
 
     // Check not-null.
     assertThat(table.column("first_name").notNull(), is(false));
@@ -366,6 +371,116 @@ public class InformationSchemaScannerIT {
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(modelDef));
   }
+
+  @Test
+  public void simplePropertyGraph() throws Exception {
+    String nodeTableDef =
+        "CREATE TABLE NodeTest (\n" + "  Id INT64 NOT NULL,\n" + ") PRIMARY KEY(Id)";
+    String edgeTableDef =
+        "CREATE TABLE EdgeTest (\n"
+            + "FromId INT64 NOT NULL,\n"
+            + "ToId INT64 NOT NULL,\n"
+            + ") PRIMARY KEY(FromId, ToId)";
+    String propertyGraphDef =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "  NODE TABLES(\n"
+            + "    NodeTest\n"
+            + "      KEY(Id)\n"
+            + "      LABEL Test PROPERTIES(\n"
+            + "        Id))"
+            + "  EDGE TABLES(\n"
+            + "    EdgeTest\n"
+            + "      KEY(FromId, ToId)\n"
+            + "      SOURCE KEY(FromId) REFERENCES NodeTest(Id)\n"
+            + "      DESTINATION KEY(ToId) REFERENCES NodeTest(Id)\n"
+            + "      DEFAULT LABEL PROPERTIES ALL COLUMNS)";
+
+    SPANNER_SERVER.createDatabase(
+        dbId, Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(ddl.table("NodeTest"), notNullValue());
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    PropertyGraph testGraph = ddl.propertyGraph("testGraph");
+
+    assertEquals(testGraph.name(), "testGraph");
+    assertThat(testGraph.propertyDeclarations(), hasSize(3));
+    assertThat(testGraph.getPropertyDeclaration("Id"), notNullValue());
+    assertThat(testGraph.getPropertyDeclaration("FromId"), notNullValue());
+    assertThat(testGraph.getPropertyDeclaration("ToId"), notNullValue());
+
+    assertThat(testGraph.labels(), hasSize(2));
+    assertThat(testGraph.getLabel("Test"), notNullValue());
+    assertThat(testGraph.getLabel("EdgeTest"), notNullValue());
+
+    assertThat(testGraph.nodeTables(), hasSize(1));
+    assertThat(testGraph.getNodeTable("NodeTest"), notNullValue());
+
+    assertThat(testGraph.edgeTables(), hasSize(1));
+    assertThat(testGraph.getEdgeTable("EdgeTest"), notNullValue());
+
+    // --- Assertions for Node Table ---
+    GraphElementTable nodeTestTable = testGraph.getNodeTable("NodeTest");
+    assertThat(nodeTestTable, notNullValue());
+    assertThat(nodeTestTable.name(), equalTo("NodeTest"));
+    assertThat(nodeTestTable.baseTableName(), equalTo("NodeTest"));
+    assertThat(nodeTestTable.kind(), equalTo(GraphElementTable.Kind.NODE));
+    assertIterableEquals(List.of("Id"), nodeTestTable.keyColumns());
+
+    assertThat(nodeTestTable.labelToPropertyDefinitions(), hasSize(1));
+    GraphElementTable.LabelToPropertyDefinitions nodeTestLabel =
+        nodeTestTable.getLabelToPropertyDefinitions("Test");
+    assertThat(nodeTestLabel, notNullValue());
+    assertThat(nodeTestLabel.labelName, equalTo("Test"));
+    assertThat(nodeTestLabel.propertyDefinitions(), hasSize(1));
+    GraphElementTable.PropertyDefinition nodeTestIdProperty =
+        nodeTestLabel.getPropertyDefinition("Id");
+    assertThat(nodeTestIdProperty, notNullValue());
+    assertThat(nodeTestIdProperty.name, equalTo("Id"));
+    assertThat(nodeTestIdProperty.valueExpressionString, equalTo("Id"));
+
+    // --- Assertions for Edge Table ---
+    GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
+    assertThat(edgeTestTable, notNullValue());
+    assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
+    assertThat(edgeTestTable.baseTableName(), equalTo("EdgeTest"));
+    assertThat(edgeTestTable.kind(), equalTo(GraphElementTable.Kind.EDGE));
+    assertIterableEquals(List.of("FromId", "ToId"), edgeTestTable.keyColumns());
+
+    assertThat(edgeTestTable.labelToPropertyDefinitions(), hasSize(1));
+    GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
+        edgeTestTable.getLabelToPropertyDefinitions("EdgeTest");
+    assertThat(edgeTestLabel, notNullValue());
+    assertThat(edgeTestLabel.labelName, equalTo("EdgeTest"));
+    assertThat(edgeTestLabel.propertyDefinitions(), hasSize(2)); // FromId and ToId
+
+    GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
+        edgeTestLabel.getPropertyDefinition("FromId");
+    assertThat(edgeTestFromIdProperty, notNullValue());
+    assertThat(edgeTestFromIdProperty.name, equalTo("FromId"));
+    assertThat(edgeTestFromIdProperty.valueExpressionString, equalTo("FromId"));
+
+    GraphElementTable.PropertyDefinition edgeTestToIdProperty =
+        edgeTestLabel.getPropertyDefinition("ToId");
+    assertThat(edgeTestToIdProperty, notNullValue());
+    assertThat(edgeTestToIdProperty.name, equalTo("ToId"));
+    assertThat(edgeTestToIdProperty.valueExpressionString, equalTo("ToId"));
+
+    // --- Assertions for Edge Table References ---
+    assertThat(edgeTestTable.sourceNodeTable().nodeTableName, equalTo("NodeTest"));
+    assertIterableEquals(List.of("Id"), edgeTestTable.sourceNodeTable().nodeKeyColumns);
+
+    assertIterableEquals(List.of("FromId"), edgeTestTable.sourceNodeTable().edgeKeyColumns);
+
+    assertThat(edgeTestTable.targetNodeTable().nodeTableName, equalTo("NodeTest"));
+    assertIterableEquals(List.of("Id"), edgeTestTable.targetNodeTable().nodeKeyColumns);
+    assertIterableEquals(List.of("ToId"), edgeTestTable.targetNodeTable().edgeKeyColumns);
+  }
+
+  @Test
+  public void complexPropertyGraph() throws Exception {}
 
   @Test
   public void simpleView() throws Exception {
@@ -671,7 +786,13 @@ public class InformationSchemaScannerIT {
                 + " `id2`                               INT64 NOT NULL,"
                 + " ) PRIMARY KEY (`key` ASC)",
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
-                + " REFERENCES `Ref` (`id2`, `id1`)");
+                + " REFERENCES `Ref` (`id2`, `id1`)",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_2` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE CASCADE ENFORCED",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_3` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) NOT ENFORCED",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_4` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
 
     List<String> dbVerificationStatements =
         Arrays.asList(
@@ -686,7 +807,14 @@ public class InformationSchemaScannerIT {
                 + " ) PRIMARY KEY (`key` ASC)",
             " ALTER TABLE `Tab` ADD CONSTRAINT `fk` FOREIGN KEY (`id1`, `id2`)"
                 // Unspecified DELETE action defaults to "NO ACTION"
-                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION");
+                + " REFERENCES `Ref` (`id2`, `id1`) ON DELETE NO ACTION",
+            // "ENFORCED" keyword is dropped.
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_2` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE CASCADE",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_3` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED",
+            " ALTER TABLE `Tab` ADD CONSTRAINT `fk_4` FOREIGN KEY (`id1`, `id2`)"
+                + " REFERENCES `Ref` (`id1`, `id2`) ON DELETE NO ACTION NOT ENFORCED");
 
     SPANNER_SERVER.createDatabase(dbId, dbCreationStatements);
     Ddl ddl = getDatabaseDdl();
@@ -845,6 +973,40 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void identityColumns() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `"
+                + dbId
+                + "` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )",
+            "CREATE TABLE `T` ("
+                + " `id` INT64 NOT NULL GENERATED BY DEFAULT AS IDENTITY,"
+                + " `non_key_col` INT64 NOT NULL GENERATED BY DEFAULT AS IDENTITY (BIT_REVERSED_POSITIVE),"
+                + " ) PRIMARY KEY (`id` ASC)");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void pgIdentityColumns() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE \""
+                + dbId
+                + "\" SET spanner.default_sequence_kind = 'bit_reversed_positive'",
+            "CREATE TABLE \"T\" ("
+                + " \"id\" bigint NOT NULL GENERATED BY DEFAULT AS IDENTITY,"
+                + " \"non_key_col\" bigint NOT NULL GENERATED BY DEFAULT AS IDENTITY (BIT_REVERSED_POSITIVE),"
+                + " PRIMARY KEY (\"id\") )");
+
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void databaseOptions() throws Exception {
     List<String> statements =
         Arrays.asList(
@@ -952,12 +1114,21 @@ public class InformationSchemaScannerIT {
   public void sequences() throws Exception {
     List<String> statements =
         Arrays.asList(
+            "ALTER DATABASE `"
+                + dbId
+                + "` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )",
             "CREATE SEQUENCE `MySequence` OPTIONS (" + "sequence_kind = \"bit_reversed_positive\")",
             "CREATE SEQUENCE `MySequence2` OPTIONS ("
                 + "sequence_kind = \"bit_reversed_positive\","
                 + "skip_range_min = 1,"
                 + "skip_range_max = 1000,"
                 + "start_with_counter = 100)",
+            "CREATE SEQUENCE `MySequence3` OPTIONS ("
+                + "skip_range_min = 1,"
+                + "skip_range_max = 1000,"
+                + "start_with_counter = 100)",
+            "CREATE SEQUENCE `MySequence4`",
+            "CREATE SEQUENCE `MySequence5` BIT_REVERSED_POSITIVE SKIP RANGE 1, 1000 START COUNTER WITH 100",
             "CREATE TABLE `Account` ("
                 + " `id`        INT64 DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
                 + " `balanceId` INT64 NOT NULL,"
@@ -966,13 +1137,22 @@ public class InformationSchemaScannerIT {
     SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
     String expectedDdl =
-        "\nCREATE SEQUENCE `MySequence`\n\tOPTIONS "
+        "ALTER DATABASE `"
+            + dbId
+            + "` SET OPTIONS ( default_sequence_kind = \"bit_reversed_positive\" )"
+            + "\nCREATE SEQUENCE `MySequence`\n\tOPTIONS "
             + "(sequence_kind=\"bit_reversed_positive\")\n"
-            + "CREATE SEQUENCE `MySequence2`\n\tOPTIONS "
+            + "\nCREATE SEQUENCE `MySequence2`\n\tOPTIONS "
             + "(sequence_kind=\"bit_reversed_positive\","
             + " skip_range_max=1000,"
             + " skip_range_min=1,"
             + " start_with_counter=100)"
+            + "\nCREATE SEQUENCE `MySequence3`\n\tOPTIONS "
+            + "(skip_range_max=1000,"
+            + " skip_range_min=1,"
+            + " start_with_counter=100)"
+            + "\nCREATE SEQUENCE `MySequence4`"
+            + "\nCREATE SEQUENCE `MySequence5` BIT_REVERSED_POSITIVE SKIP RANGE 1, 1000 START COUNTER WITH 100"
             + "CREATE TABLE `Account` ("
             + "\n\t`id`                                    INT64 DEFAULT"
             + "  (GET_NEXT_SEQUENCE_VALUE(SEQUENCE MySequence)),"
@@ -985,9 +1165,13 @@ public class InformationSchemaScannerIT {
   public void pgSequences() throws Exception {
     List<String> statements =
         Arrays.asList(
+            "ALTER DATABASE \""
+                + dbId
+                + "\" SET spanner.default_sequence_kind = 'bit_reversed_positive'",
             "CREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE",
             "CREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
                 + " SKIP RANGE 1 1000 START COUNTER WITH 100",
+            "CREATE SEQUENCE \"MyPGSequence3\"" + " SKIP RANGE 1 1000 START COUNTER WITH 100",
             "CREATE TABLE \"Account\" ("
                 + " \"id\"        bigint DEFAULT nextval('\"MyPGSequence\"'),"
                 + " \"balanceId\" bigint NOT NULL,"
@@ -996,9 +1180,14 @@ public class InformationSchemaScannerIT {
     SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
     String expectedDdl =
-        "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
+        "ALTER DATABASE \""
+            + dbId
+            + "\" SET spanner.default_sequence_kind = 'bit_reversed_positive'"
+            + "\nCREATE SEQUENCE \"MyPGSequence\" BIT_REVERSED_POSITIVE"
             + " START COUNTER WITH 1"
             + "\nCREATE SEQUENCE \"MyPGSequence2\" BIT_REVERSED_POSITIVE"
+            + " SKIP RANGE 1 1000 START COUNTER WITH 100"
+            + "\nCREATE SEQUENCE \"MyPGSequence3\""
             + " SKIP RANGE 1 1000 START COUNTER WITH 100"
             + "CREATE TABLE \"Account\" ("
             + "\n\t\"id\"                                    bigint NOT NULL"

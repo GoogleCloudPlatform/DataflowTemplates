@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper;
 import static com.google.cloud.teleport.v2.source.reader.io.schema.SourceColumnIndexInfo.INDEX_TYPE_TO_CLASS;
 
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SuitableIndexNotFoundException;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.TableConfig;
@@ -41,7 +42,6 @@ import com.google.common.collect.ImmutableSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.DataSourceConfiguration;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.ReadWithPartitions;
@@ -80,15 +80,16 @@ public final class JdbcIoWrapper implements IoWrapper {
   public static JdbcIoWrapper of(JdbcIOWrapperConfig config) throws SuitableIndexNotFoundException {
     DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(config);
 
-    DataSource dataSource = dataSourceConfiguration.buildDatasource();
+    javax.sql.DataSource dataSource = dataSourceConfiguration.buildDatasource();
     setDataSourceLoginTimeout((BasicDataSource) dataSource, config);
 
     SchemaDiscovery schemaDiscovery =
         new SchemaDiscoveryImpl(config.dialectAdapter(), config.schemaDiscoveryBackOff());
 
     ImmutableList<TableConfig> tableConfigs =
-        autoInferTableConfigs(config, schemaDiscovery, dataSource);
-    SourceSchema sourceSchema = getSourceSchema(config, schemaDiscovery, dataSource, tableConfigs);
+        autoInferTableConfigs(config, schemaDiscovery, DataSource.ofJdbc(dataSource));
+    SourceSchema sourceSchema =
+        getSourceSchema(config, schemaDiscovery, DataSource.ofJdbc(dataSource), tableConfigs);
     ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>> tableReaders =
         buildTableReaders(config, tableConfigs, dataSourceConfiguration, sourceSchema);
     return new JdbcIoWrapper(tableReaders, sourceSchema);
@@ -305,7 +306,8 @@ public final class JdbcIoWrapper implements IoWrapper {
             .forEach(tableConfigBuilder::withPartitionColum);
       } else {
         ImmutableSet<IndexType> supportedIndexTypes =
-            ImmutableSet.of(IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED);
+            ImmutableSet.of(
+                IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED, IndexType.BINARY);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
@@ -415,6 +417,9 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
+    if (config.maxFetchSize() != null) {
+      jdbcIO = jdbcIO.withFetchSize(config.maxFetchSize());
+    }
     return jdbcIO;
   }
 
@@ -442,6 +447,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
+            .setFetchSize(config.maxFetchSize())
             .setRowMapper(
                 new JdbcSourceRowMapper(
                     config.valueMappingsProvider(),
@@ -462,7 +468,9 @@ public final class JdbcIoWrapper implements IoWrapper {
       readWithUniformPartitionsBuilder =
           readWithUniformPartitionsBuilder.setMaxPartitionsHint((long) tableConfig.maxPartitions());
     }
-    return readWithUniformPartitionsBuilder.build();
+    ReadWithUniformPartitions readWithUniformPartitions = readWithUniformPartitionsBuilder.build();
+    LOG.info("Configured ReadWithUniformPartitions {} for {}", readWithUniformPartitions, config);
+    return readWithUniformPartitions;
   }
 
   /**

@@ -188,7 +188,14 @@ resource "google_datastream_stream" "mysql_to_gcs" {
   location      = var.common_params.region
   display_name  = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
   desired_state = "RUNNING"
-  backfill_all {
+  dynamic "backfill_all" {
+    for_each = var.common_params.datastream_params.enable_backfill ? [1] : []
+    content {}
+  }
+
+  dynamic "backfill_none" {
+    for_each = var.common_params.datastream_params.enable_backfill ? [] : [1]
+    content {}
   }
 
   source_config {
@@ -249,6 +256,7 @@ resource "google_project_iam_member" "live_migration_roles" {
 }
 # Dataflow Flex Template Job (for CDC to Spanner)
 resource "google_dataflow_flex_template_job" "live_migration_job" {
+  count = var.common_params.dataflow_params.skip_dataflow ? 0 : 1
   depends_on = [
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
