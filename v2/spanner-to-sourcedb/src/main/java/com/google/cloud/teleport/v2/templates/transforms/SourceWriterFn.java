@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -208,12 +209,20 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           IDao sourceDao = sourceProcessor.getSourceDao(shardId);
           if (Objects.equals(this.source, Constants.SOURCE_CASSANDRA)) {
             if (schema.getSrcSchema().isEmpty()) {
-              CassandraSourceMetadata.generateSourceSchema(
-                  schema,
+              ResultSet resultSet =
                   ((CassandraDao) sourceDao)
-                      .readMetadata(((CassandraShard) shards.get(0)).getKeySpaceName()));
+                      .readMetadata(((CassandraShard) shards.get(0)).getKeySpaceName());
+              if (resultSet != null) {
+                new CassandraSourceMetadata.Builder()
+                    .setSchema(schema)
+                    .setResultSet(resultSet)
+                    .build();
+              } else {
+                throw new InvalidTransformationException("No Cassandra Source Schema Available");
+              }
             }
           }
+
           boolean isEventFiltered =
               InputRecordProcessor.processRecord(
                   spannerRec,

@@ -110,7 +110,7 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
 
     CqlSession session = connectionPoolMap.get(connectionRequestKey);
     if (session == null) {
-      LOG.warn("No connection found for key: {}", connectionRequestKey);
+      LOG.error("No connection found for key: {}", connectionRequestKey);
       throw new ConnectionException(
           "No connection available for the given key: " + connectionRequestKey);
     }

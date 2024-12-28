@@ -656,9 +656,6 @@ public class SpannerToSourceDb {
                         options.getShardingCustomParameters(),
                         options.getMaxShardConnections()
                             * shards.size()))) // currently assuming that all mySqlShards
-            // accept the same// currently assuming
-            // that all shards accept the same
-            // number of max connections
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
