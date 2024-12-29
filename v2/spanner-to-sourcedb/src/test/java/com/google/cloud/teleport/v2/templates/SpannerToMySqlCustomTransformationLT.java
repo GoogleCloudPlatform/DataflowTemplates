@@ -139,13 +139,13 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
     HashMap<String, String> columns = new HashMap<>();
     columns.put("first_name1", "varchar(500)");
     columns.put("last_name1", "varchar(500)");
-    columns.put("full_name1", "varchar(500)");
+    columns.put("full_name1", "varchar(1500)");
     columns.put("first_name2", "varchar(500)");
     columns.put("last_name2", "varchar(500)");
-    columns.put("full_name2", "varchar(500)");
+    columns.put("full_name2", "varchar(1500)");
     columns.put("first_name3", "varchar(500)");
     columns.put("last_name3", "varchar(500)");
-    columns.put("full_name3", "varchar(500)");
+    columns.put("full_name3", "varchar(1500)");
     columns.put("ID", "varchar(100) NOT NULL");
 
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "ID");
