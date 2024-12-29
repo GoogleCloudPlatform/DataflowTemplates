@@ -40,16 +40,11 @@ public class MySQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
     String password =
         accessSecret(
             "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-password/versions/1");
-    String database =
-        accessSecret(
-            "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-database/versions/1");
+    String database = "3tables10cols";
     String host =
         accessSecret(
             "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-ip-address/versions/1");
-    int port =
-        Integer.parseInt(
-            accessSecret(
-                "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-port/versions/1"));
+    int port = 3306;
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
     createSpannerDDL("SourceDbToSpannerLT/mysql-spanner-schema.sql");
@@ -57,16 +52,8 @@ public class MySQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("table1", 10489500);
-            put("table2", 10497100);
-            put("table3", 10510700);
-            put("table4", 10454600);
-            put("table5", 10493000);
-            put("table6", 10449900);
-            put("table7", 10515900);
-            put("table8", 10437000);
-            put("table9", 10491000);
-            put("table10", 10511300);
+            put("table1", 4255685);
+            put("table2", 10489500);
           }
         };
 
