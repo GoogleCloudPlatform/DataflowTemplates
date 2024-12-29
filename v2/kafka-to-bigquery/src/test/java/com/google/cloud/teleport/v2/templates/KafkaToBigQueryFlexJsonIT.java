@@ -91,6 +91,17 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
   }
 
   @Test
+  public void testKafkaToBigQueryWithKey() throws IOException {
+    baseKafkaToBigQuery(
+        b ->
+            b.addParameter("messageFormat", "JSON")
+                .addParameter("writeMode", "SINGLE_TABLE_NAME")
+                .addParameter("useBigQueryDLQ", "false")
+                .addParameter("kafkaReadAuthenticationMode", "NONE")
+                .addParameter("persistKafkaKey", "true"));
+  }
+
+  @Test
   public void testKafkaToBigQueryWithUdfFunction() throws RestClientException, IOException {
     String udfFileName = "input/transform.js";
     gcsClient.createArtifact(
@@ -175,7 +186,8 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
     Schema bqSchema =
         Schema.of(
             Field.of("id", StandardSQLTypeName.INT64),
-            Field.of("name", StandardSQLTypeName.STRING));
+            Field.of("name", StandardSQLTypeName.STRING),
+            Field.of("_key", StandardSQLTypeName.STRING));
 
     TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
     TableId deadletterTableId = TableId.of(tableId.getDataset(), tableId.getTable() + "_dlq");
@@ -226,11 +238,21 @@ public final class KafkaToBigQueryFlexJsonIT extends TemplateTestBase {
     TableResult tableRows = bigQueryClient.readTable(bqTable);
     TableResult dlqRows = bigQueryClient.readTable(deadletterTableId);
 
-    assertThatBigQueryRecords(tableRows)
-        .hasRecordsUnordered(
-            List.of(
-                Map.of("id", 11, "name", namePostProcessor.apply("Dataflow")),
-                Map.of("id", 12, "name", namePostProcessor.apply("Pub/Sub"))));
+    if (options.getParameter("persistKafkaKey") != null
+        && options.getParameter("persistKafkaKey").equals("true")) {
+      assertThatBigQueryRecords(tableRows)
+          .hasRecordsUnordered(
+              List.of(
+                  Map.of("id", 11, "name", namePostProcessor.apply("Dataflow"), "_key", "11"),
+                  Map.of("id", 12, "name", namePostProcessor.apply("Pub/Sub"), "_key", "12")));
+    } else {
+      assertThatBigQueryRecords(tableRows)
+          .hasRecordsUnordered(
+              List.of(
+                  Map.of("id", 11, "name", namePostProcessor.apply("Dataflow"), "_key", "null"),
+                  Map.of("id", 12, "name", namePostProcessor.apply("Pub/Sub"), "_key", "null")));
+    }
+
     assertThatBigQueryRecords(dlqRows).hasRecordsWithStrings(List.of("bad json string"));
   }
 
