@@ -2,6 +2,26 @@ resource "random_pet" "migration_id" {
   prefix = "spanner-csdr"
 }
 
+resource "null_resource" "replace_keys" {
+  triggers = {
+    always_run = timestamp()
+  }
+  provisioner "local-exec" {
+
+    command = <<EOT
+      sed "s~##host##~${var.shard_config.host}~g; s~##port##~${var.shard_config.port}~g; s~##keyspace##~${var.shard_config.keyspace}~g; s~##dataCenter##~${var.shard_config.dataCenter}~g; s~##localPoolSize##~${var.shard_config.localPoolSize}~g; s~##remotePoolSize##~${var.shard_config.remotePoolSize}~g; s~##username##~${var.shard_config.username}~g; s~##password##~${var.shard_config.password}~g; s~##sslOptions##~${var.shard_config.sslOptions}~g; s~##protocolVersion##~${var.shard_config.protocolVersion}~g; s~##consistency##~${var.shard_config.consistency}~g;" cassandra-config-template.conf > cassandra-config.conf
+    EOT
+  }
+}
+
+# Upload the modified .conf file to the GCS bucket
+resource "google_storage_bucket_object" "shard_config" {
+  name       = "cassandra-config.conf"
+  bucket     = google_storage_bucket.reverse_replication_bucket.id
+  source     = "./cassandra-config.conf"
+  depends_on = [google_project_service.enabled_apis, null_resource.replace_keys]
+}
+
 locals {
   migration_id  = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
   change_stream = replace(local.migration_id, "-", "_")

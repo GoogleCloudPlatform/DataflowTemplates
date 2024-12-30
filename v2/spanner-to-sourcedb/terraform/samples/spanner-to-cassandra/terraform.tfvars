@@ -136,3 +136,19 @@ shard_list = [
     dbName = "db2"
   }
 ]
+
+shard_config = {
+  host             = "host_name"
+  port             = "port_name"
+  user             = "user_name"
+  password         = "cassandra"
+  keyspace         = "your_keyspace_name"
+  consistencyLevel = "consistency_level"
+  sslOptions       = false
+  protocolVersion  = "v5"
+  dataCenter       = "datacenter_name"
+  localPoolSize    = "local_pool_size"
+  remotePoolSize   = "remote_pool_size"
+}
+
+cassandra_template_config_file = "./cassandra-config-template.conf"

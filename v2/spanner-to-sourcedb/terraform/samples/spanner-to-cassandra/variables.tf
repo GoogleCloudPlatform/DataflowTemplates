@@ -77,3 +77,25 @@ variable "shard_list" {
     dbName           = string
   }))
 }
+
+variable "shard_config" {
+  type = map(any)
+  default = {
+    host             = "host_name"
+    port             = "port_name"
+    user             = "user_name"
+    password         = "password"
+    keyspace         = "your_keyspace_name"
+    consistencyLevel = "consistency_level"
+    sslOptions       = false
+    protocolVersion  = "v5"
+    dataCenter       = "datacenter_name"
+    localPoolSize    = "local_pool_size"
+    remotePoolSize   = "remote_pool_size"
+  }
+}
+
+# Path to the existing shard_config.conf file
+variable "cassandra_template_config_file" {
+  default = ""
+}
