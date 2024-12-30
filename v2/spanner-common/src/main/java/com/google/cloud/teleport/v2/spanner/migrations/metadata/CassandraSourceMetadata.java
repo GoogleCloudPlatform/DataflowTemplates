@@ -100,7 +100,7 @@ public class CassandraSourceMetadata {
           if (isPrimaryKey(kind)) {
             columnPKs
                 .computeIfAbsent(tableName, k -> new ArrayList<>())
-                .add(new ColumnPK(columnName, getPrimaryKeyOrder(kind)));
+                .add(new ColumnPK(columnName, 1));
           }
 
           columnIds.computeIfAbsent(tableName, k -> new ArrayList<>()).add(columnName);
@@ -140,23 +140,6 @@ public class CassandraSourceMetadata {
    */
   private boolean isPrimaryKey(String kind) {
     return "partition_key".equals(kind) || "clustering".equals(kind);
-  }
-
-  /**
-   * Determines the primary key order based on its kind.
-   *
-   * @param kind The kind of primary key (e.g., "partition_key" or "clustering").
-   * @return An integer indicating the order of the key (e.g., 1 for "partition_key").
-   */
-  private int getPrimaryKeyOrder(String kind) {
-    switch (kind) {
-      case "partition_key":
-        return 1;
-      case "clustering":
-        return 2;
-      default:
-        return 0;
-    }
   }
 
   /**
