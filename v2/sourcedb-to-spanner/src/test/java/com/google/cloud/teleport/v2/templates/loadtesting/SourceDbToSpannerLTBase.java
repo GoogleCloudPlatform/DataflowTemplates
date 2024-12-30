@@ -39,8 +39,9 @@ import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.AbstractJDBCResourceManager;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.beam.it.jdbc.StaticJDBCResource;
+import org.apache.beam.it.jdbc.StaticMySQLResource;
+import org.apache.beam.it.jdbc.StaticPostgresqlResource;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Resources;
 import org.junit.After;
 
@@ -52,14 +53,20 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
   private static final int MAX_WORKERS = 100;
 
-  private static final int NUM_WORKERS = 10;
-  private static final Duration JOB_TIMEOUT = Duration.ofHours(4);
+  private static final int NUM_WORKERS = 20;
+
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
+  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
+
+  private static final String FETCH_SIZE = "8000";
+
+  private static final Duration JOB_TIMEOUT = Duration.ofHours(3);
   private static final Duration CHECK_INTERVAL = Duration.ofMinutes(5);
   private static final Duration DONE_TIMEOUT = Duration.ofMinutes(20);
 
   private SQLDialect dialect;
   private GcsResourceManager gcsResourceManager;
-  private AbstractJDBCResourceManager<?> sourceDatabaseResourceManager;
+  private StaticJDBCResource sourceDatabaseResource;
   private SpannerResourceManager spannerResourceManager;
 
   private final String artifactBucket;
@@ -92,14 +99,11 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
         GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
 
     if (dialect == SQLDialect.POSTGRESQL) {
-      sourceDatabaseResourceManager =
-          PostgresResourceManager.builder(testName)
-              .setUsername(username)
-              .setPassword(password)
-              .setDatabaseName(database)
-              .setHost(host)
-              .setPort(port)
-              .build();
+      sourceDatabaseResource =
+          new StaticPostgresqlResource.Builder(host, username, password, port, database).build();
+    } else if (dialect == SQLDialect.MYSQL) {
+      sourceDatabaseResource =
+          new StaticMySQLResource.Builder(host, username, password, port, database).build();
     } else {
       throw new IllegalArgumentException("Dialect " + dialect + " not supported");
     }
@@ -142,11 +146,13 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("sourceDbDialect", dialect.name());
-            put("sourceConfigURL", sourceDatabaseResourceManager.getUri());
-            put("username", sourceDatabaseResourceManager.getUsername());
-            put("password", sourceDatabaseResourceManager.getPassword());
+            put("sourceConfigURL", sourceDatabaseResource.getconnectionURL());
+            put("username", sourceDatabaseResource.username());
+            put("password", sourceDatabaseResource.password());
             put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
             put("jdbcDriverClassName", driverClassName());
+            put("fetchSize", FETCH_SIZE);
+            put("workerMachineType", WORKER_MACHINE_TYPE);
           }
         };
     params.putAll(templateParameters);
@@ -156,6 +162,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
         LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("numWorkers", NUM_WORKERS)
+            .addEnvironment("launcherMachineType", LAUNCHER_MACHINE_TYPE)
             .setParameters(params);
     environmentOptions.forEach(options::addEnvironment);
 
@@ -182,8 +189,15 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
     result = pipelineOperator.waitUntilDone(createConfig(jobInfo, DONE_TIMEOUT));
     assertThatResult(result).isLaunchFinished();
 
+    Map<String, Double> metrics = getMetrics(jobInfo);
+    populateResourceManagerMetrics(metrics);
+
     // Export results
-    exportMetricsToBigQuery(jobInfo, getMetrics(jobInfo));
+    exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  public void populateResourceManagerMetrics(Map<String, Double> metrics) {
+    spannerResourceManager.collectMetrics(metrics);
   }
 
   /**
@@ -193,8 +207,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
    */
   @After
   public void cleanUp() throws IOException {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, sourceDatabaseResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, gcsResourceManager);
   }
 
   private String driverClassName() {
