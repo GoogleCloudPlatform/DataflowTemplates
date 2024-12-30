@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConf
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 import java.io.FileNotFoundException;
-import java.net.InetSocketAddress;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -137,18 +136,6 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
    */
   private CqlSession createCqlSession(CassandraShard cassandraShard) {
     CqlSessionBuilder builder = CqlSession.builder();
-
-    for (String contactPoint : cassandraShard.getContactPoints()) {
-      String[] parts = contactPoint.split(":");
-      String host = parts[0];
-      int port = Integer.parseInt(parts[1]);
-      builder.addContactPoint(new InetSocketAddress(host, port));
-    }
-
-    builder
-        .withAuthCredentials(cassandraShard.getUserName(), cassandraShard.getPassword())
-        .withKeyspace(cassandraShard.getKeySpaceName());
-
     DriverConfigLoader configLoader = cassandraShard.getConfigLoader();
     configLoader.getInitialConfig();
     builder.withConfigLoader(configLoader);
