@@ -9,7 +9,7 @@ resource "null_resource" "replace_keys" {
   provisioner "local-exec" {
 
     command = <<EOT
-      sed "s~##host##~${var.shard_config.host}~g; s~##port##~${var.shard_config.port}~g; s~##keyspace##~${var.shard_config.keyspace}~g; s~##dataCenter##~${var.shard_config.dataCenter}~g; s~##localPoolSize##~${var.shard_config.localPoolSize}~g; s~##remotePoolSize##~${var.shard_config.remotePoolSize}~g; s~##username##~${var.shard_config.username}~g; s~##password##~${var.shard_config.password}~g; s~##sslOptions##~${var.shard_config.sslOptions}~g; s~##protocolVersion##~${var.shard_config.protocolVersion}~g; s~##consistency##~${var.shard_config.consistency}~g;" cassandra-config-template.conf > cassandra-config.conf
+      sed "s~##host##~${var.shard_config.host}~g; s~##port##~${var.shard_config.port}~g; s~##keyspace##~${var.shard_config.keyspace}~g; s~##dataCenter##~${var.shard_config.dataCenter}~g; s~##localPoolSize##~${var.shard_config.localPoolSize}~g; s~##remotePoolSize##~${var.shard_config.remotePoolSize}~g; s~##username##~${var.shard_config.username}~g; s~##password##~${var.shard_config.password}~g; s~##sslOptions##~${var.shard_config.sslOptions}~g; s~##protocolVersion##~${var.shard_config.protocolVersion}~g; s~##consistency##~${var.shard_config.consistency}~g;" ${var.cassandra_template_config_file} > cassandra-config.conf
     EOT
   }
 }
