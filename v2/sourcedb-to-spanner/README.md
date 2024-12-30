@@ -5,9 +5,9 @@ ingests data by reading from a database via JDBC and writes the data to Cloud Sp
 
 Currently, this template works for tables of any size on the follow sources
 * MySQL 8.0+ - String (upto 3 byte characters), Integer like (up to BigInteger
-* including unsigned) and Binary/VarBinary primary keys.
+including unsigned) and Binary/VarBinary primary keys.
 * MySQL 5.7+ - Integer like (up to BigInteger including unsigned) and
-* Binary/VarBinary primary keys.
+Binary/VarBinary primary keys.
 * PostgreSQL 13+ - String (upto 3 byte characters) and Integer like (up to
 BigInteger including unsigned) primary keys.
 
