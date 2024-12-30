@@ -168,7 +168,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
       checks[iterationCount] =
           SpannerRowsCheck.builder(spannerResourceManager, entry.getKey())
               .setMinRows(entry.getValue())
-              // .setMaxRows(entry.getValue())
+              .setMaxRows(entry.getValue())
               .build();
       iterationCount++;
     }

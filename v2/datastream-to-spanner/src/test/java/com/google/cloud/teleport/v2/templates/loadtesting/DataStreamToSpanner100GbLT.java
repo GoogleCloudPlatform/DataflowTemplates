@@ -36,7 +36,7 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
     setUpResourceManagers("DataStreamToSpanner100GbLT/spanner-schema.sql");
     HashMap<String, Integer> tables100GB = new HashMap<>();
     for (int i = 1; i <= 10; i++) {
-      tables100GB.put("person" + i, 0);
+      tables100GB.put("person" + i, 6500000);
     }
 
     // Setup Datastream
