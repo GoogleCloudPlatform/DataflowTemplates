@@ -25,7 +25,7 @@ public class CassandraShard extends Shard {
   private final DriverConfigLoader configLoader;
 
   public CassandraShard(DriverConfigLoader configLoader) {
-    super(null, null, null, null, null, null, null, null, null);
+    super();
     this.configLoader = configLoader;
     validateFields();
     extractAndSetHostAndPort();

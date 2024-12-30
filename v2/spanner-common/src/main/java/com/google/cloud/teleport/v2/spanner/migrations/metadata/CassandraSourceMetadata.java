@@ -130,17 +130,20 @@ public class CassandraSourceMetadata {
     return sourceSchema.tables().entrySet().stream()
         .collect(
             Collectors.toMap(
-                Map.Entry::getKey, entry -> convertSourceTableToSourceTable(entry.getValue())));
+                Map.Entry::getKey,
+                entry -> convertSourceTableToSchemaSourceTable(entry.getValue())));
   }
 
   /**
-   * Converts a {@link SourceTable} to a {@link SourceTable} for Spanner.
+   * Converts a {@link SourceTable} to a {@link
+   * com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable} for Spanner.
    *
    * @param sourceTable The SourceTable to convert.
-   * @return A converted {@link SourceTable} object suitable for Spanner.
+   * @return A converted {@link com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable}
+   *     object suitable for Spanner Schema.
    */
   private com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable
-      convertSourceTableToSourceTable(SourceTable sourceTable) {
+      convertSourceTableToSchemaSourceTable(SourceTable sourceTable) {
     List<SourceColumn> columns = sourceTable.columns();
 
     String[] colIds = columns.stream().map(SourceColumn::name).toArray(String[]::new);
