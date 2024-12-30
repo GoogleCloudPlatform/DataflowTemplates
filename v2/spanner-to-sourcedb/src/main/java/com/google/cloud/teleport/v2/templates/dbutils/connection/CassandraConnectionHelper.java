@@ -139,7 +139,6 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
     DriverConfigLoader configLoader = cassandraShard.getConfigLoader();
     configLoader.getInitialConfig();
     builder.withConfigLoader(configLoader);
-
     return builder.build();
   }
 

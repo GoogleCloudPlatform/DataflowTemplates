@@ -68,31 +68,6 @@ public class CassandraShard extends Shard {
     return getProfile().getString(DefaultDriverOption.SESSION_KEYSPACE);
   }
 
-  public String getConsistencyLevel() {
-    return getProfile().getString(DefaultDriverOption.REQUEST_CONSISTENCY, "LOCAL_QUORUM");
-  }
-
-  public boolean isSslEnabled() {
-    return getProfile().getBoolean(DefaultDriverOption.SSL_ENGINE_FACTORY_CLASS, false);
-  }
-
-  public String getProtocolVersion() {
-    return getProfile().getString(DefaultDriverOption.PROTOCOL_VERSION, "V5");
-  }
-
-  public String getDataCenter() {
-    return getProfile()
-        .getString(DefaultDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, "datacenter1");
-  }
-
-  public int getLocalPoolSize() {
-    return getProfile().getInt(DefaultDriverOption.CONNECTION_POOL_LOCAL_SIZE, 1024);
-  }
-
-  public int getRemotePoolSize() {
-    return getProfile().getInt(DefaultDriverOption.CONNECTION_POOL_REMOTE_SIZE, 256);
-  }
-
   public DriverConfigLoader getConfigLoader() {
     return configLoader;
   }
@@ -109,17 +84,7 @@ public class CassandraShard extends Shard {
   public String toString() {
     return String.format(
         "CassandraShard{logicalShardId='%s', contactPoints=%s, keyspace='%s', consistencyLevel='%s', sslOptions=%b, protocolVersion='%s', dataCenter='%s', localPoolSize=%d, remotePoolSize=%d, host='%s', port='%s'}",
-        getLogicalShardId(),
-        getContactPoints(),
-        getKeySpaceName(),
-        getConsistencyLevel(),
-        isSslEnabled(),
-        getProtocolVersion(),
-        getDataCenter(),
-        getLocalPoolSize(),
-        getRemotePoolSize(),
-        getHost(),
-        getPort());
+        getLogicalShardId(), getContactPoints(), getKeySpaceName(), getHost(), getPort());
   }
 
   @Override
@@ -128,25 +93,11 @@ public class CassandraShard extends Shard {
     if (!(o instanceof CassandraShard)) return false;
     CassandraShard that = (CassandraShard) o;
     return Objects.equals(getContactPoints(), that.getContactPoints())
-        && Objects.equals(getKeySpaceName(), that.getKeySpaceName())
-        && Objects.equals(getConsistencyLevel(), that.getConsistencyLevel())
-        && Objects.equals(isSslEnabled(), that.isSslEnabled())
-        && Objects.equals(getProtocolVersion(), that.getProtocolVersion())
-        && Objects.equals(getDataCenter(), that.getDataCenter())
-        && Objects.equals(getLocalPoolSize(), that.getLocalPoolSize())
-        && Objects.equals(getRemotePoolSize(), that.getRemotePoolSize());
+        && Objects.equals(getKeySpaceName(), that.getKeySpaceName());
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        getContactPoints(),
-        getKeySpaceName(),
-        getConsistencyLevel(),
-        isSslEnabled(),
-        getProtocolVersion(),
-        getDataCenter(),
-        getLocalPoolSize(),
-        getRemotePoolSize());
+    return Objects.hash(getContactPoints(), getKeySpaceName());
   }
 }
