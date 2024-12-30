@@ -92,10 +92,6 @@ public class SourceProcessorFactoryTest {
     Mockito.when(mockCassandraShard.getContactPoints()).thenReturn(List.of("localhost:9042"));
     Mockito.when(mockCassandraShard.getKeySpaceName()).thenReturn("mydatabase");
     Mockito.when(mockCassandraShard.getLogicalShardId()).thenReturn("shard1");
-    Mockito.when(mockCassandraShard.getConsistencyLevel()).thenReturn("LOCAL_QUORUM");
-    Mockito.when(mockCassandraShard.getProtocolVersion()).thenReturn("v5");
-    Mockito.when(mockCassandraShard.getLocalPoolSize()).thenReturn(1024);
-    Mockito.when(mockCassandraShard.getRemotePoolSize()).thenReturn(1024);
 
     List<Shard> shards = List.of(mockCassandraShard);
     int maxConnections = 10;
