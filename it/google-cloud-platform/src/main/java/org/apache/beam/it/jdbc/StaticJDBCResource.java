@@ -64,6 +64,7 @@ public abstract class StaticJDBCResource {
 
   public abstract String getJDBCPrefix();
 
+  // TODO: exclude the StaticJDBCResource files from the codecov checks
   public String getconnectionURL() {
     return String.format("jdbc:%s://%s:%d/%s", getJDBCPrefix(), hostname, port, database);
   }

@@ -33,7 +33,7 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
 
   @Test
-  public void backfill100Gb() throws IOException, ParseException, InterruptedException {
+  public void mySQLToSpannerBulk1TBTest() throws IOException, ParseException, InterruptedException {
     String username =
         accessSecret(
             "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-username/versions/1");
