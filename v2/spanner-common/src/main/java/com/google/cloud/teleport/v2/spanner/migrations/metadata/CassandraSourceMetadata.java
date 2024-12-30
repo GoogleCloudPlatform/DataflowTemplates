@@ -15,71 +15,71 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.metadata;
 
-import autovalue.shaded.com.google.common.collect.ImmutableList;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.cassandra.SourceColumn;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.cassandra.SourceSchema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.cassandra.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * The {@code CassandraSourceMetadata} class is responsible for extracting metadata from a Cassandra
- * schema based on CQL (Cassandra Query Language) session information, transforming it into a format
- * that is compatible with Spanner, and providing methods for converting and managing this metadata.
- * This transformation is crucial for facilitating the migration of data between Spanner and
- * Cassandra, ensuring that the schema structure, including tables, columns, data types, and primary
- * key information, is accurately mapped and usable for data migration operations.
+ * The {@code CassandraSourceMetadata} class is responsible for generating metadata from a Cassandra
+ * schema using a {@link ResultSet}, converting it into a Spanner-compatible format, and managing
+ * this metadata to facilitate schema migration operations.
  *
- * <p>This class leverages the ResultSet obtained from executing CQL queries to gather the necessary
- * schema information from Cassandra, such as table names, column names, column data types, and
- * whether columns are primary keys. The schema is then transformed into a format suitable for
- * Spanner, taking into account the different structures and conventions between the two systems.
- *
- * <p>The main tasks performed by this class include:
+ * <p>This class supports the following functionalities:
  *
  * <ul>
- *   <li>Extracting Cassandra schema details from CQL ResultSet, such as tables, columns, and
- *       primary key definitions.
- *   <li>Converting this schema into a Spanner-compatible structure, including column definitions
- *       and primary key handling.
- *   <li>Providing helper methods to convert the schema into a format that can be integrated into
- *       Spanner's migration process.
+ *   <li>Extracting table, column, and primary key information from Cassandra's schema.
+ *   <li>Converting Cassandra schema details into Spanner-compatible objects like {@link
+ *       SourceTable}.
+ *   <li>Updating a provided {@link Schema} instance with the extracted metadata.
  * </ul>
  *
- * This class serves as a key component in the data migration pipeline for moving data from
- * Cassandra to Spanner, particularly in cases where schema conversion and data type mapping are
- * required as part of the migration process.
+ * <p>The metadata extraction process uses the {@link ResultSet} containing the schema details from
+ * Cassandra, such as table names, column definitions, data types, and primary key details.
  *
- * <p>It is important to note that this class does not interact with the actual Cassandra database
- * but instead relies on CQL ResultSet data that is passed to it, enabling it to operate in a
- * decoupled manner and simplifying integration into the migration flow.
+ * <p><strong>Note:</strong> This class does not perform direct database interactions; it relies on
+ * a pre-populated {@link ResultSet}.
  */
 public class CassandraSourceMetadata {
 
   private final Schema schema;
   private final ResultSet resultSet;
 
+  /**
+   * Private constructor to initialize {@link CassandraSourceMetadata}.
+   *
+   * @param resultSet The {@link ResultSet} containing Cassandra schema metadata. Cannot be null.
+   * @param schema The {@link Schema} instance to update with metadata. Cannot be null.
+   */
   private CassandraSourceMetadata(ResultSet resultSet, Schema schema) {
-    this.resultSet = resultSet;
-    this.schema = schema;
+    this.resultSet = Objects.requireNonNull(resultSet, "ResultSet cannot be null");
+    this.schema = Objects.requireNonNull(schema, "Schema cannot be null");
   }
 
   /**
-   * Generates a {@link SourceSchema} from a Cassandra {@link ResultSet}.
+   * Generates a map of table names to {@link SourceTable} objects, representing the schema of the
+   * Cassandra source in a Spanner-compatible format.
    *
-   * @return A {@link SourceSchema} instance representing the schema of the Cassandra source.
+   * @return A map where keys are table names and values are {@link SourceTable} objects containing
+   *     schema details.
    */
-  public SourceSchema generateSourceSchema() {
-    Map<String, Map<String, SourceColumn>> schemaMap = new HashMap<>();
+  public Map<String, SourceTable> generateSourceSchema() {
+    Map<String, Map<String, SourceColumnDefinition>> colDefinitions = new HashMap<>();
+    Map<String, List<ColumnPK>> columnPKs = new HashMap<>();
+    Map<String, List<String>> columnIds = new HashMap<>();
+    Set<String> tableNames = new HashSet<>();
 
     resultSet.forEach(
         row -> {
@@ -88,104 +88,68 @@ public class CassandraSourceMetadata {
           String dataType = row.getString("type");
           String kind = row.getString("kind");
 
-          boolean isPrimaryKey = isPrimaryKey(kind);
-          SourceColumn sourceColumn = SourceColumn.create(columnName, kind, dataType, isPrimaryKey);
+          tableNames.add(tableName);
 
-          schemaMap.computeIfAbsent(tableName, k -> new HashMap<>()).put(columnName, sourceColumn);
+          colDefinitions
+              .computeIfAbsent(tableName, k -> new HashMap<>())
+              .put(
+                  columnName,
+                  new SourceColumnDefinition(
+                      columnName, new SourceColumnType(dataType, new Long[0], new Long[0])));
+
+          if (isPrimaryKey(kind)) {
+            columnPKs
+                .computeIfAbsent(tableName, k -> new ArrayList<>())
+                .add(new ColumnPK(columnName, getPrimaryKeyOrder(kind)));
+          }
+
+          columnIds.computeIfAbsent(tableName, k -> new ArrayList<>()).add(columnName);
         });
 
-    Map<String, SourceTable> tables =
-        schemaMap.entrySet().stream()
-            .collect(
-                Collectors.toMap(
-                    Map.Entry::getKey,
-                    entry ->
-                        SourceTable.create(
-                            entry.getKey(), ImmutableList.copyOf(entry.getValue().values()))));
-
-    return SourceSchema.create(Map.copyOf(tables));
-  }
-
-  /**
-   * Converts a {@link ResultSet} to a {@link Schema} object, updating the provided schema with the
-   * transformed Cassandra schema.
-   */
-  public void generateAndSetSourceSchema() {
-    SourceSchema sourceSchema = generateSourceSchema();
-    Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable> sourceTableMap =
-        convertSourceSchemaToMap(sourceSchema);
-    schema.setSrcSchema(sourceTableMap);
-    schema.setToSource(convertSourceToNameAndColsTable(sourceSchema.tables().values()));
-  }
-
-  /**
-   * Converts a {@link SourceSchema} to a map of Spanner table names to {@link SourceTable} objects.
-   *
-   * @param sourceSchema The SourceSchema to convert.
-   * @return A map where the key is the table name and the value is the corresponding {@link
-   *     SourceTable}.
-   */
-  private Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable>
-      convertSourceSchemaToMap(SourceSchema sourceSchema) {
-    return sourceSchema.tables().entrySet().stream()
+    return tableNames.stream()
         .collect(
             Collectors.toMap(
-                Map.Entry::getKey,
-                entry -> convertSourceTableToSchemaSourceTable(entry.getValue())));
+                tableName -> tableName,
+                tableName ->
+                    new SourceTable(
+                        tableName,
+                        null,
+                        columnIds.getOrDefault(tableName, List.of()).toArray(new String[0]),
+                        colDefinitions.getOrDefault(tableName, Map.of()),
+                        columnPKs.getOrDefault(tableName, List.of()).toArray(new ColumnPK[0]))));
   }
 
   /**
-   * Converts a {@link SourceTable} to a {@link
-   * com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable} for Spanner.
+   * Updates the provided {@link Schema} with metadata generated from the Cassandra {@link
+   * ResultSet}.
    *
-   * @param sourceTable The SourceTable to convert.
-   * @return A converted {@link com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable}
-   *     object suitable for Spanner Schema.
+   * <p>This method extracts schema details, transforms them into Spanner-compatible objects, and
+   * sets the corresponding properties in the provided {@link Schema}.
    */
-  private com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable
-      convertSourceTableToSchemaSourceTable(SourceTable sourceTable) {
-    List<SourceColumn> columns = sourceTable.columns();
-
-    String[] colIds = columns.stream().map(SourceColumn::name).toArray(String[]::new);
-
-    Map<String, SourceColumnDefinition> colDefs =
-        columns.stream()
-            .collect(
-                Collectors.toMap(
-                    SourceColumn::name,
-                    col ->
-                        new SourceColumnDefinition(
-                            col.name(),
-                            new SourceColumnType(col.sourceType(), new Long[0], new Long[0]))));
-
-    ColumnPK[] primaryKeys =
-        columns.stream()
-            .filter(SourceColumn::isPrimaryKey)
-            .map(col -> new ColumnPK(col.name(), getPrimaryKeyOrder(col)))
-            .toArray(ColumnPK[]::new);
-
-    return new com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable(
-        sourceTable.name(), null, colIds, colDefs, primaryKeys);
+  public void generateAndSetSourceSchema() {
+    Map<String, SourceTable> sourceTableMap = generateSourceSchema();
+    schema.setSrcSchema(sourceTableMap);
+    schema.setToSource(convertSourceToNameAndColsTable(sourceTableMap.values()));
   }
 
   /**
-   * Determines if a column is a primary key based on its kind.
+   * Determines whether a column is part of the primary key based on its kind.
    *
-   * @param kind The column kind (e.g., "partition_key" or "clustering").
-   * @return true if the column is a primary key, false otherwise.
+   * @param kind The column kind, such as "partition_key" or "clustering".
+   * @return {@code true} if the column is a primary key; {@code false} otherwise.
    */
   private boolean isPrimaryKey(String kind) {
     return "partition_key".equals(kind) || "clustering".equals(kind);
   }
 
   /**
-   * Gets the order of the primary key column.
+   * Determines the primary key order based on its kind.
    *
-   * @param col The {@link SourceColumn} representing the primary key column.
-   * @return The order of the primary key.
+   * @param kind The kind of primary key (e.g., "partition_key" or "clustering").
+   * @return An integer indicating the order of the key (e.g., 1 for "partition_key").
    */
-  private int getPrimaryKeyOrder(SourceColumn col) {
-    switch (col.kind()) {
+  private int getPrimaryKeyOrder(String kind) {
+    switch (kind) {
       case "partition_key":
         return 1;
       case "clustering":
@@ -196,48 +160,72 @@ public class CassandraSourceMetadata {
   }
 
   /**
-   * Converts a collection of {@link SourceTable} objects to a map of table names to {@link
+   * Converts a collection of {@link SourceTable} objects into a map of table names to {@link
    * NameAndCols}.
    *
-   * @param tables A collection of {@link SourceTable} objects.
-   * @return A map where the key is the table name and the value is a {@link NameAndCols} object.
+   * @param tables A collection of {@link SourceTable} objects representing the Cassandra schema.
+   * @return A map where keys are table names and values are {@link NameAndCols}.
    */
   private Map<String, NameAndCols> convertSourceToNameAndColsTable(Collection<SourceTable> tables) {
     return tables.stream()
         .collect(
             Collectors.toMap(
-                SourceTable::name, CassandraSourceMetadata::convertSourceTableToNameAndCols));
+                SourceTable::getName, CassandraSourceMetadata::convertSourceTableToNameAndCols));
   }
 
   /**
-   * Converts a {@link SourceTable} to a {@link NameAndCols} object.
+   * Converts a single {@link SourceTable} into a {@link NameAndCols} instance.
    *
    * @param sourceTable The {@link SourceTable} to convert.
-   * @return A {@link NameAndCols} object representing the table and its column names.
+   * @return A {@link NameAndCols} object containing the table name and column names.
    */
   private static NameAndCols convertSourceTableToNameAndCols(SourceTable sourceTable) {
     Map<String, String> columnNames =
-        sourceTable.columns().stream()
-            .collect(Collectors.toMap(SourceColumn::name, SourceColumn::name));
+        sourceTable.getColDefs().values().stream()
+            .collect(
+                Collectors.toMap(SourceColumnDefinition::getName, SourceColumnDefinition::getName));
 
-    return new NameAndCols(sourceTable.name(), columnNames);
+    return new NameAndCols(sourceTable.getName(), columnNames);
   }
 
-  /** Builder class for {@link CassandraSourceMetadata}. */
+  /**
+   * Builder class for creating instances of {@link CassandraSourceMetadata}.
+   *
+   * <p>The builder allows for incremental configuration of the {@link ResultSet} and {@link Schema}
+   * before constructing the final {@link CassandraSourceMetadata} instance.
+   */
   public static class Builder {
     private ResultSet resultSet;
     private Schema schema;
 
+    /**
+     * Sets the {@link Schema} for the builder.
+     *
+     * @param schema The {@link Schema} to be used in the metadata generation.
+     * @return The current {@link Builder} instance.
+     */
     public Builder setSchema(Schema schema) {
       this.schema = schema;
       return this;
     }
 
+    /**
+     * Sets the {@link ResultSet} for the builder.
+     *
+     * @param resultSet The {@link ResultSet} containing Cassandra schema information.
+     * @return The current {@link Builder} instance.
+     */
     public Builder setResultSet(ResultSet resultSet) {
       this.resultSet = resultSet;
       return this;
     }
 
+    /**
+     * Builds an instance of {@link CassandraSourceMetadata}, generating and setting the schema
+     * metadata.
+     *
+     * @return A fully constructed {@link CassandraSourceMetadata} instance.
+     */
     public CassandraSourceMetadata build() {
       CassandraSourceMetadata cassandraSourceMetadata =
           new CassandraSourceMetadata(resultSet, schema);

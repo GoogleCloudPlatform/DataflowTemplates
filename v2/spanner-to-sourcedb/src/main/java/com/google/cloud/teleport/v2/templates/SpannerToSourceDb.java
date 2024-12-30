@@ -635,7 +635,7 @@ public class SpannerToSourceDb {
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
                         options.getMaxShardConnections()
-                            * shards.size()))) // currently assuming that all mySqlShards
+                            * shards.size()))) // currently assuming that all shards accept the same
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
