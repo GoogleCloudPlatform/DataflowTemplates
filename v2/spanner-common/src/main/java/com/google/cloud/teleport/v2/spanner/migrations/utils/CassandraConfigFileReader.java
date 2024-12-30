@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
-import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import java.io.IOException;
@@ -42,9 +42,9 @@ public class CassandraConfigFileReader {
   public List<Shard> getCassandraShard(String cassandraConfigFilePath) {
     try {
       LOG.info("Reading Cassandra configuration from: {}", cassandraConfigFilePath);
-      DriverConfigLoader configLoader =
-          CassandraDriverConfigLoader.loadFile(cassandraConfigFilePath);
-      CassandraShard shard = new CassandraShard(configLoader);
+      OptionsMap optionsMap =
+          CassandraDriverConfigLoader.getOptionsMapFromFile(cassandraConfigFilePath);
+      CassandraShard shard = new CassandraShard(optionsMap);
       LOG.info("Successfully created CassandraShard: {}", shard);
       return Collections.singletonList(shard);
     } catch (IOException e) {

@@ -15,18 +15,17 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.shard;
 
-import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
-import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
-import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import java.util.List;
 import java.util.Objects;
 
 public class CassandraShard extends Shard {
-  private final DriverConfigLoader configLoader;
+  private final OptionsMap optionsMap;
 
-  public CassandraShard(DriverConfigLoader configLoader) {
+  public CassandraShard(OptionsMap optionsMap) {
     super();
-    this.configLoader = configLoader;
+    this.optionsMap = optionsMap;
     validateFields();
     extractAndSetHostAndPort();
   }
@@ -55,35 +54,39 @@ public class CassandraShard extends Shard {
     setPort(port);
   }
 
-  private DriverExecutionProfile getProfile() {
-    return configLoader.getInitialConfig().getDefaultProfile();
+  private String getOptionValue(TypedDriverOption<String> key) {
+    return optionsMap.get(key);
   }
 
-  // Getters that fetch data from DriverConfigLoader
+  private List<String> getOptionValueList(TypedDriverOption<List<String>> key) {
+    return optionsMap.get(key);
+  }
+
+  // Getters that fetch data from OptionsMap
   public List<String> getContactPoints() {
-    return getProfile().getStringList(DefaultDriverOption.CONTACT_POINTS);
+    return getOptionValueList(TypedDriverOption.CONTACT_POINTS);
   }
 
   public String getKeySpaceName() {
-    return getProfile().getString(DefaultDriverOption.SESSION_KEYSPACE);
-  }
-
-  public DriverConfigLoader getConfigLoader() {
-    return configLoader;
+    return getOptionValue(TypedDriverOption.SESSION_KEYSPACE);
   }
 
   public String getUsername() {
-    return getProfile().getString(DefaultDriverOption.AUTH_PROVIDER_USER_NAME);
+    return getOptionValue(TypedDriverOption.AUTH_PROVIDER_USER_NAME);
   }
 
   public String getPassword() {
-    return getProfile().getString(DefaultDriverOption.AUTH_PROVIDER_PASSWORD);
+    return getOptionValue(TypedDriverOption.AUTH_PROVIDER_PASSWORD);
+  }
+
+  public OptionsMap getOptionsMap() {
+    return this.optionsMap;
   }
 
   @Override
   public String toString() {
     return String.format(
-        "CassandraShard{logicalShardId='%s', contactPoints=%s, keyspace='%s', consistencyLevel='%s', sslOptions=%b, protocolVersion='%s', dataCenter='%s', localPoolSize=%d, remotePoolSize=%d, host='%s', port='%s'}",
+        "CassandraShard{logicalShardId='%s', contactPoints=%s, keyspace='%s', host='%s', port='%s'}",
         getLogicalShardId(), getContactPoints(), getKeySpaceName(), getHost(), getPort());
   }
 
