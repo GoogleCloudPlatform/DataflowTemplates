@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.PreparedStatement;
@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.cassandra.CassandraIO.Read;
+import org.apache.beam.sdk.io.localcassandra.LocalCassandraIO.Read;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Joiner;
 import org.slf4j.Logger;
@@ -108,7 +108,7 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
         (spec.query() == null)
             ? buildInitialQuery(spec, true) + highestClause
             : spec.query() + getJoinerClause(spec.query().get()) + highestClause;
-    LOG.debug("CassandraIO generated a wrapAround query : {}", finalHighQuery);
+    LOG.debug("LocalCassandraIO generated a wrapAround query : {}", finalHighQuery);
     return finalHighQuery;
   }
 
@@ -118,7 +118,7 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
         (spec.query() == null)
             ? buildInitialQuery(spec, true) + lowestClause
             : spec.query() + getJoinerClause(spec.query().get()) + lowestClause;
-    LOG.debug("CassandraIO generated a wrapAround query : {}", finalLowQuery);
+    LOG.debug("LocalCassandraIO generated a wrapAround query : {}", finalLowQuery);
     return finalLowQuery;
   }
 
@@ -133,7 +133,7 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
                     String.format("(token(%s) < ?)", partitionKey))
             : "";
     final String combinedQuery = buildInitialQuery(spec, hasRingRange) + rangeFilter;
-    LOG.debug("CassandraIO generated query : {}", combinedQuery);
+    LOG.debug("LocalCassandraIO generated query : {}", combinedQuery);
     return combinedQuery;
   }
 

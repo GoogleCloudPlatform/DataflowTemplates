@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkState;
@@ -65,7 +65,7 @@ import org.slf4j.LoggerFactory;
  *
  * <h3>Reading from Apache Cassandra</h3>
  *
- * <p>{@code CassandraIO} provides a source to read and returns a bounded collection of entities as
+ * <p>{@code LocalCassandraIO} provides a source to read and returns a bounded collection of entities as
  * {@code PCollection<Entity>}. An entity is built by Cassandra mapper ({@code
  * com.datastax.driver.mapping.EntityMapper}) based on a POJO containing annotations (as described
  * http://docs.datastax .com/en/developer/java-driver/2.1/manual/object_mapper/creating/").
@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * <p>The following example illustrates various options for configuring the IO:
  *
  * <pre>{@code
- * pipeline.apply(CassandraIO.<Person>read()
+ * pipeline.apply(LocalCassandraIO.<Person>read()
  *     .withHosts(Arrays.asList("host1", "host2"))
  *     .withPort(9042)
  *     .withKeyspace("beam")
@@ -84,21 +84,21 @@ import org.slf4j.LoggerFactory;
  *
  * }</pre>
  *
- * <p>Alternatively, one may use {@code CassandraIO.<Person>readAll()
+ * <p>Alternatively, one may use {@code LocalCassandraIO.<Person>readAll()
  * .withCoder(SerializableCoder.of(Person.class))} to query a subset of the Cassandra database by
- * creating a PCollection of {@code CassandraIO.Read<Person>} each with their own query or
+ * creating a PCollection of {@code LocalCassandraIO.Read<Person>} each with their own query or
  * RingRange.
  *
  * <h3>Writing to Apache Cassandra</h3>
  *
- * <p>{@code CassandraIO} provides a sink to write a collection of entities to Apache Cassandra.
+ * <p>{@code LocalCassandraIO} provides a sink to write a collection of entities to Apache Cassandra.
  *
  * <p>The following example illustrates various options for configuring the IO write:
  *
  * <pre>{@code
  * pipeline
  *    .apply(...) // provides a PCollection<Person> where Person is an entity
- *    .apply(CassandraIO.<Person>write()
+ *    .apply(LocalCassandraIO.<Person>write()
  *        .withHosts(Arrays.asList("host1", "host2"))
  *        .withPort(9042)
  *        .withKeyspace("beam")
@@ -110,7 +110,7 @@ import org.slf4j.LoggerFactory;
  * <p>The following example illustrates setting timeouts for the Cassandra client:
  *
  * <pre>{@code
- * pipeline.apply(CassandraIO.<Person>read()
+ * pipeline.apply(LocalCassandraIO.<Person>read()
  *     .withHosts(Arrays.asList("host1", "host2"))
  *     .withPort(9042)
  *     .withConnectTimeout(1000)
@@ -125,20 +125,20 @@ import org.slf4j.LoggerFactory;
   "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
-public class CassandraIO {
+public class LocalCassandraIO {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CassandraIO.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LocalCassandraIO.class);
 
-  private CassandraIO() {}
+  private LocalCassandraIO() {}
 
   /** Provide a {@link Read} {@link PTransform} to read data from a Cassandra database. */
   public static <T> Read<T> read() {
-    return new AutoValue_CassandraIO_Read.Builder<T>().build();
+    return new AutoValue_LocalCassandraIO_Read.Builder<T>().build();
   }
 
   /** Provide a {@link ReadAll} {@link PTransform} to read data from a Cassandra database. */
   public static <T> ReadAll<T> readAll() {
-    return new AutoValue_CassandraIO_ReadAll.Builder<T>().build();
+    return new AutoValue_LocalCassandraIO_ReadAll.Builder<T>().build();
   }
 
   /** Provide a {@link Write} {@link PTransform} to write data to a Cassandra database. */
@@ -152,7 +152,7 @@ public class CassandraIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link CassandraIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link LocalCassandraIO} for more
    * information on usage and configuration.
    */
   @AutoValue
@@ -255,7 +255,7 @@ public class CassandraIO {
     }
 
     /**
-     * Specify the entity class (annotated POJO). The {@link CassandraIO} will read the data and
+     * Specify the entity class (annotated POJO). The {@link LocalCassandraIO} will read the data and
      * convert the data as entity instances. The {@link PCollection} resulting from the read will
      * contains entity elements.
      */
@@ -377,7 +377,7 @@ public class CassandraIO {
     public Read<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactory) {
       checkArgument(
           mapperFactory != null,
-          "CassandraIO.withMapperFactory" + "(withMapperFactory) called with null value");
+          "LocalCassandraIO.withMapperFactory" + "(withMapperFactory) called with null value");
       return builder().setMapperFactoryFn(mapperFactory).build();
     }
 
@@ -419,13 +419,13 @@ public class CassandraIO {
               .apply("Create Splits", ParDo.of(new SplitFn<T>()))
               .setCoder(SerializableCoder.of(new TypeDescriptor<Read<T>>() {}));
 
-      return splits.apply("ReadAll", CassandraIO.<T>readAll().withCoder(coder()));
+      return splits.apply("ReadAll", LocalCassandraIO.<T>readAll().withCoder(coder()));
     }
 
     private static class SplitFn<T> extends DoFn<Read<T>, Read<T>> {
       @ProcessElement
       public void process(
-          @Element CassandraIO.Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
+          @Element Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
         Set<RingRange> ringRanges = getRingRanges(read);
         for (RingRange rr : ringRanges) {
           outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
@@ -536,7 +536,7 @@ public class CassandraIO {
   }
 
   /**
-   * A {@link PTransform} to mutate into Apache Cassandra. See {@link CassandraIO} for details on
+   * A {@link PTransform} to mutate into Apache Cassandra. See {@link LocalCassandraIO} for details on
    * usage and configuration.
    */
   @AutoValue
@@ -573,17 +573,17 @@ public class CassandraIO {
     abstract Builder<T> builder();
 
     static <T> Builder<T> builder(MutationType mutationType) {
-      return new AutoValue_CassandraIO_Write.Builder<T>().setMutationType(mutationType);
+      return new AutoValue_LocalCassandraIO_Write.Builder<T>().setMutationType(mutationType);
     }
 
     /** Specify the Cassandra instance hosts where to write data. */
     public Write<T> withHosts(List<String> hosts) {
       checkArgument(
           hosts != null,
-          "CassandraIO." + getMutationTypeName() + "().withHosts(hosts) called with null hosts");
+          "LocalCassandraIO." + getMutationTypeName() + "().withHosts(hosts) called with null hosts");
       checkArgument(
           !hosts.isEmpty(),
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withHosts(hosts) called with empty "
               + "hosts list");
@@ -599,7 +599,7 @@ public class CassandraIO {
     public Write<T> withPort(int port) {
       checkArgument(
           port > 0,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withPort(port) called with invalid port "
               + "number (%s)",
@@ -616,7 +616,7 @@ public class CassandraIO {
     public Write<T> withKeyspace(String keyspace) {
       checkArgument(
           keyspace != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withKeyspace(keyspace) called with "
               + "null keyspace");
@@ -629,13 +629,13 @@ public class CassandraIO {
     }
 
     /**
-     * Specify the entity class in the input {@link PCollection}. The {@link CassandraIO} will map
+     * Specify the entity class in the input {@link PCollection}. The {@link LocalCassandraIO} will map
      * this entity to the Cassandra table thanks to the annotations.
      */
     public Write<T> withEntity(Class<T> entity) {
       checkArgument(
           entity != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withEntity(entity) called with null "
               + "entity");
@@ -646,7 +646,7 @@ public class CassandraIO {
     public Write<T> withUsername(String username) {
       checkArgument(
           username != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withUsername(username) called with "
               + "null username");
@@ -662,7 +662,7 @@ public class CassandraIO {
     public Write<T> withPassword(String password) {
       checkArgument(
           password != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withPassword(password) called with "
               + "null password");
@@ -678,7 +678,7 @@ public class CassandraIO {
     public Write<T> withLocalDc(String localDc) {
       checkArgument(
           localDc != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withLocalDc(localDc) called with null"
               + " localDc");
@@ -694,7 +694,7 @@ public class CassandraIO {
     public Write<T> withConsistencyLevel(String consistencyLevel) {
       checkArgument(
           consistencyLevel != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withConsistencyLevel"
               + "(consistencyLevel) called with null consistencyLevel");
@@ -710,7 +710,7 @@ public class CassandraIO {
     public Write<T> withConnectTimeout(Integer timeout) {
       checkArgument(
           (timeout != null && timeout > 0),
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withConnectTimeout(timeout) called with invalid timeout "
               + "number (%s)",
@@ -727,7 +727,7 @@ public class CassandraIO {
     public Write<T> withReadTimeout(Integer timeout) {
       checkArgument(
           (timeout != null && timeout > 0),
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().withReadTimeout(timeout) called with invalid timeout "
               + "number (%s)",
@@ -743,7 +743,7 @@ public class CassandraIO {
     public Write<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn) {
       checkArgument(
           mapperFactoryFn != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "().mapperFactoryFn"
               + "(mapperFactoryFn) called with null value");
@@ -770,24 +770,24 @@ public class CassandraIO {
     public void validate(PipelineOptions pipelineOptions) {
       checkState(
           hosts() != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "() requires a list of hosts to be set via withHosts(hosts)");
       checkState(
           port() != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "() requires a "
               + "valid port number to be set via withPort(port)");
       checkState(
           keyspace() != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "() requires a keyspace to be set via "
               + "withKeyspace(keyspace)");
       checkState(
           entity() != null,
-          "CassandraIO."
+          "LocalCassandraIO."
               + getMutationTypeName()
               + "() requires an entity to be set via "
               + "withEntity(entity)");
@@ -1045,7 +1045,7 @@ public class CassandraIO {
   }
 
   /**
-   * A {@link PTransform} to read data from Apache Cassandra. See {@link CassandraIO} for more
+   * A {@link PTransform} to read data from Apache Cassandra. See {@link LocalCassandraIO} for more
    * information on usage and configuration.
    */
   @AutoValue

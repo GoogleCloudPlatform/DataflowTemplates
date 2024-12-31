@@ -15,13 +15,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.Session;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.beam.sdk.io.cassandra.CassandraIO.Read;
+import org.apache.beam.sdk.io.localcassandra.LocalCassandraIO.Read;
 import org.apache.beam.sdk.options.ValueProvider;
 
 @SuppressWarnings({
@@ -63,7 +63,7 @@ public class ConnectionManager {
         clusterMap.computeIfAbsent(
             readToClusterHash(read),
             k ->
-                CassandraIO.getCluster(
+                LocalCassandraIO.getCluster(
                     Objects.requireNonNull(read.hosts()),
                     Objects.requireNonNull(read.port()),
                     read.username(),
