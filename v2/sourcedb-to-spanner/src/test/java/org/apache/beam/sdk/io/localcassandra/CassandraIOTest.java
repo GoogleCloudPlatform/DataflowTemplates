@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
@@ -28,20 +28,16 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TypeCodec;
-import com.datastax.driver.core.exceptions.NoHostAvailableException;
 import com.datastax.driver.mapping.annotations.ClusteringColumn;
 import com.datastax.driver.mapping.annotations.Column;
 import com.datastax.driver.mapping.annotations.Computed;
 import com.datastax.driver.mapping.annotations.PartitionKey;
 import com.datastax.driver.mapping.annotations.Table;
-import info.archinnov.achilles.embedded.CassandraEmbeddedServerBuilder;
-import info.archinnov.achilles.embedded.CassandraShutDownHook;
-import java.io.IOException;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.EmbeddedCassandra;
 import java.io.Serializable;
 import java.math.BigInteger;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -53,13 +49,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
-import javax.management.JMX;
-import javax.management.MBeanServerConnection;
-import javax.management.ObjectName;
-import javax.management.remote.JMXConnector;
-import javax.management.remote.JMXConnectorFactory;
-import javax.management.remote.JMXServiceURL;
 import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.io.cassandra.Mapper;
 import org.apache.beam.sdk.io.common.NetworkTestHelper;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.PAssert;
@@ -74,14 +65,11 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Objects;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.util.concurrent.ListeningExecutorService;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.util.concurrent.MoreExecutors;
-import org.apache.cassandra.service.StorageServiceMBean;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
@@ -95,7 +83,8 @@ import org.slf4j.LoggerFactory;
 public class CassandraIOTest implements Serializable {
   private static final long NUM_ROWS = 22L;
   private static final String CASSANDRA_KEYSPACE = "beam_ks";
-  private static final String CASSANDRA_HOST = "127.0.0.1";
+  private static String cassandraHost = "127.0.0.1";
+  private static InetSocketAddress cassandraInetSocketAddress;
   private static final String CASSANDRA_TABLE = "scientist";
   private static final String CASSANDRA_TABLE_SIMPLEDATA = "simpledata";
   private static final Logger LOG = LoggerFactory.getLogger(CassandraIOTest.class);
@@ -104,83 +93,49 @@ public class CassandraIOTest implements Serializable {
   private static final int JMX_CONF_TIMEOUT = 1000;
   private static int jmxPort;
   private static int cassandraPort;
-
+  private static EmbeddedCassandra embeddedCassandra;
   private static Cluster cluster;
   private static Session session;
+  @Rule
+  public transient TestPipeline pipeline = TestPipeline.create();
 
-  @ClassRule public static final TemporaryFolder TEMPORARY_FOLDER = new TemporaryFolder();
-  @Rule public transient TestPipeline pipeline = TestPipeline.create();
-  private static CassandraShutDownHook shutdownHook;
-
+  /**
+   * Setup Function for {@link CassandraIOTest}.
+   * Note on Local Change:
+   * The apache Beam's ut uses achilles-embedded Cassandra UT framework, that does not work for newer versions of Java.
+   * We are replacing the Cassandra Instance of `achilles-embedded` with the newer `nosan/embedded-cassandra` unit test framework which is already being used.
+   * Both the frameworks spawn a Cassandra node demon duing the UT letting us test without the need for mocks.
+   * The newer framework does not need the overrides to disable auto compaction and flush memtables on the test instance, which is what the original beam's test needs to do.
+   * @throws Exception
+   */
   @BeforeClass
   public static void beforeClass() throws Exception {
+    embeddedCassandra = new EmbeddedCassandra("/CassandraUT/beamUTConfig.yaml", null, false);
     jmxPort = NetworkTestHelper.getAvailableLocalPort();
-    shutdownHook = new CassandraShutDownHook();
-    String data = TEMPORARY_FOLDER.newFolder("data").getAbsolutePath();
-    String commitLog = TEMPORARY_FOLDER.newFolder("commit-log").getAbsolutePath();
-    String cdcRaw = TEMPORARY_FOLDER.newFolder("cdc-raw").getAbsolutePath();
-    String hints = TEMPORARY_FOLDER.newFolder("hints").getAbsolutePath();
-    String savedCache = TEMPORARY_FOLDER.newFolder("saved-cache").getAbsolutePath();
-    Files.createDirectories(Paths.get(savedCache));
-    CassandraEmbeddedServerBuilder builder =
-        CassandraEmbeddedServerBuilder.builder()
-            .withKeyspaceName(CASSANDRA_KEYSPACE)
-            .withDataFolder(data)
-            .withCommitLogFolder(commitLog)
-            .withCdcRawFolder(cdcRaw)
-            .withHintsFolder(hints)
-            .withSavedCachesFolder(savedCache)
-            .withShutdownHook(shutdownHook)
-            // randomized CQL port at startup
-            .withJMXPort(jmxPort)
-            .cleanDataFilesAtStartup(false);
+    cassandraInetSocketAddress = embeddedCassandra.getContactPoints().get(0);
+    cassandraHost = cassandraInetSocketAddress.getHostString();
 
-    // under load we get a NoHostAvailable exception at cluster creation,
-    // so retry to create it every 1 sec up to 3 times.
-    cluster = buildCluster(builder);
+    cluster = Cluster.builder()
+        .addContactPointsWithPorts(cassandraInetSocketAddress)
+        .withClusterName(embeddedCassandra.getClusterName())
+        .withoutJMXReporting()
+        .build();
 
-    cassandraPort = cluster.getConfiguration().getProtocolOptions().getPort();
+    cassandraPort = embeddedCassandra.getEmbeddedCassandra().getSettings().getPort();
     session = CassandraIOTest.cluster.newSession();
     insertData();
-    disableAutoCompaction();
   }
 
-  private static Cluster buildCluster(CassandraEmbeddedServerBuilder builder) {
-    int tried = 0;
-    int delay = 5000;
-    Exception exception = null;
-    while (tried < 5) {
-      try {
-        return builder.buildNativeCluster();
-      } catch (NoHostAvailableException e) {
-        if (exception == null) {
-          exception = e;
-        } else {
-          exception.addSuppressed(e);
-        }
-        tried++;
-        try {
-          Thread.sleep(delay);
-        } catch (InterruptedException e1) {
-          Thread thread = Thread.currentThread();
-          thread.interrupt();
-          throw new RuntimeException(String.format("Thread %s was interrupted", thread.getName()));
-        }
-      }
-    }
-    throw new RuntimeException(
-        String.format(
-            "Unable to create embedded Cassandra cluster: tried %d times with %d delay",
-            tried, delay),
-        exception);
-  }
 
   @AfterClass
-  public static void afterClass() throws InterruptedException, IOException {
-    shutdownHook.shutDownNow();
+  public static void afterClass() throws Exception {
+    embeddedCassandra.close();
+    embeddedCassandra = null;
   }
 
   private static void insertData() throws Exception {
+    LOG.info("Create Cassandra Keyspace");
+    session.execute("CREATE KEYSPACE IF NOT EXISTS beam_ks WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1};");
     LOG.info("Create Cassandra tables");
     session.execute(
         String.format(
@@ -236,57 +191,9 @@ public class CassandraIOTest implements Serializable {
       session.execute(insertStr);
     }
 
-    flushMemTablesAndRefreshSizeEstimates();
   }
 
-  /**
-   * Force the flush of cassandra memTables to SSTables to update size_estimates.
-   * https://wiki.apache.org/cassandra/MemtableSSTable This is what cassandra spark connector does
-   * through nodetool binary call. See:
-   * https://github.com/datastax/spark-cassandra-connector/blob/master/spark-cassandra-connector
-   * /src/it/scala/com/datastax/spark/connector/rdd/partitioner/DataSizeEstimatesSpec.scala which
-   * uses the same JMX service as bellow. See:
-   * https://github.com/apache/cassandra/blob/cassandra-3.X
-   * /src/java/org/apache/cassandra/tools/nodetool/Flush.java
-   */
-  @SuppressWarnings("unused")
-  private static void flushMemTablesAndRefreshSizeEstimates() throws Exception {
-    JMXServiceURL url =
-        new JMXServiceURL(
-            String.format(
-                "service:jmx:rmi://%s/jndi/rmi://%s:%s/jmxrmi",
-                CASSANDRA_HOST, CASSANDRA_HOST, jmxPort));
-    JMXConnector jmxConnector = JMXConnectorFactory.connect(url, null);
-    MBeanServerConnection mBeanServerConnection = jmxConnector.getMBeanServerConnection();
-    ObjectName objectName = new ObjectName(STORAGE_SERVICE_MBEAN);
-    StorageServiceMBean mBeanProxy =
-        JMX.newMBeanProxy(mBeanServerConnection, objectName, StorageServiceMBean.class);
-    mBeanProxy.forceKeyspaceFlush(CASSANDRA_KEYSPACE, CASSANDRA_TABLE);
-    mBeanProxy.refreshSizeEstimates();
-    jmxConnector.close();
-    Thread.sleep(FLUSH_TIMEOUT);
-  }
 
-  /**
-   * Disable auto compaction on embedded cassandra host, to avoid race condition in temporary files
-   * cleaning.
-   */
-  @SuppressWarnings("unused")
-  private static void disableAutoCompaction() throws Exception {
-    JMXServiceURL url =
-        new JMXServiceURL(
-            String.format(
-                "service:jmx:rmi://%s/jndi/rmi://%s:%s/jmxrmi",
-                CASSANDRA_HOST, CASSANDRA_HOST, jmxPort));
-    JMXConnector jmxConnector = JMXConnectorFactory.connect(url, null);
-    MBeanServerConnection mBeanServerConnection = jmxConnector.getMBeanServerConnection();
-    ObjectName objectName = new ObjectName(STORAGE_SERVICE_MBEAN);
-    StorageServiceMBean mBeanProxy =
-        JMX.newMBeanProxy(mBeanServerConnection, objectName, StorageServiceMBean.class);
-    mBeanProxy.disableAutoCompaction(CASSANDRA_KEYSPACE, CASSANDRA_TABLE);
-    jmxConnector.close();
-    Thread.sleep(JMX_CONF_TIMEOUT);
-  }
 
   /*
    Since we have enough data we will be able to detect if any get put in the ring range that wraps around
@@ -296,7 +203,7 @@ public class CassandraIOTest implements Serializable {
     PCollection<SimpleData> simpledataPCollection =
         pipeline.apply(
             CassandraIO.<SimpleData>read()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withTable(CASSANDRA_TABLE_SIMPLEDATA)
@@ -322,7 +229,7 @@ public class CassandraIOTest implements Serializable {
     PCollection<Scientist> output =
         pipeline.apply(
             CassandraIO.<Scientist>read()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withTable(CASSANDRA_TABLE)
@@ -356,9 +263,10 @@ public class CassandraIOTest implements Serializable {
     pipeline.run();
   }
 
-  private CassandraIO.Read<Scientist> getReadWithRingRange(RingRange... rr) {
+  private CassandraIO.Read<Scientist> getReadWithRingRange(
+      RingRange... rr) {
     return CassandraIO.<Scientist>read()
-        .withHosts(Collections.singletonList(CASSANDRA_HOST))
+        .withHosts(Collections.singletonList(cassandraHost))
         .withPort(cassandraPort)
         .withRingRanges(new HashSet<>(Arrays.asList(rr)))
         .withKeyspace(CASSANDRA_KEYSPACE)
@@ -369,7 +277,7 @@ public class CassandraIOTest implements Serializable {
 
   private CassandraIO.Read<Scientist> getReadWithQuery(String query) {
     return CassandraIO.<Scientist>read()
-        .withHosts(Collections.singletonList(CASSANDRA_HOST))
+        .withHosts(Collections.singletonList(cassandraHost))
         .withPort(cassandraPort)
         .withQuery(query)
         .withKeyspace(CASSANDRA_KEYSPACE)
@@ -467,7 +375,7 @@ public class CassandraIOTest implements Serializable {
     PCollection<Scientist> output =
         pipeline.apply(
             CassandraIO.<Scientist>read()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withTable(CASSANDRA_TABLE)
@@ -522,7 +430,7 @@ public class CassandraIOTest implements Serializable {
     PCollection<Scientist> output =
         pipeline.apply(
             CassandraIO.<Scientist>read()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withTable(CASSANDRA_TABLE)
@@ -555,7 +463,7 @@ public class CassandraIOTest implements Serializable {
     PCollection<Scientist> output =
         pipeline.apply(
             CassandraIO.<Scientist>read()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withTable(CASSANDRA_TABLE)
@@ -588,7 +496,7 @@ public class CassandraIOTest implements Serializable {
     PCollection<Scientist> output =
         pipeline.apply(
             CassandraIO.<Scientist>read()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withTable(CASSANDRA_TABLE)
@@ -626,7 +534,7 @@ public class CassandraIOTest implements Serializable {
         .apply(Create.of(data))
         .apply(
             CassandraIO.<ScientistWrite>write()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withEntity(ScientistWrite.class));
@@ -651,7 +559,8 @@ public class CassandraIOTest implements Serializable {
     }
   }
 
-  private static class NOOPMapper implements Mapper<String>, Serializable {
+  private static class NOOPMapper implements
+      Mapper<String>, Serializable {
 
     private final ListeningExecutorService executor =
         MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(10));
@@ -687,7 +596,7 @@ public class CassandraIOTest implements Serializable {
 
     pipeline.apply(
         CassandraIO.<String>read()
-            .withHosts(Collections.singletonList(CASSANDRA_HOST))
+            .withHosts(Collections.singletonList(cassandraHost))
             .withPort(cassandraPort)
             .withKeyspace(CASSANDRA_KEYSPACE)
             .withTable(CASSANDRA_TABLE)
@@ -709,7 +618,7 @@ public class CassandraIOTest implements Serializable {
         .apply(Create.of(""))
         .apply(
             CassandraIO.<String>write()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withMapperFactoryFn(factory)
@@ -729,7 +638,7 @@ public class CassandraIOTest implements Serializable {
         .apply(Create.of(""))
         .apply(
             CassandraIO.<String>delete()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withMapperFactoryFn(factory)
@@ -759,7 +668,7 @@ public class CassandraIOTest implements Serializable {
         .apply(Create.of(einstein))
         .apply(
             CassandraIO.<Scientist>delete()
-                .withHosts(Collections.singletonList(CASSANDRA_HOST))
+                .withHosts(Collections.singletonList(cassandraHost))
                 .withPort(cassandraPort)
                 .withKeyspace(CASSANDRA_KEYSPACE)
                 .withEntity(Scientist.class));

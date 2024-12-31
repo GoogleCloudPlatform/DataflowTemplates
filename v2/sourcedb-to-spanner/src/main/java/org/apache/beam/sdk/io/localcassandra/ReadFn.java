@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import com.datastax.driver.core.ColumnMetadata;
 import com.datastax.driver.core.PreparedStatement;
@@ -27,7 +27,8 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.cassandra.CassandraIO.Read;
+import org.apache.beam.sdk.io.cassandra.Mapper;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO.Read;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Joiner;
 import org.slf4j.Logger;

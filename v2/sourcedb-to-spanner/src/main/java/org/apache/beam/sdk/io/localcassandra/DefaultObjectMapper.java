@@ -15,19 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import com.datastax.driver.core.ResultSet;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.concurrent.Future;
+import org.apache.beam.sdk.io.cassandra.Mapper;
 
 /**
  * Default Object mapper implementation that uses the <a
  * href="https://docs.datastax.com/en/developer/java-driver/3.1/manual/object_mapper">Cassandra
  * Object Mapper</a> for mapping POJOs to CRUD events in Cassandra.
  *
- * @see org.apache.beam.sdk.io.cassandra.DefaultObjectMapperFactory
+ * @see DefaultObjectMapperFactory
  */
 @SuppressWarnings({
   "rawtypes" // TODO(https://github.com/apache/beam/issues/20447)
