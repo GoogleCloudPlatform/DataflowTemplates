@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.sdk.io.cassandra;
+package org.apache.beam.sdk.io.localcassandra;
 
 import com.datastax.driver.core.Session;
 import com.datastax.driver.mapping.MappingManager;
@@ -25,7 +25,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  * Factory implementation that CassandraIO uses to initialize the Default Object Mapper for mapping
  * POJOs to CRUD events in Cassandra.
  *
- * @see org.apache.beam.sdk.io.cassandra.DefaultObjectMapper
+ * @see DefaultObjectMapper
  */
 @SuppressWarnings({
   "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
