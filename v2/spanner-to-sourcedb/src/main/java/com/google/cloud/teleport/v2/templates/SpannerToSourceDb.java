@@ -525,7 +525,7 @@ public class SpannerToSourceDb {
     }
     List<Shard> shards;
     String shardingMode;
-    if ("mysql".equals(options.getSourceType())) {
+    if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
       ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
       shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;

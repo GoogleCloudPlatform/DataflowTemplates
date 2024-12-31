@@ -75,7 +75,7 @@ public class CassandraSourceMetadata {
    * @return A map where keys are table names and values are {@link SourceTable} objects containing
    *     schema details.
    */
-  public Map<String, SourceTable> generateSourceSchema() {
+  private Map<String, SourceTable> generateSourceSchema() {
     Map<String, Map<String, SourceColumnDefinition>> colDefinitions = new HashMap<>();
     Map<String, List<ColumnPK>> columnPKs = new HashMap<>();
     Map<String, List<String>> columnIds = new HashMap<>();
@@ -151,9 +151,7 @@ public class CassandraSourceMetadata {
    */
   private Map<String, NameAndCols> convertSourceToNameAndColsTable(Collection<SourceTable> tables) {
     return tables.stream()
-        .collect(
-            Collectors.toMap(
-                SourceTable::getName, CassandraSourceMetadata::convertSourceTableToNameAndCols));
+        .collect(Collectors.toMap(SourceTable::getName, this::convertSourceTableToNameAndCols));
   }
 
   /**
@@ -162,7 +160,7 @@ public class CassandraSourceMetadata {
    * @param sourceTable The {@link SourceTable} to convert.
    * @return A {@link NameAndCols} object containing the table name and column names.
    */
-  private static NameAndCols convertSourceTableToNameAndCols(SourceTable sourceTable) {
+  private NameAndCols convertSourceTableToNameAndCols(SourceTable sourceTable) {
     Map<String, String> columnNames =
         sourceTable.getColDefs().values().stream()
             .collect(

@@ -75,10 +75,6 @@ public class CassandraShard extends Shard {
     return getOptionValue(TypedDriverOption.AUTH_PROVIDER_USER_NAME);
   }
 
-  public String getPassword() {
-    return getOptionValue(TypedDriverOption.AUTH_PROVIDER_PASSWORD);
-  }
-
   public OptionsMap getOptionsMap() {
     return this.optionsMap;
   }
