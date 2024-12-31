@@ -92,8 +92,12 @@ public class CassandraShard extends Shard {
 
   @Override
   public boolean equals(Object o) {
-    if (this == o) return true;
-    if (!(o instanceof CassandraShard)) return false;
+    if (this == o) {
+      return true;
+    }
+    if (!(o instanceof CassandraShard)) {
+      return false;
+    }
     CassandraShard that = (CassandraShard) o;
     return Objects.equals(getContactPoints(), that.getContactPoints())
         && Objects.equals(getKeySpaceName(), that.getKeySpaceName());
