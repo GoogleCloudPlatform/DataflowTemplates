@@ -212,14 +212,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
               ResultSet resultSet =
                   ((CassandraDao) sourceDao)
                       .readMetadata(((CassandraShard) shards.get(0)).getKeySpaceName());
-              if (resultSet != null) {
-                new CassandraSourceMetadata.Builder()
-                    .setSchema(schema)
-                    .setResultSet(resultSet)
-                    .build();
-              } else {
-                throw new InvalidTransformationException("No Cassandra Source Schema Available");
-              }
+              new CassandraSourceMetadata.Builder()
+                  .setSchema(schema)
+                  .setResultSet(resultSet)
+                  .build();
             }
           }
 

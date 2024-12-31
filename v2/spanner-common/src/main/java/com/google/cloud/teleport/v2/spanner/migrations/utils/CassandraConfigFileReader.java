@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.spanner.migrations.utils;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import java.io.IOException;
+import java.io.FileNotFoundException;
 import java.util.Collections;
 import java.util.List;
 import org.slf4j.Logger;
@@ -47,13 +47,9 @@ public class CassandraConfigFileReader {
       CassandraShard shard = new CassandraShard(optionsMap);
       LOG.info("Successfully created CassandraShard: {}", shard);
       return Collections.singletonList(shard);
-    } catch (IOException e) {
-      String errorMessage =
-          String.format(
-              "Failed to read Cassandra config file from path: %s. Ensure it exists, is accessible, and is properly formatted.",
-              cassandraConfigFilePath);
-      LOG.error(errorMessage, e);
-      throw new RuntimeException(errorMessage, e);
+    } catch (FileNotFoundException e) {
+      throw new IllegalArgumentException(
+          "Configuration file not found: " + cassandraConfigFilePath, e);
     }
   }
 }

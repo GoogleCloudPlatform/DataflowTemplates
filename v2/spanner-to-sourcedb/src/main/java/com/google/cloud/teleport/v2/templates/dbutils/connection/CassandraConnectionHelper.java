@@ -23,7 +23,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -138,7 +137,6 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
     CqlSessionBuilder builder = CqlSession.builder();
     DriverConfigLoader configLoader =
         CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
-    configLoader.getInitialConfig();
     builder.withConfigLoader(configLoader);
     return builder.build();
   }
@@ -153,29 +151,6 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
     return String.format(
         "%s:%s/%s/%s",
         shard.getHost(), shard.getPort(), shard.getUserName(), shard.getKeySpaceName());
-  }
-
-  /**
-   * Loads the Cassandra driver configuration from the specified file path.
-   *
-   * <p>This method uses the provided `configFilePath` to load the Cassandra driver configuration
-   * using the {@link CassandraDriverConfigLoader}. If the configuration file is not found, an error
-   * is logged, and a {@link RuntimeException} is thrown.
-   *
-   * @param configFilePath The path to the Cassandra driver configuration file. This should be a
-   *     valid path pointing to a configuration file (e.g., "gs://path/to/cassandra_config.yaml").
-   * @return A {@link DriverConfigLoader} that contains the loaded Cassandra driver configuration.
-   * @throws RuntimeException If an error occurs while loading the configuration (e.g., if the file
-   *     is not found). The underlying {@link FileNotFoundException} will be wrapped in a {@link
-   *     RuntimeException}.
-   */
-  private DriverConfigLoader loadDriverConfig(String configFilePath) {
-    try {
-      return CassandraDriverConfigLoader.loadFile(configFilePath);
-    } catch (FileNotFoundException e) {
-      LOG.error("Could not load Cassandra driver configuration from path: {}", configFilePath, e);
-      throw new RuntimeException("Error loading Cassandra configuration", e);
-    }
   }
 
   /**
