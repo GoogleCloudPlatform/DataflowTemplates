@@ -37,15 +37,15 @@ import org.slf4j.LoggerFactory;
   "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
-class ReadFn<T> extends DoFn<Read<T>, T> {
+class LocalReadFn<T> extends DoFn<Read<T>, T> {
 
-  private static final Logger LOG = LoggerFactory.getLogger(ReadFn.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LocalReadFn.class);
 
   @ProcessElement
   public void processElement(@Element Read<T> read, OutputReceiver<T> receiver) {
     try {
-      Session session = ConnectionManager.getSession(read);
-      Mapper<T> mapper = read.mapperFactoryFn().apply(session);
+      Session session = LocalConnectionManager.getSession(read);
+      LocalMapper<T> localMapper = read.mapperFactoryFn().apply(session);
       String partitionKey =
           session.getCluster().getMetadata().getKeyspace(read.keyspace().get())
               .getTable(read.table().get()).getPartitionKey().stream()
@@ -54,10 +54,10 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
 
       String query = generateRangeQuery(read, partitionKey, read.ringRanges() != null);
       PreparedStatement preparedStatement = session.prepare(query);
-      Set<RingRange> ringRanges =
+      Set<LocalRingRange> localRingRanges =
           read.ringRanges() == null ? Collections.emptySet() : read.ringRanges().get();
 
-      for (RingRange rr : ringRanges) {
+      for (LocalRingRange rr : localRingRanges) {
         Token startToken = session.getCluster().getMetadata().newToken(rr.getStart().toString());
         Token endToken = session.getCluster().getMetadata().newToken(rr.getEnd().toString());
         if (rr.isWrapping()) {
@@ -70,22 +70,22 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
           outputResults(
               session.execute(getLowestSplitQuery(read, partitionKey, rr.getEnd())),
               receiver,
-              mapper);
+              localMapper);
           outputResults(
               session.execute(getHighestSplitQuery(read, partitionKey, rr.getStart())),
               receiver,
-              mapper);
+              localMapper);
         } else {
           ResultSet rs =
               session.execute(
                   preparedStatement.bind().setToken(0, startToken).setToken(1, endToken));
-          outputResults(rs, receiver, mapper);
+          outputResults(rs, receiver, localMapper);
         }
       }
 
       if (read.ringRanges() == null) {
         ResultSet rs = session.execute(preparedStatement.bind());
-        outputResults(rs, receiver, mapper);
+        outputResults(rs, receiver, localMapper);
       }
     } catch (Exception ex) {
       LOG.error("error", ex);
@@ -93,8 +93,8 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
   }
 
   private static <T> void outputResults(
-      ResultSet rs, OutputReceiver<T> outputReceiver, Mapper<T> mapper) {
-    Iterator<T> iter = mapper.map(rs);
+      ResultSet rs, OutputReceiver<T> outputReceiver, LocalMapper<T> localMapper) {
+    Iterator<T> iter = localMapper.map(rs);
     while (iter.hasNext()) {
       T n = iter.next();
       outputReceiver.output(n);

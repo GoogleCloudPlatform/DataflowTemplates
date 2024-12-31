@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.Test;
 
-/** Tests on {@link SplitGenerator}. */
+/** Tests on {@link LocalSplitGenerator}. */
 public final class SplitGeneratorTest {
 
   @Test
@@ -42,8 +42,8 @@ public final class SplitGeneratorTest {
             .map(BigInteger::new)
             .collect(Collectors.toList());
 
-    SplitGenerator generator = new SplitGenerator("foo.bar.RandomPartitioner");
-    List<List<RingRange>> segments = generator.generateSplits(10, tokens);
+    LocalSplitGenerator generator = new LocalSplitGenerator("foo.bar.RandomPartitioner");
+    List<List<LocalRingRange>> segments = generator.generateSplits(10, tokens);
 
     assertEquals(12, segments.size());
     assertEquals("[(0,1], (1,14178431955039102644307275309657008811]]", segments.get(0).toString());
@@ -91,7 +91,7 @@ public final class SplitGeneratorTest {
     List<BigInteger> tokens =
         tokenStrings.stream().map(BigInteger::new).collect(Collectors.toList());
 
-    SplitGenerator generator = new SplitGenerator("foo.bar.RandomPartitioner");
+    LocalSplitGenerator generator = new LocalSplitGenerator("foo.bar.RandomPartitioner");
     generator.generateSplits(10, tokens);
   }
 
@@ -109,8 +109,8 @@ public final class SplitGeneratorTest {
     List<BigInteger> tokens =
         tokenStrings.stream().map(BigInteger::new).collect(Collectors.toList());
 
-    SplitGenerator generator = new SplitGenerator("foo.bar.RandomPartitioner");
-    List<List<RingRange>> segments = generator.generateSplits(5, tokens);
+    LocalSplitGenerator generator = new LocalSplitGenerator("foo.bar.RandomPartitioner");
+    List<List<LocalRingRange>> segments = generator.generateSplits(5, tokens);
     assertEquals(6, segments.size());
     assertEquals(
         "[(85070591730234615865843651857942052863,113427455640312821154458202477256070484],"
@@ -137,7 +137,7 @@ public final class SplitGeneratorTest {
     List<BigInteger> tokens =
         tokenStrings.stream().map(BigInteger::new).collect(Collectors.toList());
 
-    SplitGenerator generator = new SplitGenerator("foo.bar.RandomPartitioner");
+    LocalSplitGenerator generator = new LocalSplitGenerator("foo.bar.RandomPartitioner");
     generator.generateSplits(10, tokens);
     // Will throw an exception when concluding that the repair segments don't add up.
     // This is because the tokens were supplied out of order.

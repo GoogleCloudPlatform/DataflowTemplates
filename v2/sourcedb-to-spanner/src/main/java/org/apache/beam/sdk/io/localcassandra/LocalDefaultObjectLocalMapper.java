@@ -25,18 +25,18 @@ import java.util.concurrent.Future;
 /**
  * Default Object mapper implementation that uses the <a
  * href="https://docs.datastax.com/en/developer/java-driver/3.1/manual/object_mapper">Cassandra
- * Object Mapper</a> for mapping POJOs to CRUD events in Cassandra.
+ * Object LocalMapper</a> for mapping POJOs to CRUD events in Cassandra.
  *
- * @see DefaultObjectMapperFactory
+ * @see LocalDefaultObjectMapperFactory
  */
 @SuppressWarnings({
   "rawtypes" // TODO(https://github.com/apache/beam/issues/20447)
 })
-class DefaultObjectMapper<T> implements Mapper<T>, Serializable {
+class LocalDefaultObjectLocalMapper<T> implements LocalMapper<T>, Serializable {
 
   private final transient com.datastax.driver.mapping.Mapper<T> mapper;
 
-  DefaultObjectMapper(com.datastax.driver.mapping.Mapper mapper) {
+  LocalDefaultObjectLocalMapper(com.datastax.driver.mapping.Mapper mapper) {
     this.mapper = mapper;
   }
 

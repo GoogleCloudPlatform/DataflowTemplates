@@ -22,30 +22,30 @@ import com.datastax.driver.mapping.MappingManager;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 
 /**
- * Factory implementation that LocalCassandraIO uses to initialize the Default Object Mapper for mapping
+ * Factory implementation that LocalCassandraIO uses to initialize the Default Object LocalMapper for mapping
  * POJOs to CRUD events in Cassandra.
  *
- * @see DefaultObjectMapper
+ * @see LocalDefaultObjectLocalMapper
  */
 @SuppressWarnings({
   "rawtypes", // TODO(https://github.com/apache/beam/issues/20447)
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
-class DefaultObjectMapperFactory<T> implements SerializableFunction<Session, Mapper> {
+class LocalDefaultObjectMapperFactory<T> implements SerializableFunction<Session, LocalMapper> {
 
   private transient MappingManager mappingManager;
   final Class<T> entity;
 
-  DefaultObjectMapperFactory(Class<T> entity) {
+  LocalDefaultObjectMapperFactory(Class<T> entity) {
     this.entity = entity;
   }
 
   @Override
-  public Mapper apply(Session session) {
+  public LocalMapper apply(Session session) {
     if (mappingManager == null) {
       this.mappingManager = new MappingManager(session);
     }
 
-    return new DefaultObjectMapper<T>(mappingManager.mapper(entity));
+    return new LocalDefaultObjectLocalMapper<T>(mappingManager.mapper(entity));
   }
 }

@@ -263,7 +263,7 @@ public class LocalCassandraIOTest implements Serializable {
   }
 
   private LocalCassandraIO.Read<Scientist> getReadWithRingRange(
-      RingRange... rr) {
+      LocalRingRange... rr) {
     return LocalCassandraIO.<Scientist>read()
         .withHosts(Collections.singletonList(cassandraHost))
         .withPort(cassandraPort)
@@ -319,15 +319,15 @@ public class LocalCassandraIOTest implements Serializable {
 
   @Test
   public void testReadAllRingRange() {
-    RingRange physRR =
+    LocalRingRange physRR =
         fromEncodedKey(
             cluster.getMetadata(), TypeCodec.varchar().serialize("phys", ProtocolVersion.V3));
 
-    RingRange mathRR =
+    LocalRingRange mathRR =
         fromEncodedKey(
             cluster.getMetadata(), TypeCodec.varchar().serialize("math", ProtocolVersion.V3));
 
-    RingRange logicRR =
+    LocalRingRange logicRR =
         fromEncodedKey(
             cluster.getMetadata(), TypeCodec.varchar().serialize("logic", ProtocolVersion.V3));
 
@@ -399,7 +399,7 @@ public class LocalCassandraIOTest implements Serializable {
 
   /**
    * Create a mock value provider class that tests how the query gets expanded in
-   * LocalCassandraIO.ReadFn.
+   * LocalCassandraIO.LocalReadFn.
    */
   static class MockQueryProvider implements ValueProvider<String> {
     private volatile String query;
@@ -550,16 +550,16 @@ public class LocalCassandraIOTest implements Serializable {
 
   private static final AtomicInteger counter = new AtomicInteger();
 
-  private static class NOOPMapperFactory implements SerializableFunction<Session, Mapper> {
+  private static class NOOPMapperFactory implements SerializableFunction<Session, LocalMapper> {
 
     @Override
-    public Mapper apply(Session input) {
-      return new NOOPMapper();
+    public LocalMapper apply(Session input) {
+      return new NOOPLocalMapper();
     }
   }
 
-  private static class NOOPMapper implements
-      Mapper<String>, Serializable {
+  private static class NOOPLocalMapper implements
+      LocalMapper<String>, Serializable {
 
     private final ListeningExecutorService executor =
         MoreExecutors.listeningDecorator(Executors.newFixedThreadPool(10));
@@ -591,7 +591,7 @@ public class LocalCassandraIOTest implements Serializable {
   public void testReadWithMapper() throws Exception {
     counter.set(0);
 
-    SerializableFunction<Session, Mapper> factory = new NOOPMapperFactory();
+    SerializableFunction<Session, LocalMapper> factory = new NOOPMapperFactory();
 
     pipeline.apply(
         LocalCassandraIO.<String>read()
@@ -611,7 +611,7 @@ public class LocalCassandraIOTest implements Serializable {
   public void testCustomMapperImplWrite() throws Exception {
     counter.set(0);
 
-    SerializableFunction<Session, Mapper> factory = new NOOPMapperFactory();
+    SerializableFunction<Session, LocalMapper> factory = new NOOPMapperFactory();
 
     pipeline
         .apply(Create.of(""))
@@ -631,7 +631,7 @@ public class LocalCassandraIOTest implements Serializable {
   public void testCustomMapperImplDelete() {
     counter.set(0);
 
-    SerializableFunction<Session, Mapper> factory = new NOOPMapperFactory();
+    SerializableFunction<Session, LocalMapper> factory = new NOOPMapperFactory();
 
     pipeline
         .apply(Create.of(""))
@@ -743,9 +743,9 @@ public class LocalCassandraIOTest implements Serializable {
     }
   }
 
-  private static RingRange fromEncodedKey(Metadata metadata, ByteBuffer... bb) {
+  private static LocalRingRange fromEncodedKey(Metadata metadata, ByteBuffer... bb) {
     BigInteger bi = BigInteger.valueOf((long) metadata.newToken(bb).getValue());
-    return RingRange.of(bi, bi.add(BigInteger.valueOf(1L)));
+    return LocalRingRange.of(bi, bi.add(BigInteger.valueOf(1L)));
   }
 
   private static final String CASSANDRA_TABLE_WRITE = "scientist_write";

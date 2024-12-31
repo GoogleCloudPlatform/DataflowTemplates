@@ -87,7 +87,7 @@ import org.slf4j.LoggerFactory;
  * <p>Alternatively, one may use {@code LocalCassandraIO.<Person>readAll()
  * .withCoder(SerializableCoder.of(Person.class))} to query a subset of the Cassandra database by
  * creating a PCollection of {@code LocalCassandraIO.Read<Person>} each with their own query or
- * RingRange.
+ * LocalRingRange.
  *
  * <h3>Writing to Apache Cassandra</h3>
  *
@@ -188,10 +188,10 @@ public class LocalCassandraIO {
 
     abstract @Nullable ValueProvider<Integer> readTimeout();
 
-    abstract @Nullable SerializableFunction<Session, Mapper> mapperFactoryFn();
+    abstract @Nullable SerializableFunction<Session, LocalMapper> mapperFactoryFn();
 
     @Nullable
-    abstract ValueProvider<Set<RingRange>> ringRanges();
+    abstract ValueProvider<Set<LocalRingRange>> ringRanges();
 
     @Nullable
     abstract ValueProvider<SSLOptions> sslOptions();
@@ -371,21 +371,21 @@ public class LocalCassandraIO {
     }
 
     /**
-     * A factory to create a specific {@link Mapper} for a given Cassandra Session. This is useful
+     * A factory to create a specific {@link LocalMapper} for a given Cassandra Session. This is useful
      * to provide mappers that don't rely in Cassandra annotated objects.
      */
-    public Read<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactory) {
+    public Read<T> withMapperFactoryFn(SerializableFunction<Session, LocalMapper> mapperFactory) {
       checkArgument(
           mapperFactory != null,
           "LocalCassandraIO.withMapperFactory" + "(withMapperFactory) called with null value");
       return builder().setMapperFactoryFn(mapperFactory).build();
     }
 
-    public Read<T> withRingRanges(Set<RingRange> ringRange) {
-      return withRingRanges(ValueProvider.StaticValueProvider.of(ringRange));
+    public Read<T> withRingRanges(Set<LocalRingRange> localRingRange) {
+      return withRingRanges(ValueProvider.StaticValueProvider.of(localRingRange));
     }
 
-    public Read<T> withRingRanges(ValueProvider<Set<RingRange>> ringRange) {
+    public Read<T> withRingRanges(ValueProvider<Set<LocalRingRange>> ringRange) {
       return builder().setRingRanges(ringRange).build();
     }
 
@@ -426,13 +426,13 @@ public class LocalCassandraIO {
       @ProcessElement
       public void process(
           @Element Read<T> read, OutputReceiver<Read<T>> outputReceiver) {
-        Set<RingRange> ringRanges = getRingRanges(read);
-        for (RingRange rr : ringRanges) {
+        Set<LocalRingRange> localRingRanges = getRingRanges(read);
+        for (LocalRingRange rr : localRingRanges) {
           outputReceiver.output(read.withRingRanges(ImmutableSet.of(rr)));
         }
       }
 
-      private static <T> Set<RingRange> getRingRanges(Read<T> read) {
+      private static <T> Set<LocalRingRange> getRingRanges(Read<T> read) {
         try (Cluster cluster =
             getCluster(
                 read.hosts(),
@@ -456,10 +456,10 @@ public class LocalCassandraIO {
                 cluster.getMetadata().getTokenRanges().stream()
                     .map(tokenRange -> new BigInteger(tokenRange.getEnd().getValue().toString()))
                     .collect(Collectors.toList());
-            SplitGenerator splitGenerator =
-                new SplitGenerator(cluster.getMetadata().getPartitioner());
+            LocalSplitGenerator localSplitGenerator =
+                new LocalSplitGenerator(cluster.getMetadata().getPartitioner());
 
-            return splitGenerator.generateSplits(splitCount, tokens).stream()
+            return localSplitGenerator.generateSplits(splitCount, tokens).stream()
                 .flatMap(List::stream)
                 .collect(Collectors.toSet());
 
@@ -468,11 +468,11 @@ public class LocalCassandraIO {
                 "Only Murmur3Partitioner is supported for splitting, using an unique source for "
                     + "the read");
             String partitioner = cluster.getMetadata().getPartitioner();
-            RingRange totalRingRange =
-                RingRange.of(
-                    SplitGenerator.getRangeMin(partitioner),
-                    SplitGenerator.getRangeMax(partitioner));
-            return Collections.singleton(totalRingRange);
+            LocalRingRange totalLocalRingRange =
+                LocalRingRange.of(
+                    LocalSplitGenerator.getRangeMin(partitioner),
+                    LocalSplitGenerator.getRangeMax(partitioner));
+            return Collections.singleton(totalLocalRingRange);
           }
         }
       }
@@ -510,11 +510,11 @@ public class LocalCassandraIO {
 
       abstract Builder<T> setReadTimeout(ValueProvider<Integer> timeout);
 
-      abstract Builder<T> setMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn);
+      abstract Builder<T> setMapperFactoryFn(SerializableFunction<Session, LocalMapper> mapperFactoryFn);
 
-      abstract Optional<SerializableFunction<Session, Mapper>> mapperFactoryFn();
+      abstract Optional<SerializableFunction<Session, LocalMapper>> mapperFactoryFn();
 
-      abstract Builder<T> setRingRanges(ValueProvider<Set<RingRange>> ringRange);
+      abstract Builder<T> setRingRanges(ValueProvider<Set<LocalRingRange>> ringRange);
 
       abstract Builder<T> setSslOptions(ValueProvider<SSLOptions> sslOptions);
 
@@ -522,7 +522,7 @@ public class LocalCassandraIO {
 
       public Read<T> build() {
         if (!mapperFactoryFn().isPresent() && entity().isPresent()) {
-          setMapperFactoryFn(new DefaultObjectMapperFactory(entity().get()));
+          setMapperFactoryFn(new LocalDefaultObjectMapperFactory(entity().get()));
         }
         return autoBuild();
       }
@@ -568,7 +568,7 @@ public class LocalCassandraIO {
 
     abstract @Nullable ValueProvider<SSLOptions> sslOptions();
 
-    abstract @Nullable SerializableFunction<Session, Mapper> mapperFactoryFn();
+    abstract @Nullable SerializableFunction<Session, LocalMapper> mapperFactoryFn();
 
     abstract Builder<T> builder();
 
@@ -740,7 +740,7 @@ public class LocalCassandraIO {
       return builder().setReadTimeout(timeout).build();
     }
 
-    public Write<T> withMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn) {
+    public Write<T> withMapperFactoryFn(SerializableFunction<Session, LocalMapper> mapperFactoryFn) {
       checkArgument(
           mapperFactoryFn != null,
           "LocalCassandraIO."
@@ -836,9 +836,9 @@ public class LocalCassandraIO {
 
       abstract Builder<T> setReadTimeout(ValueProvider<Integer> timeout);
 
-      abstract Builder<T> setMapperFactoryFn(SerializableFunction<Session, Mapper> mapperFactoryFn);
+      abstract Builder<T> setMapperFactoryFn(SerializableFunction<Session, LocalMapper> mapperFactoryFn);
 
-      abstract Optional<SerializableFunction<Session, Mapper>> mapperFactoryFn();
+      abstract Optional<SerializableFunction<Session, LocalMapper>> mapperFactoryFn();
 
       abstract Builder<T> setSslOptions(ValueProvider<SSLOptions> sslOptions);
 
@@ -847,7 +847,7 @@ public class LocalCassandraIO {
       public Write<T> build() {
 
         if (!mapperFactoryFn().isPresent() && entity().isPresent()) {
-          setMapperFactoryFn(new DefaultObjectMapperFactory(entity().get()));
+          setMapperFactoryFn(new LocalDefaultObjectMapperFactory(entity().get()));
         }
         return autoBuild();
       }
@@ -864,7 +864,7 @@ public class LocalCassandraIO {
 
     @Setup
     public void setup() {
-      writer = new Mutator<>(spec, Mapper::saveAsync, "writes");
+      writer = new Mutator<>(spec, LocalMapper::saveAsync, "writes");
     }
 
     @ProcessElement
@@ -894,7 +894,7 @@ public class LocalCassandraIO {
 
     @Setup
     public void setup() {
-      deleter = new Mutator<>(spec, Mapper::deleteAsync, "deletes");
+      deleter = new Mutator<>(spec, LocalMapper::deleteAsync, "deletes");
     }
 
     @ProcessElement
@@ -974,12 +974,12 @@ public class LocalCassandraIO {
 
     private final Cluster cluster;
     private final Session session;
-    private final SerializableFunction<Session, Mapper> mapperFactoryFn;
+    private final SerializableFunction<Session, LocalMapper> mapperFactoryFn;
     private List<Future<Void>> mutateFutures;
-    private final BiFunction<Mapper<T>, T, Future<Void>> mutator;
+    private final BiFunction<LocalMapper<T>, T, Future<Void>> mutator;
     private final String operationName;
 
-    Mutator(Write<T> spec, BiFunction<Mapper<T>, T, Future<Void>> mutator, String operationName) {
+    Mutator(Write<T> spec, BiFunction<LocalMapper<T>, T, Future<Void>> mutator, String operationName) {
       this.cluster =
           getCluster(
               spec.hosts(),
@@ -999,15 +999,15 @@ public class LocalCassandraIO {
     }
 
     /**
-     * Mutate the entity to the Cassandra instance, using {@link Mapper} obtained with the Mapper
+     * Mutate the entity to the Cassandra instance, using {@link LocalMapper} obtained with the LocalMapper
      * factory, the DefaultObjectMapperFactory uses {@link
      * com.datastax.driver.mapping.MappingManager}. This method uses {@link
-     * Mapper#saveAsync(Object)} method, which is asynchronous. Beam will wait for all futures to
+     * LocalMapper#saveAsync(Object)} method, which is asynchronous. Beam will wait for all futures to
      * complete, to guarantee all writes have succeeded.
      */
     void mutate(T entity) throws ExecutionException, InterruptedException {
-      Mapper<T> mapper = mapperFactoryFn.apply(session);
-      this.mutateFutures.add(mutator.apply(mapper, entity));
+      LocalMapper<T> localMapper = mapperFactoryFn.apply(session);
+      this.mutateFutures.add(mutator.apply(localMapper, entity));
       if (this.mutateFutures.size() == CONCURRENT_ASYNC_QUERIES) {
         // We reached the max number of allowed in flight queries.
         // Write methods are synchronous in Beam,
@@ -1078,7 +1078,7 @@ public class LocalCassandraIO {
       checkArgument(coder() != null, "withCoder() is required");
       return input
           .apply("Reshuffle", Reshuffle.viaRandomKey())
-          .apply("Read", ParDo.of(new ReadFn<>()))
+          .apply("Read", ParDo.of(new LocalReadFn<>()))
           .setCoder(this.coder());
     }
   }

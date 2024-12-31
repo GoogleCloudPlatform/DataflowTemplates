@@ -26,21 +26,21 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  * This interface allows you to implement a custom mapper to read and persist elements from/to
  * Cassandra.
  *
- * <p>To Implement a custom mapper you need to: 1) Create an implementation of {@link Mapper}. 2)
- * Create a {@link SerializableFunction} that instantiates the {@link Mapper} for a given Session,
- * for an example see {@link DefaultObjectMapperFactory}). 3) Pass this function to {@link
+ * <p>To Implement a custom mapper you need to: 1) Create an implementation of {@link LocalMapper}. 2)
+ * Create a {@link SerializableFunction} that instantiates the {@link LocalMapper} for a given Session,
+ * for an example see {@link LocalDefaultObjectMapperFactory}). 3) Pass this function to {@link
  * LocalCassandraIO.Read#withMapperFactoryFn(SerializableFunction)} in the LocalCassandraIO builder. <br>
  * Example:
  *
  * <pre>{@code
- * SerializableFunction<Session, Mapper> factory = new MyCustomFactory();
+ * SerializableFunction<Session, LocalMapper> factory = new MyCustomFactory();
  * pipeline
  *    .apply(...)
  *    .apply(LocalCassandraIO.<>read()
  *        .withMapperFactoryFn(factory));
  * }</pre>
  */
-public interface Mapper<T> {
+public interface LocalMapper<T> {
 
   /**
    * This method is called when reading data from Cassandra. It should map a ResultSet into the

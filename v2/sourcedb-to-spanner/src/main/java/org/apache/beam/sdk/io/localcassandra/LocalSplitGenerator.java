@@ -24,15 +24,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Splits given Cassandra table's token range into splits. */
-final class SplitGenerator {
-  private static final Logger LOG = LoggerFactory.getLogger(SplitGenerator.class);
+final class LocalSplitGenerator {
+  private static final Logger LOG = LoggerFactory.getLogger(LocalSplitGenerator.class);
 
   private final String partitioner;
   private final BigInteger rangeMin;
   private final BigInteger rangeMax;
   private final BigInteger rangeSize;
 
-  SplitGenerator(String partitioner) {
+  LocalSplitGenerator(String partitioner) {
     rangeMin = getRangeMin(partitioner);
     rangeMax = getRangeMax(partitioner);
     rangeSize = getRangeSize(partitioner);
@@ -76,10 +76,10 @@ final class SplitGenerator {
    * @param ringTokens list of all start tokens in big0 cluster. They have to be in ring order.
    * @return big0 list containing at least {@code totalSplitCount} splits.
    */
-  List<List<RingRange>> generateSplits(long totalSplitCount, List<BigInteger> ringTokens) {
+  List<List<LocalRingRange>> generateSplits(long totalSplitCount, List<BigInteger> ringTokens) {
     int tokenRangeCount = ringTokens.size();
 
-    List<RingRange> splits = new ArrayList<>();
+    List<LocalRingRange> splits = new ArrayList<>();
     for (int i = 0; i < tokenRangeCount; i++) {
       BigInteger start = ringTokens.get(i);
       BigInteger stop = ringTokens.get((i + 1) % tokenRangeCount);
@@ -127,13 +127,13 @@ final class SplitGenerator {
 
       // Append the splits between the endpoints
       for (int j = 0; j < splitCount; j++) {
-        splits.add(RingRange.of(endpointTokens.get(j), endpointTokens.get(j + 1)));
+        splits.add(LocalRingRange.of(endpointTokens.get(j), endpointTokens.get(j + 1)));
         LOG.debug("Split #{}: [{},{})", j + 1, endpointTokens.get(j), endpointTokens.get(j + 1));
       }
     }
 
     BigInteger total = BigInteger.ZERO;
-    for (RingRange split : splits) {
+    for (LocalRingRange split : splits) {
       BigInteger size = split.span(rangeSize);
       total = total.add(size);
     }
@@ -148,12 +148,12 @@ final class SplitGenerator {
     return !(token.compareTo(rangeMin) < 0 || token.compareTo(rangeMax) > 0);
   }
 
-  private List<List<RingRange>> coalesceSplits(BigInteger targetSplitSize, List<RingRange> splits) {
-    List<List<RingRange>> coalescedSplits = new ArrayList<>();
-    List<RingRange> tokenRangesForCurrentSplit = new ArrayList<>();
+  private List<List<LocalRingRange>> coalesceSplits(BigInteger targetSplitSize, List<LocalRingRange> splits) {
+    List<List<LocalRingRange>> coalescedSplits = new ArrayList<>();
+    List<LocalRingRange> tokenRangesForCurrentSplit = new ArrayList<>();
     BigInteger tokenCount = BigInteger.ZERO;
 
-    for (RingRange tokenRange : splits) {
+    for (LocalRingRange tokenRange : splits) {
       if (tokenRange.span(rangeSize).add(tokenCount).compareTo(targetSplitSize) > 0
           && !tokenRangesForCurrentSplit.isEmpty()) {
         // enough tokens in that segment

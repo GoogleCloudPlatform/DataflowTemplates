@@ -23,7 +23,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.concurrent.Future;
-import org.apache.beam.sdk.io.localcassandra.Mapper;
+import org.apache.beam.sdk.io.localcassandra.LocalMapper;
 import org.apache.commons.collections4.iterators.TransformIterator;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -31,7 +31,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 
 @AutoValue
-public abstract class CassandraSourceRowMapper implements Mapper<SourceRow>, Serializable {
+public abstract class CassandraSourceRowMapper implements LocalMapper<SourceRow>, Serializable {
   abstract SourceSchemaReference sourceSchemaReference();
 
   abstract SourceTableSchema sourceTableSchema();

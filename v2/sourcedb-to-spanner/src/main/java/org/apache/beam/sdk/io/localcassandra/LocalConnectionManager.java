@@ -27,7 +27,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
-public class ConnectionManager {
+public class LocalConnectionManager {
 
   private static final ConcurrentHashMap<String, Cluster> clusterMap =
       new ConcurrentHashMap<String, Cluster>();

@@ -25,11 +25,11 @@ import javax.annotation.Nullable;
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
-public final class RingRange implements Serializable {
+public final class LocalRingRange implements Serializable {
   private final BigInteger start;
   private final BigInteger end;
 
-  private RingRange(BigInteger start, BigInteger end) {
+  private LocalRingRange(BigInteger start, BigInteger end) {
     this.start = start;
     this.end = end;
   }
@@ -61,8 +61,8 @@ public final class RingRange implements Serializable {
     return String.format("(%s,%s]", start.toString(), end.toString());
   }
 
-  public static RingRange of(BigInteger start, BigInteger end) {
-    return new RingRange(start, end);
+  public static LocalRingRange of(BigInteger start, BigInteger end) {
+    return new LocalRingRange(start, end);
   }
 
   @Override
@@ -74,14 +74,14 @@ public final class RingRange implements Serializable {
       return false;
     }
 
-    RingRange ringRange = (RingRange) o;
+    LocalRingRange localRingRange = (LocalRingRange) o;
 
     if (getStart() != null
-        ? !getStart().equals(ringRange.getStart())
-        : ringRange.getStart() != null) {
+        ? !getStart().equals(localRingRange.getStart())
+        : localRingRange.getStart() != null) {
       return false;
     }
-    return getEnd() != null ? getEnd().equals(ringRange.getEnd()) : ringRange.getEnd() == null;
+    return getEnd() != null ? getEnd().equals(localRingRange.getEnd()) : localRingRange.getEnd() == null;
   }
 
   @Override
