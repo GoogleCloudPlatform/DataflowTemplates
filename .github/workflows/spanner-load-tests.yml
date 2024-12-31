@@ -67,7 +67,16 @@ jobs:
       with:
         name: surefire-test-results
         path: '**/surefire-reports/TEST-*.xml'
-        retention-days: 1
+        retention-days: 30
+    - name: Load Test report on GitHub
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Load Test report on GitHub
+        path: '**/surefire-reports/TEST-*.xml'
+        reporter: java-junit
+        only-summary: 'false'
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   observe_load_tests:

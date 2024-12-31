@@ -437,7 +437,7 @@ public final class MonitoringClient {
 
     ListTimeSeriesRequest request =
         ListTimeSeriesRequest.newBuilder()
-            .setName(projectId)
+            .setName(ProjectName.of(projectId).toString())
             .setFilter(filter)
             .setInterval(interval)
             .setAggregation(aggregation)
