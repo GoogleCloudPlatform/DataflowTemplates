@@ -35,49 +35,49 @@ variable "region" {
 
 variable "astraToken" {
   type        = string
-  description = "Token value or secret resource ID (Example: AstraCS:abcdefghij)"
+  description = "The token value or secret resource ID. (Example: AstraCS:abcdefghij)"
 
 }
 
 variable "astraDatabaseId" {
   type        = string
-  description = "Database unique identifier (uuid) (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7)"
+  description = "The database unique identifier (UUID). (Example: cf7af129-d33a-498f-ad06-d97a6ee6eb7)"
 
 }
 
 variable "astraKeyspace" {
   type        = string
-  description = "Name of the Cassandra keyspace inside Astra database"
+  description = "The name of the Cassandra keyspace inside of the Astra database."
 
 }
 
 variable "astraTable" {
   type        = string
-  description = "Name of the table inside the Cassandra database (Example: my_table)"
+  description = "The name of the table inside of the Cassandra database. (Example: my_table)"
 
 }
 
 variable "astraQuery" {
   type        = string
-  description = "Query to filter rows instead of reading the whole table"
+  description = "The query to use to filter rows instead of reading the whole table."
   default     = null
 }
 
 variable "astraDatabaseRegion" {
   type        = string
-  description = "If not provided, a default is chosen, which is useful with multi-region databases"
+  description = "If not provided, a default is chosen, which is useful with multi-region databases."
   default     = null
 }
 
 variable "minTokenRangesCount" {
   type        = number
-  description = "The minimal number of splits to distribute the query"
+  description = "The minimal number of splits to use to distribute the query."
   default     = null
 }
 
 variable "outputTableSpec" {
   type        = string
-  description = "The BigQuery table location to write the output to. The table should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match the input objects."
+  description = "The BigQuery table location to write the output to. Use the format `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`. The table's schema must match the input objects."
   default     = null
 }
 

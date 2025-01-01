@@ -35,19 +35,19 @@ variable "region" {
 
 variable "firestoreReadGqlQuery" {
   type        = string
-  description = "Specifies which Firestore entities to read. Ex: ‘SELECT * FROM MyKind’"
+  description = "A GQL (https://cloud.google.com/datastore/docs/reference/gql_reference) query that specifies which entities to grab. For example, `SELECT * FROM MyKind`."
 
 }
 
 variable "firestoreReadProjectId" {
   type        = string
-  description = "The Google Cloud project ID of the Firestore instance to read from"
+  description = "The ID of the Google Cloud project that contains the Firestore instance that you want to read data from."
 
 }
 
 variable "firestoreReadNamespace" {
   type        = string
-  description = "Namespace of requested Firestore entities. Leave blank to use default namespace."
+  description = "The namespace of the requested entities. To use the default namespace, leave this parameter blank."
   default     = null
 }
 
@@ -65,13 +65,13 @@ variable "firestoreHintNumWorkers" {
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions."
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`."
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 

@@ -34,7 +34,7 @@ variable "region" {
 }
 
 variable "qps" {
-  type        = string
+  type        = number
   description = "Indicates rate of messages per second to be published to Pub/Sub"
 
 }
@@ -184,25 +184,25 @@ variable "spannerTableName" {
 }
 
 variable "maxNumMutations" {
-  type        = string
+  type        = number
   description = "Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000"
   default     = null
 }
 
 variable "maxNumRows" {
-  type        = string
+  type        = number
   description = "Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000"
   default     = null
 }
 
 variable "batchSizeBytes" {
-  type        = string
+  type        = number
   description = "Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB"
   default     = null
 }
 
 variable "commitDeadlineSeconds" {
-  type        = string
+  type        = number
   description = "Specifies the deadline in seconds for the Commit API call."
   default     = null
 }
@@ -344,7 +344,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Streaming_Data_Generator"
   parameters = {
-    qps                   = var.qps
+    qps                   = tostring(var.qps)
     schemaTemplate        = var.schemaTemplate
     schemaLocation        = var.schemaLocation
     topic                 = var.topic
@@ -369,10 +369,10 @@ resource "google_dataflow_flex_template_job" "generated" {
     spannerInstanceName   = var.spannerInstanceName
     spannerDatabaseName   = var.spannerDatabaseName
     spannerTableName      = var.spannerTableName
-    maxNumMutations       = var.maxNumMutations
-    maxNumRows            = var.maxNumRows
-    batchSizeBytes        = var.batchSizeBytes
-    commitDeadlineSeconds = var.commitDeadlineSeconds
+    maxNumMutations       = tostring(var.maxNumMutations)
+    maxNumRows            = tostring(var.maxNumRows)
+    batchSizeBytes        = tostring(var.batchSizeBytes)
+    commitDeadlineSeconds = tostring(var.commitDeadlineSeconds)
     bootstrapServer       = var.bootstrapServer
     kafkaTopic            = var.kafkaTopic
   }
