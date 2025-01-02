@@ -36,7 +36,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ steps.variables.outputs.releaseTag }}
-          token: ${{ secrets.RELEASE_TOKEN }}
+#           token: ${{ secrets.RELEASE_TOKEN }}
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
