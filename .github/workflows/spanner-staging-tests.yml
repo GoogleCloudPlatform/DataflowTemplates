@@ -46,7 +46,7 @@ jobs:
       uses: ./.github/actions/setup-env
     - name: Run Integration Tests
       run: |
-        ./cicd/run-it-tests \
+        ./cicd/run-spanner-staging-it-tests \
         --modules-to-build="ALL" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
