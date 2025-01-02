@@ -54,18 +54,58 @@ import java.util.stream.Collectors;
  */
 public class CassandraSourceMetadata {
 
-  private final Schema schema;
+  private Map<String, SourceTable> sourceTableMap;
+  private Map<String, NameAndCols> nameAndColsMap;
+
   private final ResultSet resultSet;
+
+  /**
+   * Retrieves the map of source tables.
+   *
+   * @return A {@link Map} where the key is a {@link String} representing the table name, and the
+   *     value is a {@link SourceTable} containing the source table details.
+   */
+  public Map<String, SourceTable> getSourceTableMap() {
+    return sourceTableMap;
+  }
+
+  /**
+   * Sets the map of source tables.
+   *
+   * @param sourceTableMap A {@link Map} where the key is a {@link String} representing the table
+   *     name, and the value is a {@link SourceTable} containing the source table details.
+   */
+  public void setSourceTableMap(Map<String, SourceTable> sourceTableMap) {
+    this.sourceTableMap = sourceTableMap;
+  }
+
+  /**
+   * Retrieves the map of names and columns.
+   *
+   * @return A {@link Map} where the key is a {@link String} representing the table name, and the
+   *     value is a {@link NameAndCols} containing the name and columns metadata.
+   */
+  public Map<String, NameAndCols> getNameAndColsMap() {
+    return nameAndColsMap;
+  }
+
+  /**
+   * Sets the map of names and columns.
+   *
+   * @param nameAndColsMap A {@link Map} where the key is a {@link String} representing the table
+   *     name, and the value is a {@link NameAndCols} containing the name and columns metadata.
+   */
+  public void setNameAndColsMap(Map<String, NameAndCols> nameAndColsMap) {
+    this.nameAndColsMap = nameAndColsMap;
+  }
 
   /**
    * Private constructor to initialize {@link CassandraSourceMetadata}.
    *
    * @param resultSet The {@link ResultSet} containing Cassandra schema metadata. Cannot be null.
-   * @param schema The {@link Schema} instance to update with metadata. Cannot be null.
    */
-  private CassandraSourceMetadata(ResultSet resultSet, Schema schema) {
+  private CassandraSourceMetadata(ResultSet resultSet) {
     this.resultSet = Objects.requireNonNull(resultSet, "ResultSet cannot be null");
-    this.schema = Objects.requireNonNull(schema, "Schema cannot be null");
   }
 
   /**
@@ -126,10 +166,10 @@ public class CassandraSourceMetadata {
    * <p>This method extracts schema details, transforms them into Spanner-compatible objects, and
    * sets the corresponding properties in the provided {@link Schema}.
    */
-  public void generateAndSetSourceSchema() {
+  public void generateSourceSchemaMap() {
     Map<String, SourceTable> sourceTableMap = generateSourceSchema();
-    schema.setSrcSchema(sourceTableMap);
-    schema.setToSource(convertSourceToNameAndColsTable(sourceTableMap.values()));
+    this.setSourceTableMap(sourceTableMap);
+    this.setNameAndColsMap(convertSourceToNameAndColsTable(sourceTableMap.values()));
   }
 
   /**
@@ -177,18 +217,6 @@ public class CassandraSourceMetadata {
    */
   public static class Builder {
     private ResultSet resultSet;
-    private Schema schema;
-
-    /**
-     * Sets the {@link Schema} for the builder.
-     *
-     * @param schema The {@link Schema} to be used in the metadata generation.
-     * @return The current {@link Builder} instance.
-     */
-    public Builder setSchema(Schema schema) {
-      this.schema = schema;
-      return this;
-    }
 
     /**
      * Sets the {@link ResultSet} for the builder.
@@ -208,9 +236,8 @@ public class CassandraSourceMetadata {
      * @return A fully constructed {@link CassandraSourceMetadata} instance.
      */
     public CassandraSourceMetadata build() {
-      CassandraSourceMetadata cassandraSourceMetadata =
-          new CassandraSourceMetadata(resultSet, schema);
-      cassandraSourceMetadata.generateAndSetSourceSchema();
+      CassandraSourceMetadata cassandraSourceMetadata = new CassandraSourceMetadata(resultSet);
+      cassandraSourceMetadata.generateSourceSchemaMap();
       return cassandraSourceMetadata;
     }
   }

@@ -46,13 +46,6 @@ public class CassandraSourceMetadataTest {
   }
 
   @Test
-  public void testBuilderSetSchemaAndResultSet() {
-    CassandraSourceMetadata metadata =
-        builder.setResultSet(mockResultSet).setSchema(mockSchema).build();
-    assertNotNull("CassandraSourceMetadata should not be null", metadata);
-  }
-
-  @Test
   public void testGenerateSourceSchema() {
     doAnswer(
             invocation -> {
@@ -73,8 +66,7 @@ public class CassandraSourceMetadataTest {
     when(mockRow2.getString("type")).thenReturn("int");
     when(mockRow2.getString("kind")).thenReturn("clustering");
 
-    CassandraSourceMetadata metadata =
-        builder.setResultSet(mockResultSet).setSchema(mockSchema).build();
+    CassandraSourceMetadata metadata = builder.setResultSet(mockResultSet).build();
 
     assertNotNull("Metadata should be generated successfully", metadata);
   }

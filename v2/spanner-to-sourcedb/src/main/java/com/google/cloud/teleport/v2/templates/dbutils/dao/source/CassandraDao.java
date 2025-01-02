@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
@@ -55,46 +54,6 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
                   .map(PreparedStatementValueObject::value)
                   .toArray());
       session.execute(boundStatement);
-    }
-  }
-
-  /**
-   * Reads metadata for the specified Cassandra keyspace.
-   *
-   * <p>This method retrieves metadata from the Cassandra system schema, including table names,
-   * column names, column types, and kinds, for the given keyspace. It uses a prepared statement for
-   * safe and efficient execution.
-   *
-   * @param keyspace The name of the Cassandra keyspace for which metadata is to be retrieved. Must
-   *     not be {@code null} or empty.
-   * @return A {@link ResultSet} containing the metadata rows with columns:
-   *     <ul>
-   *       <li>{@code table_name} - The name of the table.
-   *       <li>{@code column_name} - The name of the column.
-   *       <li>{@code type} - The data type of the column.
-   *       <li>{@code kind} - The column kind (e.g., partition_key, clustering).
-   *     </ul>
-   *
-   * @throws IllegalArgumentException If the provided keyspace name is {@code null} or empty.
-   * @throws ConnectionException If a connection to the Cassandra database could not be established.
-   * @throws Exception If any other unexpected error occurs during the operation.
-   */
-  public ResultSet readMetadata(String keyspace) throws Exception {
-    if (keyspace == null || keyspace.isEmpty()) {
-      throw new IllegalArgumentException("Keyspace name cannot be null or empty.");
-    }
-
-    String query =
-        "SELECT table_name, column_name, type, kind FROM system_schema.columns WHERE keyspace_name = ?";
-
-    try (CqlSession session = (CqlSession) connectionHelper.getConnection(this.cassandraUrl)) {
-      if (session == null) {
-        throw new ConnectionException("Failed to establish a connection.");
-      }
-
-      PreparedStatement preparedStatement = session.prepare(query);
-      BoundStatement boundStatement = preparedStatement.bind(keyspace);
-      return session.execute(boundStatement);
     }
   }
 }

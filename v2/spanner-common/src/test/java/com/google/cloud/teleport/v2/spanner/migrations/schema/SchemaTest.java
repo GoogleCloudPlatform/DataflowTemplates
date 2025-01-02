@@ -114,9 +114,7 @@ public class SchemaTest {
     Map<String, SourceTable> srcSchema = getSampleSrcSchema();
     // Add SpSchema.
     Map<String, SpannerTable> spSchema = getSampleSpSchema();
-    Schema expectedSchema = new Schema();
-    expectedSchema.setSrcSchema(srcSchema);
-    expectedSchema.setSpSchema(spSchema);
+    Schema expectedSchema = new Schema(spSchema, srcSchema);
     expectedSchema.setToSpanner(new HashMap<String, NameAndCols>());
     expectedSchema.setToSource(new HashMap<String, NameAndCols>());
     expectedSchema.setSrcToID(new HashMap<String, NameAndCols>());

@@ -16,12 +16,8 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
-import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyString;
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,7 +25,6 @@ import static org.mockito.Mockito.when;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
@@ -155,43 +150,5 @@ public class CassandraDaoTest {
             ConnectionException.class,
             () -> cassandraDao.write(mockPreparedStatementGeneratedResponse));
     assertEquals("Connection failed", exception.getMessage());
-  }
-
-  @Test
-  public void testReadMetadata_ShouldThrowIllegalArgumentException_WhenKeyspaceIsNull() {
-    assertThrows(IllegalArgumentException.class, () -> cassandraDao.readMetadata(null));
-  }
-
-  @Test
-  public void testReadMetadata_ShouldThrowIllegalArgumentException_WhenKeyspaceIsEmpty() {
-    assertThrows(IllegalArgumentException.class, () -> cassandraDao.readMetadata(""));
-  }
-
-  @Test
-  public void testReadMetadata_ShouldThrowConnectionException_WhenConnectionFails()
-      throws Exception {
-    when(mockConnectionHelper.getConnection(anyString())).thenReturn(null);
-    assertThrows(ConnectionException.class, () -> cassandraDao.readMetadata("my_keyspace"));
-  }
-
-  @Test
-  public void testReadMetadata_ShouldReturnResultSet_WhenConnectionSucceeds() throws Exception {
-    String keyspace = "my_keyspace";
-    CqlSession mockSession = mock(CqlSession.class);
-    PreparedStatement mockPreparedStatement = mock(PreparedStatement.class);
-    BoundStatement mockBoundStatement = mock(BoundStatement.class);
-    ResultSet mockResultSet = mock(ResultSet.class);
-
-    when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockSession);
-    when(mockSession.prepare(anyString())).thenReturn(mockPreparedStatement);
-    when(mockPreparedStatement.bind(any())).thenReturn(mockBoundStatement);
-    when(mockSession.execute(mockBoundStatement)).thenReturn(mockResultSet);
-
-    ResultSet resultSet = cassandraDao.readMetadata(keyspace);
-
-    assertNotNull(resultSet);
-    verify(mockSession).prepare(anyString());
-    verify(mockPreparedStatement).bind(eq(keyspace));
-    verify(mockSession).execute(mockBoundStatement);
   }
 }
