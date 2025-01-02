@@ -499,12 +499,10 @@ public abstract class TemplateTestBase {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
       }
       if (unifiedWorkerHarnessContainerImage != null) {
-        options.addParameter(
-            "runner_harness_container_image",
-            System.getProperty("unifiedWorkerHarnessContainerImage"));
-      }
-      if (System.getProperty("uwStagingExperiments") != null) {
-        appendExperiment(options, "disable_worker_rolling_upgrade");
+        appendExperiment(
+            options,
+            "runner_harness_container_image="
+                + System.getProperty("unifiedWorkerHarnessContainerImage"));
         appendExperiment(options, "use_beam_bq_sink");
         appendExperiment(options, "beam_fn_api");
         appendExperiment(options, "use_unified_worker");
