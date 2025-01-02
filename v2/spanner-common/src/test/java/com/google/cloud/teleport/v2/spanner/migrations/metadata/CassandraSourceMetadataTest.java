@@ -27,11 +27,10 @@ import java.util.Arrays;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 
-@RunWith(JUnit4.class)
+@RunWith(MockitoJUnitRunner.class)
 public class CassandraSourceMetadataTest {
 
   @Mock private ResultSet mockResultSet;
@@ -43,7 +42,6 @@ public class CassandraSourceMetadataTest {
 
   @Before
   public void setUp() {
-    MockitoAnnotations.openMocks(this);
     builder = new CassandraSourceMetadata.Builder();
   }
 

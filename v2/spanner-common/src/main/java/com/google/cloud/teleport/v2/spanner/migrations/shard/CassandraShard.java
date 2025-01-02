@@ -79,14 +79,6 @@ public class CassandraShard extends Shard {
     return this.optionsMap;
   }
 
-  public String getUsername() {
-    return getProfile().getString(DefaultDriverOption.AUTH_PROVIDER_USER_NAME);
-  }
-
-  public String getPassword() {
-    return getProfile().getString(DefaultDriverOption.AUTH_PROVIDER_PASSWORD);
-  }
-
   @Override
   public String toString() {
     return String.format(

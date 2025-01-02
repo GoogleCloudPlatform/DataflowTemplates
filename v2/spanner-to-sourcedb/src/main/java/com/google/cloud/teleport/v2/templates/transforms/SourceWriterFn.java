@@ -227,8 +227,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                   shardId,
                   sourceDbTimezoneOffset,
                   sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer,
-                  this.source);
+                  spannerToSourceTransformer);
           if (isEventFiltered) {
             outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
           }

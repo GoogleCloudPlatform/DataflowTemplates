@@ -53,8 +53,7 @@ public class InputRecordProcessor {
       String shardId,
       String sourceDbTimezoneOffset,
       IDMLGenerator dmlGenerator,
-      ISpannerMigrationTransformer spannerToSourceTransformer,
-      String source)
+      ISpannerMigrationTransformer spannerToSourceTransformer)
       throws Exception {
 
     try {
