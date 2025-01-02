@@ -219,7 +219,7 @@ public class GoogleCloudToNeo4j {
         PipelineOptionsFactory.fromArgs(args).withValidation().as(Neo4jFlexTemplateOptions.class);
 
     // Allow users to supply their own list of disabled algorithms if necessary
-    if (StringUtils.isNotBlank(options.getDisabledAlgorithms())) {
+    if (StringUtils.isBlank(options.getDisabledAlgorithms())) {
       options.setDisabledAlgorithms(
           "SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, EC keySize < 224, 3DES_EDE_CBC, anon,"
               + " NULL");

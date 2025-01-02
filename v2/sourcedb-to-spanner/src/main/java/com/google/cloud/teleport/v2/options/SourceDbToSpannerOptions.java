@@ -20,15 +20,20 @@ import org.apache.beam.sdk.options.Default;
 
 /** Interface used by the SourcedbToSpanner pipeline to accept user input. */
 public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
+  String CASSANDRA_SOURCE_DIALECT = "CASSANDRA";
+  String MYSQL_SOURCE_DIALECT = "MYSQL";
+  String PG_SOURCE_DIALECT = "POSTGRESQL";
+
   @TemplateParameter.Enum(
       order = 1,
       optional = true,
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("MYSQL"),
-        @TemplateParameter.TemplateEnumOption("POSTGRESQL")
+        @TemplateParameter.TemplateEnumOption(CASSANDRA_SOURCE_DIALECT),
+        @TemplateParameter.TemplateEnumOption(MYSQL_SOURCE_DIALECT),
+        @TemplateParameter.TemplateEnumOption(PG_SOURCE_DIALECT)
       },
-      description = "SQL Dialect of the source database",
-      helpText = "Possible values are `MYSQL` and `POSTGRESQL`.")
+      description = "Dialect of the source database",
+      helpText = "Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`.")
   @Default.String("MYSQL")
   String getSourceDbDialect();
 

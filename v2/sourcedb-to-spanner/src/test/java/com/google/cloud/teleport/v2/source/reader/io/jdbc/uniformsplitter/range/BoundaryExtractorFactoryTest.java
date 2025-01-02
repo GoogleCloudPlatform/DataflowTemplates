@@ -15,8 +15,10 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory.BYTE_ARRAY_CLASS;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationMapper;
@@ -90,11 +92,11 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
-  public void testFromBigIntegers() throws SQLException {
+  public void testFromBigDecimals() throws SQLException {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigInteger.class).build();
-    BoundaryExtractor<BigInteger> extractor = BoundaryExtractorFactory.create(BigInteger.class);
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
+    BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1))
         .thenReturn(new BigDecimal(BigInteger.ZERO))
@@ -103,14 +105,14 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.getBigDecimal(2))
         .thenReturn(new BigDecimal(unsignedBigIntMax))
         .thenReturn(null);
-    Boundary<BigInteger> boundaryMinMax =
+    Boundary<BigDecimal> boundaryMinMax =
         extractor.getBoundary(partitionColumn, mockResultSet, null);
-    Boundary<BigInteger> boundaryNull = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<BigDecimal> boundaryNull = extractor.getBoundary(partitionColumn, mockResultSet, null);
 
-    assertThat(boundaryMinMax.start()).isEqualTo(BigInteger.ZERO);
-    assertThat(boundaryMinMax.end()).isEqualTo(unsignedBigIntMax);
+    assertThat(boundaryMinMax.start()).isEqualTo(new BigDecimal(BigInteger.ZERO));
+    assertThat(boundaryMinMax.end()).isEqualTo(new BigDecimal(unsignedBigIntMax));
     assertThat(boundaryMinMax.split(null).getLeft().end())
-        .isEqualTo((unsignedBigIntMax.divide(BigInteger.TWO)));
+        .isEqualTo(new BigDecimal(unsignedBigIntMax.divide(BigInteger.TWO)));
     assertThat(boundaryNull.start()).isNull();
     assertThat(boundaryNull.end()).isNull();
     assertThat(boundaryNull.isSplittable(null)).isFalse();
@@ -128,13 +130,13 @@ public class BoundaryExtractorFactoryTest {
   public void testFromBigIntegersEmptyTable() throws SQLException {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigInteger.class).build();
-    BoundaryExtractor<BigInteger> extractor = BoundaryExtractorFactory.create(BigInteger.class);
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
+    BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1)).thenReturn(null);
     // BigInt Unsigned Max in MySQL
     when(mockResultSet.getBigDecimal(2)).thenReturn(null);
-    Boundary<BigInteger> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<BigDecimal> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
 
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
@@ -203,6 +205,35 @@ public class BoundaryExtractorFactoryTest {
                     .setColumnName("col1")
                     .setColumnClass(Integer.class)
                     .build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromBinary() throws SQLException {
+    final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(BYTE_ARRAY_CLASS).build();
+    BoundaryExtractor<byte[]> extractor = BoundaryExtractorFactory.create(BYTE_ARRAY_CLASS);
+    when(mockResultSet.next()).thenReturn(true);
+    doReturn(BigInteger.ZERO.toByteArray()).doReturn(null).when(mockResultSet).getBytes(1);
+    doReturn(unsignedBigIntMax.toByteArray()).doReturn(null).when(mockResultSet).getBytes(2);
+    Boundary<byte[]> boundaryMinMax = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<byte[]> boundaryNull = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundaryMinMax.start()).isEqualTo(BigInteger.ZERO.toByteArray());
+    assertThat(boundaryMinMax.end()).isEqualTo(unsignedBigIntMax.toByteArray());
+    assertThat(boundaryMinMax.split(null).getLeft().end())
+        .isEqualTo((unsignedBigIntMax.divide(BigInteger.TWO).toByteArray()));
+    assertThat(boundaryNull.start()).isNull();
+    assertThat(boundaryNull.end()).isNull();
+    assertThat(boundaryNull.isSplittable(null)).isFalse();
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
                 mockResultSet,
                 null));
   }

@@ -425,6 +425,10 @@
     "t2": {
       "ColumnLevelIssues": {},
       "TableLevelIssues": null
+    },
+    "t3": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": null
     }
   },
   "Location": {},
