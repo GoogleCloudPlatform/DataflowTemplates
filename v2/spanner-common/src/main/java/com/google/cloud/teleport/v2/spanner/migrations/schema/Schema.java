@@ -30,13 +30,13 @@ import java.util.stream.Collectors;
  */
 public class Schema implements Serializable {
   /** Maps the HarbourBridge table ID to the Spanner table details. */
-  private final Map<String, SpannerTable> spSchema;
+  private Map<String, SpannerTable> spSchema;
 
   /** Maps the Spanner table ID to the synthetic PK. */
   private final Map<String, SyntheticPKey> syntheticPKeys;
 
   /** Maps the HarbourBridge table ID to the Source table details. */
-  private final Map<String, SourceTable> srcSchema;
+  private Map<String, SourceTable> srcSchema;
 
   // The columns below are not part of the session file. They are computed based on the fields
   // above.
@@ -80,12 +80,20 @@ public class Schema implements Serializable {
     return spSchema;
   }
 
+  public Map<String, SpannerTable> setSpSchema(Map<String, SpannerTable> spSchema) {
+    return this.spSchema = spSchema;
+  }
+
   public Map<String, SyntheticPKey> getSyntheticPks() {
     return syntheticPKeys;
   }
 
   public Map<String, SourceTable> getSrcSchema() {
     return srcSchema;
+  }
+
+  public Map<String, SourceTable> setSrcSchema(Map<String, SourceTable> srcSchema) {
+    return this.srcSchema = srcSchema;
   }
 
   public Map<String, NameAndCols> getToSpanner() {

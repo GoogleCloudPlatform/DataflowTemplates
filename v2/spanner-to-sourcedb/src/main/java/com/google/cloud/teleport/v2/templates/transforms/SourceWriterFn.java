@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,7 +27,9 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.CassandraSourceMetadata;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
@@ -34,6 +37,7 @@ import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
@@ -47,6 +51,7 @@ import com.google.gson.Gson;
 import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -202,6 +207,21 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
         if (!isSourceAhead) {
           IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+          if (Objects.equals(this.source, Constants.SOURCE_CASSANDRA)) {
+            if (schema.getSrcSchema().isEmpty()) {
+              ResultSet resultSet =
+                  ((CassandraDao) sourceDao)
+                      .readMetadata(((CassandraShard) shards.get(0)).getKeySpaceName());
+              if (resultSet != null) {
+                new CassandraSourceMetadata.Builder()
+                    .setSchema(schema)
+                    .setResultSet(resultSet)
+                    .build();
+              } else {
+                throw new InvalidTransformationException("No Cassandra Source Schema Available");
+              }
+            }
+          }
 
           boolean isEventFiltered =
               InputRecordProcessor.processRecord(
@@ -211,7 +231,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                   shardId,
                   sourceDbTimezoneOffset,
                   sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer);
+                  spannerToSourceTransformer,
+                  this.source);
           if (isEventFiltered) {
             outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
           }

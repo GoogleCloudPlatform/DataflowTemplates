@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
+import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_CASSANDRA;
+
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -53,7 +55,8 @@ public class InputRecordProcessor {
       String shardId,
       String sourceDbTimezoneOffset,
       IDMLGenerator dmlGenerator,
-      ISpannerMigrationTransformer spannerToSourceTransformer)
+      ISpannerMigrationTransformer spannerToSourceTransformer,
+      String source)
       throws Exception {
 
     try {
@@ -102,7 +105,11 @@ public class InputRecordProcessor {
         LOG.warn("DML statement is empty for table: " + tableName);
         return false;
       }
-      dao.write(dmlGeneratorResponse.getDmlStatement());
+      if (source.equals(SOURCE_CASSANDRA)) {
+        dao.write(dmlGeneratorResponse);
+      } else {
+        dao.write(dmlGeneratorResponse.getDmlStatement());
+      }
 
       Counter numRecProcessedMetric =
           Metrics.counter(shardId, "records_written_to_source_" + shardId);

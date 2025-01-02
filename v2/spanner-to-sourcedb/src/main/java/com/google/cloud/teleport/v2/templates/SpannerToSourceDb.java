@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -30,6 +33,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
@@ -472,8 +476,12 @@ public class SpannerToSourceDb {
               + " incease the max shard connections");
     }
 
-    // Read the session file
-    Schema schema = SessionFileReader.read(options.getSessionFilePath());
+    // Read the session file for Mysql Only
+    Schema schema =
+        MYSQL_SOURCE_TYPE.equals(options.getSourceType())
+            ? SessionFileReader.read(
+                options.getSessionFilePath()) // Read from session file for MYSQL source type
+            : new Schema();
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
@@ -511,17 +519,41 @@ public class SpannerToSourceDb {
 
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
-    String shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
-    if (shards.size() == 1) {
-      shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
-
-      Shard singleShard = shards.get(0);
-      if (singleShard.getLogicalShardId() == null) {
-        singleShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
-        LOG.info(
-            "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
+    if (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)) {
+      schema.setSpSchema(SpannerSchema.convertDDLTableToSpannerTable(ddl.allTables()));
+      schema.setToSpanner(SpannerSchema.convertDDLTableToSpannerNameAndColsTable(ddl.allTables()));
+    }
+    List<Shard> shards = new ArrayList<>();
+    String shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+    if ("mysql".equals(options.getSourceType())) {
+      ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+      shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
+      if (shards.size() == 1) {
+        shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+        Shard singleMySqlShard = shards.get(0);
+        if (singleMySqlShard.getLogicalShardId() == null) {
+          singleMySqlShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+          LOG.info(
+              "Logical shard id was not found, hence setting it to : "
+                  + Constants.DEFAULT_SHARD_ID);
+        }
+      }
+    } else {
+      CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
+      shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
+      LOG.info("Cassandra config is: {}", shards.get(0));
+      if (shards.size() == 1) {
+        shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
+        Shard singleCassandraShard = shards.get(0);
+        if (singleCassandraShard.getLogicalShardId() == null) {
+          singleCassandraShard.setLogicalShardId(Constants.DEFAULT_SHARD_ID);
+          LOG.info(
+              "Logical shard id was not found, hence setting it to : "
+                  + Constants.DEFAULT_SHARD_ID);
+        }
+      } else {
+        throw new IllegalArgumentException("Not Supporting more than one shard for cassandra");
       }
     }
     boolean isRegularMode = "regular".equals(options.getRunMode());
@@ -614,8 +646,7 @@ public class SpannerToSourceDb {
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
                         options.getMaxShardConnections()
-                            * shards.size()))) // currently assuming that all shards accept the same
-            // number of max connections
+                            * shards.size()))) // currently assuming that all mySqlShards
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))

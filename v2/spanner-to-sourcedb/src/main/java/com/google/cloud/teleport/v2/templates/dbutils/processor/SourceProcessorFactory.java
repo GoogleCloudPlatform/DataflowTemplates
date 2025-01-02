@@ -15,12 +15,16 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
+import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.JdbcConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
@@ -33,20 +37,44 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 public class SourceProcessorFactory {
-  private static Map<String, IDMLGenerator> dmlGeneratorMap =
-      Map.of(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
+  private static Map<String, IDMLGenerator> dmlGeneratorMap = new HashMap<>();
 
-  private static Map<String, IConnectionHelper> connectionHelperMap =
-      Map.of(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
+  private static Map<String, IConnectionHelper> connectionHelperMap = new HashMap<>();
 
-  private static Map<String, String> driverMap =
-      Map.of(Constants.SOURCE_MYSQL, "com.mysql.cj.jdbc.Driver");
-
-  private static Map<String, Function<Shard, String>> connectionUrl =
+  private static final Map<String, String> driverMap =
       Map.of(
           Constants.SOURCE_MYSQL,
-          shard ->
-              "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName());
+          "com.mysql.cj.jdbc.Driver", // MySQL JDBC Driver
+          Constants.SOURCE_CASSANDRA,
+          "com.datastax.oss.driver.api.core.CqlSession" // Cassandra Session Class
+          );
+
+  private static Map<String, Function<Shard, String>> connectionUrl = new HashMap<>();
+
+  static {
+    dmlGeneratorMap.put(Constants.SOURCE_MYSQL, new MySQLDMLGenerator());
+    dmlGeneratorMap.put(Constants.SOURCE_CASSANDRA, new CassandraDMLGenerator());
+
+    connectionHelperMap.put(Constants.SOURCE_MYSQL, new JdbcConnectionHelper());
+    connectionHelperMap.put(Constants.SOURCE_CASSANDRA, new CassandraConnectionHelper());
+
+    connectionUrl.put(
+        Constants.SOURCE_MYSQL,
+        shard ->
+            "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName());
+    connectionUrl.put(
+        Constants.SOURCE_CASSANDRA,
+        shard -> {
+          CassandraShard cassandraShard = (CassandraShard) shard;
+          return cassandraShard.getHost()
+              + ":"
+              + cassandraShard.getPort()
+              + "/"
+              + cassandraShard.getUserName()
+              + "/"
+              + cassandraShard.getKeySpaceName();
+        });
+  }
 
   private static Map<String, BiFunction<List<Shard>, Integer, ConnectionHelperRequest>>
       connectionHelperRequestFactory =
@@ -58,7 +86,16 @@ public class SourceProcessorFactory {
                       null,
                       maxConnections,
                       driverMap.get(Constants.SOURCE_MYSQL),
-                      "SET SESSION net_read_timeout=1200" // to avoid timeouts at network layer
+                      "SET SESSION net_read_timeout=1200" // To avoid timeouts at the network layer
+                      ),
+              Constants.SOURCE_CASSANDRA,
+              (shards, maxConnections) ->
+                  new ConnectionHelperRequest(
+                      shards,
+                      null,
+                      maxConnections,
+                      driverMap.get(Constants.SOURCE_CASSANDRA),
+                      null // No specific initialization query for Cassandra
                       ));
 
   // for unit testing purposes
@@ -132,7 +169,10 @@ public class SourceProcessorFactory {
     Map<String, IDao> sourceDaoMap = new HashMap<>();
     for (Shard shard : shards) {
       String connectionUrl = urlGenerator.apply(shard);
-      IDao sqlDao = new JdbcDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
+      IDao sqlDao =
+          source.equals(Constants.SOURCE_MYSQL)
+              ? new JdbcDao(connectionUrl, shard.getUserName(), getConnectionHelper(source))
+              : new CassandraDao(connectionUrl, shard.getUserName(), getConnectionHelper(source));
       sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
     }
     return sourceDaoMap;
