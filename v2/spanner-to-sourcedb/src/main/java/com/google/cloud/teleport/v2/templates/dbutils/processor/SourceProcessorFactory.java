@@ -29,6 +29,8 @@ import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
+import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

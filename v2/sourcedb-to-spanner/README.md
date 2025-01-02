@@ -3,13 +3,15 @@
 The [SourceDBToSpanner](src/main/java/com/google/cloud/teleport/v2/templates/SourceDbToSpanner.java) pipeline
 ingests data by reading from a database via JDBC and writes the data to Cloud Spanner database.
 
-Currently, this template works for a basic set of use cases. A not comprehensive
-list of scenarios which are not yet supported.
-to be implemented going forward
-* Tables with non integer keys
-* Support for additional sources
-* Support for tables with foreign keys and interleaving
-* Migrating sharded databases
+Currently, this template works for tables of any size on the follow sources
+* MySQL 8.0+ - String (upto 3 byte characters), Integer like (up to BigInteger
+including unsigned) and Binary/VarBinary primary keys.
+* MySQL 5.7+ - Integer like (up to BigInteger including unsigned) and
+Binary/VarBinary primary keys.
+* PostgreSQL 13+ - String (upto 3 byte characters) and Integer like (up to
+BigInteger including unsigned) primary keys.
+
+Tables without primary keys or primary keys not mentioned above are not supported.
 
 ## Getting Started
 
