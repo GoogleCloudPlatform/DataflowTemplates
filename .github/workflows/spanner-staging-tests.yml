@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
     inputs:
       commitOrTag:
-        description: 'Commit id or release tag to check out. If it is the most recent commit on main branch then leave blank.'
+        description: 'Commit hash or release tag to checkout. Leave blank to checkout the most recent commit on main branch.'
         type: string
         required: false
         default: ''
