@@ -92,11 +92,35 @@ public class CassandraConnectionHelperTest {
   @Test
   public void testGetConnection_ShouldReturnValidSession() throws ConnectionException {
     String connectionKey = "localhost:9042/user/mykeyspace";
+    connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
     connectionHelper.setConnectionPoolMap(Map.of(connectionKey, cqlSession));
-
     CqlSession session = connectionHelper.getConnection(connectionKey);
     assertNotNull(session);
     assertEquals(cqlSession, session);
+  }
+
+  @Test
+  public void testGetConnection_ShouldNotReturnValidSession() throws ConnectionException {
+    String connectionKey = "localhost:9042/user/mykeyspace";
+    String connectionKey1 = "localhost:9042/user/mykeyspace1";
+    connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
+    connectionHelper.setConnectionPoolMap(Map.of(connectionKey, cqlSession));
+    assertThrows(
+        ConnectionException.class,
+        () -> {
+          connectionHelper.getConnection(connectionKey1);
+        });
+  }
+
+  @Test
+  public void testConnection_alreadyInitialized() throws ConnectionException {
+    String connectionKey = "localhost:9042/user/mykeyspace";
+    ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
+    connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
+    connectionHelper.setConnectionPoolMap(Map.of(connectionKey, cqlSession));
+    connectionHelper.init(request);
+    boolean isInitialized = connectionHelper.isConnectionPoolInitialized();
+    assertTrue(isInitialized);
   }
 
   @Test
@@ -113,8 +137,9 @@ public class CassandraConnectionHelperTest {
   @Test
   public void testSetConnectionPoolMap_ShouldOverrideConnectionPoolMap()
       throws ConnectionException {
+    connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
     connectionHelper.setConnectionPoolMap(Map.of("localhost:9042/user/mykeyspace", cqlSession));
-
+    connectionHelper.isConnectionPoolInitialized();
     CqlSession session = connectionHelper.getConnection("localhost:9042/user/mykeyspace");
     assertNotNull(session);
     assertEquals(cqlSession, session);
