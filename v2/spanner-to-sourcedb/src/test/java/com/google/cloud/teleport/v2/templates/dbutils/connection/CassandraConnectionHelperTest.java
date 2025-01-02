@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,169 +15,147 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
+import java.util.concurrent.ConcurrentHashMap;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
-class CassandraConnectionHelperTest {
+public class CassandraConnectionHelperTest {
 
-  @Mock private CassandraShard cassandraShard;
-  @Mock private CassandraConnectionHelper connectionHelper;
+  private CqlSessionBuilder cqlSessionBuilder;
+  private CqlSession cqlSession;
+  private OptionsMap optionsMap;
+  private CassandraShard cassandraShard;
+  private CassandraConnectionHelper connectionHelper;
+  private DriverConfigLoader driverConfigLoader;
 
-  @BeforeEach
-  void setUp() {
+  @Before
+  public void setUp() {
     connectionHelper = new CassandraConnectionHelper();
     cassandraShard = mock(CassandraShard.class);
+    optionsMap = mock(OptionsMap.class);
+    driverConfigLoader = mock(DriverConfigLoader.class);
+    cqlSessionBuilder = mock(CqlSessionBuilder.class);
+    cqlSession = mock(CqlSession.class);
   }
 
   @Test
-  void testInit_ShouldInitializeConnectionPool() {
+  public void testInit_ShouldInitializeConnectionPool() {
     when(cassandraShard.getHost()).thenReturn("localhost");
     when(cassandraShard.getPort()).thenReturn("9042");
     when(cassandraShard.getUserName()).thenReturn("user");
     when(cassandraShard.getPassword()).thenReturn("password");
     when(cassandraShard.getKeySpaceName()).thenReturn("mykeyspace");
+    when(cassandraShard.getOptionsMap()).thenReturn(optionsMap);
 
-    ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
-    when(request.getShards()).thenReturn(Arrays.asList(cassandraShard));
-    when(request.getMaxConnections()).thenReturn(10);
-    connectionHelper.init(request);
-    assertTrue(connectionHelper.isConnectionPoolInitialized());
+    try (MockedStatic<CassandraDriverConfigLoader> mockFileReader =
+        Mockito.mockStatic(CassandraDriverConfigLoader.class)) {
+      mockFileReader
+          .when(() -> CassandraDriverConfigLoader.fromOptionsMap(optionsMap))
+          .thenReturn(driverConfigLoader);
+
+      try (MockedStatic<CqlSession> mockedCqlSession = Mockito.mockStatic(CqlSession.class)) {
+        mockedCqlSession.when(CqlSession::builder).thenReturn(cqlSessionBuilder);
+        when(cqlSessionBuilder.withConfigLoader(driverConfigLoader)).thenReturn(cqlSessionBuilder);
+        when(cqlSessionBuilder.build()).thenReturn(cqlSession);
+
+        ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
+        when(request.getShards()).thenReturn(Collections.singletonList(cassandraShard));
+        when(request.getMaxConnections()).thenReturn(10);
+        connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
+        connectionHelper.init(request);
+
+        assertTrue(connectionHelper.isConnectionPoolInitialized());
+      }
+    }
   }
 
   @Test
-  void testGetConnection_ShouldReturnValidSession() throws ConnectionException {
+  public void testGetConnection_ShouldReturnValidSession() throws ConnectionException {
     String connectionKey = "localhost:9042/user/mykeyspace";
-    CqlSession mockSession = mock(CqlSession.class);
-    connectionHelper.setConnectionPoolMap(Map.of(connectionKey, mockSession));
+    connectionHelper.setConnectionPoolMap(Map.of(connectionKey, cqlSession));
 
     CqlSession session = connectionHelper.getConnection(connectionKey);
-
     assertNotNull(session);
-    assertEquals(mockSession, session);
+    assertEquals(cqlSession, session);
   }
 
   @Test
-  void testGetConnection_ShouldThrowException_WhenConnectionNotFound() {
-    assertThrows(
-        ConnectionException.class,
-        () -> {
-          connectionHelper.getConnection("invalidKey");
-        });
+  public void testGetConnection_ShouldThrowException_WhenConnectionNotFound() {
+    assertThrows(ConnectionException.class, () -> connectionHelper.getConnection("invalidKey"));
   }
 
   @Test
-  void testIsConnectionPoolInitialized_ShouldReturnTrue_WhenInitialized() {
-    ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
-    when(request.getShards()).thenReturn(Arrays.asList(mock(CassandraShard.class)));
-    when(request.getMaxConnections()).thenReturn(10);
-
-    connectionHelper.init(request);
-
-    assertTrue(connectionHelper.isConnectionPoolInitialized());
+  public void testGetConnection_ShouldThrowConnectionException_WhenPoolNotInitialized() {
+    connectionHelper.setConnectionPoolMap(null);
+    assertThrows(ConnectionException.class, () -> connectionHelper.getConnection("anyKey"));
   }
 
   @Test
-  void testGetConnection_ShouldThrowConnectionException_WhenPoolNotInitialized() {
-    assertThrows(
-        ConnectionException.class,
-        () -> {
-          connectionHelper.getConnection("anyKey");
-        });
-  }
-
-  @Test
-  void testInit_ShouldHandleException_WhenCqlSessionCreationFails() {
-    CassandraShard invalidShard = mock(CassandraShard.class);
-    when(invalidShard.getHost()).thenReturn("localhost");
-    when(invalidShard.getPort()).thenReturn("9042");
-    when(invalidShard.getUserName()).thenReturn("invalidUser");
-    when(invalidShard.getPassword()).thenReturn("invalidPassword");
-    when(invalidShard.getKeySpaceName()).thenReturn("mykeyspace");
-
-    ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
-    when(request.getShards()).thenReturn(Arrays.asList(invalidShard));
-    when(request.getMaxConnections()).thenReturn(10);
-
-    connectionHelper.init(request);
-    assertFalse(connectionHelper.isConnectionPoolInitialized());
-  }
-
-  @Test
-  void testSetConnectionPoolMap_ShouldOverrideConnectionPoolMap() throws ConnectionException {
-    CqlSession mockSession = mock(CqlSession.class);
-    connectionHelper.setConnectionPoolMap(Map.of("localhost:9042/user/mykeyspace", mockSession));
+  public void testSetConnectionPoolMap_ShouldOverrideConnectionPoolMap()
+      throws ConnectionException {
+    connectionHelper.setConnectionPoolMap(Map.of("localhost:9042/user/mykeyspace", cqlSession));
 
     CqlSession session = connectionHelper.getConnection("localhost:9042/user/mykeyspace");
     assertNotNull(session);
-    assertEquals(mockSession, session);
+    assertEquals(cqlSession, session);
   }
 
   @Test
-  void testGetConnectionPoolNotFound() {
+  public void testGetConnectionPoolNotFound() {
     connectionHelper.setConnectionPoolMap(Map.of());
-
     ConnectionException exception =
         assertThrows(
-            ConnectionException.class,
-            () -> {
-              connectionHelper.getConnection("nonexistentKey");
-            });
-
+            ConnectionException.class, () -> connectionHelper.getConnection("nonexistentKey"));
     assertEquals("Connection pool is not initialized.", exception.getMessage());
   }
 
   @Test
-  void testGetConnectionWhenPoolNotInitialized() {
+  public void testGetConnectionWhenPoolNotInitialized() {
     connectionHelper.setConnectionPoolMap(null);
     ConnectionException exception =
         assertThrows(
             ConnectionException.class,
-            () -> {
-              connectionHelper.getConnection("localhost:9042/testuser/testKeyspace");
-            });
+            () -> connectionHelper.getConnection("localhost:9042/testuser/testKeyspace"));
     assertEquals("Connection pool is not initialized.", exception.getMessage());
   }
 
   @Test
-  void testGetConnectionWithValidKey() throws ConnectionException {
-    CqlSession mockSession = mock(CqlSession.class);
-
+  public void testGetConnectionWithValidKey() throws ConnectionException {
     String connectionKey = "localhost:9042/testuser/testKeyspace";
-    connectionHelper.setConnectionPoolMap(Map.of(connectionKey, mockSession));
+    connectionHelper.setConnectionPoolMap(Map.of(connectionKey, cqlSession));
 
     CqlSession session = connectionHelper.getConnection(connectionKey);
-
-    assertEquals(mockSession, session, "The returned connection should match the mock session.");
+    assertEquals(cqlSession, session);
   }
 
   @Test
-  void testInit_ShouldThrowIllegalArgumentException_WhenInvalidShardTypeIsProvideds() {
+  public void testInit_ShouldThrowIllegalArgumentException_WhenInvalidShardTypeIsProvided() {
     Shard invalidShard = mock(Shard.class);
-    CassandraConnectionHelper connectionHelper = new CassandraConnectionHelper();
     ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
-    when(request.getShards()).thenReturn(java.util.Collections.singletonList(invalidShard));
+    when(request.getShards()).thenReturn(Collections.singletonList(invalidShard));
+
     IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> {
-              connectionHelper.init(request);
-            });
+        assertThrows(IllegalArgumentException.class, () -> connectionHelper.init(request));
     assertEquals("Invalid shard object", exception.getMessage());
   }
 }

@@ -30,11 +30,14 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 
+@RunWith(JUnit4.class)
 public class CassandraDaoTest {
 
   @Mock private IConnectionHelper mockConnectionHelper;

@@ -15,43 +15,46 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mockStatic;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.common.io.Resources;
 import java.io.FileNotFoundException;
 import java.net.URL;
 import java.util.List;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-class CassandraConfigFileReaderTest {
+@RunWith(JUnit4.class)
+public class CassandraConfigFileReaderTest {
+
   private CassandraConfigFileReader cassandraConfigFileReader;
   private MockedStatic<JarFileReader> mockFileReader;
 
-  @BeforeEach
-  void setUp() {
+  @Before
+  public void setUp() {
     cassandraConfigFileReader = new CassandraConfigFileReader();
-    mockFileReader = mockStatic(JarFileReader.class);
+    mockFileReader = Mockito.mockStatic(JarFileReader.class);
   }
 
-  @AfterEach
-  void tearDown() {
+  @After
+  public void tearDown() {
     if (mockFileReader != null) {
       mockFileReader.close();
     }
   }
 
   @Test
-  void testGetCassandraShardSuccess() {
+  public void testGetCassandraShardSuccess() {
     String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
     URL testUrl = Resources.getResource("test-cassandra-config.conf");
     mockFileReader
@@ -60,32 +63,34 @@ class CassandraConfigFileReaderTest {
 
     List<Shard> shards = cassandraConfigFileReader.getCassandraShard(testGcsPath);
 
-    assertNotNull(shards, "The shards list should not be null.");
-    assertEquals(1, shards.size(), "The shards list should contain one shard.");
+    assertNotNull("The shards list should not be null.", shards);
+    assertEquals("The shards list should contain one shard.", 1, shards.size());
 
     Logger logger = LoggerFactory.getLogger(CassandraConfigFileReader.class);
-    assertNotNull(logger, "Logger should be initialized.");
+    assertNotNull("Logger should be initialized.", logger);
   }
 
   @Test
-  void testGetCassandraShardFileNotFound() {
+  public void testGetCassandraShardFileNotFound() {
     String testConfigPath = "gs://non-existent-bucket/non-existent-file.yaml";
 
     try (MockedStatic<CassandraDriverConfigLoader> mockedConfigLoader =
-        mockStatic(CassandraDriverConfigLoader.class)) {
+        Mockito.mockStatic(CassandraDriverConfigLoader.class)) {
       mockedConfigLoader
           .when(() -> CassandraDriverConfigLoader.getOptionsMapFromFile(testConfigPath))
           .thenThrow(new FileNotFoundException("File not found: " + testConfigPath));
 
-      IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> cassandraConfigFileReader.getCassandraShard(testConfigPath),
-              "Expected an IllegalArgumentException for missing configuration file.");
+      IllegalArgumentException exception = null;
+      try {
+        cassandraConfigFileReader.getCassandraShard(testConfigPath);
+      } catch (IllegalArgumentException e) {
+        exception = e;
+      }
 
+      assertNotNull("Exception should be thrown for missing configuration file.", exception);
       assertTrue(
-          exception.getMessage().contains("Configuration file not found:"),
-          "Exception message should indicate the missing configuration file.");
+          "Exception message should indicate the missing configuration file.",
+          exception.getMessage().contains("Configuration file not found:"));
     }
   }
 }

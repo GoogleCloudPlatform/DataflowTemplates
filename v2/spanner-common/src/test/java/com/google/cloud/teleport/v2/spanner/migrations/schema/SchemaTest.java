@@ -26,12 +26,26 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+@RunWith(JUnit4.class)
 public class SchemaTest {
 
   @Test
   public void verifyTableInSessionTestCorrect() {
     Schema schema = getSchemaObject();
+    schema.generateMappings();
+    try {
+      schema.verifyTableInSession("cart");
+    } catch (Exception e) {
+      fail("No exception should have been thrown for this case");
+    }
+  }
+
+  @Test
+  public void verifyTableInSessionTestAndPopulationCorrect() {
+    Schema schema = getAllSchemaObject();
     schema.generateMappings();
     try {
       schema.verifyTableInSession("cart");
@@ -88,6 +102,21 @@ public class SchemaTest {
     // Add SpSchema.
     Map<String, SpannerTable> spSchema = getSampleSpSchema();
     Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
+    expectedSchema.setToSpanner(new HashMap<String, NameAndCols>());
+    expectedSchema.setToSource(new HashMap<String, NameAndCols>());
+    expectedSchema.setSrcToID(new HashMap<String, NameAndCols>());
+    expectedSchema.setSpannerToID(new HashMap<String, NameAndCols>());
+    return expectedSchema;
+  }
+
+  private static Schema getAllSchemaObject() {
+    // Add SrcSchema.
+    Map<String, SourceTable> srcSchema = getSampleSrcSchema();
+    // Add SpSchema.
+    Map<String, SpannerTable> spSchema = getSampleSpSchema();
+    Schema expectedSchema = new Schema();
+    expectedSchema.setSrcSchema(srcSchema);
+    expectedSchema.setSpSchema(spSchema);
     expectedSchema.setToSpanner(new HashMap<String, NameAndCols>());
     expectedSchema.setToSource(new HashMap<String, NameAndCols>());
     expectedSchema.setSrcToID(new HashMap<String, NameAndCols>());
