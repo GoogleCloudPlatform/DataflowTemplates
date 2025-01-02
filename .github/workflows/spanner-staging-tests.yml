@@ -22,6 +22,11 @@ on:
         type: string
         required: false
         default: ''
+      spannerHost:
+        description: 'Spanner host URL.'
+        type: string
+        required: false
+        default: ''
 
 permissions: write-all
 
@@ -47,7 +52,7 @@ jobs:
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
-        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/"
+        --it-spanner-host=${{ inputs.spannerHost }}
     - name: Integration Test report on GitHub
       uses: dorny/test-reporter@v1
       if: always()
