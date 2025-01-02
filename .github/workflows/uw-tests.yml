@@ -33,10 +33,9 @@ jobs:
           HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
       - name: Checkout code
         uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.variables.outputs.releaseTag }}
-#           token: ${{ secrets.RELEASE_TOKEN }}
+#         with:
+#           fetch-depth: 0
+#           ref: ${{ steps.variables.outputs.releaseTag }}
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
