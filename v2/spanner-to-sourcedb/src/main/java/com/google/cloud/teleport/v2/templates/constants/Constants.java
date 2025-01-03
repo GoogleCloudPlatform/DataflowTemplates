@@ -75,6 +75,7 @@ public class Constants {
   public static final String DEFAULT_SHARD_ID = "single_shard";
 
   public static final String SOURCE_MYSQL = "mysql";
+  public static final String SOURCE_CASSANDRA = "cassandra";
 
   // Message written to the file for filtered records
   public static final String FILTERED_TAG_MESSAGE =

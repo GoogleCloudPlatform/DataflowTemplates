@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -17,6 +17,10 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
@@ -30,11 +34,14 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 
+@RunWith(MockitoJUnitRunner.class)
 public class CassandraDaoTest {
 
   @Mock private IConnectionHelper mockConnectionHelper;
@@ -53,7 +60,7 @@ public class CassandraDaoTest {
 
   @Test
   public void testNullConnectionForWrite() throws Exception {
-    Mockito.when(mockConnectionHelper.getConnection(ArgumentMatchers.anyString())).thenReturn(null);
+    when(mockConnectionHelper.getConnection(anyString())).thenReturn(null);
     ConnectionException exception =
         assertThrows(
             ConnectionException.class,
@@ -69,20 +76,18 @@ public class CassandraDaoTest {
             PreparedStatementValueObject.create("", preparedDmlStatement),
             PreparedStatementValueObject.create("Test", preparedDmlStatement));
 
-    Mockito.when(mockPreparedStatementGeneratedResponse.getDmlStatement())
-        .thenReturn(preparedDmlStatement);
-    Mockito.when(mockPreparedStatementGeneratedResponse.getValues()).thenReturn(values);
-    Mockito.when(mockConnectionHelper.getConnection(ArgumentMatchers.anyString()))
-        .thenReturn(mockSession);
-    Mockito.when(mockSession.prepare(ArgumentMatchers.eq(preparedDmlStatement)))
+    when(mockPreparedStatementGeneratedResponse.getDmlStatement()).thenReturn(preparedDmlStatement);
+    when(mockPreparedStatementGeneratedResponse.getValues()).thenReturn(values);
+    when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockSession);
+    when(mockSession.prepare(ArgumentMatchers.eq(preparedDmlStatement)))
         .thenReturn(mockPreparedStatement);
-    Mockito.when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
+    when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
 
     cassandraDao.write(mockPreparedStatementGeneratedResponse);
 
-    Mockito.verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
-    Mockito.verify(mockPreparedStatement).bind(ArgumentMatchers.any());
-    Mockito.verify(mockSession).execute(ArgumentMatchers.eq(mockBoundStatement));
+    verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
+    verify(mockPreparedStatement).bind(ArgumentMatchers.any());
+    verify(mockSession).execute(ArgumentMatchers.eq(mockBoundStatement));
   }
 
   @Test
@@ -93,14 +98,12 @@ public class CassandraDaoTest {
             PreparedStatementValueObject.create("", preparedDmlStatement),
             PreparedStatementValueObject.create("Test", preparedDmlStatement));
 
-    Mockito.when(mockPreparedStatementGeneratedResponse.getDmlStatement())
-        .thenReturn(preparedDmlStatement);
-    Mockito.when(mockPreparedStatementGeneratedResponse.getValues()).thenReturn(values);
-    Mockito.when(mockConnectionHelper.getConnection(ArgumentMatchers.anyString()))
-        .thenReturn(mockSession);
-    Mockito.when(mockSession.prepare(ArgumentMatchers.eq(preparedDmlStatement)))
+    when(mockPreparedStatementGeneratedResponse.getDmlStatement()).thenReturn(preparedDmlStatement);
+    when(mockPreparedStatementGeneratedResponse.getValues()).thenReturn(values);
+    when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockSession);
+    when(mockSession.prepare(ArgumentMatchers.eq(preparedDmlStatement)))
         .thenReturn(mockPreparedStatement);
-    Mockito.when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
+    when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
     Mockito.doThrow(new RuntimeException("Prepared statement execution failed"))
         .when(mockSession)
         .execute(ArgumentMatchers.eq(mockBoundStatement));
@@ -113,18 +116,17 @@ public class CassandraDaoTest {
             });
 
     assertEquals("Prepared statement execution failed", exception.getMessage());
-    Mockito.verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
-    Mockito.verify(mockPreparedStatement).bind(ArgumentMatchers.any());
-    Mockito.verify(mockSession).execute(ArgumentMatchers.eq(mockBoundStatement));
+    verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
+    verify(mockPreparedStatement).bind(ArgumentMatchers.any());
+    verify(mockSession).execute(ArgumentMatchers.eq(mockBoundStatement));
   }
 
   @Test
   public void testWriteWithExceptionHandling() throws Exception {
     String dmlStatement = "INSERT INTO test (id, name) VALUES (?, ?)";
-    Mockito.when(mockPreparedStatementGeneratedResponse.getDmlStatement()).thenReturn(dmlStatement);
-    Mockito.when(mockConnectionHelper.getConnection(ArgumentMatchers.anyString()))
-        .thenReturn(mockSession);
-    Mockito.when(mockSession.prepare(dmlStatement))
+    when(mockPreparedStatementGeneratedResponse.getDmlStatement()).thenReturn(dmlStatement);
+    when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockSession);
+    when(mockSession.prepare(dmlStatement))
         .thenThrow(new RuntimeException("Failed to prepare statement"));
 
     RuntimeException exception =
@@ -135,13 +137,13 @@ public class CassandraDaoTest {
             });
 
     assertEquals("Failed to prepare statement", exception.getMessage());
-    Mockito.verify(mockSession).prepare(dmlStatement);
-    Mockito.verify(mockSession, Mockito.never()).execute(ArgumentMatchers.<Statement<?>>any());
+    verify(mockSession).prepare(dmlStatement);
+    verify(mockSession, never()).execute(ArgumentMatchers.<Statement<?>>any());
   }
 
   @Test
   public void testConnectionExceptionDuringWrite() throws Exception {
-    Mockito.when(mockConnectionHelper.getConnection(ArgumentMatchers.anyString()))
+    when(mockConnectionHelper.getConnection(anyString()))
         .thenThrow(new ConnectionException("Connection failed"));
     ConnectionException exception =
         assertThrows(
