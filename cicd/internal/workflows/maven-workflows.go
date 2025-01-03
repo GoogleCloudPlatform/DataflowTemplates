@@ -107,7 +107,7 @@ func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
 }
 
-func (*mvnFlags) RunIntegrationTests(bool skipRunnerV2) string {
+func (*mvnFlags) RunIntegrationTests(skipRunnerV2 bool) string {
 	if skipRunnerV2 {
 		return "-PtemplatesIntegrationRunnerV2Tests"
 	}
