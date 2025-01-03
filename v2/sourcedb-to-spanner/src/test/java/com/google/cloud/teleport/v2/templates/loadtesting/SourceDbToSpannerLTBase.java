@@ -53,12 +53,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
   private static final int MAX_WORKERS = 100;
 
-  private static final int NUM_WORKERS = 20;
-
-  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
-
-  private static final String FETCH_SIZE = "8000";
+  private static final int NUM_WORKERS = 10;
 
   private static final Duration JOB_TIMEOUT = Duration.ofHours(3);
   private static final Duration CHECK_INTERVAL = Duration.ofMinutes(5);
@@ -93,6 +88,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
         SpannerResourceManager.builder(testName, project, region)
             .maybeUseStaticInstance()
             .setNodeCount(SPANNER_NODE_COUNT)
+            .setMonitoringClient(monitoringClient)
             .build();
 
     gcsResourceManager =
@@ -151,8 +147,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             put("password", sourceDatabaseResource.password());
             put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
             put("jdbcDriverClassName", driverClassName());
-            put("fetchSize", FETCH_SIZE);
-            put("workerMachineType", WORKER_MACHINE_TYPE);
           }
         };
     params.putAll(templateParameters);
@@ -162,7 +156,6 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
         LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH)
             .addEnvironment("maxWorkers", MAX_WORKERS)
             .addEnvironment("numWorkers", NUM_WORKERS)
-            .addEnvironment("launcherMachineType", LAUNCHER_MACHINE_TYPE)
             .setParameters(params);
     environmentOptions.forEach(options::addEnvironment);
 

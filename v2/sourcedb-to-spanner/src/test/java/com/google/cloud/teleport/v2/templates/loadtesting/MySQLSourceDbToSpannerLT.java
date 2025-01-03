@@ -32,6 +32,10 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
 
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
+  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
+  private static final String FETCH_SIZE = "8000";
+
   @Test
   public void mySQLToSpannerBulk1TBTest() throws IOException, ParseException, InterruptedException {
     String username =
@@ -57,6 +61,19 @@ public class MySQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
           }
         };
 
-    runLoadTest(expectedCountPerTable);
+    Map<String, String> params =
+        new HashMap<>() {
+          {
+            put("workerMachineType", WORKER_MACHINE_TYPE);
+            put("fetchSize", FETCH_SIZE);
+          }
+        };
+    Map<String, String> env =
+        new HashMap<>() {
+          {
+            put("launcherMachineType", LAUNCHER_MACHINE_TYPE);
+          }
+        };
+    runLoadTest(expectedCountPerTable, params, env);
   }
 }

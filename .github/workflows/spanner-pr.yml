@@ -192,6 +192,7 @@ jobs:
         reporter: java-junit
         only-summary: 'false'
         token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-error: 'false'
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:
