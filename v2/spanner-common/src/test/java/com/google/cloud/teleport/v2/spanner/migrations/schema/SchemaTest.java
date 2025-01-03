@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 Google LLC
+ * Copyright (C) 2024 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -114,7 +114,7 @@ public class SchemaTest {
     Map<String, SourceTable> srcSchema = getSampleSrcSchema();
     // Add SpSchema.
     Map<String, SpannerTable> spSchema = getSampleSpSchema();
-    Schema expectedSchema = new Schema(spSchema, srcSchema);
+    Schema expectedSchema = new Schema(spSchema, null, srcSchema);
     expectedSchema.setToSpanner(new HashMap<String, NameAndCols>());
     expectedSchema.setToSource(new HashMap<String, NameAndCols>());
     expectedSchema.setSrcToID(new HashMap<String, NameAndCols>());
