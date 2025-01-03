@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.metadata;
 
+import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.when;
@@ -23,13 +24,14 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import java.util.Arrays;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.MockitoJUnitRunner;
 
-class CassandraSourceMetadataTest {
+@RunWith(MockitoJUnitRunner.class)
+public class CassandraSourceMetadataTest {
 
   @Mock private ResultSet mockResultSet;
   @Mock private Row mockRow1;
@@ -38,24 +40,16 @@ class CassandraSourceMetadataTest {
 
   private CassandraSourceMetadata.Builder builder;
 
-  @BeforeEach
-  void setUp() {
-    MockitoAnnotations.openMocks(this);
+  @Before
+  public void setUp() {
     builder = new CassandraSourceMetadata.Builder();
   }
 
   @Test
-  void testBuilderSetSchemaAndResultSet() {
-    CassandraSourceMetadata metadata =
-        builder.setResultSet(mockResultSet).setSchema(mockSchema).build();
-    Assertions.assertNotNull(metadata, "CassandraSourceMetadata should not be null");
-  }
-
-  @Test
-  void testGenerateSourceSchema() {
+  public void testGenerateSourceSchema() {
     doAnswer(
             invocation -> {
-              Iterable<?> iterable = Arrays.asList(mockRow1, mockRow2);
+              Iterable<Row> iterable = Arrays.asList(mockRow1, mockRow2);
               iterable.forEach(invocation.getArgument(0));
               return null;
             })
@@ -72,7 +66,8 @@ class CassandraSourceMetadataTest {
     when(mockRow2.getString("type")).thenReturn("int");
     when(mockRow2.getString("kind")).thenReturn("clustering");
 
-    CassandraSourceMetadata metadata =
-        builder.setResultSet(mockResultSet).setSchema(mockSchema).build();
+    CassandraSourceMetadata metadata = builder.setResultSet(mockResultSet).build();
+
+    assertNotNull("Metadata should be generated successfully", metadata);
   }
 }

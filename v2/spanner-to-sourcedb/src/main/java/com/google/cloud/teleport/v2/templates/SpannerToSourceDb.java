@@ -29,7 +29,11 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.metadata.CassandraSourceMetadata;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -47,12 +51,14 @@ import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
+import com.google.cloud.teleport.v2.templates.utils.CassandraSourceSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -519,10 +525,6 @@ public class SpannerToSourceDb {
 
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    if (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)) {
-      schema.setSpSchema(SpannerSchema.convertDDLTableToSpannerTable(ddl.allTables()));
-      schema.setToSpanner(SpannerSchema.convertDDLTableToSpannerNameAndColsTable(ddl.allTables()));
-    }
     List<Shard> shards;
     String shardingMode;
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
@@ -545,6 +547,31 @@ public class SpannerToSourceDb {
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
       }
     }
+
+    if (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)) {
+      Map<String, SpannerTable> spannerTableMap =
+          SpannerSchema.convertDDLTableToSpannerTable(ddl.allTables());
+      Map<String, NameAndCols> spannerTableNameColsMap =
+          SpannerSchema.convertDDLTableToSpannerNameAndColsTable(ddl.allTables());
+      try {
+        CassandraSourceMetadata cassandraSourceMetadata =
+            new CassandraSourceMetadata.Builder()
+                .setResultSet(
+                    CassandraSourceSchemaReader.getInformationSchemaAsResultSet(
+                        (CassandraShard) shards.get(0)))
+                .build();
+        schema =
+            new Schema(
+                spannerTableMap,
+                null,
+                cassandraSourceMetadata.getSourceTableMap(),
+                spannerTableNameColsMap,
+                cassandraSourceMetadata.getNameAndColsMap());
+      } catch (Exception e) {
+        throw new IllegalArgumentException(e);
+      }
+    }
+
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
