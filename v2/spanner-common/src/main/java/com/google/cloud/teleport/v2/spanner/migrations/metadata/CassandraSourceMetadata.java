@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -135,7 +135,7 @@ public class CassandraSourceMetadata {
               .put(
                   columnName,
                   new SourceColumnDefinition(
-                      columnName, new SourceColumnType(dataType, new Long[0], new Long[0])));
+                      columnName, new SourceColumnType(dataType, null, null)));
 
           if (isPrimaryKey(kind)) {
             columnPKs
