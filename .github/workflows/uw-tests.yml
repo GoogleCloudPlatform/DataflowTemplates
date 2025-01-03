@@ -47,7 +47,7 @@ jobs:
 #           fetch-depth: 0
 #           ref: ${{ steps.variables.outputs.releaseTag }}
       - name: Create test branch
-        run: git checkout -b $RELEASE_BRANCH_NAME $BRANCH_COMMIT
+        run: git checkout -b $TEST_BRANCH_NAME $BRANCH_COMMIT
         env:
           TEST_BRANCH_NAME: ${{ steps.variables.outputs.testBranchName }}
           BRANCH_COMMIT: ${{ inputs.branchCommit }}
