@@ -46,6 +46,7 @@ jobs:
 #         with:
 #           fetch-depth: 0
 #           ref: ${{ steps.variables.outputs.releaseTag }}
+#           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Create test branch
         run: git checkout -b $TEST_BRANCH_NAME $BRANCH_COMMIT
         env:
@@ -59,6 +60,7 @@ jobs:
       - name: Run Integration Tests
         run: |
           ./cicd/run-it-tests \
+          --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
