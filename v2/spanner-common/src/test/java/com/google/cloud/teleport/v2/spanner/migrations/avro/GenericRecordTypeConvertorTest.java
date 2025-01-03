@@ -299,9 +299,9 @@ public class GenericRecordTypeConvertorTest {
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(
             "date_time_column",
-            AvroTestingHelper.createDatetimeRecord(738991, 48035000000L),
+            AvroTestingHelper.createDatetimeRecord(20091, 31703699206L),
             AvroTestingHelper.DATETIME_SCHEMA);
-    assertEquals("Test datetime conversion: ", "3993-04-16T13:20:35Z", result);
+    assertEquals("Test datetime conversion: ", "2025-01-03T08:48:23.699206Z", result);
 
     // Tests for interval type.
     result =
