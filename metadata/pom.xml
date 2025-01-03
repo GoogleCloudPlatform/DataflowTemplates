@@ -93,6 +93,15 @@
         <failIfNoTests>false</failIfNoTests>
       </properties>
     </profile>
+    <profile>
+      <id>templatesIntegrationRunnerV2Tests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <failIfNoTests>false</failIfNoTests>
+      </properties>
+    </profile>
     <!-- Skip tests for this common module when profile enabled -->
     <profile>
       <id>skipCommonTests</id>
