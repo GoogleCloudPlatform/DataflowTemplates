@@ -18,13 +18,21 @@ package com.google.cloud.teleport.v2.templates.dbutils.dml;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.*;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Test;
 

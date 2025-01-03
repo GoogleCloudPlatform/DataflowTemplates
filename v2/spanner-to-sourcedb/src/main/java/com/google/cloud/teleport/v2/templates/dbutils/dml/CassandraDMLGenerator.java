@@ -36,7 +36,7 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Creates DML statements For Cassandra */
+/** Creates DML statements For Cassandra. */
 public class CassandraDMLGenerator implements IDMLGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(CassandraDMLGenerator.class);
 

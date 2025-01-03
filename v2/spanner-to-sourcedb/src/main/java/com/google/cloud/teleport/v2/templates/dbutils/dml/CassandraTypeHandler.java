@@ -1241,7 +1241,7 @@ public class CassandraTypeHandler {
   /**
    * Parses a nested Cassandra type from a given value.
    *
-   * @param type the Cassandra column type (e.g., "int", "text", "map<int,text>")
+   * @param type the Cassandra column type (e.g., "int", "text", "map of int and text")
    * @param value the value to parse
    * @return a {@link PreparedStatementValueObject} representing the parsed type
    */
@@ -1336,8 +1336,8 @@ public class CassandraTypeHandler {
    * provided Cassandra column type using {@code parseAndGenerateCassandraType}. If the value cannot
    * be cast correctly, an error is logged, and an exception is thrown.
    *
-   * @param cassandraType the Cassandra data type of the column (e.g., "text", "bigint",
-   *     "list<text>")
+   * @param cassandraType the Cassandra data type of the column (e.g., "text", "bigint", "list of
+   *     text")
    * @param columnValue the value of the column to be cast
    * @return the column value cast to the expected type
    * @throws ClassCastException if the value cannot be cast to the expected type
