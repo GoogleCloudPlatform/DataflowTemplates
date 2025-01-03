@@ -37,9 +37,10 @@ jobs:
         id: variables
         run: |
           echo "unifiedWorkerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
-          echo "testBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "testBranchName=uw_release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCloudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
         env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
           HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
       - name: Checkout code
         uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
