@@ -1,0 +1,219 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "cassandra",
+  "DatabaseName": "test",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "sample_table": {
+      "Name": "sample_table",
+      "ColIds": [
+        "id",
+        "varchar_column",
+        "blob_column"  
+      ],
+      "ColDefs": {
+        
+        "blob_column": {
+          "Name": "blob_column",
+          "T": {
+            "Name": "blob",
+            "Len": 9223372036854776000,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: blob_column blob(65535)",
+          "Id": "c11"
+        },
+        "id": {
+          "Name": "id",
+          "T": {
+            "Name": "bigint",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int",
+          "Id": "c2"
+        },
+        "varchar_column": {
+          "Name": "varchar_column",
+          "T": {
+            "Name": "varchar",
+            "Len": 20,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: varchar_column varchar(20)",
+          "Id": "c21"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "id",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Parent": "",
+      "Comment": "Spanner schema for source table sample_table",
+      "Id": "t1"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "sample_table": {
+      "Name": "sample_table",
+      "Schema": "test",
+      "ColIds": [
+        "id",
+        "varchar_column",       
+        "blob_column" 
+      ],
+      "ColDefs": {
+        
+        "blob_column": {
+          "Name": "blob_column",
+          "Type": {
+            "Name": "blob",
+            "Mods": [
+              65535
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11"
+        },
+       
+        "id": {
+          "Name": "id",
+          "Type": {
+            "Name": "integer",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c2"
+        },
+       
+        "varchar_column": {
+          "Name": "varchar_column",
+          "Type": {
+            "Name": "String",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c21"
+        
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "id",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t1"
+    }
+  },
+  "Issues": {
+    "sample_table": {
+      "blob_column": [
+        0
+      ],
+      "id": [
+        13
+      ],
+      "varchar_column": [
+        0
+      ]
+    }
+  },
+  "ToSpanner": {
+    "sample_table": {
+      "Name": "sample_table",
+      "Cols": {        
+        "blob_column": "blob_column",      
+        "id": "id",      
+        "varchar_column": "varchar_column"
+      }
+    }
+  },
+  "ToSource": {
+    "sample_table": {
+      "Name": "sample_table",
+      "Cols": {
+       
+        "blob_column": "blob_column",
+       
+        "id": "id",
+       
+        "varchar_column": "varchar_column"
+      }
+    }
+  },
+  "UsedNames": {
+    "sample_table": true
+  },
+  "Location": {},
+  "Stats": {
+    "Rows": {},
+    "GoodRows": {},
+    "BadRows": {},
+    "Statement": {},
+    "Unexpected": {},
+    "Reparsed": 0
+  },
+  "TimezoneOffset": "+00:00",
+  "TargetDb": "spanner",
+  "UniquePKey": {},
+  "Audit": {
+    "ToSpannerFkIdx": {
+      "sample_table": {
+        "Name": "sample_table",
+        "ForeignKey": {},
+        "Index": {}
+      }
+    },
+    "ToSourceFkIdx": {
+      "sample_table": {
+        "Name": "sample_table",
+        "ForeignKey": {},
+        "Index": {}
+      }
+    }
+  }
+}
