@@ -20,6 +20,8 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -58,6 +60,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /** Test class for {@link CassandraTableReaderFactoryCassandraIoImpl}. */
@@ -68,10 +71,14 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
 
   @Rule public final transient TestPipeline testPipeline = TestPipeline.create();
 
+  @Rule
+  public final transient TestPipeline testPipelineAsserts =
+      TestPipeline.create().enableAbandonedNodeEnforcement(false);
+
   @BeforeClass
   public static void startEmbeddedCassandra() throws IOException {
     if (sharedEmbeddedCassandra == null) {
-      sharedEmbeddedCassandra = new SharedEmbeddedCassandra(TEST_CONFIG, TEST_CQLSH);
+      sharedEmbeddedCassandra = new SharedEmbeddedCassandra(TEST_CONFIG, TEST_CQLSH, Boolean.TRUE);
     }
   }
 
@@ -127,6 +134,58 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
     testPipeline.run().waitUntilFinish();
   }
 
+  /**
+   * Validates that existing CassandraIO hits <a
+   * href=https://github.com/apache/beam/issues/30266>apache/beam/issues/30266</a>
+   *
+   * @throws RetriableSchemaDiscoveryException
+   */
+  @Test
+  public void testCassandraTableReaderFactoryWithSslThrowsIllegalArgumentException()
+      throws RetriableSchemaDiscoveryException {
+    SourceSchemaReference cassandraSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+    DataSource dataSource =
+        DataSource.ofCassandra(
+            CassandraDataSource.builder()
+                .setOptionsMap(OptionsMap.driverDefaults())
+                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                .overrideOptionInOptionsMap(TypedDriverOption.SSL_HOSTNAME_VALIDATION, true)
+                .build());
+    CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
+    ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema =
+        cassandraSchemaDiscovery.discoverTableSchema(
+            dataSource, cassandraSchemaReference, ImmutableList.of(PRIMITIVE_TYPES_TABLE));
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder()
+                .setKeyspaceName(dataSource.cassandra().loggedKeySpace())
+                .build());
+    SourceTableSchema.Builder sourceTableSchemaBuilder =
+        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(PRIMITIVE_TYPES_TABLE);
+    discoverTableSchema
+        .get(PRIMITIVE_TYPES_TABLE)
+        .forEach(
+            (colName, colType) ->
+                sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(colName, colType));
+    SourceTableSchema sourceTableSchema = sourceTableSchemaBuilder.build();
+    PTransform<PBegin, PCollection<SourceRow>> tableReader =
+        new CassandraTableReaderFactoryCassandraIoImpl()
+            .getTableReader(dataSource.cassandra(), sourceSchemaReference, sourceTableSchema);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              testPipelineAsserts.apply(tableReader).apply(Count.globally());
+              testPipelineAsserts.run().waitUntilFinish();
+            });
+    assertThat(exception.getCause().getClass()).isEqualTo(java.io.NotSerializableException.class);
+  }
+
   @Test
   public void testSetCredentials() throws FileNotFoundException {
 
@@ -153,5 +212,72 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
       verify(mockCassandraIORead, times(1)).withUsername(testUserName);
       verify(mockCassandraIORead, times(1)).withPassword(testPassword);
     }
+  }
+
+  @Test
+  public void testWithoutSslEnabled() {
+    CassandraDataSource cassandraDataSource =
+        CassandraDataSource.builder().setOptionsMap(OptionsMap.driverDefaults()).build();
+    CassandraIO.Read<SourceRow> mockTableReader = Mockito.mock(CassandraIO.Read.class);
+    assertThat(
+            CassandraTableReaderFactoryCassandraIoImpl.setSslOptions(
+                mockTableReader,
+                cassandraDataSource.driverConfigLoader().getInitialConfig().getDefaultProfile()))
+        .isEqualTo(mockTableReader);
+    // Test Default Trust Store.
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.getSSLOptions(null, null)).isNotNull();
+  }
+
+  @Test
+  public void testGetSslOptionsException() throws RetriableSchemaDiscoveryException {
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            CassandraTableReaderFactoryCassandraIoImpl.getSSLOptions(
+                sharedEmbeddedCassandra.getInstance().getTrustStorePath().toString(),
+                "invalid-password"));
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            CassandraTableReaderFactoryCassandraIoImpl.getSSLOptions(
+                sharedEmbeddedCassandra.getInstance().getTrustStorePath().toString(), null));
+  }
+
+  @Test
+  public void testSslEnabled() {
+    CassandraDataSource cassandraDataSourceSslDisabled =
+        CassandraDataSource.builder().setOptionsMap(OptionsMap.driverDefaults()).build();
+    CassandraDataSource cassandraDataSourceTrustSoreDefined =
+        CassandraDataSource.builder()
+            .setOptionsMap(OptionsMap.driverDefaults())
+            .overrideOptionInOptionsMap(
+                TypedDriverOption.SSL_TRUSTSTORE_PATH, "/tmp/test.truststore")
+            .build();
+    CassandraDataSource cassandraDataSourceKeySoreDefined =
+        CassandraDataSource.builder()
+            .setOptionsMap(OptionsMap.driverDefaults())
+            .overrideOptionInOptionsMap(TypedDriverOption.SSL_KEYSTORE_PATH, "/tmp/test.keystore")
+            .build();
+    assertThat(
+            CassandraTableReaderFactoryCassandraIoImpl.enableSSL(
+                cassandraDataSourceSslDisabled
+                    .driverConfigLoader()
+                    .getInitialConfig()
+                    .getDefaultProfile()))
+        .isFalse();
+    assertThat(
+            CassandraTableReaderFactoryCassandraIoImpl.enableSSL(
+                cassandraDataSourceTrustSoreDefined
+                    .driverConfigLoader()
+                    .getInitialConfig()
+                    .getDefaultProfile()))
+        .isTrue();
+    assertThat(
+            CassandraTableReaderFactoryCassandraIoImpl.enableSSL(
+                cassandraDataSourceKeySoreDefined
+                    .driverConfigLoader()
+                    .getInitialConfig()
+                    .getDefaultProfile()))
+        .isTrue();
   }
 }
