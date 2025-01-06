@@ -7,9 +7,8 @@ resource "null_resource" "replace_keys" {
     always_run = timestamp()
   }
   provisioner "local-exec" {
-
-    command = <<EOT
-      sed "s~##host##~${var.shard_config.host}~g; s~##port##~${var.shard_config.port}~g; s~##keyspace##~${var.shard_config.keyspace}~g; s~##dataCenter##~${var.shard_config.dataCenter}~g; s~##localPoolSize##~${var.shard_config.localPoolSize}~g; s~##remotePoolSize##~${var.shard_config.remotePoolSize}~g; s~##username##~${var.shard_config.username}~g; s~##password##~${var.shard_config.password}~g; s~##sslOptions##~${var.shard_config.sslOptions}~g; s~##protocolVersion##~${var.shard_config.protocolVersion}~g; s~##consistency##~${var.shard_config.consistency}~g;" ${var.cassandra_template_config_file} > cassandra-config.conf
+    command = <<-EOT
+    sed "s~##host##~${var.shard_config.host}~g; s~##port##~${var.shard_config.port}~g; s~##keyspace##~${var.shard_config.keyspace}~g; s~##dataCenter##~${var.shard_config.dataCenter}~g; s~##localPoolSize##~${var.shard_config.localPoolSize}~g; s~##remotePoolSize##~${var.shard_config.remotePoolSize}~g; s~##username##~${var.shard_config.username}~g; s~##password##~${var.shard_config.password}~g; s~##sslOptions##~${var.shard_config.sslOptions}~g; s~##protocolVersion##~${var.shard_config.protocolVersion}~g; s~##consistency##~${var.shard_config.consistencyLevel}~g;" ${var.cassandra_template_config_file} > "cassandra-config.conf"
     EOT
   }
 }
@@ -67,13 +66,13 @@ resource "google_storage_bucket_object" "session_file_object" {
 
 # Auto-generate the source shards file from the Terraform configuration and
 # upload it to GCS.
-resource "google_storage_bucket_object" "source_shards_file_object" {
-  depends_on   = [google_project_service.enabled_apis]
-  name         = "source_shards.json"
-  content_type = "application/json"
-  bucket       = google_storage_bucket.reverse_replication_bucket.id
-  content      = jsonencode(var.shard_list)
-}
+# resource "google_storage_bucket_object" "source_shards_file_object" {
+#   depends_on   = [google_project_service.enabled_apis]
+#   name         = "source_shards.json"
+#   content_type = "application/json"
+#   bucket       = google_storage_bucket.reverse_replication_bucket.id
+#   content      = jsonencode(var.shard_list)
+# }
 
 # Pub/Sub topic for reverse replication DLQ
 resource "google_pubsub_topic" "dlq_pubsub_topic" {
@@ -165,8 +164,8 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     google_project_service.enabled_apis, google_project_iam_member.reverse_replication_roles, google_spanner_database.reverse_replication_metadata_database, null_resource.create_spanner_change_stream, google_pubsub_subscription.dlq_pubsub_subscription
   ] # Launch the template once the stream is created.
   provider                = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Spanner_to_SourceDb"
-  # container_spec_gcs_path = "gs://reverse-replication-dataflow-templates/templates/flex/Spanner_to_SourceDb"
+#   container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Spanner_to_SourceDb"
+  container_spec_gcs_path = "gs://dataflow-templates-spanner-to-cassandra/templates/flex/Spanner_to_SourceDb"
   # Parameters from Dataflow Template
   parameters = {
     changeStreamName         = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream

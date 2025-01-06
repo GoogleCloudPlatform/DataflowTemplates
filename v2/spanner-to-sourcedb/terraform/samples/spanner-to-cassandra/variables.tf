@@ -37,6 +37,7 @@ variable "dataflow_params" {
       dlq_max_retry_count          = optional(string)
       run_mode                     = optional(string)
       dlq_retry_minutes            = optional(string)
+      source_type                  = string
     })
     runner_params = object({
       additional_experiments = optional(set(string), [
