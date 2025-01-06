@@ -33,7 +33,8 @@ import org.junit.runners.JUnit4;
 public class PostgreSQLSourceDbToSpannerLT extends SourceDbToSpannerLTBase {
 
   @Test
-  public void backfill100Gb() throws IOException, ParseException, InterruptedException {
+  public void postgresToSpannerBulk100GBTest()
+      throws IOException, ParseException, InterruptedException {
     String username =
         accessSecret(
             "projects/269744978479/secrets/nokill-sourcedb-postgresql-to-spanner-cloudsql-username/versions/1");
