@@ -78,6 +78,15 @@
       <version>4.17.0</version>
     </dependency>
 
+    <!-- Needed for Beam CassandraIO -->
+    <!-- https://mvnrepository.com/artifact/com.codahale.metrics/metrics-core -->
+    <dependency>
+      <groupId>com.codahale.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+      <version>3.0.2</version>
+    </dependency>
+
+
     <!-- Test Dependencies -->
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
