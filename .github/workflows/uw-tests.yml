@@ -7,6 +7,15 @@ on:
         description: 'Unified worker harness container image'
         type: string
         required: true
+      candidateName:
+        description: 'Name of the candidate'
+        type: string
+        required: false
+      branchCommit:
+        description: 'Commit to check out. If it is the most recent commit then leave blank.'
+        type: string
+        required: false
+        default: ''
 
 permissions:
   contents: write
@@ -28,15 +37,22 @@ jobs:
         id: variables
         run: |
           echo "unifiedWorkerHarnessContainerImage=${HARNESS_IMAGE}" >> $GITHUB_OUTPUT
+          echo "testBranchName=uw_release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
           echo "releaseTag=$(curl -s https://api.github.com/repos/GoogleCloudPlatform/DataflowTemplates/releases/latest | jq '.tag_name' | sed 's/\"//g')" >> $GITHUB_OUTPUT
         env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
           HARNESS_IMAGE: ${{ inputs.unifiedWorkerHarnessContainerImage }}
       - name: Checkout code
         uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
         with:
           fetch-depth: 0
           ref: ${{ steps.variables.outputs.releaseTag }}
-          token: ${{ secrets.RELEASE_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create test branch
+        run: git checkout -b $TEST_BRANCH_NAME $BRANCH_COMMIT
+        env:
+          TEST_BRANCH_NAME: ${{ steps.variables.outputs.testBranchName }}
+          BRANCH_COMMIT: ${{ inputs.branchCommit }}
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -45,6 +61,7 @@ jobs:
       - name: Run Integration Tests
         run: |
           ./cicd/run-it-tests \
+          --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \

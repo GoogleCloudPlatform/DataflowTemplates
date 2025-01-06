@@ -28,6 +28,7 @@ import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraConnector;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
@@ -82,6 +83,7 @@ public class CassandraSourceRowMapperTest {
         DataSource.ofCassandra(
             CassandraDataSource.builder()
                 .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                .setOptionsMap(OptionsMap.driverDefaults())
                 .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
                 .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
                 .build());

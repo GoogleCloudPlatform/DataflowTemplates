@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -44,7 +45,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToPubsub} (Cloud_PubSub_to_Cloud_PubSub). */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(PubsubToPubsub.class)
 @RunWith(JUnit4.class)
 public class PubSubToPubSubIT extends TemplateTestBase {

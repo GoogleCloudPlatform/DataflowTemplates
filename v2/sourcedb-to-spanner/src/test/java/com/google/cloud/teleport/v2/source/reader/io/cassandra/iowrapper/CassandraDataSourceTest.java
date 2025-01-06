@@ -16,37 +16,87 @@
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.mockStatic;
 
-import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
+import com.google.common.io.Resources;
+import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.util.List;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 /** Test class for {@link CassandraDataSource}. */
 @RunWith(MockitoJUnitRunner.class)
 public class CassandraDataSourceTest {
+  MockedStatic mockFileReader;
+
+  @Before
+  public void initialize() {
+    mockFileReader = mockStatic(JarFileReader.class);
+  }
+
   @Test
-  public void testCassandraDataSoureBasic() {
+  public void testCassandraDataSourceBasic() {
     String testCluster = "testCluster";
-    String testHost = "testHost";
+    String testHost = "127.0.0.1";
     int testPort = 9042;
     CassandraDataSource cassandraDataSource =
         CassandraDataSource.builder()
             .setClusterName(testCluster)
+            .setOptionsMap(OptionsMap.driverDefaults())
             .setContactPoints(List.of(new InetSocketAddress(testHost, testPort)))
-            .setDbAuth(
-                LocalCredentialsProvider.builder()
-                    .setUserName("test-user-name")
-                    .setPassword("test")
-                    .build())
+            .overrideOptionInOptionsMap(TypedDriverOption.AUTH_PROVIDER_USER_NAME, "test-user-name")
+            .overrideOptionInOptionsMap(TypedDriverOption.AUTH_PROVIDER_PASSWORD, "test")
             .build();
     assertThat(cassandraDataSource.clusterName()).isEqualTo(testCluster);
     assertThat(cassandraDataSource.contactPoints())
         .isEqualTo(ImmutableList.of(new InetSocketAddress(testHost, testPort)));
-    assertThat(cassandraDataSource.dbAuth().getUserName().get()).isEqualTo("test-user-name");
-    assertThat(cassandraDataSource.dbAuth().getPassword().get()).isEqualTo("test");
+    assertThat(
+            cassandraDataSource
+                .driverConfigLoader()
+                .getInitialConfig()
+                .getDefaultProfile()
+                .getString(TypedDriverOption.AUTH_PROVIDER_USER_NAME.getRawOption()))
+        .isEqualTo("test-user-name");
+    assertThat(
+            cassandraDataSource
+                .driverConfigLoader()
+                .getInitialConfig()
+                .getDefaultProfile()
+                .getString(TypedDriverOption.AUTH_PROVIDER_PASSWORD.getRawOption()))
+        .isEqualTo("test");
+  }
+
+  @Test
+  public void testLoadFromGCS() throws FileNotFoundException {
+    String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
+    URL testUrl = Resources.getResource("CassandraUT/test-cassandra-config.conf");
+    mockFileReader
+        .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
+        .thenReturn(new URL[] {testUrl});
+    CassandraDataSource cassandraDataSource =
+        CassandraDataSource.builder().setOptionsMapFromGcsFile(testGcsPath).build();
+
+    assertThat(cassandraDataSource.loggedKeySpace()).isEqualTo("test-keyspace");
+    assertThat(cassandraDataSource.localDataCenter()).isEqualTo("datacenter1");
+    assertThat(cassandraDataSource.contactPoints())
+        .isEqualTo(
+            ImmutableList.of(
+                new InetSocketAddress("127.0.0.1", 9042),
+                new InetSocketAddress("127.0.0.1", 9043)));
+  }
+
+  @After
+  public void cleanup() {
+    mockFileReader.close();
   }
 }

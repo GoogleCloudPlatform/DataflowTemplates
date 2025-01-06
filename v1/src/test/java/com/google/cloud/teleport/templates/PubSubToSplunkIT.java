@@ -24,6 +24,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
@@ -59,7 +60,7 @@ import org.junit.runners.JUnit4;
  *
  * <p>TODO - Change CustomSplunkResourceManager back when Beam 2.55 is released
  */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(PubSubToSplunk.class)
 @RunWith(JUnit4.class)
 public class PubSubToSplunkIT extends TemplateTestBase {
