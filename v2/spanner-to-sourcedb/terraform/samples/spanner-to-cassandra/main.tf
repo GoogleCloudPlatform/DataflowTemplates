@@ -175,10 +175,10 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     spannerProjectId         = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
     metadataInstance         = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
     metadataDatabase         = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
-    sourceShardsFilePath     = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
     startTimestamp           = var.dataflow_params.template_params.start_timestamp
     endTimestamp             = var.dataflow_params.template_params.end_timestamp
     shadowTablePrefix        = var.dataflow_params.template_params.shadow_table_prefix
+    sourceShardsFilePath     = "gs://${google_storage_bucket_object.shard_config.bucket}/${google_storage_bucket_object.shard_config.name}"
     sessionFilePath          = "gs://${google_storage_bucket_object.session_file_object.bucket}/${google_storage_bucket_object.session_file_object.name}"
     filtrationMode           = var.dataflow_params.template_params.filtration_mode
     shardingCustomJarPath    = var.dataflow_params.template_params.sharding_custom_jar_path
@@ -192,6 +192,7 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     dlqMaxRetryCount         = var.dataflow_params.template_params.dlq_max_retry_count
     runMode                  = var.dataflow_params.template_params.run_mode
     dlqRetryMinutes          = var.dataflow_params.template_params.dlq_retry_minutes
+    sourceType               = var.dataflow_params.template_params.source_type
     # targetDatabase           = "ecommerce" # Cassandra keyspace name
     # targetHost               = "10.0.0.2" # Cassandra host IP
     # targetPort               = "9042"    # Cassandra port

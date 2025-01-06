@@ -59,6 +59,8 @@ dataflow_params = {
     run_mode = "regular"
     # Optional retry minutes for DLQ
     dlq_retry_minutes = "10"
+    # source type of the database (e.g., "mysql", "postgres", "spanner", "cassandra")
+    source_type = "cassandra"
   }
   runner_params = {
     # Optional additional experiments for the Dataflow runner
