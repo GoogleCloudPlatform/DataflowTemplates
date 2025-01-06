@@ -83,7 +83,6 @@ public class CassandraConnectionHelperTest {
         when(request.getMaxConnections()).thenReturn(10);
         connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
         connectionHelper.init(request);
-
         assertTrue(connectionHelper.isConnectionPoolInitialized());
       }
     }
@@ -182,5 +181,23 @@ public class CassandraConnectionHelperTest {
     IllegalArgumentException exception =
         assertThrows(IllegalArgumentException.class, () -> connectionHelper.init(request));
     assertEquals("Invalid shard object", exception.getMessage());
+  }
+
+  @Test
+  public void testInit_ShouldNotInitializeConnectionPool() {
+    when(cassandraShard.getHost()).thenReturn("localhost");
+    when(cassandraShard.getPort()).thenReturn("9042");
+    when(cassandraShard.getUserName()).thenReturn("user");
+    when(cassandraShard.getPassword()).thenReturn("password");
+    when(cassandraShard.getKeySpaceName()).thenReturn("mykeyspace");
+    when(cassandraShard.getOptionsMap()).thenReturn(optionsMap);
+
+    ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
+    when(request.getShards()).thenReturn(Collections.singletonList(cassandraShard));
+    when(request.getMaxConnections()).thenReturn(10);
+    connectionHelper.setConnectionPoolMap(new ConcurrentHashMap<>());
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> connectionHelper.init(request));
+    assertEquals("The options map must contain a profile named default", exception.getMessage());
   }
 }

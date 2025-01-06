@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.metadata;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
@@ -22,8 +23,11 @@ import static org.mockito.Mockito.when;
 
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import java.util.Arrays;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,5 +73,69 @@ public class CassandraSourceMetadataTest {
     CassandraSourceMetadata metadata = builder.setResultSet(mockResultSet).build();
 
     assertNotNull("Metadata should be generated successfully", metadata);
+  }
+
+  @Test
+  public void testGenerateNamesColsMap() {
+    doAnswer(
+            invocation -> {
+              Iterable<Row> iterable = Arrays.asList(mockRow1, mockRow2);
+              iterable.forEach(invocation.getArgument(0));
+              return null;
+            })
+        .when(mockResultSet)
+        .forEach(any());
+
+    when(mockRow1.getString("table_name")).thenReturn("table1");
+    when(mockRow1.getString("column_name")).thenReturn("column1");
+    when(mockRow1.getString("type")).thenReturn("text");
+    when(mockRow1.getString("kind")).thenReturn("partition_key");
+
+    when(mockRow2.getString("table_name")).thenReturn("table1");
+    when(mockRow2.getString("column_name")).thenReturn("column2");
+    when(mockRow2.getString("type")).thenReturn("int");
+    when(mockRow2.getString("kind")).thenReturn("clustering");
+
+    CassandraSourceMetadata metadata = builder.setResultSet(mockResultSet).build();
+
+    assertNotNull("Metadata should be generated successfully", metadata);
+
+    Map<String, NameAndCols> nameAndColsMap = metadata.getNameAndColsMap();
+    assertEquals(1, nameAndColsMap.size());
+    NameAndCols nameAndCols = nameAndColsMap.get("table1");
+    assertNotNull("NameAndCols should be generated successfully", nameAndCols);
+    assertEquals(2, nameAndCols.getCols().size());
+  }
+
+  @Test
+  public void testGenerateSourceTablesMap() {
+    doAnswer(
+            invocation -> {
+              Iterable<Row> iterable = Arrays.asList(mockRow1, mockRow2);
+              iterable.forEach(invocation.getArgument(0));
+              return null;
+            })
+        .when(mockResultSet)
+        .forEach(any());
+
+    when(mockRow1.getString("table_name")).thenReturn("table1");
+    when(mockRow1.getString("column_name")).thenReturn("column1");
+    when(mockRow1.getString("type")).thenReturn("text");
+    when(mockRow1.getString("kind")).thenReturn("partition_key");
+
+    when(mockRow2.getString("table_name")).thenReturn("table1");
+    when(mockRow2.getString("column_name")).thenReturn("column2");
+    when(mockRow2.getString("type")).thenReturn("int");
+    when(mockRow2.getString("kind")).thenReturn("clustering");
+
+    CassandraSourceMetadata metadata = builder.setResultSet(mockResultSet).build();
+
+    assertNotNull("Metadata should be generated successfully", metadata);
+
+    Map<String, SourceTable> sourceTableMap = metadata.getSourceTableMap();
+    assertEquals(1, sourceTableMap.size());
+    SourceTable sourceTable = sourceTableMap.get("table1");
+    assertNotNull("SourceTable should be generated successfully", sourceTable);
+    assertEquals(2, sourceTable.getColDefs().size());
   }
 }

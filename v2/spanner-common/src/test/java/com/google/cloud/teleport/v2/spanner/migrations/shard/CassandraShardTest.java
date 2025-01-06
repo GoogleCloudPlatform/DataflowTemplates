@@ -108,6 +108,23 @@ public class CassandraShardTest {
   }
 
   @Test
+  public void testEqualsAndHashCode_ForSameEqual() {
+    CassandraShard shard1 = new CassandraShard(optionsMap);
+    assertEquals("Equal shards should be considered equal", shard1, shard1);
+    assertEquals(
+        "Equal shards should have the same hash code", shard1.hashCode(), shard1.hashCode());
+  }
+
+  @Test
+  public void testEqualsAndHashCode_NotEqual() {
+    CassandraShard shard1 = new CassandraShard(optionsMap);
+    Shard shard2 = new Shard();
+    assertNotEquals("Equal shards should be considered equal", shard1, shard2);
+    assertNotEquals(
+        "Equal shards should have the same hash code", shard1.hashCode(), shard2.hashCode());
+  }
+
+  @Test
   public void testGetUsername() {
     CassandraShard shard = new CassandraShard(optionsMap);
     String expectedUsername = "user123";
@@ -125,6 +142,17 @@ public class CassandraShardTest {
         "The options map returned should be the same as the one passed to the constructor",
         optionsMap,
         returnedOptionsMap);
+  }
+
+  @Test
+  public void testConstructor_InvalidKeySpaceNameLength() {
+    String keyspace = "keyspace1";
+    List<String> contactPoints = List.of("localhost");
+    when(optionsMap.get(TypedDriverOption.SESSION_KEYSPACE)).thenReturn(keyspace);
+    when(optionsMap.get(TypedDriverOption.CONTACT_POINTS)).thenReturn(contactPoints);
+    IllegalArgumentException exception =
+        assertThrows(IllegalArgumentException.class, () -> new CassandraShard(optionsMap));
+    assertEquals("Invalid contact point format: localhost", exception.getMessage());
   }
 
   @Test
