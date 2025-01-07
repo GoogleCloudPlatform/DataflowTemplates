@@ -20,8 +20,19 @@ import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.DatabaseAdminClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 
@@ -42,5 +53,66 @@ public class SpannerSchema {
     Ddl ddl = scanner.scan();
     spannerAccessor.close();
     return ddl;
+  }
+
+  public static Map<String, SpannerTable> convertDDLTableToSpannerTable(Collection<Table> tables) {
+    return tables.stream()
+        .collect(
+            Collectors.toMap(
+                Table::name, // Use the table name as the key
+                SpannerSchema::convertTableToSpannerTable // Convert Table to SpannerTable
+                ));
+  }
+
+  public static Map<String, NameAndCols> convertDDLTableToSpannerNameAndColsTable(
+      Collection<Table> tables) {
+    return tables.stream()
+        .collect(
+            Collectors.toMap(
+                Table::name, // Use the table name as the key
+                SpannerSchema
+                    ::convertTableToSpannerTableNameAndCols // Convert Table to SpannerTable
+                ));
+  }
+
+  private static NameAndCols convertTableToSpannerTableNameAndCols(Table table) {
+    return new NameAndCols(
+        table.name(),
+        table.columns().stream()
+            .collect(
+                Collectors.toMap(
+                    Column::name, // Use column IDs as keys
+                    Column::name)));
+  }
+
+  private static SpannerTable convertTableToSpannerTable(Table table) {
+    String name = table.name(); // Table name
+    // Extract column IDs
+    String[] colIds =
+        table.columns().stream()
+            .map(Column::name) // Assuming Column name as ID
+            .toArray(String[]::new);
+
+    // Build column definitions
+    Map<String, SpannerColumnDefinition> colDefs =
+        table.columns().stream()
+            .collect(
+                Collectors.toMap(
+                    Column::name, // Use column IDs as keys
+                    column ->
+                        new SpannerColumnDefinition(
+                            column.name(),
+                            new SpannerColumnType(
+                                column.typeString(), // Type Code name (e.g., STRING, INT64)
+                                false))));
+
+    // Extract primary keys
+    AtomicInteger orderCounter = new AtomicInteger(1);
+    ColumnPK[] primaryKeys =
+        table.primaryKeys().stream()
+            .map(pk -> new ColumnPK(pk.name(), orderCounter.getAndIncrement()))
+            .toArray(ColumnPK[]::new);
+
+    return new SpannerTable(name, colIds, colDefs, primaryKeys, table.name());
   }
 }
