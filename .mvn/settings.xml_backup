@@ -42,10 +42,10 @@
             <mirrorOf>external:https:*</mirrorOf>
         </mirror>
         <mirror>
-            <id>central</id>
-            <name>Maven Central</name>
-            <url>https://repo1.maven.org/maven2</url>
-            <mirrorOf>central</mirrorOf>
+            <id>central-proxy</id>
+            <name>Local proxy of central repo</name>
+            <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/ah-3p-staging-maven</url>
+            <mirrorOf>external:artifactregistry:*</mirrorOf>
         </mirror>
     </mirrors>
 </settings>
