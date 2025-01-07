@@ -81,7 +81,6 @@ import org.neo4j.importer.v1.targets.NodeTarget;
 import org.neo4j.importer.v1.targets.RelationshipTarget;
 import org.neo4j.importer.v1.targets.Target;
 import org.neo4j.importer.v1.targets.TargetType;
-import org.neo4j.importer.v1.targets.Targets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -275,6 +274,10 @@ public class GoogleCloudToNeo4j {
                     Entry::getKey, mapping(Entry::getValue, Collectors.<PCollection<?>>toList())));
     var sourceRows = new ArrayList<PCollection<?>>(importSpecification.getSources().size());
     var targetRows = new HashMap<TargetType, List<PCollection<?>>>(targetCount());
+    var allActiveTargets =
+        importSpecification.getTargets().getAll().stream()
+            .filter(Target::isActive)
+            .collect(toList());
     var allActiveNodeTargets =
         importSpecification.getTargets().getNodes().stream()
             .filter(Target::isActive)
@@ -283,40 +286,42 @@ public class GoogleCloudToNeo4j {
     ////////////////////////////
     // Process sources
     for (var source : importSpecification.getSources()) {
+      String sourceName = source.getName();
+      var activeSourceTargets =
+          allActiveTargets.stream()
+              .filter(target -> target.getSource().equals(sourceName))
+              .collect(toList());
+      if (activeSourceTargets.isEmpty()) {
+        return;
+      }
 
       // get provider implementation for source
       Provider provider = ProviderFactory.of(source, targetSequence);
       provider.configure(optionsParams);
       PCollection<Row> sourceMetadata =
           pipeline.apply(
-              String.format("Metadata for source %s", source.getName()), provider.queryMetadata());
+              String.format("Metadata for source %s", sourceName), provider.queryMetadata());
       sourceRows.add(sourceMetadata);
       Schema sourceBeamSchema = sourceMetadata.getSchema();
       processingQueue.addToQueue(
-          ArtifactType.source, false, source.getName(), defaultActionContext, sourceMetadata);
-      PCollection<Row> nullableSourceBeamRows = null;
+          ArtifactType.source, false, sourceName, defaultActionContext, sourceMetadata);
 
       ////////////////////////////
-      // Optimization: if single source query, reuse this PCollection rather than write it again
-      boolean targetsHaveTransforms = ModelUtils.targetsHaveTransforms(importSpecification, source);
-      if (!targetsHaveTransforms || !provider.supportsSqlPushDown()) {
+      // Optimization: if some of the current source's targets either
+      // - do not alter the source query (i.e. define no transformations)
+      // - or the source provider does not support SQL pushdown
+      // then the source PCollection can be defined here and reused across all the relevant targets
+      PCollection<Row> nullableSourceBeamRows = null;
+      if (!provider.supportsSqlPushDown()
+          || activeSourceTargets.stream()
+              .anyMatch(target -> !ModelUtils.targetHasTransforms(target))) {
         nullableSourceBeamRows =
             pipeline
-                .apply("Query " + source.getName(), provider.querySourceBeamRows(sourceBeamSchema))
+                .apply("Query " + sourceName, provider.querySourceBeamRows(sourceBeamSchema))
                 .setRowSchema(sourceBeamSchema);
       }
 
-      String sourceName = source.getName();
-
-      ////////////////////////////
-      // Optimization: if we're not mixing nodes and edges, then run in parallel
-      // For relationship updates, max workers should be max 2.  This parameter is job configurable.
-
-      ////////////////////////////
-      // No optimization possible so write nodes then edges.
-      // Write node targets
-      List<NodeTarget> nodeTargets =
-          getActiveTargetsBySourceAndType(importSpecification, sourceName, TargetType.NODE);
+      List<NodeTarget> nodeTargets = getTargetsByType(activeSourceTargets, TargetType.NODE);
       for (NodeTarget target : nodeTargets) {
         TargetQuerySpec targetQuerySpec =
             new TargetQuerySpecBuilder()
@@ -327,7 +332,7 @@ public class GoogleCloudToNeo4j {
         String nodeStepDescription =
             targetSequence.getSequenceNumber(target)
                 + ": "
-                + source.getName()
+                + sourceName
                 + "->"
                 + target.getName()
                 + " nodes";
@@ -371,7 +376,7 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // Write relationship targets
       List<RelationshipTarget> relationshipTargets =
-          getActiveTargetsBySourceAndType(importSpecification, sourceName, TargetType.RELATIONSHIP);
+          getTargetsByType(activeSourceTargets, TargetType.RELATIONSHIP);
       for (var target : relationshipTargets) {
         var targetQuerySpec =
             new TargetQuerySpecBuilder()
@@ -383,14 +388,14 @@ public class GoogleCloudToNeo4j {
                 .endNodeTarget(
                     findNodeTargetByName(allActiveNodeTargets, target.getEndNodeReference()))
                 .build();
-        PCollection<Row> preInsertBeamRows;
         String relationshipStepDescription =
             targetSequence.getSequenceNumber(target)
                 + ": "
-                + source.getName()
+                + sourceName
                 + "->"
                 + target.getName()
                 + " edges";
+        PCollection<Row> preInsertBeamRows;
         if (ModelUtils.targetHasTransforms(target)) {
           preInsertBeamRows =
               pipeline.apply(
@@ -439,12 +444,12 @@ public class GoogleCloudToNeo4j {
       ////////////////////////////
       // Custom query targets
       List<CustomQueryTarget> customQueryTargets =
-          getActiveTargetsBySourceAndType(importSpecification, sourceName, TargetType.QUERY);
+          getTargetsByType(activeSourceTargets, TargetType.QUERY);
       for (Target target : customQueryTargets) {
         String customQueryStepDescription =
             targetSequence.getSequenceNumber(target)
                 + ": "
-                + source.getName()
+                + sourceName
                 + "->"
                 + target.getName()
                 + " (custom query)";
@@ -455,6 +460,8 @@ public class GoogleCloudToNeo4j {
             processingQueue.waitOnCollections(
                 target.getDependencies(), customQueryStepDescription));
 
+        // note: nullableSourceBeamRows is guaranteed to be non-null here since custom query targets
+        // cannot define source transformations
         PCollection<Row> blockingReturn =
             nullableSourceBeamRows
                 .apply(
@@ -581,15 +588,10 @@ public class GoogleCloudToNeo4j {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends Target> List<T> getActiveTargetsBySourceAndType(
-      ImportSpecification importSpecification, String sourceName, TargetType targetType) {
-    Targets targets = importSpecification.getTargets();
-    return targets.getAll().stream()
-        .filter(
-            target ->
-                target.getTargetType() == targetType
-                    && target.isActive()
-                    && sourceName.equals(target.getSource()))
+  private <T extends Target> List<T> getTargetsByType(
+      List<Target> activeSourceTargets, TargetType targetType) {
+    return activeSourceTargets.stream()
+        .filter(target -> target.getTargetType() == targetType)
         .map(target -> (T) target)
         .collect(toList());
   }

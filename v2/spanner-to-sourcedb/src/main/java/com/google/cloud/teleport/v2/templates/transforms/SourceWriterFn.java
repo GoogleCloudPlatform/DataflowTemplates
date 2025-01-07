@@ -202,7 +202,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
         if (!isSourceAhead) {
           IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-
           boolean isEventFiltered =
               InputRecordProcessor.processRecord(
                   spannerRec,

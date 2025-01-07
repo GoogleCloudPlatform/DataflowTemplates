@@ -16,56 +16,69 @@
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
-import com.datastax.oss.driver.internal.core.retry.DefaultRetryPolicy;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.auto.value.AutoValue;
-import com.google.cloud.teleport.v2.source.reader.auth.dbauth.DbAuth;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import java.io.FileNotFoundException;
 import java.io.Serializable;
 import java.net.InetSocketAddress;
-import java.time.Duration;
 import java.util.List;
 import javax.annotation.Nullable;
 
 /**
  * Encapsulates details of a Cassandra Cluster. Cassandra Cluster can connect to multiple KeySpaces,
- * just like a Mysql instance can have multiple databases. TODO(vardhanvthigle): Take
- * DriverConfiguration as a GCS file for advanced overrides.
+ * just like a Mysql instance can have multiple databases.
  */
 @AutoValue
 public abstract class CassandraDataSource implements Serializable {
 
-  /** Name of the Cassandra Cluster. */
+  /** Options Map. * */
+  abstract OptionsMap optionsMap();
+
+  @Nullable
   public abstract String clusterName();
 
-  /** Name of local Datacenter. Must be specified if contactPoints are not empty */
-  @Nullable
-  public abstract String localDataCenter();
+  public DriverConfigLoader driverConfigLoader() {
+    return CassandraDriverConfigLoader.fromOptionsMap(optionsMap());
+  }
 
-  /** Contact points for connecting to a Cassandra Cluster. */
-  public abstract ImmutableList<InetSocketAddress> contactPoints();
+  /** returns List of ContactPoints. Added for easier compatibility with 3.0 cluster creation. */
+  public ImmutableList<InetSocketAddress> contactPoints() {
+    return driverConfigLoader()
+        .getInitialConfig()
+        .getDefaultProfile()
+        .getStringList(TypedDriverOption.CONTACT_POINTS.getRawOption())
+        .stream()
+        .map(
+            contactPoint -> {
+              String[] ipPort = contactPoint.split(":");
+              return new InetSocketAddress(ipPort[0], Integer.parseInt(ipPort[1]));
+            })
+        .collect(ImmutableList.toImmutableList());
+  }
 
-  /** Cassandra Auth details. */
-  @Nullable
-  public abstract DbAuth dbAuth();
+  /** Returns local datacenter. Added for easier compatibility with 3.0 cluster creation. */
+  public String localDataCenter() {
+    return driverConfigLoader()
+        .getInitialConfig()
+        .getDefaultProfile()
+        .getString(TypedDriverOption.LOAD_BALANCING_LOCAL_DATACENTER.getRawOption());
+  }
 
-  /** Retry Policy for Cassandra Driver. Defaults to {@link DefaultRetryPolicy}. */
-  public abstract Class retryPolicy();
-
-  /** Consistency level for reading the source. Defaults to {@link ConsistencyLevel#QUORUM} */
-  public abstract ConsistencyLevel consistencyLevel();
-
-  /** Connection timeout for Cassandra driver. Set null for driver default. */
-  @Nullable
-  public abstract Duration connectTimeout();
-
-  /** Read timeout for Cassandra driver. Set null for driver default. */
-  @Nullable
-  public abstract Duration requestTimeout();
+  /** Returns the logged Keyspace. */
+  public String loggedKeySpace() {
+    return driverConfigLoader()
+        .getInitialConfig()
+        .getDefaultProfile()
+        .getString(TypedDriverOption.SESSION_KEYSPACE.getRawOption());
+  }
 
   public static Builder builder() {
-    return new AutoValue_CassandraDataSource.Builder()
-        .setRetryPolicy(DefaultRetryPolicy.class)
-        .setConsistencyLevel(ConsistencyLevel.QUORUM);
+    return new AutoValue_CassandraDataSource.Builder();
   }
 
   public abstract Builder toBuilder();
@@ -73,26 +86,55 @@ public abstract class CassandraDataSource implements Serializable {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setClusterName(String value);
+    public abstract Builder setOptionsMap(OptionsMap value);
 
-    public abstract Builder setLocalDataCenter(@Nullable String value);
+    public abstract Builder setClusterName(@Nullable String value);
 
-    public abstract Builder setContactPoints(ImmutableList<InetSocketAddress> value);
+    abstract OptionsMap optionsMap();
 
-    public Builder setContactPoints(List<InetSocketAddress> value) {
-      return setContactPoints(ImmutableList.copyOf(value));
+    public Builder setOptionsMapFromGcsFile(String gcsPath) throws FileNotFoundException {
+      return this.setOptionsMap(CassandraDriverConfigLoader.getOptionsMapFromFile(gcsPath));
     }
 
-    public abstract Builder setDbAuth(@Nullable DbAuth value);
+    public <ValueT> Builder overrideOptionInOptionsMap(
+        TypedDriverOption<ValueT> option, ValueT value) {
+      DriverConfigLoader.fromMap(optionsMap())
+          .getInitialConfig()
+          .getProfiles()
+          .keySet()
+          .forEach(profile -> this.optionsMap().put(profile, option, value));
+      return this;
+    }
 
-    public abstract Builder setRetryPolicy(Class value);
+    /**
+     * Allowing UT to set the contact points. In UT environment, the port is dynamically determined.
+     * We can't use a static GCS file to provide the contact points.
+     */
+    @VisibleForTesting
+    public Builder setContactPoints(List<InetSocketAddress> contactPoints) {
+      overrideOptionInOptionsMap(
+          TypedDriverOption.CONTACT_POINTS,
+          contactPoints.stream()
+              .map(p -> p.getAddress().getHostAddress() + ":" + p.getPort())
+              .collect(ImmutableList.toImmutableList()));
+      return this;
+    }
 
-    public abstract Builder setConsistencyLevel(ConsistencyLevel value);
+    /** Set the local Datacenter. */
+    @VisibleForTesting
+    public Builder setLocalDataCenter(String localDataCenter) {
+      overrideOptionInOptionsMap(
+          TypedDriverOption.LOAD_BALANCING_LOCAL_DATACENTER, localDataCenter);
+      return this;
+    }
 
-    public abstract Builder setConnectTimeout(@Nullable Duration value);
+    abstract CassandraDataSource autoBuild();
 
-    public abstract Builder setRequestTimeout(@Nullable Duration value);
-
-    public abstract CassandraDataSource build();
+    public CassandraDataSource build() {
+      /* Prefer to use quorum read until we encounter a strong use case to not do so. */
+      this.overrideOptionInOptionsMap(
+          TypedDriverOption.REQUEST_CONSISTENCY, ConsistencyLevel.QUORUM.toString());
+      return autoBuild();
+    }
   }
 }
