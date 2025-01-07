@@ -23,6 +23,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
@@ -74,6 +75,7 @@ public class CassandraSchemaDiscoveryTest {
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
             CassandraDataSource.builder()
+                .setOptionsMap(OptionsMap.driverDefaults())
                 .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
                 .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
                 .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
@@ -95,6 +97,7 @@ public class CassandraSchemaDiscoveryTest {
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
             CassandraDataSource.builder()
+                .setOptionsMap(OptionsMap.driverDefaults())
                 .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
                 .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
                 .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
@@ -121,6 +124,7 @@ public class CassandraSchemaDiscoveryTest {
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
             CassandraDataSource.builder()
+                .setOptionsMap(OptionsMap.driverDefaults())
                 .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
                 .setContactPoints(
                     sharedEmbeddedCassandra.getInstance().getContactPoints().stream()
@@ -154,6 +158,7 @@ public class CassandraSchemaDiscoveryTest {
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
             CassandraDataSource.builder()
+                .setOptionsMap(OptionsMap.driverDefaults())
                 .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
                 .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
                 .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())

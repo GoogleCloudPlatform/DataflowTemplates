@@ -512,7 +512,10 @@ public class GenericRecordTypeConvertor {
       // Convert to timestamp string.
       Long totalMicros = TimeUnit.DAYS.toMicros(Long.valueOf(element.get("date").toString()));
       totalMicros += Long.valueOf(element.get("time").toString());
-      Instant timestamp = Instant.ofEpochSecond(TimeUnit.MICROSECONDS.toSeconds(totalMicros));
+      Instant timestamp =
+          Instant.ofEpochSecond(
+              TimeUnit.MICROSECONDS.toSeconds(totalMicros),
+              TimeUnit.MICROSECONDS.toNanos(totalMicros % TimeUnit.SECONDS.toMicros(1)));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getName().equals("interval")) {
       // TODO: For MySQL, we ignore the months field. This might require source-specific handling

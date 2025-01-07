@@ -49,7 +49,7 @@ type MavenFlags interface {
 	SkipSpotlessCheck() string
 	SkipIntegrationTests() string
 	FailAtTheEnd() string
-	RunIntegrationTests() string
+	RunIntegrationTests(bool) string
 	RunIntegrationSmokeTests() string
 	RunLoadTests() string
 	RunLoadTestObserver() string
@@ -107,7 +107,10 @@ func (*mvnFlags) FailAtTheEnd() string {
 	return "-fae"
 }
 
-func (*mvnFlags) RunIntegrationTests() string {
+func (*mvnFlags) RunIntegrationTests(skipRunnerV2 bool) string {
+	if skipRunnerV2 {
+		return "-PtemplatesIntegrationRunnerV2Tests"
+	}
 	return "-PtemplatesIntegrationTests"
 }
 
