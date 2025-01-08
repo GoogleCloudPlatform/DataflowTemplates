@@ -42,7 +42,7 @@ func main() {
 		mvnFlags.InternalMaven())
         mvnFlags.SurefireConsoleOutput(),  // Add console output
         mvnFlags.FullStackTrace(),         // Add full stack traces
-        mvnFlags.TestRetryCount(2), 		
+        mvnFlags.TestRetryCount(2)		
 	if err != nil {
         log.Fatalf("Test execution failed: %v\n", err)
 	}
