@@ -39,9 +39,7 @@ func main() {
 		mvnFlags.SkipIntegrationTests(),
 		mvnFlags.FailAtTheEnd(),
 		mvnFlags.ThreadCount(8),
-		mvnFlags.InternalMaven(),
-		mvnFlags.ShowErrors(),           // Add this to show detailed test failures
-        mvnFlags.LogLevel("DEBUG"))
+		mvnFlags.InternalMaven())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
