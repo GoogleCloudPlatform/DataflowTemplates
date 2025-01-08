@@ -1,0 +1,603 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "cassandra",
+  "DatabaseName": "test",
+  "SpSchema": {
+    "sample_table": {
+      "Name": "sample_table",
+      "ColIds": [
+        "id",
+        "varchar_column",
+        "tinyint_column",
+        "text_column",
+        "date_column",
+        "smallint_column",
+        "mediumint_column",
+        "bigint_column",
+        "float_column",
+        "double_column",
+        "decimal_column",
+        "datetime_column",
+        "timestamp_column",
+        "time_column",
+        "year_column",
+        "char_column",
+        "tinyblob_column",
+        "tinytext_column",
+        "blob_column",
+        "mediumblob_column",
+        "mediumtext_column",
+        "longblob_column",
+        "longtext_column",
+        "enum_column",
+        "set_column",
+        "bool_column",
+        "binary_column",
+        "varbinary_column"
+      ],
+      "ColDefs": {
+        "bigint_column": {
+          "Name": "bigint_column",
+          "T": {
+            "Name": "INT64"
+          }
+        },
+        "binary_column": {
+          "Name": "binary_column",
+          "T": {
+            "Name": "BYTES"
+          }
+        },
+        "blob_column": {
+          "Name": "blob_column",
+          "T": {
+            "Name": "BYTES"
+          }
+        },
+        "bool_column": {
+          "Name": "bool_column",
+          "T": {
+            "Name": "BOOL"
+          }
+        },
+        "char_column": {
+          "Name": "char_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "date_column": {
+          "Name": "date_column",
+          "T": {
+            "Name": "DATE"
+          }
+        },
+        "datetime_column": {
+          "Name": "datetime_column",
+          "T": {
+            "Name": "TIMESTAMP"
+          }
+        },
+        "decimal_column": {
+          "Name": "decimal_column",
+          "T": {
+            "Name": "NUMERIC"
+          }
+        },
+        "double_column": {
+          "Name": "double_column",
+          "T": {
+            "Name": "FLOAT64"
+          }
+        },
+        "enum_column": {
+          "Name": "enum_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "float_column": {
+          "Name": "float_column",
+          "T": {
+            "Name": "FLOAT64"
+          }
+        },
+        "id": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64"
+          }
+        },
+        "longblob_column": {
+          "Name": "longblob_column",
+          "T": {
+            "Name": "BYTES"
+          }
+        },
+        "longtext_column": {
+          "Name": "longtext_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "mediumblob_column": {
+          "Name": "mediumblob_column",
+          "T": {
+            "Name": "BYTES"
+          }
+        },
+        "mediumint_column": {
+          "Name": "mediumint_column",
+          "T": {
+            "Name": "INT64"
+          }
+        },
+        "mediumtext_column": {
+          "Name": "mediumtext_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "set_column": {
+          "Name": "set_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "smallint_column": {
+          "Name": "smallint_column",
+          "T": {
+            "Name": "INT64"
+          }
+        },
+        "text_column": {
+          "Name": "text_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "time_column": {
+          "Name": "time_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "timestamp_column": {
+          "Name": "timestamp_column",
+          "T": {
+            "Name": "TIMESTAMP"
+          }
+        },
+        "tinyblob_column": {
+          "Name": "tinyblob_column",
+          "T": {
+            "Name": "BYTES"
+          }
+        },
+        "tinyint_column": {
+          "Name": "tinyint_column",
+          "T": {
+            "Name": "INT64"
+          }
+        },
+        "tinytext_column": {
+          "Name": "tinytext_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "varbinary_column": {
+          "Name": "varbinary_column",
+          "T": {
+            "Name": "BYTES"
+          }
+        },
+        "varchar_column": {
+          "Name": "varchar_column",
+          "T": {
+            "Name": "STRING"
+          }
+        },
+        "year_column": {
+          "Name": "year_column",
+          "T": {
+            "Name": "STRING"
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "id"
+        }
+      ]
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "sample_table": {
+      "Name": "sample_table",
+      "Schema": "test",
+      "ColIds": [
+        "id",
+        "varchar_column",
+        "tinyint_column",
+        "text_column",
+        "date_column",
+        "smallint_column",
+        "mediumint_column",
+        "bigint_column",
+        "float_column",
+        "double_column",
+        "decimal_column",
+        "datetime_column",
+        "timestamp_column",
+        "time_column",
+        "year_column",
+        "char_column",
+        "tinyblob_column",
+        "tinytext_column",
+        "blob_column",
+        "mediumblob_column",
+        "mediumtext_column",
+        "longblob_column",
+        "longtext_column",
+        "enum_column",
+        "set_column",
+        "bool_column",
+        "binary_column",
+        "varbinary_column"
+      ],
+      "ColDefs": {
+        "bigint_column": {
+          "Name": "bigint_column",
+          "Type": {
+            "Name": "bigint"
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c9"
+        },
+        "binary_column": {
+          "Name": "binary_column",
+          "Type": {
+            "Name": "binary"
+          }
+        },
+        "blob_column": {
+          "Name": "blob_column",
+          "Type": {
+            "Name": "blob"
+          }
+        },
+        "bool_column": {
+          "Name": "bool_column",
+          "Type": {
+            "Name": "tinyint"
+          }
+        },
+        "char_column": {
+          "Name": "char_column",
+          "Type": {
+            "Name": "varchar"
+          }
+        },
+        "date_column": {
+          "Name": "date_column",
+          "Type": {
+            "Name": "timestamp"
+          }
+        },
+        "datetime_column": {
+          "Name": "datetime_column",
+          "Type": {
+            "Name": "timestamp"
+          }
+        },
+        "decimal_column": {
+          "Name": "decimal_column",
+          "Type": {
+            "Name": "float"
+          }
+        },
+        "double_column": {
+          "Name": "double_column",
+          "Type": {
+            "Name": "float"
+          }
+        },
+        "enum_column": {
+          "Name": "enum_column",
+          "Type": {
+            "Name": "enum"
+          }
+        },
+        "float_column": {
+          "Name": "float_column",
+          "Type": {
+            "Name": "float"
+          }
+        },
+        "id": {
+          "Name": "id",
+          "Type": {
+            "Name": "int"
+          }
+        },
+        "longblob_column": {
+          "Name": "longblob_column",
+          "Type": {
+            "Name": "blob"
+          }
+        },
+        "longtext_column": {
+          "Name": "longtext_column",
+          "Type": {
+            "Name": "varchar"
+          }
+        },
+        "mediumblob_column": {
+          "Name": "mediumblob_column",
+          "Type": {
+            "Name": "blob"
+          }
+        },
+        "mediumint_column": {
+          "Name": "mediumint_column",
+          "Type": {
+            "Name": "int"
+          }
+        },
+        "mediumtext_column": {
+          "Name": "mediumtext_column",
+          "Type": {
+            "Name": "varchar"
+          }
+        },
+        "set_column": {
+          "Name": "set_column",
+          "Type": {
+            "Name": "set"
+          }
+        },
+        "smallint_column": {
+          "Name": "smallint_column",
+          "Type": {
+            "Name": "int"
+          }
+        },
+        "text_column": {
+          "Name": "text_column",
+          "Type": {
+            "Name": "varchar"
+          }
+        },
+        "time_column": {
+          "Name": "time_column",
+          "Type": {
+            "Name": "time"
+          }
+        },
+        "timestamp_column": {
+          "Name": "timestamp_column",
+          "Type": {
+            "Name": "timestamp"
+          }
+        },
+        "tinyblob_column": {
+          "Name": "tinyblob_column",
+          "Type": {
+            "Name": "blob"
+          }
+        },
+        "tinyint_column": {
+          "Name": "tinyint_column",
+          "Type": {
+            "Name": "tinyint"
+          }
+        },
+        "tinytext_column": {
+          "Name": "tinytext_column",
+          "Type": {
+            "Name": "varchar"
+          }
+        },
+        "varbinary_column": {
+          "Name": "varbinary_column",
+          "Type": {
+            "Name": "varbinary"
+          }
+        },
+        "varchar_column": {
+          "Name": "varchar_column",
+          "Type": {
+            "Name": "varchar"
+          }
+        },
+        "year_column": {
+          "Name": "year_column",
+          "Type": {
+            "Name": "year"
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "id"
+        }
+      ]
+    }
+  },
+  "Issues": {
+    "sample_table": {
+      "bigint_column": [
+        0
+      ],
+      "binary_column": [
+        0
+      ],
+      "blob_column": [
+        0
+      ],
+      "bool_column": [
+        0
+      ],
+      "char_column": [
+        0
+      ],
+      "date_column": [
+        0
+      ],
+      "datetime_column": [
+        12,
+        0
+      ],
+      "decimal_column": [
+        0
+      ],
+      "double_column": [
+        0
+      ],
+      "enum_column": [
+        0
+      ],
+      "float_column": [
+        13,
+        0
+      ],
+      "id": [
+        13
+      ],
+      "longblob_column": [
+        0
+      ],
+      "longtext_column": [
+        0
+      ],
+      "mediumblob_column": [
+        0
+      ],
+      "mediumint_column": [
+        13,
+        0
+      ],
+      "mediumtext_column": [
+        0
+      ],
+      "set_column": [
+        0
+      ],
+      "smallint_column": [
+        13,
+        0
+      ],
+      "text_column": [
+        0
+      ],
+      "time_column": [
+        14,
+        0
+      ],
+      "timestamp_column": [
+        0
+      ],
+      "tinyblob_column": [
+        0
+      ],
+      "tinyint_column": [
+        13,
+        0
+      ],
+      "tinytext_column": [
+        0
+      ],
+      "varbinary_column": [
+        0
+      ],
+      "varchar_column": [
+        0
+      ],
+      "year_column": [
+        14,
+        0
+      ]
+    }
+  },
+  "ToSpanner": {
+    "sample_table": {
+      "Name": "sample_table",
+      "Cols": {
+        "bigint_column": "bigint_column",
+        "binary_column": "binary_column",
+        "blob_column": "blob_column",
+        "bool_column": "bool_column",
+        "char_column": "char_column",
+        "date_column": "date_column",
+        "datetime_column": "datetime_column",
+        "decimal_column": "decimal_column",
+        "double_column": "double_column",
+        "enum_column": "enum_column",
+        "float_column": "float_column",
+        "id": "id",
+        "longblob_column": "longblob_column",
+        "longtext_column": "longtext_column",
+        "mediumblob_column": "mediumblob_column",
+        "mediumint_column": "mediumint_column",
+        "mediumtext_column": "mediumtext_column",
+        "set_column": "set_column",
+        "smallint_column": "smallint_column",
+        "text_column": "text_column",
+        "time_column": "time_column",
+        "timestamp_column": "timestamp_column",
+        "tinyblob_column": "tinyblob_column",
+        "tinyint_column": "tinyint_column",
+        "tinytext_column": "tinytext_column",
+        "varbinary_column": "varbinary_column",
+        "varchar_column": "varchar_column",
+        "year_column": "year_column"
+      }
+    }
+  },
+  "ToSource": {
+    "sample_table": {
+      "Name": "sample_table",
+      "Cols": {
+        "bigint_column": "bigint_column",
+        "binary_column": "binary_column",
+        "blob_column": "blob_column",
+        "bool_column": "bool_column",
+        "char_column": "char_column",
+        "date_column": "date_column",
+        "datetime_column": "datetime_column",
+        "decimal_column": "decimal_column",
+        "double_column": "double_column",
+        "enum_column": "enum_column",
+        "float_column": "float_column",
+        "id": "id",
+        "longblob_column": "longblob_column",
+        "longtext_column": "longtext_column",
+        "mediumblob_column": "mediumblob_column",
+        "mediumint_column": "mediumint_column",
+        "mediumtext_column": "mediumtext_column",
+        "set_column": "set_column",
+        "smallint_column": "smallint_column",
+        "text_column": "text_column",
+        "time_column": "time_column",
+        "timestamp_column": "timestamp_column",
+        "tinyblob_column": "tinyblob_column",
+        "tinyint_column": "tinyint_column",
+        "tinytext_column": "tinytext_column",
+        "varbinary_column": "varbinary_column",
+        "varchar_column": "varchar_column",
+        "year_column": "year_column"
+      }
+    }
+  }
+  }
