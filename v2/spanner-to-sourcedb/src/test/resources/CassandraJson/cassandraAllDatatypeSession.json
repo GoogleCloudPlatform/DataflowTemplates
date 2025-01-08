@@ -1,7 +1,7 @@
 {
   "SessionName": "NewSession",
   "EditorName": "",
-  "DatabaseType": "mysql",
+  "DatabaseType": "cassandra",
   "DatabaseName": "test",
   "SpSchema": {
     "sample_table": {
@@ -599,22 +599,5 @@
         "year_column": "year_column"
       }
     }
-  },
-  "Location": {},
-  "Stats": {
-    "Rows": {},
-    "GoodRows": {},
-    "BadRows": {},
-    "Statement": {},
-    "Unexpected": {},
-    "Reparsed": 0
-  },
-  "TimezoneOffset": "+00:00",
-    "ToSourceFkIdx": {
-      "sample_table": {
-        "Name": "sample_table",
-        "ForeignKey": {},
-        "Index": {}
-      }
-    }
+  }
   }
