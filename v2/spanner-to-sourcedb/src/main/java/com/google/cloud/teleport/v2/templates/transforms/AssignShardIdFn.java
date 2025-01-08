@@ -181,6 +181,7 @@ public class AssignShardIdFn
     String qualifiedShard = "";
     String tableName = record.getTableName();
     String keysJsonStr = record.getMod().getKeysJson();
+    long finalKey;
 
     try {
       if (shardingMode.equals(Constants.SHARDING_MODE_SINGLE_SHARD)) {
@@ -231,9 +232,7 @@ public class AssignShardIdFn
 
       record.setShard(qualifiedShard);
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
-      Long finalKey =
-          finalKeyString.hashCode() % maxConnectionsAcrossAllShards; // The total parallelism is
-      // maxConnectionsAcrossAllShards
+      finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
       c.output(KV.of(finalKey, record));
 
     } catch (Exception e) {
@@ -242,7 +241,7 @@ public class AssignShardIdFn
       LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString());
       // The record has no shard hence will be sent to DLQ in subsequent steps
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
-      Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
+      finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
       c.output(KV.of(finalKey, record));
     }
   }
