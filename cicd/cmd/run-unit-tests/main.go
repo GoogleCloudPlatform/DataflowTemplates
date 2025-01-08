@@ -20,8 +20,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/ollionorg/DataflowTemplates-fork/cicd/internal/flags"
-	"github.com/ollionorg/DataflowTemplates-fork/cicd/internal/workflows"
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
 )
 
 func main() {
