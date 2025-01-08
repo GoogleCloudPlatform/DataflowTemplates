@@ -59,24 +59,9 @@ type MavenFlags interface {
 	StaticSpannerInstance(string) string
 	SpannerHost(string) string
 	InternalMaven() string
-    SurefireConsoleOutput() string
-    FullStackTrace() string
-    TestRetryCount(int) string	
 }
 
 type mvnFlags struct{}
-
-func (*mvnFlags) SurefireConsoleOutput() string {
-    return "-Dsurefire.useFile=false"
-}
-
-func (*mvnFlags) FullStackTrace() string {
-    return "-DtrimStackTrace=false"
-}
-
-func (*mvnFlags) TestRetryCount(count int) string {
-    return "-Dsurefire.rerunFailingTestsCount=" + strconv.Itoa(count)
-}
 
 func (*mvnFlags) IncludeDependencies() string {
 	return "-am"
