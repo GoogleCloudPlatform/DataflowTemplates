@@ -1,0 +1,754 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "ui_demo",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "Singers",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ColDefs": {
+        "c5": {
+          "Name": "SingerId",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: SingerId int",
+          "Id": "c5"
+        },
+        "c6": {
+          "Name": "FirstName",
+          "T": {
+            "Name": "STRING",
+            "Len": 1024,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: FirstName varchar(1024)",
+          "Id": "c6"
+        },
+        "c7": {
+          "Name": "LastName",
+          "T": {
+            "Name": "STRING",
+            "Len": 1024,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: LastName varchar(1024)",
+          "Id": "c7"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c6",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": [
+        {
+          "Name": "ind1",
+          "TableId": "t1",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c5",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i9",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Singers",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "contact",
+      "ColIds": [
+        "c18",
+        "c19",
+        "c20",
+        "c21"
+      ],
+      "ColDefs": {
+        "c18": {
+          "Name": "ID",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: ID int",
+          "Id": "c18"
+        },
+        "c19": {
+          "Name": "Customer_Id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: Customer_Id int",
+          "Id": "c19"
+        },
+        "c20": {
+          "Name": "Customer_Info",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: Customer_Info varchar(50)",
+          "Id": "c20"
+        },
+        "c21": {
+          "Name": "Type",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: Type varchar(50)",
+          "Id": "c21"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c18",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c19",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "contact_ibfk_1",
+          "ColIds": [
+            "c18"
+          ],
+          "ReferTableId": "t3",
+          "ReferColumnIds": [
+            "c10"
+          ],
+          "Id": "f8"
+        }
+      ],
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table contact",
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "customer",
+      "ColIds": [
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "ColDefs": {
+        "c10": {
+          "Name": "ID",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: ID int",
+          "Id": "c10"
+        },
+        "c11": {
+          "Name": "Name",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: Name varchar(50)",
+          "Id": "c11"
+        },
+        "c12": {
+          "Name": "City",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: City varchar(50)",
+          "Id": "c12"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c10",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table customer",
+      "Id": "t3"
+    },
+    "t4": {
+      "Name": "Persons",
+      "ColIds": [
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17",
+        "c22"
+      ],
+      "ColDefs": {
+        "c13": {
+          "Name": "PersonID",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: PersonID int",
+          "Id": "c13"
+        },
+        "c14": {
+          "Name": "LastName",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: LastName varchar(255)",
+          "Id": "c14"
+        },
+        "c15": {
+          "Name": "FirstName",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: FirstName varchar(255)",
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "Address",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: Address varchar(255)",
+          "Id": "c16"
+        },
+        "c17": {
+          "Name": "City",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: City varchar(255)",
+          "Id": "c17"
+        },
+        "c22": {
+          "Name": "synth_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c22"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c22",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table Persons",
+      "Id": "t4"
+    }
+  },
+  "SyntheticPKeys": {
+    "t4": {
+      "ColId": "c22",
+      "Sequence": 0
+    }
+  },
+  "SrcSchema": {
+    "t1": {
+      "Name": "Singers",
+      "Schema": "ui_demo",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ColDefs": {
+        "c5": {
+          "Name": "SingerId",
+          "Type": {
+            "Name": "integer",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c5"
+        },
+        "c6": {
+          "Name": "FirstName",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              1024
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c6"
+        },
+        "c7": {
+          "Name": "LastName",
+          "Type": {
+            "Name": "String",
+            "Mods": [
+              1024
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c7"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c5",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": [
+        {
+          "Name": "ind1",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c5",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i9",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "contact",
+      "Schema": "ui_demo",
+      "ColIds": [
+        "c18",
+        "c19",
+        "c20",
+        "c21"
+      ],
+      "ColDefs": {
+        "c18": {
+          "Name": "ID",
+          "Type": {
+            "Name": "int",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c18"
+        },
+        "c19": {
+          "Name": "Customer_Id",
+          "Type": {
+            "Name": "int",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c19"
+        },
+        "c20": {
+          "Name": "Customer_Info",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              50
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c20"
+        },
+        "c21": {
+          "Name": "Type",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              50
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c21"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c18",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c19",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "contact_ibfk_1",
+          "ColIds": [
+            "c18"
+          ],
+          "ReferTableId": "t3",
+          "ReferColumnIds": [
+            "c10"
+          ],
+          "OnDelete": "",
+          "OnUpdate": "",
+          "Id": "f8"
+        }
+      ],
+      "Indexes": null,
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "customer",
+      "Schema": "ui_demo",
+      "ColIds": [
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "ColDefs": {
+        "c10": {
+          "Name": "ID",
+          "Type": {
+            "Name": "int",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c10"
+        },
+        "c11": {
+          "Name": "Name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              50
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11"
+        },
+        "c12": {
+          "Name": "City",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              50
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c10",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t3"
+    },
+    "t4": {
+      "Name": "Persons",
+      "Schema": "ui_demo",
+      "ColIds": [
+        "c13",
+        "c14",
+        "c15",
+        "c16",
+        "c17"
+      ],
+      "ColDefs": {
+        "c13": {
+          "Name": "PersonID",
+          "Type": {
+            "Name": "int",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13"
+        },
+        "c14": {
+          "Name": "LastName",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14"
+        },
+        "c15": {
+          "Name": "FirstName",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15"
+        },
+        "c16": {
+          "Name": "Address",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c16"
+        },
+        "c17": {
+          "Name": "City",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c17"
+        }
+      },
+      "PrimaryKeys": null,
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t4"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "c5": [
+        13,
+        18
+      ]
+    },
+    "t2": {
+      "c18": [
+        13
+      ],
+      "c19": [
+        13
+      ]
+    },
+    "t3": {
+      "c10": [
+        13
+      ]
+    },
+    "t4": {
+      "c13": [
+        13
+      ]
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": []
+}
