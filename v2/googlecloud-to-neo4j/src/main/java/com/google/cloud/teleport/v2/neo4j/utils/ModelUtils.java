@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -38,8 +37,6 @@ import net.sf.jsqlparser.statement.select.OrderByElement;
 import net.sf.jsqlparser.statement.select.PlainSelect;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.commons.lang3.StringUtils;
-import org.neo4j.importer.v1.ImportSpecification;
-import org.neo4j.importer.v1.sources.Source;
 import org.neo4j.importer.v1.targets.Aggregation;
 import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.NodeTarget;
@@ -57,12 +54,6 @@ import org.slf4j.LoggerFactory;
 public class ModelUtils {
   private static final Pattern variablePattern = Pattern.compile("(\\$([a-zA-Z0-9_]+))");
   private static final Logger LOG = LoggerFactory.getLogger(ModelUtils.class);
-
-  public static boolean targetsHaveTransforms(ImportSpecification jobSpec, Source source) {
-    return jobSpec.getTargets().getAll().stream()
-        .filter(target -> target.isActive() && Objects.equals(target.getSource(), source.getName()))
-        .anyMatch(ModelUtils::targetHasTransforms);
-  }
 
   public static boolean targetHasTransforms(Target target) {
     if (target.getTargetType() == TargetType.QUERY) {
