@@ -102,9 +102,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: |
-          export MAVEN_OPTS="-Xmx2g -XX:MaxPermSize=512m"
-          ./cicd/run-unit-tests
+        run: ./cicd/run-unit-tests
       - name: Upload Unit Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
