@@ -22,6 +22,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_TABLES;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mockStatic;
 
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
@@ -33,14 +34,18 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.JdbcSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcDataSource;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReference;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.JarFileReader;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.io.Resources;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
@@ -85,6 +90,38 @@ public class CassandraSchemaDiscoveryTest {
     ImmutableList<String> tables =
         cassandraSchemaDiscovery.discoverTables(cassandraDataSource, cassandraSchemaReference);
     assertThat(tables).isEqualTo(TEST_TABLES);
+  }
+
+  /**
+   * Tests loading the driver's sample config file and using the same to discover tables on Embedded
+   * Cassandra.
+   */
+  @Test
+  public void testDiscoverTablesConfigFile() throws IOException, RetriableSchemaDiscoveryException {
+
+    SourceSchemaReference cassandraSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+    try (MockedStatic<JarFileReader> mockFileReader = mockStatic(JarFileReader.class)) {
+      URL testUrl = Resources.getResource("CassandraUT/test-cassandra-config-all-params.conf");
+      String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
+      mockFileReader
+          .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
+          .thenReturn(new URL[] {testUrl});
+
+      DataSource cassandraDataSource =
+          DataSource.ofCassandra(
+              CassandraDataSource.builder()
+                  .setOptionsMapFromGcsFile(testGcsPath)
+                  /* We need to override the contact points since the embedded cassandra ports are dynamic */
+                  .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                  .build());
+
+      CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
+      ImmutableList<String> tables =
+          cassandraSchemaDiscovery.discoverTables(cassandraDataSource, cassandraSchemaReference);
+      assertThat(tables).isEqualTo(TEST_TABLES);
+    }
   }
 
   @Test
