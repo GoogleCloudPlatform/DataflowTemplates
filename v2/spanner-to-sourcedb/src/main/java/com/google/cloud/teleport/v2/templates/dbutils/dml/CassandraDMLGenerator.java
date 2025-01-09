@@ -227,7 +227,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     for (Map.Entry<String, PreparedStatementValueObject<?>> entry : columnNameValues.entrySet()) {
       String colName = entry.getKey();
       PreparedStatementValueObject<?> colValue = entry.getValue();
-      if (colValue.value() != null) {
+      if (colValue.value() != CassandraTypeHandler.NullClass.INSTANCE) {
         allColumns.append(colName).append(", ");
         placeholders.append("?, ");
         values.add(colValue);
@@ -286,7 +286,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     for (Map.Entry<String, PreparedStatementValueObject<?>> entry : pkColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       PreparedStatementValueObject<?> colValue = entry.getValue();
-      if (colValue.value() != null) {
+      if (colValue.value() != CassandraTypeHandler.NullClass.INSTANCE) {
         deleteConditions.append(colName).append(" = ? AND ");
         values.add(entry.getValue());
       }
