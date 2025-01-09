@@ -102,7 +102,7 @@ jobs:
         uses: codecov/codecov-action@v4.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          slug: GoogleCloudPlatform/DataflowTemplates
+          slug: ollionorg/DataflowTemplates-fork
           files: 'target/site/jacoco-aggregate/jacoco.xml'
           # Temp fix for https://github.com/codecov/codecov-action/issues/1487
           version: v0.6.0
