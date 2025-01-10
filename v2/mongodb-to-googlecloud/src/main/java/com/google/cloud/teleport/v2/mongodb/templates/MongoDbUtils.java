@@ -153,7 +153,6 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value);
                 break;
               case "org.bson.Document":
-                // String data = GSON.toJson(value);
                 String data = ((Document) value).toJson(WRITER_SETTINGS);
                 row.set(key, data);
                 break;
@@ -163,7 +162,6 @@ public class MongoDbUtils implements Serializable {
           });
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
-      // JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
       JsonObject sourceDataJsonObject =
           GSON.fromJson(document.toJson(WRITER_SETTINGS), JsonObject.class);
 
@@ -175,7 +173,6 @@ public class MongoDbUtils implements Serializable {
           .set("source_data", sourceDataMap)
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
-      // String sourceData = GSON.toJson(document);
       String sourceData = document.toJson(WRITER_SETTINGS);
 
       row.set("id", document.get("_id").toString())
