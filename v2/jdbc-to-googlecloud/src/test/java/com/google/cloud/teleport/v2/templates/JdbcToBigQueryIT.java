@@ -119,7 +119,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "DATETIME");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -150,7 +150,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "DATETIME");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     columns.put(FAKE, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
@@ -181,7 +181,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "DATETIME");
+    columns.put(JOIN_TIME, "TIMESTAMP");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     String tableName = "mySqlToBigQueryStorageWrite";
@@ -215,7 +215,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "TIMESTAMP");
+    columns.put(JOIN_TIME, "TIMESTAMP WITH TIME ZONE");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -250,7 +250,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "TIMESTAMP");
+    columns.put(JOIN_TIME, "TIMESTAMP WITH TIME ZONE");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     simpleJdbcToBigQueryTest(
@@ -284,7 +284,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "TIMESTAMP");
+    columns.put(JOIN_TIME, "TIMESTAMP WITH TIME ZONE");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -315,7 +315,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "DATETIME");
+    columns.put(JOIN_TIME, "DATETIMEOFFSET");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -344,7 +344,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "TIMESTAMP");
+    columns.put(JOIN_TIME, "TIMESTAMP WITH TIME ZONE");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -356,7 +356,11 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         postgresResourceManager,
         false,
         false,
-        config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID).addParameter("partitionColumnType", "long"));
+        config ->
+            config
+                .addParameter("table", testName)
+                .addParameter("partitionColumn", ROW_ID)
+                .addParameter("partitionColumnType", "long"));
   }
 
   @Test
@@ -369,7 +373,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     columns.put(AGE, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    columns.put(JOIN_TIME, "TIMESTAMP");
+    columns.put(JOIN_TIME, "TIMESTAMP WITH TIME ZONE");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
 
     // Run a simple IT
@@ -381,7 +385,41 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         postgresResourceManager,
         false,
         false,
-        config -> config.addParameter("table", testName).addParameter("partitionColumn", JOIN_TIME).addParameter("partitionColumnType", "datetime"));
+        config ->
+            config
+                .addParameter("table", testName)
+                .addParameter("partitionColumn", JOIN_TIME)
+                .addParameter("partitionColumnType", "datetime"));
+  }
+
+  @Test
+  public void testReadWithPartitionOnDateTimeColumnTypeWithBounds() throws IOException {
+    postgresResourceManager = PostgresResourceManager.builder(testId).build();
+
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put(ROW_ID, "INTEGER NOT NULL");
+    columns.put(NAME, "VARCHAR(200)");
+    columns.put(AGE, "INTEGER");
+    columns.put(MEMBER, "VARCHAR(200)");
+    columns.put(ENTRY_ADDED, "VARCHAR(200)");
+    columns.put(JOIN_TIME, "TIMESTAMP WITH TIME ZONE");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+
+    // Run a simple IT
+    simpleJdbcToBigQueryTest(
+        testName,
+        schema,
+        POSTGRES_DRIVER,
+        postgresDriverGCSPath(),
+        postgresResourceManager,
+        false,
+        false,
+        config ->
+            config
+                .addParameter("table", testName)
+                .addParameter("partitionColumn", JOIN_TIME)
+                .addParameter("lowerBound", "2025-01-01 01:00:00.000+00:00")
+                .addParameter("upperBound", "2050-01-01 01:00:00.000+00:00"));
   }
 
   private void simpleJdbcToBigQueryTest(
@@ -421,7 +459,8 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       throws IOException {
 
     // Arrange
-    List<String> columns = new ArrayList<>(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, JOIN_TIME));
+    List<String> columns =
+        new ArrayList<>(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, JOIN_TIME));
     if (useDlq) {
       columns.add(FAKE);
     }

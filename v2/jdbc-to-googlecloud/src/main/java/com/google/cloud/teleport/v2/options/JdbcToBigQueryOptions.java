@@ -170,7 +170,7 @@ public interface JdbcToBigQueryOptions
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
           "If `partitionColumn` is specified along with the `table`, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery)"
-                + " using ranges. Currently, supports `Long` and `DateTime` partition columns. Pass the column type through `partitionColumnType`.")
+              + " using ranges. Currently, supports `Long` and `DateTime` partition columns. Pass the column type through `partitionColumnType`.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
@@ -183,8 +183,7 @@ public interface JdbcToBigQueryOptions
       },
       optional = true,
       description = "Partition column type.",
-      helpText =
-          "The type of the `partitionColumn`, accepts either `long` or `datetime`.")
+      helpText = "The type of the `partitionColumn`, accepts either `long` or `datetime`.")
   String getPartitionColumnType();
 
   void setPartitionColumnType(String partitionColumnType);
@@ -215,7 +214,8 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "Lower bound of partition column.",
       helpText =
-          "The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
+          "The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` "
+              + "partitionColumnType accepts lower bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`.")
   String getLowerBound();
 
   void setLowerBound(String lowerBound);
@@ -225,10 +225,11 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "Upper bound of partition column",
       helpText =
-          "The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
+          "The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` "
+              + "partitionColumnType accepts upper bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`.")
   String getUpperBound();
 
-  void setUpperBound(String lowerBound);
+  void setUpperBound(String upperBound);
 
   @TemplateParameter.Integer(
       order = 19,
