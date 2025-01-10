@@ -124,10 +124,11 @@ jobs:
       - name: Run Integration Smoke Tests
         run: | 
           ./cicd/run-it-smoke-tests \
-          --modules-to-build="spanner-to-sourcedb" \
-          --it-region="asia-south1" \
-          --it-project="daring-fiber-439305-v4" \
-          --it-artifact-bucket="dataflow-templates-spanner-to-cassandra"
+          --modules-to-build="DEFAULT" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
       - name: Upload Smoke Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -153,10 +154,11 @@ jobs:
       - name: Run Integration Tests
         run: | 
           ./cicd/run-it-tests \
-          --modules-to-build="spanner-to-sourcedb" \
-          --it-region="asia-south1" \
-          --it-project="daring-fiber-439305-v4" \
-          --it-artifact-bucket="dataflow-templates-spanner-to-cassandra"
+          --modules-to-build="DEFAULT" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
@@ -183,9 +185,10 @@ jobs:
     - name: Run Load Tests
       run: |
         ./cicd/run-load-tests \
-        --it-region="asia-south1" \
-        --it-project="daring-fiber-439305-v" \
-        --it-artifact-bucket="dataflow-templates-spanner-to-cassandra"
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
       if: always()
