@@ -61,8 +61,6 @@ import org.bson.json.Converter;
 import org.bson.json.JsonWriterSettings;
 import org.bson.json.StrictJsonWriter;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /** Transforms & DoFns & Options for Teleport DatastoreIO. */
 public class MongoDbUtils implements Serializable {
@@ -75,9 +73,7 @@ public class MongoDbUtils implements Serializable {
   static final DateTimeFormatter TIMEFORMAT =
       DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
-  private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
-
-  static final Gson GSON = new Gson();
+  private static final Gson GSON = new Gson();
 
   private static final JsonWriterSettings WRITER_SETTINGS =
       JsonWriterSettings.builder()
@@ -153,6 +149,7 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value);
                 break;
               case "org.bson.Document":
+                // String data = GSON.toJson(value);
                 String data = ((Document) value).toJson(WRITER_SETTINGS);
                 row.set(key, data);
                 break;
@@ -162,6 +159,7 @@ public class MongoDbUtils implements Serializable {
           });
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
+      // JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
       JsonObject sourceDataJsonObject =
           GSON.fromJson(document.toJson(WRITER_SETTINGS), JsonObject.class);
 
@@ -173,6 +171,7 @@ public class MongoDbUtils implements Serializable {
           .set("source_data", sourceDataMap)
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
+      // String sourceData = GSON.toJson(document);
       String sourceData = document.toJson(WRITER_SETTINGS);
 
       row.set("id", document.get("_id").toString())
