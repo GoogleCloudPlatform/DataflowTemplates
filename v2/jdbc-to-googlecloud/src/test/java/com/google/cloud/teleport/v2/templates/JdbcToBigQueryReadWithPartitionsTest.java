@@ -199,24 +199,6 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                     .set("SELL_TIME", "2024-12-24 06:00:00")));
   }
 
-  // @Test
-  // public void testE2EWithDateTimePartitionColumnTypeWithBounds() throws IOException,
-  // InterruptedException {
-  //   options.setPartitionColumn("SELL_TIME");
-  //   options.setPartitionColumnType("datetime");
-  //   options.setLowerBound("2024-12-24 05:00:00");
-  //   options.setUpperBound("2024-12-24 06:00:00");
-
-  //   JdbcToBigQuery.run(
-  //           options,
-  // JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
-  //       .waitUntilFinish();
-
-  //   assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))
-  //       .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", 1).set("TITLE",
-  // "ABC").set("SELL_TIME", "2024-12-24 06:00:00")));
-  // }
-
   public void testE2EWithDateTimePartitionColumnTypeWithIncorrectBounds()
       throws IOException, InterruptedException {
     options.setPartitionColumn("SELL_TIME");
