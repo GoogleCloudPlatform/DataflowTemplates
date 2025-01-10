@@ -26,6 +26,8 @@ on:
       - 'v2/spanner-to-sourcedb/**.py'
       - '.github/actions/setup-env/*'
       - '.github/workflows/java-pr.yml'
+      # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
+      - '!v1/**'      
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
