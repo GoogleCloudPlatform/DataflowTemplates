@@ -33,11 +33,14 @@ import java.io.Serializable;
 import java.io.UncheckedIOException;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -52,7 +55,11 @@ import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.json.Converter;
+import org.bson.json.JsonWriterSettings;
+import org.bson.json.StrictJsonWriter;
 import org.openjdk.nashorn.api.scripting.ScriptObjectMirror;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,6 +78,12 @@ public class MongoDbUtils implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
 
   static final Gson GSON = new Gson();
+
+  private static final JsonWriterSettings WRITER_SETTINGS =
+      JsonWriterSettings.builder()
+          .dateTimeConverter(new JsonDateTimeConverter())
+          .timestampConverter(new JsonTimestampConverter())
+          .build();
 
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
@@ -140,7 +153,7 @@ public class MongoDbUtils implements Serializable {
                 row.set(key, value);
                 break;
               case "org.bson.Document":
-                String data = GSON.toJson(value);
+                String data = ((Document) value).toJson(WRITER_SETTINGS);
                 row.set(key, data);
                 break;
               default:
@@ -149,7 +162,8 @@ public class MongoDbUtils implements Serializable {
           });
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
-      JsonObject sourceDataJsonObject = GSON.toJsonTree(document).getAsJsonObject();
+      JsonObject sourceDataJsonObject =
+          GSON.fromJson(document.toJson(WRITER_SETTINGS), JsonObject.class);
 
       // Convert to a Map
       Map<String, Object> sourceDataMap =
@@ -159,7 +173,7 @@ public class MongoDbUtils implements Serializable {
           .set("source_data", sourceDataMap)
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
-      String sourceData = GSON.toJson(document);
+      String sourceData = document.toJson(WRITER_SETTINGS);
 
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
@@ -265,5 +279,26 @@ public class MongoDbUtils implements Serializable {
     }
 
     return (Invocable) engine;
+  }
+
+  private static class JsonDateTimeConverter implements Converter<Long> {
+    private static final DateTimeFormatter DATE_TIME_FORMATTER =
+        DateTimeFormatter.ISO_INSTANT.withZone(ZoneId.of("UTC"));
+
+    @Override
+    public void convert(Long value, StrictJsonWriter writer) {
+      final Instant instant = new Date(value).toInstant();
+      writer.writeString(DATE_TIME_FORMATTER.format(instant));
+    }
+  }
+
+  private static class JsonTimestampConverter implements Converter<BsonTimestamp> {
+
+    @Override
+    public void convert(BsonTimestamp value, StrictJsonWriter writer) {
+      final LocalDateTime localDatTime =
+          LocalDateTime.ofInstant(Instant.ofEpochSecond(value.getTime()), ZoneOffset.UTC);
+      writer.writeString(localDatTime.format(DateTimeFormatter.ISO_DATE_TIME));
+    }
   }
 }
