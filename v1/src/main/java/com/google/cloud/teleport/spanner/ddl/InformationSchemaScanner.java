@@ -28,6 +28,7 @@ import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
@@ -228,7 +229,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         queryBuilder =
             Statement.newBuilder(
-                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.interleave_type, t.on_delete_action FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN"
                     + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')");
@@ -241,7 +242,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         queryBuilder =
             Statement.newBuilder(
-                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.interleave_type, t.on_delete_action FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN "
                     + "('information_schema', 'spanner_sys', 'pg_catalog')");
@@ -272,10 +273,20 @@ public class InformationSchemaScanner {
       // Parent table and child table has to be in same schema.
       String parentTableName =
           resultSet.isNull(2) ? null : getQualifiedName(tableSchema, resultSet.getString(2));
+      String interleaveType =
+          resultSet.isNull(3) ? null : resultSet.getString(3);
       String onDeleteAction = resultSet.isNull(3) ? null : resultSet.getString(3);
 
       // Error out when the parent table or on delete action are set incorrectly.
-      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
+      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(interleaveType)) {
+        throw new IllegalStateException(
+            String.format(
+                "Invalid combination of parentTableName %s and interleaveType %s",
+                parentTableName, interleaveType));
+      }
+
+      if ((interleaveType == "IN PARENT") &&
+          Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
         throw new IllegalStateException(
             String.format(
                 "Invalid combination of parentTableName %s and onDeleteAction %s",
@@ -293,11 +304,18 @@ public class InformationSchemaScanner {
       }
       LOG.debug(
           "Schema Table {} Parent {} OnDelete {}", tableName, parentTableName, onDeleteCascade);
-      builder
+      Table.Builder tableBuilder = builder
           .createTable(tableName)
           .interleaveInParent(parentTableName)
-          .onDeleteCascade(onDeleteCascade)
-          .endTable();
+          .onDeleteCascade(onDeleteCascade);
+
+      if (!Strings.isNullOrEmpty(interleaveType)) {
+        tableBuilder.interleaveType(
+            interleaveType == "IN" ? InterleaveType.IN : InterleaveType.IN_PARENT);
+      }
+
+      tableBuilder.endTable();
+
     }
   }
 

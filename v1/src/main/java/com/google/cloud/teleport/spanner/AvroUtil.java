@@ -43,6 +43,7 @@ public class AvroUtil {
   public static final String SPANNER_ON_DELETE_ACTION = "spannerOnDeleteAction";
   public static final String SPANNER_OPTION = "spannerOption_";
   public static final String SPANNER_PARENT = "spannerParent";
+  public static final String SPANNER_INTERLEAVE_TYPE = "spannerInterleaveType";
   public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
   public static final String SPANNER_REMOTE = "spannerRemote";
   public static final String SPANNER_SEQUENCE_OPTION = "sequenceOption_";

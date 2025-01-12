@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMEN
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
@@ -68,6 +69,7 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph.PropertyDeclaration;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -612,6 +614,16 @@ public class AvroSchemaToDdlConverter {
     String spannerParent = schema.getProp(SPANNER_PARENT);
     if (!Strings.isNullOrEmpty(spannerParent)) {
       table.interleaveInParent(spannerParent);
+
+      // Process the interleave type.
+      String spannerInterleaveType = schema.getProp(SPANNER_INTERLEAVE_TYPE);
+      if (!Strings.isNullOrEmpty(spannerInterleaveType)) {
+        table.interleaveType(
+            spannerInterleaveType == "IN" ? InterleaveType.IN_PARENT : InterleaveType.IN);
+      } else {
+        // Default to IN_PARENT for backwards compatibility with older exports.
+        table.interleaveType(InterleaveType.IN_PARENT);
+      }
 
       // Process the on delete action.
       String onDeleteAction = schema.getProp(SPANNER_ON_DELETE_ACTION);

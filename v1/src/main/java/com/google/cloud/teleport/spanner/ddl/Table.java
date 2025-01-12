@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import java.io.IOException;
@@ -38,6 +39,10 @@ public abstract class Table implements Serializable {
 
   @Nullable
   public abstract String interleaveInParent();
+
+  public enum InterleaveType {IN, IN_PARENT};
+  @Nullable
+  public abstract InterleaveType interleaveType();
 
   public abstract ImmutableList<IndexColumn> primaryKeys();
 
@@ -117,7 +122,8 @@ public abstract class Table implements Serializable {
     appendable.append("\n)");
     if (interleaveInParent() != null) {
       appendable
-          .append(" \nINTERLEAVE IN PARENT ")
+          .append(" \nINTERLEAVE IN ")
+          .append(interleaveType() == InterleaveType.IN_PARENT ? "PARENT " : "")
           .append(quoteIdentifier(interleaveInParent(), dialect()));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
@@ -156,7 +162,8 @@ public abstract class Table implements Serializable {
     appendable.append(")");
     if (interleaveInParent() != null) {
       appendable
-          .append(",\nINTERLEAVE IN PARENT ")
+          .append(",\nINTERLEAVE IN ")
+          .append(interleaveType() == InterleaveType.IN_PARENT ? "PARENT " : "")
           .append(quoteIdentifier(interleaveInParent(), dialect()));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
@@ -205,6 +212,8 @@ public abstract class Table implements Serializable {
     public abstract String name();
 
     public abstract Builder interleaveInParent(String parent);
+
+    public abstract Builder interleaveType(Table.InterleaveType type);
 
     abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
 
