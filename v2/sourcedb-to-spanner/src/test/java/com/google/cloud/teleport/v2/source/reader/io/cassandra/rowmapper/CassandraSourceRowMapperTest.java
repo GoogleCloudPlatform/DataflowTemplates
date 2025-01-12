@@ -135,8 +135,9 @@ public class CassandraSourceRowMapperTest {
                   .sorted()
                   .collect(ImmutableList.toImmutableList()));
 
-      // Since we will use CassandraIO only for reads, we don't need to support the `deleteAsync`
-      // and `saveAsync` functions of the CassandraIO mapper interface.
+      // Since we will use LocalCassandraIO only for reads, we don't need to support the
+      // `deleteAsync`
+      // and `saveAsync` functions of the LocalCassandraIO mapper interface.
       assertThrows(
           UnsupportedOperationException.class,
           () -> cassandraSourceRowMapper.deleteAsync(readRows.get(1)));
