@@ -35,25 +35,25 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "This is the file location for Datastream file input in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/."
+  description = "The file location for the Datastream files in Cloud Storage to replicate. This file location is typically the root path for the stream."
 
 }
 
 variable "gcsPubSubSubscription" {
   type        = string
-  description = "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>."
+  description = "The Pub/Sub subscription with Datastream file notifications. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`."
   default     = null
 }
 
 variable "inputFileFormat" {
   type        = string
-  description = "This is the format of the output file produced by Datastream. by default this will be avro."
+  description = "The format of the output file produced by Datastream. For example, `avro` or `json`. Defaults to `avro`."
   default     = null
 }
 
 variable "streamName" {
   type        = string
-  description = "This is the name or template for the stream to poll for schema information. Default is {_metadata_stream}. The default value is enough under most conditions."
+  description = "The name or template for the stream to poll for schema information. The default value is `{_metadata_stream}`."
   default     = null
 }
 
@@ -77,31 +77,31 @@ variable "databaseType" {
 
 variable "databaseHost" {
   type        = string
-  description = "Database Host to connect on."
+  description = "The SQL host to connect on."
 
 }
 
 variable "databasePort" {
   type        = string
-  description = "Database Port to connect on (default 5432)."
+  description = "The SQL database port to connect to. The default value is `5432`."
   default     = null
 }
 
 variable "databaseUser" {
   type        = string
-  description = "Database User to connect with."
+  description = "The SQL user with all required permissions to write to all tables in replication."
 
 }
 
 variable "databasePassword" {
   type        = string
-  description = "Database Password for given user."
+  description = "The password for the SQL user."
 
 }
 
 variable "databaseName" {
   type        = string
-  description = "The database name to connect to. Defaults to: postgres."
+  description = "The name of the SQL database to connect to. The default value is `postgres`."
   default     = null
 }
 
