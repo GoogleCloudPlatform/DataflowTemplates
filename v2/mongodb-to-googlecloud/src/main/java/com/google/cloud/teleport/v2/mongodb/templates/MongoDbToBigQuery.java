@@ -107,7 +107,7 @@ public class MongoDbToBigQuery {
       throws ScriptException, IOException, NoSuchMethodException {
     Pipeline pipeline = Pipeline.create(options);
     String userOption = options.getUserOption();
-    Boolean useLegacyTimeFormat = options.getUseLegacyTimeFormat();
+    Boolean useIsoTimeFormat = options.getUseIsoTimeFormat();
 
     TableSchema bigquerySchema;
 
@@ -169,7 +169,7 @@ public class MongoDbToBigQuery {
                         MongoDbUtils.getTableSchema(
                             document,
                             userOption,
-                            Optional.ofNullable(useLegacyTimeFormat).orElse(Boolean.TRUE));
+                            Optional.ofNullable(useIsoTimeFormat).orElse(Boolean.TRUE));
                     c.output(row);
                   }
                 }))

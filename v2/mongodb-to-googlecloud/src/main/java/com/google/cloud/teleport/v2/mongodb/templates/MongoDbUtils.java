@@ -79,7 +79,7 @@ public class MongoDbUtils implements Serializable {
 
   private static final Gson GSON = new Gson();
 
-  private static final JsonWriterSettings JSON_WRITER_SETTINGS =
+  private static final JsonWriterSettings JSON_WRITER_SETTINGS_ISO_FORMAT =
       JsonWriterSettings.builder()
           .dateTimeConverter(new JsonDateTimeConverter())
           .timestampConverter(new JsonTimestampConverter())
@@ -133,7 +133,7 @@ public class MongoDbUtils implements Serializable {
   }
 
   public static TableRow getTableSchema(
-      Document document, String userOption, Boolean useLegacyTimeFormat) {
+      Document document, String userOption, Boolean useIsoTimeFormat) {
     TableRow row = new TableRow();
     LocalDateTime localDate = LocalDateTime.now(ZoneId.of("UTC"));
     if (userOption.equals("FLATTEN")) {
@@ -155,9 +155,9 @@ public class MongoDbUtils implements Serializable {
                 break;
               case "org.bson.Document":
                 String data =
-                    useLegacyTimeFormat
-                        ? GSON.toJson(value)
-                        : ((Document) value).toJson(JSON_WRITER_SETTINGS);
+                    useIsoTimeFormat
+                        ? ((Document) value).toJson(JSON_WRITER_SETTINGS_ISO_FORMAT)
+                        : GSON.toJson(value);
                 row.set(key, data);
                 break;
               default:
@@ -167,9 +167,9 @@ public class MongoDbUtils implements Serializable {
       row.set("timestamp", localDate.format(TIMEFORMAT));
     } else if (userOption.equals("JSON")) {
       JsonObject sourceDataJsonObject =
-          useLegacyTimeFormat
-              ? GSON.toJsonTree(document).getAsJsonObject()
-              : GSON.fromJson(document.toJson(JSON_WRITER_SETTINGS), JsonObject.class);
+          useIsoTimeFormat
+              ? GSON.fromJson(document.toJson(JSON_WRITER_SETTINGS_ISO_FORMAT), JsonObject.class)
+              : GSON.toJsonTree(document).getAsJsonObject();
 
       // Convert to a Map
       Map<String, Object> sourceDataMap =
@@ -180,7 +180,9 @@ public class MongoDbUtils implements Serializable {
           .set("timestamp", localDate.format(TIMEFORMAT));
     } else {
       String sourceData =
-          useLegacyTimeFormat ? GSON.toJson(document) : document.toJson(JSON_WRITER_SETTINGS);
+          useIsoTimeFormat
+              ? document.toJson(JSON_WRITER_SETTINGS_ISO_FORMAT)
+              : GSON.toJson(document);
 
       row.set("id", document.get("_id").toString())
           .set("source_data", sourceData)
