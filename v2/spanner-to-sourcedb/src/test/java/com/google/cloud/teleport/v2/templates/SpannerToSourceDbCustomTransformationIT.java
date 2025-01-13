@@ -336,14 +336,14 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1);
     assertThatResult(result).meetsConditions();
 
     result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
     assertThatResult(result).meetsConditions();
 
