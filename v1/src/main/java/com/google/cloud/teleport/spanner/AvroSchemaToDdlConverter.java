@@ -619,7 +619,7 @@ public class AvroSchemaToDdlConverter {
       String spannerInterleaveType = schema.getProp(SPANNER_INTERLEAVE_TYPE);
       if (!Strings.isNullOrEmpty(spannerInterleaveType)) {
         table.interleaveType(
-            spannerInterleaveType == "IN" ? InterleaveType.IN_PARENT : InterleaveType.IN);
+            spannerInterleaveType.equals("IN") ? InterleaveType.IN : InterleaveType.IN_PARENT);
       } else {
         // Default to IN_PARENT for backwards compatibility with older exports.
         table.interleaveType(InterleaveType.IN_PARENT);

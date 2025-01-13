@@ -273,23 +273,27 @@ public class InformationSchemaScanner {
       // Parent table and child table has to be in same schema.
       String parentTableName =
           resultSet.isNull(2) ? null : getQualifiedName(tableSchema, resultSet.getString(2));
-      String interleaveType =
+      String interleaveTypeStr =
           resultSet.isNull(3) ? null : resultSet.getString(3);
-      String onDeleteAction = resultSet.isNull(3) ? null : resultSet.getString(3);
+      Table.InterleaveType interleaveType = null;
+      if (!Strings.isNullOrEmpty(interleaveTypeStr)) {
+        interleaveType = interleaveTypeStr.equals("IN PARENT") ?
+            InterleaveType.IN_PARENT : InterleaveType.IN;
+      }
+      String onDeleteAction = resultSet.isNull(4) ? null : resultSet.getString(4);
 
       // Error out when the parent table or on delete action are set incorrectly.
-      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(interleaveType)) {
+      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(interleaveTypeStr)) {
         throw new IllegalStateException(
             String.format(
                 "Invalid combination of parentTableName %s and interleaveType %s",
                 parentTableName, interleaveType));
       }
 
-      if ((interleaveType == "IN PARENT") &&
-          Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
+      if ((interleaveType == InterleaveType.IN_PARENT) == Strings.isNullOrEmpty(onDeleteAction)) {
         throw new IllegalStateException(
             String.format(
-                "Invalid combination of parentTableName %s and onDeleteAction %s",
+                "Invalid combination of IN PARENT %s and onDeleteAction %s",
                 parentTableName, onDeleteAction));
       }
 
@@ -309,10 +313,6 @@ public class InformationSchemaScanner {
           .interleaveInParent(parentTableName)
           .onDeleteCascade(onDeleteCascade);
 
-      if (!Strings.isNullOrEmpty(interleaveType)) {
-        tableBuilder.interleaveType(
-            interleaveType == "IN" ? InterleaveType.IN : InterleaveType.IN_PARENT);
-      }
 
       tableBuilder.endTable();
 

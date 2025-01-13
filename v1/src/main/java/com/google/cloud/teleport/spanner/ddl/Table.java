@@ -123,7 +123,7 @@ public abstract class Table implements Serializable {
     if (interleaveInParent() != null) {
       appendable
           .append(" \nINTERLEAVE IN ")
-          .append(interleaveType() == InterleaveType.IN_PARENT ? "PARENT " : "")
+          .append(interleaveType() == InterleaveType.IN ? "" : "PARENT")
           .append(quoteIdentifier(interleaveInParent(), dialect()));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
@@ -163,7 +163,7 @@ public abstract class Table implements Serializable {
     if (interleaveInParent() != null) {
       appendable
           .append(",\nINTERLEAVE IN ")
-          .append(interleaveType() == InterleaveType.IN_PARENT ? "PARENT " : "")
+          .append(interleaveType() == InterleaveType.IN ? " " : "PARENT")
           .append(quoteIdentifier(interleaveInParent(), dialect()));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
