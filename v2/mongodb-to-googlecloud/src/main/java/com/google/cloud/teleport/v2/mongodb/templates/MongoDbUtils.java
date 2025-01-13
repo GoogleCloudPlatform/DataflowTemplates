@@ -55,6 +55,8 @@ import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
+import org.apache.commons.codec.binary.Hex;
+import org.bson.BsonBinary;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.json.Converter;
@@ -83,6 +85,7 @@ public class MongoDbUtils implements Serializable {
       JsonWriterSettings.builder()
           .dateTimeConverter(new JsonDateTimeConverter())
           .timestampConverter(new JsonTimestampConverter())
+          .binaryConverter(new JsonBinaryConverter())
           .build();
 
   public static TableSchema getTableFieldSchema(
@@ -307,6 +310,14 @@ public class MongoDbUtils implements Serializable {
       final Instant instant = Instant.ofEpochSecond(value.getTime());
       final LocalDateTime localDatTime = LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
       writer.writeString(localDatTime.format(DateTimeFormatter.ISO_DATE_TIME));
+    }
+  }
+
+  private static class JsonBinaryConverter implements Converter<BsonBinary> {
+
+    @Override
+    public void convert(BsonBinary value, StrictJsonWriter writer) {
+      writer.writeString(Hex.encodeHexString(value.getData()));
     }
   }
 }
