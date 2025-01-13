@@ -85,59 +85,6 @@ public class CassandraTypeHandler {
     }
   }
 
-  /**
-   * Functional interface for parsing an object value to a specific type.
-   *
-   * <p>This interface provides a contract to implement type conversion logic where an input object
-   * is parsed and transformed into the desired target type.
-   *
-   * <p>Example usage:
-   *
-   * <pre>{@code
-   * TypeParser<Integer> intParser = value -> Integer.parseInt(value.toString());
-   * Integer parsedValue = intParser.parse("123");
-   * }</pre>
-   *
-   * @param <T> The target type to which the value will be parsed.
-   */
-  @FunctionalInterface
-  public interface TypeParser<T> {
-
-    /**
-     * Parses the given value and converts it into the target type {@code T}.
-     *
-     * @param value The input value to be parsed.
-     * @return The parsed value of type {@code T}.
-     */
-    T parse(Object value);
-  }
-
-  /**
-   * Functional interface for supplying a value with exception handling.
-   *
-   * <p>This interface provides a mechanism to execute logic that may throw a checked exception,
-   * making it useful for methods where exception handling is required.
-   *
-   * <p>Example usage:
-   *
-   * <pre>{@code
-   * HandlerSupplier<String> supplier = () -> {
-   *     if (someCondition) {
-   *         throw new IOException("Error occurred");
-   *     }
-   *     return "Success";
-   * };
-   *
-   * try {
-   *     String result = supplier.get();
-   *     System.out.println(result);
-   * } catch (Exception e) {
-   *     e.printStackTrace();
-   * }
-   * }</pre>
-   *
-   * @param <T> The type of value supplied by the supplier.
-   */
   @FunctionalInterface
   private interface HandlerSupplier<T> {
 
@@ -702,7 +649,7 @@ public class CassandraTypeHandler {
 
       default:
         LOG.warn("Unsupported Spanner column type: {}", spannerType);
-        return null;
+        throw new IllegalArgumentException("Unsupported Spanner column type: " + spannerType);
     }
   }
 
