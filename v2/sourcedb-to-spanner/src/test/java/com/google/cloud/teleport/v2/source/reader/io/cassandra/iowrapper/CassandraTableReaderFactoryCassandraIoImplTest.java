@@ -135,17 +135,17 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
   }
 
   /**
-   * Validates that existing CassandraIO hits <a
-   * href=https://github.com/apache/beam/issues/30266>apache/beam/issues/30266</a>
-   *
-   * @throws RetriableSchemaDiscoveryException
+   * Helps to validate that we can work with SSL enabled cluster and don't get affected by <a
+   * href=https://github.com/apache/beam/issues/30266>apache/beam/issues/30266</a>.
    */
   @Test
   public void testCassandraTableReaderFactoryWithSslThrowsIllegalArgumentException()
       throws RetriableSchemaDiscoveryException {
+
     SourceSchemaReference cassandraSchemaReference =
         SourceSchemaReference.ofCassandra(
             CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
     DataSource dataSource =
         DataSource.ofCassandra(
             CassandraDataSource.builder()
@@ -155,11 +155,16 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
                 .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
                 .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
                 .overrideOptionInOptionsMap(TypedDriverOption.SSL_HOSTNAME_VALIDATION, true)
+                .overrideOptionInOptionsMap(
+                    TypedDriverOption.SSL_TRUSTSTORE_PATH,
+                    sharedEmbeddedCassandra.getInstance().getTrustStorePath().toString())
+                .overrideOptionInOptionsMap(TypedDriverOption.SSL_TRUSTSTORE_PASSWORD, "cassandra")
                 .build());
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema =
         cassandraSchemaDiscovery.discoverTableSchema(
             dataSource, cassandraSchemaReference, ImmutableList.of(PRIMITIVE_TYPES_TABLE));
+
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(
             CassandraSchemaReference.builder()
@@ -173,17 +178,15 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
             (colName, colType) ->
                 sourceTableSchemaBuilder.addSourceColumnNameToSourceColumnType(colName, colType));
     SourceTableSchema sourceTableSchema = sourceTableSchemaBuilder.build();
+
     PTransform<PBegin, PCollection<SourceRow>> tableReader =
         new CassandraTableReaderFactoryCassandraIoImpl()
             .getTableReader(dataSource.cassandra(), sourceSchemaReference, sourceTableSchema);
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> {
-              testPipelineAsserts.apply(tableReader).apply(Count.globally());
-              testPipelineAsserts.run().waitUntilFinish();
-            });
-    assertThat(exception.getCause().getClass()).isEqualTo(java.io.NotSerializableException.class);
+    PCollection<SourceRow> output = testPipelineAsserts.apply(tableReader);
+
+    PAssert.that(output.apply(Count.globally()))
+        .containsInAnyOrder(PRIMITIVE_TYPES_TABLE_ROW_COUNT);
+    testPipelineAsserts.run().waitUntilFinish();
   }
 
   @Test

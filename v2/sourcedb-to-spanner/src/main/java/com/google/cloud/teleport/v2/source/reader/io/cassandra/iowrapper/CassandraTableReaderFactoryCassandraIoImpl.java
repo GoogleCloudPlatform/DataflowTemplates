@@ -118,7 +118,10 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
               ? profile.getString(TypedDriverOption.SSL_TRUSTSTORE_PASSWORD.getRawOption())
               : null;
       if (profile.getBoolean(TypedDriverOption.SSL_HOSTNAME_VALIDATION.getRawOption())) {
-        return tableReader.withSsl(getSSLOptions(trustStorePath, trustStorePassword));
+        return tableReader.withSsl(
+            SSLOptionsProvider.buidler()
+                .setSslOptionsFactory(() -> getSSLOptions(trustStorePath, trustStorePassword))
+                .build());
       }
     }
     return tableReader;
