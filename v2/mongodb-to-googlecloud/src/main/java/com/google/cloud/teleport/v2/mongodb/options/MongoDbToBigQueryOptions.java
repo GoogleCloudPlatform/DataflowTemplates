@@ -158,5 +158,15 @@ public class MongoDbToBigQueryOptions {
     String getJavascriptDocumentTransformFunctionName();
 
     void setJavascriptDocumentTransformFunctionName(String javascriptDocumentTransformFunctionName);
+
+    @TemplateParameter.Boolean(
+        order = 2,
+        optional = true,
+        description = "Use legacy time format.",
+        helpText =
+            "Legacy document conversion does not use ISO format for DateTime (https://github.com/mongodb/mongo-java-driver/blob/main/bson/src/main/org/bson/json/ExtendedJsonDateTimeConverter.java) and Timestamp (https://github.com/mongodb/mongo-java-driver/blob/main/bson/src/main/org/bson/json/ExtendedJsonTimestampConverter.java). Set this parameter to false to use ISO standard for these data types (default is true).")
+    Boolean getUseLegacyTimeFormat();
+
+    void setUseLegacyTimeFormat(Boolean useLegacyTimeFormat);
   }
 }

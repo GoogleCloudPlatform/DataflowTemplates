@@ -33,6 +33,7 @@ import com.google.cloud.teleport.v2.transforms.JavascriptDocumentTransformer.Tra
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.common.base.Strings;
 import java.io.IOException;
+import java.util.Optional;
 import javax.script.ScriptException;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
@@ -106,6 +107,7 @@ public class MongoDbToBigQuery {
       throws ScriptException, IOException, NoSuchMethodException {
     Pipeline pipeline = Pipeline.create(options);
     String userOption = options.getUserOption();
+    Boolean useLegacyTimeFormat = options.getUseLegacyTimeFormat();
 
     TableSchema bigquerySchema;
 
@@ -163,7 +165,11 @@ public class MongoDbToBigQuery {
                   @ProcessElement
                   public void process(ProcessContext c) {
                     Document document = c.element();
-                    TableRow row = MongoDbUtils.getTableSchema(document, userOption);
+                    TableRow row =
+                        MongoDbUtils.getTableSchema(
+                            document,
+                            userOption,
+                            Optional.ofNullable(useLegacyTimeFormat).orElse(Boolean.TRUE));
                     c.output(row);
                   }
                 }))
