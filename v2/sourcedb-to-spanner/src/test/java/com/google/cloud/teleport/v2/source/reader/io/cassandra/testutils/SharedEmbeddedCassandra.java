@@ -46,11 +46,17 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
    *
    * @param config - config.yaml
    * @param cqlResource - cql script.
+   * @param clientEncryption - set to true if Client side SSL is needed.
    * @throws IOException
    */
-  public SharedEmbeddedCassandra(String config, @Nullable String cqlResource) throws IOException {
-    this.config = Configuration.create(config, cqlResource);
+  public SharedEmbeddedCassandra(
+      String config, @Nullable String cqlResource, Boolean clientEncryption) throws IOException {
+    this.config = Configuration.create(config, cqlResource, clientEncryption);
     this.embeddedCassandra = getEmbeddedCassandra(this.config);
+  }
+
+  public SharedEmbeddedCassandra(String config, @Nullable String cqlResource) throws IOException {
+    this(config, cqlResource, Boolean.FALSE);
   }
 
   /**
@@ -90,7 +96,10 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
       } else {
         Log.info("Starting Shared embedded Cassandra for configuration = {}", configuration);
         embeddedCassandra =
-            new EmbeddedCassandra(configuration.configYaml(), configuration.cqlScript());
+            new EmbeddedCassandra(
+                configuration.configYaml(),
+                configuration.cqlScript(),
+                configuration.clientEncryption());
         RefCountedEmbeddedCassandra refCountedEmbeddedCassandra =
             RefCountedEmbeddedCassandra.create(embeddedCassandra);
         refCountedEmbeddedCassandra.refIncrementAndGet();
@@ -123,8 +132,10 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
   abstract static class Configuration {
     public AtomicInteger refCount = new AtomicInteger();
 
-    public static Configuration create(String configYaml, String cqlScript) {
-      return new AutoValue_SharedEmbeddedCassandra_Configuration(configYaml, cqlScript);
+    public static Configuration create(
+        String configYaml, String cqlScript, Boolean clientEncryption) {
+      return new AutoValue_SharedEmbeddedCassandra_Configuration(
+          configYaml, cqlScript, clientEncryption);
     }
 
     @Nullable
@@ -132,6 +143,9 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
 
     @Nullable
     public abstract String cqlScript();
+
+    @Nullable
+    public abstract Boolean clientEncryption();
   }
 
   // This is a private class, and it must be ensured that refcounting is synchronized.
