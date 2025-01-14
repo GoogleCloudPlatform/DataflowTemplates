@@ -125,7 +125,7 @@ jobs:
       - name: Run Integration Smoke Tests
         run: |     
           ./cicd/run-it-smoke-tests \
-          --modules-to-build="spanner-to-sourcedb" \
+          --modules-to-build="v2/spanner-to-sourcedb" \
           --it-region="us-central1" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
