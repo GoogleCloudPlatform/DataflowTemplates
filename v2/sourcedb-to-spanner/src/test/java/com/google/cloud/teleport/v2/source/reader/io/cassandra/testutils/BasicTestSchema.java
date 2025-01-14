@@ -31,6 +31,7 @@ public class BasicTestSchema {
   public static final String TEST_CQLSH = TEST_RESOURCE_ROOT + "basicTest.cql";
   public static final String BASIC_TEST_TABLE = "basic_test_table";
   public static final String PRIMITIVE_TYPES_TABLE = "primitive_types_table";
+  public static final Long PRIMITIVE_TYPES_TABLE_ROW_COUNT = 6L;
   public static final ImmutableMap<String, ImmutableMap<String, SourceColumnType>>
       BASIC_TEST_TABLE_SCHEMA =
           ImmutableMap.of(
