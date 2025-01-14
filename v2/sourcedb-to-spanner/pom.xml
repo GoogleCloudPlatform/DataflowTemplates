@@ -158,5 +158,11 @@
       <version>4.1</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.60</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
