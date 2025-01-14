@@ -105,6 +105,8 @@ public class InputRecordProcessor {
         LOG.warn("DML statement is empty for table: " + tableName);
         return false;
       }
+      // TODO we need to handle it as proper Interface Level as of now we have handle Prepared
+      // Statement and Raw Statement Differently
       if (source.equals(SOURCE_CASSANDRA)) {
         dao.write(dmlGeneratorResponse);
       } else {

@@ -536,7 +536,7 @@ public class CassandraTypeHandlerTest {
 
     Object result = castToExpectedType(cassandraType, columnValue);
 
-    assertEquals(columnValue, result);
+    assertEquals(columnValue, ((Double) result).floatValue(), 0.00001);
   }
 
   @Test
@@ -655,11 +655,11 @@ public class CassandraTypeHandlerTest {
   public void testCastToExpectedTypeForJSONObjectToMap() {
     String cassandraType = "map<int, text>";
     JSONObject columnValue = new JSONObject();
-    columnValue.put(String.valueOf(1), "One");
+    columnValue.put("2024-12-12", "One");
     columnValue.put(String.valueOf(2), "Two");
 
     assertThrows(
-        ClassCastException.class,
+        IllegalArgumentException.class,
         () -> {
           castToExpectedType(cassandraType, columnValue);
         });
@@ -673,7 +673,7 @@ public class CassandraTypeHandlerTest {
     mockLogging(new ClassCastException("Invalid cast"));
 
     assertThrows(
-        ClassCastException.class,
+        IllegalArgumentException.class,
         () -> {
           castToExpectedType(cassandraType, columnValue);
         });
