@@ -16,16 +16,16 @@ component_management:
   - component_id: spanner-templates
     name: spanner-templates
     paths:
-    - "v1/src/main/java/com/google/cloud/teleport/spanner/**"
-    - "v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java"
-    - "v1/src/main/java/com/google/cloud/teleport/templates/common/SpannerConverters.java"
-    - "v2/datastream-to-spanner/**"
-    - "v2/spanner-common/**"
-    - "v2/spanner-change-streams-to-sharded-file-sink/**"
-    - "v2/gcs-to-sourcedb/**"
-    - "v2/spanner-migrations-sdk/**"
-    - "v2/spanner-custom-shard/**"
-    - "v2/sourcedb-to-spanner/**"
+    # - "v1/src/main/java/com/google/cloud/teleport/spanner/**"
+    # - "v1/src/main/java/com/google/cloud/teleport/templates/SpannerToText.java"
+    # - "v1/src/main/java/com/google/cloud/teleport/templates/common/SpannerConverters.java"
+    # - "v2/datastream-to-spanner/**"
+    # - "v2/spanner-common/**"
+    # - "v2/spanner-change-streams-to-sharded-file-sink/**"
+    # - "v2/gcs-to-sourcedb/**"
+    # - "v2/spanner-migrations-sdk/**"
+    # - "v2/spanner-custom-shard/**"
+    # - "v2/sourcedb-to-spanner/**"
     - "v2/spanner-to-sourcedb/**"
     statuses:
     - type: project
