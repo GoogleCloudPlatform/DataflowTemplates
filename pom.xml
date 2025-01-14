@@ -48,9 +48,9 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.61.0</beam.version>
-    <beam-python.version>2.61.0</beam-python.version>
-    <beam-maven-repo></beam-maven-repo>
+    <beam.version>2.62.0</beam.version>
+    <beam-python.version>2.62.0</beam-python.version>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1395/</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
@@ -66,7 +66,7 @@
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.4.0</hadoop.version>
+    <hadoop.version>3.4.1</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
@@ -77,14 +77,14 @@
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <snakeyaml.version>2.0</snakeyaml.version>
+    <snakeyaml.version>2.2</snakeyaml.version>
     <snappy.version>1.1.10.4</snappy.version>
     <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.1.5</truth.version>
 
     <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.48.0</gax.version>
+    <gax.version>2.55.0</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -736,7 +736,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <activeByDefault>false</activeByDefault>
+        <jdk>[1.)</jdk>
       </activation>
       <repositories>
         <repository>
