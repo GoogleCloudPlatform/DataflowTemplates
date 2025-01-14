@@ -59,7 +59,7 @@ func main() {
 		mvnFlags.ThreadCount(4),
 		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),
-		mvnFlags.StaticSpannerInstance("spanner-reverse-replication"),
+		mvnFlags.StaticSpannerInstance("spanner-demo"),
 		mvnFlags.InternalMaven(),
 		flags.Region(),
 		flags.Project(),
