@@ -123,11 +123,10 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
-        run: |
-          cd v2/spanner-to-sourcedb        
-          ../../cicd/run-it-smoke-tests \
+        run: |     
+          ./cicd/run-it-smoke-tests \
           --modules-to-build="spanner-to-sourcedb" \
-          --it-region="asis-south1" \
+          --it-region="asia-south1" \
           --it-project="daring-fiber-439305-v4" \
           --it-artifact-bucket="ollion-teleport-testing" \
           --it-private-connectivity="datastream-private-connect-asia-south1"
