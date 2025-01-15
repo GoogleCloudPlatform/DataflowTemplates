@@ -231,9 +231,7 @@ public class AssignShardIdFn
 
       record.setShard(qualifiedShard);
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
-      Long finalKey =
-          finalKeyString.hashCode() % maxConnectionsAcrossAllShards; // The total parallelism is
-      // maxConnectionsAcrossAllShards
+      Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
       c.output(KV.of(finalKey, record));
 
     } catch (Exception e) {

@@ -77,6 +77,8 @@ public class Schema implements Serializable {
     this.srcSchema = srcSchema;
     this.toSpanner = toSpanner;
     this.toSource = toSource;
+    this.srcToID = toSource;
+    this.spannerToID = toSpanner;
     this.empty = (spSchema == null || srcSchema == null);
   }
 
