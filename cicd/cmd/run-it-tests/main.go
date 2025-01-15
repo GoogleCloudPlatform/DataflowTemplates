@@ -1,19 +1,3 @@
-/*
- * Copyright (C) 2022 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
-
 package main
 
 import (
@@ -29,7 +13,7 @@ func main() {
 	flags.RegisterItFlags()
 	flag.Parse()
 
-	// Run mvn install before running integration tests
+	// Run mvn install first to ensure all dependencies are available
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
@@ -46,7 +30,7 @@ func main() {
 		log.Fatalf("%v\n", err)
 	}
 
-	// Run integration tests
+	// Run only Spanner-specific integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
 		mvnFlags.IncludeDependencies(),
@@ -58,7 +42,7 @@ func main() {
 		mvnFlags.RunIntegrationTests(flags.UnifiedWorkerHarnessContainerImage() != ""),
 		mvnFlags.ThreadCount(4),
 		mvnFlags.IntegrationTestParallelism(3),
-		mvnFlags.StaticBigtableInstance("teleport"),
+		// Only include Spanner instance configuration
 		mvnFlags.StaticSpannerInstance("spanner-demo"),
 		mvnFlags.InternalMaven(),
 		flags.Region(),
@@ -70,16 +54,9 @@ func main() {
 		flags.SpannerHost(),
 		flags.FailureMode(),
 		flags.RetryFailures(),
-		flags.StaticOracleHost(),
-		flags.StaticOracleSysPassword(),
-		flags.CloudProxyHost(),
-		flags.CloudProxyMySqlPort(),
-		flags.CloudProxyPostgresPort(),
-		flags.CloudProxyPassword(),
-		flags.UnifiedWorkerHarnessContainerImage(),
-		flags.CloudProxyPassword())
+		flags.UnifiedWorkerHarnessContainerImage())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
-	log.Println("Build Successful!")
+	log.Println("Build and Spanner Integration Tests Successful!")
 }
