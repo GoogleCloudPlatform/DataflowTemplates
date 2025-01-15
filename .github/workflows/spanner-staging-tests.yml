@@ -47,7 +47,7 @@ jobs:
     - name: Run Integration Tests
       run: |
         ./cicd/run-spanner-staging-it-tests \
-        --modules-to-build="ALL" \
+        --modules-to-build="DEFAULT" \
         --it-region="us-central1" \
         --it-project="span-cloud-migrations-staging" \
         --it-artifact-bucket="dataflow-testing-it-spanner-staging" \
