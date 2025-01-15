@@ -153,7 +153,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: mvn clean verify -PtemplatesIntegrationTests -pl v2/spanner-to-sourcedb -am -Dtest=SpannerToSourceDbCustomTransformationIT -Dcheckstyle.skip -Dspotless.check.skip=true -DartifactBucket="ollion-teleport-testing" -Dproject="daring-fiber-439305-v4"  -Dregion=asia-south1  -DspannerInstanceId="spanner-demo"	
+        run: mvn clean verify -f pom.xml -e -am -amd -Dmdep.analyze.skip -Dcheckstyle.skip -Djib.skip -DskipShade -PtemplatesIntegrationTests -pl v2/spanner-to-sourcedb -am -Dtest=SpannerToSourceDbCustomTransformationIT  -Dspotless.check.skip=true -DartifactBucket="ollion-teleport-testing" -Dproject="daring-fiber-439305-v4"  -Dregion=asia-south1  -DspannerInstanceId="spanner-demo" --settings=.mvn/settings.xml -DhostIp=34.47.164.248
           # ./cicd/run-it-tests \
           # --modules-to-build="v2/spanner-to-sourcedb" \
           # --it-region="asia-south1" \
@@ -171,7 +171,7 @@ jobs:
         uses: ./.github/actions/cleanup-java-env
         if: always()
   java_load_tests_templates:
-    if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
+    # if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
     needs: [spotless_check, checkstyle_check, java_integration_tests_templates]
     timeout-minutes: 600
