@@ -16,15 +16,18 @@
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
+import com.datastax.oss.driver.api.core.config.DriverOption;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
+import com.datastax.oss.driver.api.core.type.reflect.GenericType;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableMap;
 import com.typesafe.config.ConfigException;
 import java.io.FileNotFoundException;
 import java.net.URL;
-import java.util.Map.Entry;
+import java.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,7 +85,12 @@ public final class CassandraDriverConfigLoader {
         .getProfiles()
         .forEach(
             (profileName, profile) ->
-                profile.entrySet().forEach(e -> putInOptionsMap(optionsMap, profileName, e)));
+                profile
+                    .entrySet()
+                    .forEach(
+                        e ->
+                            putInOptionsMap(
+                                optionsMap, profileName, e.getKey(), e.getValue(), profile)));
 
     return optionsMap;
   }
@@ -120,20 +128,43 @@ public final class CassandraDriverConfigLoader {
 
   @VisibleForTesting
   protected static void putInOptionsMap(
-      OptionsMap optionsMap, String profileName, Entry<String, Object> e) {
+      OptionsMap optionsMap,
+      String profileName,
+      String optionName,
+      Object untypedValue,
+      DriverExecutionProfile profile) {
 
-    TypedDriverOption option = OPTIONS_SUPPORTED_BY_DRIVER.get(e.getKey());
+    TypedDriverOption option = OPTIONS_SUPPORTED_BY_DRIVER.get(optionName);
     if (Objects.equal(option, null)) {
       LOG.error(
           "Unknown Cassandra Option {}, Options supported by driver = {}",
-          e.getKey(),
+          optionName,
           OPTIONS_SUPPORTED_BY_DRIVER);
       throw new IllegalArgumentException(
           String.format(
               "Unknown Cassandra Driver Option %s. Supported Options = %s",
-              e.getKey(), OPTIONS_SUPPORTED_BY_DRIVER));
+              optionName, OPTIONS_SUPPORTED_BY_DRIVER));
     }
-    optionsMap.put(profileName, option, e.getValue());
+    putOptionInOptionsMap(optionsMap, profileName, profile, untypedValue, option);
+  }
+
+  @VisibleForTesting
+  protected static void putOptionInOptionsMap(
+      OptionsMap optionsMap,
+      String profileName,
+      DriverExecutionProfile profile,
+      Object untypedValue,
+      TypedDriverOption option) {
+
+    ProfileExtractor profileExtractor =
+        TYPED_EXTRACTORS.getOrDefault(option.getExpectedType(), (p, o) -> untypedValue);
+    // For "protocol.max-frame-length" are defined as GenericType<Long> in TypedOptions.
+    // but the driver Config API needs getBytes for handling size units like MB.
+    if (option.equals(TypedDriverOption.PROTOCOL_MAX_FRAME_LENGTH)) {
+      profileExtractor = (p, o) -> p.getBytes(o);
+    }
+
+    optionsMap.put(profileName, option, profileExtractor.get(profile, option.getRawOption()));
   }
 
   private static ImmutableMap<String, TypedDriverOption> getOptionsSupportedByDriver() {
@@ -141,6 +172,27 @@ public final class CassandraDriverConfigLoader {
     TypedDriverOption.builtInValues().forEach(e -> mapBuilder.put(e.getRawOption().getPath(), e));
     return mapBuilder.build();
   }
+
+  private interface ProfileExtractor<ValueT> {
+    ValueT get(DriverExecutionProfile profile, DriverOption driverOption);
+  }
+
+  private static final ImmutableMap<GenericType<?>, ProfileExtractor> TYPED_EXTRACTORS =
+      ImmutableMap.<GenericType<?>, ProfileExtractor>builder()
+          .put(GenericType.of(Boolean.class), DriverExecutionProfile::getBoolean)
+          .put(GenericType.listOf(Boolean.class), DriverExecutionProfile::getBooleanList)
+          .put(GenericType.of(Double.class), DriverExecutionProfile::getDouble)
+          .put(GenericType.listOf(Double.class), DriverExecutionProfile::getDoubleList)
+          .put(GenericType.of(Duration.class), DriverExecutionProfile::getDuration)
+          .put(GenericType.listOf(Duration.class), DriverExecutionProfile::getDurationList)
+          .put(GenericType.of(Integer.class), DriverExecutionProfile::getInt)
+          .put(GenericType.listOf(Integer.class), DriverExecutionProfile::getIntList)
+          .put(GenericType.of(Long.class), DriverExecutionProfile::getLong)
+          .put(GenericType.listOf(Long.class), DriverExecutionProfile::getLong)
+          .put(GenericType.of(String.class), DriverExecutionProfile::getString)
+          .put(GenericType.listOf(String.class), DriverExecutionProfile::getStringList)
+          .put(GenericType.mapOf(String.class, String.class), DriverExecutionProfile::getStringMap)
+          .build();
 
   private CassandraDriverConfigLoader() {}
 }

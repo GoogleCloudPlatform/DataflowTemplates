@@ -51,6 +51,7 @@ type MavenFlags interface {
 	FailAtTheEnd() string
 	RunIntegrationTests(bool) string
 	RunIntegrationSmokeTests() string
+	RunSpannerStagingIntegrationTests() string
 	RunLoadTests() string
 	RunLoadTestObserver() string
 	ThreadCount(int) string
@@ -116,6 +117,10 @@ func (*mvnFlags) RunIntegrationTests(skipRunnerV2 bool) string {
 
 func (*mvnFlags) RunIntegrationSmokeTests() string {
 	return "-PtemplatesIntegrationSmokeTests"
+}
+
+func (*mvnFlags) RunSpannerStagingIntegrationTests() string {
+	return "-PspannerStagingIntegrationTests"
 }
 
 func (*mvnFlags) RunLoadTests() string {
