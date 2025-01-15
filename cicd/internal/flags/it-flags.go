@@ -81,24 +81,25 @@ func StageBucket() string {
 	return "-DstageBucket=" + dStageBucket
 }
 
-// func HostIp() string {
-// 	if len(dHostIp) == 0 {
-// 		gcloudCmd := "gcloud compute instances list | grep $(hostname) | awk '{print $4}'"
-// 		if hostIP, err := exec.Command("bash", "-c", gcloudCmd).Output(); err != nil || len(hostIP) == 0 {
-// 			panic(fmt.Errorf("failed to get gitactions runner host ip: %v", err))
-// 		} else {
-// 			return "-DhostIp=" + string(hostIP)[:len(hostIP)-1]
-// 		}
-// 	}
-// 	return "-DhostIp=" + dHostIp
-// }
-
 func HostIp() string {
 	if len(dHostIp) == 0 {
-		return "-DhostIp=34.93.18.144"
+		gcloudCmd := "gcloud compute instances list | grep $(hostname) | awk '{print $4}'"
+		if hostIP, err := exec.Command("bash", "-c", gcloudCmd).Output(); err != nil || len(hostIP) == 0 {
+			panic(fmt.Errorf("failed to get gitactions runner host ip: %v", err))
+		} else {
+			// return "-DhostIp=" + string(hostIP)[:len(hostIP)-1]
+			return "-DhostIp=34.93.18.144"
+		}
 	}
 	return "-DhostIp=" + dHostIp
 }
+
+// func HostIp() string {
+// 	if len(dHostIp) == 0 {
+// 		return "-DhostIp=34.93.18.144"
+// 	}
+// 	return "-DhostIp=" + dHostIp
+// }
 
 func PrivateConnectivity() string {
 	if dPrivateConnectivity != "" {
