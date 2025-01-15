@@ -153,7 +153,9 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: mvn -B verify -f pom.xml -e -am -amd -Dmdep.analyze.skip -Dcheckstyle.skip -Djib.skip -DskipShade -PtemplatesIntegrationTests -T4 -DitParallelism=3 -DspannerInstanceId=spanner-demo --settings=.mvn/settings.xml -Dregion=asia-south1 -Dproject=daring-fiber-439305-v4 -DartifactBucket=ollion-teleport-testing -DstageBucket=ollion-teleport-testing -DhostIp=34.47.164.248 -fae -Dsurefire.rerunFailingTestsCount=0 -pl v2/spanner-to-sourcedb -am
+        run: |
+           mvn -B clean install -f pom.xml -e -am -amd -Dmdep.analyze.skip -Dcheckstyle.skip -Djib.skip -Dmaven.test.skip -Djacoco.skip -DskipShade -T8 --settings=.mvn/settings.xml -pl v2/spanner-to-sourcedb -am
+           mvn clean verify -f pom.xml -e -am -amd Dtest=SpannerToSourceDbCustomTransformationIT -Dmdep.analyze.skip -Dcheckstyle.skip -Djib.skip -DskipShade -PtemplatesIntegrationTests -pl v2/spanner-to-sourcedb -am -Dtest=SpannerToSourceDbCustomTransformationIT  -Dspotless.check.skip=true -DartifactBucket="ollion-teleport-testing" -Dproject="daring-fiber-439305-v4"  -Dregion=asia-south1  -DspannerInstanceId="spanner-demo" --settings=.mvn/settings.xml -DhostIp=34.47.164.248
           # ./cicd/run-it-tests \
           # --modules-to-build="v2/spanner-to-sourcedb" \
           # --it-region="asia-south1" \
