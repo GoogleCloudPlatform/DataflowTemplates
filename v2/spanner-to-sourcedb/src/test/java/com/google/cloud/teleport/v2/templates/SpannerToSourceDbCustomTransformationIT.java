@@ -46,7 +46,6 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -157,8 +156,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   @Test
-  @Ignore("This test seems flaky, ignoring it for now to unblock other tests")
-  public void spannerToSourceDbWithCustomTransformation() throws InterruptedException {
+  public void testCustomTransformation() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
@@ -338,14 +336,14 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1);
     assertThatResult(result).meetsConditions();
 
     result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
     assertThatResult(result).meetsConditions();
 
