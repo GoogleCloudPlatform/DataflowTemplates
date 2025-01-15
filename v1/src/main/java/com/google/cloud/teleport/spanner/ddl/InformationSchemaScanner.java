@@ -308,14 +308,12 @@ public class InformationSchemaScanner {
       }
       LOG.debug(
           "Schema Table {} Parent {} OnDelete {}", tableName, parentTableName, onDeleteCascade);
-      Table.Builder tableBuilder = builder
+      builder
           .createTable(tableName)
           .interleaveInParent(parentTableName)
-          .onDeleteCascade(onDeleteCascade);
-
-
-      tableBuilder.endTable();
-
+          .interleaveType(interleaveType)
+          .onDeleteCascade(onDeleteCascade)
+          .endTable();
     }
   }
 
