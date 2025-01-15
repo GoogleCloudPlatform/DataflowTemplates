@@ -16,8 +16,19 @@ name: Spanner Staging integration tests
 
 on:
   workflow_dispatch:
+    inputs:
+      commitOrTag:
+        description: 'Commit hash or release tag to checkout. Leave blank to checkout the most recent commit on main branch.'
+        type: string
+        required: false
+        default: ''
+      spannerHost:
+        description: 'Spanner host URL.'
+        type: string
+        required: false
+        default: ''
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   spanner_java_integration_tests_templates:
@@ -27,25 +38,37 @@ jobs:
     runs-on: [ self-hosted, it ]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
+      with:
+        ref: ${{ inputs.commitOrTag }}
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Run Integration Tests
       run: |
-        ./cicd/run-it-tests \
+        ./cicd/run-spanner-staging-it-tests \
         --modules-to-build="ALL" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
-        --it-spanner-host="https://staging-wrenchworks.sandbox.googleapis.com/"
+        --it-spanner-host=${{ inputs.spannerHost }}
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
       if: always() # always run even if the previous step fails
       with:
         name: surefire-test-results
         path: '**/surefire-reports/TEST-*.xml'
-        retention-days: 1
+        retention-days: 20
+    - name: Integration Test report on GitHub
+      uses: dorny/test-reporter@v1
+      if: always()
+      with:
+        name: Integration Test report on GitHub
+        path: '**/surefire-reports/TEST-*.xml'
+        reporter: java-junit
+        only-summary: 'false'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-error: 'false'
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
