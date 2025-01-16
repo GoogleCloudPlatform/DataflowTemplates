@@ -311,7 +311,7 @@ public class CassandraDMLGeneratorTest {
                 .setSchema(schema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertEquals(1, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
   }
 
   @Test

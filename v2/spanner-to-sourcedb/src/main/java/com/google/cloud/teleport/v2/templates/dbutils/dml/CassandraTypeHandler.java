@@ -43,9 +43,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.lang3.BooleanUtils;
 import org.eclipse.jetty.util.StringUtil;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -242,11 +242,11 @@ public class CassandraTypeHandler {
    * @return a {@link Float} object containing the value represented in cassandra type.
    */
   private static Float handleCassandraFloatType(String colName, JSONObject valuesJson) {
-    try {
-      return valuesJson.getBigDecimal(colName).floatValue();
-    } catch (JSONException e) {
+    BigDecimal colValue = valuesJson.optBigDecimal(colName, null);
+    if (colValue == null) {
       return null;
     }
+    return colValue.floatValue();
   }
 
   /**
@@ -257,11 +257,11 @@ public class CassandraTypeHandler {
    * @return a {@link Double} object containing the value represented in cassandra type.
    */
   private static Double handleCassandraDoubleType(String colName, JSONObject valuesJson) {
-    try {
-      return valuesJson.getBigDecimal(colName).doubleValue();
-    } catch (JSONException e) {
+    BigDecimal colValue = valuesJson.optBigDecimal(colName, null);
+    if (colValue == null) {
       return null;
     }
+    return colValue.doubleValue();
   }
 
   /**
@@ -399,11 +399,11 @@ public class CassandraTypeHandler {
    * @return a {@link Long} object containing Long as value represented in cassandra type.
    */
   private static Long handleCassandraBigintType(String colName, JSONObject valuesJson) {
-    try {
-      return valuesJson.getBigInteger(colName).longValue();
-    } catch (JSONException e) {
+    BigInteger colValue = valuesJson.optBigInteger(colName, null);
+    if (colValue == null) {
       return null;
     }
+    return colValue.longValue();
   }
 
   /**
@@ -414,11 +414,11 @@ public class CassandraTypeHandler {
    * @return a {@link Integer} object containing Integer as value represented in cassandra type.
    */
   private static Integer handleCassandraIntType(String colName, JSONObject valuesJson) {
-    try {
-      return valuesJson.getBigInteger(colName).intValue();
-    } catch (JSONException e) {
+    BigInteger colValue = valuesJson.optBigInteger(colName, null);
+    if (colValue == null) {
       return null;
     }
+    return colValue.intValue();
   }
 
   /**
@@ -458,8 +458,7 @@ public class CassandraTypeHandler {
           return LocalDate.from(temporal).atStartOfDay(ZoneOffset.UTC).toInstant();
         }
       } catch (DateTimeParseException ignored) {
-        throw new IllegalArgumentException(
-            "Failed to parse timestamp value" + timestampValue, ignored);
+        LOG.info("Exception found from different formatter " + ignored.getMessage());
       }
     }
     throw new IllegalArgumentException("Failed to parse timestamp value: " + timestampValue);
@@ -611,9 +610,9 @@ public class CassandraTypeHandler {
       return CassandraTypeHandler.handleCassandraTimestampType(columnName, valuesJson);
     } else if ("boolean".equals(spannerType)) {
       return CassandraTypeHandler.handleCassandraBoolType(columnName, valuesJson);
-    } else if (spannerType.matches("numeric|float")) {
+    } else if (spannerType.matches("float")) {
       return CassandraTypeHandler.handleCassandraFloatType(columnName, valuesJson);
-    } else if (spannerType.contains("float")) {
+    } else if (spannerType.contains("float") || spannerType.contains("numeric")) {
       return CassandraTypeHandler.handleCassandraDoubleType(columnName, valuesJson);
     } else if (spannerType.contains("bytes") || spannerType.contains("blob")) {
       return CassandraTypeHandler.handleCassandraBlobType(columnName, valuesJson);
@@ -647,7 +646,8 @@ public class CassandraTypeHandler {
       return new JSONArray(inputValue);
     } else if (isValidJSONObject(inputValue)) {
       return new JSONObject(inputValue);
-    } else if (StringUtil.isHex(inputValue, 0, inputValue.length())) {
+    } else if (StringUtil.isHex(inputValue, 0, inputValue.length())
+        && inputValue.startsWith("0x")) {
       return CassandraTypeHandler.handleCassandraBlobType(colName, valuesJson);
     } else if (isAscii(inputValue)) {
       return CassandraTypeHandler.handleCassandraAsciiType(colName, valuesJson);
@@ -786,7 +786,10 @@ public class CassandraTypeHandler {
    */
   private static Boolean parseBoolean(Object colValue) {
     if (colValue instanceof String) {
-      return Boolean.parseBoolean((String) colValue);
+      if (Arrays.asList("0", "1").contains((String) colValue)) {
+        return colValue.equals("1");
+      }
+      return BooleanUtils.toBoolean((String) colValue);
     }
     return (Boolean) colValue;
   }
@@ -804,8 +807,10 @@ public class CassandraTypeHandler {
   private static BigDecimal parseDecimal(Object colValue) {
     if (colValue instanceof String) {
       return new BigDecimal((String) colValue);
-    } else if (colValue instanceof Number) {
-      return BigDecimal.valueOf(((Number) colValue).doubleValue());
+    } else if (colValue instanceof Float) {
+      return BigDecimal.valueOf((Float) colValue);
+    } else if (colValue instanceof Double) {
+      return BigDecimal.valueOf((Double) colValue);
     }
     return (BigDecimal) colValue;
   }
@@ -992,7 +997,8 @@ public class CassandraTypeHandler {
       return parseAndCastToCassandraType(cassandraType, columnValue).value();
     } catch (ClassCastException | IllegalArgumentException e) {
       LOG.error("Error converting value for column: {}, type: {}", cassandraType, e.getMessage());
-      throw e;
+      throw new IllegalArgumentException(
+          "Error converting value for cassandraType: " + cassandraType);
     }
   }
 }

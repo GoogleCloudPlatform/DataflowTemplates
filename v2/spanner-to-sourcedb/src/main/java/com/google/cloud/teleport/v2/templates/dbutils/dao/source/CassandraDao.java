@@ -38,22 +38,19 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
 
   @Override
   public void write(DMLGeneratorResponse dmlGeneratorResponse) throws Exception {
-    try (CqlSession session =
-        (CqlSession)
-            connectionHelper.getConnection(this.cassandraUrl)) { // Ensure connection is obtained
-      if (session == null) {
-        throw new ConnectionException("Connection is null");
-      }
-      PreparedStatementGeneratedResponse preparedStatementGeneratedResponse =
-          (PreparedStatementGeneratedResponse) dmlGeneratorResponse;
-      String dmlStatement = preparedStatementGeneratedResponse.getDmlStatement();
-      PreparedStatement preparedStatement = session.prepare(dmlStatement);
-      BoundStatement boundStatement =
-          preparedStatement.bind(
-              preparedStatementGeneratedResponse.getValues().stream()
-                  .map(v -> CassandraTypeHandler.castToExpectedType(v.dataType(), v.value()))
-                  .toArray());
-      session.execute(boundStatement);
+    CqlSession session = (CqlSession) connectionHelper.getConnection(this.cassandraUrl);
+    if (session == null) {
+      throw new ConnectionException("Connection is null");
     }
+    PreparedStatementGeneratedResponse preparedStatementGeneratedResponse =
+        (PreparedStatementGeneratedResponse) dmlGeneratorResponse;
+    String dmlStatement = preparedStatementGeneratedResponse.getDmlStatement();
+    PreparedStatement preparedStatement = session.prepare(dmlStatement);
+    BoundStatement boundStatement =
+        preparedStatement.bind(
+            preparedStatementGeneratedResponse.getValues().stream()
+                .map(v -> CassandraTypeHandler.castToExpectedType(v.dataType(), v.value()))
+                .toArray());
+    session.execute(boundStatement);
   }
 }

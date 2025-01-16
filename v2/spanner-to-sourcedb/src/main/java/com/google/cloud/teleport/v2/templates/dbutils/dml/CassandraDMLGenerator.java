@@ -296,12 +296,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       deleteConditions.setLength(deleteConditions.length() - 5);
     }
 
-    String preparedStatement =
-        "DELETE FROM " + tableName + " WHERE " + deleteConditions + " USING TIMESTAMP ?;";
-
-    PreparedStatementValueObject<Long> timestampObj =
-        PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp);
-    values.add(timestampObj);
+    String preparedStatement = "DELETE FROM " + tableName + " WHERE " + deleteConditions + ";";
 
     return new PreparedStatementGeneratedResponse(preparedStatement, values);
   }
