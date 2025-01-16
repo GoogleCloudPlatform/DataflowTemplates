@@ -123,8 +123,8 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
 
     assertThatResult(result1).isLaunchFinished();
 
-    // exportMetrics(jobInfo, numShards);
-    exportMetrics(jobInfo, numShards, "daring-fiber-439305-v4", "rr");
+    exportMetrics(jobInfo, numShards);
+    // exportMetrics(jobInfo, numShards, "daring-fiber-439305-v4", "rr");
   }
 
   private void createMySQLSchema(List<JDBCResourceManager> jdbcResourceManagers) {
