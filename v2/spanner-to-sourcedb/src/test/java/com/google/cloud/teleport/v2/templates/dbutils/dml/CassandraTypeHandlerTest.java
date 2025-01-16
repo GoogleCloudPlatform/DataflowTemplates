@@ -33,15 +33,10 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneId;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.json.JSONArray;
@@ -644,11 +639,13 @@ public class CassandraTypeHandlerTest {
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null));
-    assertTrue(exception.getMessage().contains("Failed to parse timestamp value"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          PreparedStatementValueObject result =
+              getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+          CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+        });
   }
 
   @Test
@@ -665,8 +662,12 @@ public class CassandraTypeHandlerTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () -> getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null));
-    assertEquals("Timestamp value cannot be null or empty", exception.getMessage());
+            () -> {
+              PreparedStatementValueObject result =
+                  getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+              CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+            });
+    assertEquals("Error converting value for cassandraType: date", exception.getMessage());
   }
 
   @Test
@@ -683,8 +684,12 @@ public class CassandraTypeHandlerTest {
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
-            () -> getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null));
-    assertEquals("Timestamp value cannot be null or empty", exception.getMessage());
+            () -> {
+              PreparedStatementValueObject result =
+                  getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+              CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+            });
+    assertEquals("Error converting value for cassandraType: date", exception.getMessage());
   }
 
   @Test
@@ -705,7 +710,7 @@ public class CassandraTypeHandlerTest {
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
-    assertEquals(5.5f, actualValue);
+    assertEquals(new BigDecimal(5.5), actualValue);
   }
 
   @Test
@@ -957,38 +962,37 @@ public class CassandraTypeHandlerTest {
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
-    byte[] actualBytes = ((ByteBuffer) actualValue).array();
-    assertArrayEquals(expectedBytes, actualBytes);
+    assertArrayEquals(expectedBytes, (byte[]) actualValue);
   }
 
   @Test
   public void testCastToExpectedTypeForVariousTypes() throws UnknownHostException {
     assertEquals("Test String", castToExpectedType("text", "Test String"));
-    assertEquals(123L, castToExpectedType("bigint", 123L));
-    assertEquals(true, castToExpectedType("boolean", true));
+    assertEquals(123L, castToExpectedType("bigint", "123"));
+    assertEquals(true, castToExpectedType("boolean", "true"));
     assertEquals(
-        new BigDecimal("123.456"), castToExpectedType("decimal", new BigDecimal("123.456")));
-    assertEquals(123.456, castToExpectedType("double", 123.456));
-    assertEquals(123.45f, ((Double) castToExpectedType("float", 123.45f)).floatValue(), 0.00001);
-    assertEquals(
-        InetAddress.getByName("127.0.0.1"),
-        castToExpectedType("inet", InetAddress.getByName("127.0.0.1")));
-    assertEquals(123, castToExpectedType("int", 123));
-    assertEquals((short) 123, castToExpectedType("smallint", 123));
+        new BigDecimal("123.456"),
+        castToExpectedType("decimal", new BigDecimal("123.456").toString()));
+    assertEquals(123.456, castToExpectedType("double", "123.456"));
+    assertEquals(123.45f, ((Double) castToExpectedType("float", "123.45")).floatValue(), 0.00001);
+    assertEquals(InetAddress.getByName("127.0.0.1"), castToExpectedType("inet", "127.0.0.1"));
+    assertEquals(123, castToExpectedType("int", "123"));
+    assertEquals((short) 123, castToExpectedType("smallint", "123"));
     assertEquals(
         UUID.fromString("123e4567-e89b-12d3-a456-426614174000"),
-        castToExpectedType("uuid", UUID.fromString("123e4567-e89b-12d3-a456-426614174000")));
-    assertEquals((byte) 100, castToExpectedType("tinyint", 100));
+        castToExpectedType("uuid", "123e4567-e89b-12d3-a456-426614174000"));
+    assertEquals((byte) 100, castToExpectedType("tinyint", "100"));
     assertEquals(
-        new BigInteger("12345"),
-        castToExpectedType("varint", ByteBuffer.wrap(new byte[] {0, 0, 48, 57})));
-    assertEquals(Duration.ofHours(5), castToExpectedType("duration", Duration.ofHours(5)));
+        new BigInteger("123456789123456789123456789"),
+        castToExpectedType("varint", "123456789123456789123456789"));
+    assertEquals(
+        Duration.ofHours(5), castToExpectedType("duration", Duration.ofHours(5).toString()));
   }
 
   @Test
   public void testCastToExpectedTypeForJSONArrayToSet() {
     String cassandraType = "set<int>";
-    JSONArray columnValue = new JSONArray(Arrays.asList(1, 2, 3));
+    String columnValue = new JSONArray(Arrays.asList(1, 2, 3)).toString();
     Object result = castToExpectedType(cassandraType, columnValue);
     assertTrue(result instanceof Set);
     assertEquals(3, ((Set<?>) result).size());
@@ -1046,7 +1050,7 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testCastToExpectedTypeForList() {
     JSONArray listValue = new JSONArray(Arrays.asList("value1", "value2"));
-    Object result = CassandraTypeHandler.castToExpectedType("list<text>", listValue);
+    Object result = CassandraTypeHandler.castToExpectedType("list<text>", listValue.toString());
     assertTrue(result instanceof List);
     assertEquals(2, ((List<?>) result).size());
   }
@@ -1054,19 +1058,9 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testCastToExpectedTypeForSet() {
     JSONArray setValue = new JSONArray(Arrays.asList("value1", "value2"));
-    Object result = CassandraTypeHandler.castToExpectedType("set<text>", setValue);
+    Object result = CassandraTypeHandler.castToExpectedType("set<text>", setValue.toString());
     assertTrue(result instanceof Set);
     assertEquals(2, ((Set<?>) result).size());
-  }
-
-  @Test
-  public void testCastToExpectedTypeForMap() {
-    JSONObject mapValue = new JSONObject();
-    mapValue.put("key1", "value1");
-    mapValue.put("key2", "value2");
-    Object result = CassandraTypeHandler.castToExpectedType("map<text, text>", mapValue);
-    assertTrue(result instanceof Map);
-    assertEquals(2, ((Map<?, ?>) result).size());
   }
 
   @Test
@@ -1089,22 +1083,6 @@ public class CassandraTypeHandlerTest {
     String dateString = "2025-01-09"; // Format: yyyy-MM-dd
     Object result = CassandraTypeHandler.castToExpectedType("date", dateString);
     LocalDate expected = LocalDate.parse(dateString);
-    assertEquals(expected, result);
-  }
-
-  @Test
-  public void testCastToExpectedTypeForDate_Instant() {
-    Instant now = Instant.now();
-    Object result = CassandraTypeHandler.castToExpectedType("date", now);
-    LocalDate expected = now.atZone(ZoneId.systemDefault()).toLocalDate();
-    assertEquals(expected, result);
-  }
-
-  @Test
-  public void testCastToExpectedTypeForDate_JavaUtilDate() {
-    Date date = new Date();
-    Object result = CassandraTypeHandler.castToExpectedType("date", date);
-    LocalDate expected = date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
     assertEquals(expected, result);
   }
 
@@ -1153,24 +1131,8 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testHandleCassandraVarintType_ByteArray() {
-    byte[] validByteArray = new byte[] {0, 0, 0, 0, 0, 0, 0, 10};
-    Object result = CassandraTypeHandler.castToExpectedType("varint", validByteArray);
-    BigInteger expected = new BigInteger(validByteArray);
-    assertEquals(expected, result);
-  }
-
-  @Test
-  public void testHandleCassandraVarintType_ByteBuffer() {
-    ByteBuffer byteBuffer = ByteBuffer.wrap(new byte[] {0, 0, 0, 0, 0, 0, 0, 20});
-    Object result = CassandraTypeHandler.castToExpectedType("varint", byteBuffer);
-    BigInteger expected = new BigInteger(new byte[] {0, 0, 0, 0, 0, 0, 0, 20});
-    assertEquals(expected, result);
-  }
-
-  @Test
   public void testHandleCassandraVarintType_UnsupportedType() {
-    Integer unsupportedType = 123;
+    String unsupportedType = "dsdsdd";
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
