@@ -535,6 +535,30 @@ public class DataStreamToSpanner {
     String getSchemaOverridesFilePath();
 
     void setSchemaOverridesFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        groupName = "Target",
+        description = "Cloud Spanner Shadow Table Instance Id.",
+        helpText =
+            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance.")
+    @Default.String("")
+    String getShadowTableSpannerInstanceId();
+
+    void setShadowTableSpannerInstanceId(String value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        groupName = "Target",
+        description = "Cloud Spanner Shadow Table Database Id.",
+        helpText =
+            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database.")
+    @Default.String("")
+    String getShadowTableSpannerDatabaseId();
+
+    void setShadowTableSpannerDatabaseId(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -643,20 +667,77 @@ public class DataStreamToSpanner {
                     .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
+
+    // Validate shadow table Spanner config - both instance and database must be specified together
+    String shadowTableSpannerInstanceId = options.getShadowTableSpannerInstanceId();
+    String shadowTableSpannerDatabaseId = options.getShadowTableSpannerDatabaseId();
+    LOG.info(
+        "Input Shadow table db -  instance {} and database {}",
+        shadowTableSpannerInstanceId,
+        shadowTableSpannerDatabaseId);
+
+    if ((Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+            && !Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))
+        || (!Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+            && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))) {
+      throw new IllegalArgumentException(
+          "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
+    }
+    // If not specified, use main instance and database values. The shadow table database stores the
+    // shadow tables and by default, is the same as he main database for backwards compatibility.
+    if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+        && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
+      shadowTableSpannerInstanceId = options.getInstanceId();
+      shadowTableSpannerDatabaseId = options.getDatabaseId();
+      LOG.info(
+          "Overwrote shadow table instance - {} and db- {}",
+          shadowTableSpannerInstanceId,
+          shadowTableSpannerDatabaseId);
+    }
+
+    // Prepare shadow table Spanner config
+    SpannerConfig shadowTableSpannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(shadowTableSpannerInstanceId))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(shadowTableSpannerDatabaseId))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+            .withCommitRetrySettings(
+                RetrySettings.newBuilder()
+                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setRetryDelayMultiplier(1)
+                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setRpcTimeoutMultiplier(1)
+                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                    .setMaxAttempts(1)
+                    .build());
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
      * 3) Return new information schema
      */
-    PCollection<Ddl> ddl =
+    PCollectionTuple ddlTuple =
         pipeline.apply(
             "Process Information Schema",
             new ProcessInformationSchema(
                 spannerConfig,
+                shadowTableSpannerConfig,
                 options.getShouldCreateShadowTables(),
                 options.getShadowTablePrefix(),
                 options.getDatastreamSourceType()));
-    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
+    PCollectionView<Ddl> ddlView =
+        ddlTuple
+            .get(ProcessInformationSchema.MAIN_DDL_TAG)
+            .apply("Cloud Spanner Main DDL as view", View.asSingleton());
+
+    PCollectionView<Ddl> shadowTableDdlView =
+        ddlTuple
+            .get(ProcessInformationSchema.SHADOW_TABLE_DDL_TAG)
+            .apply("Cloud Spanner shadow tables DDL as view", View.asSingleton());
+
     PCollection<FailsafeElement<String, String>> jsonRecords = null;
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
@@ -781,7 +862,6 @@ public class DataStreamToSpanner {
     /*
      * Stage 4: Write transformed records to Cloud Spanner
      */
-
     SpannerTransactionWriter.Result spannerWriteResults =
         transformedRecords
             .get(DatastreamToSpannerConstants.TRANSFORMED_EVENT_TAG)
@@ -789,7 +869,9 @@ public class DataStreamToSpanner {
                 "Write events to Cloud Spanner",
                 new SpannerTransactionWriter(
                     spannerConfig,
+                    shadowTableSpannerConfig,
                     ddlView,
+                    shadowTableDdlView,
                     options.getShadowTablePrefix(),
                     options.getDatastreamSourceType(),
                     isRegularMode));
