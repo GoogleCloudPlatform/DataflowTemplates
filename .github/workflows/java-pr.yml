@@ -35,10 +35,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
-  EXPORT_PROJECT: "daring-fiber-439305-v4"
-  EXPORT_DATASET: "load_test_results"
-  EXPORT_TABLE: "test_metrics"  
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error  
 
 permissions: read-all
 
@@ -195,9 +192,8 @@ jobs:
         --it-artifact-bucket="ollion-teleport-testing" \
         --it-private-connectivity="datastream-private-connect-asia-south1" \
         --modules-to-build="v2/spanner-to-sourcedb" \
-        --export-project="${EXPORT_PROJECT}" \
-        --export-dataset="${EXPORT_DATASET}" \
-        --export-table="${EXPORT_TABLE}"
+        --lt-export-project string="daring-fiber-439305-v4" \
+        --lt-export-table string="rr"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
       if: always()
