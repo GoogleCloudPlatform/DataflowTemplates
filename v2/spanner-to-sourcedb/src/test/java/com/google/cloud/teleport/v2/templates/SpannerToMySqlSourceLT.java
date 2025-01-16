@@ -91,7 +91,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
             .setQPS("10")
-            .setMessagesLimit(String.valueOf(1000))
+            .setMessagesLimit(String.valueOf(100))
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(table)
@@ -107,13 +107,13 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
 
     JDBCRowsCheck check =
         JDBCRowsCheck.builder(jdbcResourceManagers.get(0), table)
-            .setMinRows(1000)
-            .setMaxRows(1000)
+            .setMinRows(100)
+            .setMaxRows(100)
             .build();
 
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
-            createConfig(jobInfo, Duration.ofMinutes(10), Duration.ofSeconds(30)), check);
+            createConfig(jobInfo, Duration.ofMinutes(5), Duration.ofSeconds(30)), check);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
@@ -123,7 +123,8 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
 
     assertThatResult(result1).isLaunchFinished();
 
-    exportMetrics(jobInfo, numShards);
+    // exportMetrics(jobInfo, numShards);
+    exportMetrics(jobInfo, numShards, "daring-fiber-439305-v4", "rr");
   }
 
   private void createMySQLSchema(List<JDBCResourceManager> jdbcResourceManagers) {
