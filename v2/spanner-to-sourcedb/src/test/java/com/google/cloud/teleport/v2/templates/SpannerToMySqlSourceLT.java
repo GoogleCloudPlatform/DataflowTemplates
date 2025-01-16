@@ -56,8 +56,8 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private final String dataGeneratorSchemaResource =
       "SpannerToMySqlSourceLT/datagenerator-schema.json";
   private final String table = "Person";
-  private final int maxWorkers = 50;
-  private final int numWorkers = 20;
+  private final int maxWorkers = 1;
+  private final int numWorkers = 1;
   private PipelineLauncher.LaunchInfo jobInfo;
   private PipelineLauncher.LaunchInfo readerJobInfo;
   private final int numShards = 1;
@@ -90,13 +90,13 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
     // Start data generator
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
-            .setQPS("1000")
+            .setQPS("10")
             .setMessagesLimit(String.valueOf(300000))
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(table)
-            .setNumWorkers("50")
-            .setMaxNumWorkers("100")
+            .setNumWorkers("1")
+            .setMaxNumWorkers("1")
             .setSinkType("SPANNER")
             .setProjectId(project)
             .setBatchSizeBytes("0")
