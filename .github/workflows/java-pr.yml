@@ -190,7 +190,8 @@ jobs:
         --it-region="asia-south1" \
         --it-project="daring-fiber-439305-v4" \
         --it-artifact-bucket="ollion-teleport-testing" \
-        --it-private-connectivity="datastream-private-connect-asia-south1"
+        --it-private-connectivity="datastream-private-connect-asia-south1" \
+        --test-module="v2/cassandra-to-sourcedb"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
       if: always()
