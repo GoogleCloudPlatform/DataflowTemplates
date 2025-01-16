@@ -102,7 +102,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
             .setBatchSizeBytes("0")
             .build();
 
-    dataGenerator.execute(Duration.ofMinutes(15));
+    dataGenerator.execute(Duration.ofMinutes(10));
     assertThatPipeline(jobInfo).isRunning();
 
     JDBCRowsCheck check =

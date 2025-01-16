@@ -74,7 +74,10 @@ func main() {
 		flags.CloudProxyHost(),
 		flags.CloudProxyMySqlPort(),
 		flags.CloudProxyPostgresPort(),
-		flags.CloudProxyPassword())
+		flags.CloudProxyPassword(),
+		flags.ExportProject(),
+		flags.ExportDataset(),
+		flags.ExportTable())
 	if err != nil {
 		log.Fatalf("%v\n", err)
 	}
