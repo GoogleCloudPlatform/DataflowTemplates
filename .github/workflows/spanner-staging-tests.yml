@@ -15,6 +15,17 @@
 name: Spanner Staging integration tests
 
 on:
+  pull_request:
+    branches:
+    - 'main'
+    paths:
+    - '.github/workflows/spanner-staging-tests.yml'
+    inputs:
+      spannerHost:
+        description: 'Spanner host URL.'
+        type: string
+        required: false
+        default: 'https://staging-wrenchworks.sandbox.googleapis.com'
   workflow_dispatch:
     inputs:
       commitOrTag:
@@ -47,7 +58,7 @@ jobs:
     - name: Run Integration Tests
       run: |
         ./cicd/run-spanner-staging-it-tests \
-        --modules-to-build="ALL" \
+        --modules-to-build="v1" \
         --it-region="us-central1" \
         --it-project="span-cloud-migrations-staging" \
         --it-artifact-bucket="dataflow-testing-it-spanner-staging" \
