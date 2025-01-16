@@ -341,20 +341,31 @@ public class CassandraTypeHandler {
   private static PreparedStatementValueObject<?> parseAndCastToCassandraType(
       String columnType, Object colValue) {
 
+    // Handle collection types
     if (columnType.startsWith("list<")) {
-      JSONArray parsedJSONArray = new JSONArray((String) colValue);
-      return PreparedStatementValueObject.create(
-          columnType, parseCassandraList(columnType, parsedJSONArray));
+      return safeHandle(
+          () -> {
+            JSONArray parsedJSONArray = new JSONArray((String) colValue);
+            return PreparedStatementValueObject.create(
+                columnType, parseCassandraList(columnType, parsedJSONArray));
+          });
     } else if (columnType.startsWith("set<")) {
-      JSONArray parsedJSONArray = new JSONArray((String) colValue);
-      return PreparedStatementValueObject.create(
-          columnType, parseCassandraSet(columnType, parsedJSONArray));
+      return safeHandle(
+          () -> {
+            JSONArray parsedJSONArray = new JSONArray((String) colValue);
+            return PreparedStatementValueObject.create(
+                columnType, parseCassandraSet(columnType, parsedJSONArray));
+          });
     } else if (columnType.startsWith("map<")) {
-      JSONObject parsedJSON = new JSONObject((String) colValue);
-      return PreparedStatementValueObject.create(
-          columnType, parseCassandraMap(columnType, parsedJSON));
+      return safeHandle(
+          () -> {
+            JSONObject parsedJSON = new JSONObject((String) colValue);
+            return PreparedStatementValueObject.create(
+                columnType, parseCassandraMap(columnType, parsedJSON));
+          });
     }
 
+    // Handle primitive and standard types
     switch (columnType) {
       case "ascii":
       case "text":
@@ -365,8 +376,10 @@ public class CassandraTypeHandler {
       case "int":
       case "smallint":
       case "tinyint":
-        return PreparedStatementValueObject.create(
-            columnType, parseNumericType(columnType, colValue.toString()));
+        return safeHandle(
+            () ->
+                PreparedStatementValueObject.create(
+                    columnType, parseNumericType(columnType, colValue.toString())));
 
       case "boolean":
         return PreparedStatementValueObject.create(
@@ -383,13 +396,13 @@ public class CassandraTypeHandler {
 
       case "inet":
         return PreparedStatementValueObject.create(
-            columnType, handleCassandraInetAddressType(colValue.toString()));
+            columnType, safeHandle(() -> handleCassandraInetAddressType(colValue.toString())));
 
       case "time":
       case "timestamp":
       case "datetime":
         return PreparedStatementValueObject.create(
-            columnType, handleCassandraTimestampType(colValue.toString()));
+            columnType, safeHandle(() -> handleCassandraTimestampType(colValue.toString())));
 
       case "date":
         return PreparedStatementValueObject.create(
@@ -398,18 +411,19 @@ public class CassandraTypeHandler {
       case "timeuuid":
       case "uuid":
         return PreparedStatementValueObject.create(
-            columnType, handleCassandraUuidType(colValue.toString()));
+            columnType, safeHandle(() -> handleCassandraUuidType(colValue.toString())));
 
       case "varint":
         return PreparedStatementValueObject.create(
-            columnType, handleCassandraVarintType(colValue.toString()));
+            columnType, safeHandle(() -> handleCassandraVarintType(colValue.toString())));
 
       case "duration":
         return PreparedStatementValueObject.create(
-            columnType, handleCassandraDurationType(colValue.toString()));
+            columnType, safeHandle(() -> handleCassandraDurationType(colValue.toString())));
 
       case "blob":
-        return PreparedStatementValueObject.create(columnType, parseBlobType(colValue));
+        return safeHandle(
+            () -> PreparedStatementValueObject.create(columnType, parseBlobType(colValue)));
 
       default:
         return PreparedStatementValueObject.create(columnType, colValue);
