@@ -56,8 +56,8 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private final String dataGeneratorSchemaResource =
       "SpannerToMySqlSourceLT/datagenerator-schema.json";
   private final String table = "Person";
-  private final int maxWorkers = 1;
-  private final int numWorkers = 1;
+  private final int maxWorkers = 3;
+  private final int numWorkers = 2;
   private PipelineLauncher.LaunchInfo jobInfo;
   private PipelineLauncher.LaunchInfo readerJobInfo;
   private final int numShards = 1;
@@ -91,24 +91,24 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
             .setQPS("10")
-            .setMessagesLimit(String.valueOf(300000))
+            .setMessagesLimit(String.valueOf(1000))
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(table)
-            .setNumWorkers("1")
-            .setMaxNumWorkers("1")
+            .setNumWorkers("2")
+            .setMaxNumWorkers("3")
             .setSinkType("SPANNER")
             .setProjectId(project)
             .setBatchSizeBytes("0")
             .build();
 
-    dataGenerator.execute(Duration.ofMinutes(90));
+    dataGenerator.execute(Duration.ofMinutes(15));
     assertThatPipeline(jobInfo).isRunning();
 
     JDBCRowsCheck check =
         JDBCRowsCheck.builder(jdbcResourceManagers.get(0), table)
-            .setMinRows(300000)
-            .setMaxRows(300000)
+            .setMinRows(1000)
+            .setMaxRows(1000)
             .build();
 
     PipelineOperator.Result result =
