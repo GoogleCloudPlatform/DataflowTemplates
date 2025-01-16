@@ -1,18 +1,3 @@
-/*
- * Copyright (C) 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- */
 package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
@@ -59,7 +44,6 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   private final int maxWorkers = 1;
   private final int numWorkers = 1;
   private PipelineLauncher.LaunchInfo jobInfo;
-  private PipelineLauncher.LaunchInfo readerJobInfo;
   private final int numShards = 1;
 
   @Before
@@ -76,13 +60,19 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
-    PipelineLauncher.LaunchConfig.Builder configBuilder = PipelineLauncher.LaunchConfig.builder()
-        .setJobName(testName)
-        .setParameters(getParameters())
-        .addParameter("maxNumWorkers", String.valueOf(maxWorkers))
-        .addParameter("numWorkers", String.valueOf(numWorkers))
-        .addParameter("autoscalingAlgorithm", "NONE");  // Disable autoscaling    
-    jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers);
+    
+    // Launch the Dataflow job with resource constraints
+    jobInfo = launchDataflowJob(
+        artifactBucket,
+        numWorkers,
+        maxWorkers,
+        PipelineLauncher.LaunchConfig.builder()
+            .setJobName(testName)
+            .setParameters(getParameters())
+            .addParameter("maxNumWorkers", String.valueOf(maxWorkers))
+            .addParameter("numWorkers", String.valueOf(numWorkers))
+            .addParameter("autoscalingAlgorithm", "NONE") // Disable autoscaling
+            .build());
   }
 
   @After
@@ -93,7 +83,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
   @Test
   public void reverseReplication1KTpsLoadTest()
       throws IOException, ParseException, InterruptedException {
-    // Start data generator
+    // Configure data generator with minimal resources
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
             .setQPS("10")
