@@ -88,7 +88,7 @@ func HostIp() string {
 			panic(fmt.Errorf("failed to get gitactions runner host ip: %v", err))
 		} else {
 			// return "-DhostIp=" + string(hostIP)[:len(hostIP)-1]
-			return "-DhostIp=34.93.18.144"
+			return "-DhostIp=34.47.164.248"
 		}
 	}
 	return "-DhostIp=" + dHostIp

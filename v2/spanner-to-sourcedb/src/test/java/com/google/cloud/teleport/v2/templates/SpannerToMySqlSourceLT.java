@@ -76,6 +76,12 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
+    PipelineLauncher.LaunchConfig.Builder configBuilder = PipelineLauncher.LaunchConfig.builder()
+        .setJobName(testName)
+        .setParameters(getParameters())
+        .addParameter("maxNumWorkers", String.valueOf(maxWorkers))
+        .addParameter("numWorkers", String.valueOf(numWorkers))
+        .addParameter("autoscalingAlgorithm", "NONE");  // Disable autoscaling    
     jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers);
   }
 
@@ -102,7 +108,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
             .setBatchSizeBytes("0")
             .build();
 
-    dataGenerator.execute(Duration.ofMinutes(90));
+    dataGenerator.execute(Duration.ofMinutes(30));
     assertThatPipeline(jobInfo).isRunning();
 
     JDBCRowsCheck check =
