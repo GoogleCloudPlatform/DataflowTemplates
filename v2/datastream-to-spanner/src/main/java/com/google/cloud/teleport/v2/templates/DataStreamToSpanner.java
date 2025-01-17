@@ -667,53 +667,7 @@ public class DataStreamToSpanner {
                     .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
-
-    // Validate shadow table Spanner config - both instance and database must be specified together
-    String shadowTableSpannerInstanceId = options.getShadowTableSpannerInstanceId();
-    String shadowTableSpannerDatabaseId = options.getShadowTableSpannerDatabaseId();
-    LOG.info(
-        "Input Shadow table db -  instance {} and database {}",
-        shadowTableSpannerInstanceId,
-        shadowTableSpannerDatabaseId);
-
-    if ((Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
-            && !Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))
-        || (!Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
-            && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))) {
-      throw new IllegalArgumentException(
-          "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
-    }
-    // If not specified, use main instance and database values. The shadow table database stores the
-    // shadow tables and by default, is the same as he main database for backwards compatibility.
-    if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
-        && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
-      shadowTableSpannerInstanceId = options.getInstanceId();
-      shadowTableSpannerDatabaseId = options.getDatabaseId();
-      LOG.info(
-          "Overwrote shadow table instance - {} and db- {}",
-          shadowTableSpannerInstanceId,
-          shadowTableSpannerDatabaseId);
-    }
-
-    // Prepare shadow table Spanner config
-    SpannerConfig shadowTableSpannerConfig =
-        SpannerConfig.create()
-            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-            .withInstanceId(ValueProvider.StaticValueProvider.of(shadowTableSpannerInstanceId))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(shadowTableSpannerDatabaseId))
-            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
-            .withCommitRetrySettings(
-                RetrySettings.newBuilder()
-                    .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                    .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
-                    .setRetryDelayMultiplier(1)
-                    .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
-                    .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                    .setRpcTimeoutMultiplier(1)
-                    .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
-                    .setMaxAttempts(1)
-                    .build());
+    SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
      * 2) Check if shadow tables are present and create if necessary
@@ -922,6 +876,52 @@ public class DataStreamToSpanner {
                 .build());
     // Execute the pipeline and return the result.
     return pipeline.run();
+  }
+
+  static SpannerConfig getShadowTableSpannerConfig(Options options) {
+    // Validate shadow table Spanner config - both instance and database must be specified together
+    String shadowTableSpannerInstanceId = options.getShadowTableSpannerInstanceId();
+    String shadowTableSpannerDatabaseId = options.getShadowTableSpannerDatabaseId();
+    LOG.info(
+        "Input Shadow table db -  instance {} and database {}",
+        shadowTableSpannerInstanceId,
+        shadowTableSpannerDatabaseId);
+
+    if ((Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+            && !Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))
+        || (!Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+            && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId))) {
+      throw new IllegalArgumentException(
+          "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
+    }
+    // If not specified, use main instance and database values. The shadow table database stores the
+    // shadow tables and by default, is the same as he main database for backwards compatibility.
+    if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
+        && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
+      shadowTableSpannerInstanceId = options.getInstanceId();
+      shadowTableSpannerDatabaseId = options.getDatabaseId();
+      LOG.info(
+          "Overwrote shadow table instance - {} and db- {}",
+          shadowTableSpannerInstanceId,
+          shadowTableSpannerDatabaseId);
+    }
+    return SpannerConfig.create()
+        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+        .withInstanceId(ValueProvider.StaticValueProvider.of(shadowTableSpannerInstanceId))
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(shadowTableSpannerDatabaseId))
+        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()))
+        .withCommitRetrySettings(
+            RetrySettings.newBuilder()
+                .setTotalTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setInitialRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                .setRetryDelayMultiplier(1)
+                .setMaxRetryDelay(org.threeten.bp.Duration.ofMinutes(0))
+                .setInitialRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setRpcTimeoutMultiplier(1)
+                .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
+                .setMaxAttempts(1)
+                .build());
   }
 
   private static DeadLetterQueueManager buildDlqManager(Options options) {

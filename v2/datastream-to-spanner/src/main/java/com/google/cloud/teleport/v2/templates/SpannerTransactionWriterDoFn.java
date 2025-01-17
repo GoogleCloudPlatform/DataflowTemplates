@@ -204,7 +204,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   @Setup
   public void setup() {
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
+    shadowTableSpannerAccessor =
+        usesSeparateShadowTableDb
+            ? SpannerAccessor.getOrCreate(shadowTableSpannerConfig)
+            : spannerAccessor;
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     // Setup and start the watchdog thread.
@@ -223,6 +226,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   @Teardown
   public void teardown() {
     spannerAccessor.close();
+    if (usesSeparateShadowTableDb) {
+      shadowTableSpannerAccessor.close();
+    }
     // Stop the watchdog thread.
     keepWatchdogRunning.set(false);
   }
@@ -354,23 +360,46 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                 transaction -> {
                   isInTransaction.set(true);
                   transactionAttemptCount.incrementAndGet();
-
+                  // Sequence information for the last change event.
                   ChangeEventSequence previousChangeEventSequence =
                       ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
                           transaction, changeEventContext, shadowDdl, false);
-
+                  /* There was a previous event recorded with a greater sequence information
+                   * than current. Hence, skip the current event.
+                   */
                   if (previousChangeEventSequence != null
                       && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
                     skippedEvents.inc();
                     return null;
                   }
-
+                  // Apply shadow and data table mutations.
                   transaction.buffer(changeEventContext.getMutations());
                   isInTransaction.set(false);
                   return null;
                 });
   }
 
+  /**
+   * This method does a cross database transaction across the shadow table db and the main db. It
+   * performs the following steps:
+   *
+   * <ul>
+   *   <li>Start shadow table transaction - tx1
+   *   <li>Read the shadow table row with exclusive lock - tx1.read()
+   *   <li>Start main table transaction - tx2
+   *   <li>Write to main table - tx2.write()
+   *   <li>Before committing tx2, read the shadow table row again using tx1 inside tx2.
+   *   <li>Commit main transaction - tx2.commit()
+   *   <li>Update shadow table - tx1.write()
+   *   <li>Commit shadow table transaction - tx1.commit()
+   * </ul>
+   *
+   * <p>Step 5 acts as a lock validation ensuring that no other process is writing this row. If due
+   * to some network partition/machine failure, the lock is lost during main table write, Spanner
+   * will release the exclusive lock while the thread still continues its attempt to write. This
+   * validation ensures that main table write also fails in such cases and the event goes for
+   * retrial. This ensures no 2 processes are updating the same row together.
+   */
   void processCrossDatabaseTransaction(
       ProcessContext c,
       ChangeEventContext changeEventContext,

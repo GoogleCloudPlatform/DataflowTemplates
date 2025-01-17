@@ -98,6 +98,8 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
     // Timeout for Cloud Spanner schema update.
     private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
 
+    private boolean useSeparateShadowTableDb = false;
+
     public ProcessInformationSchemaFn(
         SpannerConfig spannerConfig,
         SpannerConfig shadowTableSpannerConfig,
@@ -115,18 +117,29 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
     @Setup
     public void setup() throws Exception {
       spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-      shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
       DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
       dialect =
           databaseAdminClient
               .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
               .getDialect();
+
+      // If both point to same database.
+      if (spannerConfig.getInstanceId().equals(shadowTableSpannerConfig.getInstanceId())
+          && spannerConfig.getDatabaseId().equals(shadowTableSpannerConfig.getDatabaseId())) {
+        shadowTableSpannerAccessor = spannerAccessor;
+        useSeparateShadowTableDb = false;
+      } else {
+        shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
+        useSeparateShadowTableDb = true;
+      }
     }
 
     @Teardown
     public void teardown() throws Exception {
       spannerAccessor.close();
-      shadowTableSpannerAccessor.close();
+      if (useSeparateShadowTableDb) {
+        shadowTableSpannerAccessor.close();
+      }
     }
 
     @ProcessElement
@@ -149,6 +162,20 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTupl
       c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
     }
 
+    /**
+     * Cleans up the DDL by removing tables that do not match the specified criteria.
+     *
+     * <p>This method filters the tables in the DDL based on whether they are shadow tables or not.
+     * If the method is called to clean up the main DDL, it removes all tables that are shadow
+     * tables. If the method is called to clean up the shadow DDL, it removes all tables that are
+     * not shadow tables.
+     *
+     * @param originalDdl The original DDL to be cleaned up.
+     * @param shadowPrefix The prefix used to identify shadow tables.
+     * @param isMainDdl Indicates whether the DDL being cleaned up is the main DDL or the shadow
+     *     DDL.
+     * @return A new DDL with the filtered tables.
+     */
     Ddl cleanupDdl(Ddl originalDdl, String shadowPrefix, boolean isMainDdl) {
       // Create a new DDL builder with the same dialect as the original
       Ddl.Builder cleanedDdlBuilder = Ddl.builder(dialect);
