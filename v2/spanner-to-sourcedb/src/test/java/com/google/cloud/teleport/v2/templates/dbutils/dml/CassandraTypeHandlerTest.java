@@ -35,6 +35,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -985,6 +987,11 @@ public class CassandraTypeHandlerTest {
     assertEquals(
         new BigInteger("123456789123456789123456789"),
         castToExpectedType("varint", "123456789123456789123456789"));
+    String timeString = "14:30:45";
+    // Parse the time
+    LocalTime localTime = LocalTime.parse(timeString, DateTimeFormatter.ISO_TIME);
+    Object localTime1 = castToExpectedType("time", "14:30:45");
+    assertTrue(localTime1 instanceof LocalTime);
     assertEquals(
         Duration.ofHours(5), castToExpectedType("duration", Duration.ofHours(5).toString()));
   }

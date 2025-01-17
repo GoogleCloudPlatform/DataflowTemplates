@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -258,26 +259,38 @@ public class CassandraTypeHandler {
             DateTimeFormatter.ISO_INSTANT,
             DateTimeFormatter.ISO_DATE_TIME,
             DateTimeFormatter.ISO_LOCAL_DATE,
+            DateTimeFormatter.ISO_TIME,
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
             DateTimeFormatter.ofPattern("MM/dd/yyyy"),
             DateTimeFormatter.ofPattern("yyyy/MM/dd"),
             DateTimeFormatter.ofPattern("dd-MM-yyyy"),
             DateTimeFormatter.ofPattern("dd/MM/yyyy"),
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
             DateTimeFormatter.ofPattern("MM-dd-yyyy"),
             DateTimeFormatter.ofPattern("dd MMM yyyy"));
 
     for (DateTimeFormatter formatter : formatters) {
       try {
         TemporalAccessor temporal = formatter.parse(timestampValue);
+
         if (temporal.isSupported(ChronoField.INSTANT_SECONDS)) {
           return Instant.from(temporal);
-        } else if (temporal.isSupported(ChronoField.EPOCH_DAY)) {
+        }
+
+        if (temporal.isSupported(ChronoField.EPOCH_DAY)) {
           return LocalDate.from(temporal).atStartOfDay(ZoneOffset.UTC).toInstant();
         }
-      } catch (DateTimeParseException ignored) {
-        LOG.info("Exception found from different formatter " + ignored.getMessage());
+
+        if (temporal.isSupported(ChronoField.SECOND_OF_DAY)) {
+          return LocalTime.from(temporal)
+              .atDate(LocalDate.now(ZoneOffset.UTC))
+              .atZone(ZoneOffset.UTC)
+              .toInstant();
+        }
+      } catch (DateTimeParseException ex) {
+        LOG.debug("Formatter failed: {}, Exception: {}", formatter, ex.getMessage());
       }
     }
+
     throw new IllegalArgumentException("Failed to parse timestamp value: " + timestampValue);
   }
 
@@ -399,6 +412,13 @@ public class CassandraTypeHandler {
             columnType, safeHandle(() -> handleCassandraInetAddressType(colValue.toString())));
 
       case "time":
+        return PreparedStatementValueObject.create(
+            columnType,
+            safeHandle(
+                () ->
+                    handleCassandraTimestampType(colValue.toString())
+                        .atZone(ZoneId.systemDefault())
+                        .toLocalTime()));
       case "timestamp":
       case "datetime":
         return PreparedStatementValueObject.create(
