@@ -358,21 +358,30 @@ public class CassandraTypeHandler {
     if (columnType.startsWith("list<")) {
       return safeHandle(
           () -> {
-            JSONArray parsedJSONArray = new JSONArray((String) colValue);
+            JSONArray parsedJSONArray =
+                colValue instanceof JSONArray
+                    ? (JSONArray) colValue
+                    : new JSONArray((String) colValue);
             return PreparedStatementValueObject.create(
                 columnType, parseCassandraList(columnType, parsedJSONArray));
           });
     } else if (columnType.startsWith("set<")) {
       return safeHandle(
           () -> {
-            JSONArray parsedJSONArray = new JSONArray((String) colValue);
+            JSONArray parsedJSONArray =
+                colValue instanceof JSONArray
+                    ? (JSONArray) colValue
+                    : new JSONArray((String) colValue);
             return PreparedStatementValueObject.create(
                 columnType, parseCassandraSet(columnType, parsedJSONArray));
           });
     } else if (columnType.startsWith("map<")) {
       return safeHandle(
           () -> {
-            JSONObject parsedJSON = new JSONObject((String) colValue);
+            JSONObject parsedJSON =
+                colValue instanceof JSONObject
+                    ? (JSONObject) colValue
+                    : new JSONObject((String) colValue);
             return PreparedStatementValueObject.create(
                 columnType, parseCassandraMap(columnType, parsedJSON));
           });
