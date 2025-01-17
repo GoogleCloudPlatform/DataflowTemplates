@@ -21,9 +21,13 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
  * <ul>
  *   <lI>MYSQL
  *   <lI>POSTGRESQL
+ *   <LI>CASSANDRA
  * </ul>
+ *
+ * TODO(b/390535694): move this to non-jdbc package.
  */
 public enum SQLDialect {
   MYSQL,
-  POSTGRESQL
+  POSTGRESQL,
+  CASSANDRA
 }
