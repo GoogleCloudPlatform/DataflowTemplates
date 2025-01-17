@@ -49,7 +49,13 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
     BoundStatement boundStatement =
         preparedStatement.bind(
             preparedStatementGeneratedResponse.getValues().stream()
-                .map(v -> CassandraTypeHandler.castToExpectedType(v.dataType(), v.value()))
+                .map(
+                    v -> {
+                      if (v.value() == CassandraTypeHandler.NullClass.INSTANCE) {
+                        return null;
+                      }
+                      return CassandraTypeHandler.castToExpectedType(v.dataType(), v.value());
+                    })
                 .toArray());
     session.execute(boundStatement);
   }
