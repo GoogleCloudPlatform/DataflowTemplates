@@ -152,7 +152,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: mvn clean verify -PtemplatesIntegrationTests -pl v2/spanner-to-sourcedb -am -Dtest=SpannerToSourceDbInterleaveMultiShardIT -Dcheckstyle.skip -Dspotless.check.skip=true -DartifactBucket="ollion-teleport-testing" -Dproject="daring-fiber-439305-v4"  -Dregion=asia-south1  -DspannerInstanceId="spanner-demo"
+        run: mvn clean verify -PtemplatesIntegrationTests -pl v2/spanner-to-sourcedb -am -Dtest=SpannerToSourceDbIT -Dcheckstyle.skip -Dspotless.check.skip=true -DartifactBucket="ollion-teleport-testing" -Dproject="daring-fiber-439305-v4"  -Dregion=asia-south1  -DspannerInstanceId="spanner-demo"
           # |
           # ./cicd/run-it-tests \
           # --modules-to-build="v2/spanner-to-sourcedb" \
