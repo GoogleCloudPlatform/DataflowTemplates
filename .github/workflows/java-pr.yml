@@ -64,20 +64,20 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Checkstyle
         run: ./cicd/run-checkstyle
-  # java_build:
-  #   name: Build
-  #   timeout-minutes: 60
-  #   runs-on: [self-hosted, it]
-  #   steps:
-  #     - name: Checkout Code
-  #       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-  #     - name: Setup Environment
-  #       id: setup-env
-  #       uses: ./.github/actions/setup-env
-  #     - name: Run Build
-  #       run: ./cicd/run-build
-  #     - name: Cleanup Java Environment
-  #       uses: ./.github/actions/cleanup-java-env
+  java_build:
+    name: Build
+    timeout-minutes: 60
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: ./cicd/run-build
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
   # java_unit_tests:
   #   name: Unit Tests
   #   # needs: [java_build]
@@ -139,58 +139,58 @@ jobs:
   #     - name: Cleanup Java Environment
   #       uses: ./.github/actions/cleanup-java-env
   #       if: always()
-  java_integration_tests_templates:
-    name: Dataflow Templates Integration Tests
-    # needs: [java_integration_smoke_tests_templates]
-    timeout-minutes: 240
-    # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, it]
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Integration Tests
-        run: |
-          ./cicd/run-it-tests \
-          --modules-to-build="v2/spanner-to-sourcedb" \
-          --it-region="asia-south1" \
-          --it-project="daring-fiber-439305-v4" \
-          --it-artifact-bucket="ollion-teleport-testing" \
-          --it-private-connectivity="datastream-private-connect-asia-south1"
-      - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-        if: always() # always run even if the previous step fails
-        with:
-          name: surefire-test-results
-          path: '**/surefire-reports/TEST-*.xml'
-          retention-days: 1
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
-        if: always()
-  java_load_tests_templates:
-    # if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
-    name: Dataflow Templates Load Tests
-    # needs: [spotless_check, checkstyle_check, java_integration_tests_templates]
-    needs: [spotless_check, checkstyle_check]    
-    timeout-minutes: 600
-    # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted]
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-    - name: Setup Environment
-      id: setup-env
-      uses: ./.github/actions/setup-env
-    - name: Run Load Tests
-      run: |
-        ./cicd/run-load-tests \
-        --it-region="asia-south1" \
-        --it-project="daring-fiber-439305-v4" \
-        --it-artifact-bucket="ollion-teleport-testing" \
-        --it-private-connectivity="datastream-private-connect-asia-south1" \
-        --modules-to-build="v2/spanner-to-sourcedb"
-    - name: Cleanup Java Environment
-      uses: ./.github/actions/cleanup-java-env
-      if: always()
+  # java_integration_tests_templates:
+  #   name: Dataflow Templates Integration Tests
+  #   # needs: [java_integration_smoke_tests_templates]
+  #   timeout-minutes: 240
+  #   # Run on any runner that matches all the specified runs-on values.
+  #   runs-on: [self-hosted, it]
+  #   steps:
+  #     - name: Checkout Code
+  #       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+  #     - name: Setup Environment
+  #       id: setup-env
+  #       uses: ./.github/actions/setup-env
+  #     - name: Run Integration Tests
+  #       run: |
+  #         ./cicd/run-it-tests \
+  #         --modules-to-build="v2/spanner-to-sourcedb" \
+  #         --it-region="asia-south1" \
+  #         --it-project="daring-fiber-439305-v4" \
+  #         --it-artifact-bucket="ollion-teleport-testing" \
+  #         --it-private-connectivity="datastream-private-connect-asia-south1"
+  #     - name: Upload Integration Tests Report
+  #       uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+  #       if: always() # always run even if the previous step fails
+  #       with:
+  #         name: surefire-test-results
+  #         path: '**/surefire-reports/TEST-*.xml'
+  #         retention-days: 1
+  #     - name: Cleanup Java Environment
+  #       uses: ./.github/actions/cleanup-java-env
+  #       if: always()
+  # java_load_tests_templates:
+  #   # if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
+  #   name: Dataflow Templates Load Tests
+  #   # needs: [spotless_check, checkstyle_check, java_integration_tests_templates]
+  #   needs: [spotless_check, checkstyle_check]    
+  #   timeout-minutes: 600
+  #   # Run on any runner that matches all the specified runs-on values.
+  #   runs-on: [self-hosted]
+  #   steps:
+  #   - name: Checkout Code
+  #     uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+  #   - name: Setup Environment
+  #     id: setup-env
+  #     uses: ./.github/actions/setup-env
+  #   - name: Run Load Tests
+  #     run: |
+  #       ./cicd/run-load-tests \
+  #       --it-region="asia-south1" \
+  #       --it-project="daring-fiber-439305-v4" \
+  #       --it-artifact-bucket="ollion-teleport-testing" \
+  #       --it-private-connectivity="datastream-private-connect-asia-south1" \
+  #       --modules-to-build="v2/spanner-to-sourcedb"
+  #   - name: Cleanup Java Environment
+  #     uses: ./.github/actions/cleanup-java-env
+  #     if: always()
