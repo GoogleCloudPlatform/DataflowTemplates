@@ -210,7 +210,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(20)),
+                createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
     assertThatResult(parent1Result).meetsConditions();
 
