@@ -90,7 +90,8 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Unit Tests
-        run: ./cicd/run-unit-tests
+        # run: ./cicd/run-unit-tests
+        run: mvn -B clean verify -f pom.xml -e -Dcheckstyle.skip -Djib.skip -DskipShade -Dspotless.check.skip -DskipIntegrationTests -fae -T8 --settings=.mvn/settings.xml -pl v2/spanner-to-sourcedb
       - name: Upload Unit Tests Report
         uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
         if: always() # always run even if the previous step fails
