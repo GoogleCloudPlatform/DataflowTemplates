@@ -335,7 +335,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testReadWithPartitionOnLongColumnType() throws IOException {
+  public void testReadPartitionLongType() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testId).build();
 
     HashMap<String, String> columns = new HashMap<>();
@@ -364,7 +364,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testReadWithPartitionOnDateTimeColumnType() throws IOException {
+  public void testReadPartitionDateTimeType() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testId).build();
 
     HashMap<String, String> columns = new HashMap<>();
@@ -393,7 +393,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testReadWithPartitionOnDateTimeColumnTypeWithBounds() throws IOException {
+  public void testReadPartitionDateTimeBounds() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testId).build();
 
     HashMap<String, String> columns = new HashMap<>();
