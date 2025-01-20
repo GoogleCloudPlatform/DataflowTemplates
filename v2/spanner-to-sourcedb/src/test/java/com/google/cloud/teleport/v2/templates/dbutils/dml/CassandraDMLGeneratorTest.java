@@ -18,9 +18,6 @@ package com.google.cloud.teleport.v2.templates.dbutils.dml;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
@@ -42,17 +39,12 @@ import org.json.JSONObject;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CassandraDMLGeneratorTest {
 
   private CassandraDMLGenerator cassandraDMLGenerator;
-
-  @Mock private DMLGeneratorRequest mockRequest;
-
-  @Mock private Schema mockSchema;
 
   @Before
   public void setUp() {
@@ -68,24 +60,25 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testGetDMLStatement_InvalidSchema() {
-    when(mockRequest.getSchema()).thenReturn(null);
+    DMLGeneratorRequest dmlGeneratorRequest =
+        new DMLGeneratorRequest.Builder("insert", "text", null, null, null).setSchema(null).build();
 
-    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(mockRequest);
+    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(dmlGeneratorRequest);
     assertNotNull(response);
     assertEquals("", response.getDmlStatement());
-
-    verify(mockRequest, times(1)).getSchema();
   }
 
   @Test
   public void testGetDMLStatement_MissingTableMapping() {
-    when(mockRequest.getSchema()).thenReturn(mockSchema);
-    when(mockSchema.getSpannerToID()).thenReturn(null);
-
-    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(mockRequest);
+    Schema schema = new Schema();
+    schema.setSpannerToID(null);
+    DMLGeneratorRequest dmlGeneratorRequest =
+        new DMLGeneratorRequest.Builder("insert", "text", null, null, null)
+            .setSchema(schema)
+            .build();
+    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(dmlGeneratorRequest);
     assertNotNull(response);
     assertEquals("", response.getDmlStatement());
-    verify(mockSchema, times(1)).getSpannerToID();
   }
 
   @Test

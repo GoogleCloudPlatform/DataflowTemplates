@@ -92,8 +92,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     NameAndCols tableMapping = schema.getSpannerToID().get(spannerTableName);
     SpannerTable spannerTable = schema.getSpSchema().get(tableMapping.getName());
     if (spannerTable == null) {
-      LOG.warn(
-          "Spanner table {} not found in session file. Dropping the record.", spannerTableName);
+      LOG.warn("Spanner table {} not found. Dropping the record.", spannerTableName);
       return new DMLGeneratorResponse("");
     }
 
@@ -235,8 +234,6 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    * primary key values, and timestamp.
    *
    * @param tableName the name of the table from which records will be deleted.
-   * @param pkColumnNameValues a map containing the primary key column names and their corresponding
-   *     prepared statement value objects.
    * @param timestamp the timestamp (in java.sql.Timestamp) to use for the delete operation.
    * @return a {@link DMLGeneratorResponse} containing the generated CQL delete statement and a list
    *     of values to bind to the prepared statement.

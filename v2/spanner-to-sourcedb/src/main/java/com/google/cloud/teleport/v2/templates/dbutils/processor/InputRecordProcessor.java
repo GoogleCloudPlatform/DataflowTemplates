@@ -107,11 +107,14 @@ public class InputRecordProcessor {
         return false;
       }
       // TODO we need to handle it as proper Interface Level as of now we have handle Prepared
-      // Statement and Raw Statement Differently
-      if (source.equals(SOURCE_CASSANDRA)) {
-        dao.write(dmlGeneratorResponse);
-      } else {
-        dao.write(dmlGeneratorResponse.getDmlStatement());
+      // TODO Statement and Raw Statement Differently
+      switch (source) {
+        case SOURCE_CASSANDRA:
+          dao.write(dmlGeneratorResponse);
+          break;
+        default:
+          dao.write(dmlGeneratorResponse.getDmlStatement());
+          break;
       }
 
       Counter numRecProcessedMetric =
