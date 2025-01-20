@@ -87,14 +87,19 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn("Schema is invalid or incomplete for table: {}", spannerTableName);
       return new DMLGeneratorResponse("");
     }
-
-    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableName);
+    String spannerTableId =
+        dmlGeneratorRequest
+            .getSchema()
+            .getSpannerToID()
+            .get(dmlGeneratorRequest.getSpannerTableName())
+            .getName();
+    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
     if (spannerTable == null) {
-      LOG.warn("Spanner table {} not found. Dropping the record.", spannerTableName);
+      LOG.warn("Spanner table {} not found. Dropping the record.", spannerTableId);
       return new DMLGeneratorResponse("");
     }
 
-    SourceTable sourceTable = schema.getSrcSchema().get(spannerTableName);
+    SourceTable sourceTable = schema.getSrcSchema().get(spannerTableId);
     if (sourceTable == null) {
       LOG.warn(
           "Source table {} not found for Spanner table Name: {}",
