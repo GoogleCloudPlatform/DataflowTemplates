@@ -264,7 +264,7 @@
       "Id": "t1",
       "Comment": "Spanner schema for source table sample_table"
     },
-    "t1": {
+    "Singers": {
       "Name": "Singers",
       "ColIds": [
         "c5",
@@ -327,7 +327,7 @@
       ],
       "Id": "t1"
     },
-    "t2": {
+    "contact": {
       "Name": "contact",
       "ColIds": [
         "c18",
@@ -395,7 +395,7 @@
       ],
       "Id": "t2"
     },
-    "t3": {
+    "customer": {
       "Name": "customer",
       "ColIds": [
         "c10",
@@ -451,7 +451,7 @@
       ],
       "Id": "t3"
     },
-    "t4": {
+    "Persons": {
       "Name": "Persons",
       "ColIds": [
         "c13",
@@ -818,7 +818,7 @@
       ],
       "Id": "t1"
     },
-    "t1": {
+    "Singers": {
       "Name": "Singers",
       "Schema": "ui_demo",
       "ColIds": [
@@ -866,7 +866,7 @@
       ],
       "Id": "t1"
     },
-    "t2": {
+    "contact": {
       "Name": "contact",
       "Schema": "ui_demo",
       "ColIds": [
@@ -921,7 +921,7 @@
       "Indexes": null,
       "Id": "t2"
     },
-    "t3": {
+    "customer": {
       "Name": "customer",
       "Schema": "ui_demo",
       "ColIds": [
@@ -963,7 +963,7 @@
       "Indexes": null,
       "Id": "t3"
     },
-    "t4": {
+    "Persons": {
       "Name": "Persons",
       "Schema": "ui_demo",
       "ColIds": [
