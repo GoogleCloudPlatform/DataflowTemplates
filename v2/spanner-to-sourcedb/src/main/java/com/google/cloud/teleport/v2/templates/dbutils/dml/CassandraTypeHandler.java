@@ -295,8 +295,8 @@ public class CassandraTypeHandler {
   }
 
   /**
-   * Safely executes a handler method, catching exceptions and rethrowing them as runtime
-   * exceptions.
+   * Safely executes a handler method, catching exceptions and rethrowing them as
+   * IllegalArgumentException exceptions.
    *
    * <p>This method provides exception safety by wrapping the execution of a supplier function.
    *

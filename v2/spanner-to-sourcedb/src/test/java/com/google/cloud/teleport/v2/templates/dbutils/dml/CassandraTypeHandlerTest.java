@@ -39,9 +39,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -357,6 +357,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("48656c6c6f20576f726c64", castResult);
   }
 
   @Test
@@ -378,6 +379,8 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    long expectedValue = 123456789L;
+    assertEquals(expectedValue, castResult);
   }
 
   @Test
@@ -399,6 +402,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals(true, castResult);
   }
 
   @Test
@@ -420,6 +424,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals(true, castResult);
   }
 
   @Test
@@ -441,6 +446,8 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    long expectedValue = 225000L;
+    assertEquals(expectedValue, castResult);
   }
 
   @Test
@@ -462,6 +469,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals(false, castResult);
   }
 
   // Revised and Improved Tests
@@ -484,6 +492,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals(BigInteger.valueOf(5), castResult);
   }
 
   @Test
@@ -504,6 +513,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals(BigInteger.valueOf(5), castResult);
   }
 
   @Test
@@ -525,6 +535,8 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    LocalDate expectedValue = Instant.parse(timestamp).atZone(ZoneId.systemDefault()).toLocalDate();
+    assertEquals(expectedValue, castResult);
   }
 
   @Test
@@ -546,6 +558,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("2025-01-15T00:00:00Z", castResult.toString());
   }
 
   @Test
@@ -567,6 +580,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals(timestamp, castResult.toString());
   }
 
   @Test
@@ -588,6 +602,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
@@ -609,6 +624,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
@@ -630,6 +646,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
@@ -651,6 +668,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
@@ -672,6 +690,7 @@ public class CassandraTypeHandlerTest {
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     assertNotNull(castResult);
+    assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
@@ -1033,8 +1052,6 @@ public class CassandraTypeHandlerTest {
         new BigInteger("123456789123456789123456789"),
         castToExpectedType("varint", "123456789123456789123456789"));
     String timeString = "14:30:45";
-    // Parse the time
-    LocalTime localTime = LocalTime.parse(timeString, DateTimeFormatter.ISO_TIME);
     Object localTime1 = castToExpectedType("time", "14:30:45");
     assertTrue(localTime1 instanceof LocalTime);
     assertEquals(
