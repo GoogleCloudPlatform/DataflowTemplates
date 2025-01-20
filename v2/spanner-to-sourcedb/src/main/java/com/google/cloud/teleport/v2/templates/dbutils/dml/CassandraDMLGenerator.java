@@ -215,8 +215,8 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     List<PreparedStatementValueObject<?>> values =
         allColumnNamesAndValues.stream().map(Map.Entry::getValue).collect(Collectors.toList());
 
-    PreparedStatementValueObject<java.sql.Timestamp> timestampObj =
-        PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp);
+    PreparedStatementValueObject<Long> timestampObj =
+        PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp.getTime());
     values.add(timestampObj);
 
     String preparedStatement =
@@ -263,8 +263,8 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
 
     if (timestamp != null) {
-      PreparedStatementValueObject<java.sql.Timestamp> timestampObj =
-          PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp);
+      PreparedStatementValueObject<Long> timestampObj =
+          PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp.getTime());
       values.add(0, timestampObj);
     }
 
