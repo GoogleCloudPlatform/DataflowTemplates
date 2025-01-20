@@ -182,7 +182,7 @@ jobs:
       with:
         name: surefire-test-results
         path: '**/surefire-reports/TEST-*.xml'
-        retention-days: 1
+        retention-days: 10
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:

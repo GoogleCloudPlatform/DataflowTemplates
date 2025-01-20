@@ -209,7 +209,84 @@ CREATE TABLE spatial_polygon (
   id INT64 NOT NULL,
   area STRING(MAX),
 ) PRIMARY KEY(id);
+
+CREATE TABLE bigint_pk_table (
+  id INT64 NOT NULL,
+  bigint_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
 CREATE TABLE bigint_unsigned_pk_table (
   id NUMERIC NOT NULL,
   bigint_unsigned_pk_col NUMERIC NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE int_pk_table (
+   id INT64 NOT NULL,
+   int_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE int_unsigned_pk_table (
+   id INT64 NOT NULL,
+   int_unsigned_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE medium_int_pk_table (
+   id INT64 NOT NULL,
+   medium_int_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE medium_int_unsigned_pk_table (
+   id INT64 NOT NULL,
+   medium_int_unsigned_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE small_int_pk_table (
+   id INT64 NOT NULL,
+   small_int_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE small_int_unsigned_pk_table (
+   id INT64 NOT NULL,
+   small_int_unsigned_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE tiny_int_pk_table (
+   id INT64 NOT NULL,
+   tiny_int_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE tiny_int_unsigned_pk_table (
+   id INT64 NOT NULL,
+   tiny_int_unsigned_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE binary_pk_table (
+  id BYTES(20) NOT NULL,
+  binary_pk_col BYTES(20) NOT NULL,
+) PRIMARY KEY(id);
+
+
+CREATE TABLE varbinary_pk_table (
+  id BYTES(20) NOT NULL,
+  varbinary_pk_col BYTES(20) NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE tiny_blob_pk_table (
+  id BYTES(20) NOT NULL,
+  tiny_blob_pk_col BYTES(20) NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE char_pk_table (
+  id STRING(20) NOT NULL,
+  char_pk_col STRING(20) NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE varchar_pk_table (
+  id STRING(20) NOT NULL,
+  varchar_pk_col STRING(20) NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE tiny_text_pk_table (
+  id STRING(20) NOT NULL,
+  tiny_text_pk_col STRING(20) NOT NULL,
 ) PRIMARY KEY(id);

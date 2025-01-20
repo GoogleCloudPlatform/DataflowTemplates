@@ -42,12 +42,14 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **password**: The password to be used for the JDBC connection. Defaults to empty.
 * **tables**: Tables to migrate from source. Defaults to empty.
 * **numPartitions**: The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0.
+* **fetchSize**: The number of rows to fetch per page read for JDBC source. If not set, the default of JdbcIO of 50_000 rows gets used. If source dialect is Mysql, please see the note below. This ultimately translated to Statement.setFetchSize call at Jdbc layer. It should ONLY be used if the default value throws memory errors.Note for MySql Source:  FetchSize is ignored by the Mysql connector unless, `useCursorFetch=true` is also part of the connection properties.In case, the fetchSize parameter is explicitly set, for MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default.
 * **spannerHost**: The Cloud Spanner endpoint to call in the template. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
 * **maxConnections**: Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. For example, `-1`. Defaults to: 0.
 * **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from Spanner Migration Tool. Defaults to empty.
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **namespace**: Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Defaults to empty.
 * **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
 * **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
@@ -142,12 +144,14 @@ export USERNAME=""
 export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
+export FETCH_SIZE=<fetchSize>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export MAX_CONNECTIONS=0
 export SESSION_FILE_PATH=""
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export NAMESPACE=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -163,6 +167,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "password=$PASSWORD" \
   --parameters "tables=$TABLES" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
+  --parameters "fetchSize=$FETCH_SIZE" \
   --parameters "instanceId=$INSTANCE_ID" \
   --parameters "databaseId=$DATABASE_ID" \
   --parameters "projectId=$PROJECT_ID" \
@@ -173,6 +178,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
   --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "namespace=$NAMESPACE" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
@@ -207,12 +213,14 @@ export USERNAME=""
 export PASSWORD=""
 export TABLES=""
 export NUM_PARTITIONS=0
+export FETCH_SIZE=<fetchSize>
 export SPANNER_HOST=https://batch-spanner.googleapis.com
 export MAX_CONNECTIONS=0
 export SESSION_FILE_PATH=""
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export NAMESPACE=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -223,7 +231,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -280,12 +288,14 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # password = ""
     # tables = ""
     # numPartitions = "0"
+    # fetchSize = "<fetchSize>"
     # spannerHost = "https://batch-spanner.googleapis.com"
     # maxConnections = "0"
     # sessionFilePath = ""
     # transformationJarPath = ""
     # transformationClassName = ""
     # transformationCustomParameters = ""
+    # namespace = ""
     # disabledAlgorithms = "<disabledAlgorithms>"
     # extraFilesToStage = "<extraFilesToStage>"
   }

@@ -28,6 +28,7 @@ import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Period;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -47,6 +48,7 @@ import org.apache.avro.data.TimeConversions;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kerby.util.Hex;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
@@ -510,7 +512,10 @@ public class GenericRecordTypeConvertor {
       // Convert to timestamp string.
       Long totalMicros = TimeUnit.DAYS.toMicros(Long.valueOf(element.get("date").toString()));
       totalMicros += Long.valueOf(element.get("time").toString());
-      Instant timestamp = Instant.ofEpochSecond(TimeUnit.MICROSECONDS.toSeconds(totalMicros));
+      Instant timestamp =
+          Instant.ofEpochSecond(
+              TimeUnit.MICROSECONDS.toSeconds(totalMicros),
+              TimeUnit.MICROSECONDS.toNanos(totalMicros % TimeUnit.SECONDS.toMicros(1)));
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getName().equals("interval")) {
       // TODO: For MySQL, we ignore the months field. This might require source-specific handling
@@ -529,11 +534,47 @@ public class GenericRecordTypeConvertor {
       // Handle hours separately since that can also be negative. We convert micros to localTime
       // format (HH:MM:SS), then strip of HH:, which will always be "00:".
       return String.format("%s:%s", hours, localTime.substring(3));
+    } else if (fieldSchema.getName().equals("intervalNano")) {
+      Period period =
+          Period.ZERO
+              .plusYears(((Number) getOrDefault(element, "years", 0L)).longValue())
+              .plusMonths(((Number) getOrDefault(element, "months", 0L)).longValue())
+              .plusDays(((Number) getOrDefault(element, "days", 0L)).longValue());
+      /*
+       * Convert the period to a ISO-8601 period formatted String, such as P6Y3M1D.
+       * A zero period will be represented as zero days, 'P0D'.
+       * Refer to javadoc for Period#toString.
+       */
+      String periodIso8061 = period.toString();
+      java.time.Duration duration =
+          java.time.Duration.ZERO
+              .plusHours(((Number) getOrDefault(element, "hours", 0L)).longValue())
+              .plusMinutes(((Number) getOrDefault(element, "minutes", 0L)).longValue())
+              .plusSeconds(((Number) getOrDefault(element, "seconds", 0L)).longValue())
+              .plusNanos(((Number) getOrDefault(element, "nanos", 0L)).longValue());
+      /*
+       * Convert the duration to a ISO-8601 period formatted String, such as  PT8H6M12.345S
+       * refer to javadoc for Duration#toString.
+       */
+      String durationIso8610 = duration.toString();
+      // Convert to ISO-8601 period format.
+      if (duration.isZero()) {
+        return periodIso8061;
+      } else {
+        return periodIso8061 + StringUtils.removeStartIgnoreCase(durationIso8610, "P");
+      }
     } else {
       throw new UnsupportedOperationException(
           String.format(
               "Unknown field schema %s for 'Record' type in %s for field %s",
               fieldSchema.getName(), element, fieldName));
     }
+  }
+
+  private static <T> T getOrDefault(GenericRecord element, String name, T def) {
+    if ((T) element.get(name) == null) {
+      return def;
+    }
+    return (T) element.get(name);
   }
 }

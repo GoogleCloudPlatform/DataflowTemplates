@@ -432,7 +432,7 @@ public final class PubsubResourceManager implements ResourceManager {
     TimeInterval interval =
         TimeInterval.newBuilder()
             .setEndTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond()))
-            .setStartTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond() - 5))
+            .setStartTime(Timestamp.newBuilder().setSeconds(Instant.now().getEpochSecond() - 20))
             .build();
 
     String filterFormat =

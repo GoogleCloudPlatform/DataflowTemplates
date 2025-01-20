@@ -350,6 +350,66 @@
       "ForeignKeys": null,
       "Indexes": null,
       "Id": "t15519"
+    },
+    "t15520": {
+      "Name": "Genre",
+      "Schema": "",
+      "ColIds": [
+        "c13",
+        "c14"
+      ],
+      "ColDefs": {
+        "c13": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13"
+        },
+        "c14": {
+          "Name": "genre_id",
+          "Type": {
+            "Name": "decimal",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c14",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t15520"
     }
   },
   "SchemaIssues": {
@@ -375,6 +435,10 @@
           2
         ]
       },
+      "TableLevelIssues": null
+    },
+    "t15520": {
+      "ColumnLevelIssues": {},
       "TableLevelIssues": null
     }
   },

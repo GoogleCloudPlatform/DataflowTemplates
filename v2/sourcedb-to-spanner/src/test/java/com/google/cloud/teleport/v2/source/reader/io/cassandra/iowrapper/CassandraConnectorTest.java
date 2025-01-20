@@ -19,20 +19,11 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
 import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
-import com.datastax.oss.driver.api.core.ConsistencyLevel;
-import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
-import com.google.cloud.teleport.v2.source.reader.auth.dbauth.LocalCredentialsProvider;
+import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
 import java.io.IOException;
-import java.time.Duration;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -71,6 +62,7 @@ public class CassandraConnectorTest {
     CassandraDataSource cassandraDataSource =
         CassandraDataSource.builder()
             .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+            .setOptionsMap(OptionsMap.driverDefaults())
             .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
             .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
             .build();
@@ -94,78 +86,5 @@ public class CassandraConnectorTest {
           .isEqualTo(sharedEmbeddedCassandra.getInstance().getClusterName());
       assertThat(cassandraConnectorWithNullKeySpace.getSession().getKeyspace()).isEmpty();
     }
-  }
-
-  @Test
-  public void testCredentialsSetter() {
-
-    final String testUserName = "testUseramNe";
-    final String testPassword = "test";
-
-    CassandraDataSource cassandraDataSource =
-        CassandraDataSource.builder()
-            .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-            .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-            .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-            .build();
-    CqlSessionBuilder mockSessionBuilder = mock(CqlSessionBuilder.class);
-    // No Auth Set
-    CassandraConnector.setCredentials(mockSessionBuilder, cassandraDataSource);
-    verify(mockSessionBuilder, never()).withAuthCredentials(anyString(), anyString());
-    // Auth set
-    CassandraConnector.setCredentials(
-        mockSessionBuilder,
-        cassandraDataSource.toBuilder()
-            .setDbAuth(
-                LocalCredentialsProvider.builder()
-                    .setUserName(testUserName)
-                    .setPassword(testPassword)
-                    .build())
-            .build());
-    verify(mockSessionBuilder, times(1)).withAuthCredentials(testUserName, testPassword);
-  }
-
-  @Test
-  public void testConfigLoader() {
-
-    CassandraDataSource cassandraDataSource =
-        CassandraDataSource.builder()
-            .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-            .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-            .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-            .build();
-    assertThat(
-            CassandraConnector.getDriverConfigLoader(cassandraDataSource)
-                .getInitialConfig()
-                .getDefaultProfile()
-                .getString(DefaultDriverOption.REQUEST_CONSISTENCY))
-        .isEqualTo(ConsistencyLevel.QUORUM.name());
-    assertThat(
-            CassandraConnector.getDriverConfigLoader(
-                    cassandraDataSource.toBuilder()
-                        .setConsistencyLevel(ConsistencyLevel.ONE)
-                        .build())
-                .getInitialConfig()
-                .getDefaultProfile()
-                .getString(DefaultDriverOption.REQUEST_CONSISTENCY))
-        .isEqualTo(ConsistencyLevel.ONE.name());
-    assertThat(
-            CassandraConnector.getDriverConfigLoader(
-                    cassandraDataSource.toBuilder()
-                        .setConnectTimeout(Duration.ofSeconds(42L))
-                        .build())
-                .getInitialConfig()
-                .getDefaultProfile()
-                .getDuration(DefaultDriverOption.CONNECTION_CONNECT_TIMEOUT))
-        .isEqualTo(Duration.ofSeconds(42L));
-    assertThat(
-            CassandraConnector.getDriverConfigLoader(
-                    cassandraDataSource.toBuilder()
-                        .setRequestTimeout(Duration.ofSeconds(42L))
-                        .build())
-                .getInitialConfig()
-                .getDefaultProfile()
-                .getDuration(DefaultDriverOption.REQUEST_TIMEOUT))
-        .isEqualTo(Duration.ofSeconds(42L));
   }
 }

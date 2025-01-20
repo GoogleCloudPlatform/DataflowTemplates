@@ -1,0 +1,506 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "e2e-it",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t34": {
+      "Name": "Authors",
+      "ColIds": [
+        "c37",
+        "c38"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c37": {
+          "Name": "author_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: author_id int(10)",
+          "Id": "c37",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c38": {
+          "Name": "full_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 25,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(25)",
+          "Id": "c38",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c37",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "Comment": "Spanner schema for source table Authors",
+      "Id": "t34"
+    },
+    "t35": {
+      "Name": "Books",
+      "ColIds": [
+        "c41",
+        "c42",
+        "c43",
+        "c47"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c41": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c41",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c42": {
+          "Name": "title",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: title varchar(200)",
+          "Id": "c42",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c43": {
+          "Name": "author_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: author_id int(10)",
+          "Id": "c43",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c47": {
+          "Name": "synth_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c47",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c47",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": [
+        {
+          "Name": "Books_ibfk_1",
+          "ColIds": [
+            "c43"
+          ],
+          "ReferTableId": "t34",
+          "ReferColumnIds": [
+            "c37"
+          ],
+          "Id": "f40",
+          "OnDelete": "NO ACTION",
+          "OnUpdate": "NO ACTION"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "author_id",
+          "TableId": "t35",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c43",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i46",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "Comment": "Spanner schema for source table Books",
+      "Id": "t35"
+    }
+  },
+  "SyntheticPKeys": {
+    "t35": {
+      "ColId": "c47",
+      "Sequence": 0
+    }
+  },
+  "SrcSchema": {
+    "t34": {
+      "Name": "Authors",
+      "Schema": "e2e-it",
+      "ColIds": [
+        "c37",
+        "c38",
+        "c39"
+      ],
+      "ColDefs": {
+        "c37": {
+          "Name": "author_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c37",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c38": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              25
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c38",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c39": {
+          "Name": "last_update",
+          "Type": {
+            "Name": "timestamp",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c39",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c37",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t34"
+    },
+    "t35": {
+      "Name": "Books",
+      "Schema": "e2e-it",
+      "ColIds": [
+        "c41",
+        "c42",
+        "c43"
+      ],
+      "ColDefs": {
+        "c41": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c41",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c42": {
+          "Name": "title",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c42",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c43": {
+          "Name": "author_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c43",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": null,
+      "ForeignKeys": [
+        {
+          "Name": "Books_ibfk_1",
+          "ColIds": [
+            "c43"
+          ],
+          "ReferTableId": "t34",
+          "ReferColumnIds": [
+            "c37"
+          ],
+          "OnDelete": "NO ACTION",
+          "OnUpdate": "NO ACTION",
+          "Id": "f40"
+        }
+      ],
+      "Indexes": [
+        {
+          "Name": "author_id",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c43",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i46",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t35"
+    },
+    "t36": {
+      "Name": "Genre",
+      "Schema": "e2e-it",
+      "ColIds": [
+        "c44",
+        "c45"
+      ],
+      "ColDefs": {
+        "c44": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c44",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c45": {
+          "Name": "genre_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c45",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c45",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t36"
+    }
+  },
+  "SchemaIssues": {
+    "t34": {
+      "ColumnLevelIssues": {
+        "c37": [
+          14
+        ],
+        "c38": []
+      },
+      "TableLevelIssues": null
+    },
+    "t35": {
+      "ColumnLevelIssues": {
+        "c41": [
+          14
+        ],
+        "c42": [],
+        "c43": [
+          14,
+          24
+        ],
+        "c47": [
+          2
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t36": {
+      "ColumnLevelIssues": {},
+      "TableLevelIssues": []
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {}
+}

@@ -1,0 +1,968 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "company",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "company",
+      "ColIds": [
+        "c4",
+        "c5",
+        "c6"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c4": {
+          "Name": "company_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: company_id int(10)",
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c5": {
+          "Name": "company_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 100,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: company_name varchar(100)",
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c6": {
+          "Name": "created_on",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: created_on date",
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c4",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table company",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "employee",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c11": {
+          "Name": "employee_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: employee_id int(10)",
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c12": {
+          "Name": "company_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: company_id int(10)",
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c13": {
+          "Name": "employee_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 100,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: employee_name varchar(100)",
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c14": {
+          "Name": "employee_address",
+          "T": {
+            "Name": "STRING",
+            "Len": 100,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: employee_address varchar(100)",
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c15": {
+          "Name": "created_on",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: created_on date",
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c11",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table employee",
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "employee_attribute",
+      "ColIds": [
+        "c7",
+        "c8",
+        "c9",
+        "c10"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c10": {
+          "Name": "updated_on",
+          "T": {
+            "Name": "DATE",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: updated_on date",
+          "Id": "c10",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c7": {
+          "Name": "employee_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: employee_id int(10)",
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c8": {
+          "Name": "attribute_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 100,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: attribute_name varchar(100)",
+          "Id": "c8",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c9": {
+          "Name": "value",
+          "T": {
+            "Name": "STRING",
+            "Len": 100,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: value varchar(100)",
+          "Id": "c9",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c7",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c8",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentId": "",
+      "Comment": "Spanner schema for source table employee_attribute",
+      "Id": "t3"
+    },
+    "t4": {
+      "Name": "vendor",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c11": {
+          "Name": "email",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: email varchar(255)",
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c12": {
+          "Name": "full_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 512,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: full_name varchar(512)",
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c13": {
+          "Name": "vendor_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: vendor_id int(10)",
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "Sequence7",
+            "GenerationType": "Sequence"
+          }
+        },
+        "c14": {
+          "Name": "first_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: first_name varchar(255)",
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c15": {
+          "Name": "last_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 255,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: last_name varchar(255)",
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c12",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": [
+        {
+          "Name": "full_name_idx",
+          "TableId": "t4",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c12",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i15",
+          "StoredColumnIds": null
+        },
+        {
+          "Name": "email_idx",
+          "TableId": "t4",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c11",
+              "Desc": true,
+              "Order": 1
+            }
+          ],
+          "Id": "i16",
+          "StoredColumnIds": null
+        }
+      ],
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "Comment": "Spanner schema for source table vendor",
+      "Id": "t4"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "company",
+      "Schema": "company",
+      "ColIds": [
+        "c4",
+        "c5",
+        "c6"
+      ],
+      "ColDefs": {
+        "c4": {
+          "Name": "company_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4"
+        },
+        "c5": {
+          "Name": "company_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              100
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c5"
+        },
+        "c6": {
+          "Name": "created_on",
+          "Type": {
+            "Name": "date",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c6"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c4",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "employee",
+      "Schema": "company",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15"
+      ],
+      "ColDefs": {
+        "c11": {
+          "Name": "employee_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11"
+        },
+        "c12": {
+          "Name": "company_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12"
+        },
+        "c13": {
+          "Name": "employee_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              100
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13"
+        },
+        "c14": {
+          "Name": "employee_address",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              100
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14"
+        },
+        "c15": {
+          "Name": "created_on",
+          "Type": {
+            "Name": "date",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c11",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t2"
+    },
+    "t3": {
+      "Name": "employee_attribute",
+      "Schema": "company",
+      "ColIds": [
+        "c7",
+        "c8",
+        "c9",
+        "c10"
+      ],
+      "ColDefs": {
+        "c10": {
+          "Name": "updated_on",
+          "Type": {
+            "Name": "date",
+            "Mods": null,
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c10"
+        },
+        "c7": {
+          "Name": "employee_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c7"
+        },
+        "c8": {
+          "Name": "attribute_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              100
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c8"
+        },
+        "c9": {
+          "Name": "value",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              100
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": true,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c9"
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c7",
+          "Desc": false,
+          "Order": 1
+        },
+        {
+          "ColId": "c8",
+          "Desc": false,
+          "Order": 2
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "Id": "t3"
+    },
+    "t4": {
+      "Name": "vendor",
+      "Schema": "company",
+      "ColIds": [
+        "c11",
+        "c12",
+        "c13",
+        "c14",
+        "c15"
+      ],
+      "ColDefs": {
+        "c11": {
+          "Name": "email",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c12": {
+          "Name": "full_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              512
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c12",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c13": {
+          "Name": "vendor_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c13",
+          "AutoGen": {
+            "Name": "Sequence7",
+            "GenerationType": "Auto Increment"
+          }
+        },
+        "c14": {
+          "Name": "first_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c14",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        },
+        "c15": {
+          "Name": "last_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              255
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c15",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c11",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": [
+        {
+          "Name": "email",
+          "Unique": true,
+          "Keys": [
+            {
+              "ColId": "c11",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i14",
+          "StoredColumnIds": null
+        },
+        {
+          "Name": "full_name_idx",
+          "Unique": false,
+          "Keys": [
+            {
+              "ColId": "c12",
+              "Desc": false,
+              "Order": 1
+            }
+          ],
+          "Id": "i15",
+          "StoredColumnIds": null
+        }
+      ],
+      "Id": "t4"
+    }
+},
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {
+        "c4": [
+          14
+        ],
+        "c5": [
+          0
+        ],
+        "c6": [
+          0
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t2": {
+      "ColumnLevelIssues": {
+        "c11": [
+          14
+        ],
+        "c12": [
+          14,
+          0
+        ],
+        "c13": [
+          0
+        ],
+        "c14": [
+          0
+        ],
+        "c15": [
+          0
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t3": {
+      "ColumnLevelIssues": {
+        "c10": [
+          0
+        ],
+        "c7": [
+          14
+        ],
+        "c9": [
+          0
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {
+    "s7": {
+      "Id": "s7",
+      "Name": "Sequence7",
+      "SequenceKind": "BIT REVERSED POSITIVE",
+      "SkipRangeMin": "",
+      "SkipRangeMax": "",
+      "StartWithCounter": "",
+      "ColumnsUsingSeq": {
+        "t2": [
+          "c6"
+        ]
+      }
+    }
+  },
+  "SrcSequences": {
+    "s7": {
+      "Id": "s7",
+      "Name": "Sequence7",
+      "SequenceKind": "BIT REVERSED SEQUENCE",
+      "SkipRangeMin": "",
+      "SkipRangeMax": "",
+      "StartWithCounter": "",
+      "ColumnsUsingSeq": {
+        "t2": [
+          "c6"
+        ]
+      }
+    }
+  }
+}

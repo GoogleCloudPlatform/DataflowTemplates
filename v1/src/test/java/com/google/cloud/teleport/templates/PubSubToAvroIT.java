@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.avro.AvroPubsubMessageRecord;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -55,7 +56,7 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PubsubToAvro} PubSub to Avro. */
 // SkipDirectRunnerTest: PubsubIO doesn't trigger panes on the DirectRunner.
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(value = PubsubToAvro.class, template = "Cloud_PubSub_to_Avro")
 @RunWith(JUnit4.class)
 public class PubSubToAvroIT extends TemplateTestBase {

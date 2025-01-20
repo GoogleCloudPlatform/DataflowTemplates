@@ -204,6 +204,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   @After
   public void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
+        secretClient,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,

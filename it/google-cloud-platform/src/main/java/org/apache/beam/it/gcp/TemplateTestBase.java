@@ -503,10 +503,6 @@ public abstract class TemplateTestBase {
             options,
             "runner_harness_container_image="
                 + System.getProperty("unifiedWorkerHarnessContainerImage"));
-      }
-      if (System.getProperty("uwStagingExperiments") != null
-          || unifiedWorkerHarnessContainerImage != null) {
-        appendExperiment(options, "disable_worker_rolling_upgrade");
         appendExperiment(options, "use_beam_bq_sink");
         appendExperiment(options, "beam_fn_api");
         appendExperiment(options, "use_unified_worker");

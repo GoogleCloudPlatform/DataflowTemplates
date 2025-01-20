@@ -40,6 +40,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **runMode**: This is the run mode type, whether regular or with retryDLQ.Default is regular. retryDLQ is used to retry the severe DLQ records only.
 * **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to 10.
+* **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql.
+* **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
+* **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
+* **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
 
 
 
@@ -143,6 +148,11 @@ export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_MAX_RETRY_COUNT=500
 export RUN_MODE=regular
 export DLQ_RETRY_MINUTES=10
+export SOURCE_TYPE=mysql
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
 
 gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -170,7 +180,12 @@ gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
   --parameters "dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT" \
   --parameters "runMode=$RUN_MODE" \
-  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES"
+  --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
+  --parameters "sourceType=$SOURCE_TYPE" \
+  --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
+  --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
+  --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME"
 ```
 
 For more information about the command, please check:
@@ -214,6 +229,11 @@ export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_MAX_RETRY_COUNT=500
 export RUN_MODE=regular
 export DLQ_RETRY_MINUTES=10
+export SOURCE_TYPE=mysql
+export TRANSFORMATION_JAR_PATH=""
+export TRANSFORMATION_CLASS_NAME=""
+export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -222,7 +242,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-sourcedb-job" \
 -DtemplateName="Spanner_to_SourceDb" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME" \
 -f v2/spanner-to-sourcedb
 ```
 
@@ -290,6 +310,11 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     # dlqMaxRetryCount = "500"
     # runMode = "regular"
     # dlqRetryMinutes = "10"
+    # sourceType = "mysql"
+    # transformationJarPath = ""
+    # transformationClassName = ""
+    # transformationCustomParameters = ""
+    # filterEventsDirectoryName = "filteredEvents"
   }
 }
 ```

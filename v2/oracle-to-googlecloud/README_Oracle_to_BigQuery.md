@@ -29,9 +29,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **connectionProperties**: The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.For more information, see Configuration Properties (https://dev.mysql.com/doc/connector-j/8.1/en/connector-j-reference-configuration-properties.html) in the MySQL documentation. For example, `unicode=true;characterEncoding=UTF-8`.
-* **username**: The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.
-* **password**: The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. Remove whitespace characters from the Base64-encoded string.
+* **connectionProperties**: The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.For more information, see Configuration Properties (https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html) in the MySQL documentation. For example, `unicode=true;characterEncoding=UTF-8`.
+* **username**: The username to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.
+* **password**: The password to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}.
 * **query**: The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. Some important SQL -> BigQuery type mappings to keep in mind are `DATETIME --> TIMESTAMP`. Type casting may be required if your schemas do not match. For example, `select * from sampledb.sample_table`.
 * **KMSEncryptionKey**: The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  pass in a Cloud KMS key, you must also encrypt the username, password, and connection string. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
 * **useColumnAlias**: If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`.
@@ -44,6 +44,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **fetchSize**: The number of rows to be fetched from database at a time. Not used for partitioned reads. Defaults to: 50000.
 * **createDisposition**: The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **bigQuerySchemaPath**: The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to `CREATE_IF_NEEDED`, this parameter must be specified. For example, `gs://your-bucket/your-schema.json`.
+* **outputDeadletterTable**: The BigQuery table to use for messages that failed to reach the output table, formatted as `"PROJECT_ID:DATASET_NAME.TABLE_NAME"`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the pipeline will fail on write errors.This parameter can only be specified if `useStorageWriteApi` or `useStorageWriteApiAtLeastOnce` is set to true.
 * **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
 * **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 * **useStorageWriteApi**: If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).
@@ -146,6 +147,7 @@ export UPPER_BOUND=<upperBound>
 export FETCH_SIZE=50000
 export CREATE_DISPOSITION=CREATE_NEVER
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 export USE_STORAGE_WRITE_API=false
@@ -173,6 +175,7 @@ gcloud dataflow flex-template run "oracle-to-bigquery-job" \
   --parameters "fetchSize=$FETCH_SIZE" \
   --parameters "createDisposition=$CREATE_DISPOSITION" \
   --parameters "bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH" \
+  --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
   --parameters "useStorageWriteApi=$USE_STORAGE_WRITE_API" \
@@ -215,6 +218,7 @@ export UPPER_BOUND=<upperBound>
 export FETCH_SIZE=50000
 export CREATE_DISPOSITION=CREATE_NEVER
 export BIG_QUERY_SCHEMA_PATH=<bigQuerySchemaPath>
+export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 export USE_STORAGE_WRITE_API=false
@@ -227,7 +231,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="oracle-to-bigquery-job" \
 -DtemplateName="Oracle_to_BigQuery" \
--Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+-Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -f v2/oracle-to-googlecloud
 ```
 
@@ -290,6 +294,7 @@ resource "google_dataflow_flex_template_job" "oracle_to_bigquery" {
     # fetchSize = "50000"
     # createDisposition = "CREATE_NEVER"
     # bigQuerySchemaPath = "<bigQuerySchemaPath>"
+    # outputDeadletterTable = "<outputDeadletterTable>"
     # disabledAlgorithms = "<disabledAlgorithms>"
     # extraFilesToStage = "<extraFilesToStage>"
     # useStorageWriteApi = "false"
