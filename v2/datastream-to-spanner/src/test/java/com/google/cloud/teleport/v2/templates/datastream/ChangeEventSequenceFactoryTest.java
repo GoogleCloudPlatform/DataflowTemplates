@@ -31,9 +31,12 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Unit tests for testing creation methods of ChangeEventSequenceFactory class. */
 public final class ChangeEventSequenceFactoryTest {
+  private static final Logger LOG = LoggerFactory.getLogger(ChangeEventSequenceFactoryTest.class);
 
   private final long eventTimestamp = 1615159728L;
 

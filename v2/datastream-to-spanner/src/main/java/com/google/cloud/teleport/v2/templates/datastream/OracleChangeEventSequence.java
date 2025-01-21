@@ -140,4 +140,9 @@ class OracleChangeEventSequence extends ChangeEventSequence {
         ? timestampComparisonResult
         : (scn.compareTo(other.getSCN()));
   }
+
+  @Override
+  public String toString() {
+    return "OracleChangeEventSequence{" + "timestamp=" + timestamp + ", scn=" + scn + '}';
+  }
 }
