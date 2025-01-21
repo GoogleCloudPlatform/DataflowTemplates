@@ -110,7 +110,7 @@ public class InputRecordProcessor {
       // TODO Statement and Raw Statement Differently
       /*
        * TODO:
-       * Question: Why is the SOURCE_CASSANDRA case not covered in the unit tests?
+       * Note: The `SOURCE_CASSANDRA` case not covered in the unit tests.
        * Answer: Currently, we have implemented unit tests for the Input Record Processor under the SourceWrittenFn.
        *         These tests cover the majority of scenarios, but they are tightly coupled with the existing code.
        *         Adding unit tests for SOURCE_CASSANDRA would require a significant refactoring of the entire unit test file.
