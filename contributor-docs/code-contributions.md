@@ -28,7 +28,7 @@ these can be found in the following locations:
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven 3
 * IntelliJ (recommended) or another editor of your choice
 

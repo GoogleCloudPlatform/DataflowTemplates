@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.NoopSchemaOverride
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesParser;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesParser;
 import com.google.common.io.Resources;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Rule;
 import org.junit.Test;
@@ -150,5 +151,57 @@ public class DataStreamToSpannerTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> DataStreamToSpanner.configureSchemaOverrides(options));
+  }
+
+  @Test
+  public void testGetShadowTableSpannerConfig_validInput() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getShadowTableSpannerInstanceId()).thenReturn("shadow-instance-id");
+    when(options.getShadowTableSpannerDatabaseId()).thenReturn("shadow-database-id");
+    when(options.getProjectId()).thenReturn("project-id");
+
+    SpannerConfig spannerConfig = DataStreamToSpanner.getShadowTableSpannerConfig(options);
+
+    assertEquals("shadow-instance-id", spannerConfig.getInstanceId().get());
+    assertEquals("shadow-database-id", spannerConfig.getDatabaseId().get());
+    assertEquals("project-id", spannerConfig.getProjectId().get());
+  }
+
+  @Test
+  public void testGetShadowTableSpannerConfig_missingInstanceId() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getShadowTableSpannerInstanceId()).thenReturn("");
+    when(options.getShadowTableSpannerDatabaseId()).thenReturn("shadow-database-id");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamToSpanner.getShadowTableSpannerConfig(options));
+  }
+
+  @Test
+  public void testGetShadowTableSpannerConfig_missingDatabaseId() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getShadowTableSpannerInstanceId()).thenReturn("shadow-instance-id");
+    when(options.getShadowTableSpannerDatabaseId()).thenReturn("");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> DataStreamToSpanner.getShadowTableSpannerConfig(options));
+  }
+
+  @Test
+  public void testGetShadowTableSpannerConfig_defaultValues() {
+    DataStreamToSpanner.Options options = mock(DataStreamToSpanner.Options.class);
+    when(options.getShadowTableSpannerInstanceId()).thenReturn("");
+    when(options.getShadowTableSpannerDatabaseId()).thenReturn("");
+    when(options.getInstanceId()).thenReturn("main-instance-id");
+    when(options.getDatabaseId()).thenReturn("main-database-id");
+    when(options.getProjectId()).thenReturn("project-id");
+
+    SpannerConfig spannerConfig = DataStreamToSpanner.getShadowTableSpannerConfig(options);
+
+    assertEquals("main-instance-id", spannerConfig.getInstanceId().get());
+    assertEquals("main-database-id", spannerConfig.getDatabaseId().get());
+    assertEquals("project-id", spannerConfig.getProjectId().get());
   }
 }

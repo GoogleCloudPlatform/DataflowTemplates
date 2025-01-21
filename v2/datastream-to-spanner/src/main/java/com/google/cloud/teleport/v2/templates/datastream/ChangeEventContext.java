@@ -60,7 +60,7 @@ public abstract class ChangeEventContext {
   abstract Mutation generateShadowTableMutation(Ddl ddl) throws ChangeEventConvertorException;
 
   // Helper method to convert change event to mutation.
-  protected void convertChangeEventToMutation(Ddl ddl)
+  protected void convertChangeEventToMutation(Ddl ddl, Ddl shadowTableDdl)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
     ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
@@ -71,7 +71,7 @@ public abstract class ChangeEventContext {
             changeEvent,
             /* convertNameToLowerCase= */ true);
     this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
-    this.shadowTableMutation = generateShadowTableMutation(ddl);
+    this.shadowTableMutation = generateShadowTableMutation(shadowTableDdl);
   }
 
   public JsonNode getChangeEvent() {
@@ -81,6 +81,16 @@ public abstract class ChangeEventContext {
   // Returns an array of data and shadow table mutations.
   public Iterable<Mutation> getMutations() {
     return Arrays.asList(dataMutation, shadowTableMutation);
+  }
+
+  // Returns the data table mutation
+  public Mutation getDataMutation() {
+    return dataMutation;
+  }
+
+  // Returns the shadow table mutation
+  public Mutation getShadowMutation() {
+    return shadowTableMutation;
   }
 
   // Getter method for the primary key of the change event.

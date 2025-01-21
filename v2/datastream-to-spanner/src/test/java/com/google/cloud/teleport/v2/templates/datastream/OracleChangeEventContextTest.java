@@ -62,6 +62,7 @@ public final class OracleChangeEventContextTest {
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
             ddl,
+            ddl,
             "shadow_",
             DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
@@ -99,6 +100,7 @@ public final class OracleChangeEventContextTest {
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
             ddl,
+            ddl,
             "shadow_",
             DatastreamConstants.ORACLE_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
@@ -134,6 +136,7 @@ public final class OracleChangeEventContextTest {
     ChangeEventContext changeEventContext =
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
+            ddl,
             ddl,
             "shadow_",
             DatastreamConstants.ORACLE_SOURCE_TYPE);
