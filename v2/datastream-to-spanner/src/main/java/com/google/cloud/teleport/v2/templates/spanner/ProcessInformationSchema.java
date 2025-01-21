@@ -38,47 +38,58 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PBegin;
-import org.apache.beam.sdk.values.PCollection;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 
 /**
- * Beam transform which 1) Reads information schema using {@link InformationSchemaScanner}. 2)
- * Create shadow tables in the destination Cloud Spanner database. 3) Outputs the updated
- * information schema.
+ * Beam transform which 1) Reads information schema from both main and shadow table database. 2)
+ * Create shadow tables in the shadow table database 3) Outputs both DDL schemas
+ *
+ * <p>The shadow table database housing the shadow tables can be the same as the main database.
  */
-public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl>> {
-  private static final Logger LOG = LoggerFactory.getLogger(ProcessInformationSchema.class);
+public class ProcessInformationSchema extends PTransform<PBegin, PCollectionTuple> {
+  public static final TupleTag<Ddl> MAIN_DDL_TAG = new TupleTag<>() {};
+  public static final TupleTag<Ddl> SHADOW_TABLE_DDL_TAG = new TupleTag<>() {};
   private final SpannerConfig spannerConfig;
+  private final SpannerConfig shadowTableSpannerConfig;
   private final Boolean shouldCreateShadowTables;
   private final String shadowTablePrefix;
   private final String sourceType;
 
   public ProcessInformationSchema(
       SpannerConfig spannerConfig,
+      SpannerConfig shadowTableSpannerConfig,
       Boolean shouldCreateShadowTables,
       String shadowTablePrefix,
       String sourceType) {
     this.spannerConfig = spannerConfig;
+    this.shadowTableSpannerConfig = shadowTableSpannerConfig;
     this.shouldCreateShadowTables = shouldCreateShadowTables;
     this.shadowTablePrefix = shadowTablePrefix;
     this.sourceType = sourceType;
   }
 
   @Override
-  public PCollection<Ddl> expand(PBegin p) {
+  public PCollectionTuple expand(PBegin p) {
     return p.apply("Create empty", Create.of((Void) null))
         .apply(
-            "Create Shadow tables and return Information Schema",
+            "Create Shadow tables and return Information Schemas",
             ParDo.of(
-                new ProcessInformationSchemaFn(
-                    spannerConfig, shouldCreateShadowTables,
-                    shadowTablePrefix, sourceType)));
+                    new ProcessInformationSchemaFn(
+                        spannerConfig,
+                        shadowTableSpannerConfig,
+                        shouldCreateShadowTables,
+                        shadowTablePrefix,
+                        sourceType))
+                .withOutputTags(MAIN_DDL_TAG, TupleTagList.of(SHADOW_TABLE_DDL_TAG)));
   }
 
   static class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
     private final SpannerConfig spannerConfig;
+    private final SpannerConfig shadowTableSpannerConfig;
     private transient SpannerAccessor spannerAccessor;
+    private transient SpannerAccessor shadowTableSpannerAccessor;
     private transient Dialect dialect;
     private final Boolean shouldCreateShadowTables;
     private final String shadowTablePrefix;
@@ -87,12 +98,16 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
     // Timeout for Cloud Spanner schema update.
     private static final int SCHEMA_UPDATE_WAIT_MIN = 5;
 
+    private boolean useSeparateShadowTableDb = false;
+
     public ProcessInformationSchemaFn(
         SpannerConfig spannerConfig,
+        SpannerConfig shadowTableSpannerConfig,
         Boolean shouldCreateShadowTables,
         String shadowTablePrefix,
         String sourceType) {
       this.spannerConfig = spannerConfig;
+      this.shadowTableSpannerConfig = shadowTableSpannerConfig;
       this.shouldCreateShadowTables = shouldCreateShadowTables;
       this.shadowTablePrefix =
           (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
@@ -107,39 +122,101 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
           databaseAdminClient
               .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
               .getDialect();
+
+      // If both point to same database.
+      if (spannerConfig.getInstanceId().equals(shadowTableSpannerConfig.getInstanceId())
+          && spannerConfig.getDatabaseId().equals(shadowTableSpannerConfig.getDatabaseId())) {
+        shadowTableSpannerAccessor = spannerAccessor;
+        useSeparateShadowTableDb = false;
+      } else {
+        shadowTableSpannerAccessor = SpannerAccessor.getOrCreate(shadowTableSpannerConfig);
+        useSeparateShadowTableDb = true;
+      }
     }
 
     @Teardown
     public void teardown() throws Exception {
       spannerAccessor.close();
+      if (useSeparateShadowTableDb) {
+        shadowTableSpannerAccessor.close();
+      }
     }
 
     @ProcessElement
     public void processElement(ProcessContext c) {
+      // TODO: Add pgsql support/ cross dialect support.
+      Ddl mainDdl = getInformationSchemaAsDdl(spannerAccessor);
+      Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
+
       if (shouldCreateShadowTables) {
-        createShadowTablesInSpanner(getInformationSchemaAsDdl());
+        createShadowTablesInSpanner(mainDdl, shadowTableDdl);
+        // Refresh shadow table DDL after creating new shadow tables
+        shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor);
       }
-      c.output(getInformationSchemaAsDdl());
+      // Clean up DDLs to ensure proper separation of main and shadow tables. Note that this is only
+      // for data hygiene, the downstream methods using these can handle Ddl with excess tables as
+      // well.
+      mainDdl = cleanupDdl(mainDdl, shadowTablePrefix, /* isMainDdl= */ true);
+      shadowTableDdl = cleanupDdl(shadowTableDdl, shadowTablePrefix, /* isMainDdl= */ false);
+      c.output(MAIN_DDL_TAG, mainDdl);
+      c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
     }
 
-    Ddl getInformationSchemaAsDdl() {
-      BatchClient batchClient = spannerAccessor.getBatchClient();
+    /**
+     * Cleans up the DDL by removing tables that do not match the specified criteria.
+     *
+     * <p>This method filters the tables in the DDL based on whether they are shadow tables or not.
+     * If the method is called to clean up the main DDL, it removes all tables that are shadow
+     * tables. If the method is called to clean up the shadow DDL, it removes all tables that are
+     * not shadow tables.
+     *
+     * @param originalDdl The original DDL to be cleaned up.
+     * @param shadowPrefix The prefix used to identify shadow tables.
+     * @param isMainDdl Indicates whether the DDL being cleaned up is the main DDL or the shadow
+     *     DDL.
+     * @return A new DDL with the filtered tables.
+     */
+    Ddl cleanupDdl(Ddl originalDdl, String shadowPrefix, boolean isMainDdl) {
+      // Create a new DDL builder with the same dialect as the original
+      Ddl.Builder cleanedDdlBuilder = Ddl.builder(dialect);
+
+      // Filter tables based on whether we're cleaning main DDL or shadow DDL
+      List<Table> filteredTables =
+          originalDdl.allTables().stream()
+              .filter(
+                  table -> {
+                    boolean isTableShadow = table.name().startsWith(shadowPrefix);
+                    // For main DDL, keep tables that are NOT shadow tables
+                    // For shadow DDL, keep tables that ARE shadow tables
+                    return isMainDdl ? !isTableShadow : isTableShadow;
+                  })
+              .collect(Collectors.toList());
+
+      // Add all filtered tables to the new DDL builder
+      filteredTables.forEach(cleanedDdlBuilder::addTable);
+
+      // Build and return the cleaned DDL
+      return cleanedDdlBuilder.build();
+    }
+
+    Ddl getInformationSchemaAsDdl(SpannerAccessor accessor) {
+      BatchClient batchClient = accessor.getBatchClient();
       BatchReadOnlyTransaction context =
           batchClient.batchReadOnlyTransaction(TimestampBound.strong());
       InformationSchemaScanner scanner = new InformationSchemaScanner(context, dialect);
       return scanner.scan();
     }
 
-    void createShadowTablesInSpanner(Ddl informationSchema) {
+    void createShadowTablesInSpanner(Ddl mainDdl, Ddl shadowTableDdl) {
       List<String> dataTablesWithoutShadowTables =
-          getDataTablesWithNoShadowTables(informationSchema);
+          getDataTablesWithNoShadowTables(mainDdl, shadowTableDdl);
 
       Ddl.Builder shadowTableBuilder = Ddl.builder(dialect);
       ShadowTableCreator shadowTableCreator =
           new ShadowTableCreator(sourceType, shadowTablePrefix, dialect);
       for (String dataTableName : dataTablesWithoutShadowTables) {
         Table shadowTable =
-            shadowTableCreator.constructShadowTable(informationSchema, dataTableName, dialect);
+            shadowTableCreator.constructShadowTable(mainDdl, dataTableName, dialect);
         shadowTableBuilder.addTable(shadowTable);
       }
       List<String> createShadowTableStatements = shadowTableBuilder.build().createTableStatements();
@@ -148,12 +225,12 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
         return;
       }
 
-      DatabaseAdminClient databaseAdminClient = spannerAccessor.getDatabaseAdminClient();
+      DatabaseAdminClient databaseAdminClient = shadowTableSpannerAccessor.getDatabaseAdminClient();
 
       OperationFuture<Void, UpdateDatabaseDdlMetadata> op =
           databaseAdminClient.updateDatabaseDdl(
-              spannerConfig.getInstanceId().get(),
-              spannerConfig.getDatabaseId().get(),
+              shadowTableSpannerConfig.getInstanceId().get(),
+              shadowTableSpannerConfig.getDatabaseId().get(),
               createShadowTableStatements,
               null);
 
@@ -162,7 +239,6 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
       } catch (InterruptedException | ExecutionException | TimeoutException e) {
         throw new RuntimeException(e);
       }
-      return;
     }
 
     /*
@@ -180,22 +256,22 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
     }
 
     /*
-     * Returns the list of data table names that don't have a corresponding shadow table.
+     * Returns the list of data table names from main DB that don't have a corresponding shadow table.
+     * Shadow table db could be the same as main db or a separate database. Both of these cases get handled by this method.
      */
-    List<String> getDataTablesWithNoShadowTables(Ddl ddl) {
-      // Get the list of shadow tables in the information schema based on the prefix.
-      Set<String> existingShadowTables = getShadowTablesInDdl(ddl);
+    List<String> getDataTablesWithNoShadowTables(Ddl mainDdl, Ddl shadowTableDdl) {
+      // Get the list of shadow tables in the shadow table db based on the prefix
+      Set<String> existingShadowTables = getShadowTablesInDdl(shadowTableDdl);
 
-      List<String> allTables =
-          ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList());
-      /*
-       * Filter out the following from the list of all table names to get the list of
-       * data tables which do not have corresponding shadow tables:
-       * (1) Existing shadow tables
-       * (2) Data tables which have corresponding shadow tables.
-       */
-      return allTables.stream()
-          .filter(f -> !f.startsWith(shadowTablePrefix))
+      // Get all non-shadow tables from main DB
+      List<String> mainTables =
+          mainDdl.allTables().stream()
+              .map(t -> t.name())
+              .filter(f -> !f.startsWith(shadowTablePrefix))
+              .collect(Collectors.toList());
+
+      // Return tables that don't have corresponding shadow tables
+      return mainTables.stream()
           .filter(f -> !existingShadowTables.contains(shadowTablePrefix + f))
           .collect(Collectors.toList());
     }
@@ -212,6 +288,13 @@ public class ProcessInformationSchema extends PTransform<PBegin, PCollection<Ddl
     */
     public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
       this.spannerAccessor = spannerAccessor;
+    }
+
+    /*
+      Added for the purpose of unit testing
+    */
+    public void setshadowTableSpannerAccessor(SpannerAccessor shadowTableSpannerAccessor) {
+      this.shadowTableSpannerAccessor = shadowTableSpannerAccessor;
     }
   }
 }
