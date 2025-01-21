@@ -2,12 +2,14 @@ package com.google.cloud.teleport.v2.clickhouse.templates;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
-
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.clickhouse.options.BigQueryToClickHouseOptions;
 import com.google.cloud.teleport.v2.clickhouse.utils.ClickHouseConverts;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
+import java.util.ArrayList;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.clickhouse.ClickHouseIO;
@@ -18,6 +20,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.Row;
+import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,8 +103,30 @@ public class BigQueryToClickHouse {
                             throw new IllegalArgumentException("Couldn't infer type for field: " + fieldName);
                         }
                         if (value != null) {
+                            // we handle the conversion manually for unimplemented types until this issue would be solved:
+                            // https://github.com/apache/beam/issues/33692
+                            if (columnType.typeName() == TableSchema.ColumnType.FLOAT32.typeName()) {
+                                rowBuilder.addValue(Float.valueOf(value.toString()));
+                            } else if (columnType.typeName() == TableSchema.ColumnType.FLOAT64.typeName()) {
+                                rowBuilder.addValue(Double.valueOf(value.toString()));
+                            } else if (columnType.typeName() == TableSchema.ColumnType.DATETIME.typeName()) {
+                                rowBuilder.addValue(new DateTime(value.toString()));
+                            } else if (Objects.equals(columnType.typeName().toString(), "ARRAY")) {
+                                if (((ArrayList<?>) value).isEmpty()) {
+                                    rowBuilder.addValue(value);
+                                } else {
+                                    TableSchema.ColumnType finalColumnType = columnType;
+                                    rowBuilder.addValue(
+                                            ((ArrayList<?>) value)
+                                                    .stream()
+                                                    .map(v -> TableSchema.ColumnType.parseDefaultExpression(finalColumnType.arrayElementType(), v.toString()))
+                                                    .collect(Collectors.toList())
+                                    );
+                                }
 
-                            rowBuilder.addValue(TableSchema.ColumnType.parseDefaultExpression(columnType, value.toString()));
+                            } else {
+                                rowBuilder.addValue(TableSchema.ColumnType.parseDefaultExpression(columnType, value.toString()));
+                            }
 
                         } else {
                             rowBuilder.addValue(null); // Handle nulls gracefully
