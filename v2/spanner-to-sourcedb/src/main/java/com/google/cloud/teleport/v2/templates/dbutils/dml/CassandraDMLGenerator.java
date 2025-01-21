@@ -25,12 +25,13 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
+import com.google.common.collect.ImmutableMap;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -166,9 +167,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getNewValuesJson(),
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset());
-    List<Map.Entry<String, PreparedStatementValueObject<?>>> allColumnNamesAndValues =
-        Stream.concat(pkColumnNameValues.entrySet().stream(), columnNameValues.entrySet().stream())
-            .collect(Collectors.toList());
+    Map<String, PreparedStatementValueObject<?>> allColumnNamesAndValues =
+        ImmutableMap.<String, PreparedStatementValueObject<?>>builder()
+            .putAll(pkColumnNameValues)
+            .putAll(columnNameValues)
+            .build();
     switch (modType) {
       case "INSERT":
       case "UPDATE":
@@ -202,18 +205,22 @@ public class CassandraDMLGenerator implements IDMLGenerator {
   private static DMLGeneratorResponse getUpsertStatementCQL(
       String tableName,
       java.sql.Timestamp timestamp,
-      List<Map.Entry<String, PreparedStatementValueObject<?>>> allColumnNamesAndValues) {
+      Map<String, PreparedStatementValueObject<?>> allColumnNamesAndValues) {
 
     String escapedTableName = "\"" + tableName.replace("\"", "\"\"") + "\"";
+
     String allColumns =
-        allColumnNamesAndValues.stream()
-            .map(entry -> "\"" + entry.getKey().replace("\"", "\"\"") + "\"")
+        allColumnNamesAndValues.keySet().stream()
+            .map(columnName -> "\"" + columnName.replace("\"", "\"\"") + "\"")
             .collect(Collectors.joining(", "));
+
     String placeholders =
-        allColumnNamesAndValues.stream().map(entry -> "?").collect(Collectors.joining(", "));
+        allColumnNamesAndValues.keySet().stream()
+            .map(columnName -> "?")
+            .collect(Collectors.joining(", "));
 
     List<PreparedStatementValueObject<?>> values =
-        allColumnNamesAndValues.stream().map(Map.Entry::getValue).collect(Collectors.toList());
+        new ArrayList<>(allColumnNamesAndValues.values());
 
     PreparedStatementValueObject<Long> timestampObj =
         PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp.getTime());
@@ -246,27 +253,27 @@ public class CassandraDMLGenerator implements IDMLGenerator {
   private static DMLGeneratorResponse getDeleteStatementCQL(
       String tableName,
       java.sql.Timestamp timestamp,
-      List<Map.Entry<String, PreparedStatementValueObject<?>>> allColumnNamesAndValues) {
+      Map<String, PreparedStatementValueObject<?>> allColumnNamesAndValues) {
 
     String escapedTableName = "\"" + tableName.replace("\"", "\"\"") + "\"";
 
     String deleteConditions =
-        allColumnNamesAndValues.stream()
-            .map(entry -> "\"" + entry.getKey().replace("\"", "\"\"") + "\" = ?")
+        allColumnNamesAndValues.keySet().stream()
+            .map(columnName -> "\"" + columnName.replace("\"", "\"\"") + "\" = ?")
             .collect(Collectors.joining(" AND "));
 
     List<PreparedStatementValueObject<?>> values =
-        allColumnNamesAndValues.stream().map(Map.Entry::getValue).collect(Collectors.toList());
-
-    String preparedStatement =
-        String.format(
-            "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
+        new ArrayList<>(allColumnNamesAndValues.values());
 
     if (timestamp != null) {
       PreparedStatementValueObject<Long> timestampObj =
           PreparedStatementValueObject.create("USING_TIMESTAMP", timestamp.getTime());
       values.add(0, timestampObj);
     }
+
+    String preparedStatement =
+        String.format(
+            "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
 
     return new PreparedStatementGeneratedResponse(preparedStatement, values);
   }
