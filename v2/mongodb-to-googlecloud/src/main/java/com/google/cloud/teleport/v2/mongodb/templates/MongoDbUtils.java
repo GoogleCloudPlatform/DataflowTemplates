@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.Serializable;
 import java.io.UncheckedIOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -39,10 +41,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.script.Invocable;
@@ -55,7 +59,6 @@ import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.MatchResult.Metadata;
 import org.apache.beam.sdk.io.fs.MatchResult.Status;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
-import org.apache.commons.codec.binary.Hex;
 import org.bson.BsonBinary;
 import org.bson.BsonTimestamp;
 import org.bson.Document;
@@ -80,6 +83,9 @@ public class MongoDbUtils implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
 
   private static final Gson GSON = new Gson();
+
+  private static final Integer TYPE_UUID_OLD = 3;
+  private static final Integer TYPE_UUID = 4;
 
   private static final JsonWriterSettings JSON_WRITER_SETTINGS_ISO_FORMAT =
       JsonWriterSettings.builder()
@@ -317,7 +323,19 @@ public class MongoDbUtils implements Serializable {
 
     @Override
     public void convert(BsonBinary value, StrictJsonWriter writer) {
-      writer.writeString(Hex.encodeHexString(value.getData()));
+      if (TYPE_UUID_OLD.equals((int) value.getType()) || TYPE_UUID.equals((int) value.getType())) {
+        final ByteBuffer buffer = ByteBuffer.wrap(value.getData());
+        buffer.order(ByteOrder.LITTLE_ENDIAN);
+
+        final UUID uuid = new UUID(buffer.getLong(), buffer.getLong());
+
+        writer.writeString(uuid.toString());
+      } else {
+        writer.writeStartObject();
+        writer.writeString("$binary", Base64.getEncoder().encodeToString(value.getData()));
+        writer.writeString("$type", String.format("%02X", value.getType()));
+        writer.writeEndObject();
+      }
     }
   }
 }
