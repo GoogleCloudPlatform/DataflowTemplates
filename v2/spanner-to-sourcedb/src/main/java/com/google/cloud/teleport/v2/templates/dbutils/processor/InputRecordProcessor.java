@@ -108,6 +108,14 @@ public class InputRecordProcessor {
       }
       // TODO we need to handle it as proper Interface Level as of now we have handle Prepared
       // TODO Statement and Raw Statement Differently
+      /*
+       * TODO:
+       * Question: Why is the SOURCE_CASSANDRA case not covered in the unit tests?
+       * Answer: Currently, we have implemented unit tests for the Input Record Processor under the SourceWrittenFn.
+       *         These tests cover the majority of scenarios, but they are tightly coupled with the existing code.
+       *         Adding unit tests for SOURCE_CASSANDRA would require a significant refactoring of the entire unit test file.
+       *         Given the current implementation, such refactoring is deemed unnecessary as it would not provide substantial value or impact.
+       */
       switch (source) {
         case SOURCE_CASSANDRA:
           dao.write(dmlGeneratorResponse);

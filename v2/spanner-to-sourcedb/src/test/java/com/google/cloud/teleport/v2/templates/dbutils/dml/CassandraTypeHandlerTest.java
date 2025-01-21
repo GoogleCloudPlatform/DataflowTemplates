@@ -74,7 +74,6 @@ public class CassandraTypeHandlerTest {
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-    assertNotNull(castResult);
     assertEquals("test_value", castResult);
   }
 
@@ -100,7 +99,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("é", castResult);
   }
 
@@ -124,7 +122,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(12345, castResult);
   }
 
@@ -147,7 +144,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(UUID.fromString(columnValue), castResult);
   }
 
@@ -170,7 +166,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(InetAddresses.forString(columnValue), castResult);
   }
 
@@ -193,7 +188,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
     Set<String> expectedSet = new HashSet<>(Arrays.asList("apple", "banana", "cherry"));
-    assertNotNull(castResult);
     assertEquals(expectedSet, castResult);
   }
 
@@ -215,8 +209,6 @@ public class CassandraTypeHandlerTest {
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
-    assertNotNull(castResult);
 
     Map<String, String> expectedMap = new HashMap<>();
     expectedMap.put("name", "John");
@@ -242,8 +234,6 @@ public class CassandraTypeHandlerTest {
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
-    assertNotNull(castResult);
 
     byte[] actualBytes;
     if (castResult instanceof ByteBuffer) {
@@ -284,7 +274,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("P4DT1H", castResult.toString());
   }
 
@@ -307,7 +296,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     ZonedDateTime expectedDate = ZonedDateTime.parse(columnValue).withSecond(0).withNano(0);
     Instant instant = (Instant) castResult;
     ZonedDateTime actualDate = instant.atZone(ZoneOffset.UTC).withSecond(0).withNano(0);
@@ -332,7 +320,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     Long expectedBigInt = 123456789L;
 
     assertEquals(expectedBigInt, castResult);
@@ -356,7 +343,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("48656c6c6f20576f726c64", castResult);
   }
 
@@ -378,7 +364,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     long expectedValue = 123456789L;
     assertEquals(expectedValue, castResult);
   }
@@ -401,7 +386,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(true, castResult);
   }
 
@@ -423,7 +407,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(true, castResult);
   }
 
@@ -445,7 +428,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     long expectedValue = 225000L;
     assertEquals(expectedValue, castResult);
   }
@@ -468,7 +450,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(false, castResult);
   }
 
@@ -491,7 +472,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(BigInteger.valueOf(5), castResult);
   }
 
@@ -512,7 +492,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(BigInteger.valueOf(5), castResult);
   }
 
@@ -534,7 +513,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     LocalDate expectedValue = Instant.parse(timestamp).atZone(ZoneId.systemDefault()).toLocalDate();
     assertEquals(expectedValue, castResult);
   }
@@ -557,7 +535,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("2025-01-15T00:00:00Z", castResult.toString());
   }
 
@@ -579,7 +556,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals(timestamp, castResult.toString());
   }
 
@@ -601,7 +577,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("2025-01-15", castResult.toString());
   }
 
@@ -623,7 +598,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("2025-01-15", castResult.toString());
   }
 
@@ -645,7 +619,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("2025-01-15", castResult.toString());
   }
 
@@ -667,7 +640,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("2025-01-15", castResult.toString());
   }
 
@@ -689,7 +661,6 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertNotNull(castResult);
     assertEquals("2025-01-15", castResult.toString());
   }
 
@@ -772,7 +743,6 @@ public class CassandraTypeHandlerTest {
 
     Object result = getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
@@ -794,7 +764,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -817,7 +786,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -840,7 +808,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -863,7 +830,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -886,7 +852,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -909,7 +874,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -932,7 +896,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -955,7 +918,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -978,7 +940,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -1001,7 +962,6 @@ public class CassandraTypeHandlerTest {
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
@@ -1024,7 +984,6 @@ public class CassandraTypeHandlerTest {
 
     Object result = getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
 
-    assertNotNull(result);
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
