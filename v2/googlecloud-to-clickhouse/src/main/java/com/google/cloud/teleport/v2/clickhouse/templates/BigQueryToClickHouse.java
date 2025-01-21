@@ -92,6 +92,7 @@ public class BigQueryToClickHouse {
                         for (TableSchema.Column column : clickHouseSchema.columns()) {
                             if (column.name().equals(fieldName)) {
                                 columnType = column.columnType();
+                                break;
                             }
                         }
 
