@@ -33,7 +33,10 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProce
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
+import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.json.JSONObject;
 import org.junit.Before;
@@ -102,6 +105,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("SingerId"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -125,31 +136,12 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("id"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
-  }
-
-  @Test
-  public void tableNameMatchColumnNameTypeMismatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
-    String tableName = "Singers";
-    String newValuesString = "{\"LastName\":\"ll\"}";
-    JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
-    String modType = "INSERT";
-
-    CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
-                .setCommitTimestamp(Timestamp.now())
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.contains("SingerId"));
-    assertTrue(sql.contains("LastName"));
-    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "999",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(values.get(1).value() instanceof CassandraTypeHandler.NullClass);
   }
 
   @Test
@@ -174,6 +166,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -199,6 +199,17 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("LastName"));
     assertEquals(4, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
+    assertEquals(
+        "shardA",
+        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value()));
   }
 
   @Test
@@ -270,30 +281,14 @@ public class CassandraDMLGeneratorTest {
     assertTrue(sql.contains("SingerId"));
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
-  }
-
-  @Test
-  public void updateToNull() {
-    Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
-    String tableName = "Singers";
-    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}";
-    JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
-    String modType = "INSERT";
-
-    CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        cassandraDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
-                .setCommitTimestamp(Timestamp.now())
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(sql.contains("SingerId"));
-    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -316,6 +311,11 @@ public class CassandraDMLGeneratorTest {
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -340,6 +340,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -363,6 +371,14 @@ public class CassandraDMLGeneratorTest {
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -386,6 +402,14 @@ public class CassandraDMLGeneratorTest {
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -409,6 +433,14 @@ public class CassandraDMLGeneratorTest {
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -433,6 +465,14 @@ public class CassandraDMLGeneratorTest {
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertTrue(sql.contains("sample_table"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -458,6 +498,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("sample_table"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -483,6 +531,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("sample_table"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -508,6 +564,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("sample_table"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -533,6 +597,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("sample_table"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        "12",
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertTrue(
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
+            instanceof ByteBuffer);
   }
 
   @Test
@@ -557,6 +629,14 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "YmlsX2NvbA==",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -581,6 +661,12 @@ public class CassandraDMLGeneratorTest {
 
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(CassandraTypeHandler.NullClass.INSTANCE, values.get(0).value());
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -629,6 +715,14 @@ public class CassandraDMLGeneratorTest {
     assertTrue(sql.contains("SingerId"));
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test
@@ -677,6 +771,14 @@ public class CassandraDMLGeneratorTest {
     assertTrue(sql.contains("SingerId"));
     assertTrue(sql.contains("LastName"));
     assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        999,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
   @Test

@@ -63,7 +63,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("string", false);
     SourceColumnType sourceColumnType = new SourceColumnType("varchar", null, null);
     String columnName = "test_column";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -85,7 +85,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType(sourceType, null, null);
     String columnValue = "é";
     String columnName = "LastName";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -108,7 +108,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType(spannerColumnName, false);
     SourceColumnType sourceColumnType = new SourceColumnType(sourceColumnName, null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -129,7 +129,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("uuid", null, null);
     String columnName = "id";
     String columnValue = "123e4567-e89b-12d3-a456-426614174000";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -151,7 +151,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("inet", null, null);
     String columnValue = "192.168.1.1";
     String columnName = "ipAddress";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -173,7 +173,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("set<text>", null, null);
     String columnValue = "[\"apple\", \"banana\", \"cherry\"]";
     String columnName = "fruits";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -195,7 +195,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("map<text, text>", null, null);
     String columnName = "user";
     String columnValue = "{\"name\": \"John\", \"age\": \"30\"}";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -225,7 +225,7 @@ public class CassandraTypeHandlerTest {
       binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
     }
     String columnValue = binaryString.toString();
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -262,7 +262,7 @@ public class CassandraTypeHandlerTest {
       binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
     }
     String columnValue = binaryString.toString();
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -294,7 +294,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("duration", null, null);
     String columnValue = "P4DT1H";
     String columnName = "total_time";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -316,7 +316,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("timestamp", null, null);
     String columnValue = "2025-01-01T00:00:00Z";
     String columnName = "created_on";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -340,7 +340,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("bigint", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -363,7 +363,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bytes", null, null);
     String columnName = "Name";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -384,7 +384,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -406,7 +406,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
     String columnName = "Male";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -427,7 +427,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("Boolean", false);
     SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
     String columnName = "Male";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -448,7 +448,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("Integer", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -470,7 +470,7 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
     String columnName = "Male";
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
@@ -1088,7 +1088,7 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testGetColumnValueByTypeForNullBothColumnDefs() {
     JSONObject valuesJson = mock(JSONObject.class);
-    String sourceDbTimezoneOffset = "UTC";
+    String sourceDbTimezoneOffset = null;
     assertThrows(
         IllegalArgumentException.class,
         () -> {
