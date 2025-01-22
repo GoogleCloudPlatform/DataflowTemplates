@@ -219,7 +219,12 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
-    String columnValue = "a3f5b7";
+    byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
+    StringBuilder binaryString = new StringBuilder();
+    for (byte b : expectedBytes) {
+      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+    }
+    String columnValue = binaryString.toString();
     String sourceDbTimezoneOffset = "UTC";
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
@@ -243,13 +248,6 @@ public class CassandraTypeHandlerTest {
     } else {
       throw new AssertionError("Unexpected type for castResult");
     }
-
-    byte[] expectedBytes = new BigInteger(valuesJson.getString(columnName), 16).toByteArray();
-
-    if (expectedBytes.length > 1 && expectedBytes[0] == 0) {
-      expectedBytes = Arrays.copyOfRange(expectedBytes, 1, expectedBytes.length);
-    }
-
     assertArrayEquals(expectedBytes, actualBytes);
   }
 
@@ -258,7 +256,12 @@ public class CassandraTypeHandlerTest {
     SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
-    String columnValue = "a3f5b7";
+    byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
+    StringBuilder binaryString = new StringBuilder();
+    for (byte b : expectedBytes) {
+      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+    }
+    String columnValue = binaryString.toString();
     String sourceDbTimezoneOffset = "UTC";
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
@@ -282,13 +285,6 @@ public class CassandraTypeHandlerTest {
     } else {
       throw new AssertionError("Unexpected type for castResult");
     }
-
-    byte[] expectedBytes = new BigInteger(valuesJson.getString(columnName), 16).toByteArray();
-
-    if (expectedBytes.length > 1 && expectedBytes[0] == 0) {
-      expectedBytes = Arrays.copyOfRange(expectedBytes, 1, expectedBytes.length);
-    }
-
     assertArrayEquals(expectedBytes, actualBytes);
   }
 
@@ -1013,12 +1009,12 @@ public class CassandraTypeHandlerTest {
     String columnName = "test_column";
 
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder hexString = new StringBuilder();
+    StringBuilder binaryString = new StringBuilder();
     for (byte b : expectedBytes) {
-      hexString.append(String.format("%02x", b)); // Convert each byte to a two-digit hex value
+      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
     }
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, hexString);
+    valuesJson.put(columnName, binaryString.toString());
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);

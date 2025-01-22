@@ -179,27 +179,23 @@ public class CassandraTypeHandler {
   /**
    * Converts a hexadecimal string into a byte array.
    *
-   * @param hex the hexadecimal string to be converted. It must have an even number of characters,
-   *     as each pair of characters represents one byte.
+   * @param binaryEncodedStr the hexadecimal string to be converted. It must have an even number of
+   *     characters, as each pair of characters represents one byte.
    * @return a byte array representing the binary data equivalent of the hexadecimal string.
-   * @throws IllegalArgumentException if the input string contains non-hexadecimal characters.
-   *     <p>This method: 1. Calculates the length of the input string and initializes a byte array
-   *     of half the length, as two hexadecimal characters represent one byte. 2. Iterates through
-   *     the string in steps of two characters. 3. Converts each pair of characters into a single
-   *     byte by: - Extracting the numeric value of the first character (most significant 4 bits). -
-   *     Extracting the numeric value of the second character (least significant 4 bits). -
-   *     Combining the two values into a single byte. 4. Returns the resulting byte array.
-   *     <p>Example: Input: "4A3F" Output: byte[] { 0x4A, 0x3F }
    */
-  private static byte[] convertHexStringToByteArray(String hex) {
-    int len = hex.length();
-    byte[] data = new byte[len / 2];
-    for (int i = 0; i < len; i += 2) {
-      data[i / 2] =
-          (byte)
-              ((Character.digit(hex.charAt(i), 16) << 4) + Character.digit(hex.charAt(i + 1), 16));
+  private static byte[] convertBinaryEncodedStringToByteArray(String binaryEncodedStr) {
+    int length = binaryEncodedStr.length();
+    int byteCount = (length + 7) / 8;
+    byte[] byteArray = new byte[byteCount];
+
+    for (int i = 0; i < byteCount; i++) {
+      int startIndex = i * 8;
+      int endIndex = Math.min(startIndex + 8, length);
+      String byteString = binaryEncodedStr.substring(startIndex, endIndex);
+      byteArray[i] = (byte) Integer.parseInt(byteString, 2);
     }
-    return data;
+
+    return byteArray;
   }
 
   /**
@@ -332,7 +328,7 @@ public class CassandraTypeHandler {
           return null;
         }
         String hexEncodedString = valuesJson.optString(columnName);
-        return convertHexStringToByteArray(hexEncodedString);
+        return convertBinaryEncodedStringToByteArray(hexEncodedString);
       } else {
         return valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
       }
