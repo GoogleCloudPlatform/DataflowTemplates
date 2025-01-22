@@ -378,10 +378,6 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       String spannerColumnName = spannerColDef.getName();
       PreparedStatementValueObject<?> columnValue;
       if (keyValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(spannerColumnName)) {
-          continue;
-        }
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
