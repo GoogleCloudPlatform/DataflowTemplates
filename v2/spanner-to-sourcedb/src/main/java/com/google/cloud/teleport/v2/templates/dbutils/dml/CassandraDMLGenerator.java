@@ -125,7 +125,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     }
     java.sql.Timestamp timestamp = dmlGeneratorRequest.getCommitTimestamp().toSqlTimestamp();
     String modType = dmlGeneratorRequest.getModType();
-    return generatorDMLResponse(
+    return generateDMLResponse(
         spannerTable, sourceTable, dmlGeneratorRequest, pkColumnNameValues, timestamp, modType);
   }
 
@@ -153,7 +153,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    *     calls {@link #getUpsertStatementCQL}. - For "DELETE", calls {@link #getDeleteStatementCQL}.
    *     - For unsupported modType values, logs an error and returns an empty response.
    */
-  private static DMLGeneratorResponse generatorDMLResponse(
+  private static DMLGeneratorResponse generateDMLResponse(
       SpannerTable spannerTable,
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
@@ -326,10 +326,6 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColumnName)) {
-          continue;
-        }
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
@@ -390,10 +386,6 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(spannerColumnName)) {
-        // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColumnName)) {
-          continue;
-        }
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);

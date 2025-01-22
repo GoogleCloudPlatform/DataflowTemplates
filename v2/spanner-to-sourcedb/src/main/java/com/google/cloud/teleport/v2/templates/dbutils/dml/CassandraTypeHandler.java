@@ -333,7 +333,7 @@ public class CassandraTypeHandler {
     try {
       return spannerType.contains("string")
           ? valuesJson.optString(columnName)
-          : valuesJson.opt(columnName);
+          : valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Exception Caught During parsing for Spanner column type: " + spannerType);

@@ -105,6 +105,29 @@ public class CassandraDMLGeneratorTest {
   }
 
   @Test
+  public void tableAndAllColumnNameTypesForNullValueMatch() {
+    Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
+    String tableName = "sample_table";
+    String newValueStr = "{\"date_column\":null}";
+    JSONObject newValuesJson = new JSONObject(newValueStr);
+    String keyValueString = "{\"id\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+    CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        cassandraDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .setCommitTimestamp(Timestamp.now())
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("id"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+  }
+
+  @Test
   public void tableNameMatchColumnNameTypeMismatch() {
     Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
     String tableName = "Singers";
@@ -270,7 +293,7 @@ public class CassandraDMLGeneratorTest {
     String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("SingerId"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
   }
 
   @Test
@@ -292,7 +315,7 @@ public class CassandraDMLGeneratorTest {
                 .setCommitTimestamp(Timestamp.now())
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
   }
 
   @Test

@@ -27,6 +27,7 @@ import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHandler;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
@@ -81,6 +82,27 @@ public class CassandraDaoTest {
     when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockSession);
     when(mockSession.prepare(ArgumentMatchers.eq(preparedDmlStatement)))
         .thenReturn(mockPreparedStatement);
+    when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
+
+    cassandraDao.write(mockPreparedStatementGeneratedResponse);
+
+    verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
+    verify(mockPreparedStatement).bind(ArgumentMatchers.any());
+    verify(mockSession).execute(ArgumentMatchers.eq(mockBoundStatement));
+  }
+
+  @Test
+  public void testPreparedStatementExecutionForNullAsValue() throws Exception {
+    String preparedDmlStatement = "INSERT INTO test (id, name) VALUES (?, ?)";
+    List<PreparedStatementValueObject<?>> values =
+        Arrays.asList(
+            PreparedStatementValueObject.create("date", CassandraTypeHandler.NullClass.INSTANCE),
+            PreparedStatementValueObject.create("varchar", "text"));
+
+    when(mockPreparedStatementGeneratedResponse.getDmlStatement()).thenReturn(preparedDmlStatement);
+    when(mockPreparedStatementGeneratedResponse.getValues()).thenReturn(values);
+    when(mockConnectionHelper.getConnection(anyString())).thenReturn(mockSession);
+    when(mockSession.prepare(preparedDmlStatement)).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
 
     cassandraDao.write(mockPreparedStatementGeneratedResponse);

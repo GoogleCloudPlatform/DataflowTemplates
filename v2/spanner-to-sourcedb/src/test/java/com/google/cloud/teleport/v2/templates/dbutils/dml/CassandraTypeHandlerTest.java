@@ -60,7 +60,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
     SourceColumnType sourceColumnType = new SourceColumnType("varchar", null, null);
     String columnName = "test_column";
     String sourceDbTimezoneOffset = "UTC";
@@ -81,9 +81,8 @@ public class CassandraTypeHandlerTest {
   public void testGetColumnValueByType() {
     String spannerColumnType = "string";
     String sourceType = "varchar";
-    SpannerColumnType spannerType = new SpannerColumnType(spannerColumnType, true);
-    SourceColumnType sourceColumnType =
-        new SourceColumnType(sourceType, new Long[] {10L, 20L}, new Long[] {10L, 20L});
+    SpannerColumnType spannerType = new SpannerColumnType(spannerColumnType, false);
+    SourceColumnType sourceColumnType = new SourceColumnType(sourceType, null, null);
     String columnValue = "é";
     String columnName = "LastName";
     String sourceDbTimezoneOffset = "UTC";
@@ -103,12 +102,11 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testGetColumnValueByTypeForNonString() {
+  public void testGetColumnValueByTypeForNumericToInt() {
     String spannerColumnName = "NUMERIC";
     String sourceColumnName = "int";
-    SpannerColumnType spannerType = new SpannerColumnType(spannerColumnName, true);
-    SourceColumnType sourceColumnType =
-        new SourceColumnType(sourceColumnName, new Long[] {10L, 20L}, new Long[] {10L, 20L});
+    SpannerColumnType spannerType = new SpannerColumnType(spannerColumnName, false);
+    SourceColumnType sourceColumnType = new SourceColumnType(sourceColumnName, null, null);
     String columnName = "Salary";
     String sourceDbTimezoneOffset = "UTC";
 
@@ -127,7 +125,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringUUID() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
     SourceColumnType sourceColumnType = new SourceColumnType("uuid", null, null);
     String columnName = "id";
     String columnValue = "123e4567-e89b-12d3-a456-426614174000";
@@ -149,7 +147,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringIpAddress() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
     SourceColumnType sourceColumnType = new SourceColumnType("inet", null, null);
     String columnValue = "192.168.1.1";
     String columnName = "ipAddress";
@@ -171,7 +169,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringJsonArray() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
     SourceColumnType sourceColumnType = new SourceColumnType("set<text>", null, null);
     String columnValue = "[\"apple\", \"banana\", \"cherry\"]";
     String columnName = "fruits";
@@ -193,7 +191,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringJsonObject() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
     SourceColumnType sourceColumnType = new SourceColumnType("map<text, text>", null, null);
     String columnName = "user";
     String columnValue = "{\"name\": \"John\", \"age\": \"30\"}";
@@ -218,7 +216,46 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringHex() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
+    String columnName = "lastName";
+    String columnValue = "a3f5b7";
+    String sourceDbTimezoneOffset = "UTC";
+
+    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
+    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
+
+    Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+
+    byte[] actualBytes;
+    if (castResult instanceof ByteBuffer) {
+      ByteBuffer byteBuffer = (ByteBuffer) castResult;
+      actualBytes = new byte[byteBuffer.remaining()];
+      byteBuffer.get(actualBytes);
+    } else if (castResult instanceof byte[]) {
+      actualBytes = (byte[]) castResult;
+    } else {
+      throw new AssertionError("Unexpected type for castResult");
+    }
+
+    byte[] expectedBytes = new BigInteger(valuesJson.getString(columnName), 16).toByteArray();
+
+    if (expectedBytes.length > 1 && expectedBytes[0] == 0) {
+      expectedBytes = Arrays.copyOfRange(expectedBytes, 1, expectedBytes.length);
+    }
+
+    assertArrayEquals(expectedBytes, actualBytes);
+  }
+
+  @Test
+  public void testGetColumnValueByTypeForBlobEncodeInStringHexToBlob() {
+    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     String columnValue = "a3f5b7";
@@ -257,8 +294,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringDuration() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColumnType = new SourceColumnType("varchar", null, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColumnType = new SourceColumnType("duration", null, null);
     String columnValue = "P4DT1H";
     String columnName = "total_time";
     String sourceDbTimezoneOffset = "UTC";
@@ -274,12 +311,12 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertEquals("P4DT1H", castResult.toString());
+    assertEquals(Duration.parse("P4DT1H"), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForDates() {
-    SpannerColumnType spannerType = new SpannerColumnType("date", true);
+    SpannerColumnType spannerType = new SpannerColumnType("date", false);
     SourceColumnType sourceColumnType = new SourceColumnType("timestamp", null, null);
     String columnValue = "2025-01-01T00:00:00Z";
     String columnName = "created_on";
@@ -304,7 +341,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBigInt() {
-    SpannerColumnType spannerType = new SpannerColumnType("bigint", true);
+    SpannerColumnType spannerType = new SpannerColumnType("bigint", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
     String sourceDbTimezoneOffset = "UTC";
@@ -327,7 +364,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBytesForHexString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", true);
+    SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bytes", null, null);
     String columnName = "Name";
     String sourceDbTimezoneOffset = "UTC";
@@ -348,7 +385,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBigIntForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", true);
+    SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
     String sourceDbTimezoneOffset = "UTC";
@@ -370,7 +407,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBoolentForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", true);
+    SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
     String columnName = "Male";
     String sourceDbTimezoneOffset = "UTC";
@@ -391,7 +428,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBoolent() {
-    SpannerColumnType spannerType = new SpannerColumnType("Boolean", true);
+    SpannerColumnType spannerType = new SpannerColumnType("Boolean", false);
     SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
     String columnName = "Male";
     String sourceDbTimezoneOffset = "UTC";
@@ -400,19 +437,19 @@ public class CassandraTypeHandlerTest {
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
 
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, true);
+    valuesJson.put(columnName, false);
 
     PreparedStatementValueObject result =
         getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertEquals(true, castResult);
+    assertEquals(false, castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForIntegerValue() {
-    SpannerColumnType spannerType = new SpannerColumnType("Integer", true);
+    SpannerColumnType spannerType = new SpannerColumnType("Integer", false);
     SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
     String sourceDbTimezoneOffset = "UTC";
@@ -434,7 +471,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBoolentSamllCaseForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", true);
+    SpannerColumnType spannerType = new SpannerColumnType("String", false);
     SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
     String columnName = "Male";
     String sourceDbTimezoneOffset = "UTC";
@@ -457,8 +494,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForInteger() {
-    SpannerColumnType spannerType = new SpannerColumnType("NUMERIC", true);
-    SourceColumnType sourceColType = new SourceColumnType("integer", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("NUMERIC", false);
+    SourceColumnType sourceColType = new SourceColumnType("integer", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -477,8 +514,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForValidBigInteger() {
-    SpannerColumnType spannerType = new SpannerColumnType("integer", true);
-    SourceColumnType sourceColType = new SourceColumnType("int64", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("integer", false);
+    SourceColumnType sourceColType = new SourceColumnType("int64", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -498,8 +535,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithISOInstant() {
     String timestamp = "2025-01-15T10:15:30Z";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -520,8 +557,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithISODateTime() {
     String timestamp = "2025-01-15T10:15:30";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("datetime", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("datetime", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -541,8 +578,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithISODate() {
     String timestamp = "2025-01-15";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -562,8 +599,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat1() {
     String timestamp = "01/15/2025";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -583,8 +620,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat2() {
     String timestamp = "2025/01/15";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -604,8 +641,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat3() {
     String timestamp = "15-01-2025";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -625,8 +662,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat4() {
     String timestamp = "15/01/2025";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -646,8 +683,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat5() {
     String timestamp = "2025-01-15 10:15:30";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -667,8 +704,8 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithInvalidFormat() {
     String timestamp = "invalid-timestamp";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -687,8 +724,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testConvertToCassandraTimestampWithNull() {
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -709,8 +746,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testConvertToCassandraTimestampWithWhitespaceString() {
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", true);
-    SourceColumnType sourceColType = new SourceColumnType("date", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
+    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -731,8 +768,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForFloat() {
-    SpannerColumnType spannerType = new SpannerColumnType("float", true);
-    SourceColumnType sourceColType = new SourceColumnType("float", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("float", false);
+    SourceColumnType sourceColType = new SourceColumnType("float", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -751,8 +788,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForFloat64() {
-    SpannerColumnType spannerType = new SpannerColumnType("float64", true);
-    SourceColumnType sourceColType = new SourceColumnType("double", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("float64", false);
+    SourceColumnType sourceColType = new SourceColumnType("double", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -773,8 +810,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForFloat64FromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("double", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("double", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -795,8 +832,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForDecimalFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("decimal", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("decimal", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -817,8 +854,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForDecimalFromFloat() {
-    SpannerColumnType spannerType = new SpannerColumnType("float", true);
-    SourceColumnType sourceColType = new SourceColumnType("decimal", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("float", false);
+    SourceColumnType sourceColType = new SourceColumnType("decimal", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -839,8 +876,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForDecimalFromFloat64() {
-    SpannerColumnType spannerType = new SpannerColumnType("float64", true);
-    SourceColumnType sourceColType = new SourceColumnType("decimal", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("float64", false);
+    SourceColumnType sourceColType = new SourceColumnType("decimal", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -861,8 +898,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForFloatFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("float", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("float", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -883,8 +920,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBigIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("bigint", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("bigint", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -905,8 +942,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("int", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("int", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -927,8 +964,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForSmallIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("smallint", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("smallint", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -949,8 +986,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForTinyIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", true);
-    SourceColumnType sourceColType = new SourceColumnType("tinyint", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SourceColumnType sourceColType = new SourceColumnType("tinyint", null, null);
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
@@ -971,8 +1008,8 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBytes() {
-    SpannerColumnType spannerType = new SpannerColumnType("bytes", true);
-    SourceColumnType sourceColType = new SourceColumnType("bytes", new Long[] {10L, 20L}, null);
+    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
+    SourceColumnType sourceColType = new SourceColumnType("bytes", null, null);
     String columnName = "test_column";
 
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
