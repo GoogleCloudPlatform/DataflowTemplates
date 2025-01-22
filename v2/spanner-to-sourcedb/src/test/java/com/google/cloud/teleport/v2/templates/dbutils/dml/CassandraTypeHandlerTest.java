@@ -216,7 +216,7 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringHex() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
+    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     String columnValue = "a3f5b7";
@@ -1013,8 +1013,12 @@ public class CassandraTypeHandlerTest {
     String columnName = "test_column";
 
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
+    StringBuilder hexString = new StringBuilder();
+    for (byte b : expectedBytes) {
+      hexString.append(String.format("%02x", b)); // Convert each byte to a two-digit hex value
+    }
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, expectedBytes);
+    valuesJson.put(columnName, hexString);
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);

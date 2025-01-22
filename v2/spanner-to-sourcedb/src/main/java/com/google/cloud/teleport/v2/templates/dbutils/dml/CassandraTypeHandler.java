@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
-import org.eclipse.jetty.util.StringUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -169,12 +168,7 @@ public class CassandraTypeHandler {
     if (colValue instanceof byte[]) {
       byteArray = (byte[]) colValue;
     } else if (colValue instanceof String) {
-      String strValue = (String) colValue;
-      if (StringUtil.isHex(strValue, 0, strValue.length())) {
-        byteArray = convertHexStringToByteArray(strValue);
-      } else {
-        byteArray = java.util.Base64.getDecoder().decode((String) colValue);
-      }
+      byteArray = java.util.Base64.getDecoder().decode((String) colValue);
     } else {
       throw new IllegalArgumentException("Unsupported type for column");
     }
@@ -331,9 +325,17 @@ public class CassandraTypeHandler {
   private static Object handleSpannerColumnType(
       String spannerType, String columnName, JSONObject valuesJson) {
     try {
-      return spannerType.contains("string")
-          ? valuesJson.optString(columnName)
-          : valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
+      if (spannerType.contains("string")) {
+        return valuesJson.optString(columnName);
+      } else if (spannerType.contains("bytes")) {
+        if (valuesJson.isNull(columnName)) {
+          return null;
+        }
+        String hexEncodedString = valuesJson.optString(columnName);
+        return convertHexStringToByteArray(hexEncodedString);
+      } else {
+        return valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
+      }
     } catch (Exception e) {
       throw new IllegalArgumentException(
           "Exception Caught During parsing for Spanner column type: " + spannerType);
