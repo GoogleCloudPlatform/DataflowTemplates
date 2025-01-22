@@ -121,7 +121,8 @@ public class DdlToAvroSchemaConverter {
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       if (table.interleaveInParent() != null) {
         recordBuilder.prop(SPANNER_PARENT, table.interleaveInParent());
-        recordBuilder.prop(SPANNER_INTERLEAVE_TYPE,
+        recordBuilder.prop(
+            SPANNER_INTERLEAVE_TYPE,
             table.interleaveType() == InterleaveType.IN ? "IN" : "IN PARENT");
         recordBuilder.prop(
             SPANNER_ON_DELETE_ACTION, table.onDeleteCascade() ? "cascade" : "no action");

@@ -273,12 +273,11 @@ public class InformationSchemaScanner {
       // Parent table and child table has to be in same schema.
       String parentTableName =
           resultSet.isNull(2) ? null : getQualifiedName(tableSchema, resultSet.getString(2));
-      String interleaveTypeStr =
-          resultSet.isNull(3) ? null : resultSet.getString(3);
+      String interleaveTypeStr = resultSet.isNull(3) ? null : resultSet.getString(3);
       Table.InterleaveType interleaveType = null;
       if (!Strings.isNullOrEmpty(interleaveTypeStr)) {
-        interleaveType = interleaveTypeStr.equals("IN PARENT") ?
-            InterleaveType.IN_PARENT : InterleaveType.IN;
+        interleaveType =
+            interleaveTypeStr.equals("IN PARENT") ? InterleaveType.IN_PARENT : InterleaveType.IN;
       }
       String onDeleteAction = resultSet.isNull(4) ? null : resultSet.getString(4);
 

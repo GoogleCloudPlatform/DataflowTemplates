@@ -40,7 +40,11 @@ public abstract class Table implements Serializable {
   @Nullable
   public abstract String interleaveInParent();
 
-  public enum InterleaveType {IN, IN_PARENT};
+  public enum InterleaveType {
+    IN,
+    IN_PARENT
+  };
+
   @Nullable
   public abstract InterleaveType interleaveType();
 

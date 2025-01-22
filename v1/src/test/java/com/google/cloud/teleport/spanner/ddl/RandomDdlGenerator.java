@@ -324,7 +324,10 @@ public abstract class RandomDdlGenerator {
     int pkSize = 0;
     if (parent != null) {
       tableBuilder.interleaveInParent(parent.name());
-      tableBuilder.interleaveType(rnd.nextBoolean() ? InterleaveType.IN : InterleaveType.IN_PARENT);
+      tableBuilder.interleaveType(
+          getDialect() == Dialect.GOOGLE_STANDARD_SQL && rnd.nextBoolean()
+              ? InterleaveType.IN
+              : InterleaveType.IN_PARENT);
       for (IndexColumn pk : parent.primaryKeys()) {
         Column pkColumn = parent.column(pk.name());
         tableBuilder.addColumn(pkColumn);
