@@ -19,7 +19,6 @@ import static com.google.cloud.teleport.spanner.common.NameUtils.quoteIdentifier
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
-import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Maps;
 import java.io.IOException;
