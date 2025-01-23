@@ -64,7 +64,7 @@ gsutil mb gs://${BUCKET_NAME}
 IMAGE_NAME="$USERNAME-kinesis-to-pubsub"
 MODULE_NAME=kinesis-to-pubsub
 TARGET_GCR_IMAGE="gcr.io/$PROJECT/$IMAGE_NAME"
-BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java11-template-launcher-base
+BASE_CONTAINER_IMAGE=gcr.io/dataflow-templates-base/java17-template-launcher-base
 BASE_CONTAINER_IMAGE_VERSION=latest
 APP_ROOT="/template/$MODULE_NAME"
 COMMAND_SPEC="$APP_ROOT/resources/$MODULE_NAME-command-spec.json"

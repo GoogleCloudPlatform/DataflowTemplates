@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.models;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import java.util.Map;
 import org.json.JSONObject;
@@ -53,6 +54,7 @@ public class DMLGeneratorRequest {
   private final String sourceDbTimezoneOffset;
 
   private Map<String, Object> customTransformationResponse;
+  private final Timestamp commitTimestamp;
 
   public DMLGeneratorRequest(Builder builder) {
     this.modType = builder.modType;
@@ -62,6 +64,11 @@ public class DMLGeneratorRequest {
     this.keyValuesJson = builder.keyValuesJson;
     this.sourceDbTimezoneOffset = builder.sourceDbTimezoneOffset;
     this.customTransformationResponse = builder.customTransformationResponse;
+    this.commitTimestamp = builder.commitTimestamp;
+  }
+
+  public Timestamp getCommitTimestamp() {
+    return this.commitTimestamp;
   }
 
   public String getModType() {
@@ -100,6 +107,7 @@ public class DMLGeneratorRequest {
     private final String sourceDbTimezoneOffset;
     private Schema schema;
     private Map<String, Object> customTransformationResponse;
+    private Timestamp commitTimestamp;
 
     public Builder(
         String modType,
@@ -116,6 +124,11 @@ public class DMLGeneratorRequest {
 
     public Builder setSchema(Schema schema) {
       this.schema = schema;
+      return this;
+    }
+
+    public Builder setCommitTimestamp(Timestamp commitTimestamp) {
+      this.commitTimestamp = commitTimestamp;
       return this;
     }
 
