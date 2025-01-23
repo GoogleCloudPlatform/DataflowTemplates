@@ -84,10 +84,11 @@ public class SpannerSchemaTest {
             .addColumn("test", "jsonbCol", "jsonb")
             .addColumn("test", "arrayCol", "DOUBLE PRECISION[]")
             .addColumn("test", "embeddingVectorCol", "DOUBLE PRECISION[] VECTOR LENGTH 16")
+            .addColumn("test", "tokens", "spanner.tokenlist")
             .build();
 
     assertEquals(1, schema.getTables().size());
-    assertEquals(7, schema.getColumns("test").size());
+    assertEquals(8, schema.getColumns("test").size());
     assertEquals(1, schema.getKeyParts("test").size());
     assertEquals(Type.timestamp(), schema.getColumns("test").get(3).getType());
     assertEquals(Type.array(Type.float64()), schema.getColumns("test").get(5).getType());
