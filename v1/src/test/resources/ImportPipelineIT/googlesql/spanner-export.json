@@ -11,5 +11,8 @@
   }, {
     "name": "ModelStruct",
     "manifestFile": "ModelStruct-manifest.json"
+  }, {
+    "name": "UuidTable",
+    "manifestFile": "UuidTable-manifest.json"
   }]
 }

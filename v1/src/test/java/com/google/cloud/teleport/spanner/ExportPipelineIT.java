@@ -28,6 +28,9 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
@@ -36,6 +39,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.artifacts.Artifact;
+import org.apache.beam.it.gcp.artifacts.matchers.ArtifactsSubject;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
@@ -79,7 +83,12 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                   + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
                   + "    { \"name\": \"FirstName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"LastName\", \"type\": \"string\" },\n"
-                  + "    { \"name\": \"Rating\", \"type\": \"float\" }\n"
+                  + "    { \"name\": \"Rating\", \"type\": \"float\" },\n"
+                  + "    { \"name\": \"UuidCol\", \"type\": [\"null\",\"string\"], \"sqlType\": \"UUID\" },\n"
+                  + "    { \"name\": \"UuidArrayCol\", \"type\": [\"null\", { "
+                  + "          \"type\": \"array\", "
+                  + "          \"items\": \"string\" "
+                  + "    }], \"sqlType\": \"ARRAY<UUID>\" }\n"
                   + "  ]\n"
                   + "}");
 
@@ -180,6 +189,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  Rating FLOAT32,\n"
                 + "  Review String(MAX),\n"
                 + "  `MyTokens` TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
+                + "  UuidCol UUID,\n"
+                + "  UuidArrayCol ARRAY<UUID>,\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     String createModelStructStatement =
@@ -200,7 +211,10 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
     spannerResourceManager.executeDdlStatement(createModelStructStatement);
     spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
+
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
+    List<Map<String, Object>> recordsFromMutations = mutationsToRecords(expectedData);
+
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -241,10 +255,27 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
-    assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
+    assertListMapsEqualIgnoreCase(
+        recordsFromMutations, ArtifactsSubject.genericRecordToRecords(singersRecords));
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
+  }
+
+  private Map<String, Object> convertKeysToUpperCase(Map<String, Object> map) {
+    Map<String, Object> result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    map.forEach((key, value) -> result.put(key.toUpperCase(), value));
+    return result;
+  }
+
+  private void assertListMapsEqualIgnoreCase(
+      List<Map<String, Object>> expected, List<Map<String, Object>> actual) {
+    assertThat(expected.size()).isEqualTo(actual.size());
+
+    for (int i = 0; i < expected.size(); i++) {
+      Map<String, Object> map1 = convertKeysToUpperCase(expected.get(i));
+      Map<String, Object> map2 = convertKeysToUpperCase(actual.get(i));
+      assertThat(map1.toString()).isEqualTo(map2.toString());
+    }
   }
 
   @Test
@@ -275,6 +306,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
                 + "  \"Rating\" real,\n"
+                + "  \"UuidCol\" uuid,\n"
+                + "  \"UuidArrayCol\" uuid[],\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
 
@@ -315,6 +348,15 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
+  private static List<String> generateUuidArray() {
+    int size = (int) (Math.random() * (10));
+    List<String> uuids = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      uuids.add(UUID.randomUUID().toString());
+    }
+    return uuids;
+  }
+
   private static List<Mutation> generateTableRows(String tableId) {
     List<Mutation> mutations = new ArrayList<>();
     for (int i = 0; i < MESSAGES_COUNT; i++) {
@@ -323,6 +365,11 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("Rating").to(RandomUtils.nextFloat());
+      // randomly generate null values as well to test null scenarios
+      String uuid = Math.random() < 0.5 ? UUID.randomUUID().toString() : null;
+      List<String> uuidArray = Math.random() < 0.5 ? generateUuidArray() : null;
+      mutation.set("UuidCol").to(uuid);
+      mutation.set("UuidArrayCol").toStringArray(uuidArray);
       mutations.add(mutation.build());
     }
 

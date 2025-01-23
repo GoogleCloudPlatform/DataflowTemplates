@@ -77,6 +77,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     if (Objects.equals(subdirectory, "googlesql")) {
       gcsClient.uploadArtifact(
+          "input/UuidTable.avro-00000-of-00001",
+          Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable.avro").getPath());
+      gcsClient.uploadArtifact(
+          "input/UuidTable-manifest.json",
+          Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable-manifest.json")
+              .getPath());
+    }
+    if (Objects.equals(subdirectory, "googlesql")) {
+      gcsClient.uploadArtifact(
           "input/ModelStruct.avro-00000-of-00001",
           Resources.getResource("ImportPipelineIT/" + subdirectory + "/ModelStruct.avro")
               .getPath());
@@ -115,6 +124,55 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     // Using the string NULL to match the string representation created in
     // assertThatStructs. The actual value in avro is a plain `null`.
     expectedRows.add(ImmutableMap.of("Key", "9", "Float32Value", "NULL"));
+    return expectedRows;
+  }
+
+  private List<Map<String, Object>> getUuidTableExpectedRows() {
+    List<Map<String, Object>> expectedRows = new ArrayList<>();
+    expectedRows.add(
+        ImmutableMap.of(
+            "Key",
+            "00000000-0000-0000-0000-000000000000",
+            "Val1",
+            "00000000-0000-0000-0000-000000000000",
+            "Val2",
+            0,
+            "Val3",
+            List.of(
+                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+    expectedRows.add(
+        ImmutableMap.of(
+            "Key",
+            "11111111-1111-1111-1111-111111111111",
+            "Val1",
+            null,
+            "Val2",
+            1,
+            "Val3",
+            List.of(
+                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+    expectedRows.add(
+        ImmutableMap.of(
+            "Key",
+            "00000000-0000-0000-0000-000000000000",
+            "Val1",
+            "00000000-0000-0000-0000-000000000000",
+            "Val2",
+            2,
+            "Val3",
+            List.of(
+                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+    expectedRows.add(
+        ImmutableMap.of(
+            "Key",
+            "00000000-0000-0000-0000-000000000000",
+            "Val1",
+            "00000000-0000-0000-0000-000000000000",
+            "Val2",
+            0,
+            "Val3",
+            List.of(
+                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
     return expectedRows;
   }
 
@@ -162,6 +220,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             + ") PRIMARY KEY(Key)";
     spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
+    String createUuidTableStatement =
+        "CREATE TABLE UuidTable (\n"
+            + "  Key UUID,\n"
+            + "  Val1 UUID,\n"
+            + "  Val2 INT64,\n"
+            + "  Val3 ARRAY<UUID>,\n"
+            + ") PRIMARY KEY(Key)";
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -194,6 +261,12 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+
+    List<Struct> uuidRecords =
+        spannerResourceManager.readTableRecords(
+            "UuidTable", ImmutableList.of("Key", "Val1", "Val2", "Val3"));
+    assertThat(uuidRecords).hasSize(4);
+    assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
   }
 
   @Test

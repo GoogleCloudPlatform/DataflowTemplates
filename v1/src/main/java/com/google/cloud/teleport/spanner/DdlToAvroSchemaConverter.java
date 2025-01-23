@@ -485,6 +485,8 @@ public class DdlToAvroSchemaConverter {
       case PG_DATE:
       case JSON:
       case PG_JSONB:
+      case UUID:
+      case PG_UUID:
         return SchemaBuilder.builder().stringType();
       case BYTES:
       case PG_BYTEA:

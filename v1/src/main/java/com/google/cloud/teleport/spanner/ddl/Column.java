@@ -279,6 +279,22 @@ public abstract class Column implements Serializable {
       return type(Type.pgFloat8());
     }
 
+    public Builder uuid() {
+      return type(Type.uuid());
+    }
+
+    public Builder pgUuid() {
+      return type(Type.pgUuid());
+    }
+
+    public Builder array(Type t) {
+      return type(Type.array(t));
+    }
+
+    public Builder pgArray(Type t) {
+      return type(Type.pgArray(t));
+    }
+
     public Builder bool() {
       return type(Type.bool());
     }

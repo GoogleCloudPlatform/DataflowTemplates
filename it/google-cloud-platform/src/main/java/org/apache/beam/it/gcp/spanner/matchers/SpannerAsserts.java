@@ -74,11 +74,22 @@ public class SpannerAsserts {
     try {
       List<Map<String, Object>> records = new ArrayList<>();
       mutations.forEach(
-          entry ->
-              records.add(
-                  entry.asMap().entrySet().stream()
-                      .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue))));
-
+          entry -> {
+            Map<String, Object> record = new HashMap<>();
+            entry
+                .asMap()
+                .forEach(
+                    (key, value) -> {
+                      Object newValue = value;
+                      if (value.isNull()) {
+                        newValue = null;
+                      } else if (value.getType() == Type.array(Type.string())) {
+                        newValue = new ArrayList<>(value.getAsStringList());
+                      }
+                      record.put(key, newValue);
+                    });
+            records.add(record);
+          });
       return records;
     } catch (Exception e) {
       throw new RuntimeException("Error converting TableResult to Records", e);

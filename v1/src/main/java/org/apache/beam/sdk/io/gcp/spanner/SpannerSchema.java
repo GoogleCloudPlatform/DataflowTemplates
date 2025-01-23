@@ -190,6 +190,9 @@ abstract class SpannerSchema implements Serializable {
           if (spannerType.startsWith("STRING")) {
             return Type.string();
           }
+          if ("UUID".equals(spannerType)) {
+            return Type.string();
+          }
           if (spannerType.startsWith("BYTES")) {
             return Type.bytes();
           }
@@ -284,6 +287,9 @@ abstract class SpannerSchema implements Serializable {
           }
           if ("SPANNER.COMMIT_TIMESTAMP".equals(spannerType)) {
             return Type.timestamp();
+          }
+          if ("UUID".equals(spannerType)) {
+            return Type.string();
           }
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         default:
