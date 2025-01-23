@@ -354,8 +354,7 @@ public class InformationSchemaScanner {
           resultSet.isNull(12) ? null : Long.valueOf(resultSet.getString(12));
       if (isIdentity) {
         identityStartWithCounter =
-            updateCounterForIdentityColumn(
-                identityStartWithCounter, tableSchema + "." + columnName);
+            updateCounterForIdentityColumn(identityStartWithCounter, tableName + "." + columnName);
       }
       Long identitySkipRangeMin =
           resultSet.isNull(13) ? null : Long.valueOf(resultSet.getString(13));
@@ -1661,6 +1660,7 @@ public class InformationSchemaScanner {
                     + " ORDER BY t.name, t.option_name"));
 
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
+    Set<String> hasSequenceKind = new HashSet<>();
     while (resultSet.next()) {
       String sequenceName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
       String optionName = resultSet.getString(2);
@@ -1672,6 +1672,9 @@ public class InformationSchemaScanner {
         // The sequence is in use, we need to apply the current counter to
         // the DDL builder, instead of the one retrieved from Information Schema.
         continue;
+      }
+      if (optionName.equals(Sequence.SEQUENCE_KIND)) {
+        hasSequenceKind.add(sequenceName);
       }
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
@@ -1686,20 +1689,19 @@ public class InformationSchemaScanner {
         options.add(optionName + "=" + optionValue);
       }
     }
-    // If the sequence kind is not specified, assign it to 'default'.
-    for (var entry : allOptions.entrySet()) {
-      if (!entry.getValue().toString().contains(Sequence.SEQUENCE_KIND)) {
-        entry
-            .getValue()
-            .add(
-                Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
-      }
-    }
 
     // Inject the current counter value to sequences that are in use.
     for (Map.Entry<String, Long> entry : currentCounters.entrySet()) {
+      String sequenceName = entry.getKey();
       ImmutableList.Builder<String> options =
-          allOptions.computeIfAbsent(entry.getKey(), k -> ImmutableList.builder());
+          allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
+
+      if (!hasSequenceKind.contains(sequenceName)) {
+        // If the sequence kind is not specified, assign it to 'default'.
+        options.add(
+            Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
+      }
+
       // Add a buffer to accommodate writes that may happen after import
       // is run. Note that this is not 100% failproof, since more writes may
       // happen and they will make the sequence advances past the buffer.
