@@ -281,15 +281,23 @@ public class InformationSchemaScanner {
       }
       String onDeleteAction = resultSet.isNull(4) ? null : resultSet.getString(4);
 
-      // Error out when the parent table or on delete action are set incorrectly.
-      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(interleaveTypeStr)) {
+      boolean hasParentTable = !Strings.isNullOrEmpty(parentTableName);
+      boolean hasInterleaveType = !Strings.isNullOrEmpty(interleaveTypeStr);
+      boolean hasOnDeleteAction = !Strings.isNullOrEmpty(onDeleteAction);
+
+      // If parent_table_name is set, then it is required that there also be an interleave_type.
+      // Conversely, if there is no parent, then there should also be no interleave_type.
+      if (hasParentTable != hasInterleaveType) {
         throw new IllegalStateException(
             String.format(
                 "Invalid combination of parentTableName %s and interleaveType %s",
-                parentTableName, interleaveType));
+                parentTableName, interleaveTypeStr));
       }
 
-      if ((interleaveType == InterleaveType.IN_PARENT) == Strings.isNullOrEmpty(onDeleteAction)) {
+      // If this table is interleaved with IN PARENT semantics, then an ON DELETE action is
+      // required. Conversely, if this table is interleaved with IN semantics or is not interleaved
+      // at all, then it is required that there not be an ON DELETE action.
+      if ((interleaveType == InterleaveType.IN_PARENT) == hasOnDeleteAction) {
         throw new IllegalStateException(
             String.format(
                 "Invalid combination of IN PARENT %s and onDeleteAction %s",
@@ -297,7 +305,7 @@ public class InformationSchemaScanner {
       }
 
       boolean onDeleteCascade = false;
-      if (onDeleteAction != null) {
+      if (hasOnDeleteAction) {
         if (onDeleteAction.equals("CASCADE")) {
           onDeleteCascade = true;
         } else if (!onDeleteAction.equals("NO ACTION")) {
