@@ -31,6 +31,7 @@ public class Neo4jCapabilitiesTest {
     assertThat(Neo4jVersion.of("2025.01")).isEqualTo(new Neo4jVersion(2025, 1));
     assertThat(Neo4jVersion.of("2025.01.0")).isEqualTo(new Neo4jVersion(2025, 1, 0));
     assertThat(Neo4jVersion.of("2025.01-aura")).isEqualTo(new Neo4jVersion(2025, 1));
+    assertThat(Neo4jVersion.of("2025.01.0-21379")).isEqualTo(new Neo4jVersion(2025, 1, 0));
   }
 
   @Test
