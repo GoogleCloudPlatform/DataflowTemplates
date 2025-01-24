@@ -117,6 +117,7 @@ public class Neo4jConnectionTest {
     inOrder
         .verify(session)
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("SHOW CONSTRAINTS YIELD name"), eq(Map.of()), any());
     inOrder
         .verify(session)
         .run(
@@ -125,8 +126,6 @@ public class Neo4jConnectionTest {
             any());
     inOrder.verify(session).run(eq("DROP INDEX `c`"), eq(Map.of()), any());
     inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
-
-    verify(session, never()).run(contains("CONSTRAINT"), anyMap(), any());
   }
 
   @Test
