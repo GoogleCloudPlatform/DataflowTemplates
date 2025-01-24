@@ -988,7 +988,7 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"namespace\" : \"spannertest\","
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"googleFormatVersion\" : \"booleans\","
-            + "  \"sequenceOption_0\" : \"sequence_kind=default\""
+            + "  \"sequenceOption_0\" : \"sequence_kind=\\\"default\\\"\""
             + "}";
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();
