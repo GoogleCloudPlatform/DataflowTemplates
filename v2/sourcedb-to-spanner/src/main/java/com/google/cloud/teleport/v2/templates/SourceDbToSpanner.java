@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -85,6 +86,9 @@ public class SourceDbToSpanner {
     // Parse the user options passed from the command-line
     SourceDbToSpannerOptions options =
         PipelineOptionsFactory.fromArgs(args).withValidation().as(SourceDbToSpannerOptions.class);
+    // Stage SSL certificates to extraFiles if required as per the pipeline options.
+    // Ref https://cloud.google.com/dataflow/docs/guides/templates/ssl-certificates
+    new CommonTemplateJvmInitializer().beforeProcessing(options);
     run(options);
   }
 
