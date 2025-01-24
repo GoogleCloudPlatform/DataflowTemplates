@@ -37,6 +37,8 @@ public class Neo4jCapabilitiesTest {
   public void rejects_invalid_kernel_version() {
     assertThrows(IllegalArgumentException.class, () -> Neo4jVersion.of(""));
     assertThrows(IllegalArgumentException.class, () -> Neo4jVersion.of("5"));
+    assertThrows(IllegalArgumentException.class, () -> Neo4jVersion.of("5."));
+    assertThrows(IllegalArgumentException.class, () -> Neo4jVersion.of("2025.1."));
     assertThrows(IllegalArgumentException.class, () -> Neo4jVersion.of("5.5.3.1"));
     assertThrows(NumberFormatException.class, () -> Neo4jVersion.of(".."));
     assertThrows(NumberFormatException.class, () -> Neo4jVersion.of("5..3"));
