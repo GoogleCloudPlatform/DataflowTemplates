@@ -139,7 +139,7 @@ public final class Neo4jCapabilities implements Serializable {
       if (minor == -1) {
         minor = parseMinor(buffer);
       } else {
-        patch = Integer.parseInt(buffer, 10);
+        patch = parsePatch(buffer);
       }
 
       if (major == -1 || minor == -1) {
@@ -185,6 +185,14 @@ public final class Neo4jCapabilities implements Serializable {
 
     private static int parseMinor(String buffer) {
       return Integer.parseInt(buffer.replace("-aura", ""), 10);
+    }
+
+    private static int parsePatch(String buffer) {
+      int end = buffer.indexOf('-');
+      if (end == -1) {
+        end = buffer.length();
+      }
+      return Integer.parseInt(buffer.substring(0, end), 10);
     }
 
     private static int signum(int result) {
