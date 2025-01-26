@@ -8,6 +8,7 @@ import com.google.cloud.teleport.v2.clickhouse.utils.ClickHouseConverts;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
@@ -82,6 +83,15 @@ public class BigQueryToClickHouse {
 
             // Step 2: Transform TableRow to Row
             PCollection<Row> rows = tableRows.apply("Convert to Beam Row", ParDo.of(new DoFn<TableRow, Row>() {
+                private Map<String, TableSchema.Column> columnMap;
+
+                @Setup
+                public void setup() {
+                    // Build a map of column names to column objects from the ClickHouse schema
+                    columnMap = clickHouseSchema.columns().stream()
+                            .collect(Collectors.toMap(TableSchema.Column::name, column -> column));
+                }
+
                 @ProcessElement
                 public void processElement(@Element TableRow tableRow, OutputReceiver<Row> out) {
 
@@ -91,13 +101,9 @@ public class BigQueryToClickHouse {
                     for (Schema.Field field : beamSchema.getFields()) {
                         String fieldName = field.getName();
                         Object value = tableRow.get(fieldName);
-                        TableSchema.ColumnType columnType = null;
-                        for (TableSchema.Column column : clickHouseSchema.columns()) {
-                            if (column.name().equals(fieldName)) {
-                                columnType = column.columnType();
-                                break;
-                            }
-                        }
+                        TableSchema.ColumnType columnType = columnMap.get(fieldName) != null
+                                ? columnMap.get(fieldName).columnType()
+                                : null;
 
                         if (columnType == null) {
                             throw new IllegalArgumentException("Couldn't infer type for field: " + fieldName);
