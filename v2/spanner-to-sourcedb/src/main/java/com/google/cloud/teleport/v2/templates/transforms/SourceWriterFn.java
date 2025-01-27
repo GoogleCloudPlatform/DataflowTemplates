@@ -235,15 +235,15 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       } catch (InvalidTransformationException ex) {
         invalidTransformationException.inc();
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (ChangeEventConvertorException ex) {
+      } catch (ChangeEventConvertorException
+          | CodecNotFoundException
+          | QueryExecutionException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (SpannerException
           | IllegalStateException
           | com.mysql.cj.jdbc.exceptions.CommunicationsException
           | java.sql.SQLIntegrityConstraintViolationException
           | java.sql.SQLTransientConnectionException
-          | CodecNotFoundException
-          | QueryExecutionException
           | ConnectionException ex) {
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (java.sql.SQLNonTransientConnectionException ex) {
