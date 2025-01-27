@@ -115,7 +115,7 @@ public class BigQueryToClickHouse {
                                 rowBuilder.addValue(Float.valueOf(value.toString()));
                             } else if (columnType.typeName() == TableSchema.ColumnType.FLOAT64.typeName()) {
                                 rowBuilder.addValue(Double.valueOf(value.toString()));
-                            } else if (columnType.typeName() == TableSchema.ColumnType.DATETIME.typeName()) {
+                            } else if (columnType.typeName() == TableSchema.ColumnType.DATETIME.typeName() || columnType.typeName() == TableSchema.ColumnType.DATE.typeName()) {
                                 rowBuilder.addValue(new DateTime(value.toString()));
                             } else if (Objects.equals(columnType.typeName().toString(), "ARRAY")) {
                                 if (((ArrayList<?>) value).isEmpty()) {
