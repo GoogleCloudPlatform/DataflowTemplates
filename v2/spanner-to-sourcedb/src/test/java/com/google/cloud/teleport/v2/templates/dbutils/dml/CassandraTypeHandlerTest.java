@@ -911,7 +911,7 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertEquals(5.5, castResult);
+    assertEquals(5.5f, castResult);
   }
 
   @Test
@@ -1036,7 +1036,7 @@ public class CassandraTypeHandlerTest {
         new BigDecimal("123.456"),
         castToExpectedType("decimal", new BigDecimal("123.456").toString()));
     assertEquals(123.456, castToExpectedType("double", "123.456"));
-    assertEquals(123.45f, ((Double) castToExpectedType("float", "123.45")).floatValue(), 0.00001);
+    assertEquals(123.45f, castToExpectedType("float", "123.45"));
     assertEquals(InetAddress.getByName("127.0.0.1"), castToExpectedType("inet", "127.0.0.1"));
     assertEquals(123, castToExpectedType("int", "123"));
     assertEquals((short) 123, castToExpectedType("smallint", "123"));
@@ -1072,6 +1072,18 @@ public class CassandraTypeHandlerTest {
         () -> {
           castToExpectedType(cassandraType, columnValue);
         });
+  }
+
+  @Test
+  public void testCastToExpectedTypeForJSONObjectStringifyToMFrozenMap() {
+    String cassandraType = "frozen<map<int, text>>";
+    String columnValue = "{\"1\": \"One\", \"2\": \"Two\"}";
+    Object castResult = castToExpectedType(cassandraType, columnValue);
+    assertTrue(castResult instanceof Map);
+    assertTrue(((Map<?, ?>) castResult).containsKey(1));
+    assertTrue(((Map<?, ?>) castResult).containsKey(2));
+    assertEquals("One", ((Map<?, ?>) castResult).get(1));
+    assertEquals("Two", ((Map<?, ?>) castResult).get(2));
   }
 
   @Test
@@ -1179,6 +1191,21 @@ public class CassandraTypeHandlerTest {
     Object result = CassandraTypeHandler.castToExpectedType("varint", validString);
     BigInteger expected = new BigInteger(validString);
     assertEquals(expected, result);
+  }
+
+  @Test
+  public void testHandleCassandraVarintType_ForBytesArray() {
+    byte[] byteArray = new byte[] {0, 0, 0, 0, 0, 0, 0, 10};
+    BigInteger expected = new BigInteger(byteArray);
+    Object result = CassandraTypeHandler.castToExpectedType("varint", byteArray);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void testHandleCassandraVarintType_ForInteger() {
+    Long inputValue = 123456789L;
+    Object result = CassandraTypeHandler.castToExpectedType("varint", inputValue);
+    assertEquals(BigInteger.valueOf(inputValue), result);
   }
 
   @Test
