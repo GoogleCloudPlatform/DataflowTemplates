@@ -277,9 +277,16 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"Rating\" real,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
+    String createSearchIndexStatement =
+        String.format(
+            "CREATE SEARCH INDEX \"%s_SearchIndex\"\n"
+                + " ON \"%s_Singers\"(\"NameTokens\")\n"
+                + " WITH (sort_order_sharding=TRUE)",
+            testName, testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
+    spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -304,6 +311,10 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
+    List<Artifact> searchIndexArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "SearchIndex")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
 

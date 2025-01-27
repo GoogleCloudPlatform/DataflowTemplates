@@ -100,10 +100,11 @@ public class InformationSchemaScannerTest {
         postgresSQLInfoScanner.listIndexesSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.filter FROM information_schema.indexes AS t "
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
+                + " FROM information_schema.indexes AS t "
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
-                + " AND t.index_type='INDEX' AND t.spanner_is_managed = 'NO' "
+                + " AND (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = 'NO' "
                 + " ORDER BY t.table_name, t.index_name"));
   }
 
@@ -122,7 +123,8 @@ public class InformationSchemaScannerTest {
     assertThat(
         postgresSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
+                + "t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "

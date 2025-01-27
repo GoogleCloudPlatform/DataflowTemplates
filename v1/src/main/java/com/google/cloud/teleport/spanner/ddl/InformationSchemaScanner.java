@@ -118,9 +118,7 @@ public class InformationSchemaScanner {
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
-    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
-      listIndexOptions(builder, indexes);
-    }
+    listIndexOptions(builder, indexes);
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
@@ -361,11 +359,11 @@ public class InformationSchemaScanner {
           resultSet.isNull(13) ? null : Long.valueOf(resultSet.getString(13));
       Long identitySkipRangeMax =
           resultSet.isNull(14) ? null : Long.valueOf(resultSet.getString(14));
-      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(15) : false;
-      boolean isPlacementKey =
+      boolean isHidden =
           dialect == Dialect.GOOGLE_STANDARD_SQL
-              ? resultSet.getBoolean(16)
-              : resultSet.getBoolean(15);
+              ? resultSet.getBoolean(15)
+              : resultSet.getString(15).equalsIgnoreCase("YES");
+      boolean isPlacementKey =  resultSet.getBoolean(16);
 
       builder
           .createTable(tableName)
@@ -461,20 +459,13 @@ public class InformationSchemaScanner {
               : resultSet.getString(5).equalsIgnoreCase("YES");
       String filter = resultSet.isNull(6) ? null : resultSet.getString(6);
 
-      // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
-      // the number of columns will be different.
-      String type =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
-              ? resultSet.getString(7)
-              : null;
+      String type = !resultSet.isNull(7) ? resultSet.getString(7) : null;
 
-      ImmutableList<String> searchPartitionBy =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
+      ImmutableList<String> searchPartitionBy = !resultSet.isNull(8)
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
               : null;
 
-      ImmutableList<String> searchOrderBy =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(9))
+      ImmutableList<String> searchOrderBy = !resultSet.isNull(9)
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(9)).build()
               : null;
 
@@ -511,10 +502,11 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.filter FROM information_schema.indexes AS t "
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
+                + " FROM information_schema.indexes AS t "
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
-                + " AND t.index_type='INDEX' AND t.spanner_is_managed = 'NO' "
+                + " AND (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = 'NO' "
                 + " ORDER BY t.table_name, t.index_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -531,8 +523,8 @@ public class InformationSchemaScanner {
       String columnName = resultSet.getString(2);
       String ordering = resultSet.isNull(3) ? null : resultSet.getString(3);
       String indexLocalName = resultSet.getString(4);
-      String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : null;
-      String spannerType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(6) : null;
+      String indexType = resultSet.getString(5);
+      String spannerType = resultSet.getString(6);
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
@@ -545,7 +537,7 @@ public class InformationSchemaScanner {
         pkBuilder.end().endTable();
       } else {
         if (indexType != null && ordering != null) {
-          if ((indexType.equals("SEARCH") && !spannerType.equals("TOKENLIST"))
+          if ((indexType.equals("SEARCH") && !spannerType.equals("TOKENLIST") && !spannerType.equals("spanner.tokenlist"))
               || (indexType.equals("VECTOR") && !spannerType.startsWith("ARRAY"))) {
             continue;
           }
@@ -566,7 +558,7 @@ public class InformationSchemaScanner {
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
         if (spannerType != null
-            && (spannerType.equals("TOKENLIST") || spannerType.startsWith("ARRAY"))) {
+            && (spannerType.equals("TOKENLIST") || spannerType.equals("spanner.tokenlist") || spannerType.startsWith("ARRAY"))) {
           indexColumnsBuilder.none();
         } else if (ordering == null) {
           indexColumnsBuilder.storing();
@@ -603,7 +595,8 @@ public class InformationSchemaScanner {
                 + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
       case POSTGRESQL:
         return Statement.of(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
+                + " t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
@@ -665,6 +658,7 @@ public class InformationSchemaScanner {
   Statement listIndexOptionsSQL() {
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
+      case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
                 + " t.option_name, t.option_type, t.option_value"
