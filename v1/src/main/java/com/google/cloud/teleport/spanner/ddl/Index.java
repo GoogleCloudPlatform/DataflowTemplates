@@ -135,12 +135,12 @@ public abstract class Index implements Serializable {
       }
     }
 
-    if (filter() != null && !filter().isEmpty()) {
-      appendable.append(" WHERE ").append(filter());
-    }
-
     if (interleaveIn() != null) {
       appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
+    }
+
+    if (filter() != null && !filter().isEmpty()) {
+      appendable.append(" WHERE ").append(filter());
     }
 
     if (options() != null) {

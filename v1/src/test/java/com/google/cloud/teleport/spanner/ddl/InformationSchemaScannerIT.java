@@ -750,7 +750,7 @@ public class InformationSchemaScannerIT {
             " CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
                 + " INCLUDE (\"data\")"
                 + " PARTITION BY \"userid\""
-                + " ORDER BY \"orderid\" WHERE orderid IS NOT NULL"
+                + " ORDER BY \"orderid\""
                 + " INTERLEAVE IN \"Users\""
                 + " WITH (sort_order_sharding=TRUE)");
 
