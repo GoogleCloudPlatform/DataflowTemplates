@@ -783,6 +783,28 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
+  public void testGetColumnValueByTypeForFloatIllegalArgumentException() {
+    SpannerColumnType spannerType = new SpannerColumnType("date", false);
+    SourceColumnType sourceColType = new SourceColumnType("float", null, null);
+    String columnName = "test_column";
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, "2024-12-12");
+
+    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
+    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          PreparedStatementValueObject<?> preparedStatementValueObject =
+              getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+          castToExpectedType(
+              preparedStatementValueObject.dataType(), preparedStatementValueObject.value());
+        });
+  }
+
+  @Test
   public void testGetColumnValueByTypeForFloat64() {
     SpannerColumnType spannerType = new SpannerColumnType("float64", false);
     SourceColumnType sourceColType = new SourceColumnType("double", null, null);
