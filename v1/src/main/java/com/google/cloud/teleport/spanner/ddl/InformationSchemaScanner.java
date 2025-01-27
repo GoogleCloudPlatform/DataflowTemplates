@@ -360,11 +360,14 @@ public class InformationSchemaScanner {
           resultSet.isNull(13) ? null : Long.valueOf(resultSet.getString(13));
       Long identitySkipRangeMax =
           resultSet.isNull(14) ? null : Long.valueOf(resultSet.getString(14));
-      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(15) : false;
+      boolean isHidden =
+          dialect == Dialect.GOOGLE_STANDARD_SQL
+              ? resultSet.getBoolean(15)
+              : resultSet.getString(15).equalsIgnoreCase("YES");
       boolean isPlacementKey =
           dialect == Dialect.GOOGLE_STANDARD_SQL
               ? resultSet.getBoolean(16)
-              : resultSet.getBoolean(15);
+              : resultSet.getBoolean(16);
 
       builder
           .createTable(tableName)
@@ -418,8 +421,8 @@ public class InformationSchemaScanner {
             "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
-                + " c.is_identity, c.identity_kind, c.identity_start_with_counter,"
-                + " c.identity_skip_range_min, c.identity_skip_range_max,"
+                + " c.is_identity, c.identity_kind, c.identity_start_with_counter, "
+                + " c.identity_skip_range_min, c.identity_skip_range_max, c.is_hidden,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"

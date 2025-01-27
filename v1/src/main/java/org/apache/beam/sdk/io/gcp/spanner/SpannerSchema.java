@@ -285,6 +285,9 @@ abstract class SpannerSchema implements Serializable {
           if ("SPANNER.COMMIT_TIMESTAMP".equals(spannerType)) {
             return Type.timestamp();
           }
+          if ("SPANNER.TOKENLIST".equals(spannerType)) {
+            return Type.bytes();
+          }
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         default:
           throw new IllegalArgumentException("Unrecognized dialect: " + dialect.name());
