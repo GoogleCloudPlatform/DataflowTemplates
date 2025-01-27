@@ -769,7 +769,7 @@ public class CassandraTypeHandlerTest {
     String columnName = "test_column";
 
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, new BigDecimal("5.5"));
+    valuesJson.put(columnName, 5.5f);
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
@@ -779,7 +779,7 @@ public class CassandraTypeHandlerTest {
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
-    assertEquals(new BigDecimal(5.5), actualValue);
+    assertEquals(5.5f, actualValue);
   }
 
   @Test

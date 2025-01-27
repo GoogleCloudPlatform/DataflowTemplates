@@ -532,11 +532,8 @@ public class CassandraTypeHandler {
   private static Object parseFloatingPoint(String columnType, Object colValue) {
     if (columnType.equals("double")) {
       return Double.parseDouble((String) colValue);
-    } else if (columnType.equals("float")) {
-      return Float.parseFloat((String) colValue);
     }
-    throw new IllegalArgumentException(
-        String.format("Unable to parse %s : value %s", columnType, colValue));
+    return Float.parseFloat((String) colValue);
   }
 
   private static LocalDate parseDate(Object colValue) {
