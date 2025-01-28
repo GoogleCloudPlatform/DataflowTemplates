@@ -276,7 +276,6 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
     assertThat(rows).hasSize(1);
 
     Row row = rows.iterator().next();
-    System.out.println(row.getFormattedContents());
 
     assertThat(rows).hasSize(1);
     assertAll(
