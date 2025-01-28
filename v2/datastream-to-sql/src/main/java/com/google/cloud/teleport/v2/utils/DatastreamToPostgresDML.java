@@ -15,8 +15,13 @@
  */
 package com.google.cloud.teleport.v2.utils;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -102,6 +107,56 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
         }
         break;
     }
+    // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
+    if (dataType.startsWith("_")) {
+      return convertJsonToPostgresArray(columnValue);
+    }
     return columnValue;
+  }
+
+  private String convertJsonToPostgresArray(String jsonValue) {
+    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
+      return getNullValueSql();
+    }
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode rootNode = mapper.readTree(jsonValue);
+
+      if (!(rootNode.isObject() && rootNode.has("nestedArray"))) {
+        LOG.warn("Empty array: {}", jsonValue);
+        return getNullValueSql();
+      }
+
+      JsonNode arrayNode = rootNode.get("nestedArray");
+
+      // Handle nested structure with elementValue
+      List<String> elements = new ArrayList<>();
+      if (arrayNode.isArray()) {
+        for (JsonNode element : arrayNode) {
+          if (element.has("elementValue")) {
+            JsonNode elementValue = element.get("elementValue");
+            if (!elementValue.isNull()) {
+              elements.add(formatArrayElement(elementValue));
+            } else {
+              elements.add(getNullValueSql());
+            }
+          } else if (!element.isNull()) {
+            elements.add(formatArrayElement(element));
+          }
+        }
+      }
+      return "ARRAY[" + String.join(",", elements) + "]";
+    } catch (JsonProcessingException e) {
+      LOG.error("Error parsing JSON array: {}", jsonValue);
+      return getNullValueSql();
+    }
+  }
+
+  private String formatArrayElement(JsonNode element) {
+    if (element.isTextual()) {
+      return "\'" + cleanSql(element.textValue()) + "\'";
+    }
+    return element.toString();
   }
 }
