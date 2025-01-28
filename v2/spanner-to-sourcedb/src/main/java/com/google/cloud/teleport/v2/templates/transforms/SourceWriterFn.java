@@ -202,7 +202,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
         if (!isSourceAhead) {
           IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-
           boolean isEventFiltered =
               InputRecordProcessor.processRecord(
                   spannerRec,
@@ -211,7 +210,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                   shardId,
                   sourceDbTimezoneOffset,
                   sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer);
+                  spannerToSourceTransformer,
+                  this.source);
           if (isEventFiltered) {
             outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
           }

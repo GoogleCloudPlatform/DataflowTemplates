@@ -19,10 +19,10 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHandler;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
-import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 
 public class CassandraDao implements IDao<DMLGeneratorResponse> {
   private final String cassandraUrl;
@@ -38,22 +38,25 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
 
   @Override
   public void write(DMLGeneratorResponse dmlGeneratorResponse) throws Exception {
-    try (CqlSession session =
-        (CqlSession)
-            connectionHelper.getConnection(this.cassandraUrl)) { // Ensure connection is obtained
-      if (session == null) {
-        throw new ConnectionException("Connection is null");
-      }
-      PreparedStatementGeneratedResponse preparedStatementGeneratedResponse =
-          (PreparedStatementGeneratedResponse) dmlGeneratorResponse;
-      String dmlStatement = preparedStatementGeneratedResponse.getDmlStatement();
-      PreparedStatement preparedStatement = session.prepare(dmlStatement);
-      BoundStatement boundStatement =
-          preparedStatement.bind(
-              preparedStatementGeneratedResponse.getValues().stream()
-                  .map(PreparedStatementValueObject::value)
-                  .toArray());
-      session.execute(boundStatement);
+    CqlSession session = (CqlSession) connectionHelper.getConnection(this.cassandraUrl);
+    if (session == null) {
+      throw new ConnectionException("Connection is null");
     }
+    PreparedStatementGeneratedResponse preparedStatementGeneratedResponse =
+        (PreparedStatementGeneratedResponse) dmlGeneratorResponse;
+    String dmlStatement = preparedStatementGeneratedResponse.getDmlStatement();
+    PreparedStatement preparedStatement = session.prepare(dmlStatement);
+    BoundStatement boundStatement =
+        preparedStatement.bind(
+            preparedStatementGeneratedResponse.getValues().stream()
+                .map(
+                    v -> {
+                      if (v.value() == CassandraTypeHandler.NullClass.INSTANCE) {
+                        return null;
+                      }
+                      return CassandraTypeHandler.castToExpectedType(v.dataType(), v.value());
+                    })
+                .toArray());
+    session.execute(boundStatement);
   }
 }

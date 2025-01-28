@@ -17,13 +17,10 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
-import com.datastax.oss.driver.api.core.config.DefaultDriverOption;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
-import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.api.core.session.Session;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
-import java.util.List;
 import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,11 +43,6 @@ public final class CassandraConnector implements AutoCloseable {
         schemaReference);
     CqlSessionBuilder builder =
         CqlSession.builder().withConfigLoader(getDriverConfigLoader(dataSource));
-    builder = setCredentials(builder, dataSource);
-    if (dataSource.localDataCenter() != null) {
-      builder = builder.addContactPoints(List.copyOf(dataSource.contactPoints()));
-      builder = builder.withLocalDatacenter(dataSource.localDataCenter());
-    }
     if (schemaReference.keyspaceName() != null) {
       builder.withKeyspace(schemaReference.keyspaceName());
     }
@@ -63,35 +55,8 @@ public final class CassandraConnector implements AutoCloseable {
   }
 
   @VisibleForTesting
-  protected static CqlSessionBuilder setCredentials(
-      CqlSessionBuilder builder, CassandraDataSource cassandraDataSource) {
-    if (cassandraDataSource.dbAuth() != null) {
-      return builder.withAuthCredentials(
-          cassandraDataSource.dbAuth().getUserName().get(),
-          cassandraDataSource.dbAuth().getPassword().get());
-    } else {
-      return builder;
-    }
-  }
-
-  @VisibleForTesting
   protected static DriverConfigLoader getDriverConfigLoader(CassandraDataSource dataSource) {
-    ProgrammaticDriverConfigLoaderBuilder driverConfigLoaderBuilder =
-        DriverConfigLoader.programmaticBuilder()
-            .withString(
-                DefaultDriverOption.REQUEST_CONSISTENCY, dataSource.consistencyLevel().name())
-            .withClass(DefaultDriverOption.RETRY_POLICY_CLASS, dataSource.retryPolicy());
-    if (dataSource.connectTimeout() != null) {
-      driverConfigLoaderBuilder =
-          driverConfigLoaderBuilder.withDuration(
-              DefaultDriverOption.CONNECTION_CONNECT_TIMEOUT, dataSource.connectTimeout());
-    }
-    if (dataSource.requestTimeout() != null) {
-      driverConfigLoaderBuilder =
-          driverConfigLoaderBuilder.withDuration(
-              DefaultDriverOption.REQUEST_TIMEOUT, dataSource.requestTimeout());
-    }
-    return driverConfigLoaderBuilder.build();
+    return dataSource.driverConfigLoader();
   }
 
   public Session getSession() {

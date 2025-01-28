@@ -275,6 +275,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
                 + "  \"Rating\" real,\n"
+                + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
 

@@ -22,15 +22,18 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mockStatic;
 
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
-import com.google.common.collect.ImmutableMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.common.io.Resources;
 import com.typesafe.config.ConfigException;
 import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.AbstractMap.SimpleEntry;
+import java.time.Duration;
 import java.util.List;
+import java.util.Map.Entry;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -124,39 +127,46 @@ public class CassandraDriverConfigLoaderTest {
     OptionsMap optionsMap = CassandraDriverConfigLoader.getOptionsMapFromFile(testGcsPath);
     DriverConfigLoader driverConfigLoaderFromOptionsMap =
         CassandraDriverConfigLoader.fromOptionsMap(optionsMap);
-    ImmutableMap<String, ImmutableMap<String, String>> directLoadMap =
-        driverConfigMap(driverConfigLoaderDirect);
-    ImmutableMap<String, ImmutableMap<String, String>> fromOptionsMap =
-        driverConfigMap(driverConfigLoaderFromOptionsMap);
-
-    assertThat(directLoadMap).isEqualTo(fromOptionsMap);
-
+    assertThat(driverConfigLoaderDirect.getInitialConfig().getProfiles().keySet())
+        .isEqualTo(driverConfigLoaderFromOptionsMap.getInitialConfig().getProfiles().keySet());
+    for (String profileName : driverConfigLoaderDirect.getInitialConfig().getProfiles().keySet()) {
+      DriverExecutionProfile directProfile =
+          driverConfigLoaderDirect.getInitialConfig().getProfile(profileName);
+      DriverExecutionProfile fromMapProfile =
+          driverConfigLoaderFromOptionsMap.getInitialConfig().getProfile(profileName);
+      assertThat(directProfile.entrySet().stream().map(Entry::getKey).collect(Collectors.toList()))
+          .isEqualTo(
+              fromMapProfile.entrySet().stream().map(Entry::getKey).collect(Collectors.toList()));
+      assertThat(
+              driverConfigLoaderDirect
+                  .getInitialConfig()
+                  .getDefaultProfile()
+                  .getDuration(TypedDriverOption.NETTY_TIMER_TICK_DURATION.getRawOption()))
+          .isEqualTo(Duration.ofMillis(100));
+    }
+    assertThat(
+            driverConfigLoaderFromOptionsMap
+                .getInitialConfig()
+                .getDefaultProfile()
+                .getDuration(TypedDriverOption.NETTY_TIMER_TICK_DURATION.getRawOption()))
+        .isEqualTo(Duration.ofMillis(100));
+    assertThat(
+            driverConfigLoaderFromOptionsMap
+                .getInitialConfig()
+                .getDefaultProfile()
+                .getBytes(TypedDriverOption.PROTOCOL_MAX_FRAME_LENGTH.getRawOption()))
+        .isEqualTo(256000000L);
     assertThrows(
         IllegalArgumentException.class,
         () -> {
           OptionsMap optionsMapToLoad = new OptionsMap();
           CassandraDriverConfigLoader.putInOptionsMap(
-              optionsMapToLoad, "default", new SimpleEntry<>("Unsupported", "Unsupported"));
+              optionsMapToLoad,
+              "default",
+              "Unsupported",
+              "Unsupported",
+              driverConfigLoaderDirect.getInitialConfig().getDefaultProfile());
         });
-  }
-
-  private static ImmutableMap<String, ImmutableMap<String, String>> driverConfigMap(
-      DriverConfigLoader driverConfigLoaderDirect) {
-    ImmutableMap.Builder<String, ImmutableMap<String, String>> driverConfigMap =
-        ImmutableMap.builder();
-    driverConfigLoaderDirect
-        .getInitialConfig()
-        .getProfiles()
-        .forEach(
-            (profile, options) -> {
-              ImmutableMap.Builder<String, String> profileMapBuilder = ImmutableMap.builder();
-              options
-                  .entrySet()
-                  .forEach(
-                      e -> profileMapBuilder.put(e.getKey().toString(), e.getValue().toString()));
-              driverConfigMap.put(profile, profileMapBuilder.build());
-            });
-    return driverConfigMap.build();
   }
 
   @After

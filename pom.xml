@@ -31,13 +31,13 @@
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <java.version>11</java.version>
+    <java.version>17</java.version>
 <!--    <os.detected.classifier>osx-x86_64</os.detected.classifier>-->
     <!-- Plugins -->
     <templates-maven-plugin.version>1.0-SNAPSHOT</templates-maven-plugin.version>
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-    <maven-dependency-plugin.version>3.6.0</maven-dependency-plugin.version>
+    <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
     <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
     <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
@@ -48,8 +48,8 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.61.0</beam.version>
-    <beam-python.version>2.61.0</beam-python.version>
+    <beam.version>2.62.0</beam.version>
+    <beam-python.version>2.62.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
@@ -66,7 +66,7 @@
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.13.1</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.4.0</hadoop.version>
+    <hadoop.version>3.4.1</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
@@ -77,14 +77,14 @@
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>1.7.36</slf4j.version>
-    <snakeyaml.version>2.0</snakeyaml.version>
+    <snakeyaml.version>2.2</snakeyaml.version>
     <snappy.version>1.1.10.4</snappy.version>
     <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.1.5</truth.version>
 
     <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.48.0</gax.version>
+    <gax.version>2.55.0</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -645,6 +645,63 @@
                 ${direct-runner.tests}
                 org.apache.beam.it.testcontainers.TestContainersIntegrationTest
                 org.apache.beam.it.gcp.GoogleCloudIntegrationTest
+              </groups>
+              <reuseForks>true</reuseForks>
+              <parallel>${itParallelismType}</parallel>
+              <threadCount>${itParallelism}</threadCount>
+              <trimStackTrace>false</trimStackTrace>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+    <profile>
+      <id>templatesIntegrationRunnerV2Tests</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <!-- Skip coverage checks, unit tests are skipped -->
+        <jacoco.skip>true</jacoco.skip>
+        <!-- Some modules may yield no integration tests -->
+        <failIfNoTests>false</failIfNoTests>
+        <!-- Parallelism settings. Default is 2, set to consider methods -->
+        <itParallelismType>classesAndMethods</itParallelismType>
+        <itParallelism>2</itParallelism>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>${surefire.version}</version>
+            <configuration combine.self="override">
+              <systemProperties>
+                <property>
+                  <name>beamPythonVersion</name>
+                  <value>${beam-python.version}</value>
+                </property>
+                <property>
+                  <name>beamJavaVersion</name>
+                  <value>${beam.version}</value>
+                </property>
+                <property>
+                  <name>beamMavenRepo</name>
+                  <value>${beam-maven-repo}</value>
+                </property>
+              </systemProperties>
+              <includes>
+                <include>**/*IT.java</include>
+              </includes>
+              <excludes>
+                <exclude>**/KafkaToKafkaIT.java</exclude>
+              </excludes>
+              <excludedGroups>
+                ${direct-runner.tests}
+                com.google.cloud.teleport.metadata.SkipRunnerV2Test
+              </excludedGroups>
+              <groups>
+                ${integration.tests}
               </groups>
               <reuseForks>true</reuseForks>
               <parallel>${itParallelismType}</parallel>
