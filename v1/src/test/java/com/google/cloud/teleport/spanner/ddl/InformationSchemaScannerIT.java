@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -31,6 +35,7 @@ import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.spanner.DdlToAvroSchemaConverter;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.cloud.teleport.spanner.common.Type;
@@ -39,8 +44,11 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import org.apache.avro.Schema;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -1112,6 +1120,8 @@ public class InformationSchemaScannerIT {
 
   @Test
   public void sequences() throws Exception {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
     List<String> statements =
         Arrays.asList(
             "ALTER DATABASE `"
@@ -1159,6 +1169,46 @@ public class InformationSchemaScannerIT {
             + "\n\t`balanceId`                             INT64 NOT NULL,"
             + "\n) PRIMARY KEY (`id` ASC)\n\n";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(6));
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getName(), equalTo("MySequence"));
+    assertThat(
+        avroSchema1.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+    assertThat(avroSchema1.getProp("sequenceOption_1"), equalTo(null));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getName(), equalTo("MySequence2"));
+    assertThat(
+        avroSchema2.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+    assertThat(avroSchema2.getProp("sequenceOption_1"), equalTo("skip_range_max=1000"));
+    assertThat(avroSchema2.getProp("sequenceOption_2"), equalTo("skip_range_min=1"));
+    assertThat(avroSchema2.getProp("sequenceOption_3"), equalTo("start_with_counter=100"));
+    assertThat(avroSchema2.getProp("sequenceOption_4"), equalTo(null));
+
+    Schema avroSchema3 = it.next();
+    assertThat(avroSchema3.getName(), equalTo("MySequence3"));
+    assertThat(avroSchema3.getProp("sequenceOption_0"), equalTo("skip_range_max=1000"));
+    assertThat(avroSchema3.getProp("sequenceOption_1"), equalTo("skip_range_min=1"));
+    assertThat(avroSchema3.getProp("sequenceOption_2"), equalTo("start_with_counter=100"));
+    assertThat(avroSchema3.getProp("sequenceOption_3"), equalTo("sequence_kind=\"default\""));
+    assertThat(avroSchema3.getProp("sequenceOption_4"), equalTo(null));
+
+    Schema avroSchema4 = it.next();
+    assertThat(avroSchema4.getName(), equalTo("MySequence4"));
+    assertThat(avroSchema4.getProp("sequenceOption_0"), equalTo("sequence_kind=\"default\""));
+    assertThat(avroSchema4.getProp("sequenceOption_1"), equalTo(null));
+
+    Schema avroSchema5 = it.next();
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("1"));
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("1000"));
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("100"));
+    assertThat(avroSchema5.getProp("sequenceOption_0"), equalTo(null));
   }
 
   @Test

@@ -495,6 +495,7 @@ public class DdlToAvroSchemaConverter {
       case PG_BYTEA:
       case PROTO:
       case TOKENLIST:
+      case PG_SPANNER_TOKENLIST:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:

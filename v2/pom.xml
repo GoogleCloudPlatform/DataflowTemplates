@@ -418,7 +418,7 @@
                         <configuration>
                             <rules>
                                 <enforceBytecodeVersion>
-                                    <maxJdkVersion>11</maxJdkVersion>
+                                    <maxJdkVersion>17</maxJdkVersion>
                                     <excludes>
                                         <!--
                                           Supplied by the user JDK and compiled with matching

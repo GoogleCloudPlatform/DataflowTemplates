@@ -49,7 +49,7 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
   /** Create an {@link IoWrapper} instance for a list of SourceTables. */
   @Override
   public IoWrapper getIOWrapper(List<String> sourceTables, OnSignal<?> waitOnSignal) {
-    /** TODO(vardhanvthigle@) */
-    return null;
+    /** TODO(vardhanvthigle@) incorporate waitOnSignal */
+    return new CassandraIoWrapper(gcsConfigPath(), sourceTables);
   }
 }

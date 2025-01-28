@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
+import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -210,7 +212,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                   shardId,
                   sourceDbTimezoneOffset,
                   sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer);
+                  spannerToSourceTransformer,
+                  this.source);
           if (isEventFiltered) {
             outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
           }
@@ -232,7 +235,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       } catch (InvalidTransformationException ex) {
         invalidTransformationException.inc();
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (ChangeEventConvertorException ex) {
+      } catch (ChangeEventConvertorException
+          | CodecNotFoundException
+          | QueryExecutionException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (SpannerException
           | IllegalStateException

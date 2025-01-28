@@ -52,14 +52,22 @@ import org.mockito.ArgumentCaptor;
 
 /** Unit tests for SpannerTransactionWriterDoFn class. */
 public class SpannerTransactionWriterDoFnTest {
+
   @Test
   public void testGetTxnTag() {
     String[] args = new String[] {"--jobId=123"};
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     DataflowWorkerHarnessOptions options =
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, null, "", "mysql", true);
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, null, null, "", "mysql", true);
     String result = spannerTransactionWriterDoFn.getTxnTag(options);
     assertEquals(result, "txBy=123");
   }
@@ -118,6 +126,8 @@ public class SpannerTransactionWriterDoFnTest {
     TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
     TransactionContext transactionContext = mock(TransactionContext.class);
     ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
 
     String[] args = new String[] {"--jobId=123"};
     DataflowWorkerHarnessOptions options =
@@ -140,6 +150,10 @@ public class SpannerTransactionWriterDoFnTest {
     when(schema.isEmpty()).thenReturn(true);
     when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
     when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(transactionCallableMock.run(any()))
         .thenAnswer(
@@ -150,7 +164,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
     spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
@@ -202,6 +217,13 @@ public class SpannerTransactionWriterDoFnTest {
     Schema schema = mock(Schema.class);
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
 
+    String instanceId = "test-instance";
+    String databaseId = "test-database";
+    when(spannerConfig.getInstanceId())
+        .thenReturn(ValueProvider.StaticValueProvider.of(instanceId));
+    when(spannerConfig.getDatabaseId())
+        .thenReturn(ValueProvider.StaticValueProvider.of(databaseId));
+
     ObjectNode outputObject = mapper.createObjectNode();
     outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "random");
     outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users1");
@@ -218,7 +240,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(schema.isEmpty()).thenReturn(true);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
     spannerTransactionWriterDoFn.processElement(processContextMock);
