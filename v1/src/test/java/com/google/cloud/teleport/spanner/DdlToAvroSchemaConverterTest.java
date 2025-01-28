@@ -388,7 +388,8 @@ public class DdlToAvroSchemaConverterTest {
             .asc("last_name")
             .end()
             .indexes(
-                ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")",
+                ImmutableList.of(
+                    "CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")",
                     "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\")"
                         + " WITH (sort_order_sharding=TRUE)"))
             .foreignKeys(
@@ -501,7 +502,8 @@ public class DdlToAvroSchemaConverterTest {
 
     assertThat(
         avroSchema.getProp(SPANNER_INDEX + "1"),
-        equalTo("CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\") WITH (sort_order_sharding=TRUE)"));
+        equalTo(
+            "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\") WITH (sort_order_sharding=TRUE)"));
 
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "0"),

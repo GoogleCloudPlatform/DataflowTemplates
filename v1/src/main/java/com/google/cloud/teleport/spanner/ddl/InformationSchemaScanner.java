@@ -362,7 +362,7 @@ public class InformationSchemaScanner {
           dialect == Dialect.GOOGLE_STANDARD_SQL
               ? resultSet.getBoolean(15)
               : resultSet.getString(15).equalsIgnoreCase("YES");
-      boolean isPlacementKey =  resultSet.getBoolean(16);
+      boolean isPlacementKey = resultSet.getBoolean(16);
 
       builder
           .createTable(tableName)
@@ -460,11 +460,13 @@ public class InformationSchemaScanner {
 
       String type = !resultSet.isNull(7) ? resultSet.getString(7) : null;
 
-      ImmutableList<String> searchPartitionBy = !resultSet.isNull(8)
+      ImmutableList<String> searchPartitionBy =
+          !resultSet.isNull(8)
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
               : null;
 
-      ImmutableList<String> searchOrderBy = !resultSet.isNull(9)
+      ImmutableList<String> searchOrderBy =
+          !resultSet.isNull(9)
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(9)).build()
               : null;
 
@@ -536,7 +538,9 @@ public class InformationSchemaScanner {
         pkBuilder.end().endTable();
       } else {
         if (indexType != null && ordering != null) {
-          if ((indexType.equals("SEARCH") && !spannerType.equals("TOKENLIST") && !spannerType.equals("spanner.tokenlist"))
+          if ((indexType.equals("SEARCH")
+                  && !spannerType.equals("TOKENLIST")
+                  && !spannerType.equals("spanner.tokenlist"))
               || (indexType.equals("VECTOR") && !spannerType.startsWith("ARRAY"))) {
             continue;
           }
@@ -557,7 +561,9 @@ public class InformationSchemaScanner {
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
         if (spannerType != null
-            && (spannerType.equals("TOKENLIST") || spannerType.equals("spanner.tokenlist") || spannerType.startsWith("ARRAY"))) {
+            && (spannerType.equals("TOKENLIST")
+                || spannerType.equals("spanner.tokenlist")
+                || spannerType.startsWith("ARRAY"))) {
           indexColumnsBuilder.none();
         } else if (ordering == null) {
           indexColumnsBuilder.storing();

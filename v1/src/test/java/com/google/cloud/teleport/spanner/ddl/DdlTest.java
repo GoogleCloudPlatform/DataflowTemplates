@@ -688,6 +688,7 @@ public class DdlTest {
             .table("Messages")
             .interleaveIn("Users")
             .partitionBy(ImmutableList.of("userid"))
+            .orderBy(ImmutableList.of("orderid"))
             .options(ImmutableList.of("sort_order_sharding=TRUE"));
     builder
         .columns()
@@ -709,7 +710,7 @@ public class DdlTest {
         index.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
-                + " INCLUDE (\"data\") PARTITION BY \"userid\" INTERLEAVE IN \"Users\" WITH (sort_order_sharding=TRUE)"));
+                + " INCLUDE (\"data\") PARTITION BY \"userid\" ORDER BY \"orderid\" INTERLEAVE IN \"Users\" WITH (sort_order_sharding=TRUE)"));
   }
 
   @Test
