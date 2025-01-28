@@ -32,11 +32,11 @@ CREATE TABLE AllDatatypeColumns (
     map_date_to_text_column map<date, text>,
     frozen_map_int_to_bool_column frozen<map<int, boolean>>,
     map_text_to_list_column map<text, frozen<list<text>>>,
-    map_text_to_set_column map<text, frozen<set<int>>>,
+    map_text_to_set_column map<text, frozen<set<text>>>,
     set_of_maps_column set<frozen<map<text, int>>>,
     list_of_sets_column list<frozen<set<text>>>,
     frozen_map_text_to_list_column map<text, frozen<list<text>>>,
-    frozen_map_text_to_set_column map<text, frozen<set<int>>>,
+    frozen_map_text_to_set_column map<text, frozen<set<text>>>,
     frozen_set_of_maps_column set<frozen<map<text, int>>>,
     frozen_list_of_sets_column list<frozen<set<text>>>,
     varint_column varint

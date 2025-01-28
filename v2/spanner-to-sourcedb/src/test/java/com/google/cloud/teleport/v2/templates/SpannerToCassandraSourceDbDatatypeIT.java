@@ -28,7 +28,6 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -62,15 +61,13 @@ import org.junit.runners.model.MultipleFailureException;
 public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbITBase {
 
   private static final String SPANNER_DDL_RESOURCE =
-          "SpannerToCassandraSourceDbDatatypeIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE =
-          "SpannerToCassandraSourceDbDatatypeIT/session.json";
+      "SpannerToCassandraSourceDbDatatypeIT/spanner-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-          "SpannerToCassandraSourceDbDatatypeIT/cassandra-schema.sql";
+      "SpannerToCassandraSourceDbDatatypeIT/cassandra-schema.sql";
 
   private static final String TABLE = "AllDatatypeColumns";
   private static final HashSet<SpannerToCassandraSourceDbDatatypeIT> testInstances =
-          new HashSet<>();
+      new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -96,29 +93,27 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
 
         cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
         gcsResourceManager =
-                GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                        .build();
+            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+                .build();
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
         createAndUploadCassandraConfigToGcs(gcsResourceManager, cassandraResourceManager);
-        gcsResourceManager.uploadArtifact(
-                "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
         subscriptionName =
-                createPubsubResources(
-                        getClass().getSimpleName(),
-                        pubsubResourceManager,
-                        getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+            createPubsubResources(
+                getClass().getSimpleName(),
+                pubsubResourceManager,
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
         jobInfo =
-                launchDataflowJob(
-                        gcsResourceManager,
-                        spannerResourceManager,
-                        spannerMetadataResourceManager,
-                        subscriptionName.toString(),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null);
+            launchDataflowJob(
+                gcsResourceManager,
+                spannerResourceManager,
+                spannerMetadataResourceManager,
+                subscriptionName.toString(),
+                null,
+                null,
+                null,
+                null,
+                null);
       }
     }
   }
@@ -134,16 +129,16 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-            spannerResourceManager,
-            cassandraResourceManager,
-            spannerMetadataResourceManager,
-            gcsResourceManager,
-            pubsubResourceManager);
+        spannerResourceManager,
+        cassandraResourceManager,
+        spannerMetadataResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager);
   }
 
   @Test
   public void spannerToCassandraSourceDataTypeConversionTest()
-          throws InterruptedException, IOException, MultipleFailureException {
+      throws InterruptedException, IOException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     writeRowInSpanner();
     assertRowInCassandraDB();
@@ -162,92 +157,92 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
 
   private void writeRowInSpanner() {
     Mutation mutation =
-            Mutation.newInsertOrUpdateBuilder(TABLE)
-                    .set("varchar_column")
-                    .to("SampleVarchar")
-                    .set("tinyint_column")
-                    .to(127)
-                    .set("text_column")
-                    .to("This is some sample text data for the text column.")
-                    .set("date_column")
-                    .to(Value.date(Date.fromJavaUtilDate(java.sql.Date.valueOf("2025-01-27"))))
-                    .set("smallint_column")
-                    .to(32767)
-                    .set("mediumint_column")
-                    .to(8388607)
-                    .set("int_column")
-                    .to(2147483647)
-                    .set("bigint_column")
-                    .to(9223372036854775807L)
-                    .set("float_column")
-                    .to(3.14159)
-                    .set("double_column")
-                    .to(2.718281828459045)
-                    .set("decimal_column")
-                    .to(new BigDecimal("12345.6789"))
-                    .set("datetime_column")
-                    .to(Value.timestamp(Timestamp.parseTimestamp("2025-01-27T10:30:00Z")))
-                    .set("timestamp_column")
-                    .to(Value.timestamp(Timestamp.parseTimestamp("2025-01-27T10:30:00Z")))
-                    .set("time_column")
-                    .to("12:30:00")
-                    .set("year_column")
-                    .to("2025")
-                    .set("char_column")
-                    .to("CHAR_DATA")
-                    .set("tinytext_column")
-                    .to("Short text for tinytext.")
-                    .set("mediumtext_column")
-                    .to("Longer text data for mediumtext column.")
-                    .set("longtext_column")
-                    .to("Very long text data that exceeds the medium text column length for long text.")
-                    .set("enum_column")
-                    .to("OptionA")
-                    .set("bool_column")
-                    .to(Value.bool(Boolean.TRUE))
-                    .set("other_bool_column")
-                    .to(Value.bool(Boolean.FALSE))
-                    .set("bytes_column")
-                    .to(Value.bytes(ByteArray.copyFrom("SGVsbG8gd29ybGQ=".getBytes())))
-                    .set("list_text_column")
-                    .to(Value.json("[\"apple\", \"banana\", \"cherry\"]"))
-                    .set("list_int_column")
-                    .to(Value.json("[1, 2, 3, 4, 5]"))
-                    .set("frozen_list_bigint_column")
-                    .to(Value.json("[123456789012345, 987654321012345]"))
-                    .set("set_text_column")
-                    .to(Value.json("[\"apple\", \"orange\", \"banana\"]"))
-                    .set("set_date_column")
-                    .to(Value.json("[\"2025-01-27\", \"2025-02-01\"]"))
-                    .set("frozen_set_bool_column")
-                    .to(Value.json("[true, false]"))
-                    .set("map_text_to_int_column")
-                    .to(Value.json("{\"key1\": 10, \"key2\": 20}"))
-                    .set("map_date_to_text_column")
-                    .to(Value.json("{\"2025-01-27\": \"event1\", \"2025-02-01\": \"event2\"}"))
-                    .set("frozen_map_int_to_bool_column")
-                    .to(Value.json("{\"1\": true, \"2\": false}"))
-                    .set("map_text_to_list_column")
-                    .to(Value.json("{\"fruit\": [\"apple\", \"banana\"], \"color\": [\"red\", \"green\"]}"))
-                    .set("map_text_to_set_column")
-                    .to(
-                            Value.json(
-                                    "{\"fruit\": [\"apple\", \"banana\"], \"vegetables\": [\"carrot\", \"spinach\"]}"))
-                    .set("set_of_maps_column")
-                    .to(Value.json("[{\"key1\": 10, \"key2\": 20}, {\"keyA\": 5, \"keyB\": 10}]"))
-                    .set("list_of_sets_column")
-                    .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
-                    .set("frozen_map_text_to_list_column")
-                    .to(Value.json("{\"fruits\": [\"apple\", \"banana\"]}"))
-                    .set("frozen_map_text_to_set_column")
-                    .to(Value.json("{\"vegetables\": [\"carrot\", \"spinach\"]}"))
-                    .set("frozen_set_of_maps_column")
-                    .to(Value.json("[{\"key1\": 10, \"key2\": 20}, {\"keyA\": 5, \"keyB\": 10}]"))
-                    .set("frozen_list_of_sets_column")
-                    .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
-                    .set("varint_column")
-                    .to(Value.bytes(ByteArray.copyFrom("b3f5ed4f".getBytes())))
-                    .build();
+        Mutation.newInsertOrUpdateBuilder(TABLE)
+            .set("varchar_column")
+            .to("SampleVarchar")
+            .set("tinyint_column")
+            .to(127)
+            .set("text_column")
+            .to("This is some sample text data for the text column.")
+            .set("date_column")
+            .to(Value.date(Date.fromJavaUtilDate(java.sql.Date.valueOf("2025-01-27"))))
+            .set("smallint_column")
+            .to(32767)
+            .set("mediumint_column")
+            .to(8388607)
+            .set("int_column")
+            .to(2147483647)
+            .set("bigint_column")
+            .to(9223372036854775807L)
+            .set("float_column")
+            .to(3.14159)
+            .set("double_column")
+            .to(2.718281828459045)
+            .set("decimal_column")
+            .to(new BigDecimal("12345.6789"))
+            .set("datetime_column")
+            .to(Value.timestamp(Timestamp.parseTimestamp("2025-01-27T10:30:00Z")))
+            .set("timestamp_column")
+            .to(Value.timestamp(Timestamp.parseTimestamp("2025-01-27T10:30:00Z")))
+            .set("time_column")
+            .to("12:30:00")
+            .set("year_column")
+            .to("2025")
+            .set("char_column")
+            .to("CHAR_DATA")
+            .set("tinytext_column")
+            .to("Short text for tinytext.")
+            .set("mediumtext_column")
+            .to("Longer text data for mediumtext column.")
+            .set("longtext_column")
+            .to("Very long text data that exceeds the medium text column length for long text.")
+            .set("enum_column")
+            .to("OptionA")
+            .set("bool_column")
+            .to(Value.bool(Boolean.TRUE))
+            .set("other_bool_column")
+            .to(Value.bool(Boolean.FALSE))
+            .set("bytes_column")
+            .to(Value.bytes(ByteArray.copyFrom("SGVsbG8gd29ybGQ=".getBytes())))
+            .set("list_text_column")
+            .to(Value.json("[\"apple\", \"banana\", \"cherry\"]"))
+            .set("list_int_column")
+            .to(Value.json("[1, 2, 3, 4, 5]"))
+            .set("frozen_list_bigint_column")
+            .to(Value.json("[123456789012345, 987654321012345]"))
+            .set("set_text_column")
+            .to(Value.json("[\"apple\", \"orange\", \"banana\"]"))
+            .set("set_date_column")
+            .to(Value.json("[\"2025-01-27\", \"2025-02-01\"]"))
+            .set("frozen_set_bool_column")
+            .to(Value.json("[true, false]"))
+            .set("map_text_to_int_column")
+            .to(Value.json("{\"key1\": 10, \"key2\": 20}"))
+            .set("map_date_to_text_column")
+            .to(Value.json("{\"2025-01-27\": \"event1\", \"2025-02-01\": \"event2\"}"))
+            .set("frozen_map_int_to_bool_column")
+            .to(Value.json("{\"1\": true, \"2\": false}"))
+            .set("map_text_to_list_column")
+            .to(Value.json("{\"fruit\": [\"apple\", \"banana\"], \"color\": [\"red\", \"green\"]}"))
+            .set("map_text_to_set_column")
+            .to(
+                Value.json(
+                    "{\"fruit\": [\"apple\", \"banana\"], \"vegetables\": [\"carrot\", \"spinach\"]}"))
+            .set("set_of_maps_column")
+            .to(Value.json("[{\"key1\": 10, \"key2\": 20}, {\"keyA\": 5, \"keyB\": 10}]"))
+            .set("list_of_sets_column")
+            .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
+            .set("frozen_map_text_to_list_column")
+            .to(Value.json("{\"fruits\": [\"apple\", \"banana\"]}"))
+            .set("frozen_map_text_to_set_column")
+            .to(Value.json("{\"vegetables\": [\"carrot\", \"spinach\"]}"))
+            .set("frozen_set_of_maps_column")
+            .to(Value.json("[{\"key1\": 10, \"key2\": 20}, {\"keyA\": 5, \"keyB\": 10}]"))
+            .set("frozen_list_of_sets_column")
+            .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
+            .set("varint_column")
+            .to(Value.bytes(ByteArray.copyFrom("b3f5ed4f".getBytes())))
+            .build();
 
     spannerResourceManager.write(mutation);
   }
@@ -267,9 +262,9 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
 
   private void assertRowInCassandraDB() throws InterruptedException, MultipleFailureException {
     PipelineOperator.Result result =
-            pipelineOperator()
-                    .waitForCondition(
-                            createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount() == 1);
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount() == 1);
     assertThatResult(result).meetsConditions();
     Iterable<Row> rows;
     try {
@@ -285,141 +280,141 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
 
     assertThat(rows).hasSize(1);
     assertAll(
-            // Basic Data Types
-            () -> assertThat(row.getString("varchar_column")).isEqualTo("SampleVarchar"),
-            () -> assertThat(row.getLong("bigint_column")).isEqualTo(9223372036854775807L),
-            () -> assertThat(row.getBoolean("bool_column")).isTrue(),
-            () -> {
-              String hexString = "5347567362473867643239796247513d";
-              byte[] byteArray;
-              try {
-                byteArray = Hex.decodeHex(hexString);
-              } catch (DecoderException e) {
-                byteArray = new byte[0];
-              }
-              ByteBuffer expectedBuffer = ByteBuffer.wrap(byteArray);
-              assertThat(row.getByteBuffer("bytes_column")).isEqualTo(expectedBuffer);
-            },
-            () -> assertThat(row.getString("char_column")).isEqualTo("CHAR_DATA"),
-            () ->
-                    assertThat(row.getLocalDate("date_column"))
-                            .isEqualTo(java.time.LocalDate.of(2025, 1, 27)),
-            () ->
-                    assertThat(row.getInstant("datetime_column"))
-                            .isEqualTo(java.time.Instant.parse("2025-01-27T10:30:00.000Z")),
-            () ->
-                    assertThat(row.getBigDecimal("decimal_column")).isEqualTo(new BigDecimal("12345.6789")),
-            () -> assertThat(row.getDouble("double_column")).isEqualTo(2.718281828459045),
-            () -> assertThat(row.getFloat("float_column")).isEqualTo(3.14159f),
+        // Basic Data Types
+        () -> assertThat(row.getString("varchar_column")).isEqualTo("SampleVarchar"),
+        () -> assertThat(row.getLong("bigint_column")).isEqualTo(9223372036854775807L),
+        () -> assertThat(row.getBoolean("bool_column")).isTrue(),
+        () -> {
+          String hexString = "5347567362473867643239796247513d";
+          byte[] byteArray;
+          try {
+            byteArray = Hex.decodeHex(hexString);
+          } catch (DecoderException e) {
+            byteArray = new byte[0];
+          }
+          ByteBuffer expectedBuffer = ByteBuffer.wrap(byteArray);
+          assertThat(row.getByteBuffer("bytes_column")).isEqualTo(expectedBuffer);
+        },
+        () -> assertThat(row.getString("char_column")).isEqualTo("CHAR_DATA"),
+        () ->
+            assertThat(row.getLocalDate("date_column"))
+                .isEqualTo(java.time.LocalDate.of(2025, 1, 27)),
+        () ->
+            assertThat(row.getInstant("datetime_column"))
+                .isEqualTo(java.time.Instant.parse("2025-01-27T10:30:00.000Z")),
+        () ->
+            assertThat(row.getBigDecimal("decimal_column")).isEqualTo(new BigDecimal("12345.6789")),
+        () -> assertThat(row.getDouble("double_column")).isEqualTo(2.718281828459045),
+        () -> assertThat(row.getFloat("float_column")).isEqualTo(3.14159f),
 
-            // Collections (frozen, list, set, map)
-            () ->
-                    assertThat(row.getList("frozen_list_bigint_column", Long.class))
-                            .isEqualTo(Arrays.asList(123456789012345L, 987654321012345L)),
-            () ->
-                    assertThat(row.getSet("frozen_set_bool_column", Boolean.class))
-                            .isEqualTo(new HashSet<>(Arrays.asList(false, true))),
-            () ->
-                    assertThat(row.getMap("frozen_map_int_to_bool_column", Integer.class, Boolean.class))
-                            .isEqualTo(Map.of(1, true, 2, false)),
-            () ->
-                    assertThat(row.getMap("frozen_map_text_to_list_column", String.class, List.class))
-                            .isEqualTo(Map.of("fruits", Arrays.asList("apple", "banana"))),
-            () ->
-                    assertThat(row.getMap("frozen_map_text_to_set_column", String.class, Set.class))
-                            .isEqualTo(Map.of("vegetables", new HashSet<>(Arrays.asList("carrot", "spinach")))),
-            () ->
-                    assertThat(row.getSet("frozen_set_of_maps_column", Map.class))
-                            .isEqualTo(
-                                    new HashSet<>(
-                                            Arrays.asList(
-                                                    Map.of("key1", 10, "key2", 20), Map.of("keyA", 5, "keyB", 10)))),
+        // Collections (frozen, list, set, map)
+        () ->
+            assertThat(row.getList("frozen_list_bigint_column", Long.class))
+                .isEqualTo(Arrays.asList(123456789012345L, 987654321012345L)),
+        () ->
+            assertThat(row.getSet("frozen_set_bool_column", Boolean.class))
+                .isEqualTo(new HashSet<>(Arrays.asList(false, true))),
+        () ->
+            assertThat(row.getMap("frozen_map_int_to_bool_column", Integer.class, Boolean.class))
+                .isEqualTo(Map.of(1, true, 2, false)),
+        () ->
+            assertThat(row.getMap("frozen_map_text_to_list_column", String.class, List.class))
+                .isEqualTo(Map.of("fruits", Arrays.asList("apple", "banana"))),
+        () ->
+            assertThat(row.getMap("frozen_map_text_to_set_column", String.class, Set.class))
+                .isEqualTo(Map.of("vegetables", new HashSet<>(Arrays.asList("carrot", "spinach")))),
+        () ->
+            assertThat(row.getSet("frozen_set_of_maps_column", Map.class))
+                .isEqualTo(
+                    new HashSet<>(
+                        Arrays.asList(
+                            Map.of("key1", 10, "key2", 20), Map.of("keyA", 5, "keyB", 10)))),
 
-            // Lists and Sets
-            () ->
-                    assertThat(row.getList("list_int_column", Integer.class))
-                            .isEqualTo(Arrays.asList(1, 2, 3, 4, 5)),
-            () ->
-                    assertThat(row.getList("list_text_column", String.class))
-                            .isEqualTo(Arrays.asList("apple", "banana", "cherry")),
-            () ->
-                    assertThat(row.getList("list_of_sets_column", Set.class))
-                            .isEqualTo(
-                                    Arrays.asList(
-                                            new HashSet<>(Arrays.asList("apple", "banana")),
-                                            new HashSet<>(Arrays.asList("carrot", "spinach")))),
+        // Lists and Sets
+        () ->
+            assertThat(row.getList("list_int_column", Integer.class))
+                .isEqualTo(Arrays.asList(1, 2, 3, 4, 5)),
+        () ->
+            assertThat(row.getList("list_text_column", String.class))
+                .isEqualTo(Arrays.asList("apple", "banana", "cherry")),
+        () ->
+            assertThat(row.getList("list_of_sets_column", Set.class))
+                .isEqualTo(
+                    Arrays.asList(
+                        new HashSet<>(Arrays.asList("apple", "banana")),
+                        new HashSet<>(Arrays.asList("carrot", "spinach")))),
 
-            // Maps
-            () ->
-                    assertThat(
-                            row.getMap("map_date_to_text_column", java.time.LocalDate.class, String.class))
-                            .isEqualTo(
-                                    Map.of(
-                                            java.time.LocalDate.parse("2025-01-27"), "event1",
-                                            java.time.LocalDate.parse("2025-02-01"), "event2")),
-            () ->
-                    assertThat(row.getMap("map_text_to_int_column", String.class, Integer.class))
-                            .isEqualTo(Map.of("key1", 10, "key2", 20)),
-            () ->
-                    assertThat(row.getMap("map_text_to_list_column", String.class, List.class))
-                            .isEqualTo(
-                                    Map.of(
-                                            "color",
-                                            Arrays.asList("red", "green"),
-                                            "fruit",
-                                            Arrays.asList("apple", "banana"))),
-            () ->
-                    assertThat(row.getMap("map_text_to_set_column", String.class, Set.class))
-                            .isEqualTo(
-                                    Map.of(
-                                            "fruit",
-                                            new HashSet<>(Arrays.asList("apple", "banana")),
-                                            "vegetables",
-                                            new HashSet<>(Arrays.asList("carrot", "spinach")))),
+        // Maps
+        () ->
+            assertThat(
+                    row.getMap("map_date_to_text_column", java.time.LocalDate.class, String.class))
+                .isEqualTo(
+                    Map.of(
+                        java.time.LocalDate.parse("2025-01-27"), "event1",
+                        java.time.LocalDate.parse("2025-02-01"), "event2")),
+        () ->
+            assertThat(row.getMap("map_text_to_int_column", String.class, Integer.class))
+                .isEqualTo(Map.of("key1", 10, "key2", 20)),
+        () ->
+            assertThat(row.getMap("map_text_to_list_column", String.class, List.class))
+                .isEqualTo(
+                    Map.of(
+                        "color",
+                        Arrays.asList("red", "green"),
+                        "fruit",
+                        Arrays.asList("apple", "banana"))),
+        () ->
+            assertThat(row.getMap("map_text_to_set_column", String.class, Set.class))
+                .isEqualTo(
+                    Map.of(
+                        "fruit",
+                        new HashSet<>(Arrays.asList("apple", "banana")),
+                        "vegetables",
+                        new HashSet<>(Arrays.asList("carrot", "spinach")))),
 
-            // Sets
-            () ->
-                    assertThat(row.getSet("set_date_column", java.time.LocalDate.class))
-                            .isEqualTo(
-                                    new HashSet<>(
-                                            Arrays.asList(
-                                                    java.time.LocalDate.parse("2025-01-27"),
-                                                    java.time.LocalDate.parse("2025-02-01")))),
-            () ->
-                    assertThat(row.getSet("set_text_column", String.class))
-                            .isEqualTo(new HashSet<>(Arrays.asList("apple", "orange", "banana"))),
-            () ->
-                    assertThat(row.getSet("set_of_maps_column", Map.class))
-                            .isEqualTo(
-                                    new HashSet<>(
-                                            Arrays.asList(
-                                                    Map.of("key1", 10, "key2", 20), Map.of("keyA", 5, "keyB", 10)))),
+        // Sets
+        () ->
+            assertThat(row.getSet("set_date_column", java.time.LocalDate.class))
+                .isEqualTo(
+                    new HashSet<>(
+                        Arrays.asList(
+                            java.time.LocalDate.parse("2025-01-27"),
+                            java.time.LocalDate.parse("2025-02-01")))),
+        () ->
+            assertThat(row.getSet("set_text_column", String.class))
+                .isEqualTo(new HashSet<>(Arrays.asList("apple", "orange", "banana"))),
+        () ->
+            assertThat(row.getSet("set_of_maps_column", Map.class))
+                .isEqualTo(
+                    new HashSet<>(
+                        Arrays.asList(
+                            Map.of("key1", 10, "key2", 20), Map.of("keyA", 5, "keyB", 10)))),
 
-            // Other Basic Types
-            () -> assertThat(row.getShort("smallint_column")).isEqualTo((short) 32767),
-            () -> assertThat(row.getInt("mediumint_column")).isEqualTo(8388607),
-            () -> assertThat(row.getInt("int_column")).isEqualTo(2147483647),
-            () -> assertThat(row.getString("enum_column")).isEqualTo("OptionA"),
-            () -> assertThat(row.getString("year_column")).isEqualTo("2025"),
-            () ->
-                    assertThat(row.getString("longtext_column"))
-                            .isEqualTo(
-                                    "Very long text data that exceeds the medium text column length for long text."),
-            () -> assertThat(row.getString("tinytext_column")).isEqualTo("Short text for tinytext."),
-            () ->
-                    assertThat(row.getString("mediumtext_column"))
-                            .isEqualTo("Longer text data for mediumtext column."),
-            () ->
-                    assertThat(row.getString("text_column"))
-                            .isEqualTo("This is some sample text data for the text column."),
-            () ->
-                    assertThat(row.getLocalTime("time_column"))
-                            .isEqualTo(java.time.LocalTime.parse("12:30:00.000000000")),
-            () ->
-                    assertThat(row.getInstant("timestamp_column"))
-                            .isEqualTo(java.time.Instant.parse("2025-01-27T10:30:00.000Z")),
-            () ->
-                    assertThat(row.getBigInteger("varint_column"))
-                            .isEqualTo(java.math.BigInteger.valueOf(7076111819049546854L)));
+        // Other Basic Types
+        () -> assertThat(row.getShort("smallint_column")).isEqualTo((short) 32767),
+        () -> assertThat(row.getInt("mediumint_column")).isEqualTo(8388607),
+        () -> assertThat(row.getInt("int_column")).isEqualTo(2147483647),
+        () -> assertThat(row.getString("enum_column")).isEqualTo("OptionA"),
+        () -> assertThat(row.getString("year_column")).isEqualTo("2025"),
+        () ->
+            assertThat(row.getString("longtext_column"))
+                .isEqualTo(
+                    "Very long text data that exceeds the medium text column length for long text."),
+        () -> assertThat(row.getString("tinytext_column")).isEqualTo("Short text for tinytext."),
+        () ->
+            assertThat(row.getString("mediumtext_column"))
+                .isEqualTo("Longer text data for mediumtext column."),
+        () ->
+            assertThat(row.getString("text_column"))
+                .isEqualTo("This is some sample text data for the text column."),
+        () ->
+            assertThat(row.getLocalTime("time_column"))
+                .isEqualTo(java.time.LocalTime.parse("12:30:00.000000000")),
+        () ->
+            assertThat(row.getInstant("timestamp_column"))
+                .isEqualTo(java.time.Instant.parse("2025-01-27T10:30:00.000Z")),
+        () ->
+            assertThat(row.getBigInteger("varint_column"))
+                .isEqualTo(java.math.BigInteger.valueOf(7076111819049546854L)));
   }
 }
