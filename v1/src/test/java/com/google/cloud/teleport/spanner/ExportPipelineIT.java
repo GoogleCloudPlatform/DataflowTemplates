@@ -281,8 +281,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     String createSearchIndexStatement =
         String.format(
             "CREATE SEARCH INDEX \"%s_SearchIndex\"\n"
-                + " ON \"%s_Singers\"(\"NameTokens\")\n"
-                + " WITH (sort_order_sharding=TRUE)",
+                + " ON \"%s_Singers\"(\"NameTokens\") ORDER BY \"Id\" WHERE \"Id\" IS NOT NULL\n"
+                + " WITH (sort_order_sharding=TRUE, disable_automatic_uid_column=TRUE)",
             testName, testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);

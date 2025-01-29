@@ -663,13 +663,20 @@ public class InformationSchemaScanner {
   Statement listIndexOptionsSQL() {
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
-      case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
                 + " t.option_name, t.option_type, t.option_value"
                 + " FROM information_schema.index_options AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.index_name, t.option_name");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
+                + " t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.index_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys', 'pg_catalog') "
                 + " ORDER BY t.table_name, t.index_name, t.option_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
