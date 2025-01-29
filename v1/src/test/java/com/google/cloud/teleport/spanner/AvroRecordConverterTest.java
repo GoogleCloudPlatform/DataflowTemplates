@@ -71,6 +71,7 @@ public class AvroRecordConverterTest {
   private static final String TIMESTAMP_MILLIS_LOGICAL_TYPE = "timestamp-millis";
   private static final String TIMESTAMP_MICROS_LOGICAL_TYPE = "timestamp-micros";
   private static final String DATE_LOGICAL_TYPE = "date";
+  private static final String UUID = "uuid";
 
   @Test
   public void integerArray() {
@@ -604,7 +605,7 @@ public class AvroRecordConverterTest {
             new Utf8("9a31411b-caca-4ff1-86e9-39fbd2bc3f39"),
             new Utf8("11111111-1111-1111-1111-111111111111"));
     GenericRecord avroRecord =
-        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING))
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
             .set("id", 0L)
             .set(colName, uuidArray)
             .build();
@@ -633,7 +634,7 @@ public class AvroRecordConverterTest {
             new Utf8("9a31411b-caca-4ff1-86e9-39fbd2bc3f39"),
             new Utf8("11111111-1111-1111-1111-111111111111"));
     GenericRecord avroRecord =
-        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING))
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
             .set("id", 0L)
             .set(colName, uuidArray)
             .build();
@@ -653,7 +654,9 @@ public class AvroRecordConverterTest {
     Utf8 uuid = new Utf8("11111111-1111-1111-1111-111111111111");
 
     GenericRecord avroRecord =
-        new GenericRecordBuilder(createAvroSchema(colName, STRING)).set(colName, uuid).build();
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, uuid)
+            .build();
     final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
     Mutation mutation = avroRecordConverter.apply(avroRecord);
     assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
@@ -667,7 +670,9 @@ public class AvroRecordConverterTest {
     Utf8 uuid = new Utf8("11111111-1111-1111-1111-111111111111");
 
     GenericRecord avroRecord =
-        new GenericRecordBuilder(createAvroSchema(colName, STRING)).set(colName, uuid).build();
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, uuid)
+            .build();
     final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
     Mutation mutation = avroRecordConverter.apply(avroRecord);
     assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());

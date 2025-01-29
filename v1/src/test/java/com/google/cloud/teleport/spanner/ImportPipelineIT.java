@@ -389,7 +389,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             String.format(
                 "SELECT CAST(Key as TEXT) as Key, CAST(Val1 as TEXT) AS Val1, Val2, %s FROM"
                     + " UuidTable",
-                "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM"
+                "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS TEXT) FROM"
                     + " UNNEST(Val3) AS e) END AS Val3"));
     assertThat(uuidRecords).hasSize(4);
     assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());

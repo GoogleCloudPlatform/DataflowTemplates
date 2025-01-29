@@ -293,7 +293,7 @@ public class DdlToAvroSchemaConverterTest {
 
     Schema.Field field10 = fields.get(10);
     assertThat(field10.name(), equalTo("uuid_column"));
-    assertThat(field10.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field10.schema(), equalTo(nullableUuid()));
     assertThat(field10.getProp(SQL_TYPE), equalTo("UUID"));
     assertThat(field10.getProp(NOT_NULL), equalTo(null));
     assertThat(field10.getProp(GENERATION_EXPRESSION), equalTo(null));
@@ -489,7 +489,7 @@ public class DdlToAvroSchemaConverterTest {
 
     Schema.Field field7 = fields.get(7);
     assertThat(field7.name(), equalTo("uuid_column"));
-    assertThat(field7.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field7.schema(), equalTo(nullableUuid()));
     assertThat(field7.getProp(SQL_TYPE), equalTo("uuid"));
     assertThat(field7.getProp(NOT_NULL), equalTo(null));
     assertThat(field7.getProp(GENERATION_EXPRESSION), equalTo(null));
@@ -906,12 +906,12 @@ public class DdlToAvroSchemaConverterTest {
 
     Schema.Field field22 = fields.get(22);
     assertThat(field22.name(), equalTo("uuid_col"));
-    assertThat(field22.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field22.schema(), equalTo(nullableUuid()));
     assertThat(field22.getProp(SQL_TYPE), equalTo("UUID"));
 
     Schema.Field field23 = fields.get(23);
     assertThat(field23.name(), equalTo("uuid_array_col"));
-    assertThat(field23.schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(field23.schema(), equalTo(nullableUuidArray()));
     assertThat(field23.getProp(SQL_TYPE), equalTo("ARRAY<UUID>"));
 
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`bool_field` ASC"));
@@ -1091,12 +1091,12 @@ public class DdlToAvroSchemaConverterTest {
 
     Schema.Field field19 = fields.get(19);
     assertThat(field19.name(), equalTo("uuid_col"));
-    assertThat(field19.schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(field19.schema(), equalTo(nullableUuid()));
     assertThat(field19.getProp(SQL_TYPE), equalTo("uuid"));
 
     Schema.Field field20 = fields.get(20);
     assertThat(field20.name(), equalTo("uuid_array_col"));
-    assertThat(field20.schema(), equalTo(nullableArray(Schema.Type.STRING)));
+    assertThat(field20.schema(), equalTo(nullableUuidArray()));
     assertThat(field20.getProp(SQL_TYPE), equalTo("uuid[]"));
 
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"bool_field\" ASC"));
@@ -1930,6 +1930,12 @@ public class DdlToAvroSchemaConverterTest {
     return Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(s));
   }
 
+  private Schema nullableUuid() {
+    return Schema.createUnion(
+        Schema.create(Schema.Type.NULL),
+        LogicalTypes.uuid().addToSchema(Schema.create(Schema.Type.STRING)));
+  }
+
   private Schema nullableNumericUnion() {
     return Schema.createUnion(
         Schema.create(Schema.Type.NULL),
@@ -1947,6 +1953,15 @@ public class DdlToAvroSchemaConverterTest {
     return Schema.createUnion(
         Schema.create(Schema.Type.NULL),
         Schema.createArray(Schema.createUnion(Schema.create(Schema.Type.NULL), Schema.create(s))));
+  }
+
+  private Schema nullableUuidArray() {
+    return Schema.createUnion(
+        Schema.create(Schema.Type.NULL),
+        Schema.createArray(
+            Schema.createUnion(
+                Schema.create(Schema.Type.NULL),
+                LogicalTypes.uuid().addToSchema(Schema.create(Schema.Type.STRING)))));
   }
 
   private Schema nullableNumericArray() {
