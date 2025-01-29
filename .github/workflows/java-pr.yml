@@ -90,101 +90,101 @@ jobs:
         run: ./cicd/run-build
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
-#  java_unit_tests:
-#    name: Unit Tests
-#    needs: [java_build]
-#    timeout-minutes: 60
-#    runs-on: [self-hosted, it]
-#    steps:
-#      - name: Checkout Code
-#        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-#      - name: Setup Environment
-#        id: setup-env
-#        uses: ./.github/actions/setup-env
-#      - name: Run Unit Tests
-#        run: ./cicd/run-unit-tests
-#      - name: Upload Unit Tests Report
-#        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-#        if: always() # always run even if the previous step fails
-#        with:
-#          name: surefire-test-results
-#          path: '**/surefire-reports/TEST-*.xml'
-#          retention-days: 1
-#      - name: Upload coverage reports to Codecov
-#        uses: codecov/codecov-action@v4.0.1
-#        with:
-#          token: ${{ secrets.CODECOV_TOKEN }}
-#          slug: GoogleCloudPlatform/DataflowTemplates
-#          files: 'target/site/jacoco-aggregate/jacoco.xml'
-#          # Temp fix for https://github.com/codecov/codecov-action/issues/1487
-#          version: v0.6.0
-#      - name: Cleanup Java Environment
-#        uses: ./.github/actions/cleanup-java-env
-#        if: always()
-#  java_integration_smoke_tests_templates:
-#    name: Dataflow Templates Integration Smoke Tests
-#    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
-#    timeout-minutes: 60
-#    # Run on any runner that matches all the specified runs-on values.
-#    runs-on: [self-hosted, it]
-#    steps:
-#      - name: Checkout Code
-#        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-#      - name: Setup Environment
-#        id: setup-env
-#        uses: ./.github/actions/setup-env
-#      - name: Run Integration Smoke Tests
-#        run: |
-#          ./cicd/run-it-smoke-tests \
-#          --modules-to-build="DEFAULT" \
-#          --it-region="us-central1" \
-#          --it-project="cloud-teleport-testing" \
-#          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-#          --it-private-connectivity="datastream-private-connect-us-central1"
-#      - name: Upload Smoke Tests Report
-#        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-#        if: always() # always run even if the previous step fails
-#        with:
-#          name: surefire-test-results
-#          path: '**/surefire-reports/TEST-*.xml'
-#          retention-days: 1
-#      - name: Cleanup Java Environment
-#        uses: ./.github/actions/cleanup-java-env
-#        if: always()
-#  java_integration_tests_templates:
-#    name: Dataflow Templates Integration Tests
-#    needs: [java_integration_smoke_tests_templates]
-#    timeout-minutes: 240
-#    # Run on any runner that matches all the specified runs-on values.
-#    runs-on: [self-hosted, it]
-#    steps:
-#      - name: Checkout Code
-#        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-#      - name: Setup Environment
-#        id: setup-env
-#        uses: ./.github/actions/setup-env
-#      - name: Run Integration Tests
-#        run: |
-#          ./cicd/run-it-tests \
-#          --modules-to-build="DEFAULT" \
-#          --it-region="us-central1" \
-#          --it-project="cloud-teleport-testing" \
-#          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-#          --it-private-connectivity="datastream-private-connect-us-central1"
-#      - name: Upload Integration Tests Report
-#        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
-#        if: always() # always run even if the previous step fails
-#        with:
-#          name: surefire-test-results
-#          path: '**/surefire-reports/TEST-*.xml'
-#          retention-days: 1
-#      - name: Cleanup Java Environment
-#        uses: ./.github/actions/cleanup-java-env
-#        if: always()
+  java_unit_tests:
+    name: Unit Tests
+    needs: [java_build]
+    timeout-minutes: 60
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Unit Tests
+        run: ./cicd/run-unit-tests
+      - name: Upload Unit Tests Report
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: GoogleCloudPlatform/DataflowTemplates
+          files: 'target/site/jacoco-aggregate/jacoco.xml'
+          # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+          version: v0.6.0
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()
+  java_integration_smoke_tests_templates:
+    name: Dataflow Templates Integration Smoke Tests
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Smoke Tests
+        run: | 
+          ./cicd/run-it-smoke-tests \
+          --modules-to-build="DEFAULT" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Upload Smoke Tests Report
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()
+  java_integration_tests_templates:
+    name: Dataflow Templates Integration Tests
+    needs: [java_integration_smoke_tests_templates]
+    timeout-minutes: 240
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Tests
+        run: | 
+          ./cicd/run-it-tests \
+          --modules-to-build="DEFAULT" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Upload Integration Tests Report
+        uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()
   java_load_tests_templates:
     if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
-    needs: [spotless_check, checkstyle_check, java_build]
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, java_integration_tests_templates]
     timeout-minutes: 600
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, perf]
