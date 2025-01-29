@@ -341,7 +341,7 @@ public class CassandraTypeHandler {
             () -> {
               try {
                 return convertBinaryEncodedStringToByteArray(hexEncodedString);
-              } catch (IllegalArgumentException e) {
+              } catch (Exception e) {
                 return parseBlobType(hexEncodedString);
               }
             });
