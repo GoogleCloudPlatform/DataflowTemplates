@@ -141,23 +141,21 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
 
   private void dropSchema(Neo4jCapabilities capabilities) {
     try (var session = getSession()) {
-      if (capabilities.hasConstraints()) {
-        LOG.info("Dropping constraints");
-        var constraints =
-            session
-                .run(
-                    "SHOW CONSTRAINTS YIELD name",
-                    Map.of(),
-                    databaseResetMetadata("show-constraints"))
-                .list(r -> r.get(0).asString());
-        for (var constraint : constraints) {
-          LOG.info("Dropping constraint {}", constraint);
+      LOG.info("Dropping constraints");
+      var constraints =
+          session
+              .run(
+                  "SHOW CONSTRAINTS YIELD name",
+                  Map.of(),
+                  databaseResetMetadata("show-constraints"))
+              .list(r -> r.get(0).asString());
+      for (var constraint : constraints) {
+        LOG.info("Dropping constraint {}", constraint);
 
-          runAutocommit(
-              String.format("DROP CONSTRAINT %s", CypherPatterns.sanitize(constraint)),
-              Map.of(),
-              databaseResetMetadata("drop-constraint"));
-        }
+        runAutocommit(
+            String.format("DROP CONSTRAINT %s", CypherPatterns.sanitize(constraint)),
+            Map.of(),
+            databaseResetMetadata("drop-constraint"));
       }
 
       LOG.info("Dropping indexes");

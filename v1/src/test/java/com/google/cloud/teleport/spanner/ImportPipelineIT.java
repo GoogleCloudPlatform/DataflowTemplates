@@ -332,6 +332,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             + "  \"Id\" bigint,\n"
             + "  \"FirstName\" character varying(256),\n"
             + "  \"LastName\" character varying(256),\n"
+            + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
             + "PRIMARY KEY(\"Id\"))";
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
 

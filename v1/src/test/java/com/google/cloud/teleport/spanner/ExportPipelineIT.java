@@ -286,6 +286,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"Rating\" real,\n"
                 + "  \"UuidCol\" uuid,\n"
                 + "  \"UuidArrayCol\" uuid[],\n"
+                + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
 

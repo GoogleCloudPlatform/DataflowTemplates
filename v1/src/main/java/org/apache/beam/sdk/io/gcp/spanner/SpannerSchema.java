@@ -291,6 +291,9 @@ abstract class SpannerSchema implements Serializable {
           if ("UUID".equals(spannerType)) {
             return Type.string();
           }
+          if ("SPANNER.TOKENLIST".equals(spannerType)) {
+            return Type.bytes();
+          }
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         default:
           throw new IllegalArgumentException("Unrecognized dialect: " + dialect.name());

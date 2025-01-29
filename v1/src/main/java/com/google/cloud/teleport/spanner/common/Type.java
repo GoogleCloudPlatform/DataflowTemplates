@@ -88,6 +88,8 @@ public final class Type implements Serializable {
   private static final Type TYPE_PG_ARRAY_DATE = new Type(Code.PG_ARRAY, TYPE_PG_DATE, null);
   private static final Type TYPE_PG_ARRAY_UUID = new Type(Code.PG_ARRAY, TYPE_PG_UUID, null);
 
+  private static final Type TYPE_PG_SPANNER_TOKENLIST =
+      new Type(Code.PG_SPANNER_TOKENLIST, null, null);
   private static final int AMBIGUOUS_FIELD = -1;
   private static final long serialVersionUID = -3076152125004114582L;
 
@@ -219,6 +221,10 @@ public final class Type implements Serializable {
 
   public static Type pgUuid() {
     return TYPE_PG_UUID;
+  }
+
+  public static Type pgSpannerTokenlist() {
+    return TYPE_PG_SPANNER_TOKENLIST;
   }
 
   /** Returns a descriptor for an array of {@code elementType}. */
@@ -371,6 +377,7 @@ public final class Type implements Serializable {
     PG_DATE("date", Dialect.POSTGRESQL),
     PG_SPANNER_COMMIT_TIMESTAMP("spanner.commit_timestamp", Dialect.POSTGRESQL),
     PG_UUID("uuid", Dialect.POSTGRESQL),
+    PG_SPANNER_TOKENLIST("spanner.tokenlist", Dialect.POSTGRESQL),
     PG_ARRAY("array", Dialect.POSTGRESQL);
 
     private final String name;

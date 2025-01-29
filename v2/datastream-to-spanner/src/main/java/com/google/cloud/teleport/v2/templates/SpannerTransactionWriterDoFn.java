@@ -28,7 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
@@ -81,8 +81,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private static final Logger LOG = LoggerFactory.getLogger(SpannerTransactionWriterDoFn.class);
 
   private final PCollectionView<Ddl> ddlView;
+  private final PCollectionView<Ddl> shadowTableDdlView;
 
   private final SpannerConfig spannerConfig;
+  private final SpannerConfig shadowTableSpannerConfig;
 
   // The prefix for shadow tables.
   private final String shadowTablePrefix;
@@ -95,6 +97,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
+  /* SpannerAccessor for shadow table database must be transient so that its value is not serialized at runtime. */
+  private transient SpannerAccessor shadowTableSpannerAccessor;
 
   // Number of events successfully processed.
   private final Counter successfulEvents =
@@ -172,25 +176,38 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   private transient AtomicBoolean keepWatchdogRunning;
   private transient Thread watchdogThread;
 
+  private final boolean usesSeparateShadowTableDb;
+
   SpannerTransactionWriterDoFn(
       SpannerConfig spannerConfig,
+      SpannerConfig shadowTableSpannerConfig,
       PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
       String shadowTablePrefix,
       String sourceType,
       Boolean isRegularRunMode) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
+    this.shadowTableSpannerConfig = shadowTableSpannerConfig;
     this.ddlView = ddlView;
+    this.shadowTableDdlView = shadowTableDdlView;
     this.shadowTablePrefix =
         (shadowTablePrefix.endsWith("_")) ? shadowTablePrefix : shadowTablePrefix + "_";
     this.sourceType = sourceType;
     this.isRegularRunMode = isRegularRunMode;
+    this.usesSeparateShadowTableDb =
+        !(spannerConfig.getInstanceId().equals(shadowTableSpannerConfig.getInstanceId())
+            && spannerConfig.getDatabaseId().equals(shadowTableSpannerConfig.getDatabaseId()));
   }
 
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
     spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
+    shadowTableSpannerAccessor =
+        usesSeparateShadowTableDb
+            ? SpannerAccessor.getOrCreate(shadowTableSpannerConfig)
+            : spannerAccessor;
     mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     // Setup and start the watchdog thread.
@@ -209,6 +226,9 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   @Teardown
   public void teardown() {
     spannerAccessor.close();
+    if (usesSeparateShadowTableDb) {
+      shadowTableSpannerAccessor.close();
+    }
     // Stop the watchdog thread.
     keepWatchdogRunning.set(false);
   }
@@ -217,6 +237,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
   public void processElement(ProcessContext c) {
     FailsafeElement<String, String> msg = c.element();
     Ddl ddl = c.sideInput(ddlView);
+    // TODO: pass shadow table ddl to shdaow tble mutaiton generator and sequence reader.
+    Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
     Instant startTimestamp = Instant.now();
     String migrationShardId = null;
     boolean isRetryRecord = false;
@@ -240,43 +262,20 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       }
       ChangeEventContext changeEventContext =
           ChangeEventContextFactory.createChangeEventContext(
-              changeEvent, ddl, shadowTablePrefix, sourceType);
+              changeEvent, ddl, shadowTableDdl, shadowTablePrefix, sourceType);
 
       // Sequence information for the current change event.
       ChangeEventSequence currentChangeEventSequence =
           ChangeEventSequenceFactory.createChangeEventSequenceFromChangeEventContext(
               changeEventContext);
 
-      // Start transaction
-      spannerAccessor
-          .getDatabaseClient()
-          .readWriteTransaction(
-              Options.tag(getTxnTag(c.getPipelineOptions())),
-              Options.priority(spannerConfig.getRpcPriority().get()))
-          .run(
-              (TransactionCallable<Void>)
-                  transaction -> {
-                    isInTransaction.set(true);
-                    transactionAttemptCount.incrementAndGet();
-                    // Sequence information for the last change event.
-                    ChangeEventSequence previousChangeEventSequence =
-                        ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-                            transaction, changeEventContext);
-
-                    /* There was a previous event recorded with a greater sequence information
-                     * than current. Hence, skip the current event.
-                     */
-                    if (previousChangeEventSequence != null
-                        && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
-                      skippedEvents.inc();
-                      return null;
-                    }
-
-                    // Apply shadow and data table mutations.
-                    transaction.buffer(changeEventContext.getMutations());
-                    isInTransaction.set(false);
-                    return null;
-                  });
+      if (usesSeparateShadowTableDb) {
+        processCrossDatabaseTransaction(
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
+      } else {
+        processSingleDatabaseTransaction(
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
+      }
       com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
       c.output(timestamp);
       if (migrationShardId != null) {
@@ -345,6 +344,138 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     }
   }
 
+  private void processSingleDatabaseTransaction(
+      ProcessContext c,
+      ChangeEventContext changeEventContext,
+      ChangeEventSequence currentChangeEventSequence,
+      Ddl shadowDdl) {
+
+    spannerAccessor
+        .getDatabaseClient()
+        .readWriteTransaction(
+            Options.tag(getTxnTag(c.getPipelineOptions())),
+            Options.priority(spannerConfig.getRpcPriority().get()))
+        .run(
+            (TransactionRunner.TransactionCallable<Void>)
+                transaction -> {
+                  isInTransaction.set(true);
+                  transactionAttemptCount.incrementAndGet();
+                  // Sequence information for the last change event.
+                  ChangeEventSequence previousChangeEventSequence =
+                      ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+                          transaction, changeEventContext, shadowDdl, false);
+                  /* There was a previous event recorded with a greater sequence information
+                   * than current. Hence, skip the current event.
+                   */
+                  if (previousChangeEventSequence != null
+                      && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
+                    skippedEvents.inc();
+                    return null;
+                  }
+                  // Apply shadow and data table mutations.
+                  transaction.buffer(changeEventContext.getMutations());
+                  isInTransaction.set(false);
+                  return null;
+                });
+  }
+
+  /**
+   * This method does a cross database transaction across the shadow table db and the main db. It
+   * performs the following steps:
+   *
+   * <ul>
+   *   <li>Start shadow table transaction - tx1
+   *   <li>Read the shadow table row with exclusive lock - tx1.read()
+   *   <li>Start main table transaction - tx2
+   *   <li>Write to main table - tx2.write()
+   *   <li>Before committing tx2, read the shadow table row again using tx1 inside tx2.
+   *   <li>Commit main transaction - tx2.commit()
+   *   <li>Update shadow table - tx1.write()
+   *   <li>Commit shadow table transaction - tx1.commit()
+   * </ul>
+   *
+   * <p>Step 5 acts as a lock validation ensuring that no other process is writing this row. If due
+   * to some network partition/machine failure, the lock is lost during main table write, Spanner
+   * will release the exclusive lock while the thread still continues its attempt to write. This
+   * validation ensures that main table write also fails in such cases and the event goes for
+   * retrial. This ensures no 2 processes are updating the same row together.
+   */
+  void processCrossDatabaseTransaction(
+      ProcessContext c,
+      ChangeEventContext changeEventContext,
+      ChangeEventSequence currentChangeEventSequence,
+      Ddl shadowDdl) {
+
+    shadowTableSpannerAccessor
+        .getDatabaseClient()
+        .readWriteTransaction(
+            Options.tag(getTxnTag(c.getPipelineOptions())),
+            Options.priority(spannerConfig.getRpcPriority().get()))
+        .allowNestedTransaction()
+        .run(
+            (TransactionRunner.TransactionCallable<Void>)
+                shadowTxn -> {
+                  isInTransaction.set(true);
+                  transactionAttemptCount.incrementAndGet();
+
+                  // Build lock query based on source type
+                  ChangeEventSequence previousChangeEventSequence =
+                      ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
+                          shadowTxn, changeEventContext, shadowDdl, /* useSqlStatments= */ true);
+
+                  if (previousChangeEventSequence != null
+                      && previousChangeEventSequence.compareTo(currentChangeEventSequence) >= 0) {
+                    skippedEvents.inc();
+                    return null;
+                  }
+
+                  // Start main table transaction
+                  spannerAccessor
+                      .getDatabaseClient()
+                      .readWriteTransaction(
+                          Options.tag(getTxnTag(c.getPipelineOptions())),
+                          Options.priority(spannerConfig.getRpcPriority().get()))
+                      .run(
+                          (TransactionRunner.TransactionCallable<Void>)
+                              mainTxn -> {
+                                // Write to main table
+                                mainTxn.buffer(changeEventContext.getDataMutation());
+
+                                // Validate the row still holds the exclusive lock. In case of
+                                // network
+                                // partitions, it could happen that Spanner releases the lock while
+                                // this
+                                // thread gets killed.
+                                ChangeEventSequence validationSequence =
+                                    ChangeEventSequenceFactory
+                                        .createChangeEventSequenceFromShadowTable(
+                                            shadowTxn,
+                                            changeEventContext,
+                                            shadowDdl,
+                                            /* useSqlStatments= */ true);
+
+                                if (validationSequence != null
+                                    && validationSequence.compareTo(previousChangeEventSequence)
+                                        != 0) {
+                                  // This code path should never execute since Spanner automatically
+                                  // aborts transactions when locks are released.
+                                  LOG.error(
+                                      "Sequence mismatch: validation sequence {}, previous sequence {}",
+                                      validationSequence,
+                                      previousChangeEventSequence);
+                                  throw new Exception(
+                                      "Shadow table sequence changed during transaction");
+                                }
+                                return null;
+                              });
+
+                  // Update shadow table if main transaction succeeded
+                  shadowTxn.buffer(changeEventContext.getShadowMutation());
+                  isInTransaction.set(false);
+                  return null;
+                });
+  }
+
   void updateLatencyMetrics(JsonNode changeEvent, Instant startTimestamp) {
     Instant endTimestamp = Instant.now();
     spannerWriterLatencyMs.update(new Duration(startTimestamp, endTimestamp).getMillis());
@@ -394,6 +525,10 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
   public void setSpannerAccessor(SpannerAccessor spannerAccessor) {
     this.spannerAccessor = spannerAccessor;
+  }
+
+  public void setShadowTableSpannerAccessor(SpannerAccessor shadowTableSpannerAccessor) {
+    this.shadowTableSpannerAccessor = shadowTableSpannerAccessor;
   }
 
   public void setTransactionAttemptCount(AtomicLong transactionAttemptCount) {

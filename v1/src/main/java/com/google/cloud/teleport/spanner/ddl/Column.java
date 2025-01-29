@@ -145,9 +145,7 @@ public abstract class Column implements Serializable {
       appendable.append(" PLACEMENT KEY");
     }
     if (isHidden()) {
-      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
-        appendable.append(" HIDDEN");
-      }
+      appendable.append(" HIDDEN");
     }
     if (columnOptions() == null) {
       return;
@@ -361,6 +359,10 @@ public abstract class Column implements Serializable {
 
     public Builder pgJsonb() {
       return type(Type.pgJsonb());
+    }
+
+    public Builder pgSpannerTokenlist() {
+      return type(Type.pgSpannerTokenlist());
     }
 
     public Builder proto(String protoTypeFqn) {

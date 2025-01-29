@@ -389,6 +389,11 @@ public class DdlToAvroSchemaConverterTest {
             .skipRangeMin(2000L)
             .skipRangeMax(3000L)
             .endColumn()
+            .column("tokens")
+            .pgSpannerTokenlist()
+            .generatedAs("(spanner.tokenize_fulltext(full_name))")
+            .isHidden(true)
+            .endColumn()
             .column("uuid_column")
             .pgUuid()
             .endColumn()
@@ -422,7 +427,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(8));
+    assertThat(fields, hasSize(9));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -487,15 +492,25 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
     assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
-    Schema.Field field7 = fields.get(7);
-    assertThat(field7.name(), equalTo("uuid_column"));
-    assertThat(field7.schema(), equalTo(nullableUuid()));
-    assertThat(field7.getProp(SQL_TYPE), equalTo("uuid"));
-    assertThat(field7.getProp(NOT_NULL), equalTo(null));
-    assertThat(field7.getProp(GENERATION_EXPRESSION), equalTo(null));
-    assertThat(field7.getProp(STORED), equalTo(null));
-    assertThat(field7.getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(7).name(), equalTo("tokens"));
+    assertThat(fields.get(7).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("spanner.tokenlist"));
+    assertThat(fields.get(7).getProp(NOT_NULL), equalTo("false"));
+    assertThat(
+        fields.get(7).getProp(GENERATION_EXPRESSION),
+        equalTo("(spanner.tokenize_fulltext(full_name))"));
+    assertThat(fields.get(7).getProp(HIDDEN), equalTo("true"));
+    assertThat(fields.get(7).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
+    assertThat(fields.get(8).name(), equalTo("uuid_column"));
+    assertThat(fields.get(8).schema(), equalTo(nullableUuid()));
+    assertThat(fields.get(8).getProp(SQL_TYPE), equalTo("uuid"));
+    assertThat(fields.get(8).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(8).getProp(GENERATION_EXPRESSION), equalTo(null));
+    assertThat(fields.get(8).getProp(STORED), equalTo(null));
+    assertThat(fields.get(8).getProp(DEFAULT_EXPRESSION), equalTo(null));
+
+    
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("\"gen_id\" ASC"));

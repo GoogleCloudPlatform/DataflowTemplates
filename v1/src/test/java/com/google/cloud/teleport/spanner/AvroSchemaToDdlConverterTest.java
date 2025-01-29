@@ -412,6 +412,14 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"spanner.commit_timestamp\""
             + "  }, {"
+            + "    \"name\" : \"tokens\", "
+            + "    \"type\" : [\"null\"], "
+            + "    \"sqlType\" : \"spanner.tokenlist\","
+            + "    \"notNull\" : \"false\","
+            + "    \"generationExpression\" : \"spanner.tokenize_fulltext(first_name)\","
+            + "    \"stored\": \"true\","
+            + "    \"hidden\": \"true\""
+            + "  }, {"
             + "    \"name\" : \"date\","
             + "    \"type\" : [ \"null\", \"string\" ],"
             + "    \"sqlType\" : \"date\""
@@ -496,6 +504,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"text\" text,"
                 + " \"timestamptz\" timestamp with time zone,"
                 + " \"commit_time\"     spanner.commit_timestamp,"
+                + " \"tokens\" spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(first_name)) STORED HIDDEN,"
                 + " \"date\" date,"
                 + " \"varcharArr1\"     character varying[],"
                 + " \"varcharArr2\"     character varying[],"
@@ -1009,7 +1018,7 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"namespace\" : \"spannertest\","
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"googleFormatVersion\" : \"booleans\","
-            + "  \"sequenceOption_0\" : \"sequence_kind=default\""
+            + "  \"sequenceOption_0\" : \"sequence_kind=\\\"default\\\"\""
             + "}";
     Collection<Schema> schemas = new ArrayList<>();
     Schema.Parser parser = new Schema.Parser();

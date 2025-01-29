@@ -112,6 +112,8 @@ public final class SizedType {
         return "JSON";
       case PG_JSONB:
         return "jsonb";
+      case PG_SPANNER_TOKENLIST:
+        return "spanner.tokenlist";
       case PROTO:
         if (outputAsDdlRepresentation) {
           String quote = NameUtils.identifierQuote(Dialect.GOOGLE_STANDARD_SQL);
@@ -362,6 +364,9 @@ public final class SizedType {
           }
           if (spannerType.equals("spanner.commit_timestamp")) {
             return t(Type.pgSpannerCommitTimestamp(), null);
+          }
+          if (spannerType.equals("spanner.tokenlist")) {
+            return t(Type.pgSpannerTokenlist(), null);
           }
           break;
         }

@@ -470,7 +470,7 @@ public class AvroSchemaToDdlConverter {
     ImmutableList.Builder<String> sequenceOptions = ImmutableList.builder();
     for (int i = 0; schema.getProp(SPANNER_SEQUENCE_OPTION + i) != null; i++) {
       String prop = schema.getProp(SPANNER_SEQUENCE_OPTION + i);
-      if (prop.equals("sequence_kind=default")) {
+      if (prop.equals("sequence_kind=\"default\"")) {
         // Specify no sequence kind by using the default_sequence_kind database option.
         continue;
       }
