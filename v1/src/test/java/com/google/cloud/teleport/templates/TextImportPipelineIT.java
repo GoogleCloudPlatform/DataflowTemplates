@@ -76,10 +76,11 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00,00000000-0000-0000-0000-000000000000\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01,11111111-1111-1111-1111-111111111111\n");
     gcsClient.createArtifact(
-        "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
+        "input/singers2.csv",
+        "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05," + "2023-01-01T17:24:02,\n");
 
     String statement =
         "CREATE TABLE Singers (\n"
@@ -91,6 +92,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
+            + "  UuidCol  UUID,\n"
             + ") PRIMARY KEY (SingerId)";
     googleSqlResourceManager.executeDdlStatement(statement);
 
@@ -113,6 +115,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
             + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "        {\"column_name\": \"UuidCol\", \"type_name\": "
+            + "\"UUID\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ]\n"
@@ -139,25 +143,34 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     ImmutableList<Struct> structs =
-        googleSqlResourceManager.readTableRecords(
-            "Singers",
-            List.of(
-                "SingerId",
-                "FirstName",
-                "LastName",
-                "Active",
-                "Rating",
-                "Score",
-                "BirthDate",
-                "LastModified"));
+        googleSqlResourceManager.runQuery(
+            "SELECT SingerId, FirstName, LastName, "
+                + "Active, Rating, Score, BirthDate, "
+                + "LastModified, CAST(UuidCol as STRING) as UuidCol FROM Singers");
     assertThat(structs).hasSize(3);
     assertThatStructs(structs)
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "3.5",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z",
+                    "00000000-0000-0000-0000-000000000000"),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    "11111111-1111-1111-1111-111111111111"),
                 createRecordMap(
                     "3",
                     "Elvis",
@@ -166,7 +179,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z")));
+                    "2023-01-01T17:24:02Z",
+                    null)));
   }
 
   @Test
@@ -174,7 +188,12 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
+        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00,00000000-0000-0000-0000-000000000000\n"
+            + "2,"
+            + "Jane,"
+            + "Doe,5,A\n"
+            + "3,John,Doe,TRUE,4.0,1.5,2023-02-01,"
+            + "2023-01-01T17:22:00,invalid_uuid\n");
 
     String statement =
         "CREATE TABLE Singers (\n"
@@ -186,6 +205,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
+            + "  UuidCol  UUID,\n"
             + ") PRIMARY KEY (SingerId)";
     googleSqlResourceManager.executeDdlStatement(statement);
 
@@ -208,6 +228,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
             + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "        {\"column_name\": \"UuidCol\", \"type_name\": "
+            + "\"UUID\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ]\n"
@@ -235,17 +257,10 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     ImmutableList<Struct> structs =
-        googleSqlResourceManager.readTableRecords(
-            "Singers",
-            List.of(
-                "SingerId",
-                "FirstName",
-                "LastName",
-                "Active",
-                "Rating",
-                "Score",
-                "BirthDate",
-                "LastModified"));
+        googleSqlResourceManager.runQuery(
+            "SELECT SingerId, FirstName, LastName, "
+                + "Active, Rating, Score, BirthDate, "
+                + "LastModified, CAST(UuidCol as STRING) as UuidCol FROM Singers");
     assertThat(structs).hasSize(1);
     assertThatStructs(structs)
         .hasRecordsUnordered(
@@ -258,11 +273,16 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                     "4.0",
                     "1.5",
                     "2023-02-01",
-                    "2023-01-01T17:22:00Z")));
+                    "2023-01-01T17:22:00Z",
+                    "00000000-0000-0000-0000-000000000000")));
 
     List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
-    assertThat(artifacts).hasSize(1);
-    assertThatArtifacts(artifacts).hasContent("2,Jane,Doe,5,A");
+    assertThat(artifacts).hasSize(2);
+    assertThatArtifacts(artifacts)
+        .hasContent(
+            "2,Jane,Doe,5,A\n"
+                + "3,John,"
+                + "Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00,invalid_uuid");
   }
 
   @Test
@@ -270,10 +290,12 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00,00000000-0000-0000-0000-000000000000\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01,11111111-1111-1111-1111-111111111111\n");
     gcsClient.createArtifact(
-        "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
+        "input/singers2.csv",
+        "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,"
+            + "2023-01-01T17:24:02,22222222-2222-2222-2222-222222222222\n");
 
     String statement =
         "CREATE TABLE \"Singers\" (\n"
@@ -285,6 +307,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "  \"Score\"         double precision,\n"
             + "  \"BirthDate\"     date,\n"
             + "  \"LastModified\"  timestamp with time zone,\n"
+            + "  \"UuidCol\"  uuid,\n"
             + " PRIMARY KEY (\"SingerId\"))";
     postgresResourceManager.executeDdlStatement(statement);
 
@@ -307,6 +330,7 @@ public final class TextImportPipelineIT extends TemplateTestBase {
             + "        {\"column_name\": \"Score\", \"type_name\": \"double precision\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"date\"},\n"
             + "        {\"column_name\": \"LastModified\", \"type_name\": \"timestamp with time zone\"}\n"
+            + "        {\"column_name\": \"UuidCol\", \"type_name\": \"uuid\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ],\n"
@@ -334,25 +358,35 @@ public final class TextImportPipelineIT extends TemplateTestBase {
     assertThatResult(result).isLaunchFinished();
 
     ImmutableList<Struct> structs =
-        postgresResourceManager.readTableRecords(
-            "Singers",
-            List.of(
-                "SingerId",
-                "FirstName",
-                "LastName",
-                "Active",
-                "Rating",
-                "Score",
-                "BirthDate",
-                "LastModified"));
+        postgresResourceManager.runQuery(
+            "SELECT SingerId, FirstName, LastName, "
+                + "Active, Rating, Score, BirthDate, "
+                + "LastModified, CAST(UuidCol as TEXT) as UuidCol"
+                + " FROM Singers");
     assertThat(structs).hasSize(3);
     assertThatStructs(structs)
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "3.5",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z",
+                    "00000000-0000-0000-0000-000000000000"),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    "11111111-1111-1111-1111-111111111111"),
                 createRecordMap(
                     "3",
                     "Elvis",
@@ -361,7 +395,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z")));
+                    "2023-01-01T17:24:02Z",
+                    "22222222-2222-2222-2222-222222222222")));
   }
 
   private Map<String, Object> createRecordMap(
@@ -372,7 +407,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
       String rating,
       String score,
       String birthDate,
-      String lastModified) {
+      String lastModified,
+      String uuidCol) {
     return Map.of(
         "SingerId",
         singerId,
@@ -389,6 +425,8 @@ public final class TextImportPipelineIT extends TemplateTestBase {
         "BirthDate",
         birthDate,
         "LastModified",
-        lastModified);
+        lastModified,
+        "UuidCol",
+        uuidCol);
   }
 }

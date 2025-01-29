@@ -686,6 +686,11 @@ public class AvroSchemaToDdlConverter {
             ? com.google.cloud.teleport.spanner.common.Type.float64()
             : com.google.cloud.teleport.spanner.common.Type.pgFloat8();
       case STRING:
+        if (logicalType.equals(LogicalTypes.uuid())) {
+          return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? com.google.cloud.teleport.spanner.common.Type.uuid()
+              : com.google.cloud.teleport.spanner.common.Type.pgUuid();
+        }
         return (dialect == Dialect.GOOGLE_STANDARD_SQL)
             ? com.google.cloud.teleport.spanner.common.Type.string()
             : com.google.cloud.teleport.spanner.common.Type.pgVarchar();

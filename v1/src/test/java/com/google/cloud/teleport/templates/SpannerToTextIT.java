@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -81,6 +82,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
+                + "  UuidCol UUID\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     spannerResourceManager.executeDdlStatement(createTableStatement);
@@ -115,7 +117,8 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
               List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
           lines.forEach(
               line -> {
-                List<Object> values = List.of(line.split(","));
+                List<Object> values = List.of(line.split(",", -1));
+                Object uuidVal = values.get(3) == "" ? "null" : values.get(3);
                 records.add(
                     Map.of(
                         "Id",
@@ -123,13 +126,15 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                         "FirstName",
                         values.get(1),
                         "LastName",
-                        values.get(2)));
+                        values.get(2),
+                        "UuidCol",
+                        uuidVal));
               });
         });
 
     List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
 
-    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+    assertThatRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
   @Test
@@ -155,6 +160,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                 + "  \"Id\" bigint NOT NULL,\n"
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
+                + "  \"UuidCol\" uuid,\n"
                 + " PRIMARY KEY(\"Id\"))",
             testName);
     spannerResourceManager.executeDdlStatement(createTableStatement);
@@ -189,7 +195,8 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
               List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
           lines.forEach(
               line -> {
-                List<Object> values = List.of(line.split(","));
+                List<Object> values = List.of(line.split(",", -1));
+                Object uuidVal = values.get(3) == "" ? "null" : values.get(3);
                 records.add(
                     Map.of(
                         "Id",
@@ -197,13 +204,15 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                         "FirstName",
                         values.get(1),
                         "LastName",
-                        values.get(2)));
+                        values.get(2),
+                        "UuidCol",
+                        uuidVal));
               });
         });
 
     List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
 
-    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+    assertThatRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
   private static List<Mutation> generateTableRows(String tableId) {
@@ -213,6 +222,9 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
+      // Randomly add null values as well
+      String uuid = Math.random() < 0.5 ? UUID.randomUUID().toString() : null;
+      mutation.set("UuidCol").to(uuid);
       mutations.add(mutation.build());
     }
 

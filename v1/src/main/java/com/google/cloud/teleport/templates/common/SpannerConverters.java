@@ -376,6 +376,15 @@ public class SpannerConverters {
 
       private String createColumnExpression(String columnName, String columnType, Dialect dialect) {
         if (dialect == Dialect.POSTGRESQL) {
+          if (columnType.equals("uuid")) {
+            return String.format("\"%s\"::text AS \"%s\"", columnName, columnName);
+          }
+          if (columnType.equals("uuid[]")) {
+            return String.format(
+                "CASE WHEN \"%s\" IS NULL THEN NULL ELSE "
+                    + "ARRAY(SELECT e::text FROM UNNEST(\"%s\") AS e) END AS \"%s\"",
+                columnName, columnName, columnName);
+          }
           return "\"" + columnName + "\"";
         }
         if (columnType.equals("NUMERIC")) {
@@ -384,7 +393,15 @@ public class SpannerConverters {
         if (columnType.equals("JSON")) {
           return "`" + columnName + "`";
         }
-
+        if (columnType.equals("UUID")) {
+          return String.format("CAST(`%s` AS STRING) AS %s", columnName, columnName);
+        }
+        if (columnType.equals("ARRAY<UUID>")) {
+          return String.format(
+              "CASE WHEN `%s` IS NULL THEN NULL ELSE "
+                  + "ARRAY(SELECT CAST(e AS STRING) FROM UNNEST(%s) AS e) END AS %s",
+              columnName, columnName, columnName);
+        }
         if (columnType.equals("ARRAY<NUMERIC>")) {
           return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(`"
               + columnName

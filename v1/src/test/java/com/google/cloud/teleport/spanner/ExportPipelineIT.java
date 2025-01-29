@@ -28,8 +28,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -39,7 +37,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.artifacts.Artifact;
-import org.apache.beam.it.gcp.artifacts.matchers.ArtifactsSubject;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
@@ -212,9 +209,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     spannerResourceManager.executeDdlStatement(createModelStructStatement);
     spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
 
+    // Generate rows
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
-    List<Map<String, Object>> recordsFromMutations = mutationsToRecords(expectedData);
-
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -255,27 +251,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
-    assertListMapsEqualIgnoreCase(
-        recordsFromMutations, ArtifactsSubject.genericRecordToRecords(singersRecords));
+    assertThatGenericRecords(singersRecords).hasRecordsUnordered(mutationsToRecords(expectedData));
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
-  }
-
-  private Map<String, Object> convertKeysToUpperCase(Map<String, Object> map) {
-    Map<String, Object> result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    map.forEach((key, value) -> result.put(key.toUpperCase(), value));
-    return result;
-  }
-
-  private void assertListMapsEqualIgnoreCase(
-      List<Map<String, Object>> expected, List<Map<String, Object>> actual) {
-    assertThat(expected.size()).isEqualTo(actual.size());
-
-    for (int i = 0; i < expected.size(); i++) {
-      Map<String, Object> map1 = convertKeysToUpperCase(expected.get(i));
-      Map<String, Object> map2 = convertKeysToUpperCase(actual.get(i));
-      assertThat(map1.toString()).isEqualTo(map2.toString());
-    }
   }
 
   @Test
@@ -313,6 +291,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
+
+    // Generate rows
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -343,8 +323,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
 
-    assertThatGenericRecords(singersRecords)
-        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
+    assertThatGenericRecords(singersRecords).hasRecordsUnordered(mutationsToRecords(expectedData));
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 

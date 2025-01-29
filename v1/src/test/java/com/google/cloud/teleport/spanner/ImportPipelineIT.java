@@ -18,10 +18,13 @@ package com.google.cloud.teleport.spanner;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.assertThatStructs;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.Type;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
@@ -29,6 +32,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -130,49 +134,50 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
   private List<Map<String, Object>> getUuidTableExpectedRows() {
     List<Map<String, Object>> expectedRows = new ArrayList<>();
     expectedRows.add(
-        ImmutableMap.of(
-            "Key",
-            "00000000-0000-0000-0000-000000000000",
-            "Val1",
-            "00000000-0000-0000-0000-000000000000",
-            "Val2",
-            0,
-            "Val3",
-            List.of(
-                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+        new HashMap<>() {
+          {
+            put("Key", "00000000-0000-0000-0000-000000000000");
+            put("Val1", "00000000-0000-0000-0000-000000000000");
+            put("Val2", 0);
+            put(
+                "Val3",
+                List.of(
+                    "00000000-0000-0000-0000-000000000001",
+                    "00000000-0000-0000-0000-000000000002"));
+          }
+        });
     expectedRows.add(
-        ImmutableMap.of(
-            "Key",
-            "11111111-1111-1111-1111-111111111111",
-            "Val1",
-            null,
-            "Val2",
-            1,
-            "Val3",
-            List.of(
-                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+        new HashMap<>() {
+          {
+            put("Key", "11111111-1111-1111-1111-111111111111");
+            put("Val1", null);
+            put("Val2", 1);
+            put(
+                "Val3",
+                List.of(
+                    "11111111-1111-1111-1111-111111111111",
+                    "11111111-1111-1111-1111-111111111112"));
+          }
+        });
+
     expectedRows.add(
-        ImmutableMap.of(
-            "Key",
-            "00000000-0000-0000-0000-000000000000",
-            "Val1",
-            "00000000-0000-0000-0000-000000000000",
-            "Val2",
-            2,
-            "Val3",
-            List.of(
-                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+        new HashMap<>() {
+          {
+            put("Key", "22222222-2222-2222-2222-222222222222");
+            put("Val1", "22222222-2222-2222-2222-222222222222");
+            put("Val2", 2);
+            put("Val3", null);
+          }
+        });
     expectedRows.add(
-        ImmutableMap.of(
-            "Key",
-            "00000000-0000-0000-0000-000000000000",
-            "Val1",
-            "00000000-0000-0000-0000-000000000000",
-            "Val2",
-            0,
-            "Val3",
-            List.of(
-                "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")));
+        new HashMap<>() {
+          {
+            put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
+            put("Val1", null);
+            put("Val2", 1);
+            put("Val3", null);
+          }
+        });
     return expectedRows;
   }
 
@@ -263,10 +268,41 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
 
     List<Struct> uuidRecords =
-        spannerResourceManager.readTableRecords(
-            "UuidTable", ImmutableList.of("Key", "Val1", "Val2", "Val3"));
+        spannerResourceManager.runQuery(
+            String.format(
+                "SELECT CAST(Key as STRING) as Key, CAST(Val1 as String) AS Val1, Val2, %s FROM"
+                    + " UuidTable",
+                "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM"
+                    + " UNNEST(Val3) AS e) END AS Val3"));
     assertThat(uuidRecords).hasSize(4);
-    assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
+    assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
+  }
+
+  private List<Map<String, Object>> structToRecords(List<Struct> structs) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (Struct struct : structs) {
+        Map<String, Object> record = new HashMap<>();
+
+        for (Type.StructField field : struct.getType().getStructFields()) {
+          Value fieldValue = struct.getValue(field.getName());
+          String stringValue = fieldValue.toString();
+          if (fieldValue.isNull()) {
+            stringValue = null;
+          } else if (fieldValue.getType() == Type.array(Type.string())) {
+            stringValue = new ArrayList<>(fieldValue.getAsStringList()).toString();
+          }
+          record.put(field.getName(), stringValue);
+        }
+
+        records.add(record);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting TableResult to Records", e);
+    }
   }
 
   @Test
@@ -306,6 +342,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             + "PRIMARY KEY(\"Key\"))";
     spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
+    String createUuidTableStatement =
+        "CREATE TABLE UuidTable (\n"
+            + "  Key uuid PRIMARY KEY,\n"
+            + "  Val1 uuid,\n"
+            + "  Val2 INT,\n"
+            + "  Val3 uuid[]\n"
+            + ")";
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -338,5 +383,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+
+    List<Struct> uuidRecords =
+        spannerResourceManager.runQuery(
+            String.format(
+                "SELECT CAST(Key as TEXT) as Key, CAST(Val1 as TEXT) AS Val1, Val2, %s FROM"
+                    + " UuidTable",
+                "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM"
+                    + " UNNEST(Val3) AS e) END AS Val3"));
+    assertThat(uuidRecords).hasSize(4);
+    assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
   }
 }
