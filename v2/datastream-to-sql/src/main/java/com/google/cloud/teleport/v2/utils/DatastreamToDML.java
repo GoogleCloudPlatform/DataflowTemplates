@@ -295,7 +295,6 @@ public abstract class DatastreamToDML
     } else {
       columnValue = columnObj.toString();
     }
-
     return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
   }
 
