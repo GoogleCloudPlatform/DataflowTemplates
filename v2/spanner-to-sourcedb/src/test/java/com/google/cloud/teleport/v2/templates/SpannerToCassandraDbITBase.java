@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -121,9 +120,6 @@ public abstract class SpannerToCassandraDbITBase extends TemplateTestBase {
     String host = cassandraResourceManagers.getHost();
     int port = cassandraResourceManagers.getPort();
     String keyspaceName = cassandraResourceManagers.getKeyspaceName();
-    System.out.println("Cassandra keyspaceName :: {}" + keyspaceName);
-    System.out.println("Cassandra host :: {}" + host);
-    System.out.println("Cassandra port :: {}" + port);
     String cassandraConfigContents;
     try (InputStream inputStream =
         Thread.currentThread()
@@ -142,7 +138,6 @@ public abstract class SpannerToCassandraDbITBase extends TemplateTestBase {
             .replace("##port##", Integer.toString(port))
             .replace("##keyspace##", keyspaceName);
 
-    System.out.println("Cassandra file contents: {}" + cassandraConfigContents);
     gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
   }
 
@@ -220,11 +215,8 @@ public abstract class SpannerToCassandraDbITBase extends TemplateTestBase {
             Resources.readLines(
                 Resources.getResource(cassandraSchemaFile), StandardCharsets.UTF_8));
     ddl = ddl.trim();
-    System.out.println("DDL {}" + ddl);
     String[] ddls = ddl.split(";");
-    System.out.println("DDLs statement {}" + Arrays.toString(ddls));
     for (String d : ddls) {
-      System.out.println("DDL statement {}" + d);
       if (!d.isBlank()) {
         cassandraResourceManager.execute(d);
       }

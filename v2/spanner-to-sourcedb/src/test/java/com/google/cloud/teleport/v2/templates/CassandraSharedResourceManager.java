@@ -154,9 +154,6 @@ public class CassandraSharedResourceManager
                   cassandraClient.execute(
                       SimpleStatement.newInstance(statement).setKeyspace(this.keyspaceName)));
     } catch (Exception e) {
-      System.out.println(e.getMessage());
-      System.out.println(e.fillInStackTrace());
-      System.out.println(e);
       throw new IllegalArgumentException("Error reading collection.", e);
     }
   }
