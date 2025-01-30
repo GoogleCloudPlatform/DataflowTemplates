@@ -326,7 +326,7 @@ below -
       local-datacenter = "datacenter1"
     }
     advanced.auth-provider {
-	    class = PlainTextAuthProvider
+       class = PlainTextAuthProvider
       username = "username"
       password = "password"
     }
@@ -478,14 +478,26 @@ when orchestrating a large sharded migration. We strongly recommend against
 setting this value > 20. In most cases, the default value should suffice.
 
 ### Setup Cassandra
-To prepare Cassandra for testing, follow these steps within the "cassandra-setup" directory (note that the scripts are tailored for Ubuntu 22.04 and may require modifications for use on different distributions):
+To prepare Cassandra for testing, follow these steps (note that the scripts are tailored for Cassandra 41x on Ubuntu 22.04 and may require modifications for use on different distributions):
 1. Install java by executing
 ```
-./java.sh
+sudo apt update -y
+sudo apt install openjdk-11-jdk -y
+update-alternatives --config java
+export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+source ~/.bashrc
+echo $JAVA_HOME
+java -version
 ```
 2. Install Cassandra by executing
 ```
-./cassandra-installation.sh
+sudo apt update -y
+curl -L https://downloads.apache.org/cassandra/KEYS | sudo apt-key add -
+wget -q -O - https://downloads.apache.org/cassandra/KEYS | sudo gpg --dearmor -o /etc/apt/keyrings/apache-cassandra.gpg
+echo "deb [signed-by=/etc/apt/keyrings/apache-cassandra.gpg] https://debian.cassandra.apache.org 41x main" | sudo tee /etc/apt/sources.list.d/cassandra.list
+sudo apt update -y
+sudo apt install cassandra -y
+service cassandra start
 ```
 3. Configure the Cassandra setup by editing the file at /etc/cassandra/cassandra.yaml
 - Change "authenticator: AllowAllAuthenticator" to "authenticator: PasswordAuthenticator"
