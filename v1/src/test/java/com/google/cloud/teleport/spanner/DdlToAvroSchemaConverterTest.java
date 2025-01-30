@@ -510,7 +510,6 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(8).getProp(STORED), equalTo(null));
     assertThat(fields.get(8).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
-    
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("\"gen_id\" ASC"));
