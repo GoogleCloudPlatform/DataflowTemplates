@@ -21,15 +21,18 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -50,14 +53,27 @@ public abstract class SpannerToCassandraDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String ddl =
-        String.join(
-            " ",
-            Resources.readLines(Resources.getResource(spannerSchemaFile), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
+
+    String ddl;
+    try (InputStream inputStream =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(spannerSchemaFile)) {
+      if (inputStream == null) {
+        throw new FileNotFoundException("Resource file not found: " + spannerSchemaFile);
+      }
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        ddl = reader.lines().collect(Collectors.joining("\n"));
+      }
+    }
+
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL file is empty: " + spannerSchemaFile);
+    }
+
+    String[] ddls = ddl.trim().split(";");
     for (String d : ddls) {
-      if (!d.isBlank()) {
+      d = d.trim();
+      if (!d.isEmpty()) {
         spannerResourceManager.executeDdlStatement(d);
       }
     }
@@ -114,7 +130,8 @@ public abstract class SpannerToCassandraDbITBase extends TemplateTestBase {
 
   public void createAndUploadCassandraConfigToGcs(
       GcsResourceManager gcsResourceManager,
-      CassandraSharedResourceManager cassandraResourceManagers)
+      CassandraSharedResourceManager cassandraResourceManagers,
+      String cassandraConfigFile)
       throws IOException {
 
     String host = cassandraResourceManagers.getHost();
@@ -122,12 +139,9 @@ public abstract class SpannerToCassandraDbITBase extends TemplateTestBase {
     String keyspaceName = cassandraResourceManagers.getKeyspaceName();
     String cassandraConfigContents;
     try (InputStream inputStream =
-        Thread.currentThread()
-            .getContextClassLoader()
-            .getResourceAsStream("SpannerToCassandraSourceIT/cassandra-config-template.conf")) {
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(cassandraConfigFile)) {
       if (inputStream == null) {
-        throw new FileNotFoundException(
-            "Resource file not found: SpannerToCassandraSourceIT/cassandra-config-template.conf");
+        throw new FileNotFoundException("Resource file not found: " + cassandraConfigFile);
       }
       cassandraConfigContents = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
     }

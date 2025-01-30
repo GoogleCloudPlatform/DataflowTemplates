@@ -64,6 +64,8 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
       "SpannerToCassandraSourceDbDatatypeIT/spanner-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
       "SpannerToCassandraSourceDbDatatypeIT/cassandra-schema.sql";
+  private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
+      "SpannerToCassandraSourceDbDatatypeIT/cassandra-config-template.conf";
 
   private static final String TABLE = "AllDatatypeColumns";
   private static final HashSet<SpannerToCassandraSourceDbDatatypeIT> testInstances =
@@ -96,7 +98,8 @@ public class SpannerToCassandraSourceDbDatatypeIT extends SpannerToCassandraDbIT
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
-        createAndUploadCassandraConfigToGcs(gcsResourceManager, cassandraResourceManager);
+        createAndUploadCassandraConfigToGcs(
+            gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
         pubsubResourceManager = setUpPubSubResourceManager();
         subscriptionName =
             createPubsubResources(
