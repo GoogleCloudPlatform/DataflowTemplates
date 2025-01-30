@@ -72,7 +72,7 @@ public class CassandraSharedResourceManager
 
   private CassandraSharedResourceManager(Builder builder) {
     this(
-        /* cassandraClient= */ null,
+        null,
         new CassandraContainer<>(
             DockerImageName.parse(builder.containerImageName).withTag(builder.containerImageTag)),
         builder);
@@ -99,7 +99,6 @@ public class CassandraSharedResourceManager
             : cassandraClient;
 
     if (!usingStaticDatabase) {
-      // Keyspace request may timeout on a few environments, if Cassandra is warming up
       Failsafe.with(buildRetryPolicy())
           .run(
               () ->
@@ -173,9 +172,6 @@ public class CassandraSharedResourceManager
                   cassandraClient.execute(
                       SimpleStatement.newInstance(statement).setKeyspace(this.keyspaceName)));
     } catch (Exception e) {
-      System.out.println(e.getMessage());
-      System.out.println(e.fillInStackTrace());
-      System.out.println(e);
       throw new IllegalArgumentException("Error reading collection.", e);
     }
   }

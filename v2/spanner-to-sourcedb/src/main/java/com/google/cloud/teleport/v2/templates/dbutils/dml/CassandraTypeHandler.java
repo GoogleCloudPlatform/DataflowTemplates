@@ -171,18 +171,12 @@ public class CassandraTypeHandler {
    * @return a {@link ByteBuffer} object containing the value represented in cassandra type.
    */
   private static ByteBuffer parseBlobType(Object colValue) {
-    byte[] byteArray;
-
     if (colValue instanceof byte[]) {
-      byteArray = (byte[]) colValue;
-    } else if (colValue instanceof String) {
-      byteArray = java.util.Base64.getDecoder().decode((String) colValue);
+      return ByteBuffer.wrap((byte[]) colValue);
     } else if (colValue instanceof ByteBuffer) {
       return (ByteBuffer) colValue;
-    } else {
-      throw new IllegalArgumentException("Unsupported type for column");
     }
-    return ByteBuffer.wrap(byteArray);
+    return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
   }
 
   /**
