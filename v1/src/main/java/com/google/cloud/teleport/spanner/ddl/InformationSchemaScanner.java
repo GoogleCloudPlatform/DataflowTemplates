@@ -540,8 +540,7 @@ public class InformationSchemaScanner {
         String tokenlistType = dialect == Dialect.POSTGRESQL ? "spanner.tokenlist" : "TOKENLIST";
         if (indexType != null && ordering != null) {
           // Non-tokenlist columns should not be included in the key for Search Indexes.
-          if ((indexType.equals("SEARCH")
-                  && !spannerType.contains(tokenlistType))
+          if ((indexType.equals("SEARCH") && !spannerType.contains(tokenlistType))
               || (indexType.equals("VECTOR") && !spannerType.startsWith("ARRAY"))) {
             continue;
           }
@@ -563,8 +562,7 @@ public class InformationSchemaScanner {
             indexBuilder.columns().create().name(columnName);
         // Tokenlist columns do not have ordering.
         if (spannerType != null
-            && (spannerType.equals(tokenlistType)
-                || spannerType.startsWith("ARRAY"))) {
+            && (spannerType.equals(tokenlistType) || spannerType.startsWith("ARRAY"))) {
           indexColumnsBuilder.none();
         } else if (ordering == null) {
           indexColumnsBuilder.storing();
