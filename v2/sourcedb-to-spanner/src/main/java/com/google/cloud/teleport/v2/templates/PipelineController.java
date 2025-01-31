@@ -15,10 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.options.OptionsToConfigBuilder;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import com.google.cloud.teleport.v2.source.reader.ReaderImpl;
+import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraIOWrapperFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.JdbcIoWrapper;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcIOWrapperConfig;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
@@ -40,7 +41,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.values.PCollection;
@@ -57,14 +57,17 @@ public class PipelineController {
   private static final Counter tablesCompleted =
       Metrics.counter(PipelineController.class, "tablesCompleted");
 
-  static PipelineResult executeSingleInstanceMigration(
-      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+  @VisibleForTesting
+  protected static PipelineResult executeSingleInstanceMigrationForDbConfigContainer(
+      SourceDbToSpannerOptions options,
+      Pipeline pipeline,
+      SpannerConfig spannerConfig,
+      DbConfigContainer dbConfigContainer) {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
     TableSelector tableSelector = new TableSelector(options.getTables(), ddl, schemaMapper);
 
     Map<Integer, List<String>> levelToSpannerTableList = tableSelector.levelOrderedSpannerTables();
-    DbConfigContainer dbConfigContainer = new SingleInstanceDbConfigContainer(options);
     setupLogicalDbMigration(
         options,
         pipeline,
@@ -76,7 +79,14 @@ public class PipelineController {
     return pipeline.run();
   }
 
-  static PipelineResult executeShardedMigration(
+  static PipelineResult executeJdbcSingleInstanceMigration(
+      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+    JdbcDbConfigContainer jdbcDbConfigContainer = new SingleInstanceJdbcDbConfigContainer(options);
+    return executeSingleInstanceMigrationForDbConfigContainer(
+        options, pipeline, spannerConfig, jdbcDbConfigContainer);
+  }
+
+  static PipelineResult executeJdbcShardedMigration(
       SourceDbToSpannerOptions options,
       Pipeline pipeline,
       List<Shard> shards,
@@ -107,8 +117,8 @@ public class PipelineController {
         // configured in the options if there is one.
         String namespace = Optional.ofNullable(shard.getNamespace()).orElse(options.getNamespace());
 
-        ShardedDbConfigContainer dbConfigContainer =
-            new ShardedDbConfigContainer(
+        ShardedJdbcDbConfigContainer dbConfigContainer =
+            new ShardedJdbcDbConfigContainer(
                 shard, sqlDialect, namespace, shardId, entry.getKey(), options);
         setupLogicalDbMigration(
             options,
@@ -122,6 +132,15 @@ public class PipelineController {
     return pipeline.run();
   }
 
+  static PipelineResult executeCassandraMigration(
+      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
+    return executeSingleInstanceMigrationForDbConfigContainer(
+        options,
+        pipeline,
+        spannerConfig,
+        new DbConfigContainerDefaultImpl(CassandraIOWrapperFactory.fromPipelineOptions(options)));
+  }
+
   private static void setupLogicalDbMigration(
       SourceDbToSpannerOptions options,
       Pipeline pipeline,
@@ -129,6 +148,7 @@ public class PipelineController {
       TableSelector tableSelector,
       Map<Integer, List<String>> levelToSpannerTableList,
       DbConfigContainer configContainer) {
+
     Map<Integer, PCollection<Void>> levelVsOutputMap = new HashMap<>();
     for (int currentLevel = 0; currentLevel < levelToSpannerTableList.size(); currentLevel++) {
       List<String> spannerTables = levelToSpannerTableList.get(currentLevel);
@@ -147,20 +167,19 @@ public class PipelineController {
       }
       OnSignal<@UnknownKeyFor @Nullable @Initialized Object> waitOnSignal =
           previousLevelPCollection != null ? Wait.on(previousLevelPCollection) : null;
-      JdbcIoWrapper jdbcIoWrapper =
-          JdbcIoWrapper.of(configContainer.getJDBCIOWrapperConfig(sourceTables, waitOnSignal));
-      if (jdbcIoWrapper.getTableReaders().isEmpty()) {
+      IoWrapper ioWrapper = configContainer.getIOWrapper(sourceTables, waitOnSignal);
+      if (ioWrapper.getTableReaders().isEmpty()) {
         LOG.info("not creating reader as tables are not found at source: {}", sourceTables);
         // If tables of 1 level are ignored in middle, then the subsequent level will not wait to
         // begin processing.
         continue;
       }
-      ReaderImpl reader = ReaderImpl.of(jdbcIoWrapper);
+      ReaderImpl reader = ReaderImpl.of(ioWrapper);
       String suffix = generateSuffix(configContainer.getShardId(), currentLevel + "");
 
       Map<String, String> srcTableToShardIdColumnMap =
-          getSrcTableToShardIdColumnMap(
-              tableSelector.getSchemaMapper(), configContainer.getNamespace(), spannerTables);
+          configContainer.getSrcTableToShardIdColumnMap(
+              tableSelector.getSchemaMapper(), spannerTables);
 
       PCollection<Void> output =
           pipeline.apply(
@@ -219,16 +238,6 @@ public class PipelineController {
   }
 
   @VisibleForTesting
-  static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
-    return SpannerConfig.create()
-        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
-        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-        .withRpcPriority(RpcPriority.HIGH);
-  }
-
-  @VisibleForTesting
   static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options, Ddl ddl) {
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
     if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
@@ -237,17 +246,29 @@ public class PipelineController {
     return schemaMapper;
   }
 
-  interface DbConfigContainer {
+  /** TODO(vardhanvthigle): Consider refactoring this to JDBC specific package. */
+  interface JdbcDbConfigContainer extends DbConfigContainer {
 
     JdbcIOWrapperConfig getJDBCIOWrapperConfig(
         List<String> sourceTables, Wait.OnSignal<?> waitOnSignal);
 
     String getNamespace();
 
-    String getShardId();
+    @Override
+    default IoWrapper getIOWrapper(List<String> sourceTables, Wait.OnSignal<?> waitOnSignal) {
+      return JdbcIoWrapper.of(getJDBCIOWrapperConfig(sourceTables, waitOnSignal));
+    }
+
+    @Override
+    default Map<String, String> getSrcTableToShardIdColumnMap(
+        ISchemaMapper schemaMapper, List<String> spannerTables) {
+      String nameSpace = getNamespace();
+      return PipelineController.getSrcTableToShardIdColumnMap(
+          schemaMapper, nameSpace, spannerTables);
+    }
   }
 
-  static class ShardedDbConfigContainer implements DbConfigContainer {
+  static class ShardedJdbcDbConfigContainer implements JdbcDbConfigContainer {
 
     private Shard shard;
 
@@ -261,7 +282,7 @@ public class PipelineController {
 
     private SourceDbToSpannerOptions options;
 
-    public ShardedDbConfigContainer(
+    public ShardedJdbcDbConfigContainer(
         Shard shard,
         SQLDialect sqlDialect,
         String namespace,
@@ -309,10 +330,10 @@ public class PipelineController {
     }
   }
 
-  static class SingleInstanceDbConfigContainer implements DbConfigContainer {
+  static class SingleInstanceJdbcDbConfigContainer implements JdbcDbConfigContainer {
     private SourceDbToSpannerOptions options;
 
-    public SingleInstanceDbConfigContainer(SourceDbToSpannerOptions options) {
+    public SingleInstanceJdbcDbConfigContainer(SourceDbToSpannerOptions options) {
       this.options = options;
     }
 

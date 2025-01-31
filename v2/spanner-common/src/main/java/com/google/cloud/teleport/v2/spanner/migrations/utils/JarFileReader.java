@@ -32,6 +32,7 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.Files;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** TODO: rename this to FileReader. */
 public class JarFileReader {
 
   private static final Logger LOG = LoggerFactory.getLogger(JarFileReader.class);

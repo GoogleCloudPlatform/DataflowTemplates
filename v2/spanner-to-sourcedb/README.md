@@ -189,6 +189,9 @@ In addition, there are following application metrics exposed by the job:
 | severe_error_count | The number of permanent errors. |
 | skipped_record_count | The count of records that were skipped from reverse replication. |
 | success_record_count	| The number of successfully processed records. This also accounts for the records that were not written to source if the source already had updated data. |
+| custom_transformation_exception | Number of exception encountered in the custom transformation jar |
+| filtered_events_\<logical shard name\> | Number of events filtered via custom transformation per shard |
+| apply_custom_transformation_impl_latency_ms | Time taken for the execution of custom transformation logic. |
 
 
 These can be used to track the pipeline progress.
@@ -323,7 +326,7 @@ Reverse transformation can not be supported for following scenarios out of the b
 9. DELETES on Spanner that have Primary key columns different from the Source database column - such records will be dropped
 10. Primary key of the source table cannot be determined - such records will be dropped
 
-In the above cases, custom code will need to be written to perform reverse transformation.Refer the [customization](#customize) section for the source code to extended and write these custom transforms.
+In the above cases, custom code will need to be written to perform reverse transformation.Refer the [customization](#customize) section for the source code to extend and write these custom transforms.
 
 ## When to perform cut-back
 
@@ -400,6 +403,16 @@ Steps to perfrom customization:
 3. Invoke the reverse replication flow by passing the custom jar path and custom class path.
 4. If any custom parameters are needed in the custom shard identification logic, they can be passed via the *shardingCustomParameters* input to the runner. These parameters will be passed to the *init* method of the custom class. The *init* method is invoked once per worker setup.
 
+### Reverse transformation customization
+
+In order to make it easier for users to provide custom reverse transformation logic, the template accepts a GCS path that points to a custom jar, the custom class name and a GCS path for writing the filtered records. These parameters are used to invoke custom logic to perform reverse transformation.
+
+Steps to perform customization:
+1. Write custom transformation logic [CustomTransformationFetcher.java](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-custom-shard/src/main/java/com/custom/CustomTransformationFetcher.java). Details of the MigrationTransformationRequest class can be found [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/spanner-migrations-sdk/src/main/java/com/google/cloud/teleport/v2/spanner/utils/MigrationTransformationRequest.java).
+2. Build the [JAR](https://github.com/GoogleCloudPlatform/DataflowTemplates/tree/main/v2/spanner-custom-shard) and upload the jar to GCS
+3. Invoke the reverse replication flow by passing the custom jar path and the custom class path.
+4. If any events are filtered/skipped during the reverse transformation they can be written to a GCS directory by passing the GCS path via the *filterEventsDirectoryName* input to the runner.
+5. If any custom parameters are needed in the custom transformation logic, they can be passed via the *transformationCustomParameters* input to the runner. These parameters will be passed to the *init* method of the custom class. The *init* method is invoked once per worker setup.
 
 ## Cost
 

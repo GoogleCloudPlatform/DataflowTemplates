@@ -20,6 +20,7 @@ import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPat
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.ByteStreams;
 import com.google.pubsub.v1.SubscriptionName;
@@ -55,7 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link TextToPubsubStream} template. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(TextToPubsubStream.class)
 @RunWith(JUnit4.class)
 public class TextToPubsubStreamIT extends TemplateTestBase {

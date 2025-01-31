@@ -46,6 +46,7 @@ public class ChangeEventContextFactoryTest {
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
             ddl,
+            ddl,
             "shadow_",
             DatastreamConstants.MYSQL_SOURCE_TYPE);
   }
@@ -63,6 +64,7 @@ public class ChangeEventContextFactoryTest {
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
             ddl,
+            ddl,
             "shadow_",
             DatastreamConstants.MYSQL_SOURCE_TYPE);
   }
@@ -77,6 +79,6 @@ public class ChangeEventContextFactoryTest {
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();
     ChangeEventContext changeEventContext =
         ChangeEventContextFactory.createChangeEventContext(
-            getJsonNode(changeEvent.toString()), ddl, "shadow_", "xyz");
+            getJsonNode(changeEvent.toString()), ddl, ddl, "shadow_", "xyz");
   }
 }

@@ -69,6 +69,22 @@ public class Schema implements Serializable {
   public Schema(
       Map<String, SpannerTable> spSchema,
       Map<String, SyntheticPKey> syntheticPKeys,
+      Map<String, SourceTable> srcSchema,
+      Map<String, NameAndCols> toSpanner,
+      Map<String, NameAndCols> toSource) {
+    this.spSchema = spSchema;
+    this.syntheticPKeys = syntheticPKeys;
+    this.srcSchema = srcSchema;
+    this.toSpanner = toSpanner;
+    this.toSource = toSource;
+    this.srcToID = toSource;
+    this.spannerToID = toSpanner;
+    this.empty = (spSchema == null || srcSchema == null);
+  }
+
+  public Schema(
+      Map<String, SpannerTable> spSchema,
+      Map<String, SyntheticPKey> syntheticPKeys,
       Map<String, SourceTable> srcSchema) {
     this.spSchema = spSchema;
     this.syntheticPKeys = syntheticPKeys;

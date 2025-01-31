@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigquery.TableId;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.privacy.dlp.v2.CharacterMaskConfig;
 import com.google.privacy.dlp.v2.CryptoHashConfig;
@@ -63,7 +64,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Integration test for {@link DLPTextToBigQueryStreaming} (Stream_DLP_GCS_Text_to_BigQuery_Flex).
  */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(DLPTextToBigQueryStreaming.class)
 @RunWith(JUnit4.class)
 public class DLPTextToBigQueryStreamingIT extends TemplateTestBase {

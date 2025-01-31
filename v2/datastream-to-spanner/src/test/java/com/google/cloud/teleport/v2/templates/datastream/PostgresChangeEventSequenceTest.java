@@ -16,9 +16,19 @@
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Statement;
+import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import org.junit.Test;
 
 /** Unit tests for testing change event comparison logic in Postgres database. */
@@ -101,5 +111,52 @@ public final class PostgresChangeEventSequenceTest {
 
     assertTrue(dumpEvent.compareTo(cdcEvent) < 0);
     assertTrue(cdcEvent.compareTo(dumpEvent) > 0);
+  }
+
+  @Test
+  public void testCreateFromShadowTableWithUseSqlStatements_Postgres() throws Exception {
+    // Arrange
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    String shadowTable = "shadow_table_postgres";
+    Ddl shadowTableDdl =
+        Ddl.builder()
+            .createTable("shadow_table_postgres")
+            .column("id")
+            .int64()
+            .endColumn()
+            .column("timestamp")
+            .int64()
+            .endColumn()
+            .column("lsn")
+            .string()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .build();
+    Key primaryKey = Key.of(1L);
+    boolean useSqlStatements = true;
+
+    // Mock the behavior of the transaction context
+    Struct mockRow = mock(Struct.class);
+    when(mockRow.getLong("id")).thenReturn(1L);
+    when(mockRow.getLong("timestamp")).thenReturn(1615159728L);
+    when(mockRow.getString("lsn")).thenReturn("0/123456");
+
+    ResultSet mockResultSet = mock(ResultSet.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getCurrentRowAsStruct()).thenReturn(mockRow);
+    when(transactionContext.executeQuery(any(Statement.class))).thenReturn(mockResultSet);
+
+    // Act
+    PostgresChangeEventSequence result =
+        PostgresChangeEventSequence.createFromShadowTable(
+            transactionContext, shadowTable, shadowTableDdl, primaryKey, useSqlStatements);
+
+    // Assert
+    assertNotNull(result);
+    assertEquals((Object) 1615159728L, result.getTimestamp());
+    assertEquals("0/123456", result.getLSN());
   }
 }
