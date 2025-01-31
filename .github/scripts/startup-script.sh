@@ -89,3 +89,19 @@ sudo -u $user bash -c "cd /home/$user/actions-runner && tar -zxf ./actions-runne
 # configure and run gitactions runner
 sudo -u $user bash -c "cd /home/$user/actions-runner && ./config.sh --url ${REPO_URL} --token ${ACTIONS_RUNNER_INPUT_TOKEN} --labels ${GITACTIONS_LABELS} --unattended"
 sudo -u $user bash -c "cd /home/$user/actions-runner && ./run.sh &"
+
+# Install Go
+sudo apt install golang -y
+
+# Install Node.js and npm
+curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Install Angular CLI
+sudo npm install -g @angular/cli
+
+# Clone the spanner-migration-tool repository
+sudo -u $user bash -c "git clone https://github.com/GoogleCloudPlatform/spanner-migration-tool.git /home/$user/spanner-migration-tool"
+
+# Navigate to the repository directory and build the tool
+sudo -u $user bash -c "cd /home/$user/spanner-migration-tool && go build"

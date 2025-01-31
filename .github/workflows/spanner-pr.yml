@@ -21,22 +21,22 @@ on:
     branches:
     - 'main'
     paths:
-     # Template wide common modules
-     - 'v2/common/**'
-     - 'v2/datastream-common/**'
-     - 'it/google-cloud-platform/**'
-     - 'it/conditions/**'
-     # Component common modules
-     - 'v2/spanner-common/**'
-     - 'v2/spanner-migrations-sdk/**'
-     - 'v2/spanner-custom-shard/**'
-     # Include spanner paths
-     - '.github/workflows/spanner-pr.yml'
-     - 'v2/datastream-to-spanner/**'
-     - 'v2/spanner-change-streams-to-sharded-file-sink/**'
-     - 'v2/gcs-to-sourcedb/**'
-     - 'v2/sourcedb-to-spanner/**'
-     - 'v2/spanner-to-sourcedb/**'
+      # Template wide common modules
+      - 'v2/common/**'
+      - 'v2/datastream-common/**'
+      - 'it/google-cloud-platform/**'
+      - 'it/conditions/**'
+      # Component common modules
+      - 'v2/spanner-common/**'
+      - 'v2/spanner-migrations-sdk/**'
+      - 'v2/spanner-custom-shard/**'
+      # Include spanner paths
+      - '.github/workflows/spanner-pr.yml'
+      - 'v2/datastream-to-spanner/**'
+      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+      - 'v2/gcs-to-sourcedb/**'
+      - 'v2/sourcedb-to-spanner/**'
+      - 'v2/spanner-to-sourcedb/**'
   schedule:
   - cron: "3 */12 * * *"
   workflow_dispatch:
@@ -51,30 +51,6 @@ env:
 permissions: read-all
 
 jobs:
-  install_spanner_migration_tool:
-    name: Install Spanner Migration Tool
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5
-    - name: Install Go
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y golang
-    - name: Install npm
-      run: |
-        sudo apt-get install -y npm
-    - name: Clone Spanner Migration Tool
-      run: |
-        git clone https://github.com/GoogleCloudPlatform/spanner-migration-tool.git
-    - name: Build Spanner Migration Tool
-      run: |
-        cd spanner-migration-tool
-        make build
-    - name: Store Spanner Migration Tool Path
-      run: |
-        echo "SPANNER_MIGRATION_TOOL_PATH=$(pwd)/spanner-migration-tool/bin" >> $GITHUB_ENV
-
   spotless_check:
     name: Spotless
     timeout-minutes: 10

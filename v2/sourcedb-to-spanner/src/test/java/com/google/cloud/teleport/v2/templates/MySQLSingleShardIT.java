@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -70,6 +71,17 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() {
+    // Update and build the spanner-migration-tool
+    try {
+      ProcessBuilder processBuilder = new ProcessBuilder();
+      processBuilder.command(
+          "bash", "-c", "cd /home/runner/spanner-migration-tool && git pull && go build");
+      Process process = processBuilder.start();
+      process.waitFor();
+    } catch (IOException | InterruptedException e) {
+      e.printStackTrace();
+    }
+
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
