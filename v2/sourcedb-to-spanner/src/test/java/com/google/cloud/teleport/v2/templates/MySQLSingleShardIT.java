@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
@@ -73,26 +74,47 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() throws IOException, InterruptedException {
-    // Update and build the spanner-migration-tool
+    String toolPath = "/home/runner/spanner-migration-tool"; // Path to the tool
+
+    // Check if the tool directory exists
+    File toolDir = new File(toolPath);
+    boolean toolExists = toolDir.exists() && toolDir.isDirectory();
+
+    String command;
+    if (toolExists) {
+      // Update existing tool
+      command = "cd " + toolPath + " && git pull && go build";
+      System.out.println("Updating spanner-migration-tool...");
+    } else {
+      // Install the tool (replace with your actual installation command)
+      // Example using 'go install':
+      command =
+          "go install github.com/cloudspannerecosystem/spanner-migration-tool/cmd/spanner-migration-tool@latest"; // Example!
+      System.out.println("Installing spanner-migration-tool...");
+
+      // Or if you need to clone first:
+      // command = "mkdir -p " + toolPath + " && cd " + toolPath + " && git clone <repository_url> .
+      // && go build";
+    }
+
     System.out.println("######1");
     ProcessBuilder processBuilder = new ProcessBuilder();
-    processBuilder.command(
-        "bash", "-c", "cd /home/runner/spanner-migration-tool && git pull && go build");
+    processBuilder.command("bash", "-c", command); // Use the determined command
     Process process = processBuilder.start();
 
-    // Capture stdout (optional, but good for seeing normal output)
+    // Capture stdout
     BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
     String s;
     while ((s = stdInput.readLine()) != null) {
       System.out.println(s);
     }
 
-    // Capture stderr (essential for errors)
+    // Capture stderr
     BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-    StringBuilder errorOutput = new StringBuilder(); // Store errors for exception message
+    StringBuilder errorOutput = new StringBuilder();
     while ((s = stdError.readLine()) != null) {
       System.err.println(s);
-      errorOutput.append(s).append("\n"); // Accumulate errors
+      errorOutput.append(s).append("\n");
     }
 
     int exitCode = process.waitFor();
@@ -101,12 +123,12 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
     if (exitCode != 0) {
       String errorMessage = "Command failed with exit code " + exitCode;
       if (errorOutput.length() > 0) {
-        errorMessage += ":\n" + errorOutput.toString(); // Add stderr to exception message
+        errorMessage += ":\n" + errorOutput.toString();
       }
-      throw new RuntimeException(errorMessage); // Throw an exception
+      throw new RuntimeException(errorMessage);
     }
 
-    System.out.println("Command executed successfully."); // Indicate success
+    System.out.println("Command executed successfully.");
 
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
@@ -124,42 +146,6 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
    */
   @Test
   public void singleShardWithIdPopulationTest() throws Exception {
-    // Update and build the spanner-migration-tool
-    // Update and build the spanner-migration-tool
-    System.out.println("######4");
-    ProcessBuilder processBuilder = new ProcessBuilder();
-    processBuilder.command(
-        "bash", "-c", "cd /home/runner/spanner-migration-tool && git pull && go build");
-    Process process = processBuilder.start();
-
-    // Capture stdout (optional, but good for seeing normal output)
-    BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
-    String s;
-    while ((s = stdInput.readLine()) != null) {
-      System.out.println(s);
-    }
-
-    // Capture stderr (essential for errors)
-    BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-    StringBuilder errorOutput = new StringBuilder(); // Store errors for exception message
-    while ((s = stdError.readLine()) != null) {
-      System.err.println(s);
-      errorOutput.append(s).append("\n"); // Accumulate errors
-    }
-
-    int exitCode = process.waitFor();
-    System.out.println("######5 Exit Code: " + exitCode);
-
-    if (exitCode != 0) {
-      String errorMessage = "Command failed with exit code " + exitCode;
-      if (errorOutput.length() > 0) {
-        errorMessage += ":\n" + errorOutput.toString(); // Add stderr to exception message
-      }
-      throw new RuntimeException(errorMessage); // Throw an exception
-    }
-
-    System.out.println("Command executed successfully."); // Indicate success
-
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
