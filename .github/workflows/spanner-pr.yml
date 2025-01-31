@@ -1,19 +1,3 @@
-# Copyright 2024 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-# Checks that are intended to run on PRs containing Java code.
-
 name: Spanner PR
 
 on:
@@ -21,22 +5,22 @@ on:
     branches:
     - 'main'
     paths:
-      # Template wide common modules
-      - 'v2/common/**'
-      - 'v2/datastream-common/**'
-      - 'it/google-cloud-platform/**'
-      - 'it/conditions/**'
-      # Component common modules
-      - 'v2/spanner-common/**'
-      - 'v2/spanner-migrations-sdk/**'
-      - 'v2/spanner-custom-shard/**'
-      # Include spanner paths
-      - '.github/workflows/spanner-pr.yml'
-      - 'v2/datastream-to-spanner/**'
-      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
-      - 'v2/gcs-to-sourcedb/**'
-      - 'v2/sourcedb-to-spanner/**'
-      - 'v2/spanner-to-sourcedb/**'
+    # Template wide common modules
+    - 'v2/common/**'
+    - 'v2/datastream-common/**'
+    - 'it/google-cloud-platform/**'
+    - 'it/conditions/**'
+    # Component common modules
+    - 'v2/spanner-common/**'
+    - 'v2/spanner-migrations-sdk/**'
+    - 'v2/spanner-custom-shard/**'
+    # Include spanner paths
+    - '.github/workflows/spanner-pr.yml'
+    - 'v2/datastream-to-spanner/**'
+    - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+    - 'v2/gcs-to-sourcedb/**'
+    - 'v2/sourcedb-to-spanner/**'
+    - 'v2/spanner-to-sourcedb/**'
   schedule:
   - cron: "3 */12 * * *"
   workflow_dispatch:
@@ -51,6 +35,30 @@ env:
 permissions: read-all
 
 jobs:
+  install_spanner_migration_tool:
+    name: Install Spanner Migration Tool
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5
+    - name: Install Go
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y golang
+    - name: Install npm
+      run: |
+        sudo apt-get install -y npm
+    - name: Clone Spanner Migration Tool
+      run: |
+        git clone https://github.com/GoogleCloudPlatform/spanner-migration-tool.git
+    - name: Build Spanner Migration Tool
+      run: |
+        cd spanner-migration-tool
+        make build
+    - name: Store Spanner Migration Tool Path
+      run: |
+        echo "SPANNER_MIGRATION_TOOL_PATH=$(pwd)/spanner-migration-tool/bin" >> $GITHUB_ENV
+
   spotless_check:
     name: Spotless
     timeout-minutes: 10
@@ -102,7 +110,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      uses: actions/checkout@v3
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -123,7 +131,6 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
-        # Temp fix for https://github.com/codecov/codecov-action/issues/1487
         version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
@@ -131,7 +138,6 @@ jobs:
     name: Dataflow Templates Integration Smoke Tests
     needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
     timeout-minutes: 60
-    # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:
     - name: Checkout Code
@@ -160,7 +166,6 @@ jobs:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
     timeout-minutes: 180
-    # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
     steps:
     - name: Checkout Code

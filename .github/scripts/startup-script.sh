@@ -67,6 +67,12 @@ sudo gpasswd -a $user docker
 sudo mkdir /home/$user
 sudo chown $user /home/$user
 
+# install Go
+sudo apt install golang -y
+
+# install npm
+sudo apt install npm -y
+
 # access secrets from secretsmanager
 secrets=$(gcloud secrets versions access latest --secret="GITACTION_SECRET_NAME")
 
@@ -89,3 +95,7 @@ sudo -u $user bash -c "cd /home/$user/actions-runner && tar -zxf ./actions-runne
 # configure and run gitactions runner
 sudo -u $user bash -c "cd /home/$user/actions-runner && ./config.sh --url ${REPO_URL} --token ${ACTIONS_RUNNER_INPUT_TOKEN} --labels ${GITACTIONS_LABELS} --unattended"
 sudo -u $user bash -c "cd /home/$user/actions-runner && ./run.sh &"
+
+# clone and build spanner-migration-tool
+sudo -u $user bash -c "cd /home/$user && git clone https://github.com/GoogleCloudPlatform/spanner-migration-tool.git"
+sudo -u $user bash -c "cd /home/$user/spanner-migration-tool && make build"
