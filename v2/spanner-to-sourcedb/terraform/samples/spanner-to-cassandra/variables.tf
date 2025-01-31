@@ -72,19 +72,6 @@ variable "dataflow_params" {
   })
 }
 
-variable "shard_list" {
-  description = "Details of the source shards to do the reverse replication to"
-  type = list(object({
-    logicalShardId   = string
-    host             = string
-    user             = string
-    secretManagerUri = optional(string)
-    password         = optional(string)
-    port             = string
-    dbName           = string
-  }))
-}
-
 variable "shard_config" {
   type = map(any)
   default = {

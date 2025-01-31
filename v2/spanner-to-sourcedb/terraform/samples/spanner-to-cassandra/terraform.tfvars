@@ -62,7 +62,7 @@ dataflow_params = {
     run_mode = "regular"
     # Optional retry minutes for DLQ
     dlq_retry_minutes = "10"
-    # source type of the database (e.g., "mysql", "postgres", "spanner", "cassandra")
+    # source type of the database (e.g., "mysql", "cassandra")
     source_type = "cassandra"
   }
   runner_params = {
@@ -106,41 +106,6 @@ dataflow_params = {
     ip_configuration = "WORKER_IP_PRIVATE"
   }
 }
-
-shard_list = [
-  {
-    # Logical ID of the shard
-    logicalShardId = "shard1"
-    # Hostname or IP address of the shard
-    host = "<YOUR_SHARD_HOST_OR_IP>" # Replace with the shard's hostname or IP address
-    # Username for connecting to the shard
-    user = "root"
-    # URI of the Secret Manager secret containing the password (optional)
-    secretManagerUri = "projects/<YOUR_PROJECT_ID>/secrets/shard1-password/versions/latest" # Replace with your project ID and secret name
-    # Password for connecting to the shard (optional, use either this or secretManagerUri)
-    password = null
-    # Port number for connecting to the shard
-    port = "3306"
-    # Name of the database on the shard
-    dbName = "db1"
-  },
-  {
-    # Logical ID of the shard
-    logicalShardId = "shard2"
-    # Hostname or IP address of the shard
-    host = "<YOUR_SHARD_HOST_OR_IP>" # Replace with the shard's hostname or IP address
-    # Username for connecting to the shard
-    user = "root"
-    # URI of the Secret Manager secret containing the password (optional)
-    secretManagerUri = "projects/<YOUR_PROJECT_ID>/secrets/shard2-password/versions/latest" # Replace with your project ID and secret name
-    # Password for connecting to the shard (optional, use either this or secretManagerUri)
-    password = null
-    # Port number for connecting to the shard
-    port = "3306"
-    # Name of the database on the shard
-    dbName = "db2"
-  }
-]
 
 shard_config = {
   host             = "host_name"

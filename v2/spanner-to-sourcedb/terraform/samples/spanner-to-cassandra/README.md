@@ -4,22 +4,6 @@
 > jobs to replicate spanner writes for a Cassandra source, setting up all the required cloud infrastructure.
 > **Details of Cassandra configuration are needed as input.**
 
-## Prerequisite
-you'll need to create a dataflow template. In the root directory of the repo use following command to do this:
-```
-export BUCKET_NAME=<YOUR_BUCKET_NAME>
-export PROJECT=<YOUR_PROJECT_ID>
-export REGION=<YOUR_REGION>
-
-mvn clean package -PtemplatesStage \
-  -DskipTests -DprojectId="$PROJECT" \
-  -DbucketName="$BUCKET_NAME" \
-  -DstagePrefix="templates" \
-  -DtemplateName="Spanner_to_SourceDb" \
-  -pl v2/spanner-to-sourcedb -am
-
-```
-
 ## Terraform permissions
 
 In order to create the resources in this sample,
@@ -128,6 +112,7 @@ It takes the following assumptions -
      1. Check that the Cassandra credentials are correctly specified in the `tfvars` file. 
      2. Check that the Cassandra server is up. 
      3. The Cassandra user configured in the `tfvars`. 
+     4. The Cassandra user configured in the tfvars has neccessary permissions to execute the prepared statements
 2. Ensure that the Cassandra instance and Dataflow workers can establish connectivity with each other. Template automatically adds networking firewalls rules to enable this access. This can differ depending on the source configuration. Please validate the template rules and ensure that network connectivity can be established.
 3. The Cassandra instance with database containing reverse-replication compatible
    schema is created.
@@ -318,7 +303,7 @@ Source shard configuration file that is supplied to the dataflow is automaticall
 created by Terraform. A sample file that this uploaded to GCS looks like
 below - 
 
-```json
+```
   datastax-java-driver {
       basic.contact-points = ["10.0.0.2:9042"]
       basic.session-keyspace = "ecommerce"
@@ -326,7 +311,7 @@ below -
       local-datacenter = "datacenter1"
     }
     advanced.auth-provider {
-       class = PlainTextAuthProvider
+	    class = PlainTextAuthProvider
       username = "username"
       password = "password"
     }
@@ -476,44 +461,3 @@ Increasing this value can
 potentially speed up orchestration execution
 when orchestrating a large sharded migration. We strongly recommend against
 setting this value > 20. In most cases, the default value should suffice.
-
-### Setup Cassandra
-To prepare Cassandra for testing, follow these steps (note that the scripts are tailored for Cassandra 41x on Ubuntu 22.04 and may require modifications for use on different distributions):
-1. Install java by executing
-```
-sudo apt update -y
-sudo apt install openjdk-11-jdk -y
-update-alternatives --config java
-export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
-source ~/.bashrc
-echo $JAVA_HOME
-java -version
-```
-2. Install Cassandra by executing
-```
-sudo apt update -y
-curl -L https://downloads.apache.org/cassandra/KEYS | sudo apt-key add -
-wget -q -O - https://downloads.apache.org/cassandra/KEYS | sudo gpg --dearmor -o /etc/apt/keyrings/apache-cassandra.gpg
-echo "deb [signed-by=/etc/apt/keyrings/apache-cassandra.gpg] https://debian.cassandra.apache.org 41x main" | sudo tee /etc/apt/sources.list.d/cassandra.list
-sudo apt update -y
-sudo apt install cassandra -y
-service cassandra start
-```
-3. Configure the Cassandra setup by editing the file at /etc/cassandra/cassandra.yaml
-- Change "authenticator: AllowAllAuthenticator" to "authenticator: PasswordAuthenticator"
-- Change "authorizer: AllowAllAuthorizer" to "authorizer: CassandraAuthorizer"
-- Change "rpc_address: localhost" to "rpc_address: 0.0.0.0"
-- Change broadcast_rpc_address to the IP address of your Cassandra cluster
-You can check sample of updated file in cassandra.yaml 
-
-4. Restarting the Cassandra servive by executing
-```
-service cassandra restart
-```
-
-5. Update the credentials with the following commands:
-```
-cqlsh -u cassandra -p cassandra;
-cqlsh> CREATE ROLE <NEW_USERNAME> WITH PASSWORD = '<NEW_PASSWORD>' AND SUPERUSER = true AND LOGIN = true;
-```
-6. Restart the Cassandra service again by executing the command from step 4.
