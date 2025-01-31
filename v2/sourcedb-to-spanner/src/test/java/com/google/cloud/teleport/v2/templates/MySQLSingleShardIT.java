@@ -69,38 +69,9 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
 
   private static final String SHARD_ID = "migration_shard_id";
 
-  /**
-   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
-   */
-  @Before
-  public void setUp() throws IOException, InterruptedException {
-    String toolPath = "/home/runner/spanner-migration-tool"; // Path to the tool
-
-    // Check if the tool directory exists
-    File toolDir = new File(toolPath);
-    boolean toolExists = toolDir.exists() && toolDir.isDirectory();
-
-    String command;
-    if (toolExists) {
-      // Update existing tool
-      command = "cd " + toolPath + " && git pull && go build";
-      System.out.println("Updating spanner-migration-tool...");
-    } else {
-      // Install the tool (replace with your actual installation command)
-      // Example using 'go install':
-      command =
-          "go install github.com/cloudspannerecosystem/spanner-migration-tool/cmd/spanner-migration-tool@latest"; // Example!
-      System.out.println("Installing spanner-migration-tool...");
-
-      // Or if you need to clone first:
-      // command = "mkdir -p " + toolPath + " && cd " + toolPath + " && git clone <repository_url> .
-      // && go build";
-    }
-
-    System.out.println("######1");
-    ProcessBuilder processBuilder = new ProcessBuilder();
-    processBuilder.command("bash", "-c", command); // Use the determined command
-    Process process = processBuilder.start();
+  private void executeCommand(String command) throws IOException, InterruptedException {
+    System.out.println("Executing: " + command);
+    Process process = new ProcessBuilder("bash", "-c", command).start();
 
     // Capture stdout
     BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -110,25 +81,54 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
     }
 
     // Capture stderr
-    BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-    StringBuilder errorOutput = new StringBuilder();
-    while ((s = stdError.readLine()) != null) {
-      System.err.println(s);
-      errorOutput.append(s).append("\n");
-    }
+    String errorOutput = getErrorOutput(process); // Use helper method
+    System.err.println(errorOutput); // Print errors immediately
 
     int exitCode = process.waitFor();
-    System.out.println("######2 Exit Code: " + exitCode);
-
     if (exitCode != 0) {
-      String errorMessage = "Command failed with exit code " + exitCode;
-      if (errorOutput.length() > 0) {
-        errorMessage += ":\n" + errorOutput.toString();
-      }
-      throw new RuntimeException(errorMessage);
+      throw new RuntimeException(
+          "Command failed with exit code "
+              + exitCode
+              + ":\n"
+              + errorOutput); // Include errors in exception
+    }
+  }
+
+  private String getErrorOutput(Process process) throws IOException {
+    BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+    StringBuilder errorOutput = new StringBuilder();
+    String s;
+    while ((s = stdError.readLine()) != null) {
+      errorOutput.append(s).append("\n");
+    }
+    return errorOutput.toString();
+  }
+
+  /**
+   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
+   */
+  @Before
+  public void setUp() throws IOException, InterruptedException {
+    String toolPath = "/home/runner/spanner-migration-tool";
+    File toolDir = new File(toolPath);
+
+    if (!toolDir.exists()) {
+      String cloneCommand =
+          "mkdir -p "
+              + toolPath
+              + " && cd "
+              + toolPath
+              + " && git clone https://github.com/cloudspannerecosystem/spanner-migration-tool.git .";
+      executeCommand(cloneCommand);
     }
 
-    System.out.println("Command executed successfully.");
+    String buildCommand = "cd " + toolPath + " && go build ./cmd/spanner-migration-tool";
+    executeCommand(buildCommand);
+
+    // Add to PATH (optional but recommended)
+    String addToPathCommand =
+        "export PATH=$PATH:" + toolPath + "/cmd"; // Adjust if the binary is in a different location
+    executeCommand(addToPathCommand);
 
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
