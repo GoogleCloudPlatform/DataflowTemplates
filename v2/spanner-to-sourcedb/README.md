@@ -65,28 +65,44 @@ Points 1 to 4 above are retryable errors - the Dataflow job automatically retrie
 
 A few prerequisites must be considered before starting with reverse replication.
 
-1. Ensure network connectivity between the source database and your GCP project, where your Dataflow jobs will run.
-  - Allowlist Dataflow worker IPs on the MySQL instance so that they can access the MySQL IPs.
-  - Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file).
-  - Check that the MySQL server is up.
-  - The MySQL user configured in the [source shards file](#sample-source-shards-file) should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database.
-2. Ensure that Dataflow permissions are present.[Basic permissions](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#before_you_begin:~:text=Grant%20roles%20to%20your%20Compute%20Engine%20default%20service%20account.%20Run%20the%20following%20command%20once%20for%20each%20of%20the%20following%20IAM%20roles%3A%20roles/dataflow.admin%2C%20roles/dataflow.worker%2C%20roles/bigquery.dataEditor%2C%20roles/pubsub.editor%2C%20roles/storage.objectAdmin%2C%20and%20roles/artifactregistry.reader) and [Flex template permissions](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates#permissions).
-3. Ensure that the port 12345 is open for communication among the Dataflow worker VMs.Please refer the Dataflow firewall [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#firewall_rules) for more.
-4. Ensure the compute engine service account has the following permission:
+1. For Mysql:
+
+   Ensure network connectivity between the source database and your GCP project, where your Dataflow jobs will run.
+    - Allowlist Dataflow worker IPs on the MySQL instance so that they can access the MySQL IPs.
+    - Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file-for-MySQL).
+    - Check that the MySQL server is up.
+    - The MySQL user configured in the [source shards file](#sample-source-shards-file-for-MySQL) should have [INSERT](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_insert), [UPDATE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_update) and [DELETE](https://dev.mysql.com/doc/refman/8.0/en/privileges-provided.html#priv_delete) privileges on the database.
+
+2. For Cassandra:
+
+     Ensure network connectivity between the source database and your GCP project, where your Dataflow jobs will run.
+      - Allowlist Dataflow worker IPs on the Cassandra instance so that they can access the Cassandra nodes.
+      - Check that the Cassandra credentials are correctly specified in the [source file](#Sample-source-File-for-Cassandra).
+      - Check that the Cassandra server is up.
+      - The Cassandra user configured in the [source file](#Sample-source-File-for-Cassandra) should be granted the necessary permissions to perform insert,update and delete operations, as a part of [Cassandra Role Management](https://cassandra.apache.org/doc/stable/cassandra/cql/security.html#create-role-statement).
+
+3. Ensure that Dataflow permissions are present.[Basic permissions](https://cloud.google.com/dataflow/docs/guides/templates/using-flex-templates#before_you_begin:~:text=Grant%20roles%20to%20your%20Compute%20Engine%20default%20service%20account.%20Run%20the%20following%20command%20once%20for%20each%20of%20the%20following%20IAM%20roles%3A%20roles/dataflow.admin%2C%20roles/dataflow.worker%2C%20roles/bigquery.dataEditor%2C%20roles/pubsub.editor%2C%20roles/storage.objectAdmin%2C%20and%20roles/artifactregistry.reader) and [Flex template permissions](https://cloud.google.com/dataflow/docs/guides/templates/configuring-flex-templates#permissions).
+4. Ensure that the port 12345 is open for communication among the Dataflow worker VMs.Please refer the Dataflow firewall [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#firewall_rules) for more.
+5. Ensure the compute engine service account has the following permission:
     - roles/spanner.databaseUser
     - roles/secretManager.secretAccessor
     - roles/secretmanager.viewer
-5. Ensure the authenticated user launching reverse replication has the following permissions: (this is the user account authenticated for the Spanner Migration Tool and not the service account)
+6. Ensure the authenticated user launching reverse replication has the following permissions: (this is the user account authenticated for the Spanner Migration Tool and not the service account)
     - roles/spanner.databaseUser
     - roles/dataflow.developer
-6. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
-7. Ensure that the target Spanner instance is ready.
-8. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
-9. [Source shards file](./RunnigReverseReplication.md#sample-sourceshards-file) already uploaded to GCS.
-10. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
-11. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier.
-12. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
-13. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
+7. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
+8. Ensure that the target Spanner instance is ready.
+9. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
+10. For MySQL: 
+   [Source shards file](./RunnigReverseReplication.md#sample-source-shards-file-for-MySQL) already uploaded to GCS. 
+
+11. For Cassandra:
+    [Source file](./RunnigReverseReplication.md#Sample-source-File-for-Cassandra) already uploaded to GCS.
+
+12. Resources needed for reverse replication incur cost. Make sure to read [cost](#cost).
+13. Reverse replication uses shard identifier column per table to route the Spanner records to a given source shard.The column identified as the sharding column needs to be selected via Spanner Migration Tool when performing migration.The value of this column should be the logicalShardId value specified in the [source shard file](#sample-source-shards-file-for-MySQL).In the event that the shard identifier column is not an existing column,the application code needs to be changed to populate this shard identifier column when writing to Spanner. Or use a custom shard identifier plugin to supply the shard identifier.
+14. The reverse replication pipeline uses GCS for dead letter queue handling. Ensure that the DLQ directory exists in GCS.
+15. Create PubSub notification on the 'retry' folder of the DLQ directory. For this, create a [PubSub topic](https://cloud.google.com/pubsub/docs/create-topic), create a [PubSub subscription](https://cloud.google.com/pubsub/docs/create-subscription) for that topic. Configure [GCS notification](https://cloud.google.com/storage/docs/reporting-changes#command-line). The resulting subscription should be supplied as the dlqGcsPubSubSubscription Dataflow input parameter.
 
   For example:
 
@@ -101,7 +117,7 @@ A few prerequisites must be considered before starting with reverse replication.
   gcloud storage buckets notifications create --event-types=OBJECT_FINALIZE
   --object-prefix=retry/ gs://rr-dlq --topic=projects/<my-project>/topics/rr-dlq-topic
   ```
-14. Create change stream, the below example tracks all tables. When creating a change stream, use the NEW_ROW option, sample command below :
+16. Create change stream, the below example tracks all tables. When creating a change stream, use the NEW_ROW option, sample command below :
 
   ```
   CREATE CHANGE STREAM allstream
@@ -110,9 +126,9 @@ A few prerequisites must be considered before starting with reverse replication.
   value_capture_type = 'NEW_ROW'
   );
   ```
-15. The Dataflow template creates a pool of database connections per Dataflow worker. The maxShardConnections template parameter, defaulting to 10,000 represents the maximum connections allowed for a given database. The maxWorkers Dataflow configuration should not exceed the maxShardConnections value, else the template launch will fail as we do not want to overload the database.
+17. The Dataflow template creates a pool of database connections per Dataflow worker. The maxShardConnections template parameter, defaulting to 10,000 represents the maximum connections allowed for a given database. The maxWorkers Dataflow configuration should not exceed the maxShardConnections value, else the template launch will fail as we do not want to overload the database.
 
-16. Please refer dataflow [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#internet_access_for) on network options.
+18. Please refer dataflow [documentation](https://cloud.google.com/dataflow/docs/guides/routes-firewall#internet_access_for) on network options.
 
   When disabling the public IP for Dataflow, the option below should be added to the command line:
 
@@ -126,7 +142,8 @@ A few prerequisites must be considered before starting with reverse replication.
   --subnetwork=https://www.googleapis.com/compute/v1/projects/<project name>/regions/<region name>/subnetworks/<subnetwork name>
   ```
 
-### Sample source shards File
+
+### Sample source shards file for MySQL
 
 This file contains meta data regarding the source MYSQL shards, which is used to connect to them. This should be present even if there is a single source database shard.
 The database user password should be kept in [Secret Manager](#https://cloud.google.com/security/products/secret-manager) and it's URI needs to be specified in the file.
@@ -151,6 +168,29 @@ The file should be a list of JSONs as:
     "dbName": "db2"
     }
 ]
+```
+
+
+### Sample source file for Cassandra
+
+This file includes metadata about the source Cassandra cluster, which is essential for establishing a connection. It must be present.
+The file format should be as below:
+
+```hocon
+  # Configuration for the DataStax Java driver for Apache Cassandra®.
+  # This file is in HOCON format, see https://github.com/typesafehub/config/blob/master/HOCON.md.
+  datastax-java-driver {
+        basic.contact-points = ["10.244.21.233:9042"]
+        basic.session-keyspace = "keyspace_name"
+      basic.load-balancing-policy {
+        local-datacenter = "datacenter1"
+      }
+      advanced.auth-provider {
+      class = PlainTextAuthProvider
+        username = "root"
+        password = "admin"
+      }
+    }
 ```
 
 ## Launching reverse replication
@@ -306,7 +346,7 @@ When running to reprocess the 'severe' DLQ directory, run the Dataflow job with 
 
   The following sections list the known limitations that exist currently with the Reverse Replication flows:
 
-  1. Currently only MySQL source database is supported.
+  1. Currently MySQL and Cassandra source database is supported.
   2. If forward migration and reverse replication are running in parallel, there is no mechanism to prevent the forward migration of data that was written to source via the reverse replication flow. The impact of this is unnecessary processing of redundant data. The best practice is to start reverse replication post cutover when forward migration has ended.
   3. Schema changes are not supported.
   4. Session file modifications to add backticks in table or column names is not supported.

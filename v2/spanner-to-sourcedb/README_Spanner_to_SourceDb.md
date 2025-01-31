@@ -40,13 +40,11 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **runMode**: This is the run mode type, whether regular or with retryDLQ.Default is regular. retryDLQ is used to retry the severe DLQ records only.
 * **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to 10.
-* **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql.
+* **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql, but it can also be configured to use cassandra.
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
 * **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
-
-
 
 ## Getting Started
 
