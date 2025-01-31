@@ -73,12 +73,15 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
   public void setUp() {
     // Update and build the spanner-migration-tool
     try {
+      System.out.println("######1");
       ProcessBuilder processBuilder = new ProcessBuilder();
       processBuilder.command(
           "bash", "-c", "cd /home/runner/spanner-migration-tool && git pull && go build");
       Process process = processBuilder.start();
       process.waitFor();
+      System.out.println("######2");
     } catch (IOException | InterruptedException e) {
+      System.out.println("######3");
       e.printStackTrace();
     }
 
@@ -98,6 +101,19 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
    */
   @Test
   public void singleShardWithIdPopulationTest() throws Exception {
+    // Update and build the spanner-migration-tool
+    try {
+      System.out.println("######4");
+      ProcessBuilder processBuilder = new ProcessBuilder();
+      processBuilder.command(
+          "bash", "-c", "cd /home/runner/spanner-migration-tool && git pull && go build");
+      Process process = processBuilder.start();
+      process.waitFor();
+      System.out.println("######5");
+    } catch (IOException | InterruptedException e) {
+      System.out.println("######6");
+      e.printStackTrace();
+    }
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
