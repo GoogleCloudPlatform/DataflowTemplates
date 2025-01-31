@@ -114,7 +114,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-unit-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
     - name: Upload coverage reports to Codecov
@@ -151,7 +151,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-smoke-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
     - name: Cleanup Java Environment
@@ -180,7 +180,7 @@ jobs:
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-integration-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 10
     - name: Cleanup Java Environment
