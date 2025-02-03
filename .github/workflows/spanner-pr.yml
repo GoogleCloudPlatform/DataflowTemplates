@@ -67,10 +67,22 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
-    - name: Set up C++ environment
-      uses: actions/setup-cpp
-      with:
-        gcc: true
+    - name: Install GCC without root privileges
+      run: |
+        # Create a directory for GCC installation
+        mkdir -p $HOME/gcc-install    
+        # Download and extract precompiled GCC
+        GCC_VERSION="11.3.0"
+        GCC_TAR="gcc-${GCC_VERSION}-x86_64-linux-gnu.tar.gz"
+        wget https://github.com/brechtsanders/gcc-mirror/releases/download/gcc-${GCC_VERSION}/${GCC_TAR}
+        tar -xzf ${GCC_TAR} -C $HOME/gcc-install --strip-components=1
+        
+        # Add GCC to PATH
+        echo "$HOME/gcc-install/bin" >> $GITHUB_PATH
+    - name: Verify GCC installation
+      run: |
+        gcc --version
+        g++ --version
     - name: Install Go
       uses: actions/setup-go@v4
       with:
