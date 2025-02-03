@@ -136,6 +136,9 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -155,6 +158,9 @@ jobs:
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
