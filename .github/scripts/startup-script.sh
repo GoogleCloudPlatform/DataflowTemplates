@@ -89,7 +89,3 @@ sudo -u $user bash -c "cd /home/$user/actions-runner && tar -zxf ./actions-runne
 # configure and run gitactions runner
 sudo -u $user bash -c "cd /home/$user/actions-runner && ./config.sh --url ${REPO_URL} --token ${ACTIONS_RUNNER_INPUT_TOKEN} --labels ${GITACTIONS_LABELS} --unattended"
 sudo -u $user bash -c "cd /home/$user/actions-runner && ./run.sh &"
-
-#install gcc
-sudo apt-get update
-sudo apt-get install -y gcc
