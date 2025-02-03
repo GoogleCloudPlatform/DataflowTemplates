@@ -55,7 +55,7 @@ jobs:
     name: Install SMT
     needs: [ ]
     timeout-minutes: 60
-    runs-on: [ self-hosted, it ]
+    runs-on: [ self-hosted, root ]  # Use 'root' runner
     steps:
     - name: Checkout SMT Code
       uses: actions/checkout@v4
@@ -67,21 +67,14 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y make gcc
     - name: Install Go
       uses: actions/setup-go@v4
       with:
         go-version: '1.19'
-    - name: Check User
-      run: whoami
-    - name: Run sudo Commands Without Prompt
-      run: echo "${{ secrets.SUDO_PASSWORD }}"
-    - name: Grant Passwordless sudo for Runner
-      run: |
-        echo "" | sudo -S tee /etc/sudoers.d/runner <<< "runner ALL=(ALL) NOPASSWD:ALL"
-        sudo chmod 0440 /etc/sudoers.d/runner
-    - name: Install Dependencies
-      run: |
-        apt-get update && apt-get install -y make gcc
     - name: Prepare Go Modules
       run: |
         cd spanner-migration-tool
