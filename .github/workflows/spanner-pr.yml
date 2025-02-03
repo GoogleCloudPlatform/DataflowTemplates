@@ -68,7 +68,7 @@ jobs:
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Set up C++ environment
-      uses: actions/setup-cpp@v1
+      uses: actions/setup-cpp
       with:
         gcc: true
     - name: Install Go
