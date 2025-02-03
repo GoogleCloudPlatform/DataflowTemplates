@@ -34,6 +34,7 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -70,17 +71,16 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
 
   private static final String SHARD_ID = "migration_shard_id";
 
-  private String executeCommand(String command, String currentPath)
+  private static void executeCommand(String command, String currentPath)
       throws IOException, InterruptedException {
     System.out.println("Executing: " + command);
 
-    ProcessBuilder pb = new ProcessBuilder("/bin/bash", "-c", command); // Explicitly use /bin/bash
+    ProcessBuilder pb = new ProcessBuilder("/bin/bash", "-c", command);
     Map<String, String> env = pb.environment();
-    env.put("PATH", currentPath); // Set the PATH
+    env.put("PATH", currentPath);
 
     Process process = pb.start();
 
-    // Capture stdout and stderr concurrently
     BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
     BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
@@ -93,11 +93,11 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
               String s;
               try {
                 while ((s = stdInput.readLine()) != null) {
-                  System.out.println(s); // Print stdout in real-time
+                  System.out.println(s);
                   stdoutBuilder.append(s).append("\n");
                 }
               } catch (IOException e) {
-                e.printStackTrace(); // Handle or log the exception as needed
+                e.printStackTrace();
               }
             });
 
@@ -107,11 +107,11 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
               String s;
               try {
                 while ((s = stdError.readLine()) != null) {
-                  System.err.println(s); // Print stderr in real-time
+                  System.err.println(s);
                   stderrBuilder.append(s).append("\n");
                 }
               } catch (IOException e) {
-                e.printStackTrace(); // Handle or log the exception as needed
+                e.printStackTrace();
               }
             });
 
@@ -119,7 +119,7 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
     stderrThread.start();
 
     int exitCode = process.waitFor();
-    stdoutThread.join(); // Wait for threads to finish reading output
+    stdoutThread.join();
     stderrThread.join();
 
     String stdout = stdoutBuilder.toString();
@@ -134,37 +134,23 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
               + stdout
               + "\n"
               + "Stderr:\n"
-              + stderr); // Include both outputs in exception
+              + stderr);
     }
-
-    // Logic to extract the modified PATH (if command modifies it)
-    // This will depend on what your command does.
-    // Example: If your command is "export PATH=$PATH:/new/path", you would
-    // need to parse the output to get the new PATH value.
-    // If your command doesn't change PATH, you can simply return currentPath
-    return currentPath; // Or extract and return the new path from stdout
   }
 
-  private String getErrorOutput(Process process) throws IOException {
-    BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-    StringBuilder errorOutput = new StringBuilder();
-    String s;
-    while ((s = stdError.readLine()) != null) {
-      errorOutput.append(s).append("\n");
-    }
-    return errorOutput.toString();
+  @BeforeClass
+  public static void configureGit() throws IOException, InterruptedException {
+    executeCommand(
+        "git config --global url.\"https://\".insteadOf \"https://x-access-token:@github.com/\"",
+        System.getenv("PATH"));
   }
 
-  /**
-   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
-   */
   @Before
   public void setUp() throws IOException, InterruptedException {
     String toolPath = "/home/runner/spanner-migration-tool";
     String clonedRepoPath = toolPath + "/spanner-migration-tool";
 
-    // 1. Idempotent cloning (checks for existing repo)
-    if (!Files.exists(Paths.get(clonedRepoPath))) { // Use Files.exists for better path handling
+    if (!Files.exists(Paths.get(clonedRepoPath))) {
       executeCommand(
           "mkdir -p "
               + toolPath
@@ -173,28 +159,21 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
           System.getenv("PATH"));
     }
 
-    // 2. Build with error checking
     executeCommand("cd " + clonedRepoPath + " && go build", System.getenv("PATH"));
 
-    // 3. Add to PATH (correctly)
-    String pathToAddTo =
-        clonedRepoPath
-            + "/cmd"; // Or wherever the binary is located. Best practice is to use the full path.
+    String pathToAddTo = clonedRepoPath + "/cmd"; // Correct path to your Go binary
     String newPath = System.getenv("PATH") + ":" + pathToAddTo;
-    // No command needed, just set the variable
-    System.setProperty(
-        "PATH",
-        newPath); // Set the system property. Important: This is not persistent beyond the current
-    // JVM.
+    System.setProperty("PATH", newPath);
 
-    // 4. Verification (Optional but highly recommended)
-    if (!Files.exists(Paths.get(pathToAddTo, "your_binary_name"))) { // Replace your_binary_name
+    // Verification (Very important!)
+    if (!Files.exists(
+        Paths.get(pathToAddTo, "your_binary_name"))) { // Replace with your binary name
       throw new RuntimeException(
           "Binary not found after build: " + pathToAddTo + "/your_binary_name");
     }
 
-    mySQLResourceManager = setUpMySQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
+    mySQLResourceManager = setUpMySQLResourceManager(); // Your resource manager setup
+    spannerResourceManager = setUpSpannerResourceManager(); // Your resource manager setup
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
