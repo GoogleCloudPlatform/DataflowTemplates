@@ -55,7 +55,7 @@ jobs:
     name: Install SMT
     needs: [ ]
     timeout-minutes: 60
-    runs-on: [ self-hosted, root ]  # Use 'root' runner
+    runs-on: [ self-hosted, it ]
     steps:
     - name: Checkout SMT Code
       uses: actions/checkout@v4
