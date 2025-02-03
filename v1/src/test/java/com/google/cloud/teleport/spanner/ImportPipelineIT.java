@@ -78,16 +78,14 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
         "input/Float32Table-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/Float32Table-manifest.json")
             .getPath());
+    gcsClient.uploadArtifact(
+        "input/UuidTable.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/UuidTable-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable-manifest.json")
+            .getPath());
 
-    if (Objects.equals(subdirectory, "googlesql")) {
-      gcsClient.uploadArtifact(
-          "input/UuidTable.avro-00000-of-00001",
-          Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable.avro").getPath());
-      gcsClient.uploadArtifact(
-          "input/UuidTable-manifest.json",
-          Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable-manifest.json")
-              .getPath());
-    }
     if (Objects.equals(subdirectory, "googlesql")) {
       gcsClient.uploadArtifact(
           "input/ModelStruct.avro-00000-of-00001",
@@ -128,56 +126,6 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     // Using the string NULL to match the string representation created in
     // assertThatStructs. The actual value in avro is a plain `null`.
     expectedRows.add(ImmutableMap.of("Key", "9", "Float32Value", "NULL"));
-    return expectedRows;
-  }
-
-  private List<Map<String, Object>> getUuidTableExpectedRows() {
-    List<Map<String, Object>> expectedRows = new ArrayList<>();
-    expectedRows.add(
-        new HashMap<>() {
-          {
-            put("Key", "00000000-0000-0000-0000-000000000000");
-            put("Val1", "00000000-0000-0000-0000-000000000000");
-            put("Val2", 0);
-            put(
-                "Val3",
-                List.of(
-                    "00000000-0000-0000-0000-000000000001",
-                    "00000000-0000-0000-0000-000000000002"));
-          }
-        });
-    expectedRows.add(
-        new HashMap<>() {
-          {
-            put("Key", "11111111-1111-1111-1111-111111111111");
-            put("Val1", null);
-            put("Val2", 1);
-            put(
-                "Val3",
-                List.of(
-                    "11111111-1111-1111-1111-111111111111",
-                    "11111111-1111-1111-1111-111111111112"));
-          }
-        });
-
-    expectedRows.add(
-        new HashMap<>() {
-          {
-            put("Key", "22222222-2222-2222-2222-222222222222");
-            put("Val1", "22222222-2222-2222-2222-222222222222");
-            put("Val2", 2);
-            put("Val3", null);
-          }
-        });
-    expectedRows.add(
-        new HashMap<>() {
-          {
-            put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
-            put("Val1", null);
-            put("Val2", 1);
-            put("Val3", null);
-          }
-        });
     return expectedRows;
   }
 
@@ -225,15 +173,6 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             + ") PRIMARY KEY(Key)";
     spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
-    String createUuidTableStatement =
-        "CREATE TABLE UuidTable (\n"
-            + "  Key UUID,\n"
-            + "  Val1 UUID,\n"
-            + "  Val2 INT64,\n"
-            + "  Val3 ARRAY<UUID>,\n"
-            + ") PRIMARY KEY(Key)";
-    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
-
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -266,43 +205,6 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
-
-    List<Struct> uuidRecords =
-        spannerResourceManager.runQuery(
-            String.format(
-                "SELECT CAST(Key as STRING) as Key, CAST(Val1 as String) AS Val1, Val2, %s FROM"
-                    + " UuidTable",
-                "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM"
-                    + " UNNEST(Val3) AS e) END AS Val3"));
-    assertThat(uuidRecords).hasSize(4);
-    assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
-  }
-
-  private List<Map<String, Object>> structToRecords(List<Struct> structs) {
-    try {
-      List<Map<String, Object>> records = new ArrayList<>();
-
-      for (Struct struct : structs) {
-        Map<String, Object> record = new HashMap<>();
-
-        for (Type.StructField field : struct.getType().getStructFields()) {
-          Value fieldValue = struct.getValue(field.getName());
-          String stringValue = fieldValue.toString();
-          if (fieldValue.isNull()) {
-            stringValue = null;
-          } else if (fieldValue.getType() == Type.array(Type.string())) {
-            stringValue = new ArrayList<>(fieldValue.getAsStringList()).toString();
-          }
-          record.put(field.getName(), stringValue);
-        }
-
-        records.add(record);
-      }
-
-      return records;
-    } catch (Exception e) {
-      throw new RuntimeException("Error converting TableResult to Records", e);
-    }
   }
 
   @Test
@@ -343,15 +245,6 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             + "PRIMARY KEY(\"Key\"))";
     spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
 
-    String createUuidTableStatement =
-        "CREATE TABLE UuidTable (\n"
-            + "  Key uuid PRIMARY KEY,\n"
-            + "  Val1 uuid,\n"
-            + "  Val2 INT,\n"
-            + "  Val3 uuid[]\n"
-            + ")";
-    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
-
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -384,6 +277,84 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
     assertThat(float32Records).hasSize(9);
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
+  }
+
+  @Test
+  public void testGoogleSqlImportPipeline_UUID() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    uploadImportPipelineArtifacts("googlesql");
+    String createUuidTableStatement =
+        "CREATE TABLE UuidTable (\n"
+            + "  Key UUID,\n"
+            + "  Val1 UUID,\n"
+            + "  Val2 INT64,\n"
+            + "  Val3 ARRAY<UUID>,\n"
+            + ") PRIMARY KEY(Key)";
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("inputDir", getGcsPath("input/"))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Struct> uuidRecords =
+        spannerResourceManager.runQuery(
+            String.format(
+                "SELECT CAST(Key as STRING) as Key, CAST(Val1 as String) AS Val1, Val2, %s FROM"
+                    + " UuidTable",
+                "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM"
+                    + " UNNEST(Val3) AS e) END AS Val3"));
+    assertThat(uuidRecords).hasSize(4);
+    assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
+  }
+
+  @Test
+  public void testPostgresImportPipeline_UUID() throws IOException {
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    uploadImportPipelineArtifacts("postgres");
+    String createUuidTableStatement =
+        "CREATE TABLE UuidTable (\n"
+            + "  Key uuid PRIMARY KEY,\n"
+            + "  Val1 uuid,\n"
+            + "  Val2 INT,\n"
+            + "  Val3 uuid[]\n"
+            + ")";
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("inputDir", getGcsPath("input/"))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
 
     List<Struct> uuidRecords =
         spannerResourceManager.runQuery(
@@ -394,5 +365,82 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
                     + " UNNEST(Val3) AS e) END AS Val3"));
     assertThat(uuidRecords).hasSize(4);
     assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
+  }
+
+  private List<Map<String, Object>> structToRecords(List<Struct> structs) {
+    try {
+      List<Map<String, Object>> records = new ArrayList<>();
+
+      for (Struct struct : structs) {
+        Map<String, Object> record = new HashMap<>();
+
+        for (Type.StructField field : struct.getType().getStructFields()) {
+          Value fieldValue = struct.getValue(field.getName());
+          String stringValue = fieldValue.toString();
+          if (fieldValue.isNull()) {
+            stringValue = null;
+          } else if (fieldValue.getType() == Type.array(Type.string())) {
+            stringValue = new ArrayList<>(fieldValue.getAsStringList()).toString();
+          }
+          record.put(field.getName(), stringValue);
+        }
+
+        records.add(record);
+      }
+
+      return records;
+    } catch (Exception e) {
+      throw new RuntimeException("Error converting TableResult to Records", e);
+    }
+  }
+
+  private List<Map<String, Object>> getUuidTableExpectedRows() {
+    List<Map<String, Object>> expectedRows = new ArrayList<>();
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "00000000-0000-0000-0000-000000000000");
+            put("Val1", "00000000-0000-0000-0000-000000000000");
+            put("Val2", 0);
+            put(
+                "Val3",
+                List.of(
+                    "00000000-0000-0000-0000-000000000001",
+                    "00000000-0000-0000-0000-000000000002"));
+          }
+        });
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "11111111-1111-1111-1111-111111111111");
+            put("Val1", null);
+            put("Val2", 1);
+            put(
+                "Val3",
+                List.of(
+                    "11111111-1111-1111-1111-111111111111",
+                    "11111111-1111-1111-1111-111111111112"));
+          }
+        });
+
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "22222222-2222-2222-2222-222222222222");
+            put("Val1", "22222222-2222-2222-2222-222222222222");
+            put("Val2", 2);
+            put("Val3", null);
+          }
+        });
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
+            put("Val1", null);
+            put("Val2", 3);
+            put("Val3", null);
+          }
+        });
+    return expectedRows;
   }
 }

@@ -80,7 +80,19 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                   + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
                   + "    { \"name\": \"FirstName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"LastName\", \"type\": \"string\" },\n"
-                  + "    { \"name\": \"Rating\", \"type\": \"float\" },\n"
+                  + "    { \"name\": \"Rating\", \"type\": \"float\" }\n"
+                  + "  ]\n"
+                  + "}");
+
+  private static final Schema UUID_SCHEMA =
+      new Schema.Parser()
+          .parse(
+              "{\n"
+                  + "  \"type\": \"record\",\n"
+                  + "  \"name\": \"UuidTable\",\n"
+                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
+                  + "  \"fields\": [\n"
+                  + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
                   + "    { \"name\": \"UuidCol\", \"type\": [\"null\",\"string\"], \"sqlType\": \"UUID\" },\n"
                   + "    { \"name\": \"UuidArrayCol\", \"type\": [\"null\", { "
                   + "          \"type\": \"array\", "
@@ -186,8 +198,6 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  Rating FLOAT32,\n"
                 + "  Review String(MAX),\n"
                 + "  `MyTokens` TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
-                + "  UuidCol UUID,\n"
-                + "  UuidArrayCol ARRAY<UUID>,\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     String createModelStructStatement =
@@ -208,8 +218,6 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
     spannerResourceManager.executeDdlStatement(createModelStructStatement);
     spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
-
-    // Generate rows
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -251,7 +259,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<GenericRecord> modelStructRecords =
         extractArtifacts(modelStructArtifacts, MODEL_STRUCT_SCHEMA);
 
-    assertThatGenericRecords(singersRecords).hasRecordsUnordered(mutationsToRecords(expectedData));
+    assertThatGenericRecords(singersRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
     assertThatGenericRecords(emptyRecords).hasRows(0);
     assertThatGenericRecords(modelStructRecords).hasRows(0);
   }
@@ -284,16 +293,12 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
                 + "  \"Rating\" real,\n"
-                + "  \"UuidCol\" uuid,\n"
-                + "  \"UuidArrayCol\" uuid[],\n"
                 + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
-
-    // Generate rows
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -324,17 +329,106 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<GenericRecord> singersRecords = extractArtifacts(singersArtifacts, SINGERS_SCHEMA);
     List<GenericRecord> emptyRecords = extractArtifacts(emptyArtifacts, EMPTY_SCHEMA);
 
-    assertThatGenericRecords(singersRecords).hasRecordsUnordered(mutationsToRecords(expectedData));
+    assertThatGenericRecords(singersRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(mutationsToRecords(expectedData));
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
-  private static List<String> generateUuidArray() {
-    int size = (int) (Math.random() * (10));
-    List<String> uuids = new ArrayList<>();
-    for (int i = 0; i < size; i++) {
-      uuids.add(UUID.randomUUID().toString());
+  @Test
+  public void testSpannerToGCSAvro_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
     }
-    return uuids;
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+
+    String createUuidTableStatement =
+        String.format(
+            "CREATE TABLE `%s_UuidTable` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  UuidCol UUID,\n"
+                + "  UuidArrayCol ARRAY<UUID>,\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
+
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+    List<Mutation> expectedData = generateTableRowsUUID(String.format("%s_UuidTable", testName));
+    spannerResourceManager.write(expectedData);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("outputDir", getGcsPath("output/"))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> uuidTableArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.avro.*", "UuidTable")));
+    assertThat(uuidTableArtifacts).isNotEmpty();
+
+    List<GenericRecord> uuidTableRecords = extractArtifacts(uuidTableArtifacts, UUID_SCHEMA);
+
+    assertThatGenericRecords(uuidTableRecords)
+        .hasRecordsUnordered(mutationsToRecords(expectedData));
+  }
+
+  @Test
+  public void testPostgresSpannerToGCSAvro_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    String createUuidTableStatement =
+        String.format(
+            "CREATE TABLE \"%s_UuidTable\" (\n"
+                + "  \"Id\" bigint,\n"
+                + "  \"UuidCol\" uuid,\n"
+                + "  \"UuidArrayCol\" uuid[],\n"
+                + "PRIMARY KEY(\"Id\"))",
+            testName);
+
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+    List<Mutation> expectedData = generateTableRowsUUID(String.format("%s_UuidTable", testName));
+    spannerResourceManager.write(expectedData);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("outputDir", getGcsPath("output/"))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> uuidTableArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.avro.*", "UuidTable")));
+    assertThat(uuidTableArtifacts).isNotEmpty();
+
+    List<GenericRecord> uuidTableRecords = extractArtifacts(uuidTableArtifacts, UUID_SCHEMA);
+
+    assertThatGenericRecords(uuidTableRecords)
+        .hasRecordsUnordered(mutationsToRecords(expectedData));
   }
 
   private static List<Mutation> generateTableRows(String tableId) {
@@ -345,15 +439,33 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("Rating").to(RandomUtils.nextFloat());
-      // randomly generate null values as well to test null scenarios
+      mutations.add(mutation.build());
+    }
+
+    return mutations;
+  }
+
+  private static List<Mutation> generateTableRowsUUID(String tableId) {
+    List<Mutation> mutations = new ArrayList<>();
+    for (int i = 0; i < MESSAGES_COUNT; i++) {
+      Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+      mutation.set("Id").to(i);
       String uuid = Math.random() < 0.5 ? UUID.randomUUID().toString() : null;
       List<String> uuidArray = Math.random() < 0.5 ? generateUuidArray() : null;
       mutation.set("UuidCol").to(uuid);
       mutation.set("UuidArrayCol").toStringArray(uuidArray);
       mutations.add(mutation.build());
     }
-
     return mutations;
+  }
+
+  private static List<String> generateUuidArray() {
+    int size = (int) (Math.random() * (10));
+    List<String> uuids = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      uuids.add(UUID.randomUUID().toString());
+    }
+    return uuids;
   }
 
   private static List<GenericRecord> extractArtifacts(List<Artifact> artifacts, Schema schema) {
