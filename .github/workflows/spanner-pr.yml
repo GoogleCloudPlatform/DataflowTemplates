@@ -73,12 +73,14 @@ jobs:
         go-version: '1.19'
     - name: Check User
       run: whoami
-    - name: Allow Passwordless sudo for Runner
-      run: |
-        echo "runner ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/runner
-        sudo chmod 0440 /etc/sudoers.d/runner
     - name: Run sudo Commands Without Prompt
       run: echo "${{ secrets.SUDO_PASSWORD }}"
+    - name: Check sudo Privileges
+      run: sudo -l
+    - name: Grant Passwordless sudo for Runner
+      run: |
+        echo "" | sudo -S tee /etc/sudoers.d/runner <<< "runner ALL=(ALL) NOPASSWD:ALL"
+        sudo chmod 0440 /etc/sudoers.d/runner
     - name: Install Dependencies
       run: |
         apt-get update && apt-get install -y make gcc
