@@ -46,11 +46,6 @@ inputs:
     description: 'The version of Python to install'
     required: false
     default: '3.11'
-  cpp-version:
-    type: string
-    description: 'The version of GCC to install'
-    required: false
-    default: '11'
 
 runs:
   using: 'composite'
@@ -79,12 +74,3 @@ runs:
       uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
       with:
           python-version: ${{ inputs.python-version }}
-    - name: Install GCC
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential
-        sudo apt-get install -y gcc-${{ inputs.cpp-version }} g++-${{ inputs.cpp-version }}
-        sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-${{ inputs.cpp-version }} 100
-        sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-${{ inputs.cpp-version }} 100
-        gcc --version
-        g++ --version
