@@ -41,6 +41,120 @@ public class BasicTestSchema {
               ImmutableMap.of(
                   "id", new SourceColumnType("TEXT", new Long[] {}, new Long[] {}),
                   "name", new SourceColumnType("TEXT", new Long[] {}, new Long[] {})));
+  public static final ImmutableMap<String, ImmutableMap<String, SourceColumnType>>
+      LIST_TEST_TABLE_SCHEMA =
+          ImmutableMap.of(
+              LIST_TYPES_TABLE,
+              ImmutableMap.<String, SourceColumnType>builder()
+                  .put("primary_key", new SourceColumnType("UUID", new Long[] {}, new Long[] {}))
+                  .put(
+                      "ascii_list",
+                      new SourceColumnType("LIST<ASCII>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "frozen_ascii_list",
+                      new SourceColumnType("LIST<ASCII>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "bigint_list",
+                      new SourceColumnType("LIST<BIGINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "blob_list", new SourceColumnType("LIST<BLOB>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "boolean_list",
+                      new SourceColumnType("LIST<BOOLEAN>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "date_list", new SourceColumnType("LIST<DATE>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "decimal_list",
+                      new SourceColumnType("LIST<DECIMAL>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "double_list",
+                      new SourceColumnType("LIST<DOUBLE>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "duration_list",
+                      new SourceColumnType("LIST<DURATION>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "float_list",
+                      new SourceColumnType("LIST<FLOAT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "inet_list", new SourceColumnType("LIST<INET>", new Long[] {}, new Long[] {}))
+                  .put("int_list", new SourceColumnType("LIST<INT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "smallint_list",
+                      new SourceColumnType("LIST<SMALLINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "text_list", new SourceColumnType("LIST<TEXT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "time_list", new SourceColumnType("LIST<TIME>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "timestamp_list",
+                      new SourceColumnType("LIST<TIMESTAMP>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "timeuuid_list",
+                      new SourceColumnType("LIST<TIMEUUID>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "tinyint_list",
+                      new SourceColumnType("LIST<TINYINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "uuid_list", new SourceColumnType("LIST<UUID>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "varchar_list",
+                      new SourceColumnType("LIST<TEXT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "varint_list",
+                      new SourceColumnType("LIST<VARINT>", new Long[] {}, new Long[] {}))
+                  .build());
+  public static final ImmutableMap<String, ImmutableMap<String, SourceColumnType>>
+      SET_TEST_TABLE_SCHEMA =
+          ImmutableMap.of(
+              SET_TYPES_TABLE,
+              ImmutableMap.<String, SourceColumnType>builder()
+                  .put("primary_key", new SourceColumnType("UUID", new Long[] {}, new Long[] {}))
+                  .put(
+                      "ascii_set", new SourceColumnType("SET<ASCII>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "frozen_ascii_set",
+                      new SourceColumnType("SET<ASCII>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "bigint_set",
+                      new SourceColumnType("SET<BIGINT>", new Long[] {}, new Long[] {}))
+                  .put("blob_set", new SourceColumnType("SET<BLOB>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "boolean_set",
+                      new SourceColumnType("SET<BOOLEAN>", new Long[] {}, new Long[] {}))
+                  .put("date_set", new SourceColumnType("SET<DATE>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "decimal_set",
+                      new SourceColumnType("SET<DECIMAL>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "double_set",
+                      new SourceColumnType("SET<DOUBLE>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "float_set", new SourceColumnType("SET<FLOAT>", new Long[] {}, new Long[] {}))
+                  .put("inet_set", new SourceColumnType("SET<INET>", new Long[] {}, new Long[] {}))
+                  .put("int_set", new SourceColumnType("SET<INT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "smallint_set",
+                      new SourceColumnType("SET<SMALLINT>", new Long[] {}, new Long[] {}))
+                  .put("text_set", new SourceColumnType("SET<TEXT>", new Long[] {}, new Long[] {}))
+                  .put("time_set", new SourceColumnType("SET<TIME>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "timestamp_set",
+                      new SourceColumnType("SET<TIMESTAMP>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "timeuuid_set",
+                      new SourceColumnType("SET<TIMEUUID>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "tinyint_set",
+                      new SourceColumnType("SET<TINYINT>", new Long[] {}, new Long[] {}))
+                  .put("uuid_set", new SourceColumnType("SET<UUID>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "varchar_set",
+                      new SourceColumnType("SET<TEXT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "varint_set",
+                      new SourceColumnType("SET<VARINT>", new Long[] {}, new Long[] {}))
+                  .build());
+
   public static final ImmutableList<String> TEST_TABLES =
       ImmutableList.of(BASIC_TEST_TABLE, LIST_TYPES_TABLE, PRIMITIVE_TYPES_TABLE, SET_TYPES_TABLE);
 
