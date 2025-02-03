@@ -81,6 +81,37 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
+  public SubscriptionName createRRPubsubResources(
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+    String topicNameSuffix = "rr-it" + identifierSuffix;
+    String subscriptionNameSuffix = "rr-it-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    prefix += "/retry/";
+    gcsClient.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
+  public SubscriptionName createFwdPubsubResources(
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+    String topicNameSuffix = "it" + identifierSuffix;
+    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    gcsClient.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
   public SubscriptionName createPubsubResources(
       String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
     String topicNameSuffix = "rr-it" + identifierSuffix;
