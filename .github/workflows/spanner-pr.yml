@@ -146,7 +146,11 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.19'
+        go-version: '1.21'
+    - name: Install GCC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc
     - name: Prepare Go Modules
       run: |
         cd spanner-migration-tool
