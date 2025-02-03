@@ -19,11 +19,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -34,7 +29,6 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -71,109 +65,13 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
 
   private static final String SHARD_ID = "migration_shard_id";
 
-  private static void executeCommand(String command, String currentPath)
-      throws IOException, InterruptedException {
-    System.out.println("Executing: " + command);
-
-    ProcessBuilder pb = new ProcessBuilder("/bin/bash", "-c", command);
-    Map<String, String> env = pb.environment();
-    env.put("PATH", currentPath);
-
-    Process process = pb.start();
-
-    BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
-    BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-
-    StringBuilder stdoutBuilder = new StringBuilder();
-    StringBuilder stderrBuilder = new StringBuilder();
-
-    Thread stdoutThread =
-        new Thread(
-            () -> {
-              String s;
-              try {
-                while ((s = stdInput.readLine()) != null) {
-                  System.out.println(s);
-                  stdoutBuilder.append(s).append("\n");
-                }
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-            });
-
-    Thread stderrThread =
-        new Thread(
-            () -> {
-              String s;
-              try {
-                while ((s = stdError.readLine()) != null) {
-                  System.err.println(s);
-                  stderrBuilder.append(s).append("\n");
-                }
-              } catch (IOException e) {
-                e.printStackTrace();
-              }
-            });
-
-    stdoutThread.start();
-    stderrThread.start();
-
-    int exitCode = process.waitFor();
-    stdoutThread.join();
-    stderrThread.join();
-
-    String stdout = stdoutBuilder.toString();
-    String stderr = stderrBuilder.toString();
-
-    if (exitCode != 0) {
-      throw new RuntimeException(
-          "Command failed with exit code "
-              + exitCode
-              + ":\n"
-              + "Stdout:\n"
-              + stdout
-              + "\n"
-              + "Stderr:\n"
-              + stderr);
-    }
-  }
-
-  @BeforeClass
-  public static void configureGit() throws IOException, InterruptedException {
-    executeCommand(
-        "git config --global url.\"https://\".insteadOf \"https://x-access-token:@github.com/\"",
-        System.getenv("PATH"));
-  }
-
+  /**
+   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
+   */
   @Before
-  public void setUp() throws IOException, InterruptedException {
-    String toolPath = "/home/runner/spanner-migration-tool";
-    String clonedRepoPath = toolPath + "/spanner-migration-tool";
-
-    if (!Files.exists(Paths.get(clonedRepoPath))) {
-      executeCommand(
-          "mkdir -p "
-              + toolPath
-              + " && git clone https://github.com/cloudspannerecosystem/spanner-migration-tool.git "
-              + clonedRepoPath,
-          System.getenv("PATH"));
-    }
-
-    executeCommand("cd " + clonedRepoPath + " && go build", System.getenv("PATH"));
-
-    String pathToAddTo = clonedRepoPath + "/cmd"; // Correct path to your Go binary
-    String newPath = System.getenv("PATH") + ":" + pathToAddTo;
-    System.setProperty("PATH", newPath);
-
-    // Verification (Very important!)
-    if (!Files.exists(
-        Paths.get(pathToAddTo, "your_binary_name"))) { // Replace with your binary name
-      throw new RuntimeException(
-          "Binary not found after build: " + pathToAddTo + "/your_binary_name");
-    }
-
-    mySQLResourceManager = setUpMySQLResourceManager(); // Your resource manager setup
-    spannerResourceManager = setUpSpannerResourceManager(); // Your resource manager setup
+  public void setUp() {
+    mySQLResourceManager = setUpMySQLResourceManager();
+    spannerResourceManager = setUpSpannerResourceManager();
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */

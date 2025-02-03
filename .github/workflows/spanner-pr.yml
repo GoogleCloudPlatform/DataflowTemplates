@@ -127,6 +127,25 @@ jobs:
         version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
+  smt_installation:
+    name: Install SMT
+    needs: []
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [ self-hosted, it ]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Setup Spanner Migration Tool
+      run: |
+        git clone https://github.com/cloudspannerecosystem/spanner-migration-tool.git
+        cd spanner-migration-tool
+        go build ./cmd/spanner-migration-tool
+        # Add the binary to PATH so it can be easily used in subsequent steps.
+        echo "$(pwd)/spanner-migration-tool" >> $GITHUB_PATH
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
     needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
@@ -139,6 +158,13 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    - name: Setup Spanner Migration Tool
+      run: |
+        git clone https://github.com/cloudspannerecosystem/spanner-migration-tool.git
+        cd spanner-migration-tool
+        go build ./cmd/spanner-migration-tool
+        # Add the binary to PATH so it can be easily used in subsequent steps.
+        echo "$(pwd)/spanner-migration-tool" >> $GITHUB_PATH
     - name: Run Integration Smoke Tests
       run: |
         ./cicd/run-it-smoke-tests \
