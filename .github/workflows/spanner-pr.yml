@@ -67,10 +67,6 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
-    - name: Verify GCC installation
-      run: |
-        gcc --version
-        g++ --version
     - name: Install Go
       uses: actions/setup-go@v4
       with:
