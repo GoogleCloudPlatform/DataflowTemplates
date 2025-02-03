@@ -51,6 +51,40 @@ env:
 permissions: read-all
 
 jobs:
+  smt_installation:
+    name: Install SMT
+    needs: [ ]
+    timeout-minutes: 60
+    runs-on: [ self-hosted, it ]
+    steps:
+    - name: Checkout SMT Code
+      uses: actions/checkout@v4
+      with:
+        repository: GoogleCloudPlatform/spanner-migration-tool
+        token: ${{ secrets.GITHUB_TOKEN }}  # Use a PAT if private
+        path: spanner-migration-tool
+        fetch-depth: 0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Install Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+    - name: Install GCC
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc
+    - name: Prepare Go Modules
+      run: |
+        cd spanner-migration-tool
+        go mod tidy
+    - name: Build Spanner Migration Tool
+      run: |
+        cd spanner-migration-tool
+        go build -o spanner-migration-tool ./main.go  # Adjust path if needed
+    - name: Add Binary to PATH
+      run: echo "$GITHUB_WORKSPACE/spanner-migration-tool" >> $GITHUB_PATH
   spotless_check:
     name: Spotless
     timeout-minutes: 10
@@ -127,41 +161,6 @@ jobs:
         version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
-  smt_installation:
-    name: Install SMT
-    needs: [ ]
-    timeout-minutes: 60
-    runs-on: [ self-hosted, it ]
-    steps:
-    - name: Checkout SMT Code
-      uses: actions/checkout@v4
-      with:
-        repository: GoogleCloudPlatform/spanner-migration-tool
-        token: ${{ secrets.GITHUB_TOKEN }}  # Use a PAT if private
-        path: spanner-migration-tool
-        fetch-depth: 0
-    - name: Setup Environment
-      id: setup-env
-      uses: ./.github/actions/setup-env
-    - name: Install Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
-    - name: Install GCC
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc
-    - name: Prepare Go Modules
-      run: |
-        cd spanner-migration-tool
-        go mod tidy
-    - name: Build Spanner Migration Tool
-      run: |
-        cd spanner-migration-tool
-        go build -o spanner-migration-tool ./main.go  # Adjust path if needed
-    - name: Add Binary to PATH
-      run: echo "$GITHUB_WORKSPACE/spanner-migration-tool" >> $GITHUB_PATH
-
   java_integration_smoke_tests_templates:
     name: Dataflow Templates Integration Smoke Tests
     needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
