@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
+import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
@@ -73,6 +74,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName rrSubscriptionName;
   private SubscriptionName fwdSubscriptionName;
+  private static final String gcsPathPrefix="e2eIT";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -97,13 +99,24 @@ public class E2EIT extends SpannerToSourceDbITBase {
                 .build();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+            gcsPathPrefix+"/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
+
         rrSubscriptionName =
             createRRPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath(gcsPathPrefix+"/rr/dlq/", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+
+        String identifierSuffix = getClass().getSimpleName();
+        String fwdGcsPrefix =
+            getGcsPath(gcsPathPrefix + "/fwd/cdc/").replace("gs://" + artifactBucketName, "");
+        SubscriptionName fwdSubscription =
+            createFwdPubsubResources(identifierSuffix, pubsubResourceManager, fwdGcsPrefix);
+        String fwdDlqGcsPrefix =
+            getGcsPath(gcsPathPrefix + "/fwd/dlq/").replace("gs://" + artifactBucketName, "");
+        SubscriptionName dlqSubscription =
+            createFwdPubsubResources(identifierSuffix + "dlq", pubsubResourceManager, fwdDlqGcsPrefix);
 
         jobInfo =
             launchDataflowJob(

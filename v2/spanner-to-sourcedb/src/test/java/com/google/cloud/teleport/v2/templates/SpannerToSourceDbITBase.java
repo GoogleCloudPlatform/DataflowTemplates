@@ -210,6 +210,47 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }
+  public PipelineLauncher.LaunchInfo e2eRRLaunchDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String rrSubscriptionName,
+      String gcsPathPrefix)
+      throws IOException {
+    // default parameters
+
+    Map<String, String> params =
+        new HashMap<>() {
+          {
+            put("sessionFilePath", getGcsPath(gcsPathPrefix+"/session.json", gcsResourceManager));
+            put("instanceId", spannerResourceManager.getInstanceId());
+            put("databaseId", spannerResourceManager.getDatabaseId());
+            put("spannerProjectId", PROJECT);
+            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+            put("sourceShardsFilePath", getGcsPath(gcsPathPrefix+"input/shard.json", gcsResourceManager));
+            put("changeStreamName", "allstream");
+            put("dlqGcsPubSubSubscription", rrSubscriptionName);
+            put("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix+"/rr/dlq/", gcsResourceManager));
+            put("maxShardConnections", "5");
+            put("maxNumWorkers", "1");
+            put("numWorkers", "1");
+          }
+        };
+
+    // Construct template
+    String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
+    // /-DunifiedWorker=true when using runner v2
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(rrJobName, specPath);
+    options.setParameters(params);
+    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    // Run
+    String rrTemplate="Spanner_to_SourceDb";
+    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
+  }
 
   protected void createMySQLSchema(MySQLResourceManager jdbcResourceManager, String mySqlSchemaFile)
       throws IOException {
