@@ -93,3 +93,5 @@ sudo -u $user bash -c "cd /home/$user/actions-runner && ./run.sh &"
 #install gcc
 sudo apt-get update
 sudo apt-get install -y gcc
+
+echo " ##### HELLO"
