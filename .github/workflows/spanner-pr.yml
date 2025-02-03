@@ -137,7 +137,7 @@ jobs:
     - name: Checkout SMT Code
       uses: actions/checkout@v4
       with:
-        repository: cloudspannerecosystem/spanner-migration-tool
+        repository: GoogleCloudPlatform/spanner-migration-tool
         token: ${{ secrets.GITHUB_TOKEN }}
         path: spanner-migration-tool
     - name: Setup Environment
