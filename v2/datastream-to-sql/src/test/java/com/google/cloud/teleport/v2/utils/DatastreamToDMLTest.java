@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
 public class DatastreamToDMLTest {
 
   private static final Logger LOG = LoggerFactory.getLogger(DatastreamToDMLTest.class);
-  private String jsonString =
+  private static final String JSON_STRING =
       "{"
           + "\"text_column\":\"value\","
           + "\"quoted_text_column\":\"Test Values: '!@#$%^\","
@@ -42,7 +42,7 @@ public class DatastreamToDMLTest {
           + "\"_metadata_table\":\"MY_TABLE$NAME\""
           + "}";
 
-  private JsonNode getRowObj() {
+  private JsonNode getRowObj(String jsonString) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode rowObj;
     try {
@@ -59,7 +59,7 @@ public class DatastreamToDMLTest {
    */
   @Test
   public void testGetValueSql() {
-    JsonNode rowObj = this.getRowObj();
+    JsonNode rowObj = this.getRowObj(JSON_STRING);
 
     String expectedTextContent = "'value'";
     String testSqlContent =
@@ -83,13 +83,85 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts array
+   * data into correct integer array syntax.
+   */
+  @Test
+  public void testIntArrayWithNullTypeCoercion() {
+    String arrayJson =
+        "{\"number_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": null},"
+            + "  {\"nestedArray\": null, \"elementValue\": 456}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = this.getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("number_array", "_int4");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expectedInt = "ARRAY[NULL,456]";
+
+    String actualInt =
+        DatastreamToPostgresDML.of(null).getValueSql(rowObj, "number_array", tableSchema);
+
+    assertEquals(expectedInt, actualInt);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts array
+   * data into correct integer array syntax.
+   */
+  @Test
+  public void testIntArrayTypeCoercion() {
+    String arrayJson =
+        "{\"number_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": 123},"
+            + "  {\"nestedArray\": null, \"elementValue\": 456}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = this.getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("number_array", "_int4");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expectedInt = "ARRAY[123,456]";
+
+    String actualInt =
+        DatastreamToPostgresDML.of(null).getValueSql(rowObj, "number_array", tableSchema);
+
+    assertEquals(expectedInt, actualInt);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts array
+   * data into correct text array syntax.
+   */
+  @Test
+  public void testTextArrayTypeCoercion() {
+    String arrayJson =
+        "{\"text_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": \"apple\"},"
+            + "  {\"nestedArray\": null, \"elementValue\": \"cherry\"}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = this.getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("text_array", "_text");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expectedInt = "ARRAY['apple','cherry']";
+
+    String actualInt =
+        DatastreamToPostgresDML.of(null).getValueSql(rowObj, "text_array", tableSchema);
+
+    assertEquals(expectedInt, actualInt);
+  }
+
+  /**
    * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
    * correct Postgres schema.
    */
   @Test
   public void testGetPostgresSchemaName() {
     DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj();
+    JsonNode rowObj = this.getRowObj(JSON_STRING);
     DatastreamRow row = DatastreamRow.of(rowObj);
 
     String expectedSchemaName = "my_schema";
@@ -104,7 +176,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testGetPostgresTableName() {
     DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj();
+    JsonNode rowObj = this.getRowObj(JSON_STRING);
     DatastreamRow row = DatastreamRow.of(rowObj);
 
     String expectedTableName = "my_table$name";

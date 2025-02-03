@@ -62,10 +62,10 @@ jobs:
       with:
         filename: .github/ISSUE_TEMPLATE/spanner-load-test-failure-issue-template.md
     - name: Upload Load Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-load-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 30
     - name: Load Test report on GitHub
@@ -117,10 +117,10 @@ jobs:
       with:
         filename: .github/ISSUE_TEMPLATE/spanner-load-test-failure-issue-template.md
     - name: Upload Load Test Observer Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-observer-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
     - name: Cleanup Java Environment
