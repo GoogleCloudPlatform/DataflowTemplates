@@ -225,6 +225,7 @@ jobs:
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Prepare Go Modules
+      run: |
         cd spanner-migration-tool
         go build
     - name: Add Binary to PATH
