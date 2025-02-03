@@ -20,9 +20,10 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -69,29 +70,79 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
 
   private static final String SHARD_ID = "migration_shard_id";
 
-  private void executeCommand(String command) throws IOException, InterruptedException {
+  private String executeCommand(String command, String currentPath)
+      throws IOException, InterruptedException {
     System.out.println("Executing: " + command);
-    Process process = new ProcessBuilder("bash", "-c", command).start();
 
-    // Capture stdout
+    ProcessBuilder pb = new ProcessBuilder("/bin/bash", "-c", command); // Explicitly use /bin/bash
+    Map<String, String> env = pb.environment();
+    env.put("PATH", currentPath); // Set the PATH
+
+    Process process = pb.start();
+
+    // Capture stdout and stderr concurrently
     BufferedReader stdInput = new BufferedReader(new InputStreamReader(process.getInputStream()));
-    String s;
-    while ((s = stdInput.readLine()) != null) {
-      System.out.println(s);
-    }
+    BufferedReader stdError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
-    // Capture stderr
-    String errorOutput = getErrorOutput(process); // Use helper method
-    System.err.println(errorOutput); // Print errors immediately
+    StringBuilder stdoutBuilder = new StringBuilder();
+    StringBuilder stderrBuilder = new StringBuilder();
+
+    Thread stdoutThread =
+        new Thread(
+            () -> {
+              String s;
+              try {
+                while ((s = stdInput.readLine()) != null) {
+                  System.out.println(s); // Print stdout in real-time
+                  stdoutBuilder.append(s).append("\n");
+                }
+              } catch (IOException e) {
+                e.printStackTrace(); // Handle or log the exception as needed
+              }
+            });
+
+    Thread stderrThread =
+        new Thread(
+            () -> {
+              String s;
+              try {
+                while ((s = stdError.readLine()) != null) {
+                  System.err.println(s); // Print stderr in real-time
+                  stderrBuilder.append(s).append("\n");
+                }
+              } catch (IOException e) {
+                e.printStackTrace(); // Handle or log the exception as needed
+              }
+            });
+
+    stdoutThread.start();
+    stderrThread.start();
 
     int exitCode = process.waitFor();
+    stdoutThread.join(); // Wait for threads to finish reading output
+    stderrThread.join();
+
+    String stdout = stdoutBuilder.toString();
+    String stderr = stderrBuilder.toString();
+
     if (exitCode != 0) {
       throw new RuntimeException(
           "Command failed with exit code "
               + exitCode
               + ":\n"
-              + errorOutput); // Include errors in exception
+              + "Stdout:\n"
+              + stdout
+              + "\n"
+              + "Stderr:\n"
+              + stderr); // Include both outputs in exception
     }
+
+    // Logic to extract the modified PATH (if command modifies it)
+    // This will depend on what your command does.
+    // Example: If your command is "export PATH=$PATH:/new/path", you would
+    // need to parse the output to get the new PATH value.
+    // If your command doesn't change PATH, you can simply return currentPath
+    return currentPath; // Or extract and return the new path from stdout
   }
 
   private String getErrorOutput(Process process) throws IOException {
@@ -110,25 +161,37 @@ public class MySQLSingleShardIT extends SourceDbToSpannerITBase {
   @Before
   public void setUp() throws IOException, InterruptedException {
     String toolPath = "/home/runner/spanner-migration-tool";
-    File toolDir = new File(toolPath);
+    String clonedRepoPath = toolPath + "/spanner-migration-tool";
 
-    if (!toolDir.exists()) {
-      String cloneCommand =
+    // 1. Idempotent cloning (checks for existing repo)
+    if (!Files.exists(Paths.get(clonedRepoPath))) { // Use Files.exists for better path handling
+      executeCommand(
           "mkdir -p "
               + toolPath
-              + " && cd "
-              + toolPath
-              + " && git clone https://github.com/cloudspannerecosystem/spanner-migration-tool.git .";
-      executeCommand(cloneCommand);
+              + " && git clone https://github.com/cloudspannerecosystem/spanner-migration-tool.git "
+              + clonedRepoPath,
+          System.getenv("PATH"));
     }
 
-    String buildCommand = "cd " + toolPath + " && go build ./cmd/spanner-migration-tool";
-    executeCommand(buildCommand);
+    // 2. Build with error checking
+    executeCommand("cd " + clonedRepoPath + " && go build", System.getenv("PATH"));
 
-    // Add to PATH (optional but recommended)
-    String addToPathCommand =
-        "export PATH=$PATH:" + toolPath + "/cmd"; // Adjust if the binary is in a different location
-    executeCommand(addToPathCommand);
+    // 3. Add to PATH (correctly)
+    String pathToAddTo =
+        clonedRepoPath
+            + "/cmd"; // Or wherever the binary is located. Best practice is to use the full path.
+    String newPath = System.getenv("PATH") + ":" + pathToAddTo;
+    // No command needed, just set the variable
+    System.setProperty(
+        "PATH",
+        newPath); // Set the system property. Important: This is not persistent beyond the current
+    // JVM.
+
+    // 4. Verification (Optional but highly recommended)
+    if (!Files.exists(Paths.get(pathToAddTo, "your_binary_name"))) { // Replace your_binary_name
+      throw new RuntimeException(
+          "Binary not found after build: " + pathToAddTo + "/your_binary_name");
+    }
 
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
