@@ -70,7 +70,7 @@ jobs:
     - name: Install Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.21'
+        go-version: '1.19'
     - name: Prepare Go Modules
       run: |
         cd spanner-migration-tool
@@ -78,7 +78,7 @@ jobs:
     - name: Build Spanner Migration Tool
       run: |
         cd spanner-migration-tool
-        go build -o spanner-migration-tool ./main.go  # Adjust path if needed
+        make build
     - name: Add Binary to PATH
       run: echo "$GITHUB_WORKSPACE/spanner-migration-tool" >> $GITHUB_PATH
   spotless_check:
