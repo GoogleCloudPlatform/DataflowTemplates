@@ -71,10 +71,17 @@ jobs:
       uses: actions/setup-go@v4
       with:
         go-version: '1.19'
+    - name: Check User
+      run: whoami
+    - name: Allow Passwordless sudo for Runner
+      run: |
+        echo "runner ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/runner
+        sudo chmod 0440 /etc/sudoers.d/runner
+    - name: Run sudo Commands Without Prompt
+      run: echo "${{ secrets.SUDO_PASSWORD }}"
     - name: Install Dependencies
       run: |
-        echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S apt-get update
-        echo "${{ secrets.SUDO_PASSWORD }}" | sudo -S apt-get install -y make gcc
+        apt-get update && apt-get install -y make gcc
     - name: Prepare Go Modules
       run: |
         cd spanner-migration-tool
