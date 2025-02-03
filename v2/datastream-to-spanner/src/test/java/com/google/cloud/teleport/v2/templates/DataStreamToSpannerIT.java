@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
@@ -110,54 +109,6 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
 
     gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
     dlqGcsPrefix = getGcsPath(testName + "/dlq/").replace("gs://" + artifactBucketName, "");
-
-    System.out.println("########yay##");
-    String githubPath = System.getenv("GITHUB_PATH");
-    if (githubPath == null || githubPath.isEmpty()) {
-      assertTrue("GITHUB_PATH environment variable is not set.", false);
-      return; // Important: Exit early if GITHUB_PATH is not set
-    }
-
-    String[] paths = githubPath.split(":"); // Split by colon (Linux/macOS) or semicolon (Windows)
-
-    boolean spannerMigrationToolFound = false;
-    for (String path : paths) {
-      java.io.File spannerMigrationTool =
-          Paths.get(path, "spanner-migration-tool").toFile(); // Construct path
-      if (spannerMigrationTool.exists()
-          && spannerMigrationTool.canExecute()) { // Check for existence and execution permission
-        spannerMigrationToolFound = true;
-        break; // Found it, no need to continue searching
-      }
-    }
-
-    assertTrue(
-        "spanner-migration-tool not found in GITHUB_PATH: " + githubPath,
-        spannerMigrationToolFound);
-
-    // Optional: If you want to check version, you can use this (but handle exceptions):
-    if (spannerMigrationToolFound) {
-      try {
-        Process versionProcess =
-            Runtime.getRuntime()
-                .exec(
-                    Paths.get(paths[0], "spanner-migration-tool")
-                        + " version"); // Assuming it is in the first path
-        int versionExitCode = versionProcess.waitFor();
-        assertTrue("spanner-migration-tool version check failed", versionExitCode == 0);
-
-        java.io.BufferedReader versionReader =
-            new java.io.BufferedReader(
-                new java.io.InputStreamReader(versionProcess.getInputStream()));
-        String versionLine;
-        while ((versionLine = versionReader.readLine()) != null) {
-          System.out.println("spanner-migration-tool version output: " + versionLine);
-        }
-      } catch (IOException | InterruptedException e) {
-        e.printStackTrace();
-        assertTrue("Exception during version check: " + e.getMessage(), false);
-      }
-    }
   }
 
   @After
