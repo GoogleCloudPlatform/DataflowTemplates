@@ -103,6 +103,20 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             .getPath());
   }
 
+  private void uploadImportPipelineArtifactsUuid(String subdirectory) throws IOException {
+    gcsClient.uploadArtifact(
+        "input/UuidTable.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/UuidTable-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable-manifest.json")
+            .getPath());
+    gcsClient.uploadArtifact(
+        "input/spanner-export.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/spanner-export-uuid.json")
+            .getPath());
+  }
+
   private List<Map<String, Object>> getExpectedRows() {
     List<Map<String, Object>> expectedRows = new ArrayList<>();
     expectedRows.add(ImmutableMap.of("Id", 1, "FirstName", "Roger", "LastName", "Waters"));
@@ -281,12 +295,17 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
   @Test
   public void testGoogleSqlImportPipeline_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
             .maybeUseStaticInstance()
             .useCustomHost(spannerHost)
             .build();
-    uploadImportPipelineArtifacts("googlesql");
+    uploadImportPipelineArtifactsUuid("googlesql");
     String createUuidTableStatement =
         "CREATE TABLE UuidTable (\n"
             + "  Key UUID,\n"
@@ -320,17 +339,23 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
                 "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM"
                     + " UNNEST(Val3) AS e) END AS Val3"));
     assertThat(uuidRecords).hasSize(4);
-    assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
+    assertThatRecords(structsToRecords(uuidRecords))
+        .hasRecordsUnordered(getUuidTableExpectedRows());
   }
 
   @Test
   public void testPostgresImportPipeline_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+
     spannerResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
             .useCustomHost(spannerHost)
             .build();
-    uploadImportPipelineArtifacts("postgres");
+    uploadImportPipelineArtifactsUuid("postgres");
     String createUuidTableStatement =
         "CREATE TABLE UuidTable (\n"
             + "  Key uuid PRIMARY KEY,\n"
@@ -364,10 +389,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
                 "CASE WHEN Val3 IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS TEXT) FROM"
                     + " UNNEST(Val3) AS e) END AS Val3"));
     assertThat(uuidRecords).hasSize(4);
-    assertThatRecords(structToRecords(uuidRecords)).hasRecordsUnordered(getUuidTableExpectedRows());
+    assertThatRecords(structsToRecords(uuidRecords))
+        .hasRecordsUnordered(getUuidTableExpectedRows());
   }
 
-  private List<Map<String, Object>> structToRecords(List<Struct> structs) {
+  /**
+   * Converts a list of Structs to a list of Maps, handling null values and converting keys to
+   * lowercase.
+   */
+  private List<Map<String, Object>> structsToRecords(List<Struct> structs) {
     try {
       List<Map<String, Object>> records = new ArrayList<>();
 
@@ -382,7 +412,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
           } else if (fieldValue.getType() == Type.array(Type.string())) {
             stringValue = new ArrayList<>(fieldValue.getAsStringList()).toString();
           }
-          record.put(field.getName(), stringValue);
+          record.put(field.getName().toLowerCase(), stringValue);
         }
 
         records.add(record);
@@ -399,11 +429,11 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     expectedRows.add(
         new HashMap<>() {
           {
-            put("Key", "00000000-0000-0000-0000-000000000000");
-            put("Val1", "00000000-0000-0000-0000-000000000000");
-            put("Val2", 0);
+            put("key", "00000000-0000-0000-0000-000000000000");
+            put("val1", "00000000-0000-0000-0000-000000000000");
+            put("val2", 0);
             put(
-                "Val3",
+                "val3",
                 List.of(
                     "00000000-0000-0000-0000-000000000001",
                     "00000000-0000-0000-0000-000000000002"));
@@ -412,11 +442,11 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     expectedRows.add(
         new HashMap<>() {
           {
-            put("Key", "11111111-1111-1111-1111-111111111111");
-            put("Val1", null);
-            put("Val2", 1);
+            put("key", "11111111-1111-1111-1111-111111111111");
+            put("val1", null);
+            put("val2", 1);
             put(
-                "Val3",
+                "val3",
                 List.of(
                     "11111111-1111-1111-1111-111111111111",
                     "11111111-1111-1111-1111-111111111112"));
@@ -426,19 +456,19 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     expectedRows.add(
         new HashMap<>() {
           {
-            put("Key", "22222222-2222-2222-2222-222222222222");
-            put("Val1", "22222222-2222-2222-2222-222222222222");
-            put("Val2", 2);
-            put("Val3", null);
+            put("key", "22222222-2222-2222-2222-222222222222");
+            put("val1", "22222222-2222-2222-2222-222222222222");
+            put("val2", 2);
+            put("val3", null);
           }
         });
     expectedRows.add(
         new HashMap<>() {
           {
-            put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
-            put("Val1", null);
-            put("Val2", 3);
-            put("Val3", null);
+            put("key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
+            put("val1", null);
+            put("val2", 3);
+            put("val3", null);
           }
         });
     return expectedRows;

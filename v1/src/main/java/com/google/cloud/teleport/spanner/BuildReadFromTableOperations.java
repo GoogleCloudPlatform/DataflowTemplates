@@ -164,7 +164,6 @@ class BuildReadFromTableOperations
               + ") AS element), []) END AS "
               + col.name();
         }
-        // TODO: remove type string hardcodings
         if (col.typeString().equals("UUID")) {
           return String.format("CAST(t.`%s` AS STRING) AS %s", col.name(), col.name());
         }
