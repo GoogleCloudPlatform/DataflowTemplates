@@ -4,7 +4,7 @@ import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Pr
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.cloud.teleport.v2.clickhouse.options.BigQueryToClickHouseOptions;
-import com.google.cloud.teleport.v2.clickhouse.utils.ClickHouseConverts;
+import com.google.cloud.teleport.v2.clickhouse.utils.ClickHouseUtils;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import java.util.ArrayList;
@@ -61,7 +61,7 @@ public class BigQueryToClickHouse {
                     !options.getClickHouseTable().isEmpty(),
                     "ClickHouse target table name is empty. Please provide a valid table name.");
 
-            String clickHouseJDBCURL = ClickHouseConverts.setJDBCCredentials(options.getJdbcUrl(), options.getClickHouseUsername(), options.getClickHousePassword());
+            String clickHouseJDBCURL = ClickHouseUtils.setJDBCCredentials(options.getJdbcUrl(), options.getClickHouseUsername(), options.getClickHousePassword());
             TableSchema clickHouseSchema = ClickHouseIO.getTableSchema(clickHouseJDBCURL, options.getClickHouseTable());
             Schema beamSchema = TableSchema.getEquivalentSchema(clickHouseSchema);
 

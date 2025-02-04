@@ -1,7 +1,7 @@
 package com.google.cloud.teleport.v2.clickhouse.utils;
 
 // utils class for ClickHouse
-public class ClickHouseConverts {
+public class ClickHouseUtils {
 
     public static String setJDBCCredentials(String jdbcURL, String username, String password) {
         String credentials = password != null
