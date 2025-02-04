@@ -267,7 +267,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
 
     List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
 
-    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+    assertThatRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
   @Test
@@ -330,7 +330,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
 
     List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
 
-    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+    assertThatRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
   private static List<Mutation> generateTableRowsUUID(String tableId) {
