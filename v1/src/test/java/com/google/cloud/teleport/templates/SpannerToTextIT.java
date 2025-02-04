@@ -82,7 +82,6 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
-                + "  UuidCol UUID\n"
                 + ") PRIMARY KEY(Id)",
             testName);
     spannerResourceManager.executeDdlStatement(createTableStatement);
@@ -117,8 +116,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
               List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
           lines.forEach(
               line -> {
-                List<Object> values = List.of(line.split(",", -1));
-                Object uuidVal = values.get(3) == "" ? "null" : values.get(3);
+                List<Object> values = List.of(line.split(","));
                 records.add(
                     Map.of(
                         "Id",
@@ -126,15 +124,13 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                         "FirstName",
                         values.get(1),
                         "LastName",
-                        values.get(2),
-                        "UuidCol",
-                        uuidVal));
+                        values.get(2)));
               });
         });
 
     List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
 
-    assertThatRecords(records).hasRecordsUnordered(expectedRecords);
+    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
   }
 
   @Test
@@ -160,7 +156,6 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                 + "  \"Id\" bigint NOT NULL,\n"
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
-                + "  \"UuidCol\" uuid,\n"
                 + " PRIMARY KEY(\"Id\"))",
             testName);
     spannerResourceManager.executeDdlStatement(createTableStatement);
@@ -195,8 +190,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
               List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
           lines.forEach(
               line -> {
-                List<Object> values = List.of(line.split(",", -1));
-                Object uuidVal = values.get(3) == "" ? "null" : values.get(3);
+                List<Object> values = List.of(line.split(","));
                 records.add(
                     Map.of(
                         "Id",
@@ -204,15 +198,153 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
                         "FirstName",
                         values.get(1),
                         "LastName",
-                        values.get(2),
-                        "UuidCol",
-                        uuidVal));
+                        values.get(2)));
               });
         });
 
     List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
 
-    assertThatRecords(records).hasRecordsUnordered(expectedRecords);
+    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+  }
+
+  @Test
+  public void testSpannerToGCSText_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    // Arrange
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE `%s` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  UuidCol UUID\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+    List<Mutation> expectedData = generateTableRowsUUID(String.format("%s", testName));
+    spannerResourceManager.write(expectedData);
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+            .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerTable", testName)
+            .addParameter("textWritePrefix", getGcsPath("output/" + testName))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> textArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.csv.*", testName)));
+
+    List<Map<String, Object>> records = new ArrayList<>();
+    textArtifacts.forEach(
+        artifact -> {
+          List<String> lines =
+              List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
+          lines.forEach(
+              line -> {
+                List<Object> values = List.of(line.split(",", -1));
+                Object uuidVal = values.get(1) == "" ? "null" : values.get(1);
+                records.add(Map.of("Id", values.get(0), "UuidCol", uuidVal));
+              });
+        });
+
+    List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
+
+    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+  }
+
+  @Test
+  public void testPostgresSpannerToGCSText_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    // Arrange
+    String createTableStatement =
+        String.format(
+            "CREATE TABLE \"%s\" (\n"
+                + "  \"Id\" bigint NOT NULL,\n"
+                + "  \"UuidCol\" uuid,\n"
+                + " PRIMARY KEY(\"Id\"))",
+            testName);
+    spannerResourceManager.executeDdlStatement(createTableStatement);
+    List<Mutation> expectedData = generateTableRowsUUID(String.format("%s", testName));
+    spannerResourceManager.write(expectedData);
+
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
+            .addParameter("spannerDatabaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerTable", testName)
+            .addParameter("textWritePrefix", getGcsPath("output/" + testName))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+
+    // Act
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> textArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.csv.*", testName)));
+
+    List<Map<String, Object>> records = new ArrayList<>();
+    textArtifacts.forEach(
+        artifact -> {
+          List<String> lines =
+              List.of(new String(artifact.contents()).replace("\"", "").split("\n"));
+          lines.forEach(
+              line -> {
+                List<Object> values = List.of(line.split(",", -1));
+                Object uuidVal = values.get(1) == "" ? "null" : values.get(1);
+                records.add(Map.of("Id", values.get(0), "UuidCol", uuidVal));
+              });
+        });
+
+    List<Map<String, Object>> expectedRecords = mutationsToRecords(expectedData);
+
+    assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
+  }
+
+  private static List<Mutation> generateTableRowsUUID(String tableId) {
+    List<Mutation> mutations = new ArrayList<>();
+    for (int i = 0; i < MESSAGES_COUNT; i++) {
+      Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+      mutation.set("Id").to(i);
+      // Randomly add null values as well
+      String uuid = Math.random() < 0.5 ? UUID.randomUUID().toString() : null;
+      mutation.set("UuidCol").to(uuid);
+      mutations.add(mutation.build());
+    }
+
+    return mutations;
   }
 
   private static List<Mutation> generateTableRows(String tableId) {
@@ -222,9 +354,6 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
       mutation.set("Id").to(i);
       mutation.set("FirstName").to(RandomStringUtils.randomAlphanumeric(1, 20));
       mutation.set("LastName").to(RandomStringUtils.randomAlphanumeric(1, 20));
-      // Randomly add null values as well
-      String uuid = Math.random() < 0.5 ? UUID.randomUUID().toString() : null;
-      mutation.set("UuidCol").to(uuid);
       mutations.add(mutation.build());
     }
 
