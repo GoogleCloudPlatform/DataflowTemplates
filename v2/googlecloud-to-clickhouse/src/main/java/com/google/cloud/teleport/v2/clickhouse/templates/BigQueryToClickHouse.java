@@ -82,66 +82,7 @@ public class BigQueryToClickHouse {
 
 
             // Step 2: Transform TableRow to Row
-            PCollection<Row> rows = tableRows.apply("Convert to Beam Row", ParDo.of(new DoFn<TableRow, Row>() {
-                private Map<String, TableSchema.Column> columnMap;
-
-                @Setup
-                public void setup() {
-                    // Build a map of column names to column objects from the ClickHouse schema
-                    columnMap = clickHouseSchema.columns().stream()
-                            .collect(Collectors.toMap(TableSchema.Column::name, column -> column));
-                }
-
-                @ProcessElement
-                public void processElement(@Element TableRow tableRow, OutputReceiver<Row> out) {
-
-                    Row.Builder rowBuilder = Row.withSchema(beamSchema);
-
-
-                    for (Schema.Field field : beamSchema.getFields()) {
-                        String fieldName = field.getName();
-                        Object value = tableRow.get(fieldName);
-                        TableSchema.ColumnType columnType = columnMap.get(fieldName) != null
-                                ? columnMap.get(fieldName).columnType()
-                                : null;
-
-                        if (columnType == null) {
-                            throw new IllegalArgumentException("Couldn't infer type for field: " + fieldName);
-                        }
-                        if (value != null) {
-                            // we handle the conversion manually for unimplemented types until this issue would be solved:
-                            // https://github.com/apache/beam/issues/33692
-                            if (columnType.typeName() == TableSchema.ColumnType.FLOAT32.typeName()) {
-                                rowBuilder.addValue(Float.valueOf(value.toString()));
-                            } else if (columnType.typeName() == TableSchema.ColumnType.FLOAT64.typeName()) {
-                                rowBuilder.addValue(Double.valueOf(value.toString()));
-                            } else if (columnType.typeName() == TableSchema.ColumnType.DATETIME.typeName() || columnType.typeName() == TableSchema.ColumnType.DATE.typeName()) {
-                                rowBuilder.addValue(new DateTime(value.toString()));
-                            } else if (Objects.equals(columnType.typeName().toString(), "ARRAY")) {
-                                if (((ArrayList<?>) value).isEmpty()) {
-                                    rowBuilder.addValue(value);
-                                } else {
-                                    TableSchema.ColumnType finalColumnType = columnType;
-                                    rowBuilder.addValue(
-                                            ((ArrayList<?>) value)
-                                                    .stream()
-                                                    .map(v -> TableSchema.ColumnType.parseDefaultExpression(finalColumnType.arrayElementType(), v.toString()))
-                                                    .collect(Collectors.toList())
-                                    );
-                                }
-
-                            } else {
-                                rowBuilder.addValue(TableSchema.ColumnType.parseDefaultExpression(columnType, value.toString()));
-                            }
-
-                        } else {
-                            rowBuilder.addValue(null); // Handle nulls gracefully
-                        }
-                    }
-                    Row row = rowBuilder.build();
-                    out.output(row);
-                }
-            })).setRowSchema(beamSchema);
+            PCollection<Row> rows = tableRows.apply("Convert to Beam Row", ParDo.of(new TableRowToBeamRowFn(beamSchema, clickHouseSchema))).setRowSchema(beamSchema);
 
             ClickHouseIO.Write clickHouseWriter = ClickHouseIO.write(clickHouseJDBCURL, options.getClickHouseTable());
 
@@ -171,5 +112,69 @@ public class BigQueryToClickHouse {
             throw new RuntimeException(e);
         }
 
+    }
+}
+
+class TableRowToBeamRowFn extends DoFn<TableRow, Row> {
+    private Map<String, TableSchema.Column> columnMap;
+    private final Schema beamSchema;
+    private final TableSchema clickHouseSchema;
+
+    public TableRowToBeamRowFn(Schema beamSchema, TableSchema clickHouseSchema) {
+        this.beamSchema = beamSchema;
+        this.clickHouseSchema = clickHouseSchema;
+    }
+
+    @Setup
+    public void setup() {
+        columnMap = clickHouseSchema.columns().stream()
+                .collect(Collectors.toMap(TableSchema.Column::name, column -> column));
+    }
+
+    @ProcessElement
+    public void processElement(@Element TableRow tableRow, OutputReceiver<Row> out) {
+        Row.Builder rowBuilder = Row.withSchema(beamSchema);
+
+        for (Schema.Field field : beamSchema.getFields()) {
+            String fieldName = field.getName();
+            Object value = tableRow.get(fieldName);
+            TableSchema.ColumnType columnType = columnMap.get(fieldName) != null
+                    ? columnMap.get(fieldName).columnType()
+                    : null;
+
+            if (columnType == null) {
+                throw new IllegalArgumentException("Couldn't infer type for field: " + fieldName);
+            }
+
+            if (value != null) {
+                if (columnType.typeName() == TableSchema.ColumnType.FLOAT32.typeName()) {
+                    rowBuilder.addValue(Float.valueOf(value.toString()));
+                } else if (columnType.typeName() == TableSchema.ColumnType.FLOAT64.typeName()) {
+                    rowBuilder.addValue(Double.valueOf(value.toString()));
+                } else if (columnType.typeName() == TableSchema.ColumnType.DATETIME.typeName() ||
+                        columnType.typeName() == TableSchema.ColumnType.DATE.typeName()) {
+                    rowBuilder.addValue(new DateTime(value.toString()));
+                } else if (Objects.equals(columnType.typeName().toString(), "ARRAY")) {
+                    if (((ArrayList<?>) value).isEmpty()) {
+                        rowBuilder.addValue(value);
+                    } else {
+                        TableSchema.ColumnType finalColumnType = columnType;
+                        rowBuilder.addValue(
+                                ((ArrayList<?>) value)
+                                        .stream()
+                                        .map(v -> TableSchema.ColumnType.parseDefaultExpression(finalColumnType.arrayElementType(), v.toString()))
+                                        .collect(Collectors.toList())
+                        );
+                    }
+                } else {
+                    rowBuilder.addValue(TableSchema.ColumnType.parseDefaultExpression(columnType, value.toString()));
+                }
+            } else {
+                rowBuilder.addValue(null);
+            }
+        }
+
+        Row row = rowBuilder.build();
+        out.output(row);
     }
 }
