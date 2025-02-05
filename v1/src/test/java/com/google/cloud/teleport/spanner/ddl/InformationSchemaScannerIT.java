@@ -736,6 +736,38 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void pgSearchIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Users\" ("
+                + "  \"userid\"                              bigint NOT NULL,"
+                + "  PRIMARY KEY (\"userid\")"
+                + " )",
+            " CREATE TABLE \"Messages\" ("
+                + "  \"userid\"                              bigint NOT NULL,"
+                + "  \"messageid\"                           bigint NOT NULL,"
+                + "  \"orderid\"                             bigint NOT NULL,"
+                + "  \"subject\"                             character varying,"
+                + "  \"subject_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(subject)) STORED HIDDEN,"
+                + "  \"body\"                                character varying,"
+                + "  \"body_tokens\"                         spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(body)) STORED HIDDEN,"
+                + "  \"data\"                                character varying,"
+                + "   PRIMARY KEY (\"userid\", \"messageid\")"
+                + " ) INTERLEAVE IN PARENT \"Users\"",
+            " CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " INCLUDE (\"data\")"
+                + " PARTITION BY \"userid\""
+                + " ORDER BY \"orderid\""
+                + " INTERLEAVE IN \"Users\""
+                + " WITH (sort_order_sharding=TRUE)");
+
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void vectorIndexes() throws Exception {
     List<String> statements =
         Arrays.asList(
