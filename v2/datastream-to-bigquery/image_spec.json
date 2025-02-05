@@ -1,0 +1,403 @@
+{
+    "name": "Datastream to BigQuery",
+    "description": "The Datastream to BigQuery template is a streaming pipeline that reads \u003ca href\u003d\"https://cloud.google.com/datastream/docs\"\u003eDatastream\u003c/a\u003e data and replicates it into BigQuery. The template reads data from Cloud Storage using Pub/Sub notifications and replicates it into a time partitioned BigQuery staging table. Following replication, the template executes a MERGE in BigQuery to upsert all change data capture (CDC) changes into a replica of the source table.\n\n\nThe template handles creating and updating the BigQuery tables managed by the replication. When data definition language (DDL) is required, a callback to Datastream extracts the source table schema and translates it into BigQuery data types. Supported operations include the following:\n- New tables are created as data is inserted.\n- New columns are added to BigQuery tables with null initial values.\n- Dropped columns are ignored in BigQuery and future values are null.\n- Renamed columns are added to BigQuery as new columns.\n- Type changes are not propagated to BigQuery.",
+    "parameters": [
+      {
+        "name": "inputFilePattern",
+        "groupName": "Source",
+        "label": "File location for Datastream file output in Cloud Storage.",
+        "helpText": "The file location for Datastream file output in Cloud Storage, in the format `gs://\u003cBUCKET_NAME\u003e/\u003cROOT_PATH\u003e/`.",
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "GCS_READ_FILE"
+      },
+      {
+        "name": "inputFileFormat",
+        "label": "Datastream output file format (avro/json).",
+        "helpText": "The format of the output files produced by Datastream. Allowed values are `avro` and `json`. Defaults to `avro`.",
+        "regexes": [
+          "^(avro|json)$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "enumOptions": [
+          {
+            "value": "avro"
+          },
+          {
+            "value": "json"
+          }
+        ],
+        "paramType": "ENUM",
+        "defaultValue": "avro"
+      },
+      {
+        "name": "gcsPubSubSubscription",
+        "label": "The Pub/Sub subscription on the Cloud Storage bucket.",
+        "helpText": "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: `projects/\u003cPROJECT_ID\u003e/subscriptions/\u003cSUBSCRIPTION_NAME\u003e`.",
+        "regexes": [
+          "^projects\\/[^\\n\\r\\/]+\\/subscriptions\\/[^\\n\\r\\/]+$|^$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "PUBSUB_SUBSCRIPTION"
+      },
+      {
+        "name": "streamName",
+        "label": "Name or template for the stream to poll for schema information.",
+        "helpText": "The name or the template for the stream to poll for schema information. Defaults to: {_metadata_stream}. The default value is usually enough.",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "rfcStartDateTime",
+        "label": "The starting DateTime used to fetch from Cloud Storage (https://tools.ietf.org/html/rfc3339).",
+        "helpText": "The starting DateTime to use to fetch data from Cloud Storage (https://tools.ietf.org/html/rfc3339). Defaults to: `1970-01-01T00:00:00.00Z`.",
+        "isOptional": true,
+        "regexes": [
+          "^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):(([0-9]{2})(\\.[0-9]+)?)Z$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "1970-01-01T00:00:00.00Z"
+      },
+      {
+        "name": "fileReadConcurrency",
+        "label": "File read concurrency",
+        "helpText": "The number of concurrent DataStream files to read. Default is `10`.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "10"
+      },
+      {
+        "name": "outputProjectId",
+        "groupName": "Target",
+        "label": "Project Id for BigQuery datasets.",
+        "helpText": "The ID of the Google Cloud project that contains the BigQuery datasets to output data into. The default for this parameter is the project where the Dataflow pipeline is running.",
+        "isOptional": true,
+        "regexes": [
+          "[a-z0-9\\-\\.\\:]+"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "outputStagingDatasetTemplate",
+        "groupName": "Target",
+        "label": "Name or template for the dataset to contain staging tables.",
+        "helpText": "The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.",
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "{_metadata_dataset}"
+      },
+      {
+        "name": "outputStagingTableNameTemplate",
+        "groupName": "Target",
+        "label": "Template for the name of staging tables.",
+        "helpText": "The template to use to name the staging tables. For example, `{_metadata_table}`. Defaults to `{_metadata_table}_log`.",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "{_metadata_table}_log"
+      },
+      {
+        "name": "outputDatasetTemplate",
+        "groupName": "Target",
+        "label": "Template for the dataset to contain replica tables.",
+        "helpText": "The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.",
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "{_metadata_dataset}"
+      },
+      {
+        "name": "outputTableNameTemplate",
+        "groupName": "Target",
+        "label": "Template for the name of replica tables.",
+        "helpText": "The template to use for the name of the replica tables, for example `{_metadata_table}`. Defaults to `{_metadata_table}`.",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "{_metadata_table}"
+      },
+      {
+        "name": "ignoreFields",
+        "label": "Fields to be ignored",
+        "helpText": "Comma-separated fields to ignore in BigQuery. Defaults to: `_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count`. For example, `_metadata_stream,_metadata_schema`",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "_metadata_stream,_metadata_schema,_metadata_table,_metadata_source,_metadata_tx_id,_metadata_dlq_reconsumed,_metadata_primary_keys,_metadata_error,_metadata_retry_count"
+      },
+      {
+        "name": "mergeFrequencyMinutes",
+        "label": "The number of minutes between merges for a given table",
+        "helpText": "The number of minutes between merges for a given table. Defaults to `5`.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "5"
+      },
+      {
+        "name": "deadLetterQueueDirectory",
+        "label": "Dead letter queue directory.",
+        "helpText": "The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.",
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": ""
+      },
+      {
+        "name": "dlqRetryMinutes",
+        "label": "The number of minutes between DLQ Retries.",
+        "helpText": "The number of minutes between DLQ Retries. Defaults to `10`.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "10"
+      },
+      {
+        "name": "dataStreamRootUrl",
+        "label": "Datastream API Root URL (only required for testing)",
+        "helpText": "The Datastream API root URL. Defaults to: https://datastream.googleapis.com/.",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT",
+        "defaultValue": "https://datastream.googleapis.com/"
+      },
+      {
+        "name": "applyMerge",
+        "label": "A switch to disable MERGE queries for the job.",
+        "helpText": "Whether to disable MERGE queries for the job. Defaults to `true`.",
+        "isOptional": true,
+        "regexes": [
+          "^(true|false)$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "BOOLEAN",
+        "defaultValue": "true"
+      },
+      {
+        "name": "mergeConcurrency",
+        "parentName": "applyMerge",
+        "label": "Concurrent queries for merge.",
+        "helpText": "The number of concurrent BigQuery MERGE queries. Only effective when applyMerge is set to true. Defaults to `30`.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          "true"
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "30"
+      },
+      {
+        "name": "partitionRetentionDays",
+        "label": "Partition retention days.",
+        "helpText": "The number of days to use for partition retention when running BigQuery merges. Defaults to `1`.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "1"
+      },
+      {
+        "name": "useStorageWriteApiAtLeastOnce",
+        "parentName": "useStorageWriteApi",
+        "label": "Use at at-least-once semantics in BigQuery Storage Write API",
+        "helpText": "This parameter takes effect only if `Use BigQuery Storage Write API` is enabled. If `true`, at-least-once semantics are used for the Storage Write API. Otherwise, exactly-once semantics are used. Defaults to `false`.",
+        "isOptional": true,
+        "hiddenUi": true,
+        "regexes": [
+          "^(true|false)$"
+        ],
+        "parentTriggerValues": [
+          "true"
+        ],
+        "paramType": "BOOLEAN",
+        "defaultValue": "false"
+      },
+      {
+        "name": "javascriptTextTransformGcsPath",
+        "label": "Cloud Storage path to Javascript UDF source",
+        "helpText": "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`",
+        "isOptional": true,
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "GCS_READ_FILE"
+      },
+      {
+        "name": "javascriptTextTransformFunctionName",
+        "label": "UDF Javascript Function Name",
+        "helpText": "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples).",
+        "isOptional": true,
+        "regexes": [
+          "[a-zA-Z0-9_]+"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "javascriptTextTransformReloadIntervalMinutes",
+        "label": "JavaScript UDF auto-reload interval (minutes)",
+        "helpText": "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "0"
+      },
+      {
+        "name": "pythonTextTransformGcsPath",
+        "label": "Gcs path to python UDF source",
+        "helpText": "The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-transforms/*.py`",
+        "isOptional": true,
+        "regexes": [
+          "^gs:\\/\\/[^\\n\\r]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "GCS_READ_FILE"
+      },
+      {
+        "name": "pythonRuntimeVersion",
+        "label": "Python UDF Runtime Version",
+        "helpText": "The runtime version to use for this Python UDF.",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "pythonTextTransformFunctionName",
+        "label": "UDF Python Function Name",
+        "helpText": "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. For example, `transform_udf1`",
+        "isOptional": true,
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "TEXT"
+      },
+      {
+        "name": "runtimeRetries",
+        "label": "Python runtime retry attempts",
+        "helpText": "The number of times a runtime will be retried before failing. Defaults to: 5.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "5"
+      },
+      {
+        "name": "useStorageWriteApi",
+        "label": "Use BigQuery Storage Write API",
+        "helpText": "If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api).",
+        "isOptional": true,
+        "regexes": [
+          "^(true|false)$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "BOOLEAN",
+        "defaultValue": "false"
+      },
+      {
+        "name": "numStorageWriteApiStreams",
+        "parentName": "useStorageWriteApi",
+        "label": "Number of streams for BigQuery Storage Write API",
+        "helpText": "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          "true"
+        ],
+        "paramType": "NUMBER",
+        "defaultValue": "0"
+      },
+      {
+        "name": "storageWriteApiTriggeringFrequencySec",
+        "parentName": "useStorageWriteApi",
+        "label": "Triggering frequency in seconds for BigQuery Storage Write API",
+        "helpText": "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter.",
+        "isOptional": true,
+        "regexes": [
+          "^[0-9]+$"
+        ],
+        "parentTriggerValues": [
+          "true"
+        ],
+        "paramType": "NUMBER"
+      }
+    ],
+    "streaming": true,
+    "supportsAtLeastOnce": true,
+    "supportsExactlyOnce": false,
+    "defaultStreamingMode": "UNSPECIFIED"
+}
