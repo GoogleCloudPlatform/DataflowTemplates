@@ -33,7 +33,6 @@ import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,16 +51,18 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class CassandraSharedResourceManager
-    extends TestContainerResourceManager<GenericContainer<?>> implements ResourceManager {
+public class CassandraResourceManager extends TestContainerResourceManager<GenericContainer<?>>
+    implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CassandraSharedResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraResourceManager.class);
 
   private static final String DEFAULT_CASSANDRA_CONTAINER_NAME = "cassandra";
 
   // A list of available Cassandra Docker image tags can be found at
   // https://hub.docker.com/_/cassandra/tags
   private static final String DEFAULT_CASSANDRA_CONTAINER_TAG = "4.1.0";
+
+  private static final long DEFAULT_CASSANDRA_TIMEOUT = 2;
 
   // 9042 is the default port that Cassandra is configured to listen on
   private static final int CASSANDRA_INTERNAL_PORT = 9042;
@@ -70,7 +71,7 @@ public class CassandraSharedResourceManager
   private final String keyspaceName;
   private final boolean usingStaticDatabase;
 
-  private CassandraSharedResourceManager(Builder builder) {
+  private CassandraResourceManager(Builder builder) {
     this(
         null,
         new CassandraContainer<>(
@@ -80,7 +81,7 @@ public class CassandraSharedResourceManager
 
   @VisibleForTesting
   @SuppressWarnings("nullness")
-  CassandraSharedResourceManager(
+  CassandraResourceManager(
       @Nullable CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
     super(container, builder);
     // we are trying to handle userDefined KeyspaceName name without usingStatic Container
@@ -145,13 +146,27 @@ public class CassandraSharedResourceManager
    */
   public synchronized ResultSet executeStatement(String statement) {
     LOG.info("Executing statement: {}", statement);
+    return this.executeStatement(statement, DEFAULT_CASSANDRA_TIMEOUT);
+  }
+
+  /**
+   * Execute the given statement on the managed keyspace.
+   *
+   * @param statement The statement to execute.
+   * @param timeouts The timeout for the given statement to execute in seconds.
+   * @return ResultSet from Cassandra.
+   */
+  public synchronized ResultSet executeStatement(String statement, long timeouts) {
+    LOG.info("Executing statement within timeouts: {} {}", statement, timeouts);
 
     try {
       return Failsafe.with(buildRetryPolicy())
           .get(
               () ->
                   cassandraClient.execute(
-                      SimpleStatement.newInstance(statement).setKeyspace(this.keyspaceName)));
+                      SimpleStatement.newInstance(statement)
+                          .setKeyspace(this.keyspaceName)
+                          .setTimeout(Duration.ofSeconds(timeouts))));
     } catch (Exception e) {
       throw new IllegalArgumentException("Error reading collection.", e);
     }
@@ -174,19 +189,6 @@ public class CassandraSharedResourceManager
     } catch (Exception e) {
       throw new IllegalArgumentException("Error reading collection.", e);
     }
-  }
-
-  /**
-   * Inserts the given Document into a table.
-   *
-   * <p>A database will be created here, if one does not already exist.
-   *
-   * @param tableName The name of the table to insert the document into.
-   * @param document The document to insert into the table.
-   * @return A boolean indicating whether the Document was inserted successfully.
-   */
-  public synchronized boolean insertDocument(String tableName, Map<String, Object> document) {
-    return insertDocuments(tableName, ImmutableList.of(document));
   }
 
   /**
@@ -246,7 +248,6 @@ public class CassandraSharedResourceManager
 
     boolean producedError = false;
 
-    // First, delete the database if it was not given as a static argument
     if (!usingStaticDatabase) {
       try {
         executeStatement(String.format("DROP KEYSPACE IF EXISTS %s", this.keyspaceName));
@@ -312,9 +313,9 @@ public class CassandraSharedResourceManager
         .build();
   }
 
-  /** Builder for {@link CassandraSharedResourceManager}. */
+  /** Builder for {@link CassandraResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<CassandraSharedResourceManager> {
+      extends TestContainerResourceManager.Builder<CassandraResourceManager> {
 
     private @Nullable String keyspaceName;
 
@@ -359,8 +360,8 @@ public class CassandraSharedResourceManager
     }
 
     @Override
-    public CassandraSharedResourceManager build() {
-      return new CassandraSharedResourceManager(this);
+    public CassandraResourceManager build() {
+      return new CassandraResourceManager(this);
     }
   }
 }

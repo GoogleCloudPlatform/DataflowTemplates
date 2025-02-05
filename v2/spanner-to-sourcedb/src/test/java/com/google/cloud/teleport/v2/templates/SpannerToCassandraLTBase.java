@@ -17,8 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
-import com.google.pubsub.v1.SubscriptionName;
-import com.google.pubsub.v1.TopicName;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,32 +32,21 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
-import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Base class for Spanner to sourcedb Load tests. It provides helper functions related to
  * environment setup and assertConditions.
  */
-public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraLTBase.class);
+public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
 
   private static final String TEMPLATE_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(),
           "gs://dataflow-templates-spanner-to-cassandra/templates/flex/Spanner_to_SourceDb");
-  public SpannerResourceManager spannerResourceManager;
-  public SpannerResourceManager spannerMetadataResourceManager;
-  public CassandraSharedResourceManager cassandraSharedResourceManager;
-  public GcsResourceManager gcsResourceManager;
-  private static PubsubResourceManager pubsubResourceManager;
-  private SubscriptionName subscriptionName;
+  public CassandraResourceManager cassandraSharedResourceManager;
 
   public void setupResourceManagers(
       String spannerDdlResource, String cassandraDdlResource, String artifactBucket)
@@ -81,7 +68,7 @@ public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
                 .replace("gs://" + artifactBucket, ""));
   }
 
-  public CassandraSharedResourceManager generateKeyspaceAndBuildCassandraResource() {
+  public CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
     String keyspaceName =
         ResourceManagerUtils.generateResourceId(
                 testName,
@@ -94,7 +81,7 @@ public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
       keyspaceName = keyspaceName.substring(0, 48);
     }
 
-    return CassandraSharedResourceManager.builder(testName)
+    return CassandraResourceManager.builder(testName)
         .setKeyspaceName(keyspaceName)
         .sePreGeneratedKeyspaceName(true)
         .build();
@@ -107,28 +94,6 @@ public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
         gcsResourceManager,
         pubsubResourceManager,
         cassandraSharedResourceManager);
-  }
-
-  public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
-    return PubsubResourceManager.builder(testName, project, CREDENTIALS_PROVIDER)
-        .setMonitoringClient(monitoringClient)
-        .build();
-  }
-
-  public SubscriptionName createPubsubResources(
-      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
-    String topicNameSuffix = "rr-load" + identifierSuffix;
-    String subscriptionNameSuffix = "rr-load-sub" + identifierSuffix;
-    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
-    String prefix = gcsPrefix;
-    if (prefix.startsWith("/")) {
-      prefix = prefix.substring(1);
-    }
-    prefix += "/retry/";
-    gcsResourceManager.createNotification(topic.toString(), prefix);
-    return subscription;
   }
 
   public SpannerResourceManager createSpannerDatabase(String spannerDdlResourceFile)
@@ -152,19 +117,8 @@ public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
     return spannerResourceManager;
   }
 
-  public SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
-    SpannerResourceManager spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-lt-" + testName, project, region)
-            .maybeUseStaticInstance()
-            .build();
-    String dummy = "create table spnr_csdr_t1(id INT64 ) primary key(id)";
-    spannerMetadataResourceManager.executeDdlStatement(dummy);
-    return spannerMetadataResourceManager;
-  }
-
   public void createAndUploadCassandraConfigToGcs(
-      GcsResourceManager gcsResourceManager,
-      CassandraSharedResourceManager cassandraResourceManagers)
+      GcsResourceManager gcsResourceManager, CassandraResourceManager cassandraResourceManagers)
       throws IOException {
 
     String host = cassandraResourceManagers.getHost();
@@ -193,7 +147,7 @@ public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
   }
 
   public void createCassandraSchema(
-      CassandraSharedResourceManager cassandraResourceManager, String cassandraDdlResourceFile)
+      CassandraResourceManager cassandraResourceManager, String cassandraDdlResourceFile)
       throws IOException {
     String ddl =
         String.join(
@@ -293,9 +247,5 @@ public class SpannerToCassandraLTBase extends TemplateLoadTestBase {
 
     // export results
     exportMetricsToBigQuery(jobInfo, metrics);
-  }
-
-  public void getResourceManagerMetrics(Map<String, Double> metrics) {
-    pubsubResourceManager.collectMetrics(metrics);
   }
 }

@@ -24,7 +24,7 @@ import org.apache.beam.it.conditions.ConditionCheck;
 @AutoValue
 public abstract class CassandraRowsCheck extends ConditionCheck {
 
-  abstract CassandraSharedResourceManager resourceManager();
+  abstract CassandraResourceManager resourceManager();
 
   abstract String tableName();
 
@@ -46,7 +46,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
 
   private long getRowCount(String tableName) {
     String query = String.format("SELECT COUNT(*) FROM %s", tableName);
-    ResultSet resultSet = resourceManager().executeStatement(query);
+    ResultSet resultSet = resourceManager().executeStatement(query, 10);
     Row row = resultSet.one();
     if (row != null) {
       return row.getLong(0);
@@ -79,7 +79,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
         true, String.format("Expected at least %d rows and found %d", minRows(), totalRows));
   }
 
-  public static Builder builder(CassandraSharedResourceManager resourceManager, String tableName) {
+  public static Builder builder(CassandraResourceManager resourceManager, String tableName) {
     return new AutoValue_CassandraRowsCheck.Builder()
         .setResourceManager(resourceManager)
         .setTableName(tableName);
@@ -89,7 +89,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
   @AutoValue.Builder
   public abstract static class Builder {
 
-    public abstract Builder setResourceManager(CassandraSharedResourceManager resourceManager);
+    public abstract Builder setResourceManager(CassandraResourceManager resourceManager);
 
     public abstract Builder setTableName(String tableName);
 
