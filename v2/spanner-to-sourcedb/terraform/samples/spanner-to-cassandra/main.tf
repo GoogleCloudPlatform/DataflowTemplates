@@ -1,31 +1,33 @@
+locals {
+  migration_id  = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
+  change_stream = replace(local.migration_id, "-", "_")
+}
+
 #create random prefix for migration id
 resource "random_pet" "migration_id" {
   prefix = "spanner-csdr"
 } 
 
 # create cassandra-config.conf file
-resource "null_resource" "replace_keys" {
-  triggers = {
-    always_run = timestamp()
-  }
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-c"]
-    command = "sed \"s~##host##~${var.shard_config.host}~g; s~##port##~${var.shard_config.port}~g; s~##keyspace##~${var.shard_config.keyspace}~g; s~##dataCenter##~${var.shard_config.dataCenter}~g; s~##username##~${var.shard_config.username}~g; s~##password##~${var.shard_config.password}~g\" ${var.cassandra_template_config_file} > cassandra-config.conf"
-  }
-}  
+resource "local_file" "cassandra_config" {
+  filename = "cassandra-config.conf"
+  content = templatefile(var.cassandra_template_config_file, {
+    host       = var.shard_config.host
+    port       = var.shard_config.port
+    keyspace   = var.shard_config.keyspace
+    dataCenter = var.shard_config.dataCenter 
+    username   = var.shard_config.username
+    password   = var.shard_config.password 
+  })
+}
 
 # Upload the modified .conf file to the GCS bucket
 resource "google_storage_bucket_object" "shard_config" {
   name       = "cassandra-config.conf"
   bucket     = google_storage_bucket.reverse_replication_bucket.id
   source     = "./cassandra-config.conf"
-  depends_on = [google_project_service.enabled_apis, null_resource.replace_keys] 
+  depends_on = [google_project_service.enabled_apis, local_file.cassandra_config]   
 } 
-
-locals {
-  migration_id  = var.common_params.migration_id != null ? var.common_params.migration_id : random_pet.migration_id.id
-  change_stream = replace(local.migration_id, "-", "_")
-}
 
 # Setup network firewalls rules to enable Dataflow access to source.
 resource "google_compute_firewall" "allow_dataflow_to_source" {
@@ -58,29 +60,6 @@ resource "google_compute_firewall" "allow_dataflow_vms_communication" {
   }
   source_tags = ["dataflow"]
   target_tags = ["dataflow"]
-}
-
-# allow all comunication from gcp project's resource to dataflow worker
-resource "google_compute_firewall" "allow_dataflow_worker_all" {
-  count       = var.common_params.target_tags != null ? 1 : 0
-  depends_on  = [google_project_service.enabled_apis]
-  project     = var.common_params.host_project != null ? var.common_params.host_project : var.common_params.project
-  name        = "allow-dataflow-worker-internal-all"
-  network     = var.dataflow_params.runner_params.network != null ? var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.dataflow_params.runner_params.network}" : "projects/${var.common_params.project}/global/networks/${var.dataflow_params.runner_params.network}" : "default"
-  description = "Allow traffic to dataflow worker all port"
-  
-  allow {
-    protocol = "tcp"
-    ports    = ["0-65535"] 
-  }
-
-  allow {
-    protocol = "udp"
-    ports    = ["0-65535"]  
-  }
-
-  source_ranges = [var.dataflow_params.runner_params.subnetwork_cidr] 
-  target_tags   = ["dataflow"]
 }
 
 # GCS bucket for holding configuration objects
@@ -241,4 +220,29 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
   labels = {
     "migration_id" = local.migration_id
   }
+}
+
+
+# Add terraform-validator configuration
+resource "google_project_service" "terraform_validator_api" {
+  project = var.common_params.project
+  service = "cloudbuild.googleapis.com"
+  depends_on = [google_project_service.enabled_apis]
+}
+
+resource "null_resource" "run_terraform_validator" {
+  triggers = {
+    migration_id = local.migration_id
+  }
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      gcloud beta terraform vet tfplan.json --policy-library=./policy-library
+    EOT
+  }
+
+  depends_on = [
+    google_dataflow_flex_template_job.reverse_replication_job,
+    google_project_service.terraform_validator_api
+  ]
 }

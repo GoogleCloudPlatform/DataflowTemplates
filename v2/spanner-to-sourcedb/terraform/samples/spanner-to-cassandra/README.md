@@ -158,7 +158,7 @@ configuration and creates the following resources -
 > **_NOTE:_** A label is attached to all the resources created via Terraform.
 > The key is `migration_id` and the value is auto-generated. The auto-generated
 > value is used as a global identifier for a migration job across resources. The
-> auto-generated value is always pre-fixed with a `smt-rev`.
+> auto-generated value is always pre-fixed with a `spanner-csdr`.
 
 ## How to run
 
