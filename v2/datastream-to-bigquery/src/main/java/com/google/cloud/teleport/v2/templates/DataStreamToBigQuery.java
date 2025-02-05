@@ -588,16 +588,22 @@ public class DataStreamToBigQuery {
                       .withPartitionRetention(options.getPartitionRetentionDays())));
       // Send Pub/Sub notification after the merge
       if (options.getPubSubTopic() != null && !options.getPubSubTopic().isEmpty()) {
+        // Capture the table name template and split it into an array
+        String outputDatasetTemplate = options.getOutputDatasetTemplate();
+
         pipeline
                 .apply("Create Merge Completion Signal", Create.of("MERGE_COMPLETED"))
                 .apply(
                         "Prepare Pub/Sub Message",
                         MapElements.into(TypeDescriptors.strings())
-                                .via(status -> String.format(
-                                        "{\"status\":\"%s\", \"timestamp\":\"%s\", \"tables\": [%s]}",
+                                .via(status -> {
+                                  // Create the Pub/Sub message with the table names as an array
+                                  return String.format(
+                                        "{\"status\":\"%s\", \"timestamp\":\"%s\", \"dataset\": %s}",
                                         status,
                                         Instant.now().toString(),
-                                        options.getOutputTableNameTemplate().replaceAll("(\\w+)", "\"$1\""))))
+                                        outputDatasetTemplate);  // Include table names array in the message
+                                }))
                 .apply("Publish to Pub/Sub", PubsubIO.writeStrings().to(options.getPubSubTopic()));
       }
     }
