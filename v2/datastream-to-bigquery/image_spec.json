@@ -394,7 +394,20 @@
           "true"
         ],
         "paramType": "NUMBER"
-      }
+      },
+      {               
+        "name": "pubSubTopic",
+        "label": "Pub/Sub topic for post-merge messages",
+        "helpText": "The Pub/Sub topic to send messages to after the merge is performed in BigQuery.",
+        "isOptional": true,
+        "regexes": [
+          "^projects/[^/]+/topics/[^/]+$"
+        ],
+        "parentTriggerValues": [
+          ""
+        ],
+        "paramType": "PUBSUB_TOPIC"
+     }
     ],
     "streaming": true,
     "supportsAtLeastOnce": true,

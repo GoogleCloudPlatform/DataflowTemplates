@@ -43,6 +43,7 @@ import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTabl
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -56,10 +57,12 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
+import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -70,6 +73,7 @@ import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TypeDescriptors;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -367,6 +371,15 @@ public class DataStreamToBigQuery {
     Boolean getUseStorageWriteApiAtLeastOnce();
 
     void setUseStorageWriteApiAtLeastOnce(Boolean value);
+
+  @TemplateParameter.PubsubTopic(
+          order = 21,
+          optional = true,
+          description = "The Pub/Sub topic to send messages to after the merge.",
+          helpText = "The Pub/Sub topic to send messages to after the merge is performed in BigQuery.")
+  String getPubSubTopic();
+
+  void setPubSubTopic(String value);
   }
 
   /**
@@ -573,6 +586,18 @@ public class DataStreamToBigQuery {
                           Duration.standardMinutes(options.getMergeFrequencyMinutes()))
                       .withMergeConcurrency(options.getMergeConcurrency())
                       .withPartitionRetention(options.getPartitionRetentionDays())));
+      // Send Pub/Sub notification after the merge
+      if (options.getPubSubTopic() != null && !options.getPubSubTopic().isEmpty()) {
+        pipeline
+                .apply("Create Merge Completion Signal", Create.of("MERGE_COMPLETED"))
+                .apply(
+                        "Prepare Pub/Sub Message",
+                        MapElements.into(TypeDescriptors.strings())
+                                .via(status -> String.format(
+                                        "{\"status\":\"%s\", \"timestamp\":\"%s\"}",
+                                        status, Instant.now().toString())))
+                .apply("Publish to Pub/Sub", PubsubIO.writeStrings().to(options.getPubSubTopic()));
+      }
     }
 
     /*

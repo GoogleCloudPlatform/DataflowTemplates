@@ -2,7 +2,7 @@
 PROJECT_ID="data-platform-441421"
 REGION="us-central1"
 TEMPLATE_FILE="gs://dataflow-work-bucket/images/image-spec.json"
-NETWORK="global/networks/data-network"
+NETWORK="global/networks/data"
 SUBNETWORK="regions/us-central1/subnetworks/data-subnet"
 
 # Parameters
@@ -12,9 +12,10 @@ OUTPUT_STAGING_DATASET_TEMPLATE="log_pai_dev"
 OUTPUT_DATASET_TEMPLATE="bronze_pai_dev"
 INPUT_FILE_FORMAT="avro"
 DEAD_LETTER_QUEUE_DIRECTORY="empty"
+PUBSUB_TOPIC="projects/$PROJECT_ID/topics/silver-test"
 
 # Run the Dataflow Flex Template job
-gcloud dataflow flex-template run datastream-to-bigquery-jdk11-4 \
+gcloud dataflow flex-template run datastream-to-bigquery-custom\
   --project=$PROJECT_ID \
   --region=$REGION \
   --enable-streaming-engine \
@@ -27,4 +28,5 @@ gcsPubSubSubscription=$GCS_PUBSUB_SUBSCRIPTION,\
 outputStagingDatasetTemplate=$OUTPUT_STAGING_DATASET_TEMPLATE,\
 outputDatasetTemplate=$OUTPUT_DATASET_TEMPLATE,\
 inputFileFormat=$INPUT_FILE_FORMAT,\
-deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY
+deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,\
+pubSubTopic=$PUBSUB_TOPIC
