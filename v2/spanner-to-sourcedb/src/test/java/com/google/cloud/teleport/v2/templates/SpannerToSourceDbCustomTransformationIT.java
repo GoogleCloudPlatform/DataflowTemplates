@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -133,7 +134,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                 null,
                 null,
                 customTransformation,
-                null);
+                MYSQL_SOURCE_TYPE);
       }
     }
   }
