@@ -297,11 +297,11 @@ public class InformationSchemaScanner {
       // If this table is interleaved with IN PARENT semantics, then an ON DELETE action is
       // required. Conversely, if this table is interleaved with IN semantics or is not interleaved
       // at all, then it is required that there not be an ON DELETE action.
-      if ((interleaveType == InterleaveType.IN_PARENT) == hasOnDeleteAction) {
+      if (interleaveType == InterleaveType.IN_PARENT != hasOnDeleteAction) {
         throw new IllegalStateException(
             String.format(
-                "Invalid combination of IN PARENT %s and onDeleteAction %s",
-                parentTableName, onDeleteAction));
+                "Invalid combination of interleaveType %s and onDeleteAction %s",
+                interleaveTypeStr, onDeleteAction));
       }
 
       boolean onDeleteCascade = false;
