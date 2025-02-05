@@ -537,9 +537,9 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getName().equals("intervalNano")) {
       Period period =
           Period.ZERO
-              .plusYears(getOrDefault(element, "years", 0L))
-              .plusMonths(getOrDefault(element, "months", 0L))
-              .plusDays(getOrDefault(element, "days", 0L));
+              .plusYears(((Number) getOrDefault(element, "years", 0L)).longValue())
+              .plusMonths(((Number) getOrDefault(element, "months", 0L)).longValue())
+              .plusDays(((Number) getOrDefault(element, "days", 0L)).longValue());
       /*
        * Convert the period to a ISO-8601 period formatted String, such as P6Y3M1D.
        * A zero period will be represented as zero days, 'P0D'.
@@ -548,10 +548,10 @@ public class GenericRecordTypeConvertor {
       String periodIso8061 = period.toString();
       java.time.Duration duration =
           java.time.Duration.ZERO
-              .plusHours(getOrDefault(element, "hours", 0L))
-              .plusMinutes(getOrDefault(element, "minutes", 0L))
-              .plusSeconds(getOrDefault(element, "seconds", 0L))
-              .plusNanos(getOrDefault(element, "nanos", 0L));
+              .plusHours(((Number) getOrDefault(element, "hours", 0L)).longValue())
+              .plusMinutes(((Number) getOrDefault(element, "minutes", 0L)).longValue())
+              .plusSeconds(((Number) getOrDefault(element, "seconds", 0L)).longValue())
+              .plusNanos(((Number) getOrDefault(element, "nanos", 0L)).longValue());
       /*
        * Convert the duration to a ISO-8601 period formatted String, such as  PT8H6M12.345S
        * refer to javadoc for Duration#toString.
@@ -572,7 +572,7 @@ public class GenericRecordTypeConvertor {
   }
 
   private static <T> T getOrDefault(GenericRecord element, String name, T def) {
-    if (element.get(name) == null) {
+    if ((T) element.get(name) == null) {
       return def;
     }
     return (T) element.get(name);

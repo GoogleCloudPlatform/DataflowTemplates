@@ -15,6 +15,17 @@
 name: Spanner Staging integration tests
 
 on:
+  pull_request:
+    branches:
+    - 'main'
+    paths:
+    - '.github/workflows/spanner-staging-tests.yml'
+    inputs:
+      spannerHost:
+        description: 'Spanner host URL.'
+        type: string
+        required: false
+        default: 'https://staging-wrenchworks.sandbox.googleapis.com'
   workflow_dispatch:
     inputs:
       commitOrTag:
@@ -35,7 +46,7 @@ jobs:
     name: Spanner Dataflow Templates Integration Tests
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
-    runs-on: [ self-hosted, it ]
+    runs-on: [ self-hosted, spanner ]
     steps:
     - name: Checkout Code
       uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
@@ -47,14 +58,13 @@ jobs:
     - name: Run Integration Tests
       run: |
         ./cicd/run-spanner-staging-it-tests \
-        --modules-to-build="ALL" \
+        --modules-to-build="v1" \
         --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1" \
+        --it-project="span-cloud-migrations-staging" \
+        --it-artifact-bucket="dataflow-testing-it-spanner-staging" \
         --it-spanner-host=${{ inputs.spannerHost }}
     - name: Upload Integration Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
         name: surefire-test-results

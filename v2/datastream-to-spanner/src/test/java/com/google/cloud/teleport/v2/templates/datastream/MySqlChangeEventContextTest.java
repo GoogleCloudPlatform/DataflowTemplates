@@ -63,6 +63,7 @@ public final class MySqlChangeEventContextTest {
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
             ddl,
+            ddl,
             "shadow_",
             DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
@@ -105,6 +106,7 @@ public final class MySqlChangeEventContextTest {
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
             ddl,
+            ddl,
             "shadow_",
             DatastreamConstants.MYSQL_SOURCE_TYPE);
     Mutation shadowMutation = changeEventContext.getShadowTableMutation();
@@ -144,6 +146,7 @@ public final class MySqlChangeEventContextTest {
     ChangeEventContext changeEventContext =
         ChangeEventContextFactory.createChangeEventContext(
             getJsonNode(changeEvent.toString()),
+            ddl,
             ddl,
             "shadow_",
             DatastreamConstants.MYSQL_SOURCE_TYPE);

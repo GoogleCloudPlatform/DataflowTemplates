@@ -25,6 +25,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.connection.CassandraConnec
 import com.google.cloud.teleport.v2.templates.dbutils.connection.JdbcConnectionHelper;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.CassandraDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import java.util.Arrays;
@@ -104,8 +105,7 @@ public class SourceProcessorFactoryTest {
             Constants.SOURCE_CASSANDRA, shards, maxConnections);
 
     Assert.assertNotNull(processor);
-    // ToDo this Particular line will get enable in DML PR
-    //    Assert.assertTrue(processor.getDmlGenerator() instanceof CassandraDMLGenerator);
+    Assert.assertTrue(processor.getDmlGenerator() instanceof CassandraDMLGenerator);
     Assert.assertEquals(1, processor.getSourceDaoMap().size());
     Assert.assertTrue(processor.getSourceDaoMap().get("shard1") instanceof CassandraDao);
   }

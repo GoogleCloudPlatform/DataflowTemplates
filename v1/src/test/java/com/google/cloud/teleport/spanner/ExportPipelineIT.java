@@ -275,11 +275,19 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
                 + "  \"Rating\" real,\n"
+                + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
                 + "PRIMARY KEY(\"Id\"))",
             testName);
+    String createSearchIndexStatement =
+        String.format(
+            "CREATE SEARCH INDEX \"%s_SearchIndex\"\n"
+                + " ON \"%s_Singers\"(\"NameTokens\") ORDER BY \"Id\" WHERE \"Id\" IS NOT NULL\n"
+                + " WITH (sort_order_sharding=TRUE, disable_automatic_uid_column=TRUE)",
+            testName, testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
+    spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
     spannerResourceManager.write(expectedData);
     PipelineLauncher.LaunchConfig.Builder options =
@@ -304,6 +312,10 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Empty")));
+    List<Artifact> searchIndexArtifacts =
+        gcsClient.listArtifacts(
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "SearchIndex")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
 

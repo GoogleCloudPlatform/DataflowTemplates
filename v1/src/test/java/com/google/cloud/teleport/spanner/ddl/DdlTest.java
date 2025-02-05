@@ -680,6 +680,40 @@ public class DdlTest {
   }
 
   @Test
+  public void testpgSearchIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("SearchIndex")
+            .type("SEARCH")
+            .table("Messages")
+            .interleaveIn("Users")
+            .partitionBy(ImmutableList.of("userid"))
+            .orderBy(ImmutableList.of("orderid"))
+            .options(ImmutableList.of("sort_order_sharding=TRUE"));
+    builder
+        .columns()
+        .create()
+        .name("subject_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("body_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("data")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " INCLUDE (\"data\") PARTITION BY \"userid\" ORDER BY \"orderid\" INTERLEAVE IN \"Users\" WITH (sort_order_sharding=TRUE)"));
+  }
+
+  @Test
   public void testVectorIndex() {
     Index.Builder builder =
         Index.builder(Dialect.GOOGLE_STANDARD_SQL)
