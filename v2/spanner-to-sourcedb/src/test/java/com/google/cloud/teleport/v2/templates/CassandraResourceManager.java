@@ -33,7 +33,6 @@ import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,10 +51,10 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>The class is thread-safe.
  */
-public class CassandraSharedResourceManager
-    extends TestContainerResourceManager<GenericContainer<?>> implements ResourceManager {
+public class CassandraResourceManager extends TestContainerResourceManager<GenericContainer<?>>
+    implements ResourceManager {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CassandraSharedResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraResourceManager.class);
 
   private static final String DEFAULT_CASSANDRA_CONTAINER_NAME = "cassandra";
 
@@ -70,7 +69,7 @@ public class CassandraSharedResourceManager
   private final String keyspaceName;
   private final boolean usingStaticDatabase;
 
-  private CassandraSharedResourceManager(Builder builder) {
+  private CassandraResourceManager(Builder builder) {
     this(
         null,
         new CassandraContainer<>(
@@ -80,7 +79,7 @@ public class CassandraSharedResourceManager
 
   @VisibleForTesting
   @SuppressWarnings("nullness")
-  CassandraSharedResourceManager(
+  CassandraResourceManager(
       @Nullable CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
     super(container, builder);
     // we are trying to handle userDefined KeyspaceName name without usingStatic Container
@@ -174,19 +173,6 @@ public class CassandraSharedResourceManager
     } catch (Exception e) {
       throw new IllegalArgumentException("Error reading collection.", e);
     }
-  }
-
-  /**
-   * Inserts the given Document into a table.
-   *
-   * <p>A database will be created here, if one does not already exist.
-   *
-   * @param tableName The name of the table to insert the document into.
-   * @param document The document to insert into the table.
-   * @return A boolean indicating whether the Document was inserted successfully.
-   */
-  public synchronized boolean insertDocument(String tableName, Map<String, Object> document) {
-    return insertDocuments(tableName, ImmutableList.of(document));
   }
 
   /**
@@ -312,9 +298,9 @@ public class CassandraSharedResourceManager
         .build();
   }
 
-  /** Builder for {@link CassandraSharedResourceManager}. */
+  /** Builder for {@link CassandraResourceManager}. */
   public static final class Builder
-      extends TestContainerResourceManager.Builder<CassandraSharedResourceManager> {
+      extends TestContainerResourceManager.Builder<CassandraResourceManager> {
 
     private @Nullable String keyspaceName;
 
@@ -359,8 +345,8 @@ public class CassandraSharedResourceManager
     }
 
     @Override
-    public CassandraSharedResourceManager build() {
-      return new CassandraSharedResourceManager(this);
+    public CassandraResourceManager build() {
+      return new CassandraResourceManager(this);
     }
   }
 }
