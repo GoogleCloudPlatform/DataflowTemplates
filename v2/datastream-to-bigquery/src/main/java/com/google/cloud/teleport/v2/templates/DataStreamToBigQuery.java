@@ -594,8 +594,10 @@ public class DataStreamToBigQuery {
                         "Prepare Pub/Sub Message",
                         MapElements.into(TypeDescriptors.strings())
                                 .via(status -> String.format(
-                                        "{\"status\":\"%s\", \"timestamp\":\"%s\"}",
-                                        status, Instant.now().toString())))
+                                        "{\"status\":\"%s\", \"timestamp\":\"%s\", \"tables\": [%s]}",
+                                        status,
+                                        Instant.now().toString(),
+                                        options.getOutputTableNameTemplate().replaceAll("(\\w+)", "\"$1\""))))
                 .apply("Publish to Pub/Sub", PubsubIO.writeStrings().to(options.getPubSubTopic()));
       }
     }
