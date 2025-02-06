@@ -43,7 +43,7 @@ import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTabl
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
-import java.time.Instant;
+import com.google.gson.Gson;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -62,7 +62,6 @@ import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
-import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
@@ -588,22 +587,11 @@ public class DataStreamToBigQuery {
                       .withPartitionRetention(options.getPartitionRetentionDays())));
       // Send Pub/Sub notification after the merge
       if (options.getPubSubTopic() != null && !options.getPubSubTopic().isEmpty()) {
-        // Capture the table name template and split it into an array
-        String outputDatasetTemplate = options.getOutputDatasetTemplate();
-
-        pipeline
-                .apply("Create Merge Completion Signal", Create.of("MERGE_COMPLETED"))
-                .apply(
-                        "Prepare Pub/Sub Message",
-                        MapElements.into(TypeDescriptors.strings())
-                                .via(status -> {
-                                  // Create the Pub/Sub message with the table names as an array
-                                  return String.format(
-                                        "{\"status\":\"%s\", \"timestamp\":\"%s\", \"dataset\": %s}",
-                                        status,
-                                        Instant.now().toString(),
-                                        outputDatasetTemplate);  // Include table names array in the message
-                                }))
+        shuffledTableRows
+                .apply("Convert TableRow to JSON", MapElements.into(TypeDescriptors.strings())
+                        .via((TableRow row) -> {
+                          Gson gson = new Gson();
+                          return gson.toJson(row);}))
                 .apply("Publish to Pub/Sub", PubsubIO.writeStrings().to(options.getPubSubTopic()));
       }
     }
