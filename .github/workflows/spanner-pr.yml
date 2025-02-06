@@ -223,11 +223,13 @@ jobs:
         fetch-depth: 0
     - name: Checkout Code
       uses: actions/checkout@v4
+      with:
+        path: main-repo
+    - name: Debug - Check Directory
+      run: ls -lah ${{ github.workspace }}/spanner-migration-tool
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
     - name: Prepare Go Modules
-      working-directory: spanner-migration-tool
+      working-directory: ${{ github.workspace }}/spanner-migration-tool
       run: make build
-    - name: Add Binary to PATH
-      run: echo "$GITHUB_WORKSPACE/spanner-migration-tool" >> $GITHUB_PATH
