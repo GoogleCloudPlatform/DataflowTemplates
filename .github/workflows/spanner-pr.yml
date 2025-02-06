@@ -221,6 +221,8 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         path: spanner-migration-tool
         fetch-depth: 0
+    - name: Checkout Code
+      uses: actions/checkout@v4
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
