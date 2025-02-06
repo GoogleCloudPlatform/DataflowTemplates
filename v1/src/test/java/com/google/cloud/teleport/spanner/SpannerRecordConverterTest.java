@@ -383,8 +383,6 @@ public class SpannerRecordConverterTest {
     assertThat(
         avroRecord.get("uuid"),
         equalTo(Arrays.asList("11111111-1111-1111-1111-111111111111", null)));
-
-    System.out.println(avroRecord.getSchema());
   }
 
   @Test
