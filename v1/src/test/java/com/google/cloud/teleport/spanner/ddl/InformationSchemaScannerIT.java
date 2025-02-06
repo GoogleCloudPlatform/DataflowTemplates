@@ -979,7 +979,8 @@ public class InformationSchemaScannerIT {
   public void pgGeneratedColumns() throws Exception {
     String statement =
         "CREATE TABLE \"T\" ( \"id\"                     bigint NOT NULL,"
-            + " \"generated\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_stored\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_virtual\" bigint GENERATED ALWAYS AS ((id / '1'::bigint)) VIRTUAL, "
             + " PRIMARY KEY (\"id\") )";
 
     SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
