@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-# Action used to set up the environment. This assumes that we are using
-# a Linux-based VM.
-#
-# General steps are:
-#   1. Set up Java, which templates and tests are written in
-#   2. Set up Go, which our CI/CD programs are written in
-#   3. Build everything under cicd/cmd
-#   4. Gets all the changed files
-
 name: 'Setup Environment'
 description: 'Sets up common environment for Dataflow Templates workflows'
 
@@ -46,6 +36,16 @@ inputs:
     description: 'The version of Python to install'
     required: false
     default: '3.11'
+  node-version:
+    type: string
+    description: 'The version of Node.js to install'
+    required: false
+    default: '18'
+  angular-version:
+    type: string
+    description: 'The version of Angular CLI to install'
+    required: false
+    default: 'latest'
 
 runs:
   using: 'composite'
@@ -74,3 +74,10 @@ runs:
       uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d
       with:
           python-version: ${{ inputs.python-version }}
+    - name: Setup Node.js and npm
+      uses: actions/setup-node@v4
+      with:
+          node-version: ${{ inputs.node-version }}
+    - name: Install Angular CLI
+      shell: bash
+      run: npm install -g @angular/cli@${{ inputs.angular-version }}
