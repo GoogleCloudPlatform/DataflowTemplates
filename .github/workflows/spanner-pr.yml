@@ -212,7 +212,7 @@ jobs:
     name: Install SMT
     needs: [ ]
     timeout-minutes: 60
-    runs-on: [ self-hosted, it ]
+    runs-on: [ self-hosted, spanner-poc ]
     steps:
     - name: Checkout SMT Code
       uses: actions/checkout@v4
@@ -227,6 +227,6 @@ jobs:
     - name: Prepare Go Modules
       run: |
         cd spanner-migration-tool
-        go build
+        make build
     - name: Add Binary to PATH
       run: echo "$GITHUB_WORKSPACE/spanner-migration-tool" >> $GITHUB_PATH
