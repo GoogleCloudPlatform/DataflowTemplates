@@ -230,6 +230,12 @@ jobs:
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - name: Install Angular CLI
+      run: npm install -g @angular/cli
     - name: Prepare Go Modules
       working-directory: ${{ github.workspace }}/spanner-migration-tool
       run: make build
