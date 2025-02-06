@@ -140,7 +140,7 @@ public abstract class Column implements Serializable {
       if (isStored()) {
         appendable.append(" STORED");
       } else if (dialect() == Dialect.POSTGRESQL) {
-          appendable.append(" VIRTUAL");
+        appendable.append(" VIRTUAL");
       }
     }
     if (isPlacementKey()) {
