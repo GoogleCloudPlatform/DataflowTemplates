@@ -221,28 +221,3 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     "migration_id" = local.migration_id
   }
 }
-
-
-# Add terraform-validator configuration
-resource "google_project_service" "terraform_validator_api" {
-  project = var.common_params.project
-  service = "cloudbuild.googleapis.com"
-  depends_on = [google_project_service.enabled_apis]
-}
-
-resource "null_resource" "run_terraform_validator" {
-  triggers = {
-    migration_id = local.migration_id
-  }
-
-  provisioner "local-exec" {
-    command = <<-EOT
-      gcloud beta terraform vet tfplan.json --policy-library=./policy-library
-    EOT
-  }
-
-  depends_on = [
-    google_dataflow_flex_template_job.reverse_replication_job,
-    google_project_service.terraform_validator_api
-  ]
-}
