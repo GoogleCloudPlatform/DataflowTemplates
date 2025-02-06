@@ -122,10 +122,7 @@ public class CassandraTypeHandler {
     if (value instanceof byte[]) {
       return new BigInteger((byte[]) value);
     } else if (value instanceof ByteBuffer) {
-      ByteBuffer byteBuffer = (ByteBuffer) value;
-      byte[] byteArray = new byte[byteBuffer.remaining()];
-      byteBuffer.get(byteArray);
-      return new BigInteger(byteArray);
+      return new BigInteger(((ByteBuffer) value).array());
     }
     return new BigInteger(value.toString());
   }
