@@ -155,6 +155,70 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts an
+   * empty array into the correct PostgreSQL empty array literal '{}'.
+   */
+  @Test
+  public void testEmptyArray() {
+    String arrayJson = "{\"empty_array\": {\"nestedArray\": []}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("empty_array", "_TEXT"); // Use a generic array type; could be any array
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'{}'";
+
+    String actual = dml.getValueSql(rowObj, "empty_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a
+   * JSONB array into the correct PostgreSQL array syntax with type casting.
+   */
+  @Test
+  public void testJsonbArray() {
+    String arrayJson =
+        "{\"jsonb_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": {\"a\": 1, \"b\": \"test\"}},"
+            + "  {\"nestedArray\": null, \"elementValue\": {\"c\": true}}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("jsonb_array", "_JSONB"); // Explicitly specify JSONB array type
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "ARRAY[{\"a\":1,\"b\":\"test\"},{\"c\":true}]::jsonb[]";
+
+    String actual = dml.getValueSql(rowObj, "jsonb_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * array into the correct PostgreSQL array syntax with type casting.
+   */
+  @Test
+  public void testJsonArray() {
+    String arrayJson =
+        "{\"json_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": {\"x\": 10, \"y\": \"abc\"}},"
+            + "  {\"nestedArray\": null, \"elementValue\": {\"z\": false}}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("json_array", "_JSON"); // Explicitly specify JSON array type
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "ARRAY[{\"x\":10,\"y\":\"abc\"},{\"z\":false}]::json[]";
+
+    String actual = dml.getValueSql(rowObj, "json_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
    * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
    * correct Postgres schema.
    */

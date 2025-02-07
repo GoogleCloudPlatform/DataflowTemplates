@@ -109,12 +109,12 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     }
     // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
     if (dataType.startsWith("_")) {
-      return convertJsonToPostgresArray(columnValue);
+      return convertJsonToPostgresArray(columnValue, dataType.toUpperCase(), columnName);
     }
     return columnValue;
   }
 
-  private String convertJsonToPostgresArray(String jsonValue) {
+  private String convertJsonToPostgresArray(String jsonValue, String dataType, String columnName) {
     if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
       return getNullValueSql();
     }
@@ -122,9 +122,8 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     try {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode rootNode = mapper.readTree(jsonValue);
-
       if (!(rootNode.isObject() && rootNode.has("nestedArray"))) {
-        LOG.warn("Empty array: {}", jsonValue);
+        LOG.warn("Null array for column {}, value {}", columnName, jsonValue);
         return getNullValueSql();
       }
 
@@ -146,7 +145,20 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           }
         }
       }
-      return "ARRAY[" + String.join(",", elements) + "]";
+      if (elements.isEmpty()) {
+        // Use array literal for empty arrays otherwise type inferencing fails.
+        return "'{}'";
+      }
+      String arrayStatement = "ARRAY[" + String.join(",", elements) + "]";
+      if (dataType.equals("_JSON")) {
+        // Cast string array to json array.
+        return arrayStatement + "::json[]";
+      }
+      if (dataType.equals("_JSONB")) {
+        // Cast string array to jsonb array.
+        return arrayStatement + "::jsonb[]";
+      }
+      return arrayStatement;
     } catch (JsonProcessingException e) {
       LOG.error("Error parsing JSON array: {}", jsonValue);
       return getNullValueSql();
