@@ -106,12 +106,47 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           return getNullValueSql();
         }
         break;
+      case "INTERVAL":
+        return convertJsonToPostgresInterval(columnValue, columnName);
     }
+
     // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
     if (dataType.startsWith("_")) {
       return convertJsonToPostgresArray(columnValue, dataType.toUpperCase(), columnName);
     }
     return columnValue;
+  }
+
+  public String convertJsonToPostgresInterval(String jsonValue, String columnName) {
+    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
+      return getNullValueSql();
+    }
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode rootNode = mapper.readTree(jsonValue);
+
+      if (!rootNode.isObject()
+          || !rootNode.has("months")
+          || !rootNode.has("hours")
+          || !rootNode.has("micros")) {
+        LOG.warn("Invalid interval format for column {}, value: {}", columnName, jsonValue);
+        return getNullValueSql();
+      }
+
+      int months = rootNode.get("months").asInt();
+      int hours = rootNode.get("hours").asInt();
+      double seconds = rootNode.get("micros").asLong() / 1_000_000.0;
+
+      // Build the ISO 8601 string
+      String intervalStr = String.format("P%dMT%dH%.6fS", months, hours, seconds);
+
+      return "'" + intervalStr + "'";
+
+    } catch (JsonProcessingException e) {
+      LOG.error("Error parsing JSON interval: {}", jsonValue, e);
+      return getNullValueSql();
+    }
   }
 
   private String convertJsonToPostgresArray(String jsonValue, String dataType, String columnName) {
