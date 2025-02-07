@@ -1,5 +1,5 @@
-#Dataflow Template Bucket location
-dataflow_template_bucket_location = "gs://<YOUR_DATAFLOW_BUCKET_PATH>" # Replace with your dataflow bucket path
+# Dataflow Template Bucket location
+dataflow_template_bucket_location = "gs://<YOUR_DATAFLOW_BUCKET_PATH>" # Replace with your dataflow template bucket path
 
 common_params = {
   # The project where the resources will be deployed
@@ -108,12 +108,12 @@ dataflow_params = {
 }
 
 shard_config = {
-  host             = "host_name"
-  port             = "port_name"
-  user             = "user_name"
-  password         = "cassandra"
-  keyspace         = "your_keyspace_name"
-  consistencyLevel = "consistency_level"
+  host             = "<YOUR_CASSANDRA_HOST>"
+  port             = "<YOUR_CASSANDRA_PORT>"
+  username         = "<YOUR_CASSANDRA_USERNAME>"
+  password         = "<YOUR_CASSaNDRA_PASSWORD>"
+  keyspace         = "<YOUR_CASSANDra_KEYSPACE>"
+  consistencyLevel = "LOCAL_QUORUM"
   sslOptions       = false
   protocolVersion  = "v5"
   dataCenter       = "datacenter_name"

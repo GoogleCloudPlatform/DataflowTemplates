@@ -12,7 +12,7 @@ terraform {
   required_version = "~>1.2"
 }
 
-#Set the project
+# Set the project
 provider "google-beta" {
   project = var.common_params.project
   region  = var.common_params.region
@@ -23,7 +23,7 @@ provider "google" {
   region  = var.common_params.region
 }
 
-#Enable the APIs
+# Enable the APIs
 resource "google_project_service" "enabled_apis" {
   for_each = toset([
     "iam.googleapis.com",

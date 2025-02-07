@@ -3,10 +3,10 @@ locals {
   change_stream = replace(local.migration_id, "-", "_")
 }
 
-#create random prefix for migration id
+# create random prefix for migration id
 resource "random_pet" "migration_id" {
   prefix = "spanner-csdr"
-} 
+}
 
 # create cassandra-config.conf file
 resource "local_file" "cassandra_config" {
@@ -15,9 +15,9 @@ resource "local_file" "cassandra_config" {
     host       = var.shard_config.host
     port       = var.shard_config.port
     keyspace   = var.shard_config.keyspace
-    dataCenter = var.shard_config.dataCenter 
+    dataCenter = var.shard_config.dataCenter
     username   = var.shard_config.username
-    password   = var.shard_config.password 
+    password   = var.shard_config.password
   })
 }
 
@@ -26,8 +26,8 @@ resource "google_storage_bucket_object" "shard_config" {
   name       = "cassandra-config.conf"
   bucket     = google_storage_bucket.reverse_replication_bucket.id
   source     = "./cassandra-config.conf"
-  depends_on = [google_project_service.enabled_apis, local_file.cassandra_config]   
-} 
+  depends_on = [google_project_service.enabled_apis, local_file.cassandra_config]
+}
 
 # Setup network firewalls rules to enable Dataflow access to source.
 resource "google_compute_firewall" "allow_dataflow_to_source" {

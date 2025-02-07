@@ -287,7 +287,7 @@ gcloud dataflow jobs update-options \                                           
       2024-06-17_01_21_44-12198433486526363702
 ```
 
-### Long time to delete SMT bucket
+### Long time to delete GCS bucket
 
 A GCS bucket can only be deleted if all its comprising objects are deleted
 first. This template attempts to delete all objects in the created GCS bucket

@@ -1,26 +1,26 @@
 #Dataflow Template Bucket location
-dataflow_template_bucket_location = "gs://<YOUR_DATAFLOW_BUCKET_PATH>" # Replace with your dataflow bucket path
+dataflow_template_bucket_location = "gs://<YOUR_DATAFLOW_BUCKET_PATH>" # Replace with your dataflow template bucket path
 
 # Common Parameters
 common_params = {
-  project = "<YOUR_PROJECT_ID>" # Replace with your GCP project ID
-  region  = "<YOUR_REGION" # Replace with your desired GCP region
+  project     = "<YOUR_PROJECT_ID>"   # Replace with your GCP project ID
+  region      = "<YOUR_REGION"        # Replace with your desired GCP region
   target_tags = ["<YOUR_TARGET_TAGS"] # Target tags for the firewall rule (e.g. cassandra vm tags)
 }
 
 # Dataflow parameters
 dataflow_params = {
   template_params = {
-    instance_id             = "<YOUR_SPANNER_INSTANCE_ID>" # Spanner instance ID
-    database_id             = "<YOUR_CASSANDRA_DATABASE_ID" # Spanner database ID
-    source_type             = "<YOUR_SOURCE_TYPE>" # Source type of database. Should be cassandra
+    instance_id = "<YOUR_SPANNER_INSTANCE_ID>"  # Spanner instance ID
+    database_id = "<YOUR_CASSANDRA_DATABASE_ID" # Spanner database ID
+    source_type = "<YOUR_SOURCE_TYPE>"          # Source type of database. Should be cassandra
   }
   runner_params = {
-    max_workers      = "<YOUR_MAX_WORKERS>"         # Maximum number of worker VMs
-    num_workers      = "<YOUR_NUM_WORKER>"         # Initial number of worker VMs
-    machine_type     = "<YOUR_MACHINE_TYPE>"        # Machine type for worker VMs (e.g., "n2-standard-2")
-    network          = "<YOUR_VPC_NETWORK>"         # VPC network for the Dataflow job
-    subnetwork       = "<YOUR-FULL-PATH-SUBNETWORK" # Give the full path to the subnetwork
+    max_workers      = "<YOUR_MAX_WORKERS>"          # Maximum number of worker VMs
+    num_workers      = "<YOUR_NUM_WORKER>"           # Initial number of worker VMs
+    machine_type     = "<YOUR_MACHINE_TYPE>"         # Machine type for worker VMs (e.g., "n2-standard-2")
+    network          = "<YOUR_VPC_NETWORK>"          # VPC network for the Dataflow job
+    subnetwork       = "<YOUR-FULL-PATH-SUBNETWORK>" # Give the full path to the subnetwork
     ip_configuration = "WORKER_IP_PUBLIC"
     subnetwork_cidr  = "<YOUR_SUBNETWORK_CIDR>"
   }
