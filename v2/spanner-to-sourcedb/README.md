@@ -65,9 +65,9 @@ Points 1 to 4 above are retryable errors - the Dataflow job automatically retrie
 
 A few prerequisites must be considered before starting with reverse replication.
 
-1. For Mysql:
+1. For MySQL:
 
-   Ensure network connectivity between the source database and your GCP project, where your Dataflow jobs will run.
+    - Ensure network connectivity between the MySQL database and your GCP project, where your Dataflow jobs will run.
     - Allowlist Dataflow worker IPs on the MySQL instance so that they can access the MySQL IPs.
     - Check that the MySQL credentials are correctly specified in the [source shards file](#sample-source-shards-file-for-MySQL).
     - Check that the MySQL server is up.
@@ -75,7 +75,7 @@ A few prerequisites must be considered before starting with reverse replication.
 
 2. For Cassandra:
 
-     Ensure network connectivity between the source database and your GCP project, where your Dataflow jobs will run.
+      - Ensure network connectivity between the Cassandra database and your GCP project, where your Dataflow jobs will run.
       - Allowlist Dataflow worker IPs on the Cassandra instance so that they can access the Cassandra nodes.
       - Check that the Cassandra credentials are correctly specified in the [source file](#Sample-source-File-for-Cassandra).
       - Check that the Cassandra server is up.
@@ -93,8 +93,8 @@ A few prerequisites must be considered before starting with reverse replication.
 7. Ensure that gcloud authentication is done,refer [here](https://cloud.google.com/spanner/docs/getting-started/set-up#set_up_authentication_and_authorization).
 8. Ensure that the target Spanner instance is ready.
 9. Ensure that that [session file](https://googlecloudplatform.github.io/spanner-migration-tool/reports.html#session-file-ending-in-sessionjson) is uploaded to GCS (this requires a schema conversion to be done).
-10. For MySQL: 
-   [Source shards file](./RunnigReverseReplication.md#sample-source-shards-file-for-MySQL) already uploaded to GCS. 
+10. For MySQL:
+   [Source shards file](./RunnigReverseReplication.md#sample-source-shards-file-for-MySQL) already uploaded to GCS.
 
 11. For Cassandra:
     [Source file](./RunnigReverseReplication.md#Sample-source-File-for-Cassandra) already uploaded to GCS.
