@@ -106,15 +106,18 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           return getNullValueSql();
         }
         break;
+      case "INTERVAL":
+        return convertJsonToPostgresInterval(columnValue, columnName);
     }
+
     // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
     if (dataType.startsWith("_")) {
-      return convertJsonToPostgresArray(columnValue);
+      return convertJsonToPostgresArray(columnValue, dataType.toUpperCase(), columnName);
     }
     return columnValue;
   }
 
-  private String convertJsonToPostgresArray(String jsonValue) {
+  public String convertJsonToPostgresInterval(String jsonValue, String columnName) {
     if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
       return getNullValueSql();
     }
@@ -123,8 +126,39 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode rootNode = mapper.readTree(jsonValue);
 
+      if (!rootNode.isObject()
+          || !rootNode.has("months")
+          || !rootNode.has("hours")
+          || !rootNode.has("micros")) {
+        LOG.warn("Invalid interval format for column {}, value: {}", columnName, jsonValue);
+        return getNullValueSql();
+      }
+
+      int months = rootNode.get("months").asInt();
+      int hours = rootNode.get("hours").asInt();
+      double seconds = rootNode.get("micros").asLong() / 1_000_000.0;
+
+      // Build the ISO 8601 string
+      String intervalStr = String.format("P%dMT%dH%.6fS", months, hours, seconds);
+
+      return "'" + intervalStr + "'";
+
+    } catch (JsonProcessingException e) {
+      LOG.error("Error parsing JSON interval: {}", jsonValue, e);
+      return getNullValueSql();
+    }
+  }
+
+  private String convertJsonToPostgresArray(String jsonValue, String dataType, String columnName) {
+    if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
+      return getNullValueSql();
+    }
+
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      JsonNode rootNode = mapper.readTree(jsonValue);
       if (!(rootNode.isObject() && rootNode.has("nestedArray"))) {
-        LOG.warn("Empty array: {}", jsonValue);
+        LOG.warn("Null array for column {}, value {}", columnName, jsonValue);
         return getNullValueSql();
       }
 
@@ -146,7 +180,20 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           }
         }
       }
-      return "ARRAY[" + String.join(",", elements) + "]";
+      if (elements.isEmpty()) {
+        // Use array literal for empty arrays otherwise type inferencing fails.
+        return "'{}'";
+      }
+      String arrayStatement = "ARRAY[" + String.join(",", elements) + "]";
+      if (dataType.equals("_JSON")) {
+        // Cast string array to json array.
+        return arrayStatement + "::json[]";
+      }
+      if (dataType.equals("_JSONB")) {
+        // Cast string array to jsonb array.
+        return arrayStatement + "::jsonb[]";
+      }
+      return arrayStatement;
     } catch (JsonProcessingException e) {
       LOG.error("Error parsing JSON array: {}", jsonValue);
       return getNullValueSql();
