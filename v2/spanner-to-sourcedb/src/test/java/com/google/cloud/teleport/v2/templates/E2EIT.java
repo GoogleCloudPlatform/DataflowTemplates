@@ -21,7 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
-import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
@@ -66,14 +65,14 @@ public class E2EIT extends SpannerToSourceDbITBase {
 
   private static final String TABLE = "Authors";
   private static final HashSet<E2EIT> testInstances = new HashSet<>();
-  private static PipelineLauncher.LaunchInfo jobInfo;
+  private static PipelineLauncher.LaunchInfo rrJobInfo;
+  private static PipelineLauncher.LaunchInfo fwdJobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static MySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName rrSubscriptionName;
-  private SubscriptionName fwdSubscriptionName;
   private static final String gcsPathPrefix="e2eIT";
 
   /**
@@ -86,7 +85,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
     skipBaseCleanup = true;
     synchronized (E2EIT.class) {
       testInstances.add(this);
-      if (jobInfo == null) {
+      if (rrJobInfo == null) {
         spannerResourceManager = createSpannerDatabase(E2EIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
@@ -97,7 +96,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+        rrCreateAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager, gcsPathPrefix);
         gcsResourceManager.uploadArtifact(
             gcsPathPrefix+"/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
@@ -118,17 +117,21 @@ public class E2EIT extends SpannerToSourceDbITBase {
         SubscriptionName dlqSubscription =
             createFwdPubsubResources(identifierSuffix + "dlq", pubsubResourceManager, fwdDlqGcsPrefix);
 
-        jobInfo =
-            launchDataflowJob(
-                gcsResourceManager,
+        rrJobInfo =
+            launchRRDataflowJob(
                 spannerResourceManager,
+                gcsResourceManager,
                 spannerMetadataResourceManager,
                 rrSubscriptionName.toString(),
-                null,
-                null,
-                null,
-                null,
-                null);
+                gcsPathPrefix
+                );
+        fwdJobInfo = launchFwdDataflowJob(
+            spannerResourceManager,
+            gcsResourceManager,
+            gcsPathPrefix,
+            fwdSubscription,
+            dlqSubscription
+        );
       }
     }
   }
@@ -153,7 +156,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
-    assertThatPipeline(jobInfo).isRunning();
+    assertThatPipeline(rrJobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
     // Assert events on Mysql
@@ -209,7 +212,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(rrJobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
