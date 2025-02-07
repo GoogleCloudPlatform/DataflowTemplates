@@ -1,6 +1,6 @@
 # Resource IDs (Structured by Shard ID)
 output "resource_ids" {
-  description = "IDs of resources created, organized by shard ID. Test change"
+  description = "IDs of resources created, organized by shard ID."
   value = {
     for idx, shard in var.shard_list :
     (shard.shard_id != null ? shard.shard_id : random_pet.migration_id[idx].id) => {
