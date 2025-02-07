@@ -1,6 +1,6 @@
 variable "dataflow_template_bucket_location" {
   description = "Location of the Dataflow template bucket"
-  type        = string
+  type = string
 }
 
 variable "common_params" {
