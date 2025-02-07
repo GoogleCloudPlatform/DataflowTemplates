@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -32,17 +31,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -140,21 +135,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
-    String keyspaceName =
-        ResourceManagerUtils.generateResourceId(
-                testName,
-                Pattern.compile("[/\\\\. \"\u0000$]"),
-                "-",
-                27,
-                DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss-SSSSSS"))
-            .replace('-', '_');
-    if (keyspaceName.length() > 48) {
-      keyspaceName = keyspaceName.substring(0, 48);
-    }
-    return CassandraResourceManager.builder(testName)
-        .setKeyspaceName(keyspaceName)
-        .sePreGeneratedKeyspaceName(true)
-        .build();
+    return CassandraResourceManager.builder(testName).build();
   }
 
   protected void createCassandraSchema(
@@ -226,9 +207,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put(
                 "sourceShardsFilePath",
                 getGcsPath(
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                        ? "input/cassandra-config.conf"
-                        : "input/shard.json",
+                    sourceType != null ? "input/cassandra-config.conf" : "input/shard.json",
                     gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName);

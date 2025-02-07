@@ -25,8 +25,6 @@ import dev.failsafe.RetryPolicy;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
@@ -82,12 +80,9 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   CassandraResourceManager(
       @Nullable CqlSession cassandraClient, CassandraContainer<?> container, Builder builder) {
     super(container, builder);
-    // we are trying to handle userDefined KeyspaceName name without usingStatic Container
-    this.usingStaticDatabase = builder.keyspaceName != null && !builder.preGeneratedKeyspaceName;
+    this.usingStaticDatabase = builder.keyspaceName != null;
     this.keyspaceName =
-        usingStaticDatabase || builder.preGeneratedKeyspaceName
-            ? builder.keyspaceName
-            : generateKeyspaceName(builder.testId);
+        usingStaticDatabase ? builder.keyspaceName : generateKeyspaceName(builder.testId);
     this.cassandraClient =
         cassandraClient == null
             ? CqlSession.builder()
@@ -176,54 +171,26 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   }
 
   /**
-   * Inserts the given Documents into a collection.
-   *
-   * <p>Note: Implementations may do collection creation here, if one does not already exist.
-   *
-   * @param tableName The name of the collection to insert the documents into.
-   * @param documents A list of documents to insert into the collection.
-   * @return A boolean indicating whether the Documents were inserted successfully.
-   * @throws IllegalArgumentException if there is an error inserting the documents.
-   */
-  public synchronized boolean insertDocuments(String tableName, List<Map<String, Object>> documents)
-      throws IllegalArgumentException {
-    LOG.info(
-        "Attempting to write {} documents to {}.{}.", documents.size(), keyspaceName, tableName);
-
-    try {
-      for (Map<String, Object> document : documents) {
-        executeStatement(createInsertStatement(tableName, document));
-      }
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Error inserting documents.", e);
-    }
-
-    LOG.info("Successfully wrote {} documents to {}.{}", documents.size(), keyspaceName, tableName);
-
-    return true;
-  }
-
-  /**
-   * Reads all the Documents in a collection.
+   * Reads all the rows in a collection.
    *
    * @param tableName The name of the collection to read from.
-   * @return An iterable of all the Documents in the collection.
+   * @return An iterable of all the rows in the collection.
    * @throws IllegalArgumentException if there is an error reading the collection.
    */
   public synchronized Iterable<Row> readTable(String tableName) throws IllegalArgumentException {
     LOG.info("Reading all documents from {}.{}", keyspaceName, tableName);
 
-    Iterable<Row> documents;
+    Iterable<Row> rows;
     try {
       ResultSet resultSet = executeStatement(String.format("SELECT * FROM %s", tableName));
-      documents = resultSet.all();
+      rows = resultSet.all();
     } catch (Exception e) {
       throw new IllegalArgumentException("Error reading table.", e);
     }
 
     LOG.info("Successfully loaded documents from {}.{}", keyspaceName, tableName);
 
-    return documents;
+    return rows;
   }
 
   @Override
@@ -238,8 +205,6 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
         executeStatement(String.format("DROP KEYSPACE IF EXISTS %s", this.keyspaceName));
       } catch (Exception e) {
         LOG.error("Failed to drop Cassandra keyspace {}.", keyspaceName, e);
-
-        // Only bubble exception if the cause is not timeout or does not exist
         if (!ExceptionUtils.containsType(e, DriverTimeoutException.class)
             && !ExceptionUtils.containsMessage(e, "does not exist")) {
           producedError = true;
@@ -247,7 +212,6 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
       }
     }
 
-    // Next, try to close the Cassandra client connection
     try {
       cassandraClient.close();
     } catch (Exception e) {
@@ -255,7 +219,6 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
       producedError = true;
     }
 
-    // Throw Exception at the end if there were any errors
     if (producedError) {
       throw new IllegalArgumentException("Failed to delete resources. Check above for errors.");
     }
@@ -263,31 +226,6 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     super.cleanupAll();
 
     LOG.info("Cassandra manager successfully cleaned up.");
-  }
-
-  private String createInsertStatement(String tableName, Map<String, Object> map) {
-    StringBuilder columns = new StringBuilder();
-    StringBuilder values = new StringBuilder();
-
-    for (Map.Entry<String, Object> entry : map.entrySet()) {
-      columns.append(entry.getKey()).append(", ");
-
-      // add quotes around strings
-      if (entry.getValue() instanceof String) {
-        values.append("'").append(entry.getValue()).append("'");
-      } else {
-        values.append(entry.getValue());
-      }
-      values.append(", ");
-    }
-
-    // Remove trailing comma and space
-    if (!map.isEmpty()) {
-      columns.delete(columns.length() - 2, columns.length());
-      values.delete(values.length() - 2, values.length());
-    }
-
-    return String.format("INSERT INTO %s (%s) VALUES (%s)", tableName, columns, values);
   }
 
   private static RetryPolicy<Object> buildRetryPolicy() {
@@ -303,8 +241,6 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
       extends TestContainerResourceManager.Builder<CassandraResourceManager> {
 
     private @Nullable String keyspaceName;
-
-    private @Nullable boolean preGeneratedKeyspaceName;
 
     private Builder(String testId) {
       super(testId, DEFAULT_CASSANDRA_CONTAINER_NAME, DEFAULT_CASSANDRA_CONTAINER_TAG);
@@ -324,23 +260,6 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
      */
     public Builder setKeyspaceName(String keyspaceName) {
       this.keyspaceName = keyspaceName;
-      return this;
-    }
-
-    /**
-     * Sets the preGeneratedKeyspaceName to that of a static database instance. Use this method only
-     * when attempting to operate on a pre-existing Cassandra database.
-     *
-     * <p>Note: if a database name is set, and a static Cassandra server is being used
-     * (useStaticContainer() is also called on the builder), then a database will be created on the
-     * static server if it does not exist, and it will not be removed when cleanupAll() is called on
-     * the CassandraResourceManager.
-     *
-     * @param preGeneratedKeyspaceName The database name.
-     * @return this builder object with the database is need to create.
-     */
-    public Builder sePreGeneratedKeyspaceName(boolean preGeneratedKeyspaceName) {
-      this.preGeneratedKeyspaceName = preGeneratedKeyspaceName;
       return this;
     }
 
