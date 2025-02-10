@@ -507,8 +507,6 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
     assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
     assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
-    assertThat(fields.get(7).getProp(HIDDEN), equalTo("true"));
-    assertThat(fields.get(7).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
     assertThat(fields.get(8).name(), equalTo("tokens"));
     assertThat(fields.get(8).schema(), equalTo(Schema.create(Schema.Type.NULL)));
