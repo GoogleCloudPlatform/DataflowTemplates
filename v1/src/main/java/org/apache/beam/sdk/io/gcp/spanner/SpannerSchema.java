@@ -190,6 +190,7 @@ abstract class SpannerSchema implements Serializable {
           if (spannerType.startsWith("STRING")) {
             return Type.string();
           }
+          // TODO(b/394493438): Return uuid type once google-cloud-spanner supports UUID type
           if ("UUID".equals(spannerType)) {
             return Type.string();
           }
@@ -288,6 +289,7 @@ abstract class SpannerSchema implements Serializable {
           if ("SPANNER.COMMIT_TIMESTAMP".equals(spannerType)) {
             return Type.timestamp();
           }
+          // TODO(b/394493438): Return uuid type once google-cloud-spanner supports UUID type
           if ("UUID".equals(spannerType)) {
             return Type.string();
           }
