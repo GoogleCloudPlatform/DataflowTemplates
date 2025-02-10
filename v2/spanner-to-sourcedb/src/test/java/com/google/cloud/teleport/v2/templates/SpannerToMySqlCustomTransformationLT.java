@@ -90,7 +90,7 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
   }
 
   @Test
-  public void reverseReplication1KTpsLoadTest()
+  public void reverseReplication1KTpsWithCustomTransformation()
       throws IOException, ParseException, InterruptedException {
     // Start data generator
     DataGenerator dataGenerator =

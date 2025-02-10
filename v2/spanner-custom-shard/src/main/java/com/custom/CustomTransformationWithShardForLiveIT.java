@@ -33,6 +33,8 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// TODO: Rename the class since its being used in both Live and Reverse replication tests and in
+// both ITs and LTs
 public class CustomTransformationWithShardForLiveIT implements ISpannerMigrationTransformer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
