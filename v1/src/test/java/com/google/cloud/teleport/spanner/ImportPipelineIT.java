@@ -293,7 +293,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
     assertThatStructs(float32Records).hasRecordsUnordered(getFloat32TableExpectedRows());
   }
 
-  // TODO: Consolidate this with other tests after UUID launch.
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
   public void testGoogleSqlImportPipeline_UUID() throws IOException {
     // Run only on staging environment
@@ -344,7 +344,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
         .hasRecordsUnordered(getUuidTableExpectedRows());
   }
 
-  // TODO: Consolidate this with other tests after UUID launch.
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
   public void testPostgresImportPipeline_UUID() throws IOException {
     // Run only on staging environment

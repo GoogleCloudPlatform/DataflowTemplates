@@ -207,7 +207,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
     assertThatRecords(records).hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
   }
 
-  // TODO: Consolidate this with other tests after UUID launch.
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
   public void testSpannerToGCSText_UUID() throws IOException {
     // Run only on staging environment
@@ -271,7 +271,7 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
     assertThatRecords(records).hasRecordsUnordered(expectedRecords);
   }
 
-  // TODO: Consolidate this with other tests after UUID launch.
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
   public void testPostgresSpannerToGCSText_UUID() throws IOException {
     // Run only on staging environment
