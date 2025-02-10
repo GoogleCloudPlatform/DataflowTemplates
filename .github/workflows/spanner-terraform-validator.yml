@@ -24,6 +24,7 @@ jobs:
           - v2/datastream-to-spanner/terraform/samples
           - v2/spanner-common/terraform/samples
     steps:
+      - uses: hashicorp/setup-terraform@v3
       - name: Checkout Code
         uses: actions/checkout@v3
       - name: Verify Terraform formatting

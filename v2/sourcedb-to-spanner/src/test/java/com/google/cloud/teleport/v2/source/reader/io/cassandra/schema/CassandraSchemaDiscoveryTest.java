@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.schema;
 
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.BASIC_TEST_TABLE_SCHEMA;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.LIST_TEST_TABLE_SCHEMA;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TEST_TABLE_SCHEMA;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
@@ -126,6 +128,22 @@ public class CassandraSchemaDiscoveryTest {
 
   @Test
   public void testDiscoverTableSchemaBasic() throws IOException, RetriableSchemaDiscoveryException {
+    discoverTableSchemaTestHelper(BASIC_TEST_TABLE_SCHEMA);
+  }
+
+  @Test
+  public void testDiscoverTableSchemaList() throws IOException, RetriableSchemaDiscoveryException {
+    discoverTableSchemaTestHelper(LIST_TEST_TABLE_SCHEMA);
+  }
+
+  @Test
+  public void testDiscoverTableSchemaSet() throws IOException, RetriableSchemaDiscoveryException {
+    discoverTableSchemaTestHelper(SET_TEST_TABLE_SCHEMA);
+  }
+
+  private void discoverTableSchemaTestHelper(
+      ImmutableMap<String, ImmutableMap<String, SourceColumnType>> expecedSchema)
+      throws IOException, RetriableSchemaDiscoveryException {
 
     SourceSchemaReference cassandraSchemaReference =
         SourceSchemaReference.ofCassandra(
@@ -142,10 +160,8 @@ public class CassandraSchemaDiscoveryTest {
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> schema =
         cassandraSchemaDiscovery.discoverTableSchema(
-            cassandraDataSource,
-            cassandraSchemaReference,
-            BASIC_TEST_TABLE_SCHEMA.keySet().asList());
-    assertThat(schema).isEqualTo(BASIC_TEST_TABLE_SCHEMA);
+            cassandraDataSource, cassandraSchemaReference, expecedSchema.keySet().asList());
+    assertThat(schema).isEqualTo(expecedSchema);
   }
 
   @Test

@@ -362,6 +362,11 @@ public class DdlToAvroSchemaConverterTest {
             .generatedAs("MOD(id+1, 64)")
             .stored()
             .endColumn()
+            .column("gen_id_virtual")
+            .pgInt8()
+            .notNull()
+            .generatedAs("MOD(id+1, 64)")
+            .endColumn()
             .column("identity_column")
             .type(Type.int64())
             .isIdentityColumn(true)
@@ -388,7 +393,10 @@ public class DdlToAvroSchemaConverterTest {
             .asc("last_name")
             .end()
             .indexes(
-                ImmutableList.of("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"))
+                ImmutableList.of(
+                    "CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")",
+                    "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\")"
+                        + " WITH (sort_order_sharding=TRUE)"))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
@@ -412,7 +420,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(8));
+    assertThat(fields, hasSize(9));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -457,35 +465,43 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(4).getProp(STORED), equalTo("true"));
     assertThat(fields.get(4).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
-    assertThat(fields.get(5).name(), equalTo("identity_column"));
-    assertThat(fields.get(5).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
-    assertThat(fields.get(5).getProp(SQL_TYPE), equalTo("INT64"));
-    assertThat(fields.get(5).getProp(NOT_NULL), equalTo(null));
-    assertThat(fields.get(5).getProp(IDENTITY_COLUMN), equalTo("true"));
-    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
-    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
-    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
-    assertThat(fields.get(5).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
+    assertThat(fields.get(5).name(), equalTo("gen_id_virtual"));
+    assertThat(fields.get(5).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(5).getProp(SQL_TYPE), equalTo("bigint"));
+    assertThat(fields.get(5).getProp(NOT_NULL), equalTo("true"));
+    assertThat(fields.get(5).getProp(GENERATION_EXPRESSION), equalTo("MOD(id+1, 64)"));
+    assertThat(fields.get(5).getProp(STORED), equalTo("false"));
+    assertThat(fields.get(5).getProp(DEFAULT_EXPRESSION), equalTo(null));
 
-    assertThat(fields.get(6).name(), equalTo("identity_column_no_kind"));
+    assertThat(fields.get(6).name(), equalTo("identity_column"));
     assertThat(fields.get(6).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
     assertThat(fields.get(6).getProp(SQL_TYPE), equalTo("INT64"));
     assertThat(fields.get(6).getProp(NOT_NULL), equalTo(null));
     assertThat(fields.get(6).getProp(IDENTITY_COLUMN), equalTo("true"));
-    assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
+    assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
     assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
     assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
     assertThat(fields.get(6).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
 
-    assertThat(fields.get(7).name(), equalTo("tokens"));
-    assertThat(fields.get(7).schema(), equalTo(Schema.create(Schema.Type.NULL)));
-    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("spanner.tokenlist"));
-    assertThat(fields.get(7).getProp(NOT_NULL), equalTo("false"));
+    assertThat(fields.get(7).name(), equalTo("identity_column_no_kind"));
+    assertThat(fields.get(7).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(7).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(7).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(7).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("1000"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("2000"));
+    assertThat(fields.get(7).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("3000"));
+
+    assertThat(fields.get(8).name(), equalTo("tokens"));
+    assertThat(fields.get(8).schema(), equalTo(Schema.create(Schema.Type.NULL)));
+    assertThat(fields.get(8).getProp(SQL_TYPE), equalTo("spanner.tokenlist"));
+    assertThat(fields.get(8).getProp(NOT_NULL), equalTo("false"));
     assertThat(
-        fields.get(7).getProp(GENERATION_EXPRESSION),
+        fields.get(8).getProp(GENERATION_EXPRESSION),
         equalTo("(spanner.tokenize_fulltext(full_name))"));
-    assertThat(fields.get(7).getProp(HIDDEN), equalTo("true"));
-    assertThat(fields.get(7).getProp(DEFAULT_EXPRESSION), equalTo(null));
+    assertThat(fields.get(8).getProp(HIDDEN), equalTo("true"));
+    assertThat(fields.get(8).getProp(DEFAULT_EXPRESSION), equalTo(null));
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_1"), equalTo("\"gen_id\" ASC"));
@@ -496,6 +512,12 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema.getProp(SPANNER_INDEX + "0"),
         equalTo("CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"));
+
+    assertThat(
+        avroSchema.getProp(SPANNER_INDEX + "1"),
+        equalTo(
+            "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\") WITH (sort_order_sharding=TRUE)"));
+
     assertThat(
         avroSchema.getProp(SPANNER_FOREIGN_KEY + "0"),
         equalTo(
