@@ -129,7 +129,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     try {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode rootNode = mapper.readTree(jsonValue);
-      
+
       if (!rootNode.isObject()
           || !rootNode.has("months")
           || !rootNode.has("hours")
