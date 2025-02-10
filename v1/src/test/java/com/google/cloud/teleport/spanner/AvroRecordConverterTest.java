@@ -615,6 +615,15 @@ public class AvroRecordConverterTest {
     assertEquals(
         new ArrayList<>(mutation.asMap().get(colName).getStringArray()),
         uuidArray.stream().map(Utf8::toString).collect(Collectors.toList()));
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertNotNull(nullMutation);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
   }
 
   @Test
@@ -644,6 +653,15 @@ public class AvroRecordConverterTest {
     assertEquals(
         new ArrayList<>(mutation.asMap().get(colName).getStringArray()),
         uuidArray.stream().map(Utf8::toString).collect(Collectors.toList()));
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertNotNull(nullMutation);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
   }
 
   @Test
@@ -660,6 +678,13 @@ public class AvroRecordConverterTest {
     final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
     Mutation mutation = avroRecordConverter.apply(avroRecord);
     assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
   }
 
   @Test
@@ -676,6 +701,13 @@ public class AvroRecordConverterTest {
     final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
     Mutation mutation = avroRecordConverter.apply(avroRecord);
     assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
   }
 
   @Test
