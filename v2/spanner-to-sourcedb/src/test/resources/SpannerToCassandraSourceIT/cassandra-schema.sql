@@ -4,6 +4,11 @@ CREATE TABLE users (
     "from" text
 );
 
+CREATE TABLE users2 (
+    id int PRIMARY KEY,
+    full_name text
+);
+
 CREATE TABLE AllDatatypeTransformation (
     varchar_column text PRIMARY KEY,
     tinyint_column tinyint,
