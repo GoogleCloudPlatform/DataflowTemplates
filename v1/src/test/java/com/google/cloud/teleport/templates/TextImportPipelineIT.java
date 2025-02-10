@@ -370,6 +370,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "2023-01-01T17:24:02Z")));
   }
 
+  // TODO: Consolidate this with other tests after UUID launch.
   @Test
   public void testImportCsv_UUID() throws IOException {
     // Run only on staging environment
@@ -442,6 +443,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
   }
 
+  // TODO: Consolidate this with other tests after UUID launch.
   @Test
   public void testImportCsvToPostgres_UUID() throws IOException {
     // Run only on staging environment

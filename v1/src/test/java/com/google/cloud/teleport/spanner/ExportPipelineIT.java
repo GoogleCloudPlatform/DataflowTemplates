@@ -334,6 +334,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
+  // TODO: Consolidate this with other tests after UUID launch.
   @Test
   public void testSpannerToGCSAvro_UUID() throws IOException {
     // Run only on staging environment
@@ -383,6 +384,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
         .hasRecordsUnordered(mutationsToRecords(expectedData));
   }
 
+  // TODO: Consolidate this with other tests after UUID launch.
   @Test
   public void testPostgresSpannerToGCSAvro_UUID() throws IOException {
     // Run only on staging environment
