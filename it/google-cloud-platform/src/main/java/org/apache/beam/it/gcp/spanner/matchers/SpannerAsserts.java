@@ -81,6 +81,8 @@ public class SpannerAsserts {
                 .forEach(
                     (key, value) -> {
                       Object newValue = value;
+                      // null `Value` objects `toString()` returns "NULL", causing test failures
+                      // when compared with Java nulls `toString()`. This workaround handles that.
                       if (value.isNull()) {
                         newValue = null;
                       } else if (value.getType() == Type.array(Type.string())) {
