@@ -123,4 +123,72 @@ public class BuildReadFromTableOperationsTest {
         "t.\"colName\"",
         buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
   }
+
+  @Test
+  public void testColumnExpressionUuid() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("table")
+            .column("colName")
+            .uuid()
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CAST(t.`colName` AS STRING) AS colName",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionUuidArray() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("table")
+            .column("colName")
+            .array(Type.uuid())
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CASE WHEN t.`colName` IS NULL THEN NULL ELSE ARRAY(SELECT CAST(e AS STRING) FROM UNNEST(colName) AS e) END AS colName",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionPgUuid() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table")
+            .column("colName")
+            .pgUuid()
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "t.\"colName\"::text AS \"colName\"",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
+
+  @Test
+  public void testColumnExpressionPgUuidArray() {
+    BuildReadFromTableOperations buildReadFromTableOperations =
+        new BuildReadFromTableOperations(null);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("table")
+            .column("colName")
+            .pgArray(Type.pgUuid())
+            .endColumn()
+            .endTable()
+            .build();
+    assertEquals(
+        "CASE WHEN t.\"colName\" IS NULL THEN NULL ELSE ARRAY(SELECT e::text FROM UNNEST(t.\"colName\") AS e) END AS \"colName\"",
+        buildReadFromTableOperations.createColumnExpression(ddl.table("table").column("colName")));
+  }
 }

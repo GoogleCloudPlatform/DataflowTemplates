@@ -155,6 +155,162 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts an
+   * empty array into the correct PostgreSQL empty array literal '{}'.
+   */
+  @Test
+  public void testEmptyArray() {
+    String arrayJson = "{\"empty_array\": {\"nestedArray\": []}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("empty_array", "_TEXT"); // Use a generic array type; could be any array
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'{}'";
+
+    String actual = dml.getValueSql(rowObj, "empty_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a
+   * JSONB array into the correct PostgreSQL array syntax with type casting.
+   */
+  @Test
+  public void testJsonbArray() {
+    String arrayJson =
+        "{\"jsonb_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": {\"a\": 1, \"b\": \"test\"}},"
+            + "  {\"nestedArray\": null, \"elementValue\": {\"c\": true}}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("jsonb_array", "_JSONB"); // Explicitly specify JSONB array type
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "ARRAY[{\"a\":1,\"b\":\"test\"},{\"c\":true}]::jsonb[]";
+
+    String actual = dml.getValueSql(rowObj, "jsonb_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * array into the correct PostgreSQL array syntax with type casting.
+   */
+  @Test
+  public void testJsonArray() {
+    String arrayJson =
+        "{\"json_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": {\"x\": 10, \"y\": \"abc\"}},"
+            + "  {\"nestedArray\": null, \"elementValue\": {\"z\": false}}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("json_array", "_JSON"); // Explicitly specify JSON array type
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "ARRAY[{\"x\":10,\"y\":\"abc\"},{\"z\":false}]::json[]";
+
+    String actual = dml.getValueSql(rowObj, "json_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * INTERVAL array into the correct PostgreSQL syntax.
+   */
+  @Test
+  public void testValidInterval() {
+    String json = "{\"interval_field\": {\"months\": 1, \"hours\": 2, \"micros\": 3000000}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'P1MT2H3.000000S'";
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * INTERVAL array into the correct PostgreSQL syntax.
+   */
+  @Test
+  public void testOnlyMonths() {
+    String json = "{\"interval_field\": {\"months\": 12, \"hours\": 0, \"micros\": 0}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'P12MT0H0.000000S'";
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * INTERVAL array into the correct PostgreSQL syntax.
+   */
+  @Test
+  public void testOnlyHours() {
+    String json = "{\"interval_field\": {\"months\": 0, \"hours\": 5, \"micros\": 0}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'P0MT5H0.000000S'";
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * INTERVAL array into the correct PostgreSQL syntax.
+   */
+  @Test
+  public void testOnlyMicros() {
+    String json = "{\"interval_field\": {\"months\": 0, \"hours\": 0, \"micros\": 123456}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'P0MT0H0.123456S'";
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
+   * INTERVAL array into the correct PostgreSQL syntax.
+   */
+  @Test
+  public void testLargeMicros() {
+    String json = "{\"interval_field\": {\"months\": 0, \"hours\": 0, \"micros\": 999999999}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'P0MT0H999.999999S'";
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+    assertEquals(expected, actual);
+  }
+
+  @Test
+  public void testZeroValues() {
+    String json = "{\"interval_field\": {\"months\": 0, \"hours\": 0, \"micros\": 0}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected = "'P0MT0H0.000000S'";
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+    assertEquals(expected, actual);
+  }
+
+  /**
    * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
    * correct Postgres schema.
    */

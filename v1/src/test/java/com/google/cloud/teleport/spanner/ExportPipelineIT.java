@@ -28,6 +28,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
@@ -80,6 +81,23 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                   + "    { \"name\": \"FirstName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"LastName\", \"type\": \"string\" },\n"
                   + "    { \"name\": \"Rating\", \"type\": \"float\" }\n"
+                  + "  ]\n"
+                  + "}");
+
+  private static final Schema UUID_SCHEMA =
+      new Schema.Parser()
+          .parse(
+              "{\n"
+                  + "  \"type\": \"record\",\n"
+                  + "  \"name\": \"UuidTable\",\n"
+                  + "  \"namespace\": \"com.google.cloud.teleport.spanner\",\n"
+                  + "  \"fields\": [\n"
+                  + "    { \"name\": \"Id\", \"type\": \"long\", \"sqlType\": \"INT64\" },\n"
+                  + "    { \"name\": \"UuidCol\", \"type\": [\"null\",\"string\"], \"sqlType\": \"UUID\" },\n"
+                  + "    { \"name\": \"UuidArrayCol\", \"type\": [\"null\", { "
+                  + "          \"type\": \"array\", "
+                  + "          \"items\": \"string\" "
+                  + "    }], \"sqlType\": \"ARRAY<UUID>\" }\n"
                   + "  ]\n"
                   + "}");
 
@@ -327,6 +345,105 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     assertThatGenericRecords(emptyRecords).hasRows(0);
   }
 
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
+  @Test
+  public void testSpannerToGCSAvro_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.GOOGLE_STANDARD_SQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+
+    String createUuidTableStatement =
+        String.format(
+            "CREATE TABLE `%s_UuidTable` (\n"
+                + "  Id INT64 NOT NULL,\n"
+                + "  UuidCol UUID,\n"
+                + "  UuidArrayCol ARRAY<UUID>,\n"
+                + ") PRIMARY KEY(Id)",
+            testName);
+
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+    List<Mutation> expectedData = generateTableRowsUUID(String.format("%s_UuidTable", testName));
+    spannerResourceManager.write(expectedData);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("outputDir", getGcsPath("output/"))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> uuidTableArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.avro.*", "UuidTable")));
+    assertThat(uuidTableArtifacts).isNotEmpty();
+
+    List<GenericRecord> uuidTableRecords = extractArtifacts(uuidTableArtifacts, UUID_SCHEMA);
+
+    assertThatGenericRecords(uuidTableRecords)
+        .hasRecordsUnordered(mutationsToRecords(expectedData));
+  }
+
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
+  @Test
+  public void testPostgresSpannerToGCSAvro_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+    spannerResourceManager =
+        SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
+    String createUuidTableStatement =
+        String.format(
+            "CREATE TABLE \"%s_UuidTable\" (\n"
+                + "  \"Id\" bigint,\n"
+                + "  \"UuidCol\" uuid,\n"
+                + "  \"UuidArrayCol\" uuid[],\n"
+                + "PRIMARY KEY(\"Id\"))",
+            testName);
+
+    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+    List<Mutation> expectedData = generateTableRowsUUID(String.format("%s_UuidTable", testName));
+    spannerResourceManager.write(expectedData);
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(testName, specPath)
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("outputDir", getGcsPath("output/"))
+            .addParameter("spannerHost", spannerResourceManager.getSpannerHost());
+
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    assertThatResult(result).isLaunchFinished();
+
+    List<Artifact> uuidTableArtifacts =
+        gcsClient.listArtifacts(
+            "output/", Pattern.compile(String.format(".*%s.*\\.avro.*", "UuidTable")));
+    assertThat(uuidTableArtifacts).isNotEmpty();
+
+    List<GenericRecord> uuidTableRecords = extractArtifacts(uuidTableArtifacts, UUID_SCHEMA);
+
+    assertThatGenericRecords(uuidTableRecords)
+        .hasRecordsUnordered(mutationsToRecords(expectedData));
+  }
+
   private static List<Mutation> generateTableRows(String tableId) {
     List<Mutation> mutations = new ArrayList<>();
     for (int i = 0; i < MESSAGES_COUNT; i++) {
@@ -339,6 +456,29 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
     }
 
     return mutations;
+  }
+
+  private static List<Mutation> generateTableRowsUUID(String tableId) {
+    List<Mutation> mutations = new ArrayList<>();
+    for (int i = 0; i < MESSAGES_COUNT; i++) {
+      Mutation.WriteBuilder mutation = Mutation.newInsertBuilder(tableId);
+      mutation.set("Id").to(i);
+      String uuid = Math.random() < 0.5 ? UUID.randomUUID().toString() : null;
+      List<String> uuidArray = Math.random() < 0.5 ? generateUuidArray() : null;
+      mutation.set("UuidCol").to(uuid);
+      mutation.set("UuidArrayCol").toStringArray(uuidArray);
+      mutations.add(mutation.build());
+    }
+    return mutations;
+  }
+
+  private static List<String> generateUuidArray() {
+    int size = (int) (Math.random() * (10));
+    List<String> uuids = new ArrayList<>();
+    for (int i = 0; i < size; i++) {
+      uuids.add(UUID.randomUUID().toString());
+    }
+    return uuids;
   }
 
   private static List<GenericRecord> extractArtifacts(List<Artifact> artifacts, Schema schema) {

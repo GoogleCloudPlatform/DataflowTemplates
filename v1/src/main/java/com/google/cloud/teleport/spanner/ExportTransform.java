@@ -282,7 +282,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     c.output(ddl);
                   }
                 }));
-    PCollection<ReadOperation> tables =
+    PCollection<ReadOperation> tableReadOperations =
         ddl.apply("Build table read operations", new BuildReadFromTableOperations(tableNames));
 
     PCollection<KV<String, Void>> allTableAndViewNames =
@@ -455,7 +455,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .apply("As view", View.asMap());
 
     PCollection<Struct> rows =
-        tables.apply(
+        tableReadOperations.apply(
             "Read all rows from Spanner",
             LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig));
 
