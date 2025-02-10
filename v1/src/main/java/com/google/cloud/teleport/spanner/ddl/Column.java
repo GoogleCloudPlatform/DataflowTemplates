@@ -139,6 +139,8 @@ public abstract class Column implements Serializable {
       appendable.append(" AS (").append(generationExpression()).append(")");
       if (isStored()) {
         appendable.append(" STORED");
+      } else if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append(" VIRTUAL");
       }
     }
     if (isPlacementKey()) {

@@ -35,6 +35,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_TABLES;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -138,7 +139,7 @@ public class CassandraIOWrapperHelperTest {
                 dataSource,
                 CassandraIOWrapperHelper.buildSchemaDiscovery(),
                 cassandraSchemaReference))
-        .isEqualTo(List.of(BASIC_TEST_TABLE, PRIMITIVE_TYPES_TABLE));
+        .isEqualTo(TEST_TABLES);
     assertThat(
             CassandraIOWrapperHelper.getTablesToRead(
                 List.of(BASIC_TEST_TABLE),
