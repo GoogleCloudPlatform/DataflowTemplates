@@ -376,6 +376,7 @@ public class SpannerConverters {
 
       private String createColumnExpression(String columnName, String columnType, Dialect dialect) {
         if (dialect == Dialect.POSTGRESQL) {
+          // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
           if (columnType.equals("uuid")) {
             return String.format("\"%s\"::text AS \"%s\"", columnName, columnName);
           }
@@ -393,6 +394,7 @@ public class SpannerConverters {
         if (columnType.equals("JSON")) {
           return "`" + columnName + "`";
         }
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
         if (columnType.equals("UUID")) {
           return String.format("CAST(`%s` AS STRING) AS %s", columnName, columnName);
         }

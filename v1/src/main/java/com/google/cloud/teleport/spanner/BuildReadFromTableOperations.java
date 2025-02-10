@@ -164,6 +164,7 @@ class BuildReadFromTableOperations
               + ") AS element), []) END AS "
               + col.name();
         }
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
         if (col.typeString().equals("UUID")) {
           return String.format("CAST(t.`%s` AS STRING) AS %s", col.name(), col.name());
         }
@@ -175,6 +176,7 @@ class BuildReadFromTableOperations
         }
         return "t.`" + col.name() + "`";
       case POSTGRESQL:
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
         if (col.typeString().equals("uuid")) {
           return String.format("t.\"%s\"::text AS \"%s\"", col.name(), col.name());
         }
