@@ -26,6 +26,9 @@
     </parent>
 
     <artifactId>spanner-custom-shard</artifactId>
+    <properties>
+        <skipShade>true</skipShade>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
