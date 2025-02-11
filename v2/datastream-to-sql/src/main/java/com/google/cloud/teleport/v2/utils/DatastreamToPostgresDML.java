@@ -114,10 +114,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     if (dataType.startsWith("_")) {
       return convertJsonToPostgresArray(columnValue, dataType.toUpperCase(), columnName);
     }
-    // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
-    if (dataType.startsWith("_")) {
-      return convertJsonToPostgresArray(columnValue);
-    }
     return columnValue;
   }
 
