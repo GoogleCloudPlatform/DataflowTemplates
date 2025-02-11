@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -25,11 +26,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -53,14 +60,27 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String ddl =
-        String.join(
-            " ",
-            Resources.readLines(Resources.getResource(spannerSchemaFile), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
+
+    String ddl;
+    try (InputStream inputStream =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(spannerSchemaFile)) {
+      if (inputStream == null) {
+        throw new FileNotFoundException("Resource file not found: " + spannerSchemaFile);
+      }
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        ddl = reader.lines().collect(Collectors.joining("\n"));
+      }
+    }
+
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL file is empty: " + spannerSchemaFile);
+    }
+
+    String[] ddls = ddl.trim().split(";");
     for (String d : ddls) {
-      if (!d.isBlank()) {
+      d = d.trim();
+      if (!d.isEmpty()) {
         spannerResourceManager.executeDdlStatement(d);
       }
     }
@@ -116,6 +136,54 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
+  protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
+    return CassandraResourceManager.builder(testName).build();
+  }
+
+  protected void createCassandraSchema(
+      CassandraResourceManager cassandraResourceManager, String cassandraSchemaFile)
+      throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(cassandraSchemaFile), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        cassandraResourceManager.execute(d);
+      }
+    }
+  }
+
+  public void createAndUploadCassandraConfigToGcs(
+      GcsResourceManager gcsResourceManager,
+      CassandraResourceManager cassandraResourceManagers,
+      String cassandraConfigFile)
+      throws IOException {
+
+    String host = cassandraResourceManagers.getHost();
+    int port = cassandraResourceManagers.getPort();
+    String keyspaceName = cassandraResourceManagers.getKeyspaceName();
+    String cassandraConfigContents;
+    try (InputStream inputStream =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(cassandraConfigFile)) {
+      if (inputStream == null) {
+        throw new FileNotFoundException("Resource file not found: " + cassandraConfigFile);
+      }
+      cassandraConfigContents = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    cassandraConfigContents =
+        cassandraConfigContents
+            .replace("##host##", host)
+            .replace("##port##", Integer.toString(port))
+            .replace("##keyspace##", keyspaceName);
+
+    gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -125,9 +193,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String shardingCustomJarPath,
       String shardingCustomClassName,
       String sourceDbTimezoneOffset,
-      CustomTransformation customTransformation)
+      CustomTransformation customTransformation,
+      String sourceType)
       throws IOException {
-    // default parameters
 
     Map<String, String> params =
         new HashMap<>() {
@@ -138,13 +206,20 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("spannerProjectId", PROJECT);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
+            put(
+                "sourceShardsFilePath",
+                getGcsPath(
+                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                        ? "input/cassandra-config.conf"
+                        : "input/shard.json",
+                    gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
+            put("sourceType", sourceType);
           }
         };
 

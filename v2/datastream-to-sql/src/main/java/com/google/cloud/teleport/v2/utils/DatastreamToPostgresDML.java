@@ -180,6 +180,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           }
         }
       }
+
       if (elements.isEmpty()) {
         // Use array literal for empty arrays otherwise type inferencing fails.
         return "'{}'";
@@ -194,6 +195,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
         return arrayStatement + "::jsonb[]";
       }
       return arrayStatement;
+
     } catch (JsonProcessingException e) {
       LOG.error("Error parsing JSON array: {}", jsonValue);
       return getNullValueSql();
