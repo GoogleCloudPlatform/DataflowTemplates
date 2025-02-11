@@ -44,7 +44,10 @@ import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -587,11 +590,29 @@ public class DataStreamToBigQuery {
                       .withPartitionRetention(options.getPartitionRetentionDays())));
       // Send Pub/Sub notification after the merge
       if (options.getPubSubTopic() != null && !options.getPubSubTopic().isEmpty()) {
+        // IMPORTANT: Extract the *value* of datasetTemplate *before* creating the transform.
+        final String datasetTemplateValue = options.getOutputDatasetTemplate();
+        final String stagingDatasetTemplateValue = options.getOutputStagingDatasetTemplate();
+
         shuffledTableRows
                 .apply("Convert TableRow to JSON", MapElements.into(TypeDescriptors.strings())
                         .via((TableRow row) -> {
-                          Gson gson = new Gson();
-                          return gson.toJson(row);}))
+                          Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                          Map<String, Object> messageData = new HashMap<>();
+                          messageData.put("dataset", datasetTemplateValue);
+                          messageData.put("staging_dataset", stagingDatasetTemplateValue);
+
+                          Object tableValue = row.get("_metadata_table");
+                          messageData.put("table", (tableValue != null) ? tableValue.toString() : null); // Safely handle nulls
+
+                          Map<String, Object> rowMap = new HashMap<>();
+                          for (Map.Entry<String, Object> entry : row.entrySet()) {
+                            rowMap.put(entry.getKey(), entry.getValue());
+                          }
+
+                          messageData.put("row", rowMap);
+                          return gson.toJson(messageData);
+                        }))
                 .apply("Publish to Pub/Sub", PubsubIO.writeStrings().to(options.getPubSubTopic()));
       }
     }
