@@ -36,6 +36,7 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -646,7 +647,7 @@ public class GenericRecordTypeConvertorTest {
     when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
         .thenReturn("bool_col");
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
-        .thenReturn(Type.array(Type.bool()));
+        .thenReturn(Type.array(Type.struct(ImmutableList.of())));
     when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
         .thenReturn(true);
 
