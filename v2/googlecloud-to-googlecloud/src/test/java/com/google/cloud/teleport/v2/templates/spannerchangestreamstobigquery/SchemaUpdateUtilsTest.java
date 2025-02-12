@@ -104,13 +104,36 @@ public final class SchemaUpdateUtilsTest {
   public void testDetectDiffColumnInModWithLessColsButWithoutDiff() {
     ObjectNode pkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
     pkColJsonNode.put("SingerId", 1);
-    ObjectNode nonPkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
-    nonPkColJsonNode.put("FirstName", "firstName");
     List<ModColumnType> rowTypes = new ArrayList<>();
     rowTypes.add(new ModColumnType("SingerId", new TypeCode("INT64"), true, 1));
-    rowTypes.add(new ModColumnType("FirstName", new TypeCode("STRING"), false, 2));
-    rowTypes.add(new ModColumnType("LastName", new TypeCode("STRING"), false, 3));
 
+    Mod mod =
+        new Mod(
+            pkColJsonNode.toString(),
+            "",
+            Timestamp.ofTimeSecondsAndNanos(1650908264L, 925679000),
+            "1",
+            true,
+            "00000001",
+            "Singers",
+            rowTypes,
+            ModType.UPDATE,
+            ValueCaptureType.OLD_AND_NEW_VALUES,
+            1L,
+            1L);
+    Map<String, TrackedSpannerTable> spannerTableByName = createSpannerTableByName();
+    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)).isEqualTo(false);
+  }
+
+  @Test
+  public void testDetectDiffColumnInModWithDifferentCol() {
+    ObjectNode pkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
+    pkColJsonNode.put("SingerId", 1);
+    ObjectNode nonPkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
+    nonPkColJsonNode.put("Gender", "F");
+    List<ModColumnType> rowTypes = new ArrayList<>();
+    rowTypes.add(new ModColumnType("SingerId", new TypeCode("{\"code\":\"INT64\"}"), true, 1));
+    rowTypes.add(new ModColumnType("Gender", new TypeCode("{\"code\":\"STRING\"}"), false, 3));
     Mod mod =
         new Mod(
             pkColJsonNode.toString(),
@@ -126,11 +149,11 @@ public final class SchemaUpdateUtilsTest {
             1L,
             1L);
     Map<String, TrackedSpannerTable> spannerTableByName = createSpannerTableByName();
-    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)).isEqualTo(false);
+    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)).isEqualTo(true);
   }
 
   @Test
-  public void testDetectDiffColumnInModWithColDiff() {
+  public void testDetectDiffColumnInModWithExtraCol() {
     ObjectNode pkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
     pkColJsonNode.put("SingerId", 1);
     ObjectNode nonPkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
