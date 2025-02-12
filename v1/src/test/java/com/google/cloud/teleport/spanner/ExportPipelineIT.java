@@ -216,9 +216,10 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             testName);
 
     String createSequenceStatement =
-        String.format("CREATE SEQUENCE `%s_Sequence1` (BIT_REVERSED_POSITIVE SKIP RANGE 99, 999)",testName);
+        String.format(
+            "CREATE SEQUENCE `%s_Sequence1` (BIT_REVERSED_POSITIVE SKIP RANGE 99, 999)", testName);
     String createSequenceNoSpecifiedKindStatement =
-        String.format("CREATE SEQUENCE `%s_Sequence2`",testName);
+        String.format("CREATE SEQUENCE `%s_Sequence2`", testName);
 
     String createSingersTableStatement =
         String.format(
@@ -290,10 +291,12 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Identity")));
     List<Artifact> sequenceArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Sequence1")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Sequence1")));
     List<Artifact> sequenceNoKindArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Sequence2")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", testName, "Sequence2")));
     assertThat(singersArtifacts).isNotEmpty();
     assertThat(emptyArtifacts).isNotEmpty();
     assertThat(modelStructArtifacts).isNotEmpty();
