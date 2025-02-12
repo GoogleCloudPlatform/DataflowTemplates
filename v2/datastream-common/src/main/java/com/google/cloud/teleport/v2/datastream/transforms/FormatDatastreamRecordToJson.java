@@ -160,7 +160,6 @@ public class FormatDatastreamRecordToJson
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadataJson(record));
-
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
 
@@ -386,7 +385,22 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, (Boolean) record.get(fieldName));
           break;
         case BYTES:
-          jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          if (record.get(fieldName) instanceof ByteBuffer) {
+            ByteBuffer byteBuffer = (ByteBuffer) record.get(fieldName);
+            byte[] byteArray = new byte[byteBuffer.remaining()];
+            byteBuffer.get(byteArray);
+            jsonObject.put(fieldName, byteArray);
+          } else if (record.get(fieldName) instanceof byte[]) {
+            jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          } else {
+            // Handle other types appropriately, possibly throwing an exception
+            // if the type is unexpected. Or log it.
+            throw new IllegalArgumentException(
+                "Unexpected type for field "
+                    + fieldName
+                    + ": "
+                    + record.get(fieldName).getClass().getName());
+          }
           break;
         case FLOAT:
           String value = record.get(fieldName).toString();

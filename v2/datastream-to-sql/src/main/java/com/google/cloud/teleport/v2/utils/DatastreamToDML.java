@@ -97,7 +97,6 @@ public abstract class DatastreamToDML
   public void processElement(ProcessContext context) {
     FailsafeElement<String, String> element = context.element();
     String jsonString = element.getPayload();
-
     ObjectMapper mapper = new ObjectMapper();
     JsonNode rowObj;
 
@@ -284,7 +283,6 @@ public abstract class DatastreamToDML
 
   public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
     String columnValue;
-
     JsonNode columnObj = rowObj.get(columnName);
     if (columnObj == null) {
       LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
