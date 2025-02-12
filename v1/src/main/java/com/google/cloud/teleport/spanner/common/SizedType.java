@@ -78,6 +78,10 @@ public final class SizedType {
         return "FLOAT64";
       case PG_FLOAT8:
         return "double precision";
+      case UUID:
+        return "UUID";
+      case PG_UUID:
+        return "uuid";
       case STRING:
         return "STRING(" + (size == -1 ? "MAX" : Integer.toString(size)) + ")";
       case PG_VARCHAR:
@@ -194,6 +198,9 @@ public final class SizedType {
           }
           if (spannerType.equals("FLOAT64")) {
             return t(Type.float64(), null);
+          }
+          if (spannerType.equals("UUID")) {
+            return t(Type.uuid(), null);
           }
           if (spannerType.startsWith("STRING")) {
             String sizeStr = spannerType.substring(7, spannerType.length() - 1);
@@ -328,6 +335,9 @@ public final class SizedType {
           }
           if (spannerType.equals("text")) {
             return t(Type.pgText(), -1);
+          }
+          if (spannerType.equals("uuid")) {
+            return t(Type.pgUuid(), null);
           }
           if (spannerType.startsWith("character varying")) {
             int size = -1;

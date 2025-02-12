@@ -608,8 +608,6 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, convertedIntervalNano);
           break;
         default:
-          LOG.warn(
-              "Unknown field type {} for field {} in record {}.", fieldSchema, fieldName, element);
           ObjectMapper mapper = new ObjectMapper();
           JsonNode dataInput;
           try {

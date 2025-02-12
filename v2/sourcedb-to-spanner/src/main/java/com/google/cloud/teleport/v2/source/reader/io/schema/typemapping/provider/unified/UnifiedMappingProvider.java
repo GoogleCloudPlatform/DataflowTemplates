@@ -116,6 +116,31 @@ public final class UnifiedMappingProvider {
     return MAPPING.getOrDefault(type, new Unsupported());
   }
 
+  /**
+   * Returns the {@link UnifiedTypeMapping} for an array of unified type mapping.
+   *
+   * @param type reference to the unified type to which an avro schema mapping for an array is
+   *     requested.
+   * @return mapping implementation. Default is {@link Unsupported} for unrecognized type.
+   */
+  public static UnifiedTypeMapping getArrayMapping(Type type) {
+    return getArrayMapping(MAPPING.getOrDefault(type, new Unsupported()));
+  }
+
+  /**
+   * Returns the {@link UnifiedTypeMapping} for an array of unified type mapping.
+   *
+   * @param mapping reference to the unified type mapping to which an avro schema mapping for an
+   *     array is requested.
+   * @return mapping implementation. Default is {@link Unsupported} for unrecognized type.
+   */
+  public static UnifiedTypeMapping getArrayMapping(UnifiedTypeMapping mapping) {
+    if (mapping instanceof Unsupported) {
+      return mapping;
+    }
+    return Array.create(mapping);
+  }
+
   /** Static final class. * */
   private UnifiedMappingProvider() {}
 }

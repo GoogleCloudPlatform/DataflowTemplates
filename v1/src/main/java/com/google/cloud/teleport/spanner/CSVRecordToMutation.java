@@ -194,6 +194,10 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
         case PG_TEXT:
           columnValue = Value.string(cellValue);
           break;
+        case UUID:
+        case PG_UUID:
+          columnValue = Value.string(isNullValue ? null : cellValue);
+          break;
         case DATE:
         case PG_DATE:
           if (isNullValue) {

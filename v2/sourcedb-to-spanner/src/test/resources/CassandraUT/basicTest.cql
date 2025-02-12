@@ -35,7 +35,55 @@ CREATE TABLE primitive_types_table (
                                  uuid_col UUID,
                                  varchar_col VARCHAR,
                                  varint_col VARINT);
+CREATE TABLE list_types_table (
+                                  primary_key UUID PRIMARY KEY,
+                                  ascii_list LIST<ASCII>,
+                                  frozen_ascii_list FROZEN<LIST<ASCII>>,
+                                  bigint_list LIST<BIGINT>,
+                                  blob_list LIST<BLOB>,
+                                  boolean_list LIST<BOOLEAN>,
+                                  date_list LIST<DATE>,
+                                  decimal_list LIST<DECIMAL>,
+                                  double_list LIST<DOUBLE>,
+                                  duration_list LIST<DURATION>,
+                                  float_list LIST<FLOAT>,
+                                  inet_list LIST<INET>,
+                                  int_list LIST<INT>,
+                                  smallint_list LIST<SMALLINT>,
+                                  text_list LIST<TEXT>,
+                                  time_list LIST<TIME>,
+                                  timestamp_list LIST<TIMESTAMP>,
+                                  timeuuid_list LIST<TIMEUUID>,
+                                  tinyint_list LIST<TINYINT>,
+                                  uuid_list LIST<UUID>,
+                                  varchar_list LIST<VARCHAR>,
+                                  varint_list LIST<VARINT>
+);
 
+CREATE TABLE set_types_table (
+                                 primary_key UUID PRIMARY KEY,
+                                 ascii_set SET<ASCII>,
+                                 frozen_ascii_set FROZEN<SET<ASCII>>,
+                                 bigint_set SET<BIGINT>,
+                                 blob_set SET<BLOB>,
+                                 boolean_set SET<BOOLEAN>,
+                                 date_set SET<DATE>,
+                                 decimal_set SET<DECIMAL>,
+                                 double_set SET<DOUBLE>,
+                                 -- duration can not be added as a type set in cassandra.
+                                 float_set SET<FLOAT>,
+                                 inet_set SET<INET>,
+                                 int_set SET<INT>,
+                                 smallint_set SET<SMALLINT>,
+                                 text_set SET<TEXT>,
+                                 time_set SET<TIME>,
+                                 timestamp_set SET<TIMESTAMP>,
+                                 timeuuid_set SET<TIMEUUID>,
+                                 tinyint_set SET<TINYINT>,
+                                 uuid_set SET<UUID>,
+                                 varchar_set SET<VARCHAR>,
+                                 varint_set SET<VARINT>
+);
 -- Inserting 3 Randomly generated rows.
 INSERT INTO primitive_types_table (primary_key, ascii_col, bigint_col, blob_col, boolean_col, date_col, decimal_col, double_col, duration_col, float_col, inet_col, int_col, smallint_col, text_col, time_col, timestamp_col, timeuuid_col, tinyint_col, uuid_col, varchar_col, varint_col)
 VALUES (
@@ -165,4 +213,60 @@ VALUES (
           00e4afef-52f8-4e1f-9afa-0632c8ccf790,
            'abcdef',
            9223372036854775807  -- Maximum VARINT
+       );
+-- Inserts for list_types_table
+-- Cassandra does not support null inside of collection values.
+INSERT INTO list_types_table (primary_key, ascii_list, frozen_ascii_list, bigint_list, blob_list, boolean_list, date_list, decimal_list, double_list, duration_list, float_list, inet_list, int_list, smallint_list, text_list, time_list, timestamp_list, timeuuid_list, tinyint_list, uuid_list, varchar_list, varint_list)
+VALUES (
+           a389de30-f01f-4395-a0c6-c407bfbe81d0, -- primary_key
+           ['a', 'b', 'c'], -- ascii_list
+           ['d', 'e', 'f'], -- frozen_ascii_list
+           [1, 2, 3], -- bigint_list
+           [0x48656C6C6F], -- blob_list (Hex representation of "Hello")
+           [true, false], -- boolean_list
+           ['2024-10-27', '2024-10-28'], -- date_list
+           [123.45, 678.90], -- decimal_list
+           [1.23, 4.56], -- double_list
+           [1y2mo3d4h5m6s, 2y2mo3d4h5m6s], -- duration_list
+           [1.23, 4.56],  -- float_list
+           ['192.168.1.1', '10.0.0.1'], -- inet_list
+           [10, 20, 30], -- int_list
+           [100, 200, 300], -- smallint_list
+           ['hello', 'world'], -- text_list
+           ['10:00:00', '12:00:00'], -- time_list
+           ['2024-10-27T10:00:00', '2024-10-28T12:00:00'], -- timestamp_list
+           [9b9419da-b210-11ef-890e-9d9a41af9e54], -- timeuuid_list
+           [1, 2, 3],  -- tinyint_list
+           [f0e1d922-06b5-4f07-a7a6-ec0c9f23e172], -- uuid_list
+           ['varchar1', 'varchar2'], -- varchar_list
+           [1234567890, 9876543210] -- varint_list
+       );
+
+
+
+-- Inserts for set_types_table
+-- Cassandra does not support null inside of collection values.
+INSERT INTO set_types_table (primary_key, ascii_set, frozen_ascii_set, bigint_set, blob_set, boolean_set, date_set, decimal_set, double_set, float_set, inet_set, int_set, smallint_set, text_set, time_set, timestamp_set, timeuuid_set, tinyint_set, uuid_set, varchar_set, varint_set)
+VALUES (
+           a389de30-f01f-4395-a0c6-c407bfbe81d0, -- primary_key
+           {'a', 'b', 'c'}, -- ascii_set
+           {'d', 'e', 'f'}, -- frozen_ascii_set
+           {1, 2, 3}, -- bigint_set
+           {0x48656C6C6F}, -- blob_set (Hex representation of "Hello")
+           {true, false}, -- boolean_set
+           {'2024-10-27', '2024-10-28'}, -- date_set
+           {123.45, 678.90}, -- decimal_set
+           {1.23, 4.56}, -- double_set
+           {1.23, 4.56},  -- float_set
+           {'192.168.1.1', '10.0.0.1'}, -- inet_set
+           {10, 20, 30}, -- int_set
+           {100, 200, 300}, -- smallint_set
+           {'hello', 'world'}, -- text_set
+           {'10:00:00', '12:00:00'}, -- time_set
+           {'2024-10-27T10:00:00', '2024-10-28T12:00:00'}, -- timestamp_set
+           {9b9419da-b210-11ef-890e-9d9a41af9e54}, -- timeuuid_set
+           {1, 2, 3},  -- tinyint_set
+           {f0e1d922-06b5-4f07-a7a6-ec0c9f23e172}, -- uuid_set
+           {'varchar1', 'varchar2'}, -- varchar_set
+           {1234567890, 9876543210} -- varint_set
        );
