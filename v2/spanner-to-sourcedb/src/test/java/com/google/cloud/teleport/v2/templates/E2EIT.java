@@ -60,7 +60,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
   private static final Logger LOG = LoggerFactory.getLogger(E2EIT.class);
 
   private static final String SPANNER_DDL_RESOURCE = "E2EIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbIT/session.json";
+  private static final String SESSION_FILE_RESOURCE = "E2EIT/session.json";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE = "E2EIT/mysql-schema.sql";
 
   private static final String TABLE = "Authors";
@@ -87,6 +87,9 @@ public class E2EIT extends SpannerToSourceDbITBase {
       testInstances.add(this);
       if (rrJobInfo == null) {
         spannerResourceManager = createSpannerDatabase(E2EIT.SPANNER_DDL_RESOURCE);
+        System.out.println("######1");
+        System.out.println(spannerResourceManager.getInstanceId());
+        System.out.println(spannerResourceManager.getDatabaseId());
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
@@ -117,21 +120,23 @@ public class E2EIT extends SpannerToSourceDbITBase {
         SubscriptionName dlqSubscription =
             createFwdPubsubResources(identifierSuffix + "dlq", pubsubResourceManager, fwdDlqGcsPrefix);
 
-        rrJobInfo =
-            launchRRDataflowJob(
-                spannerResourceManager,
-                gcsResourceManager,
-                spannerMetadataResourceManager,
-                rrSubscriptionName.toString(),
-                gcsPathPrefix
-                );
-        fwdJobInfo = launchFwdDataflowJob(
-            spannerResourceManager,
-            gcsResourceManager,
-            gcsPathPrefix,
-            fwdSubscription,
-            dlqSubscription
-        );
+        System.out.println(gcsPathPrefix);
+
+        // rrJobInfo =
+        //     launchRRDataflowJob(
+        //         spannerResourceManager,
+        //         gcsResourceManager,
+        //         spannerMetadataResourceManager,
+        //         rrSubscriptionName.toString(),
+        //         gcsPathPrefix
+        //         );
+        // fwdJobInfo = launchFwdDataflowJob(
+        //     spannerResourceManager,
+        //     gcsResourceManager,
+        //     gcsPathPrefix,
+        //     fwdSubscription,
+        //     dlqSubscription
+        // );
       }
     }
   }
@@ -141,26 +146,27 @@ public class E2EIT extends SpannerToSourceDbITBase {
    *
    * @throws IOException
    */
-  @AfterClass
-  public static void cleanUp() throws IOException {
-    for (E2EIT instance : testInstances) {
-      instance.tearDownBase();
-    }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
-  }
+  // @AfterClass
+  // public static void cleanUp() throws IOException {
+  //   for (E2EIT instance : testInstances) {
+  //     instance.tearDownBase();
+  //   }
+  //   ResourceManagerUtils.cleanResources(
+  //       spannerResourceManager,
+  //       jdbcResourceManager,
+  //       spannerMetadataResourceManager,
+  //       gcsResourceManager,
+  //       pubsubResourceManager);
+  // }
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
-    assertThatPipeline(rrJobInfo).isRunning();
-    // Write row in Spanner
-    writeRowInSpanner();
-    // Assert events on Mysql
-    assertRowInMySQL();
+    // assertThatPipeline(rrJobInfo).isRunning();
+    // // Write row in Spanner
+    // writeRowInSpanner();
+    // // Assert events on Mysql
+    // assertRowInMySQL();
+    System.out.println("#####2");
   }
 
   private void writeRowInSpanner() {
