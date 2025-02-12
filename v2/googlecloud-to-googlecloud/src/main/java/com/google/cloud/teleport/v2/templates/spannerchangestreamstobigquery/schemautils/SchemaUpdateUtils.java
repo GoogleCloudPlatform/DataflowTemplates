@@ -42,6 +42,10 @@ public class SchemaUpdateUtils {
         mod.getNewValuesJson() == ""
             ? new JSONObject("{}").keySet()
             : new JSONObject(mod.getNewValuesJson()).keySet();
+    // Return true iff there are more cols in new values json than existing record.
+    if (spannerTable.getNonPkColumns().size() < keySetOfNewValuesJsonObject.size()) {
+      return true;
+    }
     Set<String> nonPkColumnsNamesSet = spannerTable.getNonPkColumnsNamesSet();
     // Returns true if the stored schema doesn't contain a column in the mod
     return !nonPkColumnsNamesSet.containsAll(keySetOfNewValuesJsonObject);
