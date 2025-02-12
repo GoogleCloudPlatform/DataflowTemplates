@@ -47,7 +47,7 @@
     <kafka.clients.version>1.0.0</kafka.clients.version>
     <threetenbp.version>1.4.4</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
-    <tensorflow.version>0.5.0</tensorflow.version>
+    <tensorflow.version>1.0.0</tensorflow.version>
     <dlp.version>2.1.0</dlp.version>
     <hbase.version>2.5.3-hadoop3</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
@@ -534,7 +534,7 @@
     </dependency>
     <dependency>
       <groupId>org.tensorflow</groupId>
-      <artifactId>tensorflow-core-api</artifactId>
+      <artifactId>tensorflow-core-native</artifactId>
       <version>${tensorflow.version}</version>
     </dependency>
     <dependency>
