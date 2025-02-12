@@ -42,10 +42,6 @@ public class SchemaUpdateUtils {
         mod.getNewValuesJson() == ""
             ? new JSONObject("{}").keySet()
             : new JSONObject(mod.getNewValuesJson()).keySet();
-    // At this mod's spannerCommitTimestamp, one column is added/dropped.
-    if (spannerTable.getNonPkColumns().size() != keySetOfNewValuesJsonObject.size()) {
-      return true;
-    }
     Set<String> nonPkColumnsNamesSet = spannerTable.getNonPkColumnsNamesSet();
     // Returns true if the stored schema doesn't contain a column in the mod
     return !nonPkColumnsNamesSet.containsAll(keySetOfNewValuesJsonObject);

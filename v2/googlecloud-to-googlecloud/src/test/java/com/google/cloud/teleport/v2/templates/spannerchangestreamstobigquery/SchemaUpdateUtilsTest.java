@@ -101,6 +101,35 @@ public final class SchemaUpdateUtilsTest {
   }
 
   @Test
+  public void testDetectDiffColumnInModWithLessColsButWithoutDiff() {
+    ObjectNode pkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
+    pkColJsonNode.put("SingerId", 1);
+    ObjectNode nonPkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
+    nonPkColJsonNode.put("FirstName", "firstName");
+    List<ModColumnType> rowTypes = new ArrayList<>();
+    rowTypes.add(new ModColumnType("SingerId", new TypeCode("INT64"), true, 1));
+    rowTypes.add(new ModColumnType("FirstName", new TypeCode("STRING"), false, 2));
+    rowTypes.add(new ModColumnType("LastName", new TypeCode("STRING"), false, 3));
+
+    Mod mod =
+        new Mod(
+            pkColJsonNode.toString(),
+            nonPkColJsonNode.toString(),
+            Timestamp.ofTimeSecondsAndNanos(1650908264L, 925679000),
+            "1",
+            true,
+            "00000001",
+            "Singers",
+            rowTypes,
+            ModType.INSERT,
+            ValueCaptureType.OLD_AND_NEW_VALUES,
+            1L,
+            1L);
+    Map<String, TrackedSpannerTable> spannerTableByName = createSpannerTableByName();
+    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)).isEqualTo(false);
+  }
+
+  @Test
   public void testDetectDiffColumnInModWithColDiff() {
     ObjectNode pkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
     pkColJsonNode.put("SingerId", 1);
