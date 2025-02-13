@@ -79,8 +79,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
    * @param spannerResourceManager Initialized SpannerResourceManager instance
    * @param resourceName SQL file name with path relative to resources directory
    */
-  public static void createSpannerDDL(SpannerResourceManager spannerResourceManager, String resourceName)
-      throws IOException {
+  public static void createSpannerDDL(
+      SpannerResourceManager spannerResourceManager, String resourceName) throws IOException {
     String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
@@ -96,8 +96,8 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
    * @param spannerResourceManager Initialized SpannerResourceManager instance
    * @param resourceName SQL file name with path relative to resources directory
    */
-  public static void executeSpannerDML(SpannerResourceManager spannerResourceManager, String resourceName)
-      throws IOException {
+  public static void executeSpannerDML(
+      SpannerResourceManager spannerResourceManager, String resourceName) throws IOException {
     String dml =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));

@@ -373,8 +373,8 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   /**
-   * Writes a collection of mutations into one or more tables inside a ReadWriteTransaction.
-   * This method requires {@link SpannerResourceManager#executeDdlStatement(String)} to be called
+   * Writes a collection of mutations into one or more tables inside a ReadWriteTransaction. This
+   * method requires {@link SpannerResourceManager#executeDdlStatement(String)} to be called
    * beforehand.
    *
    * @param mutations A collection of mutation objects.
@@ -386,19 +386,20 @@ public final class SpannerResourceManager implements ResourceManager {
     LOG.info("Sending {} mutations to {}.{}", Iterables.size(mutations), instanceId, databaseId);
     DatabaseClient databaseClient =
         spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
-    databaseClient.readWriteTransaction().run(
-        (TransactionCallable<Void>)
-            transaction -> {
-              transaction.buffer(mutations);
-              return null;
-            });
+    databaseClient
+        .readWriteTransaction()
+        .run(
+            (TransactionCallable<Void>)
+                transaction -> {
+                  transaction.buffer(mutations);
+                  return null;
+                });
     LOG.info("Successfully sent mutations to {}.{}", instanceId, databaseId);
   }
 
   /**
-   * Executes a list of DML statements.
-   * This method requires {@link SpannerResourceManager#executeDdlStatement(String)} to be called
-   * beforehand.
+   * Executes a list of DML statements. This method requires {@link
+   * SpannerResourceManager#executeDdlStatement(String)} to be called beforehand.
    *
    * @param statements The DML statements.
    * @throws IllegalStateException if method is called after resources have been cleaned up.
@@ -409,17 +410,19 @@ public final class SpannerResourceManager implements ResourceManager {
     checkHasInstanceAndDatabase();
 
     LOG.info("Executing DML statements '{}' on database {}.", statements, databaseId);
-    List<Statement> statementsList = statements.stream().map(s -> Statement.of(s)).collect(
-        Collectors.toList());
+    List<Statement> statementsList =
+        statements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
     try {
       DatabaseClient databaseClient =
           spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
-      databaseClient.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                transaction.batchUpdate(statementsList);
-                return null;
-              });
+      databaseClient
+          .readWriteTransaction()
+          .run(
+              (TransactionCallable<Void>)
+                  transaction -> {
+                    transaction.batchUpdate(statementsList);
+                    return null;
+                  });
       LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);

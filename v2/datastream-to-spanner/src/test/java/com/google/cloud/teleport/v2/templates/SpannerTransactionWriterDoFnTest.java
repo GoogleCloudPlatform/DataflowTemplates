@@ -304,7 +304,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(transactionCallableMock.run(any()))
         .thenAnswer(
             invocation -> {
-              throw SpannerExceptionFactory.newSpannerException(ErrorCode.ABORTED, "Transaction Aborted");
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.ABORTED, "Transaction Aborted");
             });
     when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
 
@@ -367,7 +368,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(transactionCallableMock.run(any()))
         .thenAnswer(
             invocation -> {
-              throw SpannerExceptionFactory.newSpannerException(ErrorCode.FAILED_PRECONDITION, "title must not be NULL in table Books");
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.FAILED_PRECONDITION, "title must not be NULL in table Books");
             });
     when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
 

@@ -328,8 +328,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       if (!isRetryRecord) {
         retryableErrors.inc();
       }
-    }
-    catch (SpannerException ex) {
+    } catch (SpannerException ex) {
       /*
        * There are many SpannerExceptions which can occur. Some of them are retryable and some of them are non-retryable.
        * Examples:

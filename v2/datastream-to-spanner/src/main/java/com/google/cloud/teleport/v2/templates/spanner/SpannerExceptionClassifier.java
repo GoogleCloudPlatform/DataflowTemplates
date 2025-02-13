@@ -16,9 +16,6 @@
 package com.google.cloud.teleport.v2.templates.spanner;
 
 import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
-import com.google.cloud.teleport.v2.values.FailsafeElement;
-import org.apache.beam.sdk.values.TupleTag;
 
 /* Helper class to classify SpannerExceptions to Retryable error or Permanent error */
 public class SpannerExceptionClassifier {
@@ -42,8 +39,10 @@ public class SpannerExceptionClassifier {
   public static final String DATATYPE_MISMATCH = "Invalid value for column";
   public static final String NOT_NULL_VIOLATION = "must not be NULL";
   public static final String WRITE_TO_GENERATED_COLUMN = "Cannot write into generated column";
-  public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_1 = "For an Update, the value of a generated primary key";
-  public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_2 = "must be explicitly specified, or else its non-key dependent column";
+  public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_1 =
+      "For an Update, the value of a generated primary key";
+  public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_2 =
+      "must be explicitly specified, or else its non-key dependent column";
   public static final String DUPLICATE_COLUMN = "Duplicate column";
   public static final String WRONG_NUMBER_OF_KEY_PARTS = "Wrong number of key parts";
 
@@ -74,7 +73,8 @@ public class SpannerExceptionClassifier {
         if (containsIgnoreCase(exception.getMessage(), WRITE_TO_GENERATED_COLUMN)) {
           return ErrorTag.PERMANENT_ERROR;
         }
-        if (containsIgnoreCase(exception.getMessage(), GENERATED_PK_NOT_FULLY_SPECIFIED_1) && containsIgnoreCase(exception.getMessage(), GENERATED_PK_NOT_FULLY_SPECIFIED_2)) {
+        if (containsIgnoreCase(exception.getMessage(), GENERATED_PK_NOT_FULLY_SPECIFIED_1)
+            && containsIgnoreCase(exception.getMessage(), GENERATED_PK_NOT_FULLY_SPECIFIED_2)) {
           return ErrorTag.PERMANENT_ERROR;
         }
         if (containsIgnoreCase(exception.getMessage(), WRONG_NUMBER_OF_KEY_PARTS)) {
