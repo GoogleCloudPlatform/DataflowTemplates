@@ -1,449 +1,339 @@
-package com.google.cloud.teleport.v2.templates;
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates.spanner;
 
-import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.DatabaseId;
+import static com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase.createSpannerDDL;
+import static com.google.cloud.teleport.v2.templates.DataStreamToSpannerITBase.executeSpannerDML;
+import static com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag.PERMANENT_ERROR;
+import static com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag.RETRYABLE_ERROR;
+import static com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifierTest.assertSpannerExceptionClassification;
+
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.SpannerOptions;
-import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.spanner.Value;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
-import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag;
+import java.io.IOException;
+import java.util.List;
+import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.junit.AfterClass;
+import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 
+/** Integration test for {@link com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier}. */
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(DataStreamToSpanner.class)
 public class SpannerExceptionClassifierIT {
 
-  String project = "";
-  String instance = "";
-  String db = "";
+  public static SpannerResourceManager spannerResourceManager;
 
-  @Test
-  public void testInterleaveError() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
+  protected static final String PROJECT = TestProperties.project();
+  protected static final String REGION = TestProperties.region();
+  private static final String SPANNER_DDL_RESOURCE = "SpannerExceptionClassifierIT/spanner-schema.sql";
+  private static final String SPANNER_INSERT_STATEMENTS = "SpannerExceptionClassifierIT/spanner-data.sql";
 
-    try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Books")
-                    .set("id").to(4)
-                    .set("author_id").to(100)
-                    .set("title").to("Child")
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+  @Before
+  public void setUp() throws IOException, InterruptedException {
+    synchronized (SpannerExceptionClassifierIT.class) {
+      if (spannerResourceManager == null) {
+        spannerResourceManager = SpannerResourceManager.builder(SpannerExceptionClassifierIT.class.getSimpleName(), PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
+        createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);executeSpannerDML(spannerResourceManager, SPANNER_INSERT_STATEMENTS);
+      }
     }
   }
 
+  @AfterClass
+  public static void cleanUp() throws IOException {
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
+  }
+
   @Test
-  public void testFKError() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void testInterleaveInsertChildBeforeParent() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Books")
+        .set("id").to(4)
+        .set("author_id").to(100)
+        .set("title").to("Child")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("C1")
-                    .set("id1").to(4)
-                    .set("id2").to(4)
-                    // .set("author_id").to(100)
-                    // .set("title").to("Child")
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Parent row for row [100,4] in table Books is missing. Row cannot be written.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+  }
+
+  @Test
+  public void testFKInsertChildBeforeParent() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("ForeignKeyChild")
+        .set("id").to(4)
+        .set("parent_id").to(100)
+        .build();
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Foreign key constraint `fk_constraint1` is violated on table `ForeignKeyChild`. Cannot find referenced values in ForeignKeyParent(id).");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
   }
 
   @Test
   public void testUniqueIndexError() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Authors")
+        .set("author_id").to(10)
+        .set("name").to("J.R.R. Tolkien") // author already exists
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Authors")
-                    .set("author_id").to(4)
-                    .set("name").to("Jane Austen")
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "ALREADY_EXISTS: io.grpc.StatusRuntimeException: ALREADY_EXISTS: Unique index violation on index idx_authors_name at index key [J.R.R. Tolkien,1]. It conflicts with row [1] in table Authors.");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
   public void testCheckConstraintError() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Authors")
+        .set("author_id").to(300) // check constraint < 200
+        .set("name").to("New Author")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Authors")
-                    .set("author_id").to(-1)
-                    .set("name").to("ABCD")
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "OUT_OF_RANGE: io.grpc.StatusRuntimeException: OUT_OF_RANGE: Check constraint `Authors`.`check_author_id` is violated for key (300)");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
   public void testTableNotFound() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("FakeTable")
+        .set("author_id").to(300)
+        .set("name").to("New Author")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("AAAA")
-                    .set("author_id").to(1)
-                    .set("name").to("ABCD")
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Table not found: FakeTable\n"
+        + "resource_type: \"spanner.googleapis.com/Table\"\n"
+        + "resource_name: \"FakeTable\"\n"
+        + "description: \"Table not found\"\n");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
   public void testColumnNotFound() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Authors")
+        .set("author_id").to(10)
+        .set("name").to("New Author")
+        .set("FakeColumn").to("FakeColumnValue")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Authors")
-                    .set("author_id").to(5)
-                    .set("Unknown_column").to("ABCD")
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Column not found in table Authors: FakeColumn\n"
+        + "resource_type: \"spanner.googleapis.com/Column\"\n"
+        + "resource_name: \"FakeColumn\"\n");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
-  public void testDeleteParentWhenChildExists() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void testInterleavingDeleteParentWhenChildExists() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.delete("Authors", Key.of(1));
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.delete("Authors", Key.of(1));
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Integrity constraint violation during DELETE/REPLACE. Found child row [1,1] in table Books.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
   }
 
   @Test
-  public void testUniqueIndexNullValue() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void testFKDeleteParentWhenChildExists() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.delete("ForeignKeyParent", Key.of(1));
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Authors")
-                    .set("author_id").to(6)
-                    .set("name").to(Value.string(null))
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Foreign key constraint violation when deleting or updating referenced row(s): referencing row(s) found in table `ForeignKeyChild`.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+  }
+
+  @Test
+  public void testFKUpdateParentWhenChildExists() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newUpdateBuilder("ForeignKeyParent")
+        .set("id").to(1)
+        .set("name").to("parent20")
+        .build();
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Foreign key constraint violation when deleting or updating referenced row(s): referencing row(s) found in table `ForeignKeyChild`.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
   }
 
   @Test
   public void datatypeMismatch() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Books")
+        .set("id").to(1.5)
+        .set("author_id").to(1)
+        .set("title").to("New Book")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Books")
-                    .set("id").to(1.5)
-                    .set("author_id").to(1)
-                    .set("title").to("New Book")
-                    .build();
-
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Invalid value for column id in table Books: Expected INT64.");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
-  public void nullInNonNullColumn() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void insertNullInNonNullColumn() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Books")
+        .set("id").to(6)
+        .set("author_id").to(1)
+        .set("title").to(Value.string(null))
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Books")
-                    .set("id").to(6)
-                    .set("author_id").to(1)
-                    .set("title").to(Value.string(null))
-                    .build();
-
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: title must not be NULL in table Books.");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
-  public void writeToGeneratedColumn() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void writeToStoredGeneratedColumn() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newInsertBuilder("Books")
+        .set("id").to(10)
+        .set("author_id").to(1)
+        .set("title").to("NEW BOOK")
+        .set("titleLowerStored").to("new book")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("Books")
-                    .set("id").to(6)
-                    .set("author_id").to(1)
-                    .set("title").to("New Book")
-                    .set("titleUpperStored").to("NEW BOOK")
-                    .build();
-
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Cannot write into generated column `Books.titleLowerStored`.");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
-  public void genPKWithoutDependentCols() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void pkValueOrDependantColValueNotProvidedForGenPKWhileUpdating() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.newUpdateBuilder("GenPK")
+        .set("id1").to(1)
+        .set("name").to("Another Name")
+        .build();
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newUpdateBuilder("genPK")
-                    .set("id1").to(6)
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: For an Update, the value of a generated primary key `id2` must be explicitly specified, or else its non-key dependent column `part1` must be specified. Key: [1,<default>]");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
-  public void deleteFromGenPKTable() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
+  public void deleteWithPartialKey() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.delete("MultiKeyTable", Key.of(1));
     try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.delete("genPK", Key.of(6));
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = SpannerExceptionClassifier.classify(e);
     }
-  }
-
-  @Test
-  public void multipleValuesForColumn() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
-    try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newInsertBuilder("genPK")
-                    .set("id1").to(6)
-                    .set("part1").to(10)
-                    .set("part2").to(20)
-                    .set("part2").to(30)
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
-    }
-  }
-
-  @Test
-  public void deleteFromFKParentTable() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
-    try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.delete("FKP", Key.of(1));
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
-    }
-  }
-
-  @Test
-  public void updateParentFKTable() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
-    try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newUpdateBuilder("FKP1")
-                    .set("id").to(1)
-                        .set("title").to(Value.string(null))
-                        .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
-    }
-  }
-
-  @Test
-  public void insertWithPartialKey() {
-    SpannerOptions.Builder builder = SpannerOptions.newBuilder().setProjectId(project);
-    Spanner spanner = builder.build().getService();
-    DatabaseClient client = spanner.getDatabaseClient(
-        DatabaseId.of(project, instance, db));
-
-    try {
-      client.readWriteTransaction().run(
-          (TransactionCallable<Void>)
-              transaction -> {
-                Mutation mutation = Mutation.newUpdateBuilder("interleaveC1")
-                    .set("id1").to(1)
-                    .set("id5").to(2)
-                    .set("id6").to(3)
-                    .build();
-
-                // Apply shadow and data table mutations.
-                transaction.buffer(mutation);
-                return null;
-              });
-    } catch (Exception e) {
-      System.out.println(e);
-    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(exception.getMessage(), "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Wrong number of key parts for MultiKeyTable. Expected: 3. Got: [\"1\"]");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 }
