@@ -15,7 +15,10 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
@@ -31,10 +34,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
@@ -186,7 +191,12 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchDataflowJob(
-      String artifactBucket, int numWorkers, int maxWorkers) throws IOException {
+      String artifactBucket,
+      int numWorkers,
+      int maxWorkers,
+      CustomTransformation customTransformation,
+      String sourceType)
+      throws IOException {
     // default parameters
 
     Map<String, String> params =
@@ -202,13 +212,26 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
             put(
                 "sourceShardsFilePath",
-                getGcsPath(artifactBucket, "input/shard.json", gcsResourceManager));
+                getGcsPath(
+                    artifactBucket,
+                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                        ? "input/cassandra-config.conf"
+                        : "input/shard.json",
+                    gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
             put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
             put("maxShardConnections", "100");
+            put("sourceType", sourceType);
           }
         };
+
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath",
+          getGcsPath(artifactBucket, customTransformation.jarPath(), gcsResourceManager));
+      params.put("transformationClassName", customTransformation.classPath());
+    }
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
@@ -270,6 +293,20 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
     // export results
     exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsResourceManager.uploadArtifact(
+        "input/customShard.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {

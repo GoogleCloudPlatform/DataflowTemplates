@@ -107,6 +107,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-cassandra</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-it-cassandra</artifactId>
             <scope>test</scope>
