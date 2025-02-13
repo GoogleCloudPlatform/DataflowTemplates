@@ -200,7 +200,7 @@ public class SpannerToSourceDb {
         optional = true,
         description = "Cloud Spanner shadow table prefix.",
         helpText = "The prefix used to name shadow tables. Default: `shadow_`.")
-    @Default.String("shadow_")
+    @Default.String("rev_shadow_")
     String getShadowTablePrefix();
 
     void setShadowTablePrefix(String value);
