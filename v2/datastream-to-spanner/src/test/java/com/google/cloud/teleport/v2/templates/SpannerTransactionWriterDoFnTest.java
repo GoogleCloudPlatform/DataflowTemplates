@@ -320,7 +320,8 @@ public class SpannerTransactionWriterDoFnTest {
     ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
     verify(transactionContext, times(0)).buffer(anyList());
 
-    verify(processContextMock, times(1)).output(RETRYABLE_ERROR_TAG, any(FailsafeElement.class));
+    verify(processContextMock, times(1))
+        .output(eq(RETRYABLE_ERROR_TAG), any(FailsafeElement.class));
   }
 
   @Test
@@ -384,6 +385,7 @@ public class SpannerTransactionWriterDoFnTest {
     ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
     verify(transactionContext, times(0)).buffer(anyList());
 
-    verify(processContextMock, times(1)).output(PERMANENT_ERROR_TAG, any(FailsafeElement.class));
+    verify(processContextMock, times(1))
+        .output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
   }
 }
