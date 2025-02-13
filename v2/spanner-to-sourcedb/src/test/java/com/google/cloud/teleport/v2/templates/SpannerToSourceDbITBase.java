@@ -359,7 +359,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
     // default parameters
     flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(getClass().getSimpleName())
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Cloud_Datastream_to_Spanner")
             .withTemplateModulePath("v2/datastream-to-spanner")
             .addParameter("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/"))
@@ -373,8 +373,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             .addParameter("inputFileFormat", "avro")
             .addParameter(
                 "sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json", gcsResourceManager))
-            .addParameter(
-                "shardingContextFilePath", getGcsPath(gcsPathPrefix + "/shardingContext.json"))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
