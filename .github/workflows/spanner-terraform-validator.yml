@@ -13,6 +13,7 @@ on:
       - '.github/workflows/spanner-terraform-validator.yml'
       - 'v2/datastream-to-spanner/terraform/samples/**'
       - 'v2/sourcedb-to-spanner/terraform/samples/**'
+      - 'v2/spanner-to-sourcedb/terraform/samples/**'
 
 jobs:
   verify-terraform-samples:
@@ -23,7 +24,9 @@ jobs:
           - v2/sourcedb-to-spanner/terraform/samples
           - v2/datastream-to-spanner/terraform/samples
           - v2/spanner-common/terraform/samples
+          - v2/spanner-to-sourcedb/terraform/samples
     steps:
+      - uses: hashicorp/setup-terraform@v3
       - name: Checkout Code
         uses: actions/checkout@v3
       - name: Verify Terraform formatting

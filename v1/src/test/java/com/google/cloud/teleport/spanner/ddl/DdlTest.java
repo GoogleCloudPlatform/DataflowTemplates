@@ -261,6 +261,11 @@ public class DdlTest {
         .generatedAs("MOD(id+1, 64)")
         .stored()
         .endColumn()
+        .column("gen_id_virtual")
+        .pgInt8()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .endColumn()
         .column("first_name")
         .pgVarchar()
         .size(10)
@@ -336,6 +341,7 @@ public class DdlTest {
                 + " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
                 + " \"gen_id\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) STORED,"
+                + " \"gen_id_virtual\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) VIRTUAL,"
                 + " \"first_name\" character varying(10) DEFAULT John,"
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
@@ -677,6 +683,40 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             "CREATE SEARCH INDEX `SearchIndex` ON `Messages`(`Subject_Tokens` , `Body_Tokens` )"
                 + " STORING (`Data`) PARTITION BY `UserId`, INTERLEAVE IN `Users` OPTIONS (sort_order_sharding=TRUE)"));
+  }
+
+  @Test
+  public void testpgSearchIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("SearchIndex")
+            .type("SEARCH")
+            .table("Messages")
+            .interleaveIn("Users")
+            .partitionBy(ImmutableList.of("userid"))
+            .orderBy(ImmutableList.of("orderid"))
+            .options(ImmutableList.of("sort_order_sharding=TRUE"));
+    builder
+        .columns()
+        .create()
+        .name("subject_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("body_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("data")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " INCLUDE (\"data\") PARTITION BY \"userid\" ORDER BY \"orderid\" INTERLEAVE IN \"Users\" WITH (sort_order_sharding=TRUE)"));
   }
 
   @Test
