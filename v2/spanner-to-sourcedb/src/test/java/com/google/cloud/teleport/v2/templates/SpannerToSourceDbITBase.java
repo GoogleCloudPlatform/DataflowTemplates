@@ -319,7 +319,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
     // default parameters
     flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(getClass().getSimpleName())
+        FlexTemplateDataflowJobResourceManager.builder(rrJobName)
             .withTemplateName("Spanner_to_SourceDb")
             .withTemplateModulePath("v2/spanner-to-sourcedb")
             .addParameter(
@@ -340,7 +340,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             .addParameter("maxShardConnections", "5")
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
-            .addParameter(rrJobName, specPath + "1")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
@@ -357,7 +356,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       SubscriptionName fwdSubscription,
       SubscriptionName dlqSubscription)
       throws IOException {
-    String jobName = PipelineUtils.createJobName(getClass().getSimpleName());
+    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
     // default parameters
     flexTemplateDataflowJobResourceManager =
         FlexTemplateDataflowJobResourceManager.builder(getClass().getSimpleName())
@@ -376,7 +375,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
                 "sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json", gcsResourceManager))
             .addParameter(
                 "shardingContextFilePath", getGcsPath(gcsPathPrefix + "/shardingContext.json"))
-            .addParameter(jobName, specPath)
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
