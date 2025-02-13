@@ -22,6 +22,9 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>kafka-common</artifactId>
+  <properties>
+    <skipShade>true</skipShade>
+  </properties>
   <modelVersion>4.0.0</modelVersion>
 
   <dependencies>

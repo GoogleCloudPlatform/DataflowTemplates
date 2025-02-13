@@ -490,13 +490,13 @@
                                     <goal>shade</goal>
                                 </goals>
                                 <configuration>
+                                    <skip>${skipShade}</skip>
                                     <extraDirectories>
                                         <paths>
                                             <path>${project.build.directory}/extra_libs</path>
                                         </paths>
                                     </extraDirectories>
                                     <createDependencyReducedPom>false</createDependencyReducedPom>
-                                    <shadeTestJar>true</shadeTestJar>
                                     <artifactSet>
                                         <excludes>
                                             <exclude>org.conscrypt:conscrypt-openjdk-uber</exclude>

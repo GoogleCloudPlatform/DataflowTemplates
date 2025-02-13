@@ -55,6 +55,17 @@ public class UnifiedMappingProviderTest {
                 .getSchema(varCharMods, null)
                 .toString())
         .isEqualTo("{\"type\":\"string\",\"logicalType\":\"varchar\",\"length\":10}");
+    assertThat(
+            UnifiedMappingProvider.getArrayMapping(UnifiedMappingProvider.Type.VARCHAR)
+                .getSchema(varCharMods, null)
+                .toString())
+        .isEqualTo(
+            "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"logicalType\":\"varchar\",\"length\":10}}");
+    assertThat(
+            UnifiedMappingProvider.getArrayMapping(UnifiedMappingProvider.Type.UNSUPPORTED)
+                .getSchema(varCharMods, null)
+                .toString())
+        .isEqualTo("{\"type\":\"null\",\"logicalType\":\"unsupported\"}");
   }
 
   private ImmutableList<UnifiedMappingProvider.Type> simpleTypes() {
