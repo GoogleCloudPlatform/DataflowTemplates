@@ -217,7 +217,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     String createSequenceStatement =
         String.format(
-            "CREATE SEQUENCE `%s_Sequence1` (BIT_REVERSED_POSITIVE SKIP RANGE 99, 999)", testName);
+            "CREATE SEQUENCE `%s_Sequence1` BIT_REVERSED_POSITIVE SKIP RANGE 99, 999", testName);
     String createSequenceNoSpecifiedKindStatement =
         String.format("CREATE SEQUENCE `%s_Sequence2`", testName);
 
