@@ -22,6 +22,12 @@ import org.apache.beam.sdk.values.TupleTag;
 
 /* Helper class to classify SpannerExceptions to Retryable error or Permanent error */
 public class SpannerExceptionClassifier {
+
+  public enum ErrorTag {
+    PERMANENT_ERROR,
+    RETRYABLE_ERROR
+  }
+
   /*
   Error message substrings to be inspected from Spanner exception
    */
@@ -36,49 +42,55 @@ public class SpannerExceptionClassifier {
   public static final String DATATYPE_MISMATCH = "Invalid value for column";
   public static final String NOT_NULL_VIOLATION = "must not be NULL";
   public static final String WRITE_TO_GENERATED_COLUMN = "Cannot write into generated column";
-  public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_1 = "For an Update, the value of a generated primary key"
+  public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_1 = "For an Update, the value of a generated primary key";
   public static final String GENERATED_PK_NOT_FULLY_SPECIFIED_2 = "must be explicitly specified, or else its non-key dependent column";
   public static final String DUPLICATE_COLUMN = "Duplicate column";
   public static final String WRONG_NUMBER_OF_KEY_PARTS = "Wrong number of key parts";
 
-  public static TupleTag<FailsafeElement<String, String>> classify(SpannerException exception) {
+  public static ErrorTag classify(SpannerException exception) {
     switch (exception.getErrorCode()) {
       case UNIMPLEMENTED, UNAUTHENTICATED, PERMISSION_DENIED, OUT_OF_RANGE, INVALID_ARGUMENT:
-        return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        return ErrorTag.PERMANENT_ERROR;
       case NOT_FOUND:
-        if (exception.getMessage().equalsIgnoreCase(TABLE_NOT_FOUND)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), TABLE_NOT_FOUND)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
-        if (exception.getMessage().equalsIgnoreCase(COLUMN_NOT_FOUND)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), COLUMN_NOT_FOUND)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
         break;
       case ALREADY_EXISTS:
-        if (exception.getMessage().equalsIgnoreCase(UNIQUE_INDEX_VIOLATION)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), UNIQUE_INDEX_VIOLATION)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
         break;
       case FAILED_PRECONDITION:
-        if (exception.getMessage().equalsIgnoreCase(DATATYPE_MISMATCH)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), DATATYPE_MISMATCH)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
-        if (exception.getMessage().equalsIgnoreCase(NOT_NULL_VIOLATION)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), NOT_NULL_VIOLATION)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
-        if (exception.getMessage().equalsIgnoreCase(WRITE_TO_GENERATED_COLUMN)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), WRITE_TO_GENERATED_COLUMN)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
-        if (exception.getMessage().equalsIgnoreCase(GENERATED_PK_NOT_FULLY_SPECIFIED_1) && exception.getMessage().equalsIgnoreCase(GENERATED_PK_NOT_FULLY_SPECIFIED_2)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), GENERATED_PK_NOT_FULLY_SPECIFIED_1) && containsIgnoreCase(exception.getMessage(), GENERATED_PK_NOT_FULLY_SPECIFIED_2)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
-        if (exception.getMessage().equalsIgnoreCase(DUPLICATE_COLUMN)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        if (containsIgnoreCase(exception.getMessage(), WRONG_NUMBER_OF_KEY_PARTS)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
-        if (exception.getMessage().equalsIgnoreCase(WRONG_NUMBER_OF_KEY_PARTS)) {
-          return DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+        break;
+      case UNKNOWN:
+        if (containsIgnoreCase(exception.getMessage(), DUPLICATE_COLUMN)) {
+          return ErrorTag.PERMANENT_ERROR;
         }
         break;
     }
-    return DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG;
+    return ErrorTag.RETRYABLE_ERROR;
+  }
+
+  private static boolean containsIgnoreCase(String s, String subString) {
+    return s.toLowerCase().contains(subString.toLowerCase());
   }
 }
