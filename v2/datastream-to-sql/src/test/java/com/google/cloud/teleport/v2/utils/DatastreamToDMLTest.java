@@ -196,6 +196,54 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a
+   * JSONB array into the correct PostgreSQL array syntax with type casting.
+   */
+  @Test
+  public void testUuidArray() {
+    String arrayJson =
+        "{\"uuid_array\": {"
+            + "\"nestedArray\": ["
+            + "  {\"nestedArray\": null, \"elementValue\": \"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13\"},"
+            + "  {\"nestedArray\": null, \"elementValue\": \"a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14\"}"
+            + "], \"elementValue\": null}}";
+    JsonNode rowObj = getRowObj(arrayJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("uuid_array", "_UUID");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    String expected =
+        "ARRAY['a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13','a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14']::uuid[]";
+
+    String actual = dml.getValueSql(rowObj, "uuid_array", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a byte
+   * array into the correct PostgreSQL array syntax with type casting.
+   */
+  @Test
+  public void testByteArray() {
+    // Byte arrays are converted to base64 encoded strings by Jackson ObjectNode.toString() in
+    // FormatDataStreamRecordToJson.
+    String arrayJson = "{\"binary_content\": \"3q2+7w==\"}";
+    JsonNode rowObj = getRowObj(arrayJson);
+
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("binary_content", "BYTEA");
+
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    // getValueSql converts byte array to base64 encoded string
+    String expected = "decode('3q2+7w==','base64')";
+
+    String actual = dml.getValueSql(rowObj, "binary_content", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
    * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts a JSON
    * array into the correct PostgreSQL array syntax with type casting.
    */
