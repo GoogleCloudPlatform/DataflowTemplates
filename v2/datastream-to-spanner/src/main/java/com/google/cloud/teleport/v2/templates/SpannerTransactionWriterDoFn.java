@@ -38,6 +38,8 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
+import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier;
+import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag;
 import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
@@ -315,14 +317,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             .inc();
       }
       conversionErrors.inc();
-    } catch (SpannerException | IllegalStateException ex) {
-      /* Errors that happen when writing to Cloud Spanner are considered retryable.
-       * Since all event conversion errors are caught beforehand as permanent errors,
-       * any other errors encountered while writing to Cloud Spanner can be retried.
-       * Examples include:
-       * 1. Deadline exceeded errors from Cloud Spanner.
-       * 2. Failures due to foreign key/interleaved table constraints.
-       * 3. Any transient errors in Cloud Spanner.
+    } catch (IllegalStateException ex) {
+      /*
        * IllegalStateException can occur due to conditions like spanner pool being closed,
        * in which case if this event is requed to same or different node at a later point in time,
        * a retry might work.
@@ -330,6 +326,27 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG);
       // do not increment the retry error count if this was retry attempt
       if (!isRetryRecord) {
+        retryableErrors.inc();
+      }
+    }
+    catch (SpannerException ex) {
+      /*
+       * There are many SpannerExceptions which can occur. Some of them are retryable and some of them are non-retryable.
+       * Examples:
+       * 1. Deadline exceeded errors from Cloud Spanner - Retryable error
+       * 2. Failures due to foreign key/interleaved table constraints - Retryable error
+       * 3. Unique index violation - Permanent error
+       */
+      ErrorTag outputTag = SpannerExceptionClassifier.classify(ex);
+      switch (outputTag) {
+        case PERMANENT_ERROR:
+          outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
+          break;
+        case RETRYABLE_ERROR:
+          outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG);
+      }
+      // do not increment the retry error count if this was retry attempt
+      if (ErrorTag.RETRYABLE_ERROR.equals(outputTag) && !isRetryRecord) {
         retryableErrors.inc();
       }
     } catch (Exception e) {
