@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.base.MoreObjects;
@@ -32,6 +34,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -63,8 +66,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   public SpannerResourceManager spannerMetadataResourceManager;
   public List<JDBCResourceManager> jdbcResourceManagers;
   public GcsResourceManager gcsResourceManager;
-  private static PubsubResourceManager pubsubResourceManager;
-  private SubscriptionName subscriptionName;
+  protected static PubsubResourceManager pubsubResourceManager;
+  protected SubscriptionName subscriptionName;
 
   public void setupResourceManagers(
       String spannerDdlResource, String sessionFileResource, String artifactBucket)
@@ -191,7 +194,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       String artifactBucket,
       int numWorkers,
       int maxWorkers,
-      CustomTransformation customTransformation)
+      CustomTransformation customTransformation,
+      String sourceType)
       throws IOException {
     // default parameters
 
@@ -208,11 +212,17 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
             put(
                 "sourceShardsFilePath",
-                getGcsPath(artifactBucket, "input/shard.json", gcsResourceManager));
+                getGcsPath(
+                    artifactBucket,
+                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                        ? "input/cassandra-config.conf"
+                        : "input/shard.json",
+                    gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
             put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
             put("maxShardConnections", "100");
+            put("sourceType", sourceType);
           }
         };
 
