@@ -141,12 +141,14 @@ public class SpannerResourceManagerIT extends GCPBaseIT {
                 .to("Alphabet")
                 .build());
 
-    List<String> statements = Arrays.asList(
-        "INSERT INTO " + TABLE_ID
-            + " (RowId, FirstName, LastName, Company) values (3, 'Tester', 'Doe', 'Youtube')",
-        "INSERT INTO " + TABLE_ID
-            + " (RowId, FirstName, LastName, Company) values (4, 'Jacob', 'Doe', 'DeepMind')"
-    );
+    List<String> statements =
+        Arrays.asList(
+            "INSERT INTO "
+                + TABLE_ID
+                + " (RowId, FirstName, LastName, Company) values (3, 'Tester', 'Doe', 'Youtube')",
+            "INSERT INTO "
+                + TABLE_ID
+                + " (RowId, FirstName, LastName, Company) values (4, 'Jacob', 'Doe', 'DeepMind')");
 
     // Act
     spannerResourceManager.writeInTransaction(mutations);
@@ -166,7 +168,8 @@ public class SpannerResourceManagerIT extends GCPBaseIT {
                 Map.of("RowId", 1, "FirstName", "John", "LastName", "Doe", "Company", "Google"),
                 Map.of("RowId", 2, "FirstName", "Jane", "LastName", "Doe", "Company", "Alphabet"),
                 Map.of("RowId", 3, "FirstName", "Tester", "LastName", "Doe", "Company", "Youtube"),
-                Map.of("RowId", 4, "FirstName", "Jacob", "LastName", "Doe", "Company", "DeepMind")));
+                Map.of(
+                    "RowId", 4, "FirstName", "Jacob", "LastName", "Doe", "Company", "DeepMind")));
   }
 
   @After
