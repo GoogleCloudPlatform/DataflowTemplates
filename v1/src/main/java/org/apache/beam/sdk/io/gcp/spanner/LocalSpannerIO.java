@@ -23,6 +23,7 @@ import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsCons
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_INCLUSIVE_END_AT;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_INCLUSIVE_START_AT;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_RPC_PRIORITY;
+import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.DEFAULT_WATERMARK_REFRESH_RATE;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.MAX_INCLUSIVE_END_AT;
 import static org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamsConstants.THROUGHPUT_WINDOW_SECONDS;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
@@ -69,6 +70,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.action.ActionFactory;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.cache.CacheFactory;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.DaoFactory;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.PartitionMetadataTableNames;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.CleanUpReadChangeStreamDoFn;
@@ -1389,7 +1391,7 @@ public class LocalSpannerIO {
     /** @deprecated This configuration has no effect, as tracing is not available */
     @Deprecated
     abstract @Nullable Double getTraceSampleProbability();
-
+    abstract @Nullable Duration getWatermarkRefreshRate();
     abstract Builder toBuilder();
 
     @AutoValue.Builder
@@ -1412,6 +1414,8 @@ public class LocalSpannerIO {
       abstract Builder setRpcPriority(RpcPriority rpcPriority);
 
       abstract Builder setTraceSampleProbability(Double probability);
+
+      abstract Builder setWatermarkRefreshRate(Duration refreshRate);
 
       abstract ReadChangeStream build();
     }
@@ -1497,6 +1501,10 @@ public class LocalSpannerIO {
     @Deprecated
     public ReadChangeStream withTraceSampleProbability(Double probability) {
       return toBuilder().setTraceSampleProbability(probability).build();
+    }
+
+    public ReadChangeStream withWatermarkRefreshRate(Duration refreshRate) {
+      return toBuilder().setWatermarkRefreshRate(refreshRate).build();
     }
 
     @Override
@@ -1620,11 +1628,13 @@ public class LocalSpannerIO {
               changeStreamDatabaseDialect,
               metadataDatabaseDialect);
       final ActionFactory actionFactory = new ActionFactory();
-
+      final Duration watermarkRefreshRate =
+          MoreObjects.firstNonNull(getWatermarkRefreshRate(), DEFAULT_WATERMARK_REFRESH_RATE);
+      final CacheFactory cacheFactory = new CacheFactory(daoFactory, watermarkRefreshRate);
       final InitializeDoFn initializeDoFn =
           new InitializeDoFn(daoFactory, mapperFactory, startTimestamp, endTimestamp);
       final DetectNewPartitionsDoFn detectNewPartitionsDoFn =
-          new DetectNewPartitionsDoFn(daoFactory, mapperFactory, actionFactory, metrics);
+          new DetectNewPartitionsDoFn(daoFactory, mapperFactory, actionFactory, cacheFactory, metrics);
       final ReadChangeStreamPartitionDoFn readChangeStreamPartitionDoFn =
           new ReadChangeStreamPartitionDoFn(daoFactory, mapperFactory, actionFactory, metrics);
       final PostProcessingMetricsDoFn postProcessingMetricsDoFn =

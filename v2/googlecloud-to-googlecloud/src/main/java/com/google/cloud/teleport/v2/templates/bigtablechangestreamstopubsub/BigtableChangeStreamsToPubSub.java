@@ -546,10 +546,10 @@ public final class BigtableChangeStreamsToPubSub {
             "test_rowkey",
             MutationType.USER,
             "source_cluster",
-            org.threeten.bp.Instant.now(), // commit timestamp
+            java.time.Instant.now(), // commit timestamp
             1, // tiebreaker
             "token",
-            org.threeten.bp.Instant.now(), // low watermark
+            java.time.Instant.now(), // low watermark
             setCell);
 
     Mod mod = new Mod(pubSub.getSource(), mutation, setCell);

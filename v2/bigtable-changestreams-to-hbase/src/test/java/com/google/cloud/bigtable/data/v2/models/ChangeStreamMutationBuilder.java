@@ -20,7 +20,7 @@ import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationTyp
 import com.google.cloud.bigtable.data.v2.models.Range.TimestampRange;
 import com.google.cloud.teleport.v2.templates.utils.TestConstants;
 import com.google.protobuf.ByteString;
-import org.threeten.bp.Instant;
+import java.time.Instant;
 
 /**
  * Builder class for Bigtable change stream mutations. Allows change stream mutations to be built in
@@ -43,7 +43,7 @@ public class ChangeStreamMutationBuilder {
                 0 // Multi-master transactions are not supported so tiebreaker set to 0.
                 )
             .setToken(TestConstants.testToken)
-            .setEstimatedLowWatermark(ts);
+            .setEstimatedLowWatermarkTime(ts);
   }
 
   public ChangeStreamMutationBuilder setCell(
