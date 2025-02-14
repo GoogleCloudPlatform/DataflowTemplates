@@ -22,6 +22,7 @@ import com.datastax.driver.core.TypeCodec;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraSourceRowMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.IntervalNano;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
@@ -216,10 +217,7 @@ public class CassandraMappingsProvider {
     return CASSANDRA_MAPPINGS.typeMapping();
   }
 
-  /**
-   * Field Mappers for {@link
-   * com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraSourceRowMapper}.
-   */
+  /** Field Mappers for {@link CassandraSourceRowMapper}. */
   public static ImmutableMap<String, CassandraFieldMapper<?>> getFieldMapping() {
     return CASSANDRA_MAPPINGS.fieldMapping();
   }
