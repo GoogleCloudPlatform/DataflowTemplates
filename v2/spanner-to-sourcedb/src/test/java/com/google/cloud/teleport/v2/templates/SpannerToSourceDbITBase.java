@@ -336,7 +336,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName)
             .addParameter(
                 "deadLetterQueueDirectory",
-                getGcsPath(gcsPathPrefix + "/rr/dlq/", gcsResourceManager))
+                getGcsPath(gcsPathPrefix + "/rr/dlq", gcsResourceManager))
             .addParameter("maxShardConnections", "5")
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
@@ -346,6 +346,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
+    System.out.println("#####1");
+    System.out.println(jobInfo.jobId());
+    System.out.println(getGcsPath(gcsPathPrefix + "/rr/dlq", gcsResourceManager));
+    System.out.println(rrSubscriptionName);
     return jobInfo;
   }
 
@@ -366,7 +370,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq/"))
+            .addParameter("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq"))
             .addParameter("gcsPubSubSubscription", fwdSubscription.toString())
             .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
@@ -379,6 +383,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
+    System.out.println("#####2");
+    System.out.println(jobInfo.jobId());
+    System.out.println(getGcsPath(gcsPathPrefix + "/dlq"));
+    System.out.println(fwdSubscription.toString());
+    System.out.println(dlqSubscription.toString());
     return jobInfo;
   }
 
