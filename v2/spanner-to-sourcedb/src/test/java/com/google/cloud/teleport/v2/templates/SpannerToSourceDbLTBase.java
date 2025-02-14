@@ -283,6 +283,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
     // export results
     exportMetricsToBigQuery(jobInfo, metrics);
+    // exportMetrics(jobInfo, numShards, "daring-fiber-439305-v4", "rr");
   }
 
   protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)

@@ -93,6 +93,13 @@ func HostIp() string {
 	return "-DhostIp=" + dHostIp
 }
 
+// func HostIp() string {
+// 	if len(dHostIp) == 0 {
+// 		return "-DhostIp=34.47.164.248"
+// 	}
+// 	return "-DhostIp=" + dHostIp
+// }
+
 func PrivateConnectivity() string {
 	if dPrivateConnectivity != "" {
 		return "-DprivateConnectivity=" + dPrivateConnectivity

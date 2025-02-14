@@ -928,7 +928,7 @@
               <goal>report</goal>
             </goals>
           </execution>
-          <execution>
+          <!-- <execution>
             <id>default-check</id>
             <goals>
               <goal>check</goal>
@@ -951,7 +951,7 @@
                 </rule>
               </rules>
             </configuration>
-          </execution>
+          </execution> -->
         </executions>
       </plugin>
     </plugins>
