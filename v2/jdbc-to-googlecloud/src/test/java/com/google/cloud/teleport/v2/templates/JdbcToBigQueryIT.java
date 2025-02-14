@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.kms.v1.CryptoKey;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.base.Strings;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -72,6 +73,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   private static final String NAME = "name";
   private static final String FULL_NAME = "full_name";
   private static final String AGE = "age";
+  private static final String AGE_FR = "âge"; // non-ascii field name
   private static final String MEMBER = "member";
   private static final String IS_MEMBER = "is_member";
   private static final String ENTRY_ADDED = "entry_added";
@@ -115,7 +117,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "NUMERIC NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "NUMERIC");
+    columns.put(AGE_FR, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
@@ -132,7 +134,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, âge, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
                     + testName));
   }
 
@@ -201,48 +203,19 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
   }
 
   @Test
-  public void testPostgresToBigQueryFlex() throws IOException {
-    // Create postgres Resource manager
-    postgresResourceManager = PostgresResourceManager.builder(testName).build();
-
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put(ROW_ID, "INTEGER NOT NULL");
-    columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "INTEGER");
-    columns.put(MEMBER, "VARCHAR(200)");
-    columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
-
-    // Run a simple IT
-    simpleJdbcToBigQueryTest(
-        testName,
-        schema,
-        POSTGRES_DRIVER,
-        postgresDriverGCSPath(),
-        postgresResourceManager,
-        true,
-        false,
-        config ->
-            config.addParameter(
-                "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
-                    + testName));
-  }
-
-  @Test
-  public void testPostgresWithUnicodeCharactersInQuery() throws IOException {
+  public void testPostgresStageQueryInGcs() throws IOException {
     String tableName = "unicóde_table";
 
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
     gcsClient.createArtifact(
         "input/query.sql",
-        "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+        "SELECT ROW_ID, NAME AS FULL_NAME, âge, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
             + tableName);
 
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "INTEGER NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "INTEGER");
+    columns.put(AGE_FR, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
@@ -275,7 +248,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "NUMERIC NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "NUMERIC");
+    columns.put(AGE_FR, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
@@ -292,7 +265,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, âge, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
                     + testName));
   }
 
@@ -305,7 +278,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "NUMERIC NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "NUMERIC");
+    columns.put(AGE_FR, "NUMERIC");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
@@ -322,18 +295,18 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config.addParameter(
                 "query",
-                "SELECT ROW_ID, NAME AS FULL_NAME, AGE, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
+                "SELECT ROW_ID, NAME AS FULL_NAME, âge, MEMBER AS IS_MEMBER, ENTRY_ADDED FROM "
                     + testName));
   }
 
   @Test
-  public void testReadWithPartitions() throws IOException {
+  public void testPostgresReadWithPartitions() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testId).build();
 
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "INTEGER NOT NULL");
     columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "INTEGER");
+    columns.put(AGE_FR, "INTEGER");
     columns.put(MEMBER, "VARCHAR(200)");
     columns.put(ENTRY_ADDED, "VARCHAR(200)");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
@@ -385,9 +358,13 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       boolean useDlq,
       Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException {
+    PipelineLauncher.LaunchConfig.Builder options =
+        paramsAdder.apply(PipelineLauncher.LaunchConfig.builder(testName, specPath));
 
-    // Arrange
-    List<String> columns = new ArrayList<>(List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
+    // TODO: cover unicode field name for all tests when StorageWriteApi supports
+    boolean unicodeFieldName = Strings.isNullOrEmpty(options.getParameter("useStorageWriteApi"));
+    final String ageField = unicodeFieldName ? AGE_FR : AGE;
+    List<String> columns = new ArrayList<>(List.of(ROW_ID, NAME, ageField, MEMBER, ENTRY_ADDED));
     if (useDlq) {
       columns.add(FAKE);
     }
@@ -399,7 +376,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         Arrays.asList(
             Field.of(ROW_ID, StandardSQLTypeName.INT64),
             Field.of(useColumnAlias ? FULL_NAME : NAME, StandardSQLTypeName.STRING),
-            Field.of(AGE, StandardSQLTypeName.FLOAT64),
+            Field.of(ageField, StandardSQLTypeName.FLOAT64),
             Field.of(useColumnAlias ? IS_MEMBER : MEMBER, StandardSQLTypeName.STRING),
             Field.of(ENTRY_ADDED, StandardSQLTypeName.STRING));
     Schema bqSchema = Schema.of(bqSchemaFields);
@@ -410,26 +387,22 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
     Function<String, String> encrypt =
         message -> kmsResourceManager.encrypt(KEYRING_ID, CRYPTO_KEY_NAME, message);
     CryptoKey cryptoKey = kmsResourceManager.getOrCreateCryptoKey(KEYRING_ID, CRYPTO_KEY_NAME);
-
-    PipelineLauncher.LaunchConfig.Builder options =
-        paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(testName, specPath)
-                .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
-                .addParameter("driverClassName", driverClassName)
-                .addParameter("outputTable", toTableSpecLegacy(table))
-                .addParameter("driverJars", driverJars)
-                .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
-                .addParameter("username", encrypt.apply(jdbcResourceManager.getUsername()))
-                .addParameter("password", encrypt.apply(jdbcResourceManager.getPassword()))
-                .addParameter("KMSEncryptionKey", cryptoKey.getName())
-                .addParameter("useColumnAlias", "true")
-                .addParameter("fetchSize", "100000")
-                .addParameter("connectionProperties", "characterEncoding=UTF-8")
-                .addParameter("disabledAlgorithms", "SSLv3, GCM"));
+    options
+        .addParameter("connectionURL", encrypt.apply(jdbcResourceManager.getUri()))
+        .addParameter("driverClassName", driverClassName)
+        .addParameter("outputTable", toTableSpecLegacy(table))
+        .addParameter("driverJars", driverJars)
+        .addParameter("bigQueryLoadingTemporaryDirectory", getGcsBasePath() + "/temp")
+        .addParameter("username", encrypt.apply(jdbcResourceManager.getUsername()))
+        .addParameter("password", encrypt.apply(jdbcResourceManager.getPassword()))
+        .addParameter("KMSEncryptionKey", cryptoKey.getName())
+        .addParameter("useColumnAlias", "true")
+        .addParameter("fetchSize", "100000")
+        .addParameter("connectionProperties", "characterEncoding=UTF-8")
+        .addParameter("disabledAlgorithms", "SSLv3, GCM");
     if (useDlq) {
       options.addParameter("outputDeadletterTable", toTableSpecLegacy(table) + "_error_records");
     }
-
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
