@@ -15,10 +15,14 @@
  */
 package com.google.cloud.teleport.bigtable;
 
-import com.google.bigtable.v2.Cell;
+import static com.google.cloud.bigtable.data.v2.models.Filters.FILTERS;
+
 import com.google.bigtable.v2.Column;
+import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
+import com.google.bigtable.v2.RowFilter;
+import com.google.bigtable.v2.TimestampRange;
 import com.google.cloud.teleport.bigtable.BigtableToAvro.Options;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -30,6 +34,7 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.UnsafeByteOperations;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.time.*;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
@@ -39,13 +44,16 @@ import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.bigtable.BigtableIO;
-import org.apache.beam.sdk.options.Default;
-import org.apache.beam.sdk.options.PipelineOptions;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.options.*;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
 
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS. Currently,
@@ -70,9 +78,17 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
       "The Bigtable table must exist.",
       "The output Cloud Storage bucket must exist before running the pipeline."
     })
+
+
+
 public class BigtableToAvro {
 
+  private static final Logger LOG = LoggerFactory.getLogger(BigtableToAvro.class);
+
+
   /** Options for the export pipeline. */
+
+
   public interface Options extends PipelineOptions {
     @TemplateParameter.ProjectId(
         order = 1,
@@ -142,6 +158,54 @@ public class BigtableToAvro {
 
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+
+
+    @TemplateParameter.Text(
+            order = 7,
+            groupName = "Source",
+            description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
+            helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
+    )
+    ValueProvider<String> getStartTimestamp();
+    @SuppressWarnings("unused")
+    void setStartTimestamp(ValueProvider<String> startTimestamp);
+
+
+    @TemplateParameter.Text(
+            order = 8,
+            groupName = "Source",
+            description = "End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
+            helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
+    )
+    ValueProvider<String> getEndTimestamp();
+    @SuppressWarnings("unused")
+    void setEndTimestamp(ValueProvider<String> endTimestamp);
+
+//    @TemplateParameter.Text(
+//            order = 7,
+//            groupName = "Source",
+//            description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
+//            helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
+//    )
+//    @Description("Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)")
+//    @Default.String("") // Provide a default value or leave it empty
+//    String getStartTimestamp();
+//
+//    void setStartTimestamp(String startTimestamp1);
+//
+//
+//    @TemplateParameter.Text(
+//            order = 8,
+//            groupName = "Source",
+//            description = "End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
+//            helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
+//    )
+//    @Description("End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)")
+//    @Default.String("")
+//    String getEndTimestamp();
+//
+//    void setEndTimestamp(String endTimestamp1);
+
   }
 
   /**
@@ -152,7 +216,11 @@ public class BigtableToAvro {
   public static void main(String[] args) {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
+    SdkHarnessOptions loggingOptions = options.as(SdkHarnessOptions.class);
+    loggingOptions.setDefaultSdkHarnessLogLevel(SdkHarnessOptions.LogLevel.TRACE);
+
     PipelineResult result = run(options);
+
 
     // Wait for pipeline to finish only if it is not constructing a template.
     if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
@@ -160,15 +228,132 @@ public class BigtableToAvro {
     }
   }
 
+  public static long convertUtcToMicros(String utcTimestamp) {
+    DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
+    long microsTimestamp = parser.parseDateTime(utcTimestamp).getMillis() * 1000;
+    LOG.debug("Converting UTC timestamp {} to microseconds: {}", utcTimestamp, microsTimestamp);
+    return microsTimestamp;
+  }
+
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
+    // Create a function to build the RowFilter based on the timestamps
+    SerializableFunction<String, Long> timestampConverter = utcTimestamp -> {
+      if (utcTimestamp == null || utcTimestamp.isEmpty()) {
+        return null;
+      }
+      DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
+      return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
+    };
+
+    ValueProvider<RowFilter> filterProvider = new DualInputNestedValueProvider<>(
+            options.getStartTimestamp(),
+            options.getEndTimestamp(),
+            (TranslatorInput<String, String> input) -> {
+              Long startMicros = timestampConverter.apply(input.getX());
+              Long endMicros = timestampConverter.apply(input.getY());
+
+              if (startMicros == null && endMicros == null) {
+                return null;
+              }
+
+              com.google.cloud.bigtable.data.v2.models.Filters.TimestampRangeFilter filterBuilder =
+                      FILTERS.timestamp().range();
+
+              if (startMicros != null) {
+                filterBuilder.startClosed(startMicros);
+              }
+              if (endMicros != null) {
+                filterBuilder.endOpen(endMicros);
+              }
+
+              return filterBuilder.toProto();
+            });
+
     BigtableIO.Read read =
-        BigtableIO.read()
-            .withProjectId(options.getBigtableProjectId())
-            .withInstanceId(options.getBigtableInstanceId())
-            .withAppProfileId(options.getBigtableAppProfileId())
-            .withTableId(options.getBigtableTableId());
+            BigtableIO.read()
+                    .withProjectId(options.getBigtableProjectId())
+                    .withInstanceId(options.getBigtableInstanceId())
+                    .withAppProfileId(options.getBigtableAppProfileId())
+                    .withTableId(options.getBigtableTableId());
+
+    // Only add filter if timestamps are provided
+    if (options.getStartTimestamp() != null || options.getEndTimestamp() != null) {
+      read = read.withRowFilter(filterProvider);
+    }
+
+    // Do not validate input fields if it is running as a template.
+    if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
+      read = read.withoutValidation();
+    }
+//    String startTimestamp = options.getStartTimestamp();
+////    String endTimestamp = options.getEndTimestamp();
+////
+////    long startMicros = 0;
+////    long endMicros = 0;
+////
+////    long epochMillis1 = Long.parseLong(startTimestamp);
+////    long epochMillis2 = Long.parseLong(endTimestamp);
+//
+//
+//    if (startTimestamp != null && !startTimestamp.isEmpty()) {
+//      startMicros = convertUtcToMicros(startTimestamp);
+//      LOG.info("Start timestamp microseconds: {}", startMicros);
+//    }
+//
+//    if (endTimestamp != null && !endTimestamp.isEmpty()) {
+//      endMicros = convertUtcToMicros(endTimestamp);
+//      LOG.info("End timestamp microseconds: {}", endMicros);
+//    }
+//
+//    RowFilter actualFilter =
+//            FILTERS.timestamp().range().startClosed(epochMillis1).endOpen(epochMillis2).toProto();
+
+//    long startMicros =0;
+//    RowFilter.Builder filterBuilder = RowFilter.newBuilder();
+//    TimestampRange.Builder timestampRangeBuilder = TimestampRange.newBuilder();
+//    if (options.getStartTimestamp() != null && options.getStartTimestamp().isAccessible()) {
+//      String startTimestamp = options.getStartTimestamp().get();
+//      LOG.info("Processing start timestamp: {}", startTimestamp);
+//      if (startTimestamp != null && !startTimestamp.isEmpty()) {
+//         startMicros = convertUtcToMicros(startTimestamp);
+//        timestampRangeBuilder.setStartTimestampMicros(startMicros);
+//        LOG.info("Set start timestamp filter to {} microseconds", startMicros);
+//      }
+//    }
+//
+//    long endMicros=0;
+//
+//    if (options.getEndTimestamp() != null && options.getEndTimestamp().isAccessible()) {
+//      String endTimestamp = options.getEndTimestamp().get();
+//      LOG.info("Processing end timestamp: {}", endTimestamp);
+//      if (endTimestamp != null && !endTimestamp.isEmpty()) {
+//         endMicros = convertUtcToMicros(endTimestamp);
+//        timestampRangeBuilder.setEndTimestampMicros(endMicros);
+//        LOG.info("Set end timestamp filter to {} microseconds", endMicros);
+//      }
+//    }
+//
+//    TimestampRange timestampRange = timestampRangeBuilder.build();
+//    RowFilter filter = filterBuilder
+//            .setTimestampRangeFilter(timestampRange)
+//            .build();
+//
+//    LOG.info("Created row filter with timestamp range: {}", filter);
+//
+//    RowFilter actualFilter =
+//            FILTERS.timestamp().range().startClosed(startMicros).endOpen(endMicros).toProto();
+
+//    BigtableIO.Read read =
+//        BigtableIO.read()
+//            .withProjectId(options.getBigtableProjectId())
+//            .withInstanceId(options.getBigtableInstanceId())
+//            .withAppProfileId(options.getBigtableAppProfileId())
+//            .withTableId(options.getBigtableTableId())
+//             .withRowFilter(actualFilter);
+
+
 
     // Do not validate input fields if it is running as a template.
     if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
