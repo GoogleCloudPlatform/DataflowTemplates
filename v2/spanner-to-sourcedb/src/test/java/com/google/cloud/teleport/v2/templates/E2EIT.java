@@ -16,11 +16,10 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
@@ -37,8 +36,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -87,9 +84,6 @@ public class E2EIT extends SpannerToSourceDbITBase {
       testInstances.add(this);
       if (rrJobInfo == null) {
         spannerResourceManager = createSpannerDatabase(E2EIT.SPANNER_DDL_RESOURCE);
-        System.out.println("######1");
-        System.out.println(spannerResourceManager.getInstanceId());
-        System.out.println(spannerResourceManager.getDatabaseId());
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
@@ -122,9 +116,6 @@ public class E2EIT extends SpannerToSourceDbITBase {
         SubscriptionName dlqSubscription =
             createFwdPubsubResources(
                 identifierSuffix + "dlq", pubsubResourceManager, fwdDlqGcsPrefix);
-
-        System.out.println("######2");
-        System.out.println(gcsPathPrefix);
 
         rrJobInfo =
             launchRRDataflowJob(
@@ -166,57 +157,23 @@ public class E2EIT extends SpannerToSourceDbITBase {
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
-    // assertThatPipeline(rrJobInfo).isRunning();
-    // // Write row in Spanner
-    // writeRowInSpanner();
+    assertThatPipeline(rrJobInfo).isRunning();
+    assertThatPipeline(fwdJobInfo).isRunning();
+    // Write row in Spanner
+    writeRowInSpanner();
     // // Assert events on Mysql
-    // assertRowInMySQL();
-    System.out.println("#####2");
+    assertRowInMySQL();
   }
 
   private void writeRowInSpanner() {
     // Write a single record to Spanner
     Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder("Users")
-            .set("id")
-            .to(1)
-            .set("full_name")
-            .to("FF")
-            .set("from")
-            .to("AA")
-            .build();
+        Mutation.newInsertOrUpdateBuilder("Authors").set("id").to(1).set("name").to("AB").build();
     spannerResourceManager.write(m1);
 
     Mutation m2 =
-        Mutation.newInsertOrUpdateBuilder("Users2").set("id").to(2).set("name").to("B").build();
+        Mutation.newInsertOrUpdateBuilder("Authors").set("id").to(2).set("name").to("CD").build();
     spannerResourceManager.write(m2);
-
-    // Write a single record to Spanner for the given logical shard
-    // Add the record with the transaction tag as txBy=
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withProjectId(PROJECT)
-            .withInstanceId(spannerResourceManager.getInstanceId())
-            .withDatabaseId(spannerResourceManager.getDatabaseId());
-    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    spannerAccessor
-        .getDatabaseClient()
-        .readWriteTransaction(
-            Options.tag("txBy=forwardMigration"),
-            Options.priority(spannerConfig.getRpcPriority().get()))
-        .run(
-            (TransactionCallable<Void>)
-                transaction -> {
-                  Mutation m3 =
-                      Mutation.newInsertOrUpdateBuilder("Users")
-                          .set("id")
-                          .to(2)
-                          .set("full_name")
-                          .to("GG")
-                          .build();
-                  transaction.buffer(m3);
-                  return null;
-                });
   }
 
   private void assertRowInMySQL() throws InterruptedException {
@@ -224,12 +181,11 @@ public class E2EIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(rrJobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
+                () -> jdbcResourceManager.getRowCount(TABLE) == 2); // only one row is inserted
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
-    assertThat(rows).hasSize(1);
+    assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
-    assertThat(rows.get(0).get("name")).isEqualTo("FF");
-    assertThat(rows.get(0).get("from")).isEqualTo("AA");
+    assertThat(rows.get(0).get("name")).isEqualTo("AB");
   }
 }
