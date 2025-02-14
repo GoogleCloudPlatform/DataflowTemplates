@@ -162,6 +162,10 @@ public class DdlToAvroSchemaConverterTest {
             .column("uuid_column")
             .type(Type.uuid())
             .endColumn()
+            .column("identity_column_no_params")
+            .type(Type.int64())
+            .isIdentityColumn(true)
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -202,7 +206,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(11));
+    assertThat(fields, hasSize(12));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -299,6 +303,16 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(field10.getProp(GENERATION_EXPRESSION), equalTo(null));
     assertThat(field10.getProp(STORED), equalTo(null));
     assertThat(field10.getProp(DEFAULT_EXPRESSION), equalTo(null));
+
+    assertThat(fields.get(11).name(), equalTo("identity_column_no_params"));
+    assertThat(fields.get(11).schema(), equalTo(nullableUnion(Schema.Type.LONG)));
+    assertThat(fields.get(11).getProp(SQL_TYPE), equalTo("INT64"));
+    assertThat(fields.get(11).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(11).getProp(IDENTITY_COLUMN), equalTo("true"));
+    assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_KIND), equalTo(null));
+    assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo(null));
+    assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo(null));
+    assertThat(fields.get(11).getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo(null));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`id` ASC"));

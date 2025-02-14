@@ -345,6 +345,10 @@ public class InformationSchemaScanner {
       String defaultExpression = resultSet.isNull(9) ? null : resultSet.getString(9);
       boolean isIdentity = resultSet.getString(10).equalsIgnoreCase("YES");
       String identityKind = resultSet.isNull(11) ? null : resultSet.getString(11);
+      String sequenceKind = null;
+      if (identityKind != null && identityKind.equals("BIT_REVERSED_POSITIVE_SEQUENCE")) {
+        sequenceKind = "bit_reversed_positive";
+      }
       // The start_with_counter value is the initial value and cannot represent the actual state of
       // the counter. We need to apply the current counter to the DDL builder, instead of the one
       // retrieved from Information Schema.
@@ -375,7 +379,7 @@ public class InformationSchemaScanner {
           .isStored(isStored)
           .defaultExpression(defaultExpression)
           .isIdentityColumn(isIdentity)
-          .sequenceKind(identityKind)
+          .sequenceKind(sequenceKind)
           .counterStartValue(identityStartWithCounter)
           .skipRangeMin(identitySkipRangeMin)
           .skipRangeMax(identitySkipRangeMax)
@@ -1626,15 +1630,19 @@ public class InformationSchemaScanner {
     ResultSet resultSet = context.executeQuery(queryStatement);
     while (resultSet.next()) {
       String sequenceName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
-      builder.createSequence(sequenceName).endSequence();
 
       Statement sequenceCounterStatement;
       switch (dialect) {
         case GOOGLE_STANDARD_SQL:
+          ImmutableList.Builder<String> options = ImmutableList.builder();
+          options.add(
+              Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
+          builder.createSequence(sequenceName).options(options.build()).endSequence();
           sequenceCounterStatement =
               Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")");
           break;
         case POSTGRESQL:
+          builder.createSequence(sequenceName).endSequence();
           sequenceCounterStatement =
               Statement.of(
                   "SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('"
@@ -1666,7 +1674,6 @@ public class InformationSchemaScanner {
                     + " ORDER BY t.name, t.option_name"));
 
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
-    Set<String> hasSequenceKind = new HashSet<>();
     while (resultSet.next()) {
       String sequenceName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
       String optionName = resultSet.getString(2);
@@ -1678,9 +1685,6 @@ public class InformationSchemaScanner {
         // The sequence is in use, we need to apply the current counter to
         // the DDL builder, instead of the one retrieved from Information Schema.
         continue;
-      }
-      if (optionName.equals(Sequence.SEQUENCE_KIND)) {
-        hasSequenceKind.add(sequenceName);
       }
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
@@ -1701,12 +1705,6 @@ public class InformationSchemaScanner {
       String sequenceName = entry.getKey();
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
-
-      if (!hasSequenceKind.contains(sequenceName)) {
-        // If the sequence kind is not specified, assign it to 'default'.
-        options.add(
-            Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
-      }
 
       // Add a buffer to accommodate writes that may happen after import
       // is run. Note that this is not 100% failproof, since more writes may
