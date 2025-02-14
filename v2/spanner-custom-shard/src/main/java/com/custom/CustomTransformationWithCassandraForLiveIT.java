@@ -1,0 +1,73 @@
+/*
+ * Copyright (C) 2024 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.custom;
+
+import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
+import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
+import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import java.util.HashMap;
+import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+// TODO: Rename the class since its being used in both Live and Reverse replication tests and in
+// both ITs and LTs
+public class CustomTransformationWithCassandraForLiveIT implements ISpannerMigrationTransformer {
+
+  private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
+
+  @Override
+  public void init(String parameters) {
+    LOG.info("init called with {}", parameters);
+  }
+
+  @Override
+  public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
+      throws InvalidTransformationException {
+    if (request.getTableName().equals("Customers")) {
+      Map<String, Object> row = new HashMap<>(request.getRequestRow());
+      row.put("full_name", row.get("first_name") + " " + row.get("last_name"));
+      row.put("migration_shard_id", request.getShardId() + "_" + row.get("id"));
+      MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
+      return response;
+    }
+    return new MigrationTransformationResponse(null, false);
+  }
+
+  @Override
+  public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
+      throws InvalidTransformationException {
+    if (request.getTableName().equals("customers")) {
+      Map<String, Object> requestRow = request.getRequestRow();
+      Map<String, Object> row = new HashMap<>();
+      if (requestRow.get("varchar_column").equals("example1")) {
+        return new MigrationTransformationResponse(null, true);
+      }
+      // In case of update/delete events, return request as response without any transformation
+      if (request.getEventType().equals("UPDATE")) {
+        return new MigrationTransformationResponse(null, false);
+      }
+      if (request.getEventType().equals("DELETE")) {
+        return new MigrationTransformationResponse(null, true);
+      }
+      row.put("full_name", requestRow.get("first_name") + " " + requestRow.get("last_name"));
+      MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
+      return response;
+    }
+    return new MigrationTransformationResponse(null, false);
+  }
+}

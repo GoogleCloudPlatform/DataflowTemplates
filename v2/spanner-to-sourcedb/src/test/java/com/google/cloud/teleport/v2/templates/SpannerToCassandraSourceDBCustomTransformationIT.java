@@ -25,12 +25,11 @@ import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -53,13 +52,13 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToCassandraSourceDBCustomTransformationIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToCassandraSourceIT/spanner-schema.sql";
+      "SpannerToCassandraSourceIT/spanner-transformation-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToCassandraSourceIT/cassandra-schema.sql";
+      "SpannerToCassandraSourceIT/cassandra-transformation-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToCassandraSourceIT/cassandra-config-template.conf";
 
-  private static final String USER_TABLE = "Users";
+  private static final String CUSTOMER_TABLE = "Customers";
   private static final HashSet<SpannerToCassandraSourceDBCustomTransformationIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -69,7 +68,6 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
-  private final List<Throwable> assertionErrors = new ArrayList<>();
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -77,7 +75,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
     synchronized (SpannerToCassandraSourceDBCustomTransformationIT.class) {
       testInstances.add(this);
@@ -93,11 +91,17 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
             gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
         pubsubResourceManager = setUpPubSubResourceManager();
+        CustomTransformation customTransformation =
+            CustomTransformation.builder(
+                    "input/customShard.jar",
+                    "com.custom.CustomTransformationWithCassandraForLiveIT")
+                .build();
         subscriptionName =
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+        createAndUploadJarToGcs(gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -108,7 +112,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
                 null,
                 null,
                 null,
-                null,
+                customTransformation,
                 CASSANDRA_SOURCE_TYPE);
       }
     }
@@ -142,7 +146,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    * @throws IOException if an I/O error occurs during the test execution.
    */
   @Test
-  public void spannerToCasandraSourceDbBasic() throws InterruptedException, IOException {
+  public void testCustomTransformationForCassandra() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     writeBasicRowInSpanner();
     assertBasicRowInCassandraDB();
@@ -153,19 +157,19 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    *
    * <p>This method performs the following operations:
    *
-   * <ul>
-   *   <li>Inserts or updates a row in the "users" table with an ID of 1.
-   *   <li>Inserts or updates a row in the "users2" table with an ID of 2.
-   *   <li>Executes a transactionally buffered insert/update operation in the "users" table with an
-   *       ID of 3, using a transaction tag for tracking.
-   * </ul>
-   *
-   * The transaction uses a Spanner client with a specific transaction tag
+   * <p>The transaction uses a Spanner client with a specific transaction tag
    * ("txBy=forwardMigration").
    */
   private void writeBasicRowInSpanner() {
     Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder(USER_TABLE).set("id").to(1).set("from").to("B").build();
+        Mutation.newInsertOrUpdateBuilder(CUSTOMER_TABLE)
+            .set("id")
+            .to(1)
+            .set("first_name")
+            .to("Jone")
+            .set("last_name")
+            .to("Woe")
+            .build();
     spannerResourceManager.write(m1);
   }
 
@@ -191,31 +195,28 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount(USER_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> getRowCount(CUSTOMER_TABLE) == 1);
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
     try {
-      LOG.info("Reading from Cassandra table: {}", USER_TABLE);
-      rows = cassandraResourceManager.readTable(USER_TABLE);
+      LOG.info("Reading from Cassandra table: {}", CUSTOMER_TABLE);
+      rows = cassandraResourceManager.readTable(CUSTOMER_TABLE);
       LOG.info("Cassandra Rows: {}", rows.toString());
     } catch (Exception e) {
-      throw new RuntimeException("Failed to read from Cassandra table: " + USER_TABLE, e);
+      throw new RuntimeException("Failed to read from Cassandra table: " + CUSTOMER_TABLE, e);
     }
 
-    assertThat(rows).hasSize(2);
+    assertThat(rows).hasSize(1);
 
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert: {}", row.getFormattedContents());
       int id = row.getInt("id");
-      if (id == 1) {
-        assertThat(row.getString("full_name")).isEqualTo("A");
-        assertThat(row.getString("from")).isEqualTo("B");
-      } else if (id == 2) {
-        assertThat(row.getString("full_name")).isEqualTo("BB");
-      } else {
-        throw new AssertionError("Unexpected row ID found: " + id);
-      }
+      assertThat(row.getString("full_name")).isEqualTo("Jone Woe");
+      assertThat(row.getString("first_name")).isEqualTo("Jone");
+      assertThat(row.getString("last_name")).isEqualTo("Woe");
+      assertThat(row.getInt("id")).isEqualTo(1);
     }
   }
 

@@ -182,6 +182,50 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     assertDeleteRowInCassandraDB();
   }
 
+  /**
+   * Tests the data flow from Spanner to Cassandra.
+   *
+   * <p>This test ensures that a basic row is successfully deleted from Spanner and subsequently
+   * deleted in Cassandra and then insert data where only primary key is inserted only, validating
+   * end-to-end data consistency.
+   *
+   * @throws InterruptedException if the thread is interrupted during execution.
+   * @throws IOException if an I/O error occurs during the test execution.
+   */
+  @Test
+  public void spannerToCasandraSourceDbNullOperation() throws InterruptedException, IOException {
+    assertThatPipeline(jobInfo).isRunning();
+    writeDeleteAndInsertNullInSpanner();
+    assertDeleteAndInsertNullInSpanner();
+  }
+
+  /** De basic rows to multiple tables in Google Cloud Spanner. */
+  private void writeDeleteAndInsertNullInSpanner() {
+    KeySet allRows = KeySet.all();
+    Mutation deleteAllMutation = Mutation.delete(USER_TABLE_2, allRows);
+    spannerResourceManager.write(deleteAllMutation);
+
+    Mutation insertOrUpdateNullMutation =
+        Mutation.newInsertOrUpdateBuilder(USER_TABLE_2).set("id").to(6).build();
+    spannerResourceManager.write(insertOrUpdateNullMutation);
+  }
+
+  /**
+   * Asserts that insert the Cassandra database.
+   *
+   * @throws InterruptedException if the thread is interrupted while waiting for the row count
+   *     condition.
+   * @throws RuntimeException if reading from the Cassandra table fails.
+   */
+  private void assertDeleteAndInsertNullInSpanner() throws InterruptedException {
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(20)),
+                () -> getRowCount(USER_TABLE_2) == 1);
+    assertThatResult(result).meetsConditions();
+  }
+
   /** De basic rows to multiple tables in Google Cloud Spanner. */
   private void writeDeleteInSpanner() {
 
@@ -210,7 +254,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount(USER_TABLE) == 0);
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> getRowCount(USER_TABLE_2) == 0);
     assertThatResult(result).meetsConditions();
   }
 
