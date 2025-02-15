@@ -158,4 +158,9 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
           : this.getParsedLSN(1).compareTo(other.getParsedLSN(1));
     }
   }
+
+  @Override
+  public String toString() {
+    return "PostgresChangeEventSequence{" + "timestamp=" + timestamp + ", lsn=" + lsn + '}';
+  }
 }

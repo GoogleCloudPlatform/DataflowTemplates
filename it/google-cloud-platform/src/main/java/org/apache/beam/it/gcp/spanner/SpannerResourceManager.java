@@ -309,9 +309,7 @@ public final class SpannerResourceManager implements ResourceManager {
    */
   public synchronized void executeDdlStatements(List<String> statements)
       throws IllegalStateException {
-    checkIsUsable();
-    maybeCreateInstance();
-    maybeCreateDatabase();
+    ensureUsableAndCreateResources();
 
     LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
     try {
@@ -327,6 +325,12 @@ public final class SpannerResourceManager implements ResourceManager {
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
+  }
+
+  public synchronized void ensureUsableAndCreateResources() {
+    checkIsUsable();
+    maybeCreateInstance();
+    maybeCreateDatabase();
   }
 
   /**

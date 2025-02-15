@@ -59,6 +59,17 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         .build();
   }
 
+  public SpannerResourceManager setUpShadowSpannerResourceManager() {
+    // Create a separate spanner resource manager with different db name for shadow tables.
+    SpannerResourceManager sp =
+        SpannerResourceManager.builder("shadow_" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
+    // Set up the Spanner instance and database with the empty DDL for the resource manager.
+    sp.ensureUsableAndCreateResources();
+    return sp;
+  }
+
   /**
    * Helper function for creating Spanner DDL. Reads the sql file from resources directory and
    * applies the DDL to Spanner instance.
