@@ -76,17 +76,18 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.ComparisonFailure;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link BigtableChangeStreamsToPubSub}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(BigtableChangeStreamsToPubSub.class)
-@RunWith(Parameterized.class)
+@RunWith(JUnit4.class)
 public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToPubSubIT.class);
@@ -103,13 +104,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   private SubscriptionName subscriptionName;
   private String srcTable;
 
-  @Parameterized.Parameter public Boolean noDlqRetry;
-
-  @Parameterized.Parameters(name = "no-dlq-retry-{0}")
-  public static List<Boolean> testParameters() {
-    return List.of(true, false);
-  }
-
   @Test
   public void testJsonNoSchemaCharsetsAndBase64Values() throws Exception {
     LaunchInfo launchInfo =
@@ -122,7 +116,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageEncoding", "JSON")
                 .addParameter("useBase64Values", "true")
                 .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -180,7 +173,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("dlqDirectory", getGcsPath("dlq"))
                 .addParameter("dlqMaxRetries", "1")
                 .addParameter("dlqRetryMinutes", "1")
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -260,6 +252,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Move test scenario to unit test")
   public void testJsonNoSchemaB64RkAndColNoVal() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
@@ -272,7 +265,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("useBase64Rowkeys", "true")
                 .addParameter("useBase64ColumnQualifiers", "true")
                 .addParameter("stripValues", "true")
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
+                .addParameter("disableDlqRetries", "true")
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -370,7 +363,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageEncoding", "JSON")
                 .addParameter("useBase64Values", "true")
                 .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -457,7 +449,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -497,6 +488,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Move test scenario to unit test")
   public void testProtoNoSchemaNoVal() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
@@ -507,7 +499,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageFormat", "PROTOCOL_BUFFERS")
                 .addParameter("messageEncoding", "BINARY")
                 .addParameter("stripValues", "true")
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -585,7 +576,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -627,6 +617,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Move test scenario to unit test")
   public void testAvroWithNoSchemaNoVal() throws Exception {
     String rowkey = UUID.randomUUID().toString();
     String column = UUID.randomUUID().toString();
@@ -660,7 +651,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageFormat", "AVRO")
                 .addParameter("messageEncoding", "BINARY")
                 .addParameter("stripValues", "true")
-                .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry))
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();

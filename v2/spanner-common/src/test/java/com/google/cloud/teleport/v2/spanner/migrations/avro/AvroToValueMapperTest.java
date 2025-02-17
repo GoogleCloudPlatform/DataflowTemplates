@@ -169,6 +169,60 @@ public class AvroToValueMapperTest {
   }
 
   @Test
+  public void testAvroFieldToFloat_ValidFloat32Input() {
+    Float inputValue = 5.75f;
+    Float result =
+        AvroToValueMapper.avroFieldToFloat32(inputValue, SchemaBuilder.builder().doubleType());
+    assertEquals(inputValue, result);
+
+    /* Test a valid double to float mapping */
+    result =
+        AvroToValueMapper.avroFieldToFloat32((Double) 3.14, SchemaBuilder.builder().floatType());
+    assertEquals("Test float input", (Float) 3.14f, result);
+
+    result = AvroToValueMapper.avroFieldToFloat32("456.346", SchemaBuilder.builder().doubleType());
+    assertEquals("Test string input", (Float) 456.346f, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(Float.MAX_VALUE, SchemaBuilder.builder().doubleType());
+    assertEquals("Test max Float", (Float) Float.MAX_VALUE, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(Float.MIN_VALUE, SchemaBuilder.builder().doubleType());
+    assertEquals("Test min Float", (Float) Float.MIN_VALUE, result);
+
+    result = AvroToValueMapper.avroFieldToFloat32(Float.NaN, SchemaBuilder.builder().doubleType());
+    assertEquals("Test nan Float", (Float) Float.NaN, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(
+            Float.POSITIVE_INFINITY, SchemaBuilder.builder().doubleType());
+    assertEquals("Test positive infinity Float", (Float) Float.POSITIVE_INFINITY, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(
+            Float.NEGATIVE_INFINITY, SchemaBuilder.builder().doubleType());
+    assertEquals("Test negetive infinity Float", (Float) Float.NEGATIVE_INFINITY, result);
+
+    result = AvroToValueMapper.avroFieldToFloat32(10, SchemaBuilder.builder().intType());
+    assertEquals("Test int input", Float.valueOf(10), result);
+  }
+
+  @Test
+  public void testAvroFieldToFloat32_NullInput() {
+    Object inputValue = null;
+    Float result =
+        AvroToValueMapper.avroFieldToFloat32(inputValue, SchemaBuilder.builder().floatType());
+    assertNull(result);
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToFloat32_UnsupportedType() {
+    Boolean inputValue = true;
+    AvroToValueMapper.avroFieldToFloat32(inputValue, SchemaBuilder.builder().booleanType());
+  }
+
+  @Test
   public void testAvroFieldToString_valid() {
     String result =
         AvroToValueMapper.avroFieldToString("Hello", SchemaBuilder.builder().stringType());
