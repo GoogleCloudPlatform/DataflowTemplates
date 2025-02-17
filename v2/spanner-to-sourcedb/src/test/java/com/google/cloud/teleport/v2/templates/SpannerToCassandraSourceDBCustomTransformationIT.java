@@ -50,17 +50,17 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToCassandraSourceDBCustomTransformationIT.class);
+          LoggerFactory.getLogger(SpannerToCassandraSourceDBCustomTransformationIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToCassandraSourceIT/spanner-transformation-schema.sql";
+          "SpannerToCassandraSourceIT/spanner-transformation-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToCassandraSourceIT/cassandra-transformation-schema.sql";
+          "SpannerToCassandraSourceIT/cassandra-transformation-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
-      "SpannerToCassandraSourceIT/cassandra-config-template.conf";
+          "SpannerToCassandraSourceIT/cassandra-config-template.conf";
 
   private static final String CUSTOMER_TABLE = "Customers";
   private static final HashSet<SpannerToCassandraSourceDBCustomTransformationIT> testInstances =
-      new HashSet<>();
+          new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -85,35 +85,35 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
 
         cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
         gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+                GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+                        .build();
         createAndUploadCassandraConfigToGcs(
-            gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
+                gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
         pubsubResourceManager = setUpPubSubResourceManager();
         CustomTransformation customTransformation =
-            CustomTransformation.builder(
-                    "input/customShard.jar",
-                    "com.custom.CustomTransformationWithCassandraForLiveIT")
-                .build();
+                CustomTransformation.builder(
+                                "input/customShard.jar",
+                                "com.custom.CustomTransformationWithCassandraForLiveIT")
+                        .build();
         subscriptionName =
-            createPubsubResources(
-                getClass().getSimpleName(),
-                pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                createPubsubResources(
+                        getClass().getSimpleName(),
+                        pubsubResourceManager,
+                        getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
         createAndUploadJarToGcs(gcsResourceManager);
         jobInfo =
-            launchDataflowJob(
-                gcsResourceManager,
-                spannerResourceManager,
-                spannerMetadataResourceManager,
-                subscriptionName.toString(),
-                null,
-                null,
-                null,
-                null,
-                customTransformation,
-                CASSANDRA_SOURCE_TYPE);
+                launchDataflowJob(
+                        gcsResourceManager,
+                        spannerResourceManager,
+                        spannerMetadataResourceManager,
+                        subscriptionName.toString(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        customTransformation,
+                        CASSANDRA_SOURCE_TYPE);
       }
     }
   }
@@ -129,11 +129,11 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        cassandraResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
+            spannerResourceManager,
+            cassandraResourceManager,
+            spannerMetadataResourceManager,
+            gcsResourceManager,
+            pubsubResourceManager);
   }
 
   /**
@@ -162,14 +162,14 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    */
   private void writeBasicRowInSpanner() {
     Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder(CUSTOMER_TABLE)
-            .set("id")
-            .to(1)
-            .set("first_name")
-            .to("Jone")
-            .set("last_name")
-            .to("Woe")
-            .build();
+            Mutation.newInsertOrUpdateBuilder(CUSTOMER_TABLE)
+                    .set("id")
+                    .to(1)
+                    .set("first_name")
+                    .to("Jone")
+                    .set("last_name")
+                    .to("Woe")
+                    .build();
     spannerResourceManager.write(m1);
   }
 
@@ -193,10 +193,17 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    */
   private void assertBasicRowInCassandraDB() throws InterruptedException {
     PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> getRowCount(CUSTOMER_TABLE) == 1);
+            pipelineOperator()
+                    .waitForCondition(
+                            createConfig(jobInfo, Duration.ofMinutes(10)),
+                            () -> getRowCount(CUSTOMER_TABLE) == 1);
+
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
@@ -208,11 +215,16 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
       throw new RuntimeException("Failed to read from Cassandra table: " + CUSTOMER_TABLE, e);
     }
 
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+
     assertThat(rows).hasSize(1);
 
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert: {}", row.getFormattedContents());
-      int id = row.getInt("id");
       assertThat(row.getString("full_name")).isEqualTo("Jone Woe");
       assertThat(row.getString("first_name")).isEqualTo("Jone");
       assertThat(row.getString("last_name")).isEqualTo("Woe");
