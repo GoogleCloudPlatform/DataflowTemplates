@@ -542,7 +542,7 @@ public class DataStreamToSpanner {
         groupName = "Target",
         description = "Cloud Spanner Shadow Table Instance Id.",
         helpText =
-            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance.")
+            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well.")
     @Default.String("")
     String getShadowTableSpannerInstanceId();
 
@@ -554,7 +554,7 @@ public class DataStreamToSpanner {
         groupName = "Target",
         description = "Cloud Spanner Shadow Table Database Id.",
         helpText =
-            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database.")
+            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well.")
     @Default.String("")
     String getShadowTableSpannerDatabaseId();
 
@@ -894,8 +894,9 @@ public class DataStreamToSpanner {
       throw new IllegalArgumentException(
           "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
     }
-    // If not specified, use main instance and database values. The shadow table database stores the
-    // shadow tables and by default, is the same as he main database for backwards compatibility.
+    // If not specified, use main instance and main database values. The shadow table database
+    // stores the shadow tables and by default, is the same as the main database for backward
+    // compatibility.
     if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
         && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
       shadowTableSpannerInstanceId = options.getInstanceId();
