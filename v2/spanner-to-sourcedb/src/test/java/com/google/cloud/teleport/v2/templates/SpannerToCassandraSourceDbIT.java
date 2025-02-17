@@ -201,13 +201,120 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
 
   /** De basic rows to multiple tables in Google Cloud Spanner. */
   private void writeDeleteAndInsertNullInSpanner() {
+    // Delete all rows from the table
     KeySet allRows = KeySet.all();
     Mutation deleteAllMutation = Mutation.delete(USER_TABLE_2, allRows);
     spannerResourceManager.write(deleteAllMutation);
 
+    // Insert or update row with only 'id' column, leaving other columns as NULL
     Mutation insertOrUpdateNullMutation =
         Mutation.newInsertOrUpdateBuilder(USER_TABLE_2).set("id").to(6).build();
-    spannerResourceManager.write(insertOrUpdateNullMutation);
+
+    // Explicitly set 'full_name' to NULL
+    Mutation insertOrUpdateResetNullMutation =
+        Mutation.newInsertOrUpdateBuilder(USER_TABLE_2)
+            .set("id")
+            .to(7)
+            .set("full_name")
+            .to(Value.string(null))
+            .build();
+
+    // Write mutations to Spanner
+    spannerResourceManager.write(
+        Arrays.asList(insertOrUpdateNullMutation, insertOrUpdateResetNullMutation));
+
+    Mutation deleteAllMutationForAllDataTypes = Mutation.delete(ALL_DATA_TYPES_TABLE, allRows);
+    spannerResourceManager.write(deleteAllMutationForAllDataTypes);
+
+    Mutation mutation =
+        Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
+            .set("varchar_column")
+            .to("SampleVarchar") // Only this column has a value
+            .set("tinyint_column")
+            .to(Value.int64(null))
+            .set("text_column")
+            .to(Value.string(null))
+            .set("date_column")
+            .to(Value.date(null))
+            .set("smallint_column")
+            .to(Value.int64(null))
+            .set("mediumint_column")
+            .to(Value.int64(null))
+            .set("int_column")
+            .to(Value.int64(null))
+            .set("bigint_column")
+            .to(Value.int64(null))
+            .set("float_column")
+            .to(Value.float64(null))
+            .set("double_column")
+            .to(Value.float64(null))
+            .set("decimal_column")
+            .to(Value.numeric(null))
+            .set("datetime_column")
+            .to(Value.timestamp(null))
+            .set("timestamp_column")
+            .to(Value.timestamp(null))
+            .set("time_column")
+            .to(Value.string(null))
+            .set("year_column")
+            .to(Value.string(null))
+            .set("char_column")
+            .to(Value.string(null))
+            .set("tinytext_column")
+            .to(Value.string(null))
+            .set("mediumtext_column")
+            .to(Value.string(null))
+            .set("longtext_column")
+            .to(Value.string(null))
+            .set("enum_column")
+            .to(Value.string(null))
+            .set("bool_column")
+            .to(Value.bool(null))
+            .set("other_bool_column")
+            .to(Value.bool(null))
+            .set("bytes_column")
+            .to(Value.bytes(null))
+            .set("list_text_column")
+            .to(Value.json(null))
+            .set("list_int_column")
+            .to(Value.json(null))
+            .set("frozen_list_bigint_column")
+            .to(Value.json(null))
+            .set("set_text_column")
+            .to(Value.json(null))
+            .set("set_date_column")
+            .to(Value.json(null))
+            .set("frozen_set_bool_column")
+            .to(Value.json(null))
+            .set("map_text_to_int_column")
+            .to(Value.json(null))
+            .set("map_date_to_text_column")
+            .to(Value.json(null))
+            .set("frozen_map_int_to_bool_column")
+            .to(Value.json(null))
+            .set("map_text_to_list_column")
+            .to(Value.json(null))
+            .set("map_text_to_set_column")
+            .to(Value.json(null))
+            .set("set_of_maps_column")
+            .to(Value.json(null))
+            .set("list_of_sets_column")
+            .to(Value.json(null))
+            .set("frozen_map_text_to_list_column")
+            .to(Value.json(null))
+            .set("frozen_map_text_to_set_column")
+            .to(Value.json(null))
+            .set("frozen_set_of_maps_column")
+            .to(Value.json(null))
+            .set("frozen_list_of_sets_column")
+            .to(Value.json(null))
+            .set("varint_column")
+            .to(Value.string(null))
+            .set("inet_column")
+            .to(Value.string(null))
+            .build();
+
+    spannerResourceManager.write(mutation);
   }
 
   /**
@@ -222,8 +329,15 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(20)),
-                () -> getRowCount(USER_TABLE_2) == 1);
+                () -> getRowCount(USER_TABLE_2) == 2);
     assertThatResult(result).meetsConditions();
+
+    PipelineOperator.Result result1 =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(20)),
+                () -> getRowCount(ALL_DATA_TYPES_TABLE) == 1);
+    assertThatResult(result1).meetsConditions();
   }
 
   /** De basic rows to multiple tables in Google Cloud Spanner. */
