@@ -50,23 +50,18 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Integration test for {@link SpannerToSourceDb} Flex template for basic run including new spanner
- * tables and column rename use-case.
- */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(E2EIT2.class)
+@TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class E2EIT2 extends SpannerToSourceDbITBase {
+public class E2EITest extends SpannerToSourceDbITBase {
+  private static final Logger LOG = LoggerFactory.getLogger(E2EITest.class);
 
-  private static final Logger LOG = LoggerFactory.getLogger(E2EIT2.class);
+  private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbIT/session.json";
+  private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
 
-  private static final String SPANNER_DDL_RESOURCE = "E2EIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "E2EIT/session.json";
-  private static final String MYSQL_SCHEMA_FILE_RESOURCE = "E2EIT/mysql-schema.sql";
-
-  private static final String TABLE = "Authors";
-  private static final HashSet<E2EIT2> testInstances = new HashSet<>();
+  private static final String TABLE = "Users";
+  private static final HashSet<E2EITest> testInstances = new HashSet<E2EITest>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -83,15 +78,15 @@ public class E2EIT2 extends SpannerToSourceDbITBase {
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (E2EIT2.class) {
+    synchronized (E2EITest.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(E2EIT2.SPANNER_DDL_RESOURCE);
+        spannerResourceManager = createSpannerDatabase(E2EITest.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-        createMySQLSchema(jdbcResourceManager, E2EIT2.MYSQL_SCHEMA_FILE_RESOURCE);
+        createMySQLSchema(jdbcResourceManager, E2EITest.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -128,7 +123,7 @@ public class E2EIT2 extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (E2EIT2 instance : testInstances) {
+    for (E2EITest instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -142,10 +137,6 @@ public class E2EIT2 extends SpannerToSourceDbITBase {
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
-    System.out.println("######1");
-    System.out.println(spannerResourceManager.getDatabaseId());
-    System.out.println(spannerResourceManager.getInstanceId());
-    System.out.println(jobInfo.jobId());
     // Write row in Spanner
     writeRowInSpanner();
     // Assert events on Mysql
@@ -155,11 +146,18 @@ public class E2EIT2 extends SpannerToSourceDbITBase {
   private void writeRowInSpanner() {
     // Write a single record to Spanner
     Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder("Authors").set("id").to(1).set("name").to("FF").build();
+        Mutation.newInsertOrUpdateBuilder("Users")
+            .set("id")
+            .to(1)
+            .set("full_name")
+            .to("FF")
+            .set("from")
+            .to("AA")
+            .build();
     spannerResourceManager.write(m1);
 
     Mutation m2 =
-        Mutation.newInsertOrUpdateBuilder(TABLE).set("id").to(2).set("name").to("B").build();
+        Mutation.newInsertOrUpdateBuilder("Users2").set("id").to(2).set("name").to("B").build();
     spannerResourceManager.write(m2);
 
     // Write a single record to Spanner for the given logical shard
@@ -179,10 +177,10 @@ public class E2EIT2 extends SpannerToSourceDbITBase {
             (TransactionCallable<Void>)
                 transaction -> {
                   Mutation m3 =
-                      Mutation.newInsertOrUpdateBuilder("Authors")
+                      Mutation.newInsertOrUpdateBuilder("Users")
                           .set("id")
-                          .to(3)
-                          .set("name")
+                          .to(2)
+                          .set("full_name")
                           .to("GG")
                           .build();
                   transaction.buffer(m3);
@@ -195,12 +193,12 @@ public class E2EIT2 extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 3); // only one row is inserted
+                () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
-    System.out.println(rows);
-    assertThat(rows).hasSize(3);
-    assertThat(rows.get(0).get("id")).isEqualTo(3);
+    assertThat(rows).hasSize(1);
+    assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
+    assertThat(rows.get(0).get("from")).isEqualTo("AA");
   }
 }

@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * tables and column rename use-case.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(E2EIT.class)
+@TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class E2EIT extends SpannerToSourceDbITBase {
 
