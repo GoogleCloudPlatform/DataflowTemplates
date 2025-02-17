@@ -197,6 +197,13 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> getRowCount(CUSTOMER_TABLE) == 1);
+
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
@@ -208,11 +215,16 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
       throw new RuntimeException("Failed to read from Cassandra table: " + CUSTOMER_TABLE, e);
     }
 
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+
     assertThat(rows).hasSize(1);
 
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert: {}", row.getFormattedContents());
-      int id = row.getInt("id");
       assertThat(row.getString("full_name")).isEqualTo("Jone Woe");
       assertThat(row.getString("first_name")).isEqualTo("Jone");
       assertThat(row.getString("last_name")).isEqualTo("Woe");
