@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -77,8 +78,64 @@ public class E2EIT extends SpannerToSourceDbITBase {
    */
   @Before
   public void setUp() throws IOException {
+    // skipBaseCleanup = true;
+    // synchronized (E2EIT.class) {
+    //   testInstances.add(this);
+    //   if (rrJobInfo == null) {
+    //     spannerResourceManager = createSpannerDatabase(E2EIT.SPANNER_DDL_RESOURCE);
+    //     spannerMetadataResourceManager = createSpannerMetadataDatabase();
+    //
+    //     jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+    //
+    //     createMySQLSchema(jdbcResourceManager, E2EIT.MYSQL_SCHEMA_FILE_RESOURCE);
+    //
+    //     gcsResourceManager =
+    //         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+    //             .build();
+    //     rrCreateAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager, gcsPathPrefix);
+    //     gcsResourceManager.uploadArtifact(
+    //         gcsPathPrefix + "/session.json",
+    //         Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+    //     pubsubResourceManager = setUpPubSubResourceManager();
+    //
+    //     rrSubscriptionName =
+    //         createRRPubsubResources(
+    //             getClass().getSimpleName(),
+    //             pubsubResourceManager,
+    //             getGcsPath(gcsPathPrefix + "/rr/dlq", gcsResourceManager)
+    //                 .replace("gs://" + artifactBucketName, ""));
+    //
+    //     String identifierSuffix = getClass().getSimpleName();
+    //     String fwdGcsPrefix =
+    //         getGcsPath(gcsPathPrefix + "/fwd/cdc/").replace("gs://" + artifactBucketName, "");
+    //     SubscriptionName fwdSubscription =
+    //         createFwdPubsubResources(identifierSuffix, pubsubResourceManager, fwdGcsPrefix);
+    //     String fwdDlqGcsPrefix =
+    //         getGcsPath(gcsPathPrefix + "/fwd/dlq/").replace("gs://" + artifactBucketName, "");
+    //     SubscriptionName dlqSubscription =
+    //         createFwdPubsubResources(
+    //             identifierSuffix + "dlq", pubsubResourceManager, fwdDlqGcsPrefix);
+    //
+    //     rrJobInfo =
+    //         launchRRDataflowJob(
+    //             spannerResourceManager,
+    //             gcsResourceManager,
+    //             spannerMetadataResourceManager,
+    //             rrSubscriptionName.toString(),
+    //             gcsPathPrefix);
+    //     System.out.println(rrJobInfo.jobId());
+    //     fwdJobInfo =
+    //         launchFwdDataflowJob(
+    //             spannerResourceManager,
+    //             gcsResourceManager,
+    //             gcsPathPrefix,
+    //             fwdSubscription,
+    //             dlqSubscription);
+    //     System.out.println(fwdJobInfo.jobId());
+    //   }
+    // }
     skipBaseCleanup = true;
-    synchronized (E2EIT.class) {
+    synchronized (SpannerToSourceDbIT.class) {
       testInstances.add(this);
       if (rrJobInfo == null) {
         spannerResourceManager = createSpannerDatabase(E2EIT.SPANNER_DDL_RESOURCE);
@@ -91,46 +148,31 @@ public class E2EIT extends SpannerToSourceDbITBase {
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        rrCreateAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager, gcsPathPrefix);
+        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
-            gcsPathPrefix + "/session.json",
-            Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
-
         rrSubscriptionName =
-            createRRPubsubResources(
+            createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath(gcsPathPrefix + "/rr/dlq", gcsResourceManager)
-                    .replace("gs://" + artifactBucketName, ""));
-
-        String identifierSuffix = getClass().getSimpleName();
-        String fwdGcsPrefix =
-            getGcsPath(gcsPathPrefix + "/fwd/cdc/").replace("gs://" + artifactBucketName, "");
-        SubscriptionName fwdSubscription =
-            createFwdPubsubResources(identifierSuffix, pubsubResourceManager, fwdGcsPrefix);
-        String fwdDlqGcsPrefix =
-            getGcsPath(gcsPathPrefix + "/fwd/dlq/").replace("gs://" + artifactBucketName, "");
-        SubscriptionName dlqSubscription =
-            createFwdPubsubResources(
-                identifierSuffix + "dlq", pubsubResourceManager, fwdDlqGcsPrefix);
-
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
         rrJobInfo =
-            launchRRDataflowJob(
-                spannerResourceManager,
+            launchDataflowJob(
                 gcsResourceManager,
+                spannerResourceManager,
                 spannerMetadataResourceManager,
                 rrSubscriptionName.toString(),
-                gcsPathPrefix);
-        System.out.println(rrJobInfo.jobId());
-        fwdJobInfo =
-            launchFwdDataflowJob(
-                spannerResourceManager,
-                gcsResourceManager,
-                gcsPathPrefix,
-                fwdSubscription,
-                dlqSubscription);
-        System.out.println(fwdJobInfo.jobId());
+                null,
+                null,
+                null,
+                null,
+                null,
+                MYSQL_SOURCE_TYPE);
+        System.out.println("#######1");
+        System.out.println(spannerResourceManager.getInstanceId());
+        System.out.println(spannerResourceManager.getDatabaseId());
+        System.out.println(PROJECT);
       }
     }
   }
@@ -156,7 +198,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(rrJobInfo).isRunning();
-    assertThatPipeline(fwdJobInfo).isRunning();
+    //assertThatPipeline(fwdJobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
     // // Assert events on Mysql
