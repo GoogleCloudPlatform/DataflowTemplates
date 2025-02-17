@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.utils;
+package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
@@ -25,8 +25,6 @@ import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
@@ -57,18 +55,18 @@ import org.slf4j.LoggerFactory;
  * tables and column rename use-case.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(E2EIT_2.class)
+@TemplateIntegrationTest(E2EIT2.class)
 @RunWith(JUnit4.class)
-public class E2EIT_2 extends SpannerToSourceDbITBase {
+public class E2EIT2 extends SpannerToSourceDbITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(E2EIT_2.class);
+  private static final Logger LOG = LoggerFactory.getLogger(E2EIT2.class);
 
   private static final String SPANNER_DDL_RESOURCE = "E2EIT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "E2EIT/session.json";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE = "E2EIT/mysql-schema.sql";
 
   private static final String TABLE = "Authors";
-  private static final HashSet<E2EIT_2> testInstances = new HashSet<>();
+  private static final HashSet<E2EIT2> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -85,15 +83,15 @@ public class E2EIT_2 extends SpannerToSourceDbITBase {
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (E2EIT_2.class) {
+    synchronized (E2EIT2.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(E2EIT_2.SPANNER_DDL_RESOURCE);
+        spannerResourceManager = createSpannerDatabase(E2EIT2.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-        createMySQLSchema(jdbcResourceManager, E2EIT_2.MYSQL_SCHEMA_FILE_RESOURCE);
+        createMySQLSchema(jdbcResourceManager, E2EIT2.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -130,7 +128,7 @@ public class E2EIT_2 extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (E2EIT_2 instance : testInstances) {
+    for (E2EIT2 instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
