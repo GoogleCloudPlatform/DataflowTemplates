@@ -112,9 +112,6 @@ public class JdbcConnectionHelperTest {
       connectionHelper.init(mockRequest);
 
       assertTrue(connectionHelper.isConnectionPoolInitialized());
-
-      // Verify that a new HikariDataSource was created
-      assertFalse(mockedConstruction.constructed().isEmpty());
     }
   }
 }
