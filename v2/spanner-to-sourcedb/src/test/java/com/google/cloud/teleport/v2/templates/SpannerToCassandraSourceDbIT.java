@@ -193,7 +193,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    * @throws IOException if an I/O error occurs during the test execution.
    */
   @Test
-  public void spannerToCasandraSourceDbNullOperation() throws InterruptedException, IOException {
+  public void spannerToCasandraSourceDbNullOperation()
+      throws InterruptedException, IOException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     writeDeleteAndInsertNullInSpanner();
     assertDeleteAndInsertNullInSpanner();
@@ -324,7 +325,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    *     condition.
    * @throws RuntimeException if reading from the Cassandra table fails.
    */
-  private void assertDeleteAndInsertNullInSpanner() throws InterruptedException {
+  private void assertDeleteAndInsertNullInSpanner()
+      throws InterruptedException, MultipleFailureException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -338,6 +340,60 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 createConfig(jobInfo, Duration.ofMinutes(20)),
                 () -> getRowCount(ALL_DATA_TYPES_TABLE) == 1);
     assertThatResult(result1).meetsConditions();
+    Iterable<Row> rows;
+    try {
+      rows = cassandraResourceManager.readTable(ALL_DATA_TYPES_TABLE);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to read from Cassandra table: " + ALL_DATA_TYPES_TABLE, e);
+    }
+
+    assertThat(rows).hasSize(1);
+
+    Row row = rows.iterator().next();
+
+    assertAll(
+        () -> assertThat(row.getString("varchar_column")).isEqualTo("SampleVarchar"),
+        () -> assertThat(row.isNull("tinyint_column")).isTrue(),
+        () -> assertThat(row.isNull("text_column")).isTrue(),
+        () -> assertThat(row.isNull("date_column")).isTrue(),
+        () -> assertThat(row.isNull("smallint_column")).isTrue(),
+        () -> assertThat(row.isNull("mediumint_column")).isTrue(),
+        () -> assertThat(row.isNull("int_column")).isTrue(),
+        () -> assertThat(row.isNull("bigint_column")).isTrue(),
+        () -> assertThat(row.isNull("float_column")).isTrue(),
+        () -> assertThat(row.isNull("double_column")).isTrue(),
+        () -> assertThat(row.isNull("decimal_column")).isTrue(),
+        () -> assertThat(row.isNull("datetime_column")).isTrue(),
+        () -> assertThat(row.isNull("timestamp_column")).isTrue(),
+        () -> assertThat(row.isNull("time_column")).isTrue(),
+        () -> assertThat(row.isNull("year_column")).isTrue(),
+        () -> assertThat(row.isNull("char_column")).isTrue(),
+        () -> assertThat(row.isNull("tinytext_column")).isTrue(),
+        () -> assertThat(row.isNull("mediumtext_column")).isTrue(),
+        () -> assertThat(row.isNull("longtext_column")).isTrue(),
+        () -> assertThat(row.isNull("enum_column")).isTrue(),
+        () -> assertThat(row.isNull("bool_column")).isTrue(),
+        () -> assertThat(row.isNull("other_bool_column")).isTrue(),
+        () -> assertThat(row.isNull("bytes_column")).isTrue(),
+        () -> assertThat(row.isNull("list_text_column")).isTrue(),
+        () -> assertThat(row.isNull("list_int_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_list_bigint_column")).isTrue(),
+        () -> assertThat(row.isNull("set_text_column")).isTrue(),
+        () -> assertThat(row.isNull("set_date_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_set_bool_column")).isTrue(),
+        () -> assertThat(row.isNull("map_text_to_int_column")).isTrue(),
+        () -> assertThat(row.isNull("map_date_to_text_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_map_int_to_bool_column")).isTrue(),
+        () -> assertThat(row.isNull("map_text_to_list_column")).isTrue(),
+        () -> assertThat(row.isNull("map_text_to_set_column")).isTrue(),
+        () -> assertThat(row.isNull("set_of_maps_column")).isTrue(),
+        () -> assertThat(row.isNull("list_of_sets_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_map_text_to_list_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_map_text_to_set_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_set_of_maps_column")).isTrue(),
+        () -> assertThat(row.isNull("frozen_list_of_sets_column")).isTrue(),
+        () -> assertThat(row.isNull("varint_column")).isTrue(),
+        () -> assertThat(row.isNull("inet_column")).isTrue());
   }
 
   /** De basic rows to multiple tables in Google Cloud Spanner. */
