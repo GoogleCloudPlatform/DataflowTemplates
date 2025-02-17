@@ -77,8 +77,10 @@ public class E2EITest extends SpannerToSourceDbITBase {
    */
   @Before
   public void setUp() throws IOException {
+    System.out.println("##########1");
     skipBaseCleanup = true;
     synchronized (E2EITest.class) {
+      System.out.println("##########2");
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(E2EITest.SPANNER_DDL_RESOURCE);
@@ -136,6 +138,7 @@ public class E2EITest extends SpannerToSourceDbITBase {
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
+    System.out.println("##########3");
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
