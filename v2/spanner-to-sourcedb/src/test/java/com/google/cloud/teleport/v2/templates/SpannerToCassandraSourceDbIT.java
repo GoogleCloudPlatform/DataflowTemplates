@@ -201,13 +201,27 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
 
   /** De basic rows to multiple tables in Google Cloud Spanner. */
   private void writeDeleteAndInsertNullInSpanner() {
+    // Delete all rows from the table
     KeySet allRows = KeySet.all();
     Mutation deleteAllMutation = Mutation.delete(USER_TABLE_2, allRows);
     spannerResourceManager.write(deleteAllMutation);
 
+    // Insert or update row with only 'id' column, leaving other columns as NULL
     Mutation insertOrUpdateNullMutation =
         Mutation.newInsertOrUpdateBuilder(USER_TABLE_2).set("id").to(6).build();
-    spannerResourceManager.write(insertOrUpdateNullMutation);
+
+    // Explicitly set 'full_name' to NULL
+    Mutation insertOrUpdateResetNullMutation =
+        Mutation.newInsertOrUpdateBuilder(USER_TABLE_2)
+            .set("id")
+            .to(7)
+            .set("full_name")
+            .to(Value.string(null))
+            .build();
+
+    // Write mutations to Spanner
+    spannerResourceManager.write(
+        Arrays.asList(insertOrUpdateNullMutation, insertOrUpdateResetNullMutation));
   }
 
   /**
@@ -222,7 +236,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(20)),
-                () -> getRowCount(USER_TABLE_2) == 1);
+                () -> getRowCount(USER_TABLE_2) == 2);
     assertThatResult(result).meetsConditions();
   }
 
