@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS customers;
 CREATE TABLE IF NOT EXISTS customers (
     id INT64 NOT NULL,
     full_name STRING(125),
