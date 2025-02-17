@@ -90,9 +90,11 @@ public class E2EIT extends SpannerToSourceDbITBase {
     //     createMySQLSchema(jdbcResourceManager, E2EIT.MYSQL_SCHEMA_FILE_RESOURCE);
     //
     //     gcsResourceManager =
-    //         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+    //         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(),
+    // credentials)
     //             .build();
-    //     rrCreateAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager, gcsPathPrefix);
+    //     rrCreateAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager,
+    // gcsPathPrefix);
     //     gcsResourceManager.uploadArtifact(
     //         gcsPathPrefix + "/session.json",
     //         Resources.getResource(SESSION_FILE_RESOURCE).getPath());
@@ -198,7 +200,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(rrJobInfo).isRunning();
-    //assertThatPipeline(fwdJobInfo).isRunning();
+    // assertThatPipeline(fwdJobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
     // // Assert events on Mysql
