@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates;
+package com.google.cloud.teleport.v2.templates.utils;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
@@ -25,6 +25,8 @@ import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDbITBase;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
@@ -55,18 +57,18 @@ import org.slf4j.LoggerFactory;
  * tables and column rename use-case.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(E2EIT.class)
+@TemplateIntegrationTest(E2EIT_2.class)
 @RunWith(JUnit4.class)
-public class E2EIT extends SpannerToSourceDbITBase {
+public class E2EIT_2 extends SpannerToSourceDbITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(E2EIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(E2EIT_2.class);
 
-  private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbIT/session.json";
-  private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "E2EIT/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE = "E2EIT/session.json";
+  private static final String MYSQL_SCHEMA_FILE_RESOURCE = "E2EIT/mysql-schema.sql";
 
-  private static final String TABLE = "Users";
-  private static final HashSet<E2EIT> testInstances = new HashSet<>();
+  private static final String TABLE = "Authors";
+  private static final HashSet<E2EIT_2> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
@@ -83,15 +85,15 @@ public class E2EIT extends SpannerToSourceDbITBase {
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (E2EIT.class) {
+    synchronized (E2EIT_2.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(E2EIT.SPANNER_DDL_RESOURCE);
+        spannerResourceManager = createSpannerDatabase(E2EIT_2.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-        createMySQLSchema(jdbcResourceManager, E2EIT.MYSQL_SCHEMA_FILE_RESOURCE);
+        createMySQLSchema(jdbcResourceManager, E2EIT_2.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -128,7 +130,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (E2EIT instance : testInstances) {
+    for (E2EIT_2 instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -142,7 +144,7 @@ public class E2EIT extends SpannerToSourceDbITBase {
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
-    System.out.println("######2");
+    System.out.println("######1");
     System.out.println(spannerResourceManager.getDatabaseId());
     System.out.println(spannerResourceManager.getInstanceId());
     System.out.println(jobInfo.jobId());
@@ -155,18 +157,11 @@ public class E2EIT extends SpannerToSourceDbITBase {
   private void writeRowInSpanner() {
     // Write a single record to Spanner
     Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder("Users")
-            .set("id")
-            .to(1)
-            .set("full_name")
-            .to("FF")
-            .set("from")
-            .to("AA")
-            .build();
+        Mutation.newInsertOrUpdateBuilder("Authors").set("id").to(1).set("name").to("FF").build();
     spannerResourceManager.write(m1);
 
     Mutation m2 =
-        Mutation.newInsertOrUpdateBuilder("Users2").set("id").to(2).set("name").to("B").build();
+        Mutation.newInsertOrUpdateBuilder(TABLE).set("id").to(2).set("name").to("B").build();
     spannerResourceManager.write(m2);
 
     // Write a single record to Spanner for the given logical shard
@@ -186,10 +181,10 @@ public class E2EIT extends SpannerToSourceDbITBase {
             (TransactionCallable<Void>)
                 transaction -> {
                   Mutation m3 =
-                      Mutation.newInsertOrUpdateBuilder("Users")
+                      Mutation.newInsertOrUpdateBuilder("Authors")
                           .set("id")
-                          .to(2)
-                          .set("full_name")
+                          .to(3)
+                          .set("name")
                           .to("GG")
                           .build();
                   transaction.buffer(m3);
@@ -202,12 +197,12 @@ public class E2EIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
+                () -> jdbcResourceManager.getRowCount(TABLE) == 3); // only one row is inserted
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
-    assertThat(rows).hasSize(1);
-    assertThat(rows.get(0).get("id")).isEqualTo(1);
+    System.out.println(rows);
+    assertThat(rows).hasSize(3);
+    assertThat(rows.get(0).get("id")).isEqualTo(3);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
-    assertThat(rows.get(0).get("from")).isEqualTo("AA");
   }
 }
