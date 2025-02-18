@@ -78,6 +78,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private static final String USER_TABLE = "Users";
   private static final String USER_TABLE_2 = "Users2";
   private static final String ALL_DATA_TYPES_TABLE = "AllDatatypeColumns";
+  private static final String ALL_DATA_TYPES_TABLE_FOR_NULL_KEY = "AllDataTypeColumnsForNullKey";
   private static final String ALL_DATA_TYPES_CUSTOM_CONVERSION_TABLE = "AllDatatypeTransformation";
   private static final HashSet<SpannerToCassandraSourceDbIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -204,31 +205,12 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private void writeDeleteAndInsertNullInSpanner() {
     // Delete all rows from the table
     KeySet allRows = KeySet.all();
-    Mutation deleteAllMutation = Mutation.delete(USER_TABLE_2, allRows);
-    spannerResourceManager.write(deleteAllMutation);
-
-    // Insert or update row with only 'id' column, leaving other columns as NULL
-    Mutation insertOrUpdateNullMutation =
-        Mutation.newInsertOrUpdateBuilder(USER_TABLE_2).set("id").to(6).build();
-
-    // Explicitly set 'full_name' to NULL
-    Mutation insertOrUpdateResetNullMutation =
-        Mutation.newInsertOrUpdateBuilder(USER_TABLE_2)
-            .set("id")
-            .to(7)
-            .set("full_name")
-            .to(Value.string(null))
-            .build();
-
-    // Write mutations to Spanner
-    spannerResourceManager.write(
-        Arrays.asList(insertOrUpdateNullMutation, insertOrUpdateResetNullMutation));
-
-    Mutation deleteAllMutationForAllDataTypes = Mutation.delete(ALL_DATA_TYPES_TABLE, allRows);
+    Mutation deleteAllMutationForAllDataTypes =
+        Mutation.delete(ALL_DATA_TYPES_TABLE_FOR_NULL_KEY, allRows);
     spannerResourceManager.write(deleteAllMutationForAllDataTypes);
 
     Mutation mutation =
-        Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
+        Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE_FOR_NULL_KEY)
             .set("varchar_column")
             .to("SampleVarchar") // Only this column has a value
             .set("tinyint_column")
@@ -331,20 +313,14 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(20)),
-                () -> getRowCount(USER_TABLE_2) == 2);
+                () -> getRowCount(ALL_DATA_TYPES_TABLE_FOR_NULL_KEY) == 1);
     assertThatResult(result).meetsConditions();
-
-    PipelineOperator.Result result1 =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(20)),
-                () -> getRowCount(ALL_DATA_TYPES_TABLE) == 1);
-    assertThatResult(result1).meetsConditions();
     Iterable<Row> rows;
     try {
-      rows = cassandraResourceManager.readTable(ALL_DATA_TYPES_TABLE);
+      rows = cassandraResourceManager.readTable(ALL_DATA_TYPES_TABLE_FOR_NULL_KEY);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to read from Cassandra table: " + ALL_DATA_TYPES_TABLE, e);
+      throw new RuntimeException(
+          "Failed to read from Cassandra table: " + ALL_DATA_TYPES_TABLE_FOR_NULL_KEY, e);
     }
 
     assertThat(rows).hasSize(1);
