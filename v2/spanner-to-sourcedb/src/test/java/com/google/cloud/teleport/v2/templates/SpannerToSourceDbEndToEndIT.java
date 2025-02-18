@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -132,12 +133,12 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     for (SpannerToSourceDbEndToEndIT instance : testInstances) {
       instance.tearDownBase();
     }
-    // ResourceManagerUtils.cleanResources(
-    //     spannerResourceManager,
-    //     jdbcResourceManager,
-    //     spannerMetadataResourceManager,
-    //     gcsResourceManager,
-    //     pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager,
+        jdbcResourceManager,
+        spannerMetadataResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager);
   }
 
   @Test
