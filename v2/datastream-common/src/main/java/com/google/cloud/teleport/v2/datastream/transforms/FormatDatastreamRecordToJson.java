@@ -510,16 +510,17 @@ public class FormatDatastreamRecordToJson
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
         Long microseconds = (Long) element.get(fieldName);
         if (microseconds == DATETIME_POSITIVE_INFINITY) {
-          return "infinity";
+          jsonObject.put(fieldName, "infinity");
         } else if (microseconds == DATETIME_NEGATIVE_INFINITY) {
-          return "-infinity";
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          Long nanoseconds = microseconds * TimeUnit.MICROSECONDS.toNanos(1);
+          Duration duration =
+              Duration.ofSeconds(
+                  TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                  nanoseconds % TimeUnit.SECONDS.toNanos(1));
+          jsonObject.put(fieldName, duration.toString());
         }
-        Long nanoseconds = microseconds * TimeUnit.MICROSECONDS.toNanos(1);
-        Duration duration =
-            Duration.ofSeconds(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
-        jsonObject.put(fieldName, duration.toString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
         jsonObject.put(fieldName, duration.toString());
