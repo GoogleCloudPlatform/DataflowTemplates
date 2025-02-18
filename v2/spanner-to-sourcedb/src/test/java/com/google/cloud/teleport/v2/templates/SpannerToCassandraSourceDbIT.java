@@ -644,11 +644,9 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     assertThat(rows).hasSize(2);
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
-      String varchar_column = row.getString("varchar_column");
-      if (Objects.equals(varchar_column, "SampleVarchar")) {
+      String varcharColumn = row.getString("varchar_column");
+      if (Objects.equals(varcharColumn, "SampleVarchar")) {
         assertAll(
-            // Basic Data Types
-            () -> assertThat(row.getString("varchar_column")).isEqualTo("SampleVarchar"),
             () -> assertThat(row.getLong("bigint_column")).isEqualTo(9223372036854775807L),
             () -> assertThat(row.getBoolean("bool_column")).isTrue(),
             () -> assertThat(row.getString("char_column")).isEqualTo("CHAR_DATA"),
@@ -780,9 +778,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             () ->
                 assertThat(row.getBytesUnsafe("bytes_column"))
                     .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())));
-      } else if (Objects.equals(varchar_column, "SampleVarcharForNull")) {
+      } else if (Objects.equals(varcharColumn, "SampleVarcharForNull")) {
         assertAll(
-            () -> assertThat(row.getString("varchar_column")).isEqualTo("SampleVarchar"),
             () -> assertThat(row.isNull("tinyint_column")).isTrue(),
             () -> assertThat(row.isNull("text_column")).isTrue(),
             () -> assertThat(row.isNull("date_column")).isTrue(),
@@ -825,7 +822,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             () -> assertThat(row.isNull("varint_column")).isTrue(),
             () -> assertThat(row.isNull("inet_column")).isTrue());
       } else {
-        throw new AssertionError("Unexpected row found: " + varchar_column);
+        throw new AssertionError("Unexpected row found: " + varcharColumn);
       }
     }
   }
