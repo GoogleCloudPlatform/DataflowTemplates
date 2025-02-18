@@ -360,6 +360,10 @@ public class CassandraTypeHandler {
   private static PreparedStatementValueObject<?> parseAndCastToCassandraType(
       String columnType, Object colValue) {
 
+    if (colValue == null) {
+      return null;
+    }
+
     if (columnType.startsWith("frozen<")) {
       return parseAndCastToCassandraType(extractInnerType(columnType), colValue);
     }
