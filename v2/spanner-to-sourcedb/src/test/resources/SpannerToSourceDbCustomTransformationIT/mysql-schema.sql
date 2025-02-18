@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS Users1;
+DROP TABLE IF EXISTS AllDatatypeTransformation;
+
 CREATE TABLE Users1 (
     id INT NOT NULL,
     first_name VARCHAR(25),
