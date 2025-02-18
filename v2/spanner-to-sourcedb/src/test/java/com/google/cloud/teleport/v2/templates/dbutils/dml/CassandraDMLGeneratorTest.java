@@ -145,6 +145,41 @@ public class CassandraDMLGeneratorTest {
   }
 
   @Test
+  public void tableAndAllColumnNameTypesForCustomTransformation() {
+    Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
+    String tableName = "Singers";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    String keyValueString = "{\"SingerId\":\"999\"}";
+    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    String modType = "INSERT";
+    Map<String, Object> customTransformation = new HashMap<>();
+    customTransformation.put("SingerId", "1000");
+    customTransformation.put("LastName", "kk ll");
+    CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        cassandraDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchema(schema)
+                .setCommitTimestamp(Timestamp.now())
+                .setCustomTransformationResponse(customTransformation)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    List<PreparedStatementValueObject<?>> values =
+        ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
+    assertEquals(
+        1000,
+        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
+    assertEquals(
+        "kk ll",
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
+  }
+
+  @Test
   public void tableNameMatchSourceColumnNotPresentInSpanner() {
     Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
     String tableName = "Singers";
