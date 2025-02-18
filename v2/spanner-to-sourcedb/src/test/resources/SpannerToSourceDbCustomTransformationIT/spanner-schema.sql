@@ -1,4 +1,7 @@
-CREATE TABLE IF NOT EXISTS Users1 (
+DROP TABLE IF EXISTS Users1;
+DROP TABLE IF EXISTS AllDatatypeTransformation;
+
+CREATE TABLE Users1 (
     id INT64 NOT NULL,
     name STRING(25),
 ) PRIMARY KEY(id);
