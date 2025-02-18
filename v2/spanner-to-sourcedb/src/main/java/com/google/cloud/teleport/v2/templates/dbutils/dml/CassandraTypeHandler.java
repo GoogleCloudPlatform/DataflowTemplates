@@ -361,7 +361,7 @@ public class CassandraTypeHandler {
       String columnType, Object colValue) {
 
     if (colValue == null) {
-      return null;
+      return PreparedStatementValueObject.create(columnType, NullClass.INSTANCE);
     }
 
     if (columnType.startsWith("frozen<")) {
