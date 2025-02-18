@@ -78,6 +78,8 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       return new DMLGeneratorResponse("");
     }
 
+    LOG.info("dmlGeneratorRequest :: {}", dmlGeneratorRequest);
+
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     Schema schema = dmlGeneratorRequest.getSchema();
 

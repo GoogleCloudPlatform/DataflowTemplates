@@ -178,7 +178,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
    * @throws IllegalArgumentException if there is an error reading the collection.
    */
   public synchronized Iterable<Row> readTable(String tableName) throws IllegalArgumentException {
-    LOG.info("Reading all rows from {}.{}", keyspaceName, tableName);
+    LOG.info("Reading all documents from {}.{}", keyspaceName, tableName);
 
     Iterable<Row> rows;
     try {
@@ -188,7 +188,7 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
       throw new IllegalArgumentException("Error reading table.", e);
     }
 
-    LOG.info("Successfully loaded rows from {}.{}", keyspaceName, tableName);
+    LOG.info("Successfully loaded documents from {}.{}", keyspaceName, tableName);
 
     return rows;
   }
