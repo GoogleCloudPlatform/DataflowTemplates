@@ -21,7 +21,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.charset.Charset;
 import javax.annotation.Nonnull;
-import org.threeten.bp.Instant;
+import java.time.Instant;
 
 public class TestChangeStreamMutation extends ChangeStreamMutation {
   private ByteString rowkey;
@@ -71,13 +71,8 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
-  public Instant getCommitTimestamp() {
-    return commitTimestamp;
-  }
-
-  @Override
   public java.time.Instant getCommitTime() {
-    return null;
+    return commitTimestamp;
   }
 
   @Override
@@ -92,13 +87,8 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
-  public Instant getEstimatedLowWatermark() {
-    return lowWatermark;
-  }
-
-  @Override
   public java.time.Instant getEstimatedLowWatermarkTime() {
-    return null;
+    return lowWatermark;
   }
 
   @Nonnull
