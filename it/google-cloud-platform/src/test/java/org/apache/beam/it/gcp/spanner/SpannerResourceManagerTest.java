@@ -530,10 +530,10 @@ public final class SpannerResourceManagerTest {
               return callable.run(transactionContext);
             });
 
-    ImmutableList<String> testStatements = ImmutableList.of(
-        "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
-        "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')"
-        );
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
 
     // act
     testManager.executeDMLStatements(testStatements);
@@ -543,21 +543,22 @@ public final class SpannerResourceManagerTest {
     verify(transactionContext, times(1)).batchUpdate(argument.capture());
     Iterable<Statement> capturedStatements = argument.getValue();
 
-    List<Statement> statementList = testStatements.stream().map(s -> Statement.of(s))
-        .collect(Collectors.toList());
+    List<Statement> statementList =
+        testStatements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
     assertThat(capturedStatements).containsExactlyElementsIn(statementList);
   }
 
   @Test
   public void testExecuteDMLShouldThrowExceptionWhenCalledBeforeExecuteDdlStatement() {
     // arrange
-    ImmutableList<String> testStatements = ImmutableList.of(
-        "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
-        "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')"
-    );
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
 
     // act & assert
-    assertThrows(IllegalStateException.class, () -> testManager.executeDMLStatements(testStatements));
+    assertThrows(
+        IllegalStateException.class, () -> testManager.executeDMLStatements(testStatements));
   }
 
   @Test
@@ -576,13 +577,15 @@ public final class SpannerResourceManagerTest {
                   ErrorCode.DEADLINE_EXCEEDED, "Deadline exceeded while processing the request");
             });
 
-    ImmutableList<String> testStatements = ImmutableList.of(
-        "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
-        "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')"
-    );
+    ImmutableList<String> testStatements =
+        ImmutableList.of(
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (1, 'Marc', 'Richards')",
+            "INSERT INTO Singers (SingerId, FirstName, LastName) values (2, 'Catalina', 'Smith')");
 
     // act & assert
-    assertThrows(SpannerResourceManagerException.class, () -> testManager.executeDMLStatements(testStatements));
+    assertThrows(
+        SpannerResourceManagerException.class,
+        () -> testManager.executeDMLStatements(testStatements));
   }
 
   @Test

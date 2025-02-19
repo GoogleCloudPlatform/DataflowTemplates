@@ -189,7 +189,8 @@ public class SpannerExceptionClassifierTest {
   @Test
   public void testSpannerExceptionClassification() {
     for (Entry<SpannerException, ErrorTag> entry : exceptionToExpectedTag.entrySet()) {
-      ErrorTag actual = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(entry.getKey()));
+      ErrorTag actual =
+          SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(entry.getKey()));
       assertSpannerExceptionClassification(entry.getKey(), actual, entry.getValue());
     }
   }
