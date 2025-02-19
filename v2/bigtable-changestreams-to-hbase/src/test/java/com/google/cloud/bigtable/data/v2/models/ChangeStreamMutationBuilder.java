@@ -43,7 +43,7 @@ public class ChangeStreamMutationBuilder {
                 0 // Multi-master transactions are not supported so tiebreaker set to 0.
                 )
             .setToken(TestConstants.testToken)
-            .setEstimatedLowWatermark(ts);
+            .setEstimatedLowWatermarkTime(ts);
   }
 
   public ChangeStreamMutationBuilder setCell(
