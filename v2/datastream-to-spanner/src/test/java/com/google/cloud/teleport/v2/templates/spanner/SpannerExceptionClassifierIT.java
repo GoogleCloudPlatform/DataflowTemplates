@@ -27,6 +27,7 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerExceptionParser;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag;
 import java.io.IOException;
@@ -94,7 +95,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -118,7 +119,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -142,7 +143,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -166,7 +167,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -190,7 +191,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -219,7 +220,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -239,7 +240,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -257,7 +258,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -281,7 +282,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -307,7 +308,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -333,7 +334,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -361,7 +362,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -380,7 +381,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
@@ -398,7 +399,7 @@ public class SpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = SpannerExceptionClassifier.classify(e);
+      actualTag = SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNotNull(exception);
     Assert.assertEquals(
