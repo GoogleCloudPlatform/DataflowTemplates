@@ -252,6 +252,66 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
+  public void testColumnKeyNotPresent() {
+    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
+    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
+    String columnName = "lastName";
+    byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
+    StringBuilder binaryString = new StringBuilder();
+    for (byte b : expectedBytes) {
+      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
+    }
+    String columnValue = binaryString.toString();
+    String sourceDbTimezoneOffset = null;
+
+    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
+    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put("random", columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
+
+    assertEquals("blob", result.dataType());
+    assertEquals(CassandraTypeHandler.NullClass.INSTANCE, result.value());
+  }
+
+  @Test
+  public void testGetColumnValueByTypeForStringByteArrayBase64Encode() {
+    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
+    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
+    String columnName = "lastName";
+    byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
+
+    String columnValue = java.util.Base64.getEncoder().encodeToString(expectedBytes);
+    String sourceDbTimezoneOffset = null;
+
+    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
+    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+
+    JSONObject valuesJson = new JSONObject();
+    valuesJson.put(columnName, columnValue);
+
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
+
+    Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
+
+    byte[] actualBytes;
+    if (castResult instanceof ByteBuffer) {
+      ByteBuffer byteBuffer = (ByteBuffer) castResult;
+      actualBytes = new byte[byteBuffer.remaining()];
+      byteBuffer.get(actualBytes);
+    } else if (castResult instanceof byte[]) {
+      actualBytes = (byte[]) castResult;
+    } else {
+      throw new AssertionError("Unexpected type for castResult");
+    }
+    assertArrayEquals(expectedBytes, actualBytes);
+  }
+
+  @Test
   public void testGetColumnValueByTypeForBlobEncodeInStringHexToBlob() {
     SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
@@ -1220,6 +1280,14 @@ public class CassandraTypeHandlerTest {
     byte[] byteArray = new byte[] {0, 0, 0, 0, 0, 0, 0, 10};
     BigInteger expected = new BigInteger(byteArray);
     Object result = CassandraTypeHandler.castToExpectedType("varint", byteArray);
+    assertEquals(expected, result);
+  }
+
+  @Test
+  public void testHandleCassandraVarintType_ForByteBuffer() {
+    byte[] byteArray = new byte[] {0, 0, 0, 0, 0, 0, 0, 10};
+    BigInteger expected = new BigInteger(byteArray);
+    Object result = CassandraTypeHandler.castToExpectedType("varint", ByteBuffer.wrap(byteArray));
     assertEquals(expected, result);
   }
 

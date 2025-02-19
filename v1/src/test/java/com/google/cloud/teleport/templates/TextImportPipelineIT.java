@@ -30,6 +30,8 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -37,9 +39,9 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -51,7 +53,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(TextImportPipeline.class)
 @RunWith(JUnit4.class)
-public final class TextImportPipelineIT extends TemplateTestBase {
+public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
   private SpannerResourceManager googleSqlResourceManager;
   private SpannerResourceManager postgresResourceManager;
@@ -59,10 +61,14 @@ public final class TextImportPipelineIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException, URISyntaxException {
     googleSqlResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+        SpannerResourceManager.builder(testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
+            .build();
     postgresResourceManager =
         SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
             .maybeUseStaticInstance()
+            .useCustomHost(spannerHost)
             .build();
   }
 
@@ -362,6 +368,190 @@ public final class TextImportPipelineIT extends TemplateTestBase {
                     "3.99",
                     "2020-03-05",
                     "2023-01-01T17:24:02Z")));
+  }
+
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
+  @Test
+  public void testImportCsv_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+
+    // Arrange
+    gcsClient.createArtifact(
+        "input/uuid1.csv",
+        "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
+            + "11111111-1111-1111-1111-111111111111,,1\n");
+    gcsClient.createArtifact(
+        "input/uuid2.csv",
+        "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
+            + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
+
+    String statement =
+        "CREATE TABLE UuidTable (\n"
+            + "  Key      UUID NOT NULL,\n"
+            + "  Val1     UUID,\n"
+            + "  Val2     INT64,\n"
+            + ") PRIMARY KEY (Key)";
+    googleSqlResourceManager.executeDdlStatement(statement);
+
+    String manifestJson =
+        "{\n"
+            + "  \"tables\": [\n"
+            + "    {\n"
+            + "      \"table_name\": \"UuidTable\",\n"
+            + "      \"file_patterns\": [\n"
+            + "        \""
+            + getGcsPath("input")
+            + "/*.csv\"\n"
+            + "      ],\n"
+            + "      \"columns\": [\n"
+            + "        {\"column_name\": \"Key\", \"type_name\": \"UUID\"},\n"
+            + "        {\"column_name\": \"Val1\", \"type_name\": \"UUID\"},\n"
+            + "        {\"column_name\": \"Val2\", \"type_name\": \"INT64\"}\n"
+            + "      ]\n"
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
+            .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("columnDelimiter", ",")
+            .addParameter("fieldQualifier", "\"")
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Struct> uuidRecords =
+        googleSqlResourceManager.runQuery(
+            "SELECT CAST(Key as STRING) as Key, CAST(Val1 as String) AS Val1, Val2 FROM"
+                + " UuidTable");
+    assertThat(uuidRecords).hasSize(4);
+    assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
+  }
+
+  // TODO(b/395532087): Consolidate this with other tests after UUID launch.
+  @Test
+  public void testImportCsvToPostgres_UUID() throws IOException {
+    // Run only on staging environment
+    if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
+      return;
+    }
+
+    // Arrange
+    gcsClient.createArtifact(
+        "input/uuid1.csv",
+        "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
+            + "11111111-1111-1111-1111-111111111111,,1\n");
+    gcsClient.createArtifact(
+        "input/uuid2.csv",
+        "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
+            + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
+
+    String statement =
+        "CREATE TABLE \"UuidTable\" (\n"
+            + "  \"Key\"      uuid NOT NULL,\n"
+            + "  \"Val1\"     uuid,\n"
+            + "  \"Val2\"     INT,\n"
+            + ") PRIMARY KEY (\"Key\")";
+    postgresResourceManager.executeDdlStatement(statement);
+
+    String manifestJson =
+        "{\n"
+            + "  \"tables\": [\n"
+            + "    {\n"
+            + "      \"table_name\": \"UuidTable\",\n"
+            + "      \"file_patterns\": [\n"
+            + "        \""
+            + getGcsPath("input")
+            + "/*.csv\"\n"
+            + "      ],\n"
+            + "      \"columns\": [\n"
+            + "        {\"column_name\": \"Key\", \"type_name\": \"uuid\"},\n"
+            + "        {\"column_name\": \"Val1\", \"type_name\": \"uuid\"},\n"
+            + "        {\"column_name\": \"Val2\", \"type_name\": \"INT\"}\n"
+            + "      ]\n"
+            + "    }\n"
+            + "  ],\n"
+            + "  \"dialect\": \"POSTGRESQL\"\n"
+            + "}";
+    gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
+
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("instanceId", postgresResourceManager.getInstanceId())
+            .addParameter("databaseId", postgresResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("importManifest", getGcsPath("input/manifest.json"))
+            .addParameter("columnDelimiter", ",")
+            .addParameter("fieldQualifier", "\"")
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+
+    // Act
+    LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
+
+    // Assert
+    assertThatResult(result).isLaunchFinished();
+
+    List<Struct> uuidRecords =
+        postgresResourceManager.runQuery(
+            "SELECT CAST(Key as TEXT) as Key, CAST(Val1 as TEXT) AS Val1, Val2 FROM"
+                + " UuidTable");
+    assertThat(uuidRecords).hasSize(4);
+    assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
+  }
+
+  private List<Map<String, Object>> getUuidTableExpectedRows() {
+    List<Map<String, Object>> expectedRows = new ArrayList<>();
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "00000000-0000-0000-0000-000000000000");
+            put("Val1", "00000000-0000-0000-0000-000000000000");
+            put("Val2", 0);
+          }
+        });
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "11111111-1111-1111-1111-111111111111");
+            put("Val1", null);
+            put("Val2", 1);
+          }
+        });
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "22222222-2222-2222-2222-222222222222");
+            put("Val1", "22222222-2222-2222-2222-222222222222");
+            put("Val2", 2);
+          }
+        });
+    expectedRows.add(
+        new HashMap<>() {
+          {
+            put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
+            put("Val1", null);
+            put("Val2", 3);
+          }
+        });
+    return expectedRows;
   }
 
   private Map<String, Object> createRecordMap(

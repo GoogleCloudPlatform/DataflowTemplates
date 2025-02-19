@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -132,7 +133,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                 null,
                 null,
                 null,
-                customTransformation);
+                customTransformation,
+                MYSQL_SOURCE_TYPE);
       }
     }
   }
@@ -332,12 +334,18 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     spannerResourceManager.write(m);
   }
 
-  private void assertRowInMySQL() {
+  private void assertRowInMySQL() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1);
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+
     assertThatResult(result).meetsConditions();
 
     result =
@@ -345,6 +353,11 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
     assertThatResult(result).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);

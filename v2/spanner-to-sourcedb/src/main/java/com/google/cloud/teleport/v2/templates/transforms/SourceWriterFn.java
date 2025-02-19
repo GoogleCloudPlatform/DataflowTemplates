@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
+import com.datastax.oss.driver.api.core.connection.ConnectionInitException;
 import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
 import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -244,6 +246,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           | com.mysql.cj.jdbc.exceptions.CommunicationsException
           | java.sql.SQLIntegrityConstraintViolationException
           | java.sql.SQLTransientConnectionException
+          | AllNodesFailedException
+          | ConnectionInitException
           | ConnectionException ex) {
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (java.sql.SQLNonTransientConnectionException ex) {

@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
@@ -35,6 +36,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
@@ -186,7 +188,11 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchDataflowJob(
-      String artifactBucket, int numWorkers, int maxWorkers) throws IOException {
+      String artifactBucket,
+      int numWorkers,
+      int maxWorkers,
+      CustomTransformation customTransformation)
+      throws IOException {
     // default parameters
 
     Map<String, String> params =
@@ -209,6 +215,13 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
             put("maxShardConnections", "100");
           }
         };
+
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath",
+          getGcsPath(artifactBucket, customTransformation.jarPath(), gcsResourceManager));
+      params.put("transformationClassName", customTransformation.classPath());
+    }
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(getClass().getSimpleName(), TEMPLATE_SPEC_PATH);
@@ -270,6 +283,20 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
     // export results
     exportMetricsToBigQuery(jobInfo, metrics);
+  }
+
+  protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
+      throws IOException, InterruptedException {
+    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
+    Process exec = Runtime.getRuntime().exec(shellCommand);
+    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
+    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
+    if (exec.waitFor() != 0) {
+      throw new RuntimeException("Error staging template, check Maven logs.");
+    }
+    gcsResourceManager.uploadArtifact(
+        "input/customShard.jar",
+        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 
   public void getResourceManagerMetrics(Map<String, Double> metrics) {

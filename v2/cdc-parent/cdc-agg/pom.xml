@@ -23,6 +23,9 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
   <artifactId>cdc-agg</artifactId>
+  <properties>
+    <skipShade>true</skipShade>
+  </properties>
   <inceptionYear>2019</inceptionYear>
   <licenses>
     <license>
