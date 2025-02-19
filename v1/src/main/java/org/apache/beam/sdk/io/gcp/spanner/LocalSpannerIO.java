@@ -69,6 +69,7 @@ import org.apache.beam.sdk.coders.Coder;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.ChangeStreamMetrics;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.action.ActionFactory;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.cache.CacheFactory;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.DaoFactory;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dao.PartitionMetadataTableNames;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.dofn.CleanUpReadChangeStreamDoFn;
@@ -1620,13 +1621,14 @@ public class LocalSpannerIO {
               changeStreamDatabaseDialect,
               metadataDatabaseDialect);
       final ActionFactory actionFactory = new ActionFactory();
+      final CacheFactory cacheFactory = new CacheFactory(daoFactory, Duration.ZERO);
 
       final InitializeDoFn initializeDoFn =
           new InitializeDoFn(daoFactory, mapperFactory, startTimestamp, endTimestamp);
       final DetectNewPartitionsDoFn detectNewPartitionsDoFn =
-          new DetectNewPartitionsDoFn(daoFactory, mapperFactory, actionFactory, metrics);
+          new DetectNewPartitionsDoFn(daoFactory, mapperFactory, actionFactory, cacheFactory, metrics);
       final ReadChangeStreamPartitionDoFn readChangeStreamPartitionDoFn =
-          new ReadChangeStreamPartitionDoFn(daoFactory, mapperFactory, actionFactory, metrics);
+          new ReadChangeStreamPartitionDoFn(daoFactory, mapperFactory, actionFactory, cacheFactory, metrics);
       final PostProcessingMetricsDoFn postProcessingMetricsDoFn =
           new PostProcessingMetricsDoFn(metrics);
 
