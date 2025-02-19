@@ -1628,7 +1628,7 @@ public class LocalSpannerIO {
       final DetectNewPartitionsDoFn detectNewPartitionsDoFn =
           new DetectNewPartitionsDoFn(daoFactory, mapperFactory, actionFactory, cacheFactory, metrics);
       final ReadChangeStreamPartitionDoFn readChangeStreamPartitionDoFn =
-          new ReadChangeStreamPartitionDoFn(daoFactory, mapperFactory, actionFactory, cacheFactory, metrics);
+          new ReadChangeStreamPartitionDoFn(daoFactory, mapperFactory, actionFactory, metrics);
       final PostProcessingMetricsDoFn postProcessingMetricsDoFn =
           new PostProcessingMetricsDoFn(metrics);
 
