@@ -124,7 +124,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
-    shard.setHost("34.71.118.71");
+    shard.setHost("10.128.0.2");
     shard.setPassword(jdbcResourceManager.getPassword());
     shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
     shard.setDbName(jdbcResourceManager.getDatabaseName());
