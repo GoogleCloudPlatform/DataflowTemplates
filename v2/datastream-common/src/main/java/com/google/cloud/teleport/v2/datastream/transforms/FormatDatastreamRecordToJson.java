@@ -76,6 +76,9 @@ public class FormatDatastreamRecordToJson
   private Map<String, String> renameColumns = new HashMap<String, String>();
   private boolean hashRowId = false;
 
+  private static final Long DATETIME_POSITIVE_INFINITY = 9223372036825200000L;
+  private static final Long DATETIME_NEGATIVE_INFINITY = -9223372036832400000L;
+
   private FormatDatastreamRecordToJson() {}
 
   public static FormatDatastreamRecordToJson create() {
@@ -505,12 +508,19 @@ public class FormatDatastreamRecordToJson
                 (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
         jsonObject.put(fieldName, bigDecimal.toPlainString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
-        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
-        Duration duration =
-            Duration.ofSeconds(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
-        jsonObject.put(fieldName, duration.toString());
+        Long microseconds = (Long) element.get(fieldName);
+        if (microseconds == DATETIME_POSITIVE_INFINITY) {
+          jsonObject.put(fieldName, "infinity");
+        } else if (microseconds == DATETIME_NEGATIVE_INFINITY) {
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          Long nanoseconds = microseconds * TimeUnit.MICROSECONDS.toNanos(1);
+          Duration duration =
+              Duration.ofSeconds(
+                  TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                  nanoseconds % TimeUnit.SECONDS.toNanos(1));
+          jsonObject.put(fieldName, duration.toString());
+        }
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
         jsonObject.put(fieldName, duration.toString());
