@@ -71,7 +71,7 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
-  public java.time.Instant getCommitTime() {
+  public Instant getCommitTime() {
     return commitTimestamp;
   }
 
@@ -87,7 +87,7 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
-  public java.time.Instant getEstimatedLowWatermarkTime() {
+  public Instant getEstimatedLowWatermarkTime() {
     return lowWatermark;
   }
 
