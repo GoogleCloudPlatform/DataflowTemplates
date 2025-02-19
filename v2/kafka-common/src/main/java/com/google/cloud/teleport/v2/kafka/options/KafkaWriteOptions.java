@@ -169,14 +169,14 @@ public interface KafkaWriteOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = {KafkaAuthenticationMethod.SASL_SCRAM_512},
       optional = true,
-      description = "Secret Version ID For Kafka SASL_SCRAM_512 Username",
+      description = "Secret Version ID For Kafka SASL_SCRAM Username",
       helpText =
           "The Google Cloud Secret Manager secret ID that contains the Kafka username "
-              + "to use with `SASL_SCRAM_512` authentication.",
+              + "to use with `SASL_SCRAM` authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
-  String getKafkaReadSASLScram512UsernameSecretId();
+  String getKafkaReadSASLScramUsernameSecretId();
 
-  void setKafkaReadSASLScram512UsernameSecretId(String value);
+  void setKafkaReadSASLScramUsernameSecretId(String value);
 
   @TemplateParameter.Text(
       order = 14,
@@ -184,13 +184,13 @@ public interface KafkaWriteOptions extends PipelineOptions {
       parentName = "kafkaReadAuthenticationMode",
       parentTriggerValues = KafkaAuthenticationMethod.SASL_SCRAM_512,
       optional = true,
-      description = "Secret Version ID For Kafka SASL_SCRAM_512 Password",
+      description = "Secret Version ID For Kafka SASL_SCRAM Password",
       helpText =
-          "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_SCRAM_512` authentication.",
+          "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_SCRAM` authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
-  String getKafkaReadSASLScram512PasswordSecretId();
+  String getKafkaReadSASLScramPasswordSecretId();
 
-  void setKafkaReadSASLScram512PasswordSecretId(String value);
+  void setKafkaReadSASLScramPasswordSecretId(String value);
 
   @TemplateParameter.GcsReadFile(
       order = 15,
@@ -202,9 +202,9 @@ public interface KafkaWriteOptions extends PipelineOptions {
       helpText =
           "The Google Cloud Storage path to the Java TrustStore (JKS) file that contains"
               + " the trusted certificates to use to verify the identity of the Kafka broker.")
-  String getKafkaReadSASLScram512TruststoreLocation();
+  String getKafkaReadSASLScramTruststoreLocation();
 
-  void setKafkaReadSASLScram512TruststoreLocation(String sourceSASLScram512TruststoreLocation);
+  void setKafkaReadSASLScramTruststoreLocation(String sourceSASLScramTruststoreLocation);
 
   @TemplateParameter.Text(
       order = 16,
@@ -215,10 +215,10 @@ public interface KafkaWriteOptions extends PipelineOptions {
       description = "Secret Version ID for Truststore Password",
       helpText =
           "The Google Cloud Secret Manager secret ID that contains the password to "
-              + "use to access the Java TrustStore (JKS) file for Kafka SASL_SCRAM_512 authentication",
+              + "use to access the Java TrustStore (JKS) file for Kafka SASL_SCRAM authentication",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
-  String getKafkaReadSASLScram512TruststorePasswordSecretId();
+  String getKafkaReadSASLScramTruststorePasswordSecretId();
 
-  void setKafkaReadSASLScram512TruststorePasswordSecretId(
-      String sourceSASLScram512TruststorePasswordSecretId);
+  void setKafkaReadSASLScramTruststorePasswordSecretId(
+      String sourceSASLScramTruststorePasswordSecretId);
 }
