@@ -133,6 +133,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     JsonArray ja = new JsonArray();
     ja.add(jsObj);
     String shardFileContents = ja.toString();
+    System.out.println("#####");
+    System.out.println(TestProperties.hostIp());
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
