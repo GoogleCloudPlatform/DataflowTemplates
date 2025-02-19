@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -123,7 +124,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
-    shard.setHost(jdbcResourceManager.getHost());
+    shard.setHost(TestProperties.hostIp());
     shard.setPassword(jdbcResourceManager.getPassword());
     shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
     shard.setDbName(jdbcResourceManager.getDatabaseName());
