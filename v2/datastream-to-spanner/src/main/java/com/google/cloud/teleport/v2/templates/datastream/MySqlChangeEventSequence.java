@@ -173,4 +173,16 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
         ? logFileComparisonResult
         : this.logPosition.compareTo(other.getLogPosition());
   }
+
+  @Override
+  public String toString() {
+    return "MySqlChangeEventSequence{"
+        + "timestamp="
+        + timestamp
+        + ", logFile="
+        + logFile
+        + ", logPosition="
+        + logPosition
+        + '}';
+  }
 }
