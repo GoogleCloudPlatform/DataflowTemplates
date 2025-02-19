@@ -89,6 +89,9 @@ public class AvroToValueMapper {
         Type.int64(),
         (recordValue, fieldSchema) -> Value.int64(avroFieldToLong(recordValue, fieldSchema)));
     gsqlFunctions.put(
+        Type.float32(),
+        (recordValue, fieldSchema) -> Value.float32(avroFieldToFloat32(recordValue, fieldSchema)));
+    gsqlFunctions.put(
         Type.float64(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     gsqlFunctions.put(
@@ -186,6 +189,23 @@ public class AvroToValueMapper {
           "Unable to convert "
               + fieldSchema.getType()
               + " to Long, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
+    }
+  }
+
+  static Float avroFieldToFloat32(Object recordValue, Schema fieldSchema) {
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      return Float.valueOf(recordValue.toString());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to float, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());

@@ -17,10 +17,11 @@ package com.google.cloud.teleport.v2.options;
 
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
-import org.apache.beam.sdk.io.aws.options.AwsOptions;
+import org.apache.beam.sdk.io.aws2.options.AwsOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.Validation;
+import software.amazon.awssdk.regions.Region;
 
 /**
  * The {@link KinesisToPubsubOptions} interface provides the custom execution options passed by the
@@ -56,9 +57,9 @@ public interface KinesisToPubsubOptions
       helpText = "AWS Region")
   @Validation.Required
   @Default.InstanceFactory(AwsRegionFactory.class)
-  String getAwsRegion();
+  Region getAwsRegion();
 
-  void setAwsRegion(String awsRegion);
+  void setAwsRegion(Region awsRegion);
 
   @TemplateParameter.Text(
       order = 4,

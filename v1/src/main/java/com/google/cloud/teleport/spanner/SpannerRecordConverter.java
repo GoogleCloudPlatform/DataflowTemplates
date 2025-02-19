@@ -254,6 +254,8 @@ public class SpannerRecordConverter {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("DATE")) {
               builder.set(field, nullValue ? null : dateToString(row.getDate(fieldIndex)));
+            } else if (spannerType.equals("UUID")) {
+              builder.set(field, nullValue ? null : row.getString(fieldIndex));
             }
           } else if (dialect == Dialect.POSTGRESQL) {
             if (spannerType.equals("jsonb")) {
@@ -266,6 +268,8 @@ public class SpannerRecordConverter {
               builder.set(field, nullValue ? null : row.getTimestamp(fieldIndex).toString());
             } else if (spannerType.equals("date")) {
               builder.set(field, nullValue ? null : dateToString(row.getDate(fieldIndex)));
+            } else if (spannerType.equals("uuid")) {
+              builder.set(field, nullValue ? null : row.getString(fieldIndex));
             }
           }
           break;
@@ -368,7 +372,9 @@ public class SpannerRecordConverter {
               case STRING:
                 {
                   if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
-                    if (fieldInfo.matchesArrayPattern() || spannerType.equals("ARRAY<JSON>")) {
+                    if (fieldInfo.matchesArrayPattern()
+                        || spannerType.equals("ARRAY<JSON>")
+                        || spannerType.equals("ARRAY<UUID>")) {
                       builder.set(field, nullValue ? null : row.getStringList(fieldIndex));
                     } else if (spannerType.equals("ARRAY<TIMESTAMP>")) {
                       setTimestampArray(row, builder, field, fieldIndex, nullValue);
@@ -380,7 +386,8 @@ public class SpannerRecordConverter {
                     if (spannerType.equals("jsonb[]")) {
                       builder.set(field, nullValue ? null : row.getPgJsonbList(fieldIndex));
                     } else if (fieldInfo.matchesVarcharArrayPattern()
-                        || spannerType.equals("text[]")) {
+                        || spannerType.equals("text[]")
+                        || spannerType.equals("uuid[]")) {
                       builder.set(field, nullValue ? null : row.getStringList(fieldIndex));
                     } else if (spannerType.equals("timestamp with time zone[]")) {
                       setTimestampArray(row, builder, field, fieldIndex, nullValue);

@@ -121,6 +121,8 @@ public class CassandraTypeHandler {
   private static BigInteger handleCassandraVarintType(Object value) {
     if (value instanceof byte[]) {
       return new BigInteger((byte[]) value);
+    } else if (value instanceof ByteBuffer) {
+      return new BigInteger(((ByteBuffer) value).array());
     }
     return new BigInteger(value.toString());
   }
@@ -166,17 +168,12 @@ public class CassandraTypeHandler {
    * @return a {@link ByteBuffer} object containing the value represented in cassandra type.
    */
   private static ByteBuffer parseBlobType(Object colValue) {
-    byte[] byteArray;
-
     if (colValue instanceof byte[]) {
-      byteArray = (byte[]) colValue;
-    } else if (colValue instanceof String) {
-      byteArray = java.util.Base64.getDecoder().decode((String) colValue);
-    } else {
-      throw new IllegalArgumentException("Unsupported type for column");
+      return ByteBuffer.wrap((byte[]) colValue);
+    } else if (colValue instanceof ByteBuffer) {
+      return (ByteBuffer) colValue;
     }
-
-    return ByteBuffer.wrap(byteArray);
+    return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
   }
 
   /**
@@ -331,7 +328,14 @@ public class CassandraTypeHandler {
           return null;
         }
         String hexEncodedString = valuesJson.optString(columnName);
-        return convertBinaryEncodedStringToByteArray(hexEncodedString);
+        return safeHandle(
+            () -> {
+              try {
+                return safeHandle(() -> convertBinaryEncodedStringToByteArray(hexEncodedString));
+              } catch (IllegalArgumentException e) {
+                return parseBlobType(hexEncodedString);
+              }
+            });
       } else {
         return valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
       }
