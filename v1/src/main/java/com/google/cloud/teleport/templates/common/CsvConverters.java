@@ -26,6 +26,7 @@ import java.nio.charset.Charset;
 import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
+import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -248,6 +249,8 @@ public class CsvConverters {
         LOG.error("Headers do not match, consistency cannot be guaranteed");
         throw new RuntimeException("Could not read Csv headers: " + ioe.getMessage());
       }
+      // Report source Lineage
+      FileSystems.reportSourceLineage(filePath.getMetadata().resourceId());
     }
   }
 }
