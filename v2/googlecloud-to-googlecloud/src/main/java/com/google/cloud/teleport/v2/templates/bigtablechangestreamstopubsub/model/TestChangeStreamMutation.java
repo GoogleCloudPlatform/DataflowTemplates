@@ -20,8 +20,8 @@ import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.charset.Charset;
-import javax.annotation.Nonnull;
 import java.time.Instant;
+import javax.annotation.Nonnull;
 
 public class TestChangeStreamMutation extends ChangeStreamMutation {
   private ByteString rowkey;
