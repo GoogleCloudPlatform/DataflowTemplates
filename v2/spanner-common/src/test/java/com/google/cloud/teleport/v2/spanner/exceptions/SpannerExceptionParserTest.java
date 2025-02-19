@@ -185,20 +185,23 @@ public class SpannerExceptionParserTest {
 
   @Test
   public void testSpannerExceptionClassification() {
-    for (Entry<SpannerException, SpannerMigrationException.ErrorCode> entry : exceptionToExpectedTag.entrySet()) {
+    for (Entry<SpannerException, SpannerMigrationException.ErrorCode> entry :
+        exceptionToExpectedTag.entrySet()) {
       SpannerMigrationException actual = SpannerExceptionParser.parse(entry.getKey());
       assertSpannerExceptionClassification(entry.getKey(), actual, entry.getValue());
     }
   }
 
   public static void assertSpannerExceptionClassification(
-      SpannerException e, SpannerMigrationException actual, SpannerMigrationException.ErrorCode expected) {
-      Assert.assertEquals(
-          String.format(
-              "Incorrect SpannerException error code parsing: SpannerException=%s, Actual errorCode=%s, Expected errorCode=%s",
-              e.getMessage(), actual.getErrorCode(), expected),
-          expected,
-          actual);
-      Assert.assertEquals(expected.getCode() + " - " + e.getMessage(), actual.getMessage());
+      SpannerException e,
+      SpannerMigrationException actual,
+      SpannerMigrationException.ErrorCode expected) {
+    Assert.assertEquals(
+        String.format(
+            "Incorrect SpannerException error code parsing: SpannerException=%s, Actual errorCode=%s, Expected errorCode=%s",
+            e.getMessage(), actual.getErrorCode(), expected),
+        expected,
+        actual);
+    Assert.assertEquals(expected.getCode() + " - " + e.getMessage(), actual.getMessage());
   }
 }

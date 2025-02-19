@@ -15,11 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.spanner;
 
-import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrationException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrationException.ErrorCode;
-import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 /* Helper class to classify SpannerExceptions to Retryable error or Permanent error */
@@ -33,24 +30,24 @@ public class SpannerExceptionClassifier {
   /*
   Spanner error codes for Permanent error
    */
-  private static Set<ErrorCode> permanentErrorCodes = Set.of(
-    ErrorCode.SPANNER_UNIQUE_INDEX_VIOLATION,
-    ErrorCode.SPANNER_TABLE_NOT_FOUND,
-    ErrorCode.SPANNER_COLUMN_NOT_FOUND,
-    ErrorCode.SPANNER_INVALID_VALUE,
-    ErrorCode.SPANNER_NULL_VALUE_FOR_REQUIRED_COLUMN,
-    ErrorCode.SPANNER_WRITE_TO_GENERATED_COLUMN_NOT_ALLOWED,
-    ErrorCode.SPANNER_DEPENDENT_COLUMN_NOT_SPECIFIED,
-    ErrorCode.SPANNER_WRONG_NUMBER_OF_KEY_PARTS,
-    ErrorCode.SPANNER_VALUE_TOO_LARGE,
-    ErrorCode.SPANNER_INVALID_ARGUMENT,
-    ErrorCode.SPANNER_CHECK_CONSTRAINT_VIOLATION,
-    ErrorCode.SPANNER_OUT_OF_RANGE,
-    ErrorCode.SPANNER_PERMISSION_DENIED,
-    ErrorCode.SPANNER_UNAUTHENTICATED,
-    ErrorCode.SPANNER_UNIMPLEMENTED,
-    ErrorCode.SPANNER_DUPLICATE_COLUMN
-  );
+  private static Set<ErrorCode> permanentErrorCodes =
+      Set.of(
+          ErrorCode.SPANNER_UNIQUE_INDEX_VIOLATION,
+          ErrorCode.SPANNER_TABLE_NOT_FOUND,
+          ErrorCode.SPANNER_COLUMN_NOT_FOUND,
+          ErrorCode.SPANNER_INVALID_VALUE,
+          ErrorCode.SPANNER_NULL_VALUE_FOR_REQUIRED_COLUMN,
+          ErrorCode.SPANNER_WRITE_TO_GENERATED_COLUMN_NOT_ALLOWED,
+          ErrorCode.SPANNER_DEPENDENT_COLUMN_NOT_SPECIFIED,
+          ErrorCode.SPANNER_WRONG_NUMBER_OF_KEY_PARTS,
+          ErrorCode.SPANNER_VALUE_TOO_LARGE,
+          ErrorCode.SPANNER_INVALID_ARGUMENT,
+          ErrorCode.SPANNER_CHECK_CONSTRAINT_VIOLATION,
+          ErrorCode.SPANNER_OUT_OF_RANGE,
+          ErrorCode.SPANNER_PERMISSION_DENIED,
+          ErrorCode.SPANNER_UNAUTHENTICATED,
+          ErrorCode.SPANNER_UNIMPLEMENTED,
+          ErrorCode.SPANNER_DUPLICATE_COLUMN);
 
   public static ErrorTag classify(SpannerMigrationException exception) {
     if (permanentErrorCodes.contains(exception.getErrorCode())) {
