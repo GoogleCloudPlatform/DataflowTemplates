@@ -33,6 +33,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerExceptionParser;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrationException;
 import com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
@@ -336,7 +338,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
        * 2. Failures due to foreign key/interleaved table constraints - Retryable error
        * 3. Unique index violation - Permanent error
        */
-      ErrorTag outputTag = SpannerExceptionClassifier.classify(ex);
+      SpannerMigrationException spannerMigrationException = SpannerExceptionParser.parse(ex);
+      ErrorTag outputTag = SpannerExceptionClassifier.classify(spannerMigrationException);
       switch (outputTag) {
         case PERMANENT_ERROR:
           outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
