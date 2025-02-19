@@ -172,8 +172,13 @@ public class CassandraTypeHandler {
       return ByteBuffer.wrap((byte[]) colValue);
     } else if (colValue instanceof ByteBuffer) {
       return (ByteBuffer) colValue;
+    } else {
+      String strVal = (String) colValue;
+      if (strVal.matches("^[A-Za-z0-9+/]+={0,2}$") && (strVal.length() % 4 == 0)) {
+        return ByteBuffer.wrap(java.util.Base64.getDecoder().decode(strVal));
+      }
     }
-    return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
+    throw new IllegalArgumentException("Invalid colValue: " + colValue);
   }
 
   /**
