@@ -171,6 +171,11 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
         String.format(
             "CREATE TABLE `%s_EmptyTable` (\n" + "  id INT64 NOT NULL,\n" + ") PRIMARY KEY(id)",
             testName);
+
+    String createRootTableStatement =
+        String.format(
+            "CREATE TABLE `%s_Root` (\n" + "  Id INT64 NOT NULL,\n" + ") PRIMARY KEY(Id)",
+            testName);
     String createSingersTableStatement =
         String.format(
             "CREATE TABLE `%s_Singers` (\n"
@@ -180,8 +185,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  Rating FLOAT32,\n"
                 + "  Review String(MAX),\n"
                 + "  `MyTokens` TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
-                + ") PRIMARY KEY(Id)",
-            testName);
+                + ") PRIMARY KEY(Id), INTERLEAVE IN `%s_Root`",
+            testName, testName);
     String createModelStructStatement =
         String.format(
             "CREATE MODEL `%s_ModelStruct`\n"
@@ -197,6 +202,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             testName, testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
+    spannerResourceManager.executeDdlStatement(createRootTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
     spannerResourceManager.executeDdlStatement(createModelStructStatement);
     spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
@@ -268,6 +274,10 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
         String.format(
             "CREATE TABLE \"%s_EmptyTable\" (\n" + "  id bigint NOT NULL,\nPRIMARY KEY(id)\n" + ")",
             testName);
+    String createRootTableStatement =
+        String.format(
+            "CREATE TABLE \"%s_Root\" (\n" + "  \"Id\" bigint,\n" + "PRIMARY KEY(\"Id\"))",
+            testName);
     String createSingersTableStatement =
         String.format(
             "CREATE TABLE \"%s_Singers\" (\n"
@@ -276,8 +286,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + "  \"LastName\" character varying(256),\n"
                 + "  \"Rating\" real,\n"
                 + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
-                + "PRIMARY KEY(\"Id\"))",
-            testName);
+                + "PRIMARY KEY(\"Id\")) INTERLEAVE IN \"%s_Root\"",
+            testName, testName);
     String createSearchIndexStatement =
         String.format(
             "CREATE SEARCH INDEX \"%s_SearchIndex\"\n"
@@ -286,6 +296,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
             testName, testName);
 
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
+    spannerResourceManager.executeDdlStatement(createRootTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
     spannerResourceManager.executeDdlStatement(createSearchIndexStatement);
     List<Mutation> expectedData = generateTableRows(String.format("%s_Singers", testName));
