@@ -76,6 +76,11 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
+  public java.time.Instant getCommitTime() {
+    return null;
+  }
+
+  @Override
   public int getTieBreaker() {
     return tieBreaker;
   }
@@ -89,6 +94,11 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   @Override
   public Instant getEstimatedLowWatermark() {
     return lowWatermark;
+  }
+
+  @Override
+  public java.time.Instant getEstimatedLowWatermarkTime() {
+    return null;
   }
 
   @Nonnull
