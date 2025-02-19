@@ -108,6 +108,9 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
         break;
       case "INTERVAL":
         return convertJsonToPostgresInterval(columnValue, columnName);
+      case "BYTEA":
+        // Byte arrays are converted to base64 string representation.
+        return "decode(" + columnValue + ",'base64')";
     }
 
     // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
@@ -193,6 +196,10 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       if (dataType.equals("_JSONB")) {
         // Cast string array to jsonb array.
         return arrayStatement + "::jsonb[]";
+      }
+      if (dataType.equals("_UUID")) {
+        // Cast string array to uuid array.
+        return arrayStatement + "::uuid[]";
       }
       return arrayStatement;
 

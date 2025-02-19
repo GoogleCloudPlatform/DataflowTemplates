@@ -76,6 +76,9 @@ public class FormatDatastreamRecordToJson
   private Map<String, String> renameColumns = new HashMap<String, String>();
   private boolean hashRowId = false;
 
+  private static final Long DATETIME_POSITIVE_INFINITY = 9223372036825200000L;
+  private static final Long DATETIME_NEGATIVE_INFINITY = -9223372036832400000L;
+
   private FormatDatastreamRecordToJson() {}
 
   public static FormatDatastreamRecordToJson create() {
@@ -160,7 +163,6 @@ public class FormatDatastreamRecordToJson
 
     // All Raw Metadata
     outputObject.put("_metadata_source", getSourceMetadataJson(record));
-
     return FailsafeElement.of(outputObject.toString(), outputObject.toString());
   }
 
@@ -386,7 +388,22 @@ public class FormatDatastreamRecordToJson
           jsonObject.put(fieldName, (Boolean) record.get(fieldName));
           break;
         case BYTES:
-          jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          if (record.get(fieldName) instanceof ByteBuffer) {
+            ByteBuffer byteBuffer = (ByteBuffer) record.get(fieldName);
+            byte[] byteArray = new byte[byteBuffer.remaining()];
+            byteBuffer.get(byteArray);
+            jsonObject.put(fieldName, byteArray);
+          } else if (record.get(fieldName) instanceof byte[]) {
+            jsonObject.put(fieldName, (byte[]) record.get(fieldName));
+          } else {
+            // Handle other types appropriately, possibly throwing an exception
+            // if the type is unexpected. Or log it.
+            throw new IllegalArgumentException(
+                "Unexpected type for field "
+                    + fieldName
+                    + ": "
+                    + record.get(fieldName).getClass().getName());
+          }
           break;
         case FLOAT:
           String value = record.get(fieldName).toString();
@@ -491,12 +508,19 @@ public class FormatDatastreamRecordToJson
                 (ByteBuffer) element.get(fieldName), fieldSchema, fieldSchema.getLogicalType());
         jsonObject.put(fieldName, bigDecimal.toPlainString());
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMicros) {
-        Long nanoseconds = (Long) element.get(fieldName) * TimeUnit.MICROSECONDS.toNanos(1);
-        Duration duration =
-            Duration.ofSeconds(
-                TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
-                nanoseconds % TimeUnit.SECONDS.toNanos(1));
-        jsonObject.put(fieldName, duration.toString());
+        Long microseconds = (Long) element.get(fieldName);
+        if (microseconds == DATETIME_POSITIVE_INFINITY) {
+          jsonObject.put(fieldName, "infinity");
+        } else if (microseconds == DATETIME_NEGATIVE_INFINITY) {
+          jsonObject.put(fieldName, "-infinity");
+        } else {
+          Long nanoseconds = microseconds * TimeUnit.MICROSECONDS.toNanos(1);
+          Duration duration =
+              Duration.ofSeconds(
+                  TimeUnit.NANOSECONDS.toSeconds(nanoseconds),
+                  nanoseconds % TimeUnit.SECONDS.toNanos(1));
+          jsonObject.put(fieldName, duration.toString());
+        }
       } else if (fieldSchema.getLogicalType() instanceof LogicalTypes.TimeMillis) {
         Duration duration = Duration.ofMillis(((Long) element.get(fieldName)));
         jsonObject.put(fieldName, duration.toString());
