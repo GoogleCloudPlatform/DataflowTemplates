@@ -34,6 +34,7 @@ public class BasicTestSchema {
   public static final String PRIMITIVE_TYPES_TABLE = "primitive_types_table";
   public static final String LIST_TYPES_TABLE = "list_types_table";
   public static final String SET_TYPES_TABLE = "set_types_table";
+  public static final String MAP_TYPES_TABLE = "map_types_table";
   public static final Long PRIMITIVE_TYPES_TABLE_ROW_COUNT = 6L;
   public static final ImmutableMap<String, ImmutableMap<String, SourceColumnType>>
       BASIC_TEST_TABLE_SCHEMA =
@@ -156,8 +157,81 @@ public class BasicTestSchema {
                       new SourceColumnType("SET<VARINT>", new Long[] {}, new Long[] {}))
                   .build());
 
+  public static final ImmutableMap<String, ImmutableMap<String, SourceColumnType>>
+      MAP_TEST_TABLE_SCHEMA =
+          ImmutableMap.of(
+              MAP_TYPES_TABLE,
+              ImmutableMap.<String, SourceColumnType>builder()
+                  .put("primary_key", new SourceColumnType("UUID", new Long[] {}, new Long[] {}))
+                  .put(
+                      "ascii_text_map",
+                      new SourceColumnType("MAP<ASCII,TEXT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "bigint_boolean_map",
+                      new SourceColumnType("MAP<BIGINT,BOOLEAN>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "blob_int_map",
+                      new SourceColumnType("MAP<BLOB,INT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "boolean_decimal_map",
+                      new SourceColumnType("MAP<BOOLEAN,DECIMAL>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "date_double_map",
+                      new SourceColumnType("MAP<DATE,DOUBLE>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "decimal_duration_map",
+                      new SourceColumnType("MAP<DECIMAL,DURATION>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "double_float_map",
+                      new SourceColumnType("MAP<DOUBLE,FLOAT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "double_inet_map",
+                      new SourceColumnType("MAP<DOUBLE,INET>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "float_smallint_map",
+                      new SourceColumnType("MAP<FLOAT,SMALLINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "inet_text_map",
+                      new SourceColumnType("MAP<INET,TEXT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "int_time_map",
+                      new SourceColumnType("MAP<INT,TIME>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "smallint_timestamp_map",
+                      new SourceColumnType("MAP<SMALLINT,TIMESTAMP>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "text_timeuuid_map",
+                      new SourceColumnType("MAP<TEXT,TIMEUUID>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "time_tinyint_map",
+                      new SourceColumnType("MAP<TIME,TINYINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "timestamp_uuid_map",
+                      new SourceColumnType("MAP<TIMESTAMP,UUID>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "timeuuid_varchar_map",
+                      new SourceColumnType("MAP<TIMEUUID,TEXT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "tinyint_varint_map",
+                      new SourceColumnType("MAP<TINYINT,VARINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "uuid_ascii_map",
+                      new SourceColumnType("MAP<UUID,ASCII>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "varchar_bigint_map",
+                      new SourceColumnType("MAP<TEXT,BIGINT>", new Long[] {}, new Long[] {}))
+                  .put(
+                      "varint_blob_map",
+                      new SourceColumnType("MAP<VARINT,BLOB>", new Long[] {}, new Long[] {}))
+                  .build());
+
   public static final ImmutableList<String> TEST_TABLES =
-      ImmutableList.of(BASIC_TEST_TABLE, LIST_TYPES_TABLE, PRIMITIVE_TYPES_TABLE, SET_TYPES_TABLE);
+      ImmutableList.of(
+          BASIC_TEST_TABLE,
+          LIST_TYPES_TABLE,
+          MAP_TYPES_TABLE,
+          PRIMITIVE_TYPES_TABLE,
+          SET_TYPES_TABLE);
 
   public static final ImmutableList<String> PRIMITIVE_TYPES_TABLE_AVRO_ROWS =
       ImmutableList.of(
@@ -176,6 +250,11 @@ public class BasicTestSchema {
   public static final ImmutableList<String> SET_TYPES_TABLE_AVRO_ROWS =
       ImmutableList.of(
           "{\"primary_key\": \"a389de30-f01f-4395-a0c6-c407bfbe81d0\", \"ascii_set\": [\"a\", \"b\", \"c\"], \"bigint_set\": [1, 2, 3], \"blob_set\": [\"48656c6c6f\"], \"boolean_set\": [false, true], \"date_set\": [20023, 20024], \"decimal_set\": [\"123.45\", \"678.90\"], \"double_set\": [1.23, 4.56], \"float_set\": [1.23, 4.56], \"frozen_ascii_set\": [\"d\", \"e\", \"f\"], \"inet_set\": [\"/10.0.0.1\", \"/192.168.1.1\"], \"int_set\": [10, 20, 30], \"smallint_set\": [100, 200, 300], \"text_set\": [\"hello\", \"world\"], \"time_set\": [{\"years\": 0, \"months\": 0, \"days\": 0, \"hours\": 0, \"minutes\": 0, \"seconds\": 0, \"nanos\": 36000000000000}, {\"years\": 0, \"months\": 0, \"days\": 0, \"hours\": 0, \"minutes\": 0, \"seconds\": 0, \"nanos\": 43200000000000}], \"timestamp_set\": [1730023200000000, 1730116800000000], \"timeuuid_set\": [\"9b9419da-b210-11ef-890e-9d9a41af9e54\"], \"tinyint_set\": [1, 2, 3], \"uuid_set\": [\"f0e1d922-06b5-4f07-a7a6-ec0c9f23e172\"], \"varchar_set\": [\"varchar1\", \"varchar2\"], \"varint_set\": [\"1234567890\", \"9876543210\"]}");
+
+  public static final ImmutableList<String> MAP_TYPES_TABLE_AVRO_ROWS =
+      ImmutableList.of(
+          "{\"primary_key\": \"550e8400-e29b-41d4-a716-446655440000\", \"ascii_text_map\": \"{\\\"key1\\\":\\\"value1\\\",\\\"key2\\\":\\\"value2\\\"}\", \"bigint_boolean_map\": \"{\\\"123\\\":\\\"true\\\",\\\"456\\\":\\\"false\\\"}\", \"blob_int_map\": \"{\\\"010203\\\":\\\"456\\\",\\\"040506\\\":\\\"789\\\"}\", \"boolean_decimal_map\": \"{\\\"false\\\":\\\"456.789\\\",\\\"true\\\":\\\"123.456\\\"}\", \"date_double_map\": \"{\\\"19737\\\":\\\"1.23\\\",\\\"19738\\\":\\\"4.56\\\"}\", \"decimal_duration_map\": \"{\\\"123.456\\\":\\\"{\\\\\\\"years\\\\\\\": 0, \\\\\\\"months\\\\\\\": 0, \\\\\\\"days\\\\\\\": 1, \\\\\\\"hours\\\\\\\": 0, \\\\\\\"minutes\\\\\\\": 0, \\\\\\\"seconds\\\\\\\": 0, \\\\\\\"nanos\\\\\\\": 45296000000000}\\\",\\\"456.789\\\":\\\"{\\\\\\\"years\\\\\\\": 0, \\\\\\\"months\\\\\\\": 0, \\\\\\\"days\\\\\\\": 0, \\\\\\\"hours\\\\\\\": 0, \\\\\\\"minutes\\\\\\\": 0, \\\\\\\"seconds\\\\\\\": 0, \\\\\\\"nanos\\\\\\\": 65731000000000}\\\"}\", \"double_float_map\": \"{\\\"12.34\\\":\\\"1.23\\\",\\\"45.67\\\":\\\"4.56\\\"}\", \"double_inet_map\": \"{\\\"3.14\\\":\\\"/192.168.1.1\\\",\\\"6.28\\\":\\\"/127.0.0.1\\\"}\", \"float_smallint_map\": \"{\\\"1.23\\\":\\\"10\\\",\\\"4.56\\\":\\\"20\\\"}\", \"inet_text_map\": \"{\\\"/127.0.0.1\\\":\\\"other text\\\",\\\"/192.168.1.1\\\":\\\"some text\\\"}\", \"int_time_map\": \"{\\\"10\\\":\\\"{\\\\\\\"years\\\\\\\": 0, \\\\\\\"months\\\\\\\": 0, \\\\\\\"days\\\\\\\": 0, \\\\\\\"hours\\\\\\\": 0, \\\\\\\"minutes\\\\\\\": 0, \\\\\\\"seconds\\\\\\\": 0, \\\\\\\"nanos\\\\\\\": 37800000000000}\\\",\\\"20\\\":\\\"{\\\\\\\"years\\\\\\\": 0, \\\\\\\"months\\\\\\\": 0, \\\\\\\"days\\\\\\\": 0, \\\\\\\"hours\\\\\\\": 0, \\\\\\\"minutes\\\\\\\": 0, \\\\\\\"seconds\\\\\\\": 0, \\\\\\\"nanos\\\\\\\": 42300000000000}\\\"}\", \"smallint_timestamp_map\": \"{\\\"100\\\":\\\"1705314600000000\\\",\\\"200\\\":\\\"1705405500000000\\\"}\", \"text_timeuuid_map\": \"{\\\"text1\\\":\\\"9b9419da-b210-11ef-890e-9d9a41af9e54\\\",\\\"text2\\\":\\\"9b9419da-b210-11ef-890e-9d9a41af9e54\\\"}\", \"time_tinyint_map\": \"{\\\"{\\\\\\\"years\\\\\\\": 0, \\\\\\\"months\\\\\\\": 0, \\\\\\\"days\\\\\\\": 0, \\\\\\\"hours\\\\\\\": 0, \\\\\\\"minutes\\\\\\\": 0, \\\\\\\"seconds\\\\\\\": 0, \\\\\\\"nanos\\\\\\\": 37800000000000}\\\":\\\"1\\\",\\\"{\\\\\\\"years\\\\\\\": 0, \\\\\\\"months\\\\\\\": 0, \\\\\\\"days\\\\\\\": 0, \\\\\\\"hours\\\\\\\": 0, \\\\\\\"minutes\\\\\\\": 0, \\\\\\\"seconds\\\\\\\": 0, \\\\\\\"nanos\\\\\\\": 42300000000000}\\\":\\\"2\\\"}\", \"timestamp_uuid_map\": \"{\\\"1705314600000000\\\":\\\"550e8400-e29b-41d4-a716-446655440001\\\",\\\"1705405500000000\\\":\\\"550e8400-e29b-41d4-a716-446655440002\\\"}\", \"timeuuid_varchar_map\": \"{\\\"9b9419da-b210-11ef-890e-9d9a41af9e54\\\":\\\"varchar1\\\"}\", \"tinyint_varint_map\": \"{\\\"1\\\":\\\"789\\\",\\\"2\\\":\\\"1234\\\"}\", \"uuid_ascii_map\": \"{\\\"550e8400-e29b-41d4-a716-446655440003\\\":\\\"ascii1\\\",\\\"550e8400-e29b-41d4-a716-446655440004\\\":\\\"ascii2\\\"}\", \"varchar_bigint_map\": \"{\\\"varchar1\\\":\\\"123\\\",\\\"varchar2\\\":\\\"456\\\"}\", \"varint_blob_map\": \"{\\\"789\\\":\\\"010203\\\",\\\"1234\\\":\\\"040506\\\"}\"}",
+          "{\"primary_key\": \"550e8400-e29b-41d4-a716-446655440005\", \"ascii_text_map\": \"{}\", \"bigint_boolean_map\": \"{}\", \"blob_int_map\": \"{}\", \"boolean_decimal_map\": \"{}\", \"date_double_map\": \"{}\", \"decimal_duration_map\": \"{}\", \"double_float_map\": \"{}\", \"double_inet_map\": \"{}\", \"float_smallint_map\": \"{}\", \"inet_text_map\": \"{}\", \"int_time_map\": \"{}\", \"smallint_timestamp_map\": \"{}\", \"text_timeuuid_map\": \"{}\", \"time_tinyint_map\": \"{}\", \"timestamp_uuid_map\": \"{}\", \"timeuuid_varchar_map\": \"{}\", \"tinyint_varint_map\": \"{}\", \"uuid_ascii_map\": \"{}\", \"varchar_bigint_map\": \"{}\", \"varint_blob_map\": \"{}\"}");
 
   private BasicTestSchema() {}
   ;
