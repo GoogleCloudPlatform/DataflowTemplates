@@ -48,7 +48,6 @@ public abstract class CassandraRowsCheck<T> extends ConditionCheck {
       throw new IllegalArgumentException("CassandraResourceManager must not be null.");
     }
 
-    // Use reflection to call executeStatement if it exists
     try {
       String query = String.format("SELECT COUNT(*) FROM %s", tableName);
       ResultSet resultSet =

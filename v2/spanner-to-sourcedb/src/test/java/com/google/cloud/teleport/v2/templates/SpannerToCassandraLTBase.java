@@ -15,39 +15,34 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.common.base.MoreObjects;
 import com.google.common.io.Resources;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 
 /**
- * Base class for Spanner to sourcedb Load tests. It provides helper functions related to
+ * Base class for Spanner to cassandra Load tests. It provides helper functions related to
  * environment setup and assertConditions.
  */
 public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
 
-  private static final String TEMPLATE_SPEC_PATH =
-      MoreObjects.firstNonNull(
-          TestProperties.specPath(),
-          "gs://dataflow-templates-spanner-to-cassandra/templates/flex/Spanner_to_SourceDb");
-  public CassandraResourceManager cassandraSharedResourceManager;
+  public CassandraResourceManager cassandraResourceManager;
+  public static final String SOURCE_SHARDS_FILE_NAME = "input/cassandra-config.conf";
 
   public void setupResourceManagers(
       String spannerDdlResource, String cassandraDdlResource, String artifactBucket)
       throws IOException {
     spannerResourceManager = createSpannerDatabase(spannerDdlResource);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
-    cassandraSharedResourceManager = generateKeyspaceAndBuildCassandraResource();
+    cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
 
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucket, getClass().getSimpleName(), CREDENTIALS).build();
-    createCassandraSchema(cassandraSharedResourceManager, cassandraDdlResource);
-    createAndUploadCassandraConfigToGcs(gcsResourceManager, cassandraSharedResourceManager);
+    createCassandraSchema(cassandraResourceManager, cassandraDdlResource);
+    createAndUploadCassandraConfigToGcs(gcsResourceManager, cassandraResourceManager);
     pubsubResourceManager = setUpPubSubResourceManager();
     subscriptionName =
         createPubsubResources(
@@ -67,7 +62,7 @@ public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
-        cassandraSharedResourceManager);
+        cassandraResourceManager);
   }
 
   public void createAndUploadCassandraConfigToGcs(
@@ -96,7 +91,7 @@ public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
             .replace("##port##", Integer.toString(port))
             .replace("##keyspace##", keyspaceName);
 
-    gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
+    gcsResourceManager.createArtifact(SOURCE_SHARDS_FILE_NAME, cassandraConfigContents);
   }
 
   public void createCassandraSchema(

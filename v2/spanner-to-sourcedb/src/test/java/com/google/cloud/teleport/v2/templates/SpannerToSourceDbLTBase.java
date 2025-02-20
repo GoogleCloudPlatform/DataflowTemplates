@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.base.MoreObjects;
@@ -34,7 +32,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -58,7 +55,7 @@ import org.slf4j.LoggerFactory;
 public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLTBase.class);
-
+  public static final String SOURCE_SHARDS_FILE_NAME = "input/shard.json";
   private static final String TEMPLATE_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
@@ -212,12 +209,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
             put(
                 "sourceShardsFilePath",
-                getGcsPath(
-                    artifactBucket,
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                        ? "input/cassandra-config.conf"
-                        : "input/shard.json",
-                    gcsResourceManager));
+                getGcsPath(artifactBucket, SOURCE_SHARDS_FILE_NAME, gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
             put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
