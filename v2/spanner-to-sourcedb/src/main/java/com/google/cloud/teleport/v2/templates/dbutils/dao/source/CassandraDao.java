@@ -54,12 +54,7 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
                       if (v.value() == CassandraTypeHandler.NullClass.INSTANCE) {
                         return null;
                       }
-                      Object castValue =
-                          CassandraTypeHandler.castToExpectedType(v.dataType(), v.value());
-                      if (castValue == CassandraTypeHandler.NullClass.INSTANCE) {
-                        return null;
-                      }
-                      return castValue;
+                      return CassandraTypeHandler.castToExpectedType(v.dataType(), v.value());
                     })
                 .toArray());
     session.execute(boundStatement);
