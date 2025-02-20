@@ -170,7 +170,9 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
               columnMetadata
                   .getType()
                   .asCql(false /*includeFrozen*/, true /*prettyPrint*/)
-                  .toUpperCase(),
+                  .toUpperCase()
+                  /* normalize by removing spaces, convert MAP<INT, INT> to MAP<INT,INT> for lookup*/
+                  .replaceAll("\\s+", ""),
               new Long[] {},
               new Long[] {});
       tableSchemaBuilder.put(name, sourceColumnType);
