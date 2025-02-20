@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -43,6 +43,8 @@ public abstract class CassandraRowValueArrayMapper<T>
    */
   @Override
   public Object map(@NonNull Iterable<T> values, Schema schema) {
-    return ImmutableList.builder().addAll(values).build();
+    ArrayList<Object> mapped = new ArrayList();
+    values.forEach(v -> mapped.add(rowValueMapper().map(v, schema.getElementType())));
+    return mapped;
   }
 }
