@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -54,13 +54,6 @@ public class CustomTransformationWithCassandraForLiveIT implements ISpannerMigra
     if (request.getTableName().equals("customers")) {
       Map<String, Object> requestRow = request.getRequestRow();
       Map<String, Object> row = new HashMap<>();
-      // In case of update/delete events, return request as response without any transformation
-      if (request.getEventType().equals("UPDATE")) {
-        return new MigrationTransformationResponse(null, false);
-      }
-      if (request.getEventType().equals("DELETE")) {
-        return new MigrationTransformationResponse(null, true);
-      }
       row.put("full_name", requestRow.get("first_name") + " " + requestRow.get("last_name"));
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;

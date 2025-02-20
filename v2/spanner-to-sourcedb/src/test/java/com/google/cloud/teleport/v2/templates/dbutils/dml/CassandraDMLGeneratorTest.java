@@ -35,6 +35,7 @@ import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import java.nio.ByteBuffer;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -148,7 +149,7 @@ public class CassandraDMLGeneratorTest {
   public void tableAndAllColumnNameTypesForCustomTransformation() {
     Schema schema = SessionFileReader.read("src/test/resources/cassandraSession.json");
     String tableName = "Singers";
-    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
+    String newValuesString = "{\"Bday\":\"1995-12-12\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     String keyValueString = "{\"SingerId\":\"999\"}";
     JSONObject keyValuesJson = new JSONObject(keyValueString);
@@ -168,7 +169,7 @@ public class CassandraDMLGeneratorTest {
     String sql = dmlGeneratorResponse.getDmlStatement();
 
     assertTrue(sql.contains("LastName"));
-    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertEquals(4, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
@@ -176,6 +177,9 @@ public class CassandraDMLGeneratorTest {
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "kk ll",
+        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value()));
+    assertEquals(
+        Instant.parse("1995-12-12T00:00:00Z"),
         CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 

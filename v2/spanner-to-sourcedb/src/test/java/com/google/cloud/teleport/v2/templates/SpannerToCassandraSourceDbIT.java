@@ -27,8 +27,6 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Options;
-import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -50,8 +48,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -79,7 +75,6 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private static final String USER_TABLE = "Users";
   private static final String USER_TABLE_2 = "Users2";
   private static final String ALL_DATA_TYPES_TABLE = "AllDatatypeColumns";
-  private static final String ALL_DATA_TYPES_TABLE_FOR_NULL_KEY = "AllDataTypeColumnsForNullKey";
   private static final String ALL_DATA_TYPES_CUSTOM_CONVERSION_TABLE = "AllDatatypeTransformation";
   private static final HashSet<SpannerToCassandraSourceDbIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -274,21 +269,6 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     }
   }
 
-  /**
-   * Writes basic rows to multiple tables in Google Cloud Spanner.
-   *
-   * <p>This method performs the following operations:
-   *
-   * <ul>
-   *   <li>Inserts or updates a row in the "users" table with an ID of 1.
-   *   <li>Inserts or updates a row in the "users2" table with an ID of 2.
-   *   <li>Executes a transactionally buffered insert/update operation in the "users" table with an
-   *       ID of 3, using a transaction tag for tracking.
-   * </ul>
-   *
-   * The transaction uses a Spanner client with a specific transaction tag
-   * ("txBy=forwardMigration").
-   */
   private void writeBasicRowInSpanner() {
     Mutation m1 =
         Mutation.newInsertOrUpdateBuilder(USER_TABLE)
@@ -309,53 +289,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to("BB")
             .build();
     spannerResourceManager.write(m2);
-
-    // Write a single record to Spanner for the given logical shard
-    // Add the record with the transaction tag as txBy=
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withProjectId(PROJECT)
-            .withInstanceId(spannerResourceManager.getInstanceId())
-            .withDatabaseId(spannerResourceManager.getDatabaseId());
-    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    spannerAccessor
-        .getDatabaseClient()
-        .readWriteTransaction(
-            Options.tag("txBy=forwardMigration"),
-            Options.priority(spannerConfig.getRpcPriority().get()))
-        .run(
-            (TransactionRunner.TransactionCallable<Void>)
-                transaction -> {
-                  Mutation m3 =
-                      Mutation.newInsertOrUpdateBuilder(USER_TABLE_2)
-                          .set("id")
-                          .to(3)
-                          .set("full_name")
-                          .to("GG")
-                          .build();
-                  transaction.buffer(m3);
-                  return null;
-                });
   }
 
-  /**
-   * Asserts that a basic row exists in the Cassandra database.
-   *
-   * <p>This method performs the following steps:
-   *
-   * <ul>
-   *   <li>Waits for the condition that ensures one row exists in the Cassandra table {@code
-   *       USER_TABLE}.
-   *   <li>Retrieves and logs rows from the Cassandra table.
-   *   <li>Checks if exactly one row is present in the table.
-   *   <li>Verifies that the row contains expected values for columns: {@code id}, {@code
-   *       full_name}, and {@code from}.
-   * </ul>
-   *
-   * @throws InterruptedException if the thread is interrupted while waiting for the row count
-   *     condition.
-   * @throws RuntimeException if reading from the Cassandra table fails.
-   */
   private void assertBasicRowInCassandraDB() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
@@ -493,7 +428,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     Mutation mutationAllNull =
         Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
             .set("varchar_column")
-            .to("SampleVarcharForNull") // Only this column has a value
+            .to("ForNull") // Only this column has a value
             .set("tinyint_column")
             .to(Value.int64(null))
             .set("text_column")
@@ -579,6 +514,14 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .build();
 
     spannerResourceManager.write(mutationAllNull);
+
+    Mutation mutationForInsertOrUpdatePrimaryKey =
+        Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
+            .set("varchar_column")
+            .to("PKey")
+            .build();
+
+    spannerResourceManager.write(mutationForInsertOrUpdatePrimaryKey);
   }
 
   /**
@@ -604,35 +547,13 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     }
   }
 
-  /**
-   * Validates that all data type rows inserted in Spanner have been correctly migrated and stored
-   * in Cassandra.
-   *
-   * <p>This method ensures that the data in the Cassandra table {@code ALL_DATA_TYPES_TABLE}
-   * matches the expected values after migration. It waits for the pipeline to process the data,
-   * reads the data from Cassandra, and asserts all column values.
-   *
-   * <p><b>Assertions:</b>
-   *
-   * <ul>
-   *   <li>Basic Data Types - Ensures correct values for varchar, bigint, bool, char, date,
-   *       datetime, decimal, double, float.
-   *   <li>Collections - Validates frozen lists, sets, and maps including nested structures.
-   *   <li>Lists and Sets - Ensures list and set columns contain expected elements.
-   *   <li>Maps - Validates various map column structures including text-to-int, date-to-text, and
-   *       list/set mappings.
-   * </ul>
-   *
-   * @throws InterruptedException if the thread is interrupted while waiting for pipeline execution.
-   * @throws MultipleFailureException if multiple assertion failures occur.
-   */
   private void assertAllDataTypeRowsInCassandraDB()
       throws InterruptedException, MultipleFailureException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(20)),
-                () -> getRowCount(ALL_DATA_TYPES_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> getRowCount(ALL_DATA_TYPES_TABLE) == 3);
     assertThatResult(result).meetsConditions();
     Iterable<Row> rows;
     try {
@@ -641,7 +562,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
       throw new RuntimeException("Failed to read from Cassandra table: " + ALL_DATA_TYPES_TABLE, e);
     }
 
-    assertThat(rows).hasSize(2);
+    assertThat(rows).hasSize(3);
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
       String varcharColumn = row.getString("varchar_column");
@@ -778,7 +699,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             () ->
                 assertThat(row.getBytesUnsafe("bytes_column"))
                     .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())));
-      } else if (Objects.equals(varcharColumn, "SampleVarcharForNull")) {
+      } else if (Objects.equals(varcharColumn, "PKey")
+          || Objects.equals(varcharColumn, "ForNull")) {
         assertAll(
             () -> assertThat(row.isNull("tinyint_column")).isTrue(),
             () -> assertThat(row.isNull("text_column")).isTrue(),
@@ -827,22 +749,6 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     }
   }
 
-  /**
-   * Inserts multiple rows into the Spanner table {@code ALL_DATA_TYPES_CUSTOM_CONVERSION_TABLE},
-   * ensuring that all values are stored as strings, regardless of their original data type.
-   *
-   * <p>This method writes sample data to the Spanner table, converting all numerical, boolean, and
-   * date/time values to their string representations. This ensures compatibility for scenarios
-   * requiring string-based storage.
-   *
-   * <p><b>Columns and Data Mapping:</b>
-   *
-   * <ul>
-   *   <li><b>Basic Types:</b> Strings, numbers (converted to strings), booleans.
-   *   <li><b>Complex Types:</b> JSON representations for lists, sets, and maps.
-   *   <li><b>Temporal Types:</b> Date, datetime, timestamp values stored as strings.
-   * </ul>
-   */
   private void writeAllRowsAsStringInSpanner() {
     Mutation m;
     m =
@@ -1110,28 +1016,6 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     spannerResourceManager.write(m);
   }
 
-  /**
-   * Validates that string-based data stored in Spanner is correctly converted to its actual data
-   * types when retrieved from Cassandra.
-   *
-   * <p>This method ensures that values stored as strings in Spanner are properly transformed into
-   * their expected data types in Cassandra. It performs the following:
-   *
-   * <ul>
-   *   <li>Waits for the migration process to complete.
-   *   <li>Reads and verifies that two rows are present in Cassandra.
-   *   <li>Checks specific column values to confirm correct data type conversion.
-   * </ul>
-   *
-   * <p><b>Assertions Performed:</b>
-   *
-   * <ul>
-   *   <li>Verifies that {@code varchar_column} retains its expected string value.
-   *   <li>Confirms that {@code tinyint_column} is correctly converted to a {@code byte}.
-   * </ul>
-   *
-   * @throws MultipleFailureException if multiple assertions fail during validation.
-   */
   private void assertStringToActualRowsInCassandraDB() throws MultipleFailureException {
     PipelineOperator.Result result =
         pipelineOperator()
