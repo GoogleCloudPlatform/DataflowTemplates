@@ -119,7 +119,9 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
     for (SeparateShadowTableDatabaseEventsIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test
