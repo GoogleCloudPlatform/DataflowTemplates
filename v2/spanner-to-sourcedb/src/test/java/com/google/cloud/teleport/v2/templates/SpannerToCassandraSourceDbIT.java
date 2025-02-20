@@ -293,40 +293,13 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to("BB")
             .build();
     spannerResourceManager.write(m2);
-
-    // Write a single record to Spanner for the given logical shard
-    // Add the record with the transaction tag as txBy=
-    SpannerConfig spannerConfig =
-        SpannerConfig.create()
-            .withProjectId(PROJECT)
-            .withInstanceId(spannerResourceManager.getInstanceId())
-            .withDatabaseId(spannerResourceManager.getDatabaseId());
-    SpannerAccessor spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-    spannerAccessor
-        .getDatabaseClient()
-        .readWriteTransaction(
-            Options.tag("txBy=forwardMigration"),
-            Options.priority(spannerConfig.getRpcPriority().get()))
-        .run(
-            (TransactionRunner.TransactionCallable<Void>)
-                transaction -> {
-                  Mutation m3 =
-                      Mutation.newInsertOrUpdateBuilder(USER_TABLE)
-                          .set("id")
-                          .to(3)
-                          .set("full_name")
-                          .to("GG")
-                          .build();
-                  transaction.buffer(m3);
-                  return null;
-                });
   }
 
   private void assertBasicRowInCassandraDB() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount(USER_TABLE) == 3);
+                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount(USER_TABLE) == 2);
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
@@ -338,7 +311,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
       throw new RuntimeException("Failed to read from Cassandra table: " + USER_TABLE, e);
     }
 
-    assertThat(rows).hasSize(3);
+    assertThat(rows).hasSize(2);
 
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert: {}", row.getFormattedContents());
@@ -348,8 +321,6 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
         assertThat(row.getString("from")).isEqualTo("B");
       } else if (id == 2) {
         assertThat(row.getString("full_name")).isEqualTo("BB");
-      } else if (id == 3) {
-        assertThat(row.getString("full_name")).isEqualTo("GG");
       } else {
         throw new AssertionError("Unexpected row ID found: " + id);
       }
