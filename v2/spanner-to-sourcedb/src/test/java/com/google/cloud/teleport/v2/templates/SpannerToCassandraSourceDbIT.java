@@ -428,7 +428,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     Mutation mutationAllNull =
         Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
             .set("varchar_column")
-            .to("SampleVarcharForNull") // Only this column has a value
+            .to("ForNull") // Only this column has a value
             .set("tinyint_column")
             .to(Value.int64(null))
             .set("text_column")
@@ -518,7 +518,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     Mutation mutationForInsertOrUpdatePrimaryKey =
         Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
             .set("varchar_column")
-            .to("SampleVarcharPrimaryKeyOnly")
+            .to("PKey")
             .build();
 
     spannerResourceManager.write(mutationForInsertOrUpdatePrimaryKey);
@@ -699,8 +699,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             () ->
                 assertThat(row.getBytesUnsafe("bytes_column"))
                     .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())));
-      } else if (Objects.equals(varcharColumn, "SampleVarcharForNull")
-          || Objects.equals(varcharColumn, "SampleVarcharPrimaryKeyOnly")) {
+      } else if (Objects.equals(varcharColumn, "PKey")
+          || Objects.equals(varcharColumn, "ForNull")) {
         assertAll(
             () -> assertThat(row.isNull("tinyint_column")).isTrue(),
             () -> assertThat(row.isNull("text_column")).isTrue(),
