@@ -732,50 +732,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             () ->
                 assertThat(row.getBytesUnsafe("bytes_column"))
                     .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())));
-      } else if (Objects.equals(varcharColumn, "SampleVarcharForNull")) {
-        assertAll(
-            () -> assertThat(row.isNull("tinyint_column")).isTrue(),
-            () -> assertThat(row.isNull("text_column")).isTrue(),
-            () -> assertThat(row.isNull("date_column")).isTrue(),
-            () -> assertThat(row.isNull("smallint_column")).isTrue(),
-            () -> assertThat(row.isNull("mediumint_column")).isTrue(),
-            () -> assertThat(row.isNull("int_column")).isTrue(),
-            () -> assertThat(row.isNull("bigint_column")).isTrue(),
-            () -> assertThat(row.isNull("float_column")).isTrue(),
-            () -> assertThat(row.isNull("double_column")).isTrue(),
-            () -> assertThat(row.isNull("decimal_column")).isTrue(),
-            () -> assertThat(row.isNull("datetime_column")).isTrue(),
-            () -> assertThat(row.isNull("timestamp_column")).isTrue(),
-            () -> assertThat(row.isNull("time_column")).isTrue(),
-            () -> assertThat(row.isNull("year_column")).isTrue(),
-            () -> assertThat(row.isNull("char_column")).isTrue(),
-            () -> assertThat(row.isNull("tinytext_column")).isTrue(),
-            () -> assertThat(row.isNull("mediumtext_column")).isTrue(),
-            () -> assertThat(row.isNull("longtext_column")).isTrue(),
-            () -> assertThat(row.isNull("enum_column")).isTrue(),
-            () -> assertThat(row.isNull("bool_column")).isTrue(),
-            () -> assertThat(row.isNull("other_bool_column")).isTrue(),
-            () -> assertThat(row.isNull("bytes_column")).isTrue(),
-            () -> assertThat(row.isNull("list_text_column")).isTrue(),
-            () -> assertThat(row.isNull("list_int_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_list_bigint_column")).isTrue(),
-            () -> assertThat(row.isNull("set_text_column")).isTrue(),
-            () -> assertThat(row.isNull("set_date_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_set_bool_column")).isTrue(),
-            () -> assertThat(row.isNull("map_text_to_int_column")).isTrue(),
-            () -> assertThat(row.isNull("map_date_to_text_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_map_int_to_bool_column")).isTrue(),
-            () -> assertThat(row.isNull("map_text_to_list_column")).isTrue(),
-            () -> assertThat(row.isNull("map_text_to_set_column")).isTrue(),
-            () -> assertThat(row.isNull("set_of_maps_column")).isTrue(),
-            () -> assertThat(row.isNull("list_of_sets_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_map_text_to_list_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_map_text_to_set_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_set_of_maps_column")).isTrue(),
-            () -> assertThat(row.isNull("frozen_list_of_sets_column")).isTrue(),
-            () -> assertThat(row.isNull("varint_column")).isTrue(),
-            () -> assertThat(row.isNull("inet_column")).isTrue());
-      } else if (Objects.equals(varcharColumn, "SampleVarcharPrimaryKeyOnly")) {
+      } else if (Objects.equals(varcharColumn, "SampleVarcharForNull")
+          || Objects.equals(varcharColumn, "SampleVarcharPrimaryKeyOnly")) {
         assertAll(
             () -> assertThat(row.isNull("tinyint_column")).isTrue(),
             () -> assertThat(row.isNull("text_column")).isTrue(),
