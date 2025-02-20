@@ -326,7 +326,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount(USER_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(10)), () -> getRowCount(USER_TABLE) == 3);
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
@@ -338,7 +338,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
       throw new RuntimeException("Failed to read from Cassandra table: " + USER_TABLE, e);
     }
 
-    assertThat(rows).hasSize(2);
+    assertThat(rows).hasSize(3);
 
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert: {}", row.getFormattedContents());
@@ -585,8 +585,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(20)),
-                () -> getRowCount(ALL_DATA_TYPES_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> getRowCount(ALL_DATA_TYPES_TABLE) == 3);
     assertThatResult(result).meetsConditions();
     Iterable<Row> rows;
     try {
@@ -595,7 +595,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
       throw new RuntimeException("Failed to read from Cassandra table: " + ALL_DATA_TYPES_TABLE, e);
     }
 
-    assertThat(rows).hasSize(2);
+    assertThat(rows).hasSize(3);
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
       String varcharColumn = row.getString("varchar_column");
