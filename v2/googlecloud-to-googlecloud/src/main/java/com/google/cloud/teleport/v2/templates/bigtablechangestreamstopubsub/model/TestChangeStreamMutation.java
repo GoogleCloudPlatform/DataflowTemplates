@@ -20,8 +20,8 @@ import com.google.cloud.bigtable.data.v2.models.Entry;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
 import java.nio.charset.Charset;
+import java.time.Instant;
 import javax.annotation.Nonnull;
-import org.threeten.bp.Instant;
 
 public class TestChangeStreamMutation extends ChangeStreamMutation {
   private ByteString rowkey;
@@ -71,7 +71,7 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
-  public Instant getCommitTimestamp() {
+  public Instant getCommitTime() {
     return commitTimestamp;
   }
 
@@ -87,7 +87,7 @@ public class TestChangeStreamMutation extends ChangeStreamMutation {
   }
 
   @Override
-  public Instant getEstimatedLowWatermark() {
+  public Instant getEstimatedLowWatermarkTime() {
     return lowWatermark;
   }
 
