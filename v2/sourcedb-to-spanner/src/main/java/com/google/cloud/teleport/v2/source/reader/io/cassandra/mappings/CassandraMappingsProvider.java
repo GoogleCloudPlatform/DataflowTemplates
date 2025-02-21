@@ -19,6 +19,7 @@ import com.datastax.driver.core.Duration;
 import com.datastax.driver.core.LocalDate;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.core.utils.Bytes;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
@@ -52,7 +53,7 @@ public class CassandraMappingsProvider {
 
   /** Map {@link ByteBuffer} to a Hex encoded String. */
   private static final CassandraRowValueMapper<ByteBuffer> ByteBufferToHexString =
-      (value, schema) -> new String(Hex.encodeHex(value.array()));
+      (value, schema) -> new String(Hex.encodeHex(Bytes.getArray(value)));
 
   /**
    * Map {@link LocalDate} to {@link LogicalTypes.Date}. Cassandra Date type encodes number of days
