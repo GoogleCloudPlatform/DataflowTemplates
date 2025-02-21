@@ -102,7 +102,7 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
     CassandraRowsCheck<CassandraResourceManager> check =
         CassandraRowsCheck.<CassandraResourceManager>builder(table)
-            .setResourceManager(cassandraSharedResourceManager)
+            .setResourceManager(cassandraResourceManager)
             .setMinRows(numRecords)
             .setMaxRows(numRecords)
             .build();

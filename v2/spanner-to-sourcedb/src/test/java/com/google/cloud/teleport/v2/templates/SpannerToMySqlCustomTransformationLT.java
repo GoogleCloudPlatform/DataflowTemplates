@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -81,7 +82,9 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
                 "input/customShard.jar", "com.custom.CustomTransformationWithShardForLiveIT")
             .build();
     createAndUploadJarToGcs(gcsResourceManager);
-    jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers, customTransformation);
+    jobInfo =
+        launchDataflowJob(
+            artifactBucket, numWorkers, maxWorkers, customTransformation, MYSQL_SOURCE_TYPE);
   }
 
   @After
