@@ -174,7 +174,7 @@ public class CassandraTypeHandler {
       return (ByteBuffer) colValue;
     } else {
       String strVal = (String) colValue;
-      if (strVal.matches("^[A-Za-z0-9+/]+={0,2}$") && (strVal.length() % 4 == 0)) {
+      if (!strVal.matches("^[01]+$")) {
         return ByteBuffer.wrap(java.util.Base64.getDecoder().decode(strVal));
       }
     }
