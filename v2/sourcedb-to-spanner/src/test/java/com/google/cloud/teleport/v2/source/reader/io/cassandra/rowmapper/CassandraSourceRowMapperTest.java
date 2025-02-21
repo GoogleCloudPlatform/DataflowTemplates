@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper;
 
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.LIST_TYPES_TABLE;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.LIST_TYPES_TABLE_AVRO_ROWS;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.MAP_TYPES_TABLE;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.MAP_TYPES_TABLE_AVRO_ROWS;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.PRIMITIVE_TYPES_TABLE;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.PRIMITIVE_TYPES_TABLE_AVRO_ROWS;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TYPES_TABLE;
@@ -90,6 +92,11 @@ public class CassandraSourceRowMapperTest {
   @Test
   public void testCassandraSourceRowMapperSet() throws RetriableSchemaDiscoveryException {
     cassandraSourceRowMapperTestHelper(SET_TYPES_TABLE, SET_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  @Test
+  public void testCassandraSourceRowMapperMap() throws RetriableSchemaDiscoveryException {
+    cassandraSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
   }
 
   private void cassandraSourceRowMapperTestHelper(String tableName, List<String> expectedRows)

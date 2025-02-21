@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.schema;
 
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.BASIC_TEST_TABLE_SCHEMA;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.LIST_TEST_TABLE_SCHEMA;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.MAP_TEST_TABLE_SCHEMA;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TEST_TABLE_SCHEMA;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
@@ -139,6 +140,11 @@ public class CassandraSchemaDiscoveryTest {
   @Test
   public void testDiscoverTableSchemaSet() throws IOException, RetriableSchemaDiscoveryException {
     discoverTableSchemaTestHelper(SET_TEST_TABLE_SCHEMA);
+  }
+
+  @Test
+  public void testDiscoverTableSchemaMap() throws IOException, RetriableSchemaDiscoveryException {
+    discoverTableSchemaTestHelper(MAP_TEST_TABLE_SCHEMA);
   }
 
   private void discoverTableSchemaTestHelper(
