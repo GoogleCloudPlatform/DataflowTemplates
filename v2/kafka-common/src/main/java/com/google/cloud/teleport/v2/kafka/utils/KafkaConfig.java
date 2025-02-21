@@ -45,10 +45,10 @@ public class KafkaConfig {
             options.getKafkaReadKeyPasswordSecretId(),
             options.getKafkaReadUsernameSecretId(),
             options.getKafkaReadPasswordSecretId(),
-            options.getKafkaReadSASLScramUsernameSecretId(),
-            options.getKafkaReadSASLScramPasswordSecretId(),
-            options.getKafkaReadSASLScramTruststoreLocation(),
-            options.getKafkaReadSASLScramTruststorePasswordSecretId());
+            options.getKafkaReadSaslScramUsernameSecretId(),
+            options.getKafkaReadSaslScramPasswordSecretId(),
+            options.getKafkaReadSaslScramTruststoreLocation(),
+            options.getKafkaReadSaslScramTruststorePasswordSecretId());
 
     properties.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
 
@@ -65,10 +65,10 @@ public class KafkaConfig {
         options.getKafkaWriteKeyPasswordSecretId(),
         options.getKafkaWriteUsernameSecretId(),
         options.getKafkaWritePasswordSecretId(),
-        options.getKafkaReadSASLScramUsernameSecretId(),
-        options.getKafkaReadSASLScramPasswordSecretId(),
-        options.getKafkaReadSASLScramTruststoreLocation(),
-        options.getKafkaReadSASLScramTruststorePasswordSecretId());
+        options.getKafkaReadSaslScramUsernameSecretId(),
+        options.getKafkaReadSaslScramPasswordSecretId(),
+        options.getKafkaReadSaslScramTruststoreLocation(),
+        options.getKafkaReadSaslScramTruststorePasswordSecretId());
   }
 
   public static Map<String, Object> fromSchemaRegistryOptions(SchemaRegistryOptions options) {

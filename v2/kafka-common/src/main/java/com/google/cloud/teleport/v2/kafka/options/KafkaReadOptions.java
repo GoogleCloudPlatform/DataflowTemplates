@@ -229,9 +229,9 @@ public interface KafkaReadOptions extends PipelineOptions {
           "The Google Cloud Secret Manager secret ID that contains the Kafka username "
               + "to use with `SASL_SCRAM` authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
-  String getKafkaReadSASLScramUsernameSecretId();
+  String getKafkaReadSaslScramUsernameSecretId();
 
-  void setKafkaReadSASLScramUsernameSecretId(String value);
+  void setKafkaReadSaslScramUsernameSecretId(String value);
 
   @TemplateParameter.Text(
       order = 14,
@@ -243,9 +243,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       helpText =
           "The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_SCRAM` authentication.",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
-  String getKafkaReadSASLScramPasswordSecretId();
+  String getKafkaReadSaslScramPasswordSecretId();
 
-  void setKafkaReadSASLScramPasswordSecretId(String value);
+  void setKafkaReadSaslScramPasswordSecretId(String value);
 
   @TemplateParameter.GcsReadFile(
       order = 15,
@@ -257,9 +257,9 @@ public interface KafkaReadOptions extends PipelineOptions {
       helpText =
           "The Google Cloud Storage path to the Java TrustStore (JKS) file that contains"
               + " the trusted certificates to use to verify the identity of the Kafka broker.")
-  String getKafkaReadSASLScramTruststoreLocation();
+  String getKafkaReadSaslScramTruststoreLocation();
 
-  void setKafkaReadSASLScramTruststoreLocation(String sourceSASLScramTruststoreLocation);
+  void setKafkaReadSaslScramTruststoreLocation(String sourceSaslScramTruststoreLocation);
 
   @TemplateParameter.Text(
       order = 16,
@@ -272,8 +272,8 @@ public interface KafkaReadOptions extends PipelineOptions {
           "The Google Cloud Secret Manager secret ID that contains the password to "
               + "use to access the Java TrustStore (JKS) file for Kafka SASL_SCRAM authentication",
       example = "projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>")
-  String getKafkaReadSASLScramTruststorePasswordSecretId();
+  String getKafkaReadSaslScramTruststorePasswordSecretId();
 
-  void setKafkaReadSASLScramTruststorePasswordSecretId(
-      String sourceSASLScramTruststorePasswordSecretId);
+  void setKafkaReadSaslScramTruststorePasswordSecretId(
+      String sourceSaslScramTruststorePasswordSecretId);
 }
