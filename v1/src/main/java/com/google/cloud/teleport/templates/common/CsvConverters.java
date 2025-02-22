@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.templates.common;
 
+import static org.apache.beam.sdk.io.FileSystem.LineageLevel;
+
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
@@ -23,10 +25,12 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.channels.Channels;
 import java.nio.charset.Charset;
+import java.util.HashSet;
 import org.apache.beam.sdk.io.Compression;
 import org.apache.beam.sdk.io.FileIO;
 import org.apache.beam.sdk.io.FileIO.ReadableFile;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -41,6 +45,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -197,6 +202,8 @@ public class CsvConverters {
     private final ValueProvider<String> fileEncoding;
     private final ValueProvider<String> delimiter;
     private final ValueProvider<Boolean> hasHeaders;
+    // track unique resourceId met. Access it only inside reportSourceLineage
+    private transient @Nullable HashSet<ResourceId> uniqueIds;
 
     GetCsvRowsFn(
         TupleTag<String> headerTag,
@@ -250,7 +257,31 @@ public class CsvConverters {
         throw new RuntimeException("Could not read Csv headers: " + ioe.getMessage());
       }
       // Report source Lineage
-      FileSystems.reportSourceLineage(filePath.getMetadata().resourceId());
+      reportSourceLineage(filePath.getMetadata().resourceId());
+    }
+
+    /**
+     * Report source Lineage. Due to the size limit of Beam metrics, report full file name or only
+     * top level depend on the number of files.
+     *
+     * <p>- Number of files<=100, report full file paths;
+     *
+     * <p>- Otherwise, report top level only.
+     */
+    private void reportSourceLineage(ResourceId resourceId) {
+      if (uniqueIds == null) {
+        uniqueIds = new HashSet<>();
+      } else if (uniqueIds.isEmpty()) {
+        // already at capacity
+        FileSystems.reportSourceLineage(resourceId, LineageLevel.TOP_LEVEL);
+        return;
+      }
+      uniqueIds.add(resourceId);
+      FileSystems.reportSourceLineage(resourceId, LineageLevel.FILE);
+      if (uniqueIds.size() >= 100) {
+        // avoid reference leak
+        uniqueIds.clear();
+      }
     }
   }
 }
