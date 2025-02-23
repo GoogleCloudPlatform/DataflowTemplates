@@ -33,6 +33,8 @@ import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+// TODO: Rename the class since its being used in both Live and Reverse replication tests and in
+// both ITs and LTs
 public class CustomTransformationWithShardForLiveIT implements ISpannerMigrationTransformer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
@@ -199,6 +201,21 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
         throw new InvalidTransformationException(e);
       }
 
+      MigrationTransformationResponse response =
+          new MigrationTransformationResponse(responseRow, false);
+      return response;
+    } else if (request.getTableName().equals("Person")) {
+      Map<String, Object> responseRow = new HashMap<>();
+      Map<String, Object> requestRow = request.getRequestRow();
+      String firstName1 = requestRow.get("first_name1").toString();
+      String lastName1 = requestRow.get("last_name1").toString();
+      String firstName2 = requestRow.get("first_name2").toString();
+      String lastName2 = requestRow.get("last_name2").toString();
+      String firstName3 = requestRow.get("first_name3").toString();
+      String lastName3 = requestRow.get("last_name3").toString();
+      responseRow.put("full_name1", "\'" + firstName1 + " " + lastName1 + "\'");
+      responseRow.put("full_name2", "\'" + firstName2 + " " + lastName2 + "\'");
+      responseRow.put("full_name3", "\'" + firstName3 + " " + lastName3 + "\'");
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);
       return response;

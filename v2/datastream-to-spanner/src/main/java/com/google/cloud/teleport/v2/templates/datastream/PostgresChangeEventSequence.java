@@ -16,8 +16,11 @@
 package com.google.cloud.teleport.v2.templates.datastream;
 
 import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
@@ -73,7 +76,11 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
    * Creates a PostgresChangeEventSequence by reading from a shadow table.
    */
   public static PostgresChangeEventSequence createFromShadowTable(
-      final TransactionContext transactionContext, String shadowTable, Key primaryKey)
+      final TransactionContext transactionContext,
+      String shadowTable,
+      Ddl shadowTableDdl,
+      Key primaryKey,
+      boolean useSqlStatements)
       throws ChangeEventSequenceCreationException {
 
     try {
@@ -82,8 +89,22 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
           DatastreamConstants.POSTGRES_SORT_ORDER.values().stream()
               .map(p -> p.getLeft())
               .collect(Collectors.toList());
-      Struct row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
-
+      Struct row;
+      // TODO: After beam release, use the latest client lib version which supports setting lock
+      // hints via the read api. SQL string generation should be removed.
+      if (useSqlStatements) {
+        Statement sql =
+            ShadowTableReadUtils.generateShadowTableReadSQL(
+                shadowTable, readColumnList, primaryKey, shadowTableDdl);
+        ResultSet resultSet = transactionContext.executeQuery(sql);
+        if (!resultSet.next()) {
+          return null;
+        }
+        row = resultSet.getCurrentRowAsStruct();
+      } else {
+        // Use direct row read
+        row = transactionContext.readRow(shadowTable, primaryKey, readColumnList);
+      }
       // This is the first event for the primary key and hence the latest event.
       if (row == null) {
         return null;
@@ -136,5 +157,10 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
           ? parsedLeftLSNComparisonResult
           : this.getParsedLSN(1).compareTo(other.getParsedLSN(1));
     }
+  }
+
+  @Override
+  public String toString() {
+    return "PostgresChangeEventSequence{" + "timestamp=" + timestamp + ", lsn=" + lsn + '}';
   }
 }

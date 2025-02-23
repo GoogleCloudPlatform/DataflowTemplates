@@ -54,8 +54,14 @@ public class SpannerTransactionWriter
   /* The spanner config specifying the destination Cloud Spanner database to connect to */
   private final SpannerConfig spannerConfig;
 
+  /* The spanner config specifying the shadow table Cloud Spanner database to connect to */
+  private final SpannerConfig shadowTableSpannerConfig;
+
   /* The information schema of the Cloud Spanner database */
   private final PCollectionView<Ddl> ddlView;
+
+  /* The information schema of the shadow table Cloud Spanner database */
+  private final PCollectionView<Ddl> shadowTableDdlView;
 
   /* The prefix for shadow tables */
   private final String shadowTablePrefix;
@@ -68,13 +74,17 @@ public class SpannerTransactionWriter
 
   public SpannerTransactionWriter(
       SpannerConfig spannerConfig,
+      SpannerConfig shadowTableSpannerConfig,
       PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
       String shadowTablePrefix,
       String sourceType,
       Boolean isRegularRunMode) {
     Preconditions.checkNotNull(spannerConfig);
     this.spannerConfig = spannerConfig;
+    this.shadowTableSpannerConfig = shadowTableSpannerConfig;
     this.ddlView = ddlView;
+    this.shadowTableDdlView = shadowTableDdlView;
     this.shadowTablePrefix = shadowTablePrefix;
     this.sourceType = sourceType;
     this.isRegularRunMode = isRegularRunMode;
@@ -88,8 +98,14 @@ public class SpannerTransactionWriter
             "Write Mutations",
             ParDo.of(
                     new SpannerTransactionWriterDoFn(
-                        spannerConfig, ddlView, shadowTablePrefix, sourceType, isRegularRunMode))
-                .withSideInputs(ddlView)
+                        spannerConfig,
+                        shadowTableSpannerConfig,
+                        ddlView,
+                        shadowTableDdlView,
+                        shadowTablePrefix,
+                        sourceType,
+                        isRegularRunMode))
+                .withSideInputs(ddlView, shadowTableDdlView)
                 .withOutputTags(
                     DatastreamToSpannerConstants.SUCCESSFUL_EVENT_TAG,
                     TupleTagList.of(

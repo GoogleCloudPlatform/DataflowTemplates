@@ -38,7 +38,11 @@ public class ChangeEventContextFactory {
    * Creates ChangeEventContext depending on the change event type.
    */
   public static ChangeEventContext createChangeEventContext(
-      JsonNode changeEvent, Ddl ddl, String shadowTablePrefix, String sourceType)
+      JsonNode changeEvent,
+      Ddl ddl,
+      Ddl shadowTableDdl,
+      String shadowTablePrefix,
+      String sourceType)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     String sourceTypeFromChangeEvent;
     try {
@@ -57,11 +61,11 @@ public class ChangeEventContextFactory {
     }
 
     if (DatastreamConstants.MYSQL_SOURCE_TYPE.equals(sourceType)) {
-      return new MySqlChangeEventContext(changeEvent, ddl, shadowTablePrefix);
+      return new MySqlChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
     } else if (DatastreamConstants.ORACLE_SOURCE_TYPE.equals(sourceType)) {
-      return new OracleChangeEventContext(changeEvent, ddl, shadowTablePrefix);
+      return new OracleChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
     } else if (DatastreamConstants.POSTGRES_SOURCE_TYPE.equals(sourceType)) {
-      return new PostgresChangeEventContext(changeEvent, ddl, shadowTablePrefix);
+      return new PostgresChangeEventContext(changeEvent, ddl, shadowTableDdl, shadowTablePrefix);
     }
 
     throw new InvalidChangeEventException("Unsupported source database: " + sourceType);

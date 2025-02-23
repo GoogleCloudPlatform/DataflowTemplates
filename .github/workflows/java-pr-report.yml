@@ -33,7 +33,8 @@ jobs:
     - name: Download Test Report
       uses: dawidd6/action-download-artifact@246dbf436b23d7c49e21a7ab8204ca9ecd1fe615 # v2.27.0
       with:
-        name: surefire-test-results
+        name: surefire-.*test-results
+        name_is_regexp: true
         workflow: ${{ github.event.workflow.id }}
         run_id: ${{ github.event.workflow_run.id }}
         if_no_artifact_found: warn

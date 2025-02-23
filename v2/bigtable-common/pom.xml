@@ -27,6 +27,7 @@
 
     <properties>
         <bigtable.version>2.11.0</bigtable.version>
+        <skipShade>true</skipShade>
     </properties>
 
     <dependencies>

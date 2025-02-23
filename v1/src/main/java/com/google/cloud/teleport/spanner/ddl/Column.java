@@ -139,15 +139,15 @@ public abstract class Column implements Serializable {
       appendable.append(" AS (").append(generationExpression()).append(")");
       if (isStored()) {
         appendable.append(" STORED");
+      } else if (dialect() == Dialect.POSTGRESQL) {
+        appendable.append(" VIRTUAL");
       }
     }
     if (isPlacementKey()) {
       appendable.append(" PLACEMENT KEY");
     }
     if (isHidden()) {
-      if (dialect() == Dialect.GOOGLE_STANDARD_SQL) {
-        appendable.append(" HIDDEN");
-      }
+      appendable.append(" HIDDEN");
     }
     if (columnOptions() == null) {
       return;
@@ -279,6 +279,22 @@ public abstract class Column implements Serializable {
       return type(Type.pgFloat8());
     }
 
+    public Builder uuid() {
+      return type(Type.uuid());
+    }
+
+    public Builder pgUuid() {
+      return type(Type.pgUuid());
+    }
+
+    public Builder array(Type t) {
+      return type(Type.array(t));
+    }
+
+    public Builder pgArray(Type t) {
+      return type(Type.pgArray(t));
+    }
+
     public Builder bool() {
       return type(Type.bool());
     }
@@ -345,6 +361,10 @@ public abstract class Column implements Serializable {
 
     public Builder pgJsonb() {
       return type(Type.pgJsonb());
+    }
+
+    public Builder pgSpannerTokenlist() {
+      return type(Type.pgSpannerTokenlist());
     }
 
     public Builder proto(String protoTypeFqn) {

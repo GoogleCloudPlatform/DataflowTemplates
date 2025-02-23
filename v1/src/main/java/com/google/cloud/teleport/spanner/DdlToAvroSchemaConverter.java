@@ -181,10 +181,16 @@ public class DdlToAvroSchemaConverter {
             if (cm.sequenceKind() != null) {
               fieldBuilder.prop(SPANNER_SEQUENCE_KIND, cm.sequenceKind());
             }
-            fieldBuilder.prop(
-                SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
-            fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));
-            fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(cm.skipRangeMax()));
+            if (cm.counterStartValue() != null) {
+              fieldBuilder.prop(
+                  SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
+            }
+            if (cm.skipRangeMin() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));
+            }
+            if (cm.skipRangeMax() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(cm.skipRangeMax()));
+            }
           } else if (cm.defaultExpression() != null) {
             fieldBuilder.prop(DEFAULT_EXPRESSION, cm.defaultExpression());
           }
@@ -486,10 +492,14 @@ public class DdlToAvroSchemaConverter {
       case JSON:
       case PG_JSONB:
         return SchemaBuilder.builder().stringType();
+      case UUID:
+      case PG_UUID:
+        return LogicalTypes.uuid().addToSchema(SchemaBuilder.builder().stringType());
       case BYTES:
       case PG_BYTEA:
       case PROTO:
       case TOKENLIST:
+      case PG_SPANNER_TOKENLIST:
         return SchemaBuilder.builder().bytesType();
       case TIMESTAMP:
       case PG_TIMESTAMPTZ:

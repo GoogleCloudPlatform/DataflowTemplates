@@ -118,9 +118,7 @@ public class InformationSchemaScanner {
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
-    if (dialect == Dialect.GOOGLE_STANDARD_SQL) {
-      listIndexOptions(builder, indexes);
-    }
+    listIndexOptions(builder, indexes);
 
     for (Map.Entry<String, NavigableMap<String, Index.Builder>> tableEntry : indexes.entrySet()) {
       String tableName = tableEntry.getKey();
@@ -347,6 +345,10 @@ public class InformationSchemaScanner {
       String defaultExpression = resultSet.isNull(9) ? null : resultSet.getString(9);
       boolean isIdentity = resultSet.getString(10).equalsIgnoreCase("YES");
       String identityKind = resultSet.isNull(11) ? null : resultSet.getString(11);
+      String sequenceKind = null;
+      if (identityKind != null && identityKind.equals("BIT_REVERSED_POSITIVE_SEQUENCE")) {
+        sequenceKind = "bit_reversed_positive";
+      }
       // The start_with_counter value is the initial value and cannot represent the actual state of
       // the counter. We need to apply the current counter to the DDL builder, instead of the one
       // retrieved from Information Schema.
@@ -354,18 +356,17 @@ public class InformationSchemaScanner {
           resultSet.isNull(12) ? null : Long.valueOf(resultSet.getString(12));
       if (isIdentity) {
         identityStartWithCounter =
-            updateCounterForIdentityColumn(
-                identityStartWithCounter, tableSchema + "." + columnName);
+            updateCounterForIdentityColumn(identityStartWithCounter, tableName + "." + columnName);
       }
       Long identitySkipRangeMin =
           resultSet.isNull(13) ? null : Long.valueOf(resultSet.getString(13));
       Long identitySkipRangeMax =
           resultSet.isNull(14) ? null : Long.valueOf(resultSet.getString(14));
-      boolean isHidden = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getBoolean(15) : false;
-      boolean isPlacementKey =
+      boolean isHidden =
           dialect == Dialect.GOOGLE_STANDARD_SQL
-              ? resultSet.getBoolean(16)
-              : resultSet.getBoolean(15);
+              ? resultSet.getBoolean(15)
+              : resultSet.getString(15).equalsIgnoreCase("YES");
+      boolean isPlacementKey = resultSet.getBoolean(16);
 
       builder
           .createTable(tableName)
@@ -378,7 +379,7 @@ public class InformationSchemaScanner {
           .isStored(isStored)
           .defaultExpression(defaultExpression)
           .isIdentityColumn(isIdentity)
-          .sequenceKind(identityKind)
+          .sequenceKind(sequenceKind)
           .counterStartValue(identityStartWithCounter)
           .skipRangeMin(identitySkipRangeMin)
           .skipRangeMax(identitySkipRangeMax)
@@ -419,8 +420,8 @@ public class InformationSchemaScanner {
             "SELECT c.table_schema, c.table_name, c.column_name,"
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
-                + " c.is_identity, c.identity_kind, c.identity_start_with_counter,"
-                + " c.identity_skip_range_min, c.identity_skip_range_max,"
+                + " c.is_identity, c.identity_kind, c.identity_start_with_counter, "
+                + " c.identity_skip_range_min, c.identity_skip_range_max, c.is_hidden,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"
@@ -461,20 +462,15 @@ public class InformationSchemaScanner {
               : resultSet.getString(5).equalsIgnoreCase("YES");
       String filter = resultSet.isNull(6) ? null : resultSet.getString(6);
 
-      // Note that 'type' is only queried from GoogleSQL and is not from Postgres and
-      // the number of columns will be different.
-      String type =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(7))
-              ? resultSet.getString(7)
-              : null;
+      String type = !resultSet.isNull(7) ? resultSet.getString(7) : null;
 
       ImmutableList<String> searchPartitionBy =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(8))
+          !resultSet.isNull(8)
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(8)).build()
               : null;
 
       ImmutableList<String> searchOrderBy =
-          (dialect == Dialect.GOOGLE_STANDARD_SQL && !resultSet.isNull(9))
+          !resultSet.isNull(9)
               ? ImmutableList.<String>builder().addAll(resultSet.getStringList(9)).build()
               : null;
 
@@ -511,10 +507,11 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         return Statement.of(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.filter FROM information_schema.indexes AS t "
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
+                + " FROM information_schema.indexes AS t "
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
-                + " AND t.index_type='INDEX' AND t.spanner_is_managed = 'NO' "
+                + " AND (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = 'NO' "
                 + " ORDER BY t.table_name, t.index_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -531,8 +528,8 @@ public class InformationSchemaScanner {
       String columnName = resultSet.getString(2);
       String ordering = resultSet.isNull(3) ? null : resultSet.getString(3);
       String indexLocalName = resultSet.getString(4);
-      String indexType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(5) : null;
-      String spannerType = dialect == Dialect.GOOGLE_STANDARD_SQL ? resultSet.getString(6) : null;
+      String indexType = resultSet.getString(5);
+      String spannerType = resultSet.getString(6);
 
       if (indexLocalName.equals("PRIMARY_KEY")) {
         IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder =
@@ -544,8 +541,10 @@ public class InformationSchemaScanner {
         }
         pkBuilder.end().endTable();
       } else {
+        String tokenlistType = dialect == Dialect.POSTGRESQL ? "spanner.tokenlist" : "TOKENLIST";
         if (indexType != null && ordering != null) {
-          if ((indexType.equals("SEARCH") && !spannerType.equals("TOKENLIST"))
+          // Non-tokenlist columns should not be included in the key for Search Indexes.
+          if ((indexType.equals("SEARCH") && !spannerType.contains(tokenlistType))
               || (indexType.equals("VECTOR") && !spannerType.startsWith("ARRAY"))) {
             continue;
           }
@@ -565,8 +564,9 @@ public class InformationSchemaScanner {
         }
         IndexColumn.IndexColumnsBuilder<Index.Builder> indexColumnsBuilder =
             indexBuilder.columns().create().name(columnName);
+        // Tokenlist columns do not have ordering.
         if (spannerType != null
-            && (spannerType.equals("TOKENLIST") || spannerType.startsWith("ARRAY"))) {
+            && (spannerType.equals(tokenlistType) || spannerType.startsWith("ARRAY"))) {
           indexColumnsBuilder.none();
         } else if (ordering == null) {
           indexColumnsBuilder.storing();
@@ -603,7 +603,8 @@ public class InformationSchemaScanner {
                 + "ORDER BY t.table_name, t.index_name, t.ordinal_position");
       case POSTGRESQL:
         return Statement.of(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name,"
+                + " t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
@@ -671,6 +672,14 @@ public class InformationSchemaScanner {
                 + " FROM information_schema.index_options AS t"
                 + " WHERE t.table_schema NOT IN"
                 + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " ORDER BY t.table_name, t.index_name, t.option_name");
+      case POSTGRESQL:
+        return Statement.of(
+            "SELECT t.table_schema, t.table_name, t.index_name, t.index_type,"
+                + " t.option_name, t.option_type, t.option_value"
+                + " FROM information_schema.index_options AS t"
+                + " WHERE t.table_schema NOT IN"
+                + " ('information_schema', 'spanner_sys', 'pg_catalog') "
                 + " ORDER BY t.table_name, t.index_name, t.option_name");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
@@ -1621,15 +1630,19 @@ public class InformationSchemaScanner {
     ResultSet resultSet = context.executeQuery(queryStatement);
     while (resultSet.next()) {
       String sequenceName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
-      builder.createSequence(sequenceName).endSequence();
 
       Statement sequenceCounterStatement;
       switch (dialect) {
         case GOOGLE_STANDARD_SQL:
+          ImmutableList.Builder<String> options = ImmutableList.builder();
+          options.add(
+              Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
+          builder.createSequence(sequenceName).options(options.build()).endSequence();
           sequenceCounterStatement =
               Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")");
           break;
         case POSTGRESQL:
+          builder.createSequence(sequenceName).endSequence();
           sequenceCounterStatement =
               Statement.of(
                   "SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('"
@@ -1686,20 +1699,13 @@ public class InformationSchemaScanner {
         options.add(optionName + "=" + optionValue);
       }
     }
-    // If the sequence kind is not specified, assign it to 'default'.
-    for (var entry : allOptions.entrySet()) {
-      if (!entry.getValue().toString().contains(Sequence.SEQUENCE_KIND)) {
-        entry
-            .getValue()
-            .add(
-                Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
-      }
-    }
 
     // Inject the current counter value to sequences that are in use.
     for (Map.Entry<String, Long> entry : currentCounters.entrySet()) {
+      String sequenceName = entry.getKey();
       ImmutableList.Builder<String> options =
-          allOptions.computeIfAbsent(entry.getKey(), k -> ImmutableList.builder());
+          allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
+
       // Add a buffer to accommodate writes that may happen after import
       // is run. Note that this is not 100% failproof, since more writes may
       // happen and they will make the sequence advances past the buffer.

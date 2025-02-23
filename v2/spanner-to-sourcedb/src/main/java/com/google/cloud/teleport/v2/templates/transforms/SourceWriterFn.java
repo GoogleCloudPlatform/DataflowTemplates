@@ -15,6 +15,13 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
+import com.datastax.oss.driver.api.core.DriverTimeoutException;
+import com.datastax.oss.driver.api.core.NodeUnavailableException;
+import com.datastax.oss.driver.api.core.connection.BusyConnectionException;
+import com.datastax.oss.driver.api.core.connection.ConnectionInitException;
+import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
+import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -210,7 +217,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                   shardId,
                   sourceDbTimezoneOffset,
                   sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer);
+                  spannerToSourceTransformer,
+                  this.source);
           if (isEventFiltered) {
             outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
           }
@@ -232,13 +240,19 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       } catch (InvalidTransformationException ex) {
         invalidTransformationException.inc();
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (ChangeEventConvertorException ex) {
+      } catch (ChangeEventConvertorException | CodecNotFoundException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (SpannerException
           | IllegalStateException
           | com.mysql.cj.jdbc.exceptions.CommunicationsException
           | java.sql.SQLIntegrityConstraintViolationException
           | java.sql.SQLTransientConnectionException
+          | ConnectionInitException
+          | DriverTimeoutException
+          | AllNodesFailedException
+          | BusyConnectionException
+          | NodeUnavailableException
+          | QueryExecutionException
           | ConnectionException ex) {
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (java.sql.SQLNonTransientConnectionException ex) {
