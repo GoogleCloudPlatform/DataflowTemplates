@@ -169,7 +169,7 @@ public class JdbcToBigQuery {
       final String partitionColumnType = options.getPartitionColumnType();
       if (partitionColumnType == null || "long".equals(partitionColumnType)) {
         JdbcIO.ReadWithPartitions<TableRow, Long> longTypeReadIO =
-            JdbcIO.<TableRow,Long>readWithPartitions(TypeDescriptors.longs())
+            JdbcIO.<TableRow, Long>readWithPartitions(TypeDescriptors.longs())
                 .withDataSourceConfiguration(dataSourceConfiguration)
                 .withTable(options.getTable())
                 .withPartitionColumn(options.getPartitionColumn())
@@ -189,13 +189,14 @@ public class JdbcToBigQuery {
         readIO = longTypeReadIO;
       } else if ("datetime".equals(partitionColumnType)) {
         JdbcIO.ReadWithPartitions<TableRow, DateTime> dateTimeReadIO =
-            JdbcIO.<TableRow,DateTime>readWithPartitions(TypeDescriptor.of(DateTime.class))
+            JdbcIO.<TableRow, DateTime>readWithPartitions(TypeDescriptor.of(DateTime.class))
                 .withDataSourceConfiguration(dataSourceConfiguration)
                 .withTable(options.getTable())
                 .withPartitionColumn(options.getPartitionColumn())
                 .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
         if (options.getLowerBound() != null && options.getUpperBound() != null) {
-          DateTimeFormatter dateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSZ").withOffsetParsed();
+          DateTimeFormatter dateFormatter =
+              DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSZ").withOffsetParsed();
           // Check if lowerBound and upperBound are DateTime type.
           try {
             dateTimeReadIO =

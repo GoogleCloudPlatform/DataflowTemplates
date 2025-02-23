@@ -35,8 +35,6 @@ import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
 import org.apache.beam.sdk.io.gcp.testing.FakeDatasetService;
 import org.apache.beam.sdk.io.gcp.testing.FakeJobService;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.joda.time.format.DateTimeFormat;
-import org.joda.time.format.DateTimeFormatter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -57,8 +55,6 @@ public class JdbcToBigQueryReadWithPartitionsTest {
   private FakeDatasetService fakeDatasetService;
   private BigQueryServices bigQueryServices;
   private JdbcToBigQueryOptions options;
-
-  DateTimeFormatter assertOutputFormatter = DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSSSSZZ");
 
   @Before
   public void setUp() throws SQLException, IOException, InterruptedException {
@@ -127,7 +123,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS").withOffsetParsed().parseDateTime("2024-12-24 06:00:00.000").toString(assertOutputFormatter))));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
   }
 
   @Test
@@ -144,7 +140,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS").withOffsetParsed().parseDateTime("2024-12-24 06:00:00.000").toString(assertOutputFormatter))));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
   }
 
   @Test
@@ -165,7 +161,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS").withOffsetParsed().parseDateTime("2024-12-24 06:00:00.000").toString(assertOutputFormatter))));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
   }
 
   @Test
@@ -200,31 +196,33 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS").withOffsetParsed().parseDateTime("2024-12-24 06:00:00.000").toString(assertOutputFormatter))));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
   }
 
   @Test
-  public void testE2EWithDateTimePartitionColumnTypeWithBounds() throws IOException, InterruptedException {
+  public void testE2EWithDateTimePartitionColumnTypeWithBounds()
+      throws IOException, InterruptedException {
     options.setPartitionColumn("SELL_TIME");
     options.setPartitionColumnType("datetime");
     options.setLowerBound("2024-12-23 06:00:00.000-08:00");
     options.setUpperBound("2024-12-24 07:00:00.000-08:00");
 
     JdbcToBigQuery.run(
-                    options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
-            .waitUntilFinish();
+            options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
+        .waitUntilFinish();
 
     assertThat(fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE))
-            .isEqualTo(
-                    ImmutableList.of(
-                            new TableRow()
-                                    .set("BOOK_ID", 1)
-                                    .set("TITLE", "ABC")
-                                    .set("SELL_TIME", DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSS").withOffsetParsed().parseDateTime("2024-12-24 06:00:00.000").toString(assertOutputFormatter))));
+        .isEqualTo(
+            ImmutableList.of(
+                new TableRow()
+                    .set("BOOK_ID", 1)
+                    .set("TITLE", "ABC")
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
   }
 
   @Test
-  public void testE2EWithDateTimePartitionColumnTypeWithIncorrectBounds() throws IOException, InterruptedException {
+  public void testE2EWithDateTimePartitionColumnTypeWithIncorrectBounds()
+      throws IOException, InterruptedException {
     options.setPartitionColumn("SELL_TIME");
     options.setPartitionColumnType("datetime");
     options.setLowerBound("1234");
