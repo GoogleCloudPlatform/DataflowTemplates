@@ -450,7 +450,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
       values.put(columns.get(3), i % 2 == 0 ? "Y" : "N");
       values.put(columns.get(4), Instant.now().toString());
       if (useDlq) {
-        values.put(columns.get(6), RandomStringUtils.randomAlphabetic(10));
+        values.put(columns.get(5), RandomStringUtils.randomAlphabetic(10));
       }
       data.add(values);
     }
