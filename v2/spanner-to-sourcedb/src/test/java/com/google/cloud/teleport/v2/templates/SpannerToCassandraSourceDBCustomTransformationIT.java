@@ -93,8 +93,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
         pubsubResourceManager = setUpPubSubResourceManager();
         CustomTransformation customTransformation =
             CustomTransformation.builder(
-                    "input/customShard.jar",
-                    "com.custom.CustomTransformationWithCassandraForLiveIT")
+                    "input/customShard.jar", "com.custom.CustomTransformationWithCassandraForIT")
                 .build();
         subscriptionName =
             createPubsubResources(
