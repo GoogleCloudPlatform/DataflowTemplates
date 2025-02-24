@@ -202,6 +202,6 @@ public class SpannerExceptionParserTest {
             e.getMessage(), actual.getErrorCode(), expected),
         expected,
         actual.getErrorCode());
-    Assert.assertEquals(expected.getCode() + " - " + e.getMessage(), actual.getMessage());
+    Assert.assertEquals(expected.getCode() + " : " + e.getMessage(), actual.getMessage());
   }
 }
