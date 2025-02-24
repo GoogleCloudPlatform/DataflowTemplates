@@ -77,7 +77,14 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
-    jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers, null, MYSQL_SOURCE_TYPE);
+    jobInfo =
+        launchDataflowJob(
+            artifactBucket,
+            numWorkers,
+            maxWorkers,
+            null,
+            MYSQL_SOURCE_TYPE,
+            SOURCE_SHARDS_FILE_NAME);
   }
 
   @After

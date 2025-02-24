@@ -192,7 +192,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       int numWorkers,
       int maxWorkers,
       CustomTransformation customTransformation,
-      String sourceType)
+      String sourceType,
+      String shardFileName)
       throws IOException {
     // default parameters
 
@@ -209,7 +210,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
             put(
                 "sourceShardsFilePath",
-                getGcsPath(artifactBucket, SOURCE_SHARDS_FILE_NAME, gcsResourceManager));
+                getGcsPath(artifactBucket, shardFileName, gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
             put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));

@@ -84,7 +84,12 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
     createAndUploadJarToGcs(gcsResourceManager);
     jobInfo =
         launchDataflowJob(
-            artifactBucket, numWorkers, maxWorkers, customTransformation, MYSQL_SOURCE_TYPE);
+            artifactBucket,
+            numWorkers,
+            maxWorkers,
+            customTransformation,
+            MYSQL_SOURCE_TYPE,
+            SOURCE_SHARDS_FILE_NAME);
   }
 
   @After

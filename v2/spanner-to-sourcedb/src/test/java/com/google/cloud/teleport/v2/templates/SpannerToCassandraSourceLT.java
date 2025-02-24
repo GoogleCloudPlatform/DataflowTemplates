@@ -70,7 +70,13 @@ public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
                     Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
     jobInfo =
-        launchDataflowJob(artifactBucket, numWorkers, maxWorkers, null, CASSANDRA_SOURCE_TYPE);
+        launchDataflowJob(
+            artifactBucket,
+            numWorkers,
+            maxWorkers,
+            null,
+            CASSANDRA_SOURCE_TYPE,
+            SOURCE_SHARDS_FILE_NAME);
   }
 
   @After
