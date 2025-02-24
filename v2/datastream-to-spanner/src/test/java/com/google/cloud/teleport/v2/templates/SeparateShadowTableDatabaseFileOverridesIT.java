@@ -123,7 +123,8 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
     for (SeparateShadowTableDatabaseFileOverridesIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test

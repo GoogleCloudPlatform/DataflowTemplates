@@ -222,7 +222,7 @@ VALUES (
            ['a', 'b', 'c'], -- ascii_list
            ['d', 'e', 'f'], -- frozen_ascii_list
            [1, 2, 3], -- bigint_list
-           [0x48656C6C6F], -- blob_list (Hex representation of "Hello")
+           [asciiAsBlob('Hello')], -- blob_list (Hex representation of "Hello")
            [true, false], -- boolean_list
            ['2024-10-27', '2024-10-28'], -- date_list
            [123.45, 678.90], -- decimal_list

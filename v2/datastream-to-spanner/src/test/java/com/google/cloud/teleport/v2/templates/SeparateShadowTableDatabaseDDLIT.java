@@ -129,7 +129,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
     for (SeparateShadowTableDatabaseDDLIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test

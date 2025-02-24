@@ -151,14 +151,6 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
     assertBasicRowInCassandraDB();
   }
 
-  /**
-   * Writes basic rows to multiple tables in Google Cloud Spanner.
-   *
-   * <p>This method performs the following operations:
-   *
-   * <p>The transaction uses a Spanner client with a specific transaction tag
-   * ("txBy=forwardMigration").
-   */
   private void writeBasicRowInSpanner() {
     Mutation m1 =
         Mutation.newInsertOrUpdateBuilder(CUSTOMER_TABLE)
@@ -172,24 +164,6 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
     spannerResourceManager.write(m1);
   }
 
-  /**
-   * Asserts that a basic row exists in the Cassandra database.
-   *
-   * <p>This method performs the following steps:
-   *
-   * <ul>
-   *   <li>Waits for the condition that ensures one row exists in the Cassandra table {@code
-   *       USER_TABLE}.
-   *   <li>Retrieves and logs rows from the Cassandra table.
-   *   <li>Checks if exactly one row is present in the table.
-   *   <li>Verifies that the row contains expected values for columns: {@code id}, {@code
-   *       full_name}, and {@code from}.
-   * </ul>
-   *
-   * @throws InterruptedException if the thread is interrupted while waiting for the row count
-   *     condition.
-   * @throws RuntimeException if reading from the Cassandra table fails.
-   */
   private void assertBasicRowInCassandraDB() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
@@ -231,16 +205,6 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
     }
   }
 
-  /**
-   * Retrieves the total row count of a specified table in Cassandra.
-   *
-   * <p>This method executes a `SELECT COUNT(*)` query on the given table and returns the number of
-   * rows present in it.
-   *
-   * @param tableName the name of the table whose row count is to be retrieved.
-   * @return the total number of rows in the specified table.
-   * @throws RuntimeException if the query does not return a result.
-   */
   private long getRowCount(String tableName) {
     String query = String.format("SELECT COUNT(*) FROM %s", tableName);
     ResultSet resultSet = cassandraResourceManager.executeStatement(query);

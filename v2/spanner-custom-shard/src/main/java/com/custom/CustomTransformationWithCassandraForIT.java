@@ -24,9 +24,7 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// TODO: Rename the class since its being used in both Live and Reverse replication tests and in
-// both ITs and LTs
-public class CustomTransformationWithCassandraForLiveIT implements ISpannerMigrationTransformer {
+public class CustomTransformationWithCassandraForIT implements ISpannerMigrationTransformer {
 
   private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
 
@@ -38,29 +36,15 @@ public class CustomTransformationWithCassandraForLiveIT implements ISpannerMigra
   @Override
   public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("Customers")) {
-      Map<String, Object> row = new HashMap<>(request.getRequestRow());
-      row.put("full_name", row.get("first_name") + " " + row.get("last_name"));
-      row.put("migration_shard_id", request.getShardId() + "_" + row.get("id"));
-      MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
-      return response;
-    }
     return new MigrationTransformationResponse(null, false);
   }
 
   @Override
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("customers")) {
+    if (request.getTableName().equalsIgnoreCase("customers")) {
       Map<String, Object> requestRow = request.getRequestRow();
       Map<String, Object> row = new HashMap<>();
-      // In case of update/delete events, return request as response without any transformation
-      if (request.getEventType().equals("UPDATE")) {
-        return new MigrationTransformationResponse(null, false);
-      }
-      if (request.getEventType().equals("DELETE")) {
-        return new MigrationTransformationResponse(null, true);
-      }
       row.put("full_name", requestRow.get("first_name") + " " + requestRow.get("last_name"));
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;

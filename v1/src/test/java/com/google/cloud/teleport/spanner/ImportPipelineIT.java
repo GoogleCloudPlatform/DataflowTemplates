@@ -85,6 +85,27 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
         "input/UuidTable-manifest.json",
         Resources.getResource("ImportPipelineIT/" + subdirectory + "/UuidTable-manifest.json")
             .getPath());
+    gcsClient.uploadArtifact(
+        "input/Identity.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Identity.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/Identity-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Identity-manifest.json")
+            .getPath());
+    gcsClient.uploadArtifact(
+        "input/Sequence1.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Sequence1.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/Sequence1-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Sequence1-manifest.json")
+            .getPath());
+    gcsClient.uploadArtifact(
+        "input/Sequence2.avro-00000-of-00001",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Sequence2.avro").getPath());
+    gcsClient.uploadArtifact(
+        "input/Sequence2-manifest.json",
+        Resources.getResource("ImportPipelineIT/" + subdirectory + "/Sequence2-manifest.json")
+            .getPath());
 
     if (Objects.equals(subdirectory, "googlesql")) {
       gcsClient.uploadArtifact(
