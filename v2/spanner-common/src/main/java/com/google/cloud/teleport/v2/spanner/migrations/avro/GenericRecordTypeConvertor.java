@@ -23,6 +23,7 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -33,6 +34,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,7 +73,7 @@ public class GenericRecordTypeConvertor {
 
   static final String LOGICAL_TYPE = "logicalType";
 
-  private static final Schema CUSTOM_TRANSFORMATION_AVRO_SCHEMA =
+  static final Schema CUSTOM_TRANSFORMATION_AVRO_SCHEMA =
       new LogicalType("custom_transform").addToSchema(SchemaBuilder.builder().stringType());
 
   private final Distribution applyCustomTransformationResponseTimeMetric =
@@ -251,28 +253,76 @@ public class GenericRecordTypeConvertor {
         map.put(fieldName, fieldValue);
         continue;
       }
-      Schema.Type fieldType = fieldSchema.getType();
-      switch (fieldType) {
-        case INT:
-        case LONG:
-          fieldValue = Long.valueOf(fieldValue.toString());
-          break;
-        case BOOLEAN:
-          fieldValue = Boolean.valueOf(fieldValue.toString());
-          break;
-        case FLOAT:
-        case DOUBLE:
-          fieldValue = Double.valueOf(fieldValue.toString());
-          break;
-        case BYTES:
-          fieldValue = Hex.encode(((ByteBuffer) fieldValue).array());
-          break;
-        default:
-          fieldValue = fieldValue.toString();
+      if (fieldSchema.getType().equals(Schema.Type.ARRAY)) {
+        fieldValue = getObjectMapValueForArrayFieldValue(fieldValue, fieldSchema, fieldName);
+        map.put(fieldName, fieldValue);
+        continue;
       }
+      fieldValue = getObjectMapValueForPrimitiveFieldValue(fieldValue, fieldSchema);
       map.put(fieldName, fieldValue);
     }
     return map;
+  }
+
+  /**
+   * Handles Arrays of complex Avro types (logical types or records) within a GenericRecord to be
+   * inserted in the CustomTransformationMap.
+   *
+   * @param fieldValue The original value of the field in the GenericRecord.
+   * @param fieldSchema The Avro schema describing the field's type.
+   * @param fieldName The name of the column (field) in the record.
+   * @return The processed value of the field, potentially transformed according to its complex
+   *     type. Note: Implementation Detail, This method is slightly different from {@link
+   *     GenericRecordTypeConvertor#handleArrayAvroTypes} due to subtle difference in the way
+   *     primitives are handled in both the code flows.
+   */
+  static Object getObjectMapValueForArrayFieldValue(
+      Object fieldValue, Schema fieldSchema, String fieldName) {
+
+    List<Object> recordArrayList = new ArrayList<Object>();
+    Schema elementSchema = fieldSchema.getElementType();
+    if (fieldValue == null) {
+      return null;
+    }
+
+    for (int i = 0; i < Array.getLength(fieldValue); i++) {
+
+      Object curValue = Array.get(fieldValue, i);
+      curValue = handleNonPrimitiveAvroTypes(curValue, elementSchema, fieldName);
+      // Standardizing the types for custom jar input.
+      if (elementSchema.getProp(LOGICAL_TYPE) != null
+          || elementSchema.getType() == Schema.Type.RECORD) {
+        recordArrayList.add(curValue);
+        continue;
+      }
+      curValue = getObjectMapValueForPrimitiveFieldValue(curValue, elementSchema);
+      recordArrayList.add(curValue);
+    }
+    return recordArrayList.toArray();
+  }
+
+  private static Object getObjectMapValueForPrimitiveFieldValue(
+      Object fieldValue, Schema fieldSchema) {
+    Schema.Type fieldType = fieldSchema.getType();
+    switch (fieldType) {
+      case INT:
+      case LONG:
+        fieldValue = Long.valueOf(fieldValue.toString());
+        break;
+      case BOOLEAN:
+        fieldValue = Boolean.valueOf(fieldValue.toString());
+        break;
+      case FLOAT:
+      case DOUBLE:
+        fieldValue = Double.valueOf(fieldValue.toString());
+        break;
+      case BYTES:
+        fieldValue = Hex.encode(((ByteBuffer) fieldValue).array());
+        break;
+      default:
+        fieldValue = fieldValue.toString();
+    }
+    return fieldValue;
   }
 
   @VisibleForTesting
@@ -364,16 +414,53 @@ public class GenericRecordTypeConvertor {
    * @return The processed value of the field, potentially transformed according to its complex
    *     type.
    */
-  private Object handleNonPrimitiveAvroTypes(
+  private static Object handleNonPrimitiveAvroTypes(
       Object recordValue, Schema fieldSchema, String recordColName) {
     if (fieldSchema.getLogicalType() != null || fieldSchema.getProp(LOGICAL_TYPE) != null) {
       recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {
       // Get the avro field of type record from the whole record.
       recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
+    } else if (fieldSchema.getType().equals(Schema.Type.ARRAY)) {
+      // Get the avro field of type record from the Array.
+      recordValue = handleArrayAvroTypes(recordValue, fieldSchema, recordColName);
     }
     LOG.debug("Updated record value is {} for recordColName {}", recordValue, recordColName);
     return recordValue;
+  }
+
+  /**
+   * Handles Arrays of complex Avro types (logical types or records) within a GenericRecord.
+   *
+   * @param recordValue The original value of the field in the GenericRecord.
+   * @param fieldSchema The Avro schema describing the field's type.
+   * @param recordColName The name of the column (field) in the record.
+   * @return The processed value of the field, potentially transformed according to its complex
+   *     type.
+   */
+  static Object handleArrayAvroTypes(Object recordValue, Schema fieldSchema, String recordColName) {
+
+    if (!fieldSchema.getType().equals(Schema.Type.ARRAY)) {
+      return recordValue;
+    }
+    if (recordValue == null) {
+      return null;
+    }
+
+    List<Object> recordArrayList = new ArrayList<Object>();
+    Schema elementSchema = fieldSchema.getElementType();
+    for (int i = 0; i < Array.getLength(recordValue); i++) {
+      Object curValue = Array.get(recordValue, i);
+      curValue = handleNonPrimitiveAvroTypes(curValue, elementSchema, recordColName);
+      // Standardizing the types for custom jar input.
+      if (elementSchema.getProp(LOGICAL_TYPE) != null
+          || elementSchema.getType() == Schema.Type.RECORD) {
+        recordArrayList.add(curValue);
+        continue;
+      }
+      recordArrayList.add(curValue);
+    }
+    return recordArrayList.toArray();
   }
 
   /** Converts an avro object to Spanner Value of the specified type. */
