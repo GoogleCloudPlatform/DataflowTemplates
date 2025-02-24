@@ -106,17 +106,23 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
         jobInfo =
-            launchDataflowJob(
-                gcsResourceManager,
+            launchRRDataflowJob(
                 spannerResourceManager,
+                gcsResourceManager,
                 spannerMetadataResourceManager,
                 subscriptionName.toString(),
-                null,
-                null,
-                null,
-                null,
-                null,
                 MYSQL_SOURCE_TYPE);
+        // launchDataflowJob(
+        //     gcsResourceManager,
+        //     spannerResourceManager,
+        //     spannerMetadataResourceManager,
+        //     subscriptionName.toString(),
+        //     null,
+        //     null,
+        //     null,
+        //     null,
+        //     null,
+        //     MYSQL_SOURCE_TYPE);
         System.out.println("######2");
         System.out.println(jobInfo.jobId());
       }

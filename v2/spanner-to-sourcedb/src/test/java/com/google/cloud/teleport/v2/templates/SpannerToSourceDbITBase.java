@@ -43,6 +43,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -54,6 +55,7 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -301,5 +303,44 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.uploadArtifact(
         "input/customShard.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
+  }
+
+  public PipelineLauncher.LaunchInfo launchRRDataflowJob(
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String rrSubscriptionName,
+      String sourceType)
+      throws IOException {
+    String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
+    // default parameters
+    flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(rrJobName)
+            .withTemplateName("Spanner_to_SourceDb")
+            .withTemplateModulePath("v2/spanner-to-sourcedb")
+            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("metadataDatabase", spannerMetadataResourceManager.getDatabaseId())
+            .addParameter("metadataInstance", spannerMetadataResourceManager.getInstanceId())
+            .addParameter(
+                "sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager))
+            .addParameter("changeStreamName", "allstream")
+            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName)
+            .addParameter("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager))
+            .addParameter("maxShardConnections", "5")
+            .addParameter("maxNumWorkers", "1")
+            .addParameter("numWorkers", "1")
+            .addParameter("sourceType", sourceType)
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+            .build();
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    System.out.println("#####1");
+    System.out.println(jobInfo.jobId());
+    return jobInfo;
   }
 }
