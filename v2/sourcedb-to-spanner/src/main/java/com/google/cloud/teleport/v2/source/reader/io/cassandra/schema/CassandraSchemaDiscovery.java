@@ -181,9 +181,9 @@ public final class CassandraSchemaDiscovery implements RetriableSchemaDiscovery 
   }
 
   /**
-   * Discover the indexes of tables to migrate. Note: As of now, we are using default CassandraIO
-   * and don't see a need to override the partitioning logic. We don't need this part of schema
-   * discovery for Cassandra and is an unsupported operation currently.
+   * Discover the indexes of tables to migrate. Note: As of now, we are using default
+   * LocalCassandraIO and don't see a need to override the partitioning logic. We don't need this
+   * part of schema discovery for Cassandra and is an unsupported operation currently.
    *
    * @param dataSource Provider for source connection.
    * @param sourceSchemaReference Source database name and (optionally namespace)
