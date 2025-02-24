@@ -51,4 +51,27 @@ public class DataStreamToSpannerInterleavedTableLT extends DataStreamToSpannerLT
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);
   }
+
+  @Test
+  public void crossDbTxn_backfill100GbInterleavedTable()
+      throws IOException, ParseException, InterruptedException {
+    setUpResourceManagers(
+        "DataStreamToSpanner100GbLT/spanner-schema-interleaving.sql",
+        /* separateShadowTableDb= */ true);
+    HashMap<String, Integer> tables100GB = new HashMap<>();
+    for (int i = 1; i <= 4; i++) {
+      tables100GB.put("person" + i, 14300000);
+    }
+
+    // Setup Datastream
+    String hostIp =
+        secretClient.accessSecret("projects/269744978479/secrets/interleaving-ip/versions/1");
+    String username =
+        secretClient.accessSecret("projects/269744978479/secrets/interleaving-user/versions/1");
+    String password =
+        secretClient.accessSecret("projects/269744978479/secrets/interleaving-password/versions/1");
+
+    JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
+    runLoadTest(tables100GB, mySQLSource);
+  }
 }
