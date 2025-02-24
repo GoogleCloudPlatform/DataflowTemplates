@@ -40,8 +40,8 @@ import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContext;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventContextFactory;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequence;
 import com.google.cloud.teleport.v2.templates.datastream.ChangeEventSequenceFactory;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag;
+import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier;
+import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag;
 import com.google.cloud.teleport.v2.templates.utils.WatchdogRunnable;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Preconditions;
@@ -339,12 +339,18 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
        * 3. Unique index violation - Permanent error
        */
       SpannerMigrationException spannerMigrationException = SpannerExceptionParser.parse(ex);
-      ErrorTag outputTag = SpannerExceptionClassifier.classify(spannerMigrationException);
+      ErrorTag outputTag =
+          DatastreamToSpannerExceptionClassifier.classify(spannerMigrationException);
       switch (outputTag) {
         case PERMANENT_ERROR:
+          LOG.error(
+              "A severe error occurred while processing the event.", spannerMigrationException);
           outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
           break;
         case RETRYABLE_ERROR:
+          LOG.warn(
+              "A retryable error occurred while processing the event, the event will be retried again.",
+              spannerMigrationException);
           outputWithErrorTag(c, msg, ex, DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG);
       }
       // do not increment the retry error count if this was retry attempt

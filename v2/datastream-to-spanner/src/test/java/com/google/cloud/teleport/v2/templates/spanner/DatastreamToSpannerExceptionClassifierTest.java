@@ -15,14 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates.spanner;
 
-import static com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag.PERMANENT_ERROR;
-import static com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag.RETRYABLE_ERROR;
+import static com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag.PERMANENT_ERROR;
+import static com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag.RETRYABLE_ERROR;
 
 import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerExceptionParser;
-import com.google.cloud.teleport.v2.templates.spanner.SpannerExceptionClassifier.ErrorTag;
+import com.google.cloud.teleport.v2.templates.spanner.DatastreamToSpannerExceptionClassifier.ErrorTag;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -30,7 +30,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 /* Unit test for SpannerExceptionClassifier */
-public class SpannerExceptionClassifierTest {
+public class DatastreamToSpannerExceptionClassifierTest {
 
   private static Map<SpannerException, ErrorTag> exceptionToExpectedTag =
       new HashMap<>() {
@@ -190,7 +190,8 @@ public class SpannerExceptionClassifierTest {
   public void testSpannerExceptionClassification() {
     for (Entry<SpannerException, ErrorTag> entry : exceptionToExpectedTag.entrySet()) {
       ErrorTag actual =
-          SpannerExceptionClassifier.classify(SpannerExceptionParser.parse(entry.getKey()));
+          DatastreamToSpannerExceptionClassifier.classify(
+              SpannerExceptionParser.parse(entry.getKey()));
       assertSpannerExceptionClassification(entry.getKey(), actual, entry.getValue());
     }
   }

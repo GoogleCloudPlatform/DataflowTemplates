@@ -20,7 +20,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrati
 import java.util.Set;
 
 /* Helper class to classify SpannerExceptions to Retryable error or Permanent error */
-public class SpannerExceptionClassifier {
+public class DatastreamToSpannerExceptionClassifier {
 
   public enum ErrorTag {
     PERMANENT_ERROR,
