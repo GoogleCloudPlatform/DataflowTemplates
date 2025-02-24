@@ -42,7 +42,7 @@ public class CustomTransformationWithCassandraForIT implements ISpannerMigration
   @Override
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("customers")) {
+    if (request.getTableName().equalsIgnoreCase("customers")) {
       Map<String, Object> requestRow = request.getRequestRow();
       Map<String, Object> row = new HashMap<>();
       row.put("full_name", requestRow.get("first_name") + " " + requestRow.get("last_name"));
