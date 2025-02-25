@@ -219,7 +219,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     SubscriptionName dlqSubscription =
         createPubsubResources(
             identifierSuffix + "dlq", pubsubResourceManager, "dlq/", gcsResourceManager);
-    String gcsPath = getGcsPath(testName);
+    String gcsPath = "gs://" + testName;
 
     // default parameters
     Map<String, String> params =
