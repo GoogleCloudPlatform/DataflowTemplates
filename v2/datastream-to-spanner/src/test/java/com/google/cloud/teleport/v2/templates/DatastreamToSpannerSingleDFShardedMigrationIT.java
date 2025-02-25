@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -77,6 +78,7 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -96,7 +98,10 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
-      createAndUploadJarToGcs("shard1");
+      if (gcsResourceManager == null) {
+        gcsResourceManager = setUpGCSResourceManager();
+      }
+      createAndUploadJarToGcs(gcsResourceManager, "shard1");
       if (jobInfo == null) {
         jobInfo =
             launchDataflowJob(
@@ -106,6 +111,7 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
                 "shard1",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
@@ -144,27 +150,32 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard1.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard1.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard2.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard2.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-cdc-logical-shard1.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-cdc-logical-shard1.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-cdc-logical-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard3.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard3.avro"),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard3.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard4.avro")))
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard4.avro",
+                        gcsResourceManager)))
             .build();
 
     // Wait for conditions

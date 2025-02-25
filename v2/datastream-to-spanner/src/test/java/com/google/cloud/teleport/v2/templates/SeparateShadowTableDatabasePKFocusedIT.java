@@ -34,6 +34,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,6 +61,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -76,6 +78,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGCSResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -85,6 +88,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                 "SeparateShadowTableDatabasePKFocusedIT",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put(
@@ -138,7 +142,8 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "my_table-simpleTest-3-inserts.avro",
-                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-3-inserts.avro"),
+                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-3-inserts.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -147,7 +152,8 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "my_table-simpleTest-update-delete.avro",
-                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-update-delete.avro"),
+                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-update-delete.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -156,7 +162,8 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "my_table-simpleTest-pk-update.avro",
-                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-pk-update.avro"),
+                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-pk-update.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -206,7 +213,8 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "alltypes-test-3-inserts.avro",
-                        "SeparateShadowTableDatabaseIT/alltypes-test-3-inserts.avro"),
+                        "SeparateShadowTableDatabaseIT/alltypes-test-3-inserts.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -215,7 +223,8 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "alltypes-test-update-delete.avro",
-                        "SeparateShadowTableDatabaseIT/alltypes-test-update-delete.avro"),
+                        "SeparateShadowTableDatabaseIT/alltypes-test-update-delete.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -224,7 +233,8 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "alltypes-test-pk-update.avro",
-                        "SeparateShadowTableDatabaseIT/alltypes-test-pk-update.avro"),
+                        "SeparateShadowTableDatabaseIT/alltypes-test-pk-update.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
