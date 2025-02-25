@@ -175,7 +175,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
