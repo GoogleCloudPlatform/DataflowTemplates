@@ -33,8 +33,10 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
@@ -66,12 +68,14 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   private static final String TABLE = "Authors";
   private static final HashSet<SpannerToSourceDbEndToEndIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
+  private static PipelineLauncher.LaunchInfo fwdJobInfo;
   public static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static MySQLResourceManager jdbcResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
-  private SubscriptionName subscriptionName;
+  private SubscriptionName rrSubscriptionName;
+  private SubscriptionName fwdSubscriptionName;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -79,7 +83,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
    * @throws IOException
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
     synchronized (SpannerToSourceDbEndToEndIT.class) {
       testInstances.add(this);
@@ -97,34 +101,30 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+        createAndUploadJarToGcs(gcsResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
-        subscriptionName =
-            createPubsubResources(
-                getClass().getSimpleName(),
-                pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
-        jobInfo =
-            launchRRDataflowJob(
-                spannerResourceManager,
-                gcsResourceManager,
-                spannerMetadataResourceManager,
-                subscriptionName.toString(),
-                MYSQL_SOURCE_TYPE);
-        // launchDataflowJob(
-        //     gcsResourceManager,
-        //     spannerResourceManager,
-        //     spannerMetadataResourceManager,
-        //     subscriptionName.toString(),
-        //     null,
-        //     null,
-        //     null,
-        //     null,
-        //     null,
-        //     MYSQL_SOURCE_TYPE);
-        System.out.println("######2");
-        System.out.println(jobInfo.jobId());
+        // rrSubscriptionName =
+        //     createPubsubResources(
+        //         getClass().getSimpleName(),
+        //         pubsubResourceManager,
+        //         getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+        // jobInfo =
+        //     launchRRDataflowJob(
+        //         spannerResourceManager,
+        //         gcsResourceManager,
+        //         spannerMetadataResourceManager,
+        //         rrSubscriptionName.toString(),
+        //         MYSQL_SOURCE_TYPE);
+        // System.out.println("######2");
+        // System.out.println(jobInfo.jobId());
+        fwdJobInfo = launchFwdDataflowJob(
+            spannerResourceManager,
+            gcsResourceManager,
+            pubsubResourceManager,
+            "fwdMigration"
+        );
       }
     }
   }
@@ -149,11 +149,36 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
-    assertThatPipeline(jobInfo).isRunning();
-    // Write row in Spanner
-    writeRowInSpanner();
-    // Assert events on Mysql
-    assertRowInMySQL();
+    // assertThatPipeline(jobInfo).isRunning();
+    // // Write row in Spanner
+    // writeRowInSpanner();
+    // // Assert events on Mysql
+    // assertRowInMySQL();
+    assertThatPipeline(fwdJobInfo).isRunning();
+    gcsToSpanner();
+  }
+
+  private void gcsToSpanner() {
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        fwdJobInfo,
+                        TABLE,
+                        "backfill.avro",
+                        "SpannerToSourceDbEndToEndIT/authors.avro"),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build()))
+            .build();
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
   }
 
   private void writeRowInSpanner() {

@@ -32,15 +32,18 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
@@ -56,6 +59,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
+  public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -342,5 +346,85 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     System.out.println("#####1");
     System.out.println(jobInfo.jobId());
     return jobInfo;
+  }
+
+  public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPathPrefix)
+      throws IOException {
+    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
+    String gcsPrefix =
+        getGcsPath(gcsPathPrefix + "/cdc/").replace("gs://" + artifactBucketName, "");
+    SubscriptionName fwdSubscription =
+        createPubsubResources(getClass().getSimpleName(), pubsubResourceManager, gcsPrefix);
+
+    String dlqGcsPrefix =
+        getGcsPath(gcsPathPrefix + "/dlq/").replace("gs://" + artifactBucketName, "");
+    SubscriptionName dlqSubscription =
+        createPubsubResources(getClass().getSimpleName() + "dlq", pubsubResourceManager, dlqGcsPrefix);
+    // default parameters
+    flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
+            .withTemplateName("Cloud_Datastream_to_Spanner")
+            .withTemplateModulePath("v2/datastream-to-spanner")
+            .addParameter("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/"))
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", PROJECT)
+            .addParameter("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq"))
+            .addParameter("gcsPubSubSubscription", fwdSubscription.toString())
+            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+            .addParameter("datastreamSourceType", "mysql")
+            .addParameter("inputFileFormat", "avro")
+            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+            .build();
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    System.out.println("#####2");
+    System.out.println(jobInfo.jobId());
+    System.out.println(getGcsPath(gcsPathPrefix + "/dlq"));
+    System.out.println(fwdSubscription.toString());
+    System.out.println(dlqSubscription.toString());
+    return jobInfo;
+  }
+
+  public ConditionCheck uploadDataStreamFile(
+      LaunchInfo jobInfo, String table, String destinationFileName, String resourceName) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Upload DataStream files.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        boolean success = true;
+        String message = String.format("Successfully uploaded %s file to GCS", resourceName);
+        try {
+          // Get destination GCS path from the dataflow job parameter.
+          String destinationPath =
+              jobInfo
+                  .parameters()
+                  .get("inputFilePattern")
+                  .replace("gs://" + artifactBucketName + "/", "");
+          destinationPath =
+              destinationPath
+                  + String.format(
+                  DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS, table, destinationFileName);
+          gcsClient.copyFileToGcs(
+              Paths.get(Resources.getResource(resourceName).getPath()), destinationPath);
+        } catch (IOException e) {
+          success = false;
+          message = e.getMessage();
+        }
+
+        return new CheckResult(success, message);
+      }
+    };
   }
 }
