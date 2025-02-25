@@ -130,6 +130,9 @@ public class SpannerExceptionParser {
   }
 
   private static boolean containsIgnoreCase(String s, String subString) {
+    if (s == null || subString == null) {
+      return false;
+    }
     return s.toLowerCase().contains(subString.toLowerCase());
   }
 }

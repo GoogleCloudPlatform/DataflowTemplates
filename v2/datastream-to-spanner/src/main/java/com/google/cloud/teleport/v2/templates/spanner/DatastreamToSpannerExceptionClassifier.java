@@ -19,7 +19,15 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrati
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.SpannerMigrationException.ErrorCode;
 import java.util.Set;
 
-/* Helper class to classify SpannerExceptions to Retryable error or Permanent error */
+/**
+ * Helper class to classify SpannerExceptions to Retryable error or Permanent error. The exception
+ * classification is specific to the DatastreamToSpanner migration template. For example, a "parent
+ * not found" error when processing an insert event on a child row is a retryable error for the
+ * DatastreamToSpanner template, whereas it is a permanent error for the SourceDbToSpanner template.
+ *
+ * <p>This classifier is designed to classify Spanner exceptions encountered when the Datastream to
+ * Spanner template is run.
+ */
 public class DatastreamToSpannerExceptionClassifier {
 
   public enum ErrorTag {
