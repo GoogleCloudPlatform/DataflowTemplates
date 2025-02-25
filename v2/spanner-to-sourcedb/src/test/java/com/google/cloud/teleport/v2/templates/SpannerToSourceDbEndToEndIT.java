@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -34,7 +35,9 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -76,6 +79,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName rrSubscriptionName;
   private SubscriptionName fwdSubscriptionName;
+  protected SecretManagerResourceManager secretClient;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -105,6 +109,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
+        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
         // rrSubscriptionName =
         //     createPubsubResources(
         //         getClass().getSimpleName(),
@@ -155,10 +160,20 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     // // Assert events on Mysql
     // assertRowInMySQL();
     assertThatPipeline(fwdJobInfo).isRunning();
+    System.out.println("#######1");
+    System.out.println(spannerResourceManager.getInstanceId());
+    System.out.println(spannerResourceManager.getDatabaseId());
     gcsToSpanner();
   }
 
   private void gcsToSpanner() {
+    // Setup Datastream
+    String password =
+        secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
+    JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
+    Stream stream =
+        createDatastreamResources(
+            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(

@@ -18,6 +18,9 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.api.gax.core.CredentialsProvider;
+import com.google.api.gax.core.FixedCredentialsProvider;
+import com.google.auth.Credentials;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
@@ -47,6 +50,7 @@ import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
+import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -426,5 +430,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         return new CheckResult(success, message);
       }
     };
+  }
+
+  public MySQLSource getMySQLSource(String hostIp, String username, String password) {
+    MySQLSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).build();
+    return mySQLSource;
   }
 }
