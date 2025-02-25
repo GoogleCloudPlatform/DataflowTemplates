@@ -140,10 +140,10 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
+        //spannerResourceManager,
         jdbcResourceManager,
-        spannerMetadataResourceManager,
-        gcsResourceManager,
+        //spannerMetadataResourceManager,
+        //gcsResourceManager,
         pubsubResourceManager);
   }
 
