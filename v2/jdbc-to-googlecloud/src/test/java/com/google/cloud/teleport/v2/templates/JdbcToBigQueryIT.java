@@ -323,8 +323,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         config ->
             config
                 .addParameter("table", testName)
-                .addParameter("partitionColumn", ROW_ID)
-                .addParameter("partitionColumnType", "long"));
+                .addParameter("partitionColumn", ROW_ID));
   }
 
   private void simpleJdbcToBigQueryTest(

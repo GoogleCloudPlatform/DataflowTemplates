@@ -184,6 +184,7 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "Partition column type.",
       helpText = "The type of the `partitionColumn`, accepts either `long` or `datetime`.")
+  @Default.Enum("long")
   String getPartitionColumnType();
 
   void setPartitionColumnType(String partitionColumnType);
