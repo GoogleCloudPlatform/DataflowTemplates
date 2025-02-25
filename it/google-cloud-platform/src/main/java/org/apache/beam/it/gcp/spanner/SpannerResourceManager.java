@@ -409,7 +409,7 @@ public final class SpannerResourceManager implements ResourceManager {
     checkIsUsable();
     checkHasInstanceAndDatabase();
 
-    LOG.info("Executing DML statements '{}' on database {}.", statements, databaseId);
+    LOG.info("Executing DML statements on database {}.", statements, databaseId);
     List<Statement> statementsList =
         statements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
     try {
@@ -423,7 +423,8 @@ public final class SpannerResourceManager implements ResourceManager {
                     transaction.batchUpdate(statementsList);
                     return null;
                   });
-      LOG.info("Successfully executed DDL statements '{}' on database {}.", statements, databaseId);
+      LOG.debug(
+          "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
