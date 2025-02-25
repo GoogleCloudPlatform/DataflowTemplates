@@ -24,6 +24,7 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
@@ -152,7 +153,8 @@ public abstract class TemplateTestBase {
       Category category = testMethod.getAnnotation(Category.class);
       if (category != null) {
         usingDirectRunner =
-            Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
+            Arrays.asList(category.value()).contains(DirectRunnerTest.class) ||  Arrays.asList(category.value()).contains(
+            SkipRunnerV2Test.class) || usingDirectRunner;
       }
     } catch (NoSuchMethodException e) {
       // ignore error
