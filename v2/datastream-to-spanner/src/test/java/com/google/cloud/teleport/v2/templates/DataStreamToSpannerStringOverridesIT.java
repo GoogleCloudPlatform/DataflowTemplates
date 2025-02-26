@@ -34,6 +34,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,6 +66,8 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
 
   public static SpannerResourceManager spannerResourceManager;
 
+  public static GcsResourceManager gcsResourceManager;
+
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
    *
@@ -79,6 +82,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGCSResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         Map<String, String> overridesMap = new HashMap<>();
         overridesMap.put("inputFileFormat", "avro");
@@ -92,6 +96,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
                 "StringOverridesIT",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 overridesMap,
                 null,
                 null);
@@ -124,7 +129,8 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro"),
+                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
