@@ -678,7 +678,7 @@
             <configuration combine.self="override">
               <systemProperties>
                 <property>
-                  <name>skipRunnerV2Tests</name>
+                  <name>skipRunnerV2Test</name>
                   <value>true</value>
                 </property>
                 <property>
