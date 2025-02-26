@@ -155,8 +155,7 @@ public abstract class TemplateTestBase {
       if (category != null) {
         usingDirectRunner =
             Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
-        skipRunnerV2 =
-            Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
+        skipRunnerV2 = Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
       }
     } catch (NoSuchMethodException e) {
       // ignore error
@@ -496,8 +495,10 @@ public abstract class TemplateTestBase {
     // Property allows testing with Runner v2 / Unified Worker
     String unifiedWorkerHarnessContainerImage =
         System.getProperty("unifiedWorkerHarnessContainerImage");
-    if (!skipRunnerV2 && (System.getProperty("unifiedWorker") != null || unifiedWorkerHarnessContainerImage != null)) {
-        appendExperiment(options, "use_runner_v2");
+    if (!skipRunnerV2
+        && (System.getProperty("unifiedWorker") != null
+            || unifiedWorkerHarnessContainerImage != null)) {
+      appendExperiment(options, "use_runner_v2");
       if (System.getProperty("sdkContainerImage") != null) {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
       }
