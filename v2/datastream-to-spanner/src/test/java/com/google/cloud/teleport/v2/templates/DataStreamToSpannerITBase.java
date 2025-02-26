@@ -65,7 +65,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   }
 
   public GcsResourceManager setUpGCSResourceManager() {
-    return GcsResourceManager.builder(testName, CREDENTIALS).build();
+    return GcsResourceManager.builder(testName.toLowerCase(), CREDENTIALS).build();
   }
 
   public SpannerResourceManager setUpShadowSpannerResourceManager() {
@@ -155,7 +155,10 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         try {
           // Get destination GCS path from the dataflow job parameter.
           String destinationPath =
-              jobInfo.parameters().get("inputFilePattern").replace("gs://" + testName + "/", "");
+              jobInfo
+                  .parameters()
+                  .get("inputFilePattern")
+                  .replace("gs://" + testName.toLowerCase() + "/", "");
           destinationPath =
               destinationPath
                   + String.format(
@@ -219,7 +222,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     SubscriptionName dlqSubscription =
         createPubsubResources(
             identifierSuffix + "dlq", pubsubResourceManager, "dlq/", gcsResourceManager);
-    String gcsPath = "gs://" + testName;
+    String gcsPath = "gs://" + testName.toLowerCase();
 
     // default parameters
     Map<String, String> params =
