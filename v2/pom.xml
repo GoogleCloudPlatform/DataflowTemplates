@@ -724,6 +724,8 @@
         <module>spanner-to-sourcedb</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
+        <module>googlecloud-to-clickhouse</module>
+        <module>clickhouse-common</module>
     </modules>
 
 </project>
