@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbLTBase.class);
-
+  public static final String SOURCE_SHARDS_FILE_NAME = "input/shard.json";
   private static final String TEMPLATE_SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Spanner_to_SourceDb");
@@ -63,8 +63,8 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
   public SpannerResourceManager spannerMetadataResourceManager;
   public List<JDBCResourceManager> jdbcResourceManagers;
   public GcsResourceManager gcsResourceManager;
-  private static PubsubResourceManager pubsubResourceManager;
-  private SubscriptionName subscriptionName;
+  protected static PubsubResourceManager pubsubResourceManager;
+  protected SubscriptionName subscriptionName;
 
   public void setupResourceManagers(
       String spannerDdlResource, String sessionFileResource, String artifactBucket)
@@ -191,7 +191,9 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
       String artifactBucket,
       int numWorkers,
       int maxWorkers,
-      CustomTransformation customTransformation)
+      CustomTransformation customTransformation,
+      String sourceType,
+      String shardFileName)
       throws IOException {
     // default parameters
 
@@ -208,11 +210,12 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
             put(
                 "sourceShardsFilePath",
-                getGcsPath(artifactBucket, "input/shard.json", gcsResourceManager));
+                getGcsPath(artifactBucket, shardFileName, gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName.toString());
             put("deadLetterQueueDirectory", getGcsPath(artifactBucket, "dlq", gcsResourceManager));
             put("maxShardConnections", "100");
+            put("sourceType", sourceType);
           }
         };
 

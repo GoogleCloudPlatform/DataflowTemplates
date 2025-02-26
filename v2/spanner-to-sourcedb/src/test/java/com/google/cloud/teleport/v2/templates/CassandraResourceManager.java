@@ -32,6 +32,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.testcontainers.TestContainerResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.CassandraContainer;
@@ -55,6 +56,8 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
   private static final Logger LOG = LoggerFactory.getLogger(CassandraResourceManager.class);
 
   private static final String DEFAULT_CASSANDRA_CONTAINER_NAME = "cassandra";
+
+  private static final long DEFAULT_CASSANDRA_TIMEOUT = 2;
 
   // A list of available Cassandra Docker image tags can be found at
   // https://hub.docker.com/_/cassandra/tags
@@ -135,20 +138,34 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
    * Execute the given statement on the managed keyspace.
    *
    * @param statement The statement to execute.
+   * @param timeouts The statement to execute.
    * @return ResultSet from Cassandra.
    */
-  public synchronized ResultSet executeStatement(String statement) {
-    LOG.info("Executing statement: {}", statement);
+  public synchronized ResultSet executeStatement(String statement, long timeouts) {
+    LOG.info("Executing statement with timeout : {} {}", statement, timeouts);
 
     try {
       return Failsafe.with(buildRetryPolicy())
           .get(
               () ->
                   cassandraClient.execute(
-                      SimpleStatement.newInstance(statement).setKeyspace(this.keyspaceName)));
+                      SimpleStatement.newInstance(statement)
+                          .setKeyspace(this.keyspaceName)
+                          .setTimeout(Duration.ofSeconds(timeouts))));
     } catch (Exception e) {
       throw new IllegalArgumentException("Error reading collection.", e);
     }
+  }
+
+  /**
+   * Execute the given statement on the managed keyspace.
+   *
+   * @param statement The statement to execute.
+   * @return ResultSet from Cassandra.
+   */
+  public synchronized ResultSet executeStatement(String statement) {
+    LOG.info("Executing statement: {}", statement);
+    return this.executeStatement(statement, DEFAULT_CASSANDRA_TIMEOUT);
   }
 
   /**
@@ -242,6 +259,11 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
 
     private @Nullable String keyspaceName;
 
+    /**
+     * Constructs a Builder with the given test ID.
+     *
+     * @param testId The unique identifier for the test.
+     */
     private Builder(String testId) {
       super(testId, DEFAULT_CASSANDRA_CONTAINER_NAME, DEFAULT_CASSANDRA_CONTAINER_TAG);
       this.keyspaceName = null;
@@ -250,21 +272,30 @@ public class CassandraResourceManager extends TestContainerResourceManager<Gener
     /**
      * Sets the keyspace name to that of a preGeneratedKeyspaceName database instance.
      *
-     * <p>Note: if a database name is set, and a static Cassandra server is being used
-     * (useStaticContainer() is also called on the builder), then a database will be created on the
+     * <p>Note: If a keyspace name is set, and a static Cassandra server is being used (i.e.,
+     * useStaticContainer() is called on the builder), then the keyspace will be created on the
      * static server if it does not exist, and it will not be removed when cleanupAll() is called on
      * the CassandraResourceManager.
      *
-     * @param keyspaceName The database name.
-     * @return this builder object with the database name set.
+     * @param keyspaceName The keyspace name.
+     * @return This builder instance with the keyspace name set.
+     * @throws IllegalArgumentException if the keyspaceName is empty.
      */
-    public Builder setKeyspaceName(String keyspaceName) {
+    public Builder setKeyspaceName(@NotNull String keyspaceName) {
+      if (keyspaceName.trim().isEmpty()) {
+        throw new IllegalArgumentException("Keyspace name cannot be empty.");
+      }
       this.keyspaceName = keyspaceName;
       return this;
     }
 
+    /**
+     * Builds and returns a new CassandraResourceManager instance.
+     *
+     * @return A new instance of CassandraResourceManager.
+     */
     @Override
-    public CassandraResourceManager build() {
+    public @NotNull CassandraResourceManager build() {
       return new CassandraResourceManager(this);
     }
   }
