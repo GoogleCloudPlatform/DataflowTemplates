@@ -320,10 +320,7 @@ public class JdbcToBigQueryIT extends JDBCBaseIT {
         postgresResourceManager,
         false,
         false,
-        config ->
-            config
-                .addParameter("table", testName)
-                .addParameter("partitionColumn", ROW_ID));
+        config -> config.addParameter("table", testName).addParameter("partitionColumn", ROW_ID));
   }
 
   private void simpleJdbcToBigQueryTest(
