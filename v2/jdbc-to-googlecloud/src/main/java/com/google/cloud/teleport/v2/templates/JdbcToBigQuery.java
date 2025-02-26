@@ -55,6 +55,11 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.beam.sdk.values.TypeDescriptors;
+import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
@@ -160,21 +165,57 @@ public class JdbcToBigQuery {
     PCollection<TableRow> rows;
     if (options.getPartitionColumn() != null && options.getTable() != null) {
       // Read with Partitions
-      // TODO(pranavbhandari): Support readWithPartitions for other data types.
-      JdbcIO.ReadWithPartitions<TableRow, Long> readIO =
-          JdbcIO.<TableRow>readWithPartitions()
-              .withDataSourceConfiguration(dataSourceConfiguration)
-              .withTable(options.getTable())
-              .withPartitionColumn(options.getPartitionColumn())
-              .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+      JdbcIO.ReadWithPartitions<TableRow, ?> readIO = null;
+      final String partitionColumnType = options.getPartitionColumnType();
+      if (partitionColumnType == null || "long".equals(partitionColumnType)) {
+        JdbcIO.ReadWithPartitions<TableRow, Long> longTypeReadIO =
+            JdbcIO.<TableRow, Long>readWithPartitions(TypeDescriptors.longs())
+                .withDataSourceConfiguration(dataSourceConfiguration)
+                .withTable(options.getTable())
+                .withPartitionColumn(options.getPartitionColumn())
+                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+        if (options.getLowerBound() != null && options.getUpperBound() != null) {
+          // Check if lower bound and upper bound are long type.
+          try {
+            longTypeReadIO =
+                longTypeReadIO
+                    .withLowerBound(Long.valueOf(options.getLowerBound()))
+                    .withUpperBound(Long.valueOf(options.getUpperBound()));
+          } catch (NumberFormatException e) {
+            throw new NumberFormatException(
+                "Expected Long values for lowerBound and upperBound, received : " + e.getMessage());
+          }
+        }
+        readIO = longTypeReadIO;
+      } else if ("datetime".equals(partitionColumnType)) {
+        JdbcIO.ReadWithPartitions<TableRow, DateTime> dateTimeReadIO =
+            JdbcIO.<TableRow, DateTime>readWithPartitions(TypeDescriptor.of(DateTime.class))
+                .withDataSourceConfiguration(dataSourceConfiguration)
+                .withTable(options.getTable())
+                .withPartitionColumn(options.getPartitionColumn())
+                .withRowMapper(JdbcConverters.getResultSetToTableRow(options.getUseColumnAlias()));
+        if (options.getLowerBound() != null && options.getUpperBound() != null) {
+          DateTimeFormatter dateFormatter =
+              DateTimeFormat.forPattern("yyyy-MM-dd HH:mm:ss.SSSZ").withOffsetParsed();
+          // Check if lowerBound and upperBound are DateTime type.
+          try {
+            dateTimeReadIO =
+                dateTimeReadIO
+                    .withLowerBound(dateFormatter.parseDateTime(options.getLowerBound()))
+                    .withUpperBound(dateFormatter.parseDateTime(options.getUpperBound()));
+          } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(
+                "Expected DateTime values in the format for lowerBound and upperBound, received : "
+                    + e.getMessage());
+          }
+        }
+        readIO = dateTimeReadIO;
+      } else {
+        throw new IllegalStateException("Received unsupported partitionColumnType.");
+      }
       if (options.getNumPartitions() != null) {
         readIO = readIO.withNumPartitions(options.getNumPartitions());
       }
-      if (options.getLowerBound() != null && options.getUpperBound() != null) {
-        readIO =
-            readIO.withLowerBound(options.getLowerBound()).withUpperBound(options.getUpperBound());
-      }
-
       if (options.getFetchSize() != null && options.getFetchSize() > 0) {
         readIO = readIO.withFetchSize(options.getFetchSize());
       }
