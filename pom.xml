@@ -678,10 +678,6 @@
             <configuration combine.self="override">
               <systemProperties>
                 <property>
-                  <name>skipRunnerV2Test</name>
-                  <value>true</value>
-                </property>
-                <property>
                   <name>beamPythonVersion</name>
                   <value>${beam-python.version}</value>
                 </property>
