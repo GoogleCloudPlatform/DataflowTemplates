@@ -33,6 +33,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMEN
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ON_DELETE_ACTION;
@@ -68,6 +69,7 @@ import com.google.cloud.teleport.spanner.ddl.GraphElementTable.GraphNodeTableRef
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.LabelToPropertyDefinitions;
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.PropertyDefinition;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
@@ -967,6 +969,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("`bool_field` ASC"));
     assertThat(avroSchema.getProp(SPANNER_PARENT), equalTo("ParentTable"));
     assertThat(avroSchema.getProp(SPANNER_ON_DELETE_ACTION), equalTo("cascade"));
+    assertThat(avroSchema.getProp(SPANNER_INTERLEAVE_TYPE), equalTo("IN PARENT"));
 
     System.out.println(avroSchema.toString(true));
   }
@@ -1152,6 +1155,7 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"bool_field\" ASC"));
     assertThat(avroSchema.getProp(SPANNER_PARENT), equalTo("ParentTable"));
     assertThat(avroSchema.getProp(SPANNER_ON_DELETE_ACTION), equalTo("cascade"));
+    assertThat(avroSchema.getProp(SPANNER_INTERLEAVE_TYPE), equalTo("IN PARENT"));
   }
 
   @Test
@@ -1974,6 +1978,106 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
     assertThat(fields.get(1).getProp(SQL_TYPE), equalTo("character varying(10)"));
     assertThat(fields.get(1).getProp(SPANNER_PLACEMENT_KEY), equalTo(null));
+  }
+
+  @Test
+  public void interleaveInTable() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("InterleaveInTable")
+            .column("k1")
+            .type(Type.string())
+            .max()
+            .notNull()
+            .endColumn()
+            .column("v1")
+            .type(Type.string())
+            .size(10)
+            .endColumn()
+            .interleaveInParent("ParentTable")
+            .interleaveType(InterleaveType.IN)
+            .endTable()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+
+    assertThat(avroSchema.getName(), equalTo("InterleaveInTable"));
+
+    List<Schema.Field> fields = avroSchema.getFields();
+
+    assertThat(fields, hasSize(2));
+
+    // k1
+    assertThat(fields.get(0).name(), equalTo("k1"));
+    assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.STRING));
+    assertThat(fields.get(0).getProp(SQL_TYPE), equalTo("STRING(MAX)"));
+
+    // v1
+    assertThat(fields.get(1).name(), equalTo("v1"));
+    assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(fields.get(1).getProp(SQL_TYPE), equalTo("STRING(10)"));
+
+    assertThat(avroSchema.getProp(SPANNER_PARENT), equalTo("ParentTable"));
+    assertThat(avroSchema.getProp(SPANNER_ON_DELETE_ACTION), equalTo("no action"));
+    assertThat(avroSchema.getProp(SPANNER_INTERLEAVE_TYPE), equalTo("IN"));
+  }
+
+  @Test
+  public void pgInterleaveInTable() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("InterleaveInTable")
+            .column("k1")
+            .type(Type.string())
+            .max()
+            .notNull()
+            .endColumn()
+            .column("v1")
+            .type(Type.string())
+            .size(10)
+            .endColumn()
+            .interleaveInParent("ParentTable")
+            .interleaveType(InterleaveType.IN)
+            .endTable()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+
+    assertThat(avroSchema.getName(), equalTo("InterleaveInTable"));
+
+    List<Schema.Field> fields = avroSchema.getFields();
+
+    assertThat(fields, hasSize(2));
+
+    // k1
+    assertThat(fields.get(0).name(), equalTo("k1"));
+    assertThat(fields.get(0).schema().getType(), equalTo(Schema.Type.STRING));
+    assertThat(fields.get(0).getProp(SQL_TYPE), equalTo("STRING(MAX)"));
+
+    // v1
+    assertThat(fields.get(1).name(), equalTo("v1"));
+    assertThat(fields.get(1).schema(), equalTo(nullableUnion(Schema.Type.STRING)));
+    assertThat(fields.get(1).getProp(SQL_TYPE), equalTo("STRING(10)"));
+
+    assertThat(avroSchema.getProp(SPANNER_PARENT), equalTo("ParentTable"));
+    assertThat(avroSchema.getProp(SPANNER_ON_DELETE_ACTION), equalTo("no action"));
+    assertThat(avroSchema.getProp(SPANNER_INTERLEAVE_TYPE), equalTo("IN"));
   }
 
   private Schema nullableUnion(Schema.Type s) {
