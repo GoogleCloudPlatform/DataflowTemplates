@@ -24,6 +24,7 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
@@ -134,6 +135,7 @@ public abstract class TemplateTestBase {
   protected GcsResourceManager artifactClient;
 
   private boolean usingDirectRunner;
+  private boolean skipRunnerV2;
   protected PipelineLauncher pipelineLauncher;
   protected boolean skipBaseCleanup;
 
@@ -146,6 +148,7 @@ public abstract class TemplateTestBase {
     MultiTemplateIntegrationTest multiAnnotation =
         getClass().getAnnotation(MultiTemplateIntegrationTest.class);
     usingDirectRunner = System.getProperty("directRunnerTest") != null;
+    skipRunnerV2 = System.getProperty("skipRunnerV2Test") != null;
     try {
       Method testMethod = getClass().getMethod(testName);
       annotation = testMethod.getAnnotation(TemplateIntegrationTest.class);
@@ -153,6 +156,8 @@ public abstract class TemplateTestBase {
       if (category != null) {
         usingDirectRunner =
             Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
+        skipRunnerV2 = Arrays.asList(category.value()).contains(
+            SkipRunnerV2Test.class) && skipRunnerV2;
       }
     } catch (NoSuchMethodException e) {
       // ignore error
@@ -493,8 +498,9 @@ public abstract class TemplateTestBase {
     String unifiedWorkerHarnessContainerImage =
         System.getProperty("unifiedWorkerHarnessContainerImage");
     if (System.getProperty("unifiedWorker") != null || unifiedWorkerHarnessContainerImage != null) {
-      appendExperiment(options, "use_runner_v2");
-
+      if(!skipRunnerV2) {
+        appendExperiment(options, "use_runner_v2");
+      }
       if (System.getProperty("sdkContainerImage") != null) {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
       }
