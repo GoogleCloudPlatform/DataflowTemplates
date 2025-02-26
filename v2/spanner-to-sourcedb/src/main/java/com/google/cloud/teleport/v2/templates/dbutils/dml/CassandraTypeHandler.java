@@ -172,8 +172,13 @@ public class CassandraTypeHandler {
       return ByteBuffer.wrap((byte[]) colValue);
     } else if (colValue instanceof ByteBuffer) {
       return (ByteBuffer) colValue;
+    } else {
+      String strVal = (String) colValue;
+      if (!strVal.matches("^[01]+$")) {
+        return ByteBuffer.wrap(java.util.Base64.getDecoder().decode(strVal));
+      }
     }
-    return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
+    throw new IllegalArgumentException("Invalid colValue: " + colValue);
   }
 
   /**
@@ -322,18 +327,22 @@ public class CassandraTypeHandler {
       String spannerType, String columnName, JSONObject valuesJson) {
     try {
       if (spannerType.contains("string")) {
-        return valuesJson.optString(columnName);
+        String value = valuesJson.optString(columnName);
+        return value.isEmpty() ? null : value;
       } else if (spannerType.contains("bytes")) {
         if (valuesJson.isNull(columnName)) {
           return null;
         }
         String hexEncodedString = valuesJson.optString(columnName);
+        if (hexEncodedString.isEmpty()) {
+          return null;
+        }
         return safeHandle(
             () -> {
               try {
-                return safeHandle(() -> convertBinaryEncodedStringToByteArray(hexEncodedString));
+                return safeHandle(() -> parseBlobType(hexEncodedString));
               } catch (IllegalArgumentException e) {
-                return parseBlobType(hexEncodedString);
+                return convertBinaryEncodedStringToByteArray(hexEncodedString);
               }
             });
       } else {

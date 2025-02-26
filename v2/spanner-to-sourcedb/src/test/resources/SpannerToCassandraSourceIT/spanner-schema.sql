@@ -1,13 +1,19 @@
+DROP TABLE IF EXISTS users;
+
 CREATE TABLE IF NOT EXISTS users (
     id INT64 NOT NULL,
     full_name STRING(25),
     `from` STRING(25)
 ) PRIMARY KEY(id);
 
+DROP TABLE IF EXISTS users2;
+
 CREATE TABLE IF NOT EXISTS users2 (
     id INT64 NOT NULL,
     full_name STRING(25),
     ) PRIMARY KEY(id);
+
+DROP TABLE IF EXISTS alldatatypetransformation;
 
 CREATE TABLE IF NOT EXISTS alldatatypetransformation (
     varchar_column STRING(20) NOT NULL,
@@ -51,6 +57,8 @@ CREATE TABLE IF NOT EXISTS alldatatypetransformation (
     frozen_list_of_sets_column JSON,
     varint_column STRING(MAX)
 ) PRIMARY KEY(varchar_column);
+
+DROP TABLE IF EXISTS alldatatypecolumns;
 
 CREATE TABLE IF NOT EXISTS alldatatypecolumns (
     varchar_column STRING(20) NOT NULL,
