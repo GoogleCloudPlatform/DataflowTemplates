@@ -16,13 +16,20 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.auth.Credentials;
+import com.google.cloud.datastream.v1.DestinationConfig;
+import com.google.cloud.datastream.v1.SourceConfig;
+import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -36,6 +43,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,6 +51,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -50,12 +59,17 @@ import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
+import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +78,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
+  public DatastreamResourceManager datastreamResourceManager;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -127,6 +142,25 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsClient.createNotification(topic.toString(), prefix);
     return subscription;
   }
+
+  public SubscriptionName createPubsubResources(
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
+    String topicNameSuffix = "it" + identifierSuffix;
+    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    gcsResourceManager.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
 
   protected void createAndUploadShardConfigToGcs(
       GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager)
@@ -352,37 +386,67 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     return jobInfo;
   }
 
+  public String getGcsPath(String... pathParts) {
+    checkArgument(pathParts.length != 0, "Must provide at least one path part");
+    checkArgument(
+        stream(pathParts).noneMatch(Strings::isNullOrEmpty), "No path part can be null or empty");
+
+    return String.format("gs://%s", String.join("/", pathParts));
+  }
+
   public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       PubsubResourceManager pubsubResourceManager,
-      String gcsPathPrefix)
+      String gcsPathPrefix,
+      SecretManagerResourceManager secretClient)
       throws IOException {
-    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
+    String testRootDir = getClass().getSimpleName();
+    String password =
+        secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
+    JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
+
     String gcsPrefix =
-        getGcsPath(gcsPathPrefix + "/cdc/").replace("gs://" + artifactBucketName, "");
-    SubscriptionName fwdSubscription =
-        createPubsubResources(getClass().getSimpleName(), pubsubResourceManager, gcsPrefix);
+        String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
+    SubscriptionName subscription =
+        createPubsubResources(
+            testRootDir + testName, pubsubResourceManager, gcsPrefix, gcsResourceManager);
 
     String dlqGcsPrefix =
-        getGcsPath(gcsPathPrefix + "/dlq/").replace("gs://" + artifactBucketName, "");
+        String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "dlq"});
     SubscriptionName dlqSubscription =
-        createPubsubResources(getClass().getSimpleName() + "dlq", pubsubResourceManager, dlqGcsPrefix);
+        createPubsubResources(
+            testRootDir + testName + "dlq",
+            pubsubResourceManager,
+            dlqGcsPrefix,
+            gcsResourceManager);
+    String artifactBucket = TestProperties.artifactBucket();
+    datastreamResourceManager =
+        DatastreamResourceManager.builder(testName,PROJECT, REGION)
+            .setCredentialsProvider(credentialsProvider)
+            .build();
+    Stream stream =
+        createDatastreamResources(
+            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
+
+
+    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
     // default parameters
     flexTemplateDataflowJobResourceManager =
         FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Cloud_Datastream_to_Spanner")
             .withTemplateModulePath("v2/datastream-to-spanner")
-            .addParameter("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/"))
+            .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
+            .addParameter("streamName", stream.getName())
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq"))
-            .addParameter("gcsPubSubSubscription", fwdSubscription.toString())
+            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+            .addParameter("gcsPubSubSubscription", subscription.toString())
             .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            //.addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
@@ -392,7 +456,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     System.out.println("#####2");
     System.out.println(jobInfo.jobId());
     System.out.println(getGcsPath(gcsPathPrefix + "/dlq"));
-    System.out.println(fwdSubscription.toString());
+    System.out.println(subscription.toString());
     System.out.println(dlqSubscription.toString());
     return jobInfo;
   }
@@ -435,5 +499,29 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   public MySQLSource getMySQLSource(String hostIp, String username, String password) {
     MySQLSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).build();
     return mySQLSource;
+  }
+
+  public Stream createDatastreamResources(
+      String artifactBucketName,
+      String gcsPrefix,
+      JDBCSource jdbcSource,
+      DatastreamResourceManager datastreamResourceManager) {
+    // To-do, for future postgres load testing, add a parameter to accept other sources
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
+
+    // Create Datastream GCS Destination Connection profile and config
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs",
+            artifactBucketName,
+            gcsPrefix,
+            DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
+
+    // Create and start Datastream stream
+    Stream stream =
+        datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+    return stream;
   }
 }

@@ -128,7 +128,8 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
             spannerResourceManager,
             gcsResourceManager,
             pubsubResourceManager,
-            "fwdMigration"
+            "fwdMigration",
+            secretClient
         );
       }
     }
@@ -145,10 +146,10 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        //spannerResourceManager,
+        spannerResourceManager,
         jdbcResourceManager,
-        //spannerMetadataResourceManager,
-        //gcsResourceManager,
+        spannerMetadataResourceManager,
+        gcsResourceManager,
         pubsubResourceManager);
   }
 
@@ -167,26 +168,15 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   }
 
   private void gcsToSpanner() {
-    // Setup Datastream
-    String password =
-        secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
-    JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
-    Stream stream =
-        createDatastreamResources(
-            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    uploadDataStreamFile(
-                        fwdJobInfo,
-                        TABLE,
-                        "backfill.avro",
-                        "SpannerToSourceDbEndToEndIT/authors.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
                         .build()))
             .build();
+
     // Wait for conditions
     PipelineOperator.Result result =
         pipelineOperator()
