@@ -96,10 +96,15 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
             createSpannerDatabase(SpannerToSourceDbEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
+        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(
             jdbcResourceManager, SpannerToSourceDbEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
+        String password =
+            secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
+        //JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
+
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -109,7 +114,6 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
-        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
         // rrSubscriptionName =
         //     createPubsubResources(
         //         getClass().getSimpleName(),
@@ -146,25 +150,25 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        //spannerResourceManager,
+        spannerResourceManager,
         jdbcResourceManager,
-        //spannerMetadataResourceManager,
+        spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
   }
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
-    // assertThatPipeline(jobInfo).isRunning();
-    // // Write row in Spanner
-    // writeRowInSpanner();
-    // // Assert events on Mysql
-    // assertRowInMySQL();
-    assertThatPipeline(fwdJobInfo).isRunning();
-    System.out.println("#######1");
-    System.out.println(spannerResourceManager.getInstanceId());
-    System.out.println(spannerResourceManager.getDatabaseId());
-    gcsToSpanner();
+    assertThatPipeline(jobInfo).isRunning();
+    // Write row in Spanner
+    writeRowInSpanner();
+    // Assert events on Mysql
+    assertRowInMySQL();
+    // assertThatPipeline(fwdJobInfo).isRunning();
+    // System.out.println("#######1");
+    // System.out.println(spannerResourceManager.getInstanceId());
+    // System.out.println(spannerResourceManager.getDatabaseId());
+    // gcsToSpanner();
   }
 
   private void gcsToSpanner() {

@@ -44,11 +44,15 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericData.Array;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
@@ -70,6 +74,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.openjdk.nashorn.internal.scripts.JD;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -496,8 +501,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     };
   }
 
-  public MySQLSource getMySQLSource(String hostIp, String username, String password) {
-    MySQLSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).build();
+  public JDBCSource getMySQLSource(String hostIp, String username, String password) {
+    Map<String, List<String>> allowedTables = new HashMap<String, List<String>>() {{ put("test", Arrays.asList("Authors")); }};
+    JDBCSource mySQLSource = new MySQLSource.Builder(hostIp, username, password, 3306).setAllowedTables(allowedTables).build();
     return mySQLSource;
   }
 
