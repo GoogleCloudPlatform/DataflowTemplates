@@ -159,16 +159,16 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
 
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
-    assertThatPipeline(jobInfo).isRunning();
-    // Write row in Spanner
-    writeRowInSpanner();
-    // Assert events on Mysql
-    assertRowInMySQL();
-    // assertThatPipeline(fwdJobInfo).isRunning();
-    // System.out.println("#######1");
-    // System.out.println(spannerResourceManager.getInstanceId());
-    // System.out.println(spannerResourceManager.getDatabaseId());
-    // gcsToSpanner();
+    // assertThatPipeline(jobInfo).isRunning();
+    // // Write row in Spanner
+    // writeRowInSpanner();
+    // // Assert events on Mysql
+    // assertRowInMySQL();
+    assertThatPipeline(fwdJobInfo).isRunning();
+    System.out.println("#######1");
+    System.out.println(spannerResourceManager.getInstanceId());
+    System.out.println(spannerResourceManager.getDatabaseId());
+    gcsToSpanner();
   }
 
   private void gcsToSpanner() {
