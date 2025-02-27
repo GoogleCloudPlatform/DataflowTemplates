@@ -81,7 +81,7 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -115,7 +115,10 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -130,20 +133,11 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
                         jobInfo,
                         TABLE1,
                         "authors_1.avro",
-                        "DataStreamToSpannerMixedIT/Authors_1.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerMixedIT/Authors_1.avro"),
                     uploadDataStreamFile(
-                        jobInfo,
-                        TABLE2,
-                        "books.avro",
-                        "DataStreamToSpannerMixedIT/Books.avro",
-                        gcsResourceManager),
+                        jobInfo, TABLE2, "books.avro", "DataStreamToSpannerMixedIT/Books.avro"),
                     uploadDataStreamFile(
-                        jobInfo,
-                        TABLE3,
-                        "genre.avro",
-                        "DataStreamToSpannerMixedIT/Genre.avro",
-                        gcsResourceManager),
+                        jobInfo, TABLE3, "genre.avro", "DataStreamToSpannerMixedIT/Genre.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -166,8 +160,7 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
                         jobInfo,
                         TABLE1,
                         "authors_2.avro",
-                        "DataStreamToSpannerMixedIT/Authors_2.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerMixedIT/Authors_2.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(4)
                         .setMaxRows(4)

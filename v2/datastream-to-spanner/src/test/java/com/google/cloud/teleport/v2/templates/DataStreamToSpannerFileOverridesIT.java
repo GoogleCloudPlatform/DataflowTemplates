@@ -87,7 +87,7 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         gcsResourceManager.uploadArtifact(
             GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
@@ -120,7 +120,8 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
     for (DataStreamToSpannerFileOverridesIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -135,8 +136,7 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)

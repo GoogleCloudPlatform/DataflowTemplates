@@ -78,7 +78,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -116,7 +116,10 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, shadowSpannerResourceManager, pubsubResourceManager);
+        spannerResourceManager,
+        shadowSpannerResourceManager,
+        pubsubResourceManager,
+        gcsResourceManager);
   }
 
   /**
@@ -142,8 +145,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "my_table-simpleTest-3-inserts.avro",
-                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-3-inserts.avro",
-                        gcsResourceManager),
+                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-3-inserts.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -152,8 +154,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "my_table-simpleTest-update-delete.avro",
-                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-update-delete.avro",
-                        gcsResourceManager),
+                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-update-delete.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -162,8 +163,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "my_table-simpleTest-pk-update.avro",
-                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-pk-update.avro",
-                        gcsResourceManager),
+                        "SeparateShadowTableDatabaseIT/my_table-simpleTest-pk-update.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -213,8 +213,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "alltypes-test-3-inserts.avro",
-                        "SeparateShadowTableDatabaseIT/alltypes-test-3-inserts.avro",
-                        gcsResourceManager),
+                        "SeparateShadowTableDatabaseIT/alltypes-test-3-inserts.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -223,8 +222,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "alltypes-test-update-delete.avro",
-                        "SeparateShadowTableDatabaseIT/alltypes-test-update-delete.avro",
-                        gcsResourceManager),
+                        "SeparateShadowTableDatabaseIT/alltypes-test-update-delete.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -233,8 +231,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
                         jobInfo,
                         table,
                         "alltypes-test-pk-update.avro",
-                        "SeparateShadowTableDatabaseIT/alltypes-test-pk-update.avro",
-                        gcsResourceManager),
+                        "SeparateShadowTableDatabaseIT/alltypes-test-pk-update.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, table)
                         .setMinRows(2)
                         .setMaxRows(2)

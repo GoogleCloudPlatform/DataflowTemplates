@@ -86,7 +86,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -125,7 +125,10 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
     }
 
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -142,8 +145,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
                         jobInfo,
                         TABLE1,
                         "backfill_users.avro",
-                        "DataStreamToSpannerEventsIT/mysql-backfill-Users.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-backfill-Users.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -152,8 +154,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
                         jobInfo,
                         TABLE1,
                         "cdc_users.avro",
-                        "DataStreamToSpannerEventsIT/mysql-cdc-Users.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-cdc-Users.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -190,8 +191,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
                         jobInfo,
                         TABLE2,
                         "backfill_movie.avro",
-                        "DataStreamToSpannerEventsIT/mysql-backfill-Movie.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-backfill-Movie.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -219,20 +219,17 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
                         jobInfo,
                         "Articles",
                         "mysql_articles.avro",
-                        "DataStreamToSpannerEventsIT/mysql-Articles.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-Articles.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         "Authors",
                         "mysql_authors.avro",
-                        "DataStreamToSpannerEventsIT/mysql-Authors.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-Authors.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         "Books",
                         "mysql_books.avro",
-                        "DataStreamToSpannerEventsIT/mysql-Books.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-Books.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, "Articles")
                         .setMinRows(4)
                         .setMaxRows(4)

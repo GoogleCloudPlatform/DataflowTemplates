@@ -104,7 +104,7 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
         pubsubResourceManager = setUpPubSubResourceManager();
       }
       if (gcsResourceManager == null) {
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
       }
       createAndUploadJarToGcs(
           gcsResourceManager, "SeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1");
@@ -145,7 +145,10 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -162,32 +165,27 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard1.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard1.avro",
-                        gcsResourceManager),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard1.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard2.avro",
-                        gcsResourceManager),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard2.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-cdc-logical-shard1.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-cdc-logical-shard1.avro",
-                        gcsResourceManager),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-cdc-logical-shard1.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard3.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard3.avro",
-                        gcsResourceManager),
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard3.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard4.avro",
-                        gcsResourceManager)))
+                        "DatastreamToSpannerSingleDFShardedMigrationIT/Users-backfill-logical-shard4.avro")))
             .build();
 
     // Wait for conditions

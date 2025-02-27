@@ -122,6 +122,10 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     managedTempDirs.add(joinPathParts(testClassName, runId));
   }
 
+  public void addManagedDir(String path) {
+    managedTempDirs.add(path);
+  }
+
   /** Returns a new {@link Builder} for configuring a client. */
   public static Builder builder(String bucket, String testClassName, Credentials credentials) {
     checkArgument(!bucket.equals(""));
@@ -295,20 +299,6 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
 
   @Override
   public synchronized void cleanupAll() {
-    // If bucket was created by manager, simply delete the bucket without worrying about other
-    // cleanups.
-    if (hasNonStaticBucket) {
-      boolean deleted = client.delete(bucket);
-      if (deleted) {
-        LOG.debug("Bucket '{}' was deleted", bucket);
-      } else {
-        LOG.warn("Bucket '{}' not deleted", bucket);
-      }
-      hasNonStaticBucket = false;
-      managedTempDirs.clear();
-      notificationList.clear();
-      return;
-    }
     if (notificationList.size() > 0) {
       for (Notification notification : notificationList) {
         client.deleteNotification(bucket, notification.getNotificationId());
@@ -345,6 +335,16 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     }
     managedTempDirs.clear();
     notificationList.clear();
+    // If bucket was created by manager, delete the bucket.
+    if (hasNonStaticBucket) {
+      boolean deleted = client.delete(bucket);
+      if (deleted) {
+        LOG.debug("Bucket '{}' was deleted", bucket);
+      } else {
+        LOG.warn("Bucket '{}' not deleted", bucket);
+      }
+      hasNonStaticBucket = false;
+    }
   }
 
   private void consumePages(Page<Blob> firstPage, Consumer<Iterable<Blob>> consumeBlobs) {

@@ -80,7 +80,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -112,7 +112,8 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
     for (DataStreamToSpannerSessionIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */
@@ -128,8 +129,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "backfill_category.avro",
-                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -153,8 +153,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "cdc_category.avro",
-                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -189,8 +188,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE2,
                         "synth-id.avro",
-                        "DataStreamToSpannerSessionIT/Books.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerSessionIT/Books.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(3)
                         .setMaxRows(3)

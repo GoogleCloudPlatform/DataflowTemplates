@@ -87,7 +87,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -119,7 +119,8 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     for (DataStreamToSpannerEventsIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
   }
 
   @Test
@@ -136,8 +137,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "backfill_users.avro",
-                        "DataStreamToSpannerEventsIT/mysql-backfill-Users.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-backfill-Users.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -146,8 +146,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE1,
                         "cdc_users.avro",
-                        "DataStreamToSpannerEventsIT/mysql-cdc-Users.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-cdc-Users.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -184,8 +183,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         TABLE2,
                         "backfill_movie.avro",
-                        "DataStreamToSpannerEventsIT/mysql-backfill-Movie.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-backfill-Movie.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -213,20 +211,17 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         jobInfo,
                         "Articles",
                         "mysql_articles.avro",
-                        "DataStreamToSpannerEventsIT/mysql-Articles.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-Articles.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         "Authors",
                         "mysql_authors.avro",
-                        "DataStreamToSpannerEventsIT/mysql-Authors.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-Authors.avro"),
                     uploadDataStreamFile(
                         jobInfo,
                         "Books",
                         "mysql_books.avro",
-                        "DataStreamToSpannerEventsIT/mysql-Books.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerEventsIT/mysql-Books.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, "Articles")
                         .setMinRows(4)
                         .setMaxRows(4)

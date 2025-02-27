@@ -86,7 +86,7 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         Map<String, String> overridesMap =
             new HashMap<>() {
@@ -124,7 +124,10 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -139,8 +142,7 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)

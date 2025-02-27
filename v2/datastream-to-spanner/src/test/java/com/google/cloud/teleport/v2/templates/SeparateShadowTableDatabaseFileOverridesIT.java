@@ -89,7 +89,7 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGCSResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         gcsResourceManager.uploadArtifact(
             GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
@@ -128,7 +128,10 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -143,8 +146,7 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro",
-                        gcsResourceManager),
+                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro"),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
