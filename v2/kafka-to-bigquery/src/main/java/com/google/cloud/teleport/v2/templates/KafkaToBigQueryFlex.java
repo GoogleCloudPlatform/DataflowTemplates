@@ -523,6 +523,7 @@ public class KafkaToBigQueryFlex {
                     .setFunctionName(options.getJavascriptTextTransformFunctionName())
                     .setReloadIntervalMinutes(
                         options.getJavascriptTextTransformReloadIntervalMinutes())
+                    .setPersistKafkaKey(options.getPersistKafkaKey())
                     .setSuccessTag(TRANSFORM_OUT)
                     .setFailureTag(TRANSFORM_DEADLETTER_OUT)
                     .build());
