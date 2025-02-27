@@ -319,22 +319,23 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       if (sourcePKs.contains(colName)) {
         continue; // we only need non-primary keys
       }
-
+      PreparedStatementValueObject<?> columnValue;
+      if (customTransformColumns != null
+          && customTransformColumns.contains(sourceColDef.getName())) {
+        String cassandraType = sourceColDef.getType().getName().toLowerCase();
+        columnValue =
+            PreparedStatementValueObject.create(
+                cassandraType, customTransformationResponse.get(colName));
+        response.put(sourceColDef.getName(), columnValue);
+        continue;
+      }
       String colId = entry.getKey();
       SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
       if (spannerColDef == null) {
         continue;
       }
       String spannerColumnName = spannerColDef.getName();
-      PreparedStatementValueObject<?> columnValue;
-      if (customTransformColumns != null
-          && customTransformColumns.contains(sourceColDef.getName())) {
-        String cassandraType = sourceColDef.getType().getName().toLowerCase();
-        String columnName = spannerColDef.getName();
-        columnValue =
-            PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(columnName));
-      } else if (keyValuesJson.has(spannerColumnName)) {
+      if (keyValuesJson.has(spannerColumnName)) {
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
