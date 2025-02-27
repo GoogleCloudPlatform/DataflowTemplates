@@ -138,6 +138,13 @@ After authenticated, install the plugin into your local repository:
 mvn clean install -pl plugins/templates-maven-plugin -am
 ```
 
+WARNING: After any changes to the plugin itself, those changes may be cached 
+and prevent any future changes from being observed.  Please reissue:
+
+```shell
+mvn clean install -pl plugins/templates-maven-plugin -am
+```
+
 ### Staging (Deploying) Templates
 
 To stage a Template, it is necessary to upload the images to Artifact
