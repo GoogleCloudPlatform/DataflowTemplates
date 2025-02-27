@@ -404,7 +404,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     String testRootDir = getClass().getSimpleName();
     String password =
         secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
-    JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
+    JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", "password");
 
     String gcsPrefix =
         String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
