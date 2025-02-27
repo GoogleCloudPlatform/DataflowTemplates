@@ -45,8 +45,25 @@ public final class ShardFileReaderTest {
     List<Shard> expectedShards =
         Arrays.asList(
             new Shard(
-                "shardA", "hostShardA", "3306", "test", "test", "test", "namespaceA", null, null),
-            new Shard("shardB", "hostShardB", "3306", "test", "test", "test", null, null, null));
+                "shardA",
+                "hostShardA",
+                "3306",
+                "test",
+                "test",
+                "test",
+                "namespaceA",
+                null,
+                "jdbcCompliantTruncation=true"),
+            new Shard(
+                "shardB",
+                "hostShardB",
+                "3306",
+                "test",
+                "test",
+                "test",
+                null,
+                null,
+                "jdbcCompliantTruncation=true"));
 
     assertEquals(shards, expectedShards);
   }
