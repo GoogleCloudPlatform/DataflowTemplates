@@ -91,7 +91,7 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        gcsResourceManager.uploadArtifact(
+        gcsClient.uploadArtifact(
             GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
         Map<String, String> overridesMap =
             new HashMap<>() {
@@ -128,10 +128,7 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test

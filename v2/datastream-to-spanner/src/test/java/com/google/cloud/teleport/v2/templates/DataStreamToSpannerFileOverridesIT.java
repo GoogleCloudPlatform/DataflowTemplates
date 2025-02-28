@@ -89,7 +89,7 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
         pubsubResourceManager = setUpPubSubResourceManager();
         gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        gcsResourceManager.uploadArtifact(
+        gcsClient.uploadArtifact(
             GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
         Map<String, String> overridesMap = new HashMap<>();
         overridesMap.put("inputFileFormat", "avro");
@@ -120,8 +120,7 @@ public class DataStreamToSpannerFileOverridesIT extends DataStreamToSpannerITBas
     for (DataStreamToSpannerFileOverridesIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   @Test

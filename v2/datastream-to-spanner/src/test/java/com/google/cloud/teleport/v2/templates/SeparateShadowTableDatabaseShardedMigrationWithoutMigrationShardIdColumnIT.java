@@ -158,10 +158,7 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test

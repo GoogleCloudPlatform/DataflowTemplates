@@ -133,8 +133,7 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
     for (DatastreamToSpannerSingleDFShardedMigrationIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   @Test

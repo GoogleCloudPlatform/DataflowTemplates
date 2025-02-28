@@ -119,8 +119,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     for (DataStreamToSpannerEventsIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   @Test

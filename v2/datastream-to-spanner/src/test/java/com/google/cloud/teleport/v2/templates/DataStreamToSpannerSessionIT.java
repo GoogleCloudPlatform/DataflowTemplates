@@ -112,8 +112,7 @@ public class DataStreamToSpannerSessionIT extends DataStreamToSpannerITBase {
     for (DataStreamToSpannerSessionIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */

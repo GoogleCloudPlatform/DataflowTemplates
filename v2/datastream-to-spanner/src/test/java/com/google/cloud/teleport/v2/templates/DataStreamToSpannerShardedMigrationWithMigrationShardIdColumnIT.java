@@ -157,8 +157,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
     for (DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   @Test

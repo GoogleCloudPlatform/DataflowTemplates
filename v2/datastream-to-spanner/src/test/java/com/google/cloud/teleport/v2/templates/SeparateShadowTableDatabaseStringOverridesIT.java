@@ -124,10 +124,7 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test

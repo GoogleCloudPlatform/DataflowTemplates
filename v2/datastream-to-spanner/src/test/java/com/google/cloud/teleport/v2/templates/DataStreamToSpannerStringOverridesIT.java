@@ -114,8 +114,7 @@ public class DataStreamToSpannerStringOverridesIT extends DataStreamToSpannerITB
     for (DataStreamToSpannerStringOverridesIT instance : testInstances) {
       instance.tearDownBase();
     }
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, gcsResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, pubsubResourceManager);
   }
 
   @Test

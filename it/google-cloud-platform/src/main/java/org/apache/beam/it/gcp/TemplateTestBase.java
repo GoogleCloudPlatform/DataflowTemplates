@@ -457,11 +457,11 @@ public abstract class TemplateTestBase {
     if (dataStreamToSpannerGCSResourceManager != null) {
       dataStreamToSpannerGCSResourceManager.cleanupAll();
     }
-    for (GcsResourceManager gcsResourceManager : gcsResourceManagers) {
+    /*for (GcsResourceManager gcsResourceManager : gcsResourceManagers) {
       if (gcsResourceManager != null) {
         gcsResourceManager.cleanupAll();
       }
-    }
+    }*/
   }
 
   protected PipelineLauncher buildLauncher(

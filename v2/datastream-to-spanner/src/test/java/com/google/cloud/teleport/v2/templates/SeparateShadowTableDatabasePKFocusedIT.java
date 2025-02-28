@@ -116,10 +116,7 @@ public class SeparateShadowTableDatabasePKFocusedIT extends DataStreamToSpannerI
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        shadowSpannerResourceManager,
-        pubsubResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, shadowSpannerResourceManager, pubsubResourceManager);
   }
 
   /**

@@ -115,10 +115,7 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   @Test

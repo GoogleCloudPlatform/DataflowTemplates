@@ -121,10 +121,7 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        pubsubResourceManager,
-        shadowSpannerResourceManager,
-        gcsResourceManager);
+        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
   }
 
   /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */
