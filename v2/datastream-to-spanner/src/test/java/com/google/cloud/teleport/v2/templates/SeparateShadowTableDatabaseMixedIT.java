@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -60,6 +61,7 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE =
       "DataStreamToSpannerMixedIT/spanner-schema.sql";
@@ -79,6 +81,7 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -88,6 +91,7 @@ public class SeparateShadowTableDatabaseMixedIT extends DataStreamToSpannerITBas
                 "SeparateShadowTableDatabaseMixedIT",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put(

@@ -38,6 +38,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -68,6 +69,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -84,6 +86,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -93,6 +96,7 @@ public class SeparateShadowTableDatabaseEventsIT extends DataStreamToSpannerITBa
                 "SeparateShadowTableDatabaseEventsIT",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put(
