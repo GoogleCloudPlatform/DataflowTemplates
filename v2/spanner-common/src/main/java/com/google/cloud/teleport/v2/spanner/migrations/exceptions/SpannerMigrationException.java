@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.exceptions;
 
-public class SpannerMigrationException extends Exception {
+public class SpannerMigrationException extends RuntimeException {
   public enum ErrorCode {
     // Errors thrown from Spanner
     SPANNER_TRANSACTION_ABORTED("SMT-1001"),
