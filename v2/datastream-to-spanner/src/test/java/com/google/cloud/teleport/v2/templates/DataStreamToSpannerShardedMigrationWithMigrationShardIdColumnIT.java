@@ -103,6 +103,9 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
+      if (gcsResourceManager == null) {
+        gcsResourceManager = setUpGCSResourceManager("");
+      }
       createAndUploadJarToGcs(gcsResourceManager, "shard1");
       CustomTransformation customTransformation =
           CustomTransformation.builder(

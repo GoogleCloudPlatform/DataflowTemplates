@@ -38,6 +38,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.junit.AfterClass;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
   protected static final Credentials CREDENTIALS = TestProperties.googleCredentials();
   private static GcsResourceManager gcsResourceManager = null;
+
+  @AfterClass
+  public static void cleanUp() throws IOException {
+    gcsResourceManager.cleanupAll();
+  }
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
