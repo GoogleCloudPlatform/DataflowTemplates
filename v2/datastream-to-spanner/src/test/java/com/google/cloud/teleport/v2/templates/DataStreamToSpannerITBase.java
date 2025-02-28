@@ -24,7 +24,9 @@ import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -77,18 +79,31 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
    * @param spannerResourceManager Initialized SpannerResourceManager instance
    * @param resourceName SQL file name with path relative to resources directory
    */
-  public void createSpannerDDL(SpannerResourceManager spannerResourceManager, String resourceName)
-      throws IOException {
+  public static void createSpannerDDL(
+      SpannerResourceManager spannerResourceManager, String resourceName) throws IOException {
     String ddl =
         String.join(
             " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
     ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
+    List<String> ddls = Arrays.stream(ddl.split(";")).toList();
+    spannerResourceManager.executeDdlStatements(ddls);
+  }
+
+  /**
+   * Helper function for executing Spanner DML. Reads the sql file from resources directory and
+   * applies the DML to Spanner instance.
+   *
+   * @param spannerResourceManager Initialized SpannerResourceManager instance
+   * @param resourceName SQL file name with path relative to resources directory
+   */
+  public static void executeSpannerDML(
+      SpannerResourceManager spannerResourceManager, String resourceName) throws IOException {
+    String dml =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+    dml = dml.trim();
+    List<String> dmls = Arrays.stream(dml.split(";")).toList();
+    spannerResourceManager.executeDMLStatements(dmls);
   }
 
   /**
