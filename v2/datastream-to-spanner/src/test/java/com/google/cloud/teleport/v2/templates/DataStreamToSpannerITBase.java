@@ -241,7 +241,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
             identifierSuffix + "/" + gcsPathPrefix + "/" + "dlq/",
             gcsResourceManager);
     String gcsPath = "gs://" + bucketName + "/" + identifierSuffix + "/" + gcsPathPrefix + "/";
-    gcsResourceManager.addManagedDir(identifierSuffix + "/" + gcsPathPrefix);
+    gcsResourceManager.registerTempDir(identifierSuffix + "/" + gcsPathPrefix);
 
     // default parameters
     Map<String, String> params =

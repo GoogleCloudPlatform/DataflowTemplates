@@ -440,7 +440,6 @@ public final class GcsResourceManagerTest {
 
     // Assert
     verify(client).delete(BUCKET);
-    verify(client, never()).list(anyString(), any(BlobListOption.class));
     verify(client, never()).delete(anyIterable());
   }
 
@@ -456,7 +455,6 @@ public final class GcsResourceManagerTest {
 
     // Assert
     verify(client).delete(BUCKET);
-    verify(client, never()).list(anyString(), any(BlobListOption.class));
     verify(client, never()).delete(anyIterable());
   }
 

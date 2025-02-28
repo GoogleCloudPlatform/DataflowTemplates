@@ -122,10 +122,6 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     managedTempDirs.add(joinPathParts(testClassName, runId));
   }
 
-  public void addManagedDir(String path) {
-    managedTempDirs.add(path);
-  }
-
   /** Returns a new {@link Builder} for configuring a client. */
   public static Builder builder(String bucket, String testClassName, Credentials credentials) {
     checkArgument(!bucket.equals(""));
