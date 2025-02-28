@@ -28,6 +28,7 @@ RUN python -m venv /venv \
     && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
 
 # Cache provider environments for faster startup and expansion time
+RUN python -m apache_beam.utils.subprocess_server
 RUN python -m apache_beam.yaml.cache_provider_artifacts
 
 #============================================================#
