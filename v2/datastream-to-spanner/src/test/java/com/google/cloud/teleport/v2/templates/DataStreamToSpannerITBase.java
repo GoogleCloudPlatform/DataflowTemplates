@@ -71,7 +71,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         gcsResourceManager =
             GcsResourceManager.builder(DataStreamToSpannerITBase.class.getSimpleName(), CREDENTIALS)
                 .build();
-        addGcsResourceManagers(gcsResourceManager);
       }
       return gcsResourceManager;
     }

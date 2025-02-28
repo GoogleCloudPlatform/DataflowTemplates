@@ -131,15 +131,7 @@ public abstract class TemplateTestBase {
   /** Client to interact with GCS. */
   protected GcsResourceManager gcsClient;
 
-  protected GcsResourceManager dataStreamToSpannerGCSResourceManager;
-
   protected GcsResourceManager artifactClient;
-
-  protected List<GcsResourceManager> gcsResourceManagers = new ArrayList<>();
-
-  public void addGcsResourceManagers(GcsResourceManager gcsResourceManager) {
-    gcsResourceManagers.add(gcsResourceManager);
-  }
 
   private boolean usingDirectRunner;
   protected PipelineLauncher pipelineLauncher;
@@ -209,8 +201,6 @@ public abstract class TemplateTestBase {
               + " created automatically.");
     }
     credentialsProvider = FixedCredentialsProvider.create(credentials);
-    dataStreamToSpannerGCSResourceManager =
-        GcsResourceManager.builder("DataStreamToSpanner", credentials).build();
 
     // If annotation is not null, that means single template tests are being run.
     if (annotation != null) {
@@ -454,14 +444,6 @@ public abstract class TemplateTestBase {
     if (gcsClient != null) {
       gcsClient.cleanupAll();
     }
-    if (dataStreamToSpannerGCSResourceManager != null) {
-      dataStreamToSpannerGCSResourceManager.cleanupAll();
-    }
-    /*for (GcsResourceManager gcsResourceManager : gcsResourceManagers) {
-      if (gcsResourceManager != null) {
-        gcsResourceManager.cleanupAll();
-      }
-    }*/
   }
 
   protected PipelineLauncher buildLauncher(
