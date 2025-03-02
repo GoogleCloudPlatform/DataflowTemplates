@@ -36,6 +36,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -60,6 +61,7 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   private static final String SPANNER_DDL_RESOURCE =
       "DataStreamToSpannerSessionIT/spanner-schema.sql";
@@ -81,6 +83,7 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -101,7 +104,8 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
                   }
                 },
                 null,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -117,7 +121,10 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   /** Test checks for the following use-cases: 1. Drop Column. 2. Rename Column. 3. Drop Table */
@@ -133,7 +140,8 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
                         jobInfo,
                         TABLE1,
                         "backfill_category.avro",
-                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro"),
+                        "DataStreamToSpannerSessionIT/mysql-backfill-Category.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -157,7 +165,8 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
                         jobInfo,
                         TABLE1,
                         "cdc_category.avro",
-                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro"),
+                        "DataStreamToSpannerSessionIT/mysql-cdc-Category.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -192,7 +201,8 @@ public class SeparateShadowTableDatabaseSessionIT extends DataStreamToSpannerITB
                         jobInfo,
                         TABLE2,
                         "synth-id.avro",
-                        "DataStreamToSpannerSessionIT/Books.avro"),
+                        "DataStreamToSpannerSessionIT/Books.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(3)
                         .setMaxRows(3)

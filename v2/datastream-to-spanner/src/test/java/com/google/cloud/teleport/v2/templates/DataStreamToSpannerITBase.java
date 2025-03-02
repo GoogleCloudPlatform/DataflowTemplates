@@ -25,16 +25,20 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,6 +61,24 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     return SpannerResourceManager.builder(testName, PROJECT, REGION)
         .maybeUseStaticInstance()
         .build();
+  }
+
+  public GcsResourceManager setUpGcsResourceManager() {
+    GcsResourceManager spannerTestsGcsClient;
+    if (TestProperties.project().equals("cloud-teleport-testing")) {
+      List<String> bucketList =
+          List.of("cloud-teleport-spanner-it-1", "cloud-teleport-spanner-it-2");
+      Random random = new Random();
+      int randomIndex = random.nextInt(bucketList.size());
+      String randomBucketName = bucketList.get(randomIndex);
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
+              .build();
+
+    } else {
+      spannerTestsGcsClient = gcsClient;
+    }
+    return spannerTestsGcsClient;
   }
 
   public SpannerResourceManager setUpShadowSpannerResourceManager() {
@@ -100,7 +122,10 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
    * @return SubscriptionName object of the created PubSub subscription.
    */
   public SubscriptionName createPubsubResources(
-      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
     String topicNameSuffix = "it" + identifierSuffix;
     String subscriptionNameSuffix = "it-sub" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
@@ -110,7 +135,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
-    gcsClient.createNotification(topic.toString(), prefix);
+    gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
 
@@ -125,7 +150,11 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
    * @return A ConditionCheck containing the GCS Upload operation.
    */
   public ConditionCheck uploadDataStreamFile(
-      LaunchInfo jobInfo, String table, String destinationFileName, String resourceName) {
+      LaunchInfo jobInfo,
+      String table,
+      String destinationFileName,
+      String resourceName,
+      GcsResourceManager gcsResourceManager) {
     return new ConditionCheck() {
       @Override
       protected String getDescription() {
@@ -142,12 +171,12 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
               jobInfo
                   .parameters()
                   .get("inputFilePattern")
-                  .replace("gs://" + artifactBucketName + "/", "");
+                  .replace("gs://" + gcsResourceManager.getBucket() + "/", "");
           destinationPath =
               destinationPath
                   + String.format(
                       DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS, table, destinationFileName);
-          gcsClient.copyFileToGcs(
+          gcsResourceManager.copyFileToGcs(
               Paths.get(Resources.getResource(resourceName).getPath()), destinationPath);
         } catch (IOException e) {
           success = false;
@@ -181,46 +210,53 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       PubsubResourceManager pubsubResourceManager,
       Map<String, String> jobParameters,
       CustomTransformation customTransformation,
-      String shardingContextFileResourceName)
+      String shardingContextFileResourceName,
+      GcsResourceManager gcsResourceManager)
       throws IOException {
 
     if (sessionFileResourceName != null) {
-      gcsClient.uploadArtifact(
+      gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/session.json",
           Resources.getResource(sessionFileResourceName).getPath());
     }
 
     if (transformationContextFileResourceName != null) {
-      gcsClient.uploadArtifact(
+      gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/transformationContext.json",
           Resources.getResource(transformationContextFileResourceName).getPath());
     }
 
     if (shardingContextFileResourceName != null) {
-      gcsClient.uploadArtifact(
+      gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/shardingContext.json",
           Resources.getResource(shardingContextFileResourceName).getPath());
     }
 
     String gcsPrefix =
-        getGcsPath(gcsPathPrefix + "/cdc/").replace("gs://" + artifactBucketName, "");
+        getGcsPath(gcsPathPrefix + "/cdc/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
     SubscriptionName subscription =
-        createPubsubResources(identifierSuffix, pubsubResourceManager, gcsPrefix);
+        createPubsubResources(
+            identifierSuffix, pubsubResourceManager, gcsPrefix, gcsResourceManager);
 
     String dlqGcsPrefix =
-        getGcsPath(gcsPathPrefix + "/dlq/").replace("gs://" + artifactBucketName, "");
+        getGcsPath(gcsPathPrefix + "/dlq/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
     SubscriptionName dlqSubscription =
-        createPubsubResources(identifierSuffix + "dlq", pubsubResourceManager, dlqGcsPrefix);
+        createPubsubResources(
+            identifierSuffix + "dlq", pubsubResourceManager, dlqGcsPrefix, gcsResourceManager);
 
     // default parameters
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/"));
+            put("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/", gcsResourceManager));
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("projectId", PROJECT);
-            put("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq/"));
+            put(
+                "deadLetterQueueDirectory",
+                getGcsPath(gcsPathPrefix + "/dlq/", gcsResourceManager));
             put("gcsPubSubSubscription", subscription.toString());
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
@@ -229,23 +265,26 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         };
 
     if (sessionFileResourceName != null) {
-      params.put("sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json"));
+      params.put(
+          "sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json", gcsResourceManager));
     }
 
     if (transformationContextFileResourceName != null) {
       params.put(
           "transformationContextFilePath",
-          getGcsPath(gcsPathPrefix + "/transformationContext.json"));
+          getGcsPath(gcsPathPrefix + "/transformationContext.json", gcsResourceManager));
     }
 
     if (shardingContextFileResourceName != null) {
-      params.put("shardingContextFilePath", getGcsPath(gcsPathPrefix + "/shardingContext.json"));
+      params.put(
+          "shardingContextFilePath",
+          getGcsPath(gcsPathPrefix + "/shardingContext.json", gcsResourceManager));
     }
 
     if (customTransformation != null) {
       params.put(
           "transformationJarPath",
-          getGcsPath(gcsPathPrefix + "/" + customTransformation.jarPath()));
+          getGcsPath(gcsPathPrefix + "/" + customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
     }
 
@@ -269,7 +308,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     return jobInfo;
   }
 
-  public void createAndUploadJarToGcs(String gcsPathPrefix)
+  public void createAndUploadJarToGcs(String gcsPathPrefix, GcsResourceManager gcsResourceManager)
       throws IOException, InterruptedException {
     String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
 
@@ -281,7 +320,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     if (exec.waitFor() != 0) {
       throw new RuntimeException("Error staging template, check Maven logs.");
     }
-    gcsClient.uploadArtifact(
+    gcsResourceManager.uploadArtifact(
         gcsPathPrefix + "/customTransformation.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }

@@ -34,6 +34,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -71,6 +72,7 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
 
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -87,15 +89,18 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        gcsClient.uploadArtifact(
+        gcsResourceManager.uploadArtifact(
             GCS_PATH_PREFIX + "/override.json", Resources.getResource(OVERRIDE_FILE).getPath());
         Map<String, String> overridesMap =
             new HashMap<>() {
               {
                 put("shadowTableSpannerInstanceId", shadowSpannerResourceManager.getInstanceId());
                 put("shadowTableSpannerDatabaseId", shadowSpannerResourceManager.getDatabaseId());
-                put("schemaOverridesFilePath", getGcsPath(GCS_PATH_PREFIX + "/override.json"));
+                put(
+                    "schemaOverridesFilePath",
+                    getGcsPath(GCS_PATH_PREFIX + "/override.json", gcsResourceManager));
               }
             };
         jobInfo =
@@ -108,7 +113,8 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
                 pubsubResourceManager,
                 overridesMap,
                 null,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -124,7 +130,10 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -139,7 +148,8 @@ public class SeparateShadowTableDatabaseFileOverridesIT extends DataStreamToSpan
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro"),
+                        "DataStreamToSpannerFileOverridesIT/mysql-cdc-person1.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)

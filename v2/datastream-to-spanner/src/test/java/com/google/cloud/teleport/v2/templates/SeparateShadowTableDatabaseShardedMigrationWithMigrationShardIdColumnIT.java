@@ -36,6 +36,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,6 +85,7 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -106,8 +108,12 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
+      if (gcsResourceManager == null) {
+        gcsResourceManager = setUpGcsResourceManager();
+      }
       createAndUploadJarToGcs(
-          "SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColumnIT_shard1");
+          "SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColumnIT_shard1",
+          gcsResourceManager);
       CustomTransformation customTransformation =
           CustomTransformation.builder(
                   "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
@@ -132,7 +138,8 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
                   }
                 },
                 customTransformation,
-                null);
+                null,
+                gcsResourceManager);
       }
       if (jobInfo2 == null) {
         jobInfo2 =
@@ -154,7 +161,8 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
                   }
                 },
                 null,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -171,7 +179,10 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -199,22 +210,26 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-cdc-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-cdc-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro",
+                        gcsResourceManager)))
             .build();
 
     // Wait for conditions
@@ -231,22 +246,26 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard3.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard3.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-cdc-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-cdc-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro",
+                        gcsResourceManager)))
             .build();
 
     result =
@@ -291,12 +310,14 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
                         jobInfo1,
                         MOVIE_TABLE,
                         "Movie-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         MOVIE_TABLE,
                         "Movie-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard2.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Movie-shard2.avro",
+                        gcsResourceManager)))
             .build();
 
     // Wait for conditions
@@ -336,12 +357,14 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
                         jobInfo1,
                         CUSTOMERS_TABLE,
                         "Customers-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Customers-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Customers-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         CUSTOMERS_TABLE,
                         "Customers-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Customers-shard2.avro")))
+                        "DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT/Customers-shard2.avro",
+                        gcsResourceManager)))
             .build();
 
     // Wait for conditions
