@@ -102,9 +102,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpGcsResourceManager();
         createAndUploadShardConfigToGcs();
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
@@ -113,7 +111,9 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
 
         jobInfo =
             launchDataflowJob(

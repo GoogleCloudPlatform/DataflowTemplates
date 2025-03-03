@@ -99,9 +99,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbCustomShardIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
 
         createAndUploadShardConfigToGcs();
@@ -113,7 +111,9 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,

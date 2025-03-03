@@ -32,12 +32,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -101,8 +99,29 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
+  public GcsResourceManager setUpGcsResourceManager() {
+    GcsResourceManager spannerTestsGcsClient;
+    if (TestProperties.project().equals("cloud-teleport-testing")) {
+      List<String> bucketList =
+          List.of("cloud-teleport-spanner-it-1", "cloud-teleport-spanner-it-2");
+      Random random = new Random();
+      int randomIndex = random.nextInt(bucketList.size());
+      String randomBucketName = bucketList.get(randomIndex);
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
+              .build();
+
+    } else {
+      spannerTestsGcsClient = gcsClient;
+    }
+    return spannerTestsGcsClient;
+  }
+
   public SubscriptionName createPubsubResources(
-      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
     String topicNameSuffix = "rr-it" + identifierSuffix;
     String subscriptionNameSuffix = "rr-it-sub" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
@@ -113,7 +132,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       prefix = prefix.substring(1);
     }
     prefix += "/retry/";
-    gcsClient.createNotification(topic.toString(), prefix);
+    gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
 
@@ -280,7 +299,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   public String getGcsFullPath(
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(), identifierSuffix, gcsResourceManager.runId(), artifactId);
   }
 
   protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
