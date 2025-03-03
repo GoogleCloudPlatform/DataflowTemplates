@@ -33,8 +33,8 @@ on:
       # Include spanner paths
       - '.github/workflows/spanner-pr.yml'
       - 'v2/datastream-to-spanner/**'
-      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
-      - 'v2/gcs-to-sourcedb/**'
+#      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+#      - 'v2/gcs-to-sourcedb/**'
       - 'v2/sourcedb-to-spanner/**'
       - 'v2/spanner-to-sourcedb/**'
   schedule:
@@ -121,41 +121,42 @@ jobs:
       uses: codecov/codecov-action@v4.0.1
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
-        slug: GoogleCloudPlatform/DataflowTemplates
+#        slug: GoogleCloudPlatform/DataflowTemplates
+        slug: ollionorg/DataflowTemplates-fork
         files: 'target/site/jacoco-aggregate/jacoco.xml'
         # Temp fix for https://github.com/codecov/codecov-action/issues/1487
         version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
-  java_integration_smoke_tests_templates:
-    name: Dataflow Templates Integration Smoke Tests
-    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
-    timeout-minutes: 60
-    # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, it]
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-    - name: Setup Environment
-      id: setup-env
-      uses: ./.github/actions/setup-env
-    - name: Run Integration Smoke Tests
-      run: |
-        ./cicd/run-it-smoke-tests \
-        --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
-    - name: Upload Smoke Tests Report
-      uses: actions/upload-artifact@v4
-      if: always() # always run even if the previous step fails
-      with:
-        name: surefire-smoke-test-results
-        path: '**/surefire-reports/TEST-*.xml'
-        retention-days: 1
-    - name: Cleanup Java Environment
-      uses: ./.github/actions/cleanup-java-env
+#  java_integration_smoke_tests_templates:
+#    name: Dataflow Templates Integration Smoke Tests
+#    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+#    timeout-minutes: 60
+#    # Run on any runner that matches all the specified runs-on values.
+#    runs-on: [self-hosted, it]
+#    steps:
+#    - name: Checkout Code
+#      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+#    - name: Setup Environment
+#      id: setup-env
+#      uses: ./.github/actions/setup-env
+#    - name: Run Integration Smoke Tests
+#      run: |
+#        ./cicd/run-it-smoke-tests \
+#        --modules-to-build="SPANNER" \
+#        --it-region="us-central1" \
+#        --it-project="cloud-teleport-testing" \
+#        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+#        --it-private-connectivity="datastream-private-connect-us-central1"
+#    - name: Upload Smoke Tests Report
+#      uses: actions/upload-artifact@v4
+#      if: always() # always run even if the previous step fails
+#      with:
+#        name: surefire-smoke-test-results
+#        path: '**/surefire-reports/TEST-*.xml'
+#        retention-days: 1
+#    - name: Cleanup Java Environment
+#      uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
     needs: [java_integration_smoke_tests_templates]
@@ -172,10 +173,10 @@ jobs:
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-region="aisa-south1" \
+        --it-project="daring-fiber-439305-v4" \
+        --it-artifact-bucket="ollion-teleport-testing" \
+        --it-private-connectivity="datastream-private-connect-asia-south1"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
@@ -202,9 +203,9 @@ jobs:
       run: |
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-region="asia-south1" \
+        --it-project="daring-fiber-439305-v4" \
+        --it-artifact-bucket="ollion-teleport-testing" \
+        --it-private-connectivity="datastream-private-connect-asia-south1"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
