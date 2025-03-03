@@ -697,7 +697,7 @@
                 <exclude>**/KafkaToKafkaIT.java</exclude>
               </excludes>
               <excludedGroups>
-                ${direct-runner.tests}
+                ${direct-runner.tests},
                 com.google.cloud.teleport.metadata.SkipRunnerV2Test
               </excludedGroups>
               <groups>
