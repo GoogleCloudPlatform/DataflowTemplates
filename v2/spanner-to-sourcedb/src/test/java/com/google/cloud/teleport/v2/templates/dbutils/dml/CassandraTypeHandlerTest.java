@@ -43,6 +43,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -220,11 +221,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
-    String columnValue = binaryString.toString();
+    String columnValue = Base64.getEncoder().encodeToString(expectedBytes);
     String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
@@ -317,11 +314,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
-    String columnValue = binaryString.toString();
+    String columnValue = Base64.getEncoder().encodeToString(expectedBytes);
     String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
@@ -1091,12 +1084,8 @@ public class CassandraTypeHandlerTest {
     String columnName = "test_column";
 
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, binaryString.toString());
+    valuesJson.put(columnName, Base64.getEncoder().encodeToString(expectedBytes));
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
@@ -1106,7 +1095,7 @@ public class CassandraTypeHandlerTest {
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
-    assertArrayEquals(expectedBytes, (byte[]) actualValue);
+    assertEquals(ByteBuffer.wrap(expectedBytes), actualValue);
   }
 
   @Test

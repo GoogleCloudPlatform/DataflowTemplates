@@ -173,34 +173,8 @@ public class CassandraTypeHandler {
     } else if (colValue instanceof ByteBuffer) {
       return (ByteBuffer) colValue;
     } else {
-      String strVal = (String) colValue;
-      if (!strVal.matches("^[01]+$")) {
-        return ByteBuffer.wrap(java.util.Base64.getDecoder().decode(strVal));
-      }
+      return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
     }
-    throw new IllegalArgumentException("Invalid colValue: " + colValue);
-  }
-
-  /**
-   * Converts a hexadecimal string into a byte array.
-   *
-   * @param binaryEncodedStr the hexadecimal string to be converted. It must have an even number of
-   *     characters, as each pair of characters represents one byte.
-   * @return a byte array representing the binary data equivalent of the hexadecimal string.
-   */
-  private static byte[] convertBinaryEncodedStringToByteArray(String binaryEncodedStr) {
-    int length = binaryEncodedStr.length();
-    int byteCount = (length + 7) / 8;
-    byte[] byteArray = new byte[byteCount];
-
-    for (int i = 0; i < byteCount; i++) {
-      int startIndex = i * 8;
-      int endIndex = Math.min(startIndex + 8, length);
-      String byteString = binaryEncodedStr.substring(startIndex, endIndex);
-      byteArray[i] = (byte) Integer.parseInt(byteString, 2);
-    }
-
-    return byteArray;
   }
 
   /**
@@ -337,14 +311,7 @@ public class CassandraTypeHandler {
         if (hexEncodedString.isEmpty()) {
           return null;
         }
-        return safeHandle(
-            () -> {
-              try {
-                return safeHandle(() -> parseBlobType(hexEncodedString));
-              } catch (IllegalArgumentException e) {
-                return convertBinaryEncodedStringToByteArray(hexEncodedString);
-              }
-            });
+        return safeHandle(() -> parseBlobType(hexEncodedString));
       } else {
         return valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
       }
@@ -684,9 +651,10 @@ public class CassandraTypeHandler {
     Object columnValue = handleSpannerColumnType(spannerType, columnName, valuesJson);
 
     if (columnValue == null) {
-      LOG.warn("Column value is null for column: {}, type: {}", columnName, spannerType);
+      LOG.info("Column value is null for column: {}, type: {}", columnName, spannerType);
       return PreparedStatementValueObject.create(cassandraType, NullClass.INSTANCE);
     }
+    LOG.info("Column value is {} for column: {}, type: {}", columnValue, columnName, spannerType);
     return PreparedStatementValueObject.create(cassandraType, columnValue);
   }
 
