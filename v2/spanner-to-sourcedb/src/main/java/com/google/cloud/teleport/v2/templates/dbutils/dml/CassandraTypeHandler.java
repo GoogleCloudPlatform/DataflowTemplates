@@ -651,7 +651,7 @@ public class CassandraTypeHandler {
     Object columnValue = handleSpannerColumnType(spannerType, columnName, valuesJson);
 
     if (columnValue == null) {
-      LOG.debug("Column value is null for column: {}, type: {}", columnName, spannerType);
+      LOG.warn("Column value is null for column: {}, type: {}", columnName, spannerType);
       return PreparedStatementValueObject.create(cassandraType, NullClass.INSTANCE);
     }
     return PreparedStatementValueObject.create(cassandraType, columnValue);
