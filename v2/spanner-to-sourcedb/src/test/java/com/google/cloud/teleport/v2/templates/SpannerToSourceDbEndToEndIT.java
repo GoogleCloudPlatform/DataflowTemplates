@@ -39,6 +39,9 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
@@ -54,19 +57,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.sqladmin.SQLAdmin;
-import com.google.api.services.sqladmin.model.DatabaseInstance;
-import com.google.api.services.sqladmin.model.InstancesListResponse;
-import com.google.auth.http.HttpCredentialsAdapter;
-import com.google.auth.oauth2.GoogleCredentials;
-
-import java.io.IOException;
-import java.security.GeneralSecurityException;
-import java.util.List;
 
 /**
  * Integration test for {@link SpannerToSourceDb} Flex template for basic run including new spanner
@@ -97,6 +87,8 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   private SubscriptionName rrSubscriptionName;
   private SubscriptionName fwdSubscriptionName;
   protected SecretManagerResourceManager secretClient;
+
+  private CloudSqlResourceManager cloudSqlResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -190,39 +182,12 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   }
 
   private void createDatabase(){
-    Random random = new Random();
+    // Create JDBC Resource manager
+    cloudSqlResourceManager =
+        CloudMySQLResourceManager.builder(testName).build();
+    System.out.println(cloudSqlResourceManager.getDatabaseName());
+    System.out.println(cloudSqlResourceManager.getHost());
 
-    // Generate a random integer
-    int randomInteger = random.nextInt()%10000;
-    String databaseName = "db"+randomInteger;  // Set your database name
-    String instanceName = "testing";  // Set your instance name
-
-    // Build the gcloud command
-    String command = String.format("gcloud sql databases create %s --instance=%s", databaseName, instanceName);
-
-    try {
-      // Run the command
-      Process process = runCommand(command);
-
-      // Read the output from the process
-      BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-      String line;
-      while ((line = reader.readLine()) != null) {
-        System.out.println(line);  // Print the output of the command
-      }
-
-      // Wait for the process to exit
-      int exitCode = process.waitFor();
-      if (exitCode == 0) {
-        System.out.println("######## Database created successfully!");
-      } else {
-        System.out.println("######## Error creating database. Exit code: " + exitCode);
-      }
-
-    } catch (IOException | InterruptedException e) {
-      System.err.println("Error executing gcloud command: " + e.getMessage());
-      e.printStackTrace();
-    }
   }
   private static Process runCommand(String command) throws IOException {
     // Run the gcloud command using ProcessBuilder
