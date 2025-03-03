@@ -2,7 +2,7 @@
   "SessionName": "NewSession",
   "EditorName": "",
   "DatabaseType": "mysql",
-  "DatabaseName": "session_it",
+  "DatabaseName": "SP_DATABASE",
   "Dialect": "google_standard_sql",
   "Notes": null,
   "Tags": null,
@@ -82,7 +82,7 @@
   "SrcSchema": {
     "t1": {
       "Name": "Authors",
-      "Schema": "simple-it",
+      "Schema": "SRC_DATABASE",
       "ColIds": [
         "c2",
         "c3"

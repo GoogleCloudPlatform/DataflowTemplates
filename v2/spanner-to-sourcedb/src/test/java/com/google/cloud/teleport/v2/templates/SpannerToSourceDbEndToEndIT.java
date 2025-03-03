@@ -31,6 +31,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,16 +43,20 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudOracleResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -88,7 +96,11 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   private SubscriptionName fwdSubscriptionName;
   protected SecretManagerResourceManager secretClient;
 
-  private CloudSqlResourceManager cloudSqlResourceManager;
+  private static CloudSqlResourceManager cloudSqlResourceManager;
+
+  private static final List<String> COLUMNS = List.of("id", "name");
+
+  private static final Integer NUM_EVENTS = 2;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -100,29 +112,27 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     skipBaseCleanup = true;
     synchronized (SpannerToSourceDbEndToEndIT.class) {
       testInstances.add(this);
-      // if (jobInfo == null) {
-      //   spannerResourceManager =
-      //       createSpannerDatabase(SpannerToSourceDbEndToEndIT.SPANNER_DDL_RESOURCE);
-      //   spannerMetadataResourceManager = createSpannerMetadataDatabase();
-      //
-      //   secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
-      //   jdbcResourceManager = MySQLResourceManager.builder(testName).build();
-      //
-      //   createMySQLSchema(
-      //       jdbcResourceManager, SpannerToSourceDbEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
-      //   String password =
-      //       secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
-      //   //JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
-      //
-      //
-      //   gcsResourceManager =
-      //       GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-      //           .build();
-      //   createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
-      //   createAndUploadJarToGcs(gcsResourceManager);
-      //   gcsResourceManager.uploadArtifact(
-      //       "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
-      //   pubsubResourceManager = setUpPubSubResourceManager();
+      if (jobInfo == null) {
+        spannerResourceManager =
+            createSpannerDatabase(SpannerToSourceDbEndToEndIT.SPANNER_DDL_RESOURCE);
+        spannerMetadataResourceManager = createSpannerMetadataDatabase();
+        // secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
+        // jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+        cloudSqlResourceManager =
+            CloudMySQLResourceManager.builder(testName).build();
+        // createMySQLSchema(
+        //     jdbcResourceManager, SpannerToSourceDbEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
+        // String password =
+        //     secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
+        jdbcSource=createMySqlDatabase();
+        gcsResourceManager =
+            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+                .build();
+        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+        createAndUploadJarToGcs(gcsResourceManager);
+        gcsResourceManager.uploadArtifact(
+            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+        pubsubResourceManager = setUpPubSubResourceManager();
         // rrSubscriptionName =
         //     createPubsubResources(
         //         getClass().getSimpleName(),
@@ -137,14 +147,14 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         //         MYSQL_SOURCE_TYPE);
         // System.out.println("######2");
         // System.out.println(jobInfo.jobId());
-        // fwdJobInfo = launchFwdDataflowJob(
-        //     spannerResourceManager,
-        //     gcsResourceManager,
-        //     pubsubResourceManager,
-        //     "fwdMigration",
-        //     secretClient
-        // );
-      // }
+        fwdJobInfo = launchFwdDataflowJob(
+            spannerResourceManager,
+            gcsResourceManager,
+            pubsubResourceManager,
+            "fwdMigration",
+            secretClient
+        );
+       }
     }
   }
 
@@ -163,7 +173,8 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         jdbcResourceManager,
         spannerMetadataResourceManager,
         gcsResourceManager,
-        pubsubResourceManager);
+        pubsubResourceManager,
+        cloudSqlResourceManager);
   }
 
   @Test
@@ -173,27 +184,49 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     // writeRowInSpanner();
     // // Assert events on Mysql
     // assertRowInMySQL();
-    // assertThatPipeline(fwdJobInfo).isRunning();
-    // System.out.println("#######1");
-    // System.out.println(spannerResourceManager.getInstanceId());
-    // System.out.println(spannerResourceManager.getDatabaseId());
+    assertThatPipeline(fwdJobInfo).isRunning();
+    System.out.println("#######1");
+    System.out.println(spannerResourceManager.getInstanceId());
+    System.out.println(spannerResourceManager.getDatabaseId());
     // gcsToSpanner();
-    createDatabase();
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeJdbcData(TABLE, cdcEvents),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE)
+                        .setMinRows(NUM_EVENTS)
+                        .setMaxRows(NUM_EVENTS)
+                        .build())).build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    System.out.println("## checking");
+    System.out.println(result);
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
   }
 
-  private void createDatabase(){
-    // Create JDBC Resource manager
-    cloudSqlResourceManager =
-        CloudMySQLResourceManager.builder(testName).build();
-    System.out.println(cloudSqlResourceManager.getDatabaseName());
-    System.out.println(cloudSqlResourceManager.getHost());
-
+  private JDBCResourceManager.JDBCSchema createJdbcSchema() {
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put("id", "NUMBER"+ " NOT NULL");
+    columns.put("name", "VARCHAR(200)");
+    return new JDBCResourceManager.JDBCSchema(columns, "id");
   }
-  private static Process runCommand(String command) throws IOException {
-    // Run the gcloud command using ProcessBuilder
-    ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
-    processBuilder.redirectErrorStream(true);  // Merge standard error and standard output
-    return processBuilder.start();
+  private JDBCSource createMySqlDatabase(){
+    cloudSqlResourceManager.createTable(
+        "Authors", createJdbcSchema());
+    return
+        MySQLSource.builder(
+                cloudSqlResourceManager.getHost(),
+                cloudSqlResourceManager.getUsername(),
+                cloudSqlResourceManager.getPassword(),
+                cloudSqlResourceManager.getPort())
+            .setAllowedTables(Map.of(cloudSqlResourceManager.getDatabaseName(), Arrays.asList("Authors")))
+            .build();
   }
 
   private void gcsToSpanner() {
@@ -243,5 +276,33 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     assertThat(rows).hasSize(2);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
+  }
+
+  private ConditionCheck writeJdbcData(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send initial JDBC events.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        boolean success = true;
+        List<String> messages = new ArrayList<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int i = 0; i < NUM_EVENTS; i++) {
+          Map<String, Object> values = new HashMap<>();
+          values.put(COLUMNS.get(0), i);
+          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10));
+          rows.add(values);
+        }
+        cdcEvents.put(tableName, rows);
+        success &= cloudSqlResourceManager.write(tableName, rows);
+        messages.add(String.format("%d rows to %s", rows.size(), tableName));
+
+        return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
+      }
+    };
   }
 }

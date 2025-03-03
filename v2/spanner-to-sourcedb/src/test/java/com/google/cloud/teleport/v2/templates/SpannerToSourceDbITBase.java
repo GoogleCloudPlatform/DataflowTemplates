@@ -84,6 +84,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   public DatastreamResourceManager datastreamResourceManager;
+  protected JDBCSource jdbcSource;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -407,9 +408,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       SecretManagerResourceManager secretClient)
       throws IOException {
     String testRootDir = getClass().getSimpleName();
-    String password =
-        secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
-    JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
+    // String password =
+    //     secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
+    // JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
 
     String gcsPrefix =
         String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
@@ -432,7 +433,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             .build();
     Stream stream =
         createDatastreamResources(
-            artifactBucket, gcsPrefix, mySQLSource, datastreamResourceManager);
+            artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
 
 
     String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
