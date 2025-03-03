@@ -82,7 +82,7 @@ jobs:
   java_build:
     name: Build
     timeout-minutes: 60
-    runs-on: [self-hosted, it]
+    runs-on: [self-hosted]
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
@@ -99,7 +99,7 @@ jobs:
     name: Unit Tests
     needs: [java_build]
     timeout-minutes: 60
-    runs-on: [self-hosted, it]
+    runs-on: [self-hosted]
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
@@ -162,7 +162,7 @@ jobs:
     needs: [java_integration_smoke_tests_templates]
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, it]
+    runs-on: [self-hosted]
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
@@ -192,7 +192,7 @@ jobs:
     needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, java_integration_tests_templates]
     timeout-minutes: 600
     # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, perf]
+    runs-on: [self-hosted]
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
