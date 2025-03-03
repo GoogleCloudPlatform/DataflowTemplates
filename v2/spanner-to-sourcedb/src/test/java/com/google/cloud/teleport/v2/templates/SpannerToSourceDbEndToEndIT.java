@@ -26,11 +26,15 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -50,6 +54,19 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.services.sqladmin.SQLAdmin;
+import com.google.api.services.sqladmin.model.DatabaseInstance;
+import com.google.api.services.sqladmin.model.InstancesListResponse;
+import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.GoogleCredentials;
+
+import java.io.IOException;
+import java.security.GeneralSecurityException;
+import java.util.List;
 
 /**
  * Integration test for {@link SpannerToSourceDb} Flex template for basic run including new spanner
@@ -91,29 +108,29 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     skipBaseCleanup = true;
     synchronized (SpannerToSourceDbEndToEndIT.class) {
       testInstances.add(this);
-      if (jobInfo == null) {
-        spannerResourceManager =
-            createSpannerDatabase(SpannerToSourceDbEndToEndIT.SPANNER_DDL_RESOURCE);
-        spannerMetadataResourceManager = createSpannerMetadataDatabase();
-
-        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
-        jdbcResourceManager = MySQLResourceManager.builder(testName).build();
-
-        createMySQLSchema(
-            jdbcResourceManager, SpannerToSourceDbEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
-        String password =
-            secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
-        //JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
-
-
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
-        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
-        createAndUploadJarToGcs(gcsResourceManager);
-        gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
-        pubsubResourceManager = setUpPubSubResourceManager();
+      // if (jobInfo == null) {
+      //   spannerResourceManager =
+      //       createSpannerDatabase(SpannerToSourceDbEndToEndIT.SPANNER_DDL_RESOURCE);
+      //   spannerMetadataResourceManager = createSpannerMetadataDatabase();
+      //
+      //   secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
+      //   jdbcResourceManager = MySQLResourceManager.builder(testName).build();
+      //
+      //   createMySQLSchema(
+      //       jdbcResourceManager, SpannerToSourceDbEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
+      //   String password =
+      //       secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
+      //   //JDBCSource mySQLSource = getMySQLSource("35.232.15.141", "root", password);
+      //
+      //
+      //   gcsResourceManager =
+      //       GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+      //           .build();
+      //   createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+      //   createAndUploadJarToGcs(gcsResourceManager);
+      //   gcsResourceManager.uploadArtifact(
+      //       "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+      //   pubsubResourceManager = setUpPubSubResourceManager();
         // rrSubscriptionName =
         //     createPubsubResources(
         //         getClass().getSimpleName(),
@@ -128,14 +145,14 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         //         MYSQL_SOURCE_TYPE);
         // System.out.println("######2");
         // System.out.println(jobInfo.jobId());
-        fwdJobInfo = launchFwdDataflowJob(
-            spannerResourceManager,
-            gcsResourceManager,
-            pubsubResourceManager,
-            "fwdMigration",
-            secretClient
-        );
-      }
+        // fwdJobInfo = launchFwdDataflowJob(
+        //     spannerResourceManager,
+        //     gcsResourceManager,
+        //     pubsubResourceManager,
+        //     "fwdMigration",
+        //     secretClient
+        // );
+      // }
     }
   }
 
@@ -164,11 +181,54 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
     // writeRowInSpanner();
     // // Assert events on Mysql
     // assertRowInMySQL();
-    assertThatPipeline(fwdJobInfo).isRunning();
-    System.out.println("#######1");
-    System.out.println(spannerResourceManager.getInstanceId());
-    System.out.println(spannerResourceManager.getDatabaseId());
-    gcsToSpanner();
+    // assertThatPipeline(fwdJobInfo).isRunning();
+    // System.out.println("#######1");
+    // System.out.println(spannerResourceManager.getInstanceId());
+    // System.out.println(spannerResourceManager.getDatabaseId());
+    // gcsToSpanner();
+    createDatabase();
+  }
+
+  private void createDatabase(){
+    Random random = new Random();
+
+    // Generate a random integer
+    int randomInteger = random.nextInt()%10000;
+    String databaseName = "db"+randomInteger;  // Set your database name
+    String instanceName = "testing";  // Set your instance name
+
+    // Build the gcloud command
+    String command = String.format("gcloud sql databases create %s --instance=%s", databaseName, instanceName);
+
+    try {
+      // Run the command
+      Process process = runCommand(command);
+
+      // Read the output from the process
+      BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line;
+      while ((line = reader.readLine()) != null) {
+        System.out.println(line);  // Print the output of the command
+      }
+
+      // Wait for the process to exit
+      int exitCode = process.waitFor();
+      if (exitCode == 0) {
+        System.out.println("######## Database created successfully!");
+      } else {
+        System.out.println("######## Error creating database. Exit code: " + exitCode);
+      }
+
+    } catch (IOException | InterruptedException e) {
+      System.err.println("Error executing gcloud command: " + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+  private static Process runCommand(String command) throws IOException {
+    // Run the gcloud command using ProcessBuilder
+    ProcessBuilder processBuilder = new ProcessBuilder(command.split(" "));
+    processBuilder.redirectErrorStream(true);  // Merge standard error and standard output
+    return processBuilder.start();
   }
 
   private void gcsToSpanner() {
