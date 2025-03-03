@@ -125,6 +125,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         // String password =
         //     secretClient.accessSecret("projects/940149800767/secrets/testing-password/versions/1");
         jdbcSource=createMySqlDatabase();
+        System.out.println("####"+cloudSqlResourceManager.getDatabaseName());
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
@@ -169,12 +170,13 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        jdbcResourceManager,
-        spannerMetadataResourceManager,
+        //spannerResourceManager,
+        //jdbcResourceManager,
+        //spannerMetadataResourceManager,
         gcsResourceManager,
-        pubsubResourceManager,
-        cloudSqlResourceManager);
+        pubsubResourceManager
+        //cloudSqlResourceManager
+    );
   }
 
   @Test
@@ -212,7 +214,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
 
   private JDBCResourceManager.JDBCSchema createJdbcSchema() {
     HashMap<String, String> columns = new HashMap<>();
-    columns.put("id", "NUMBER"+ " NOT NULL");
+    columns.put("id", "INT"+ " NOT NULL");
     columns.put("name", "VARCHAR(200)");
     return new JDBCResourceManager.JDBCSchema(columns, "id");
   }
