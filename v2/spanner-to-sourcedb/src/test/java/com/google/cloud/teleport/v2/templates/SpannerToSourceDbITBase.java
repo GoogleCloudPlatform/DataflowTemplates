@@ -62,6 +62,7 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
@@ -178,6 +179,27 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     shard.setPassword(jdbcResourceManager.getPassword());
     shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
     shard.setDbName(jdbcResourceManager.getDatabaseName());
+    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
+    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
+    JsonArray ja = new JsonArray();
+    ja.add(jsObj);
+    String shardFileContents = ja.toString();
+    System.out.println("#####");
+    System.out.println(TestProperties.hostIp());
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void createAndUploadShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, CloudSqlResourceManager cloudSqlResourceManager)
+      throws IOException {
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setUser(cloudSqlResourceManager.getUsername());
+    shard.setHost(cloudSqlResourceManager.getHost());
+    shard.setPassword(cloudSqlResourceManager.getPassword());
+    shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
+    shard.setDbName(cloudSqlResourceManager.getDatabaseName());
     JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
     jsObj.remove("secretManagerUri"); // remove field secretManagerUri
     JsonArray ja = new JsonArray();

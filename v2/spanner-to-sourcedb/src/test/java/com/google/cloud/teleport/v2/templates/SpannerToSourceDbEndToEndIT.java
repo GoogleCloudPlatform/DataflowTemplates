@@ -129,7 +129,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
+        createAndUploadShardConfigToGcs(gcsResourceManager, cloudSqlResourceManager);
         createAndUploadJarToGcs(gcsResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
@@ -170,12 +170,12 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        //spannerResourceManager,
-        //jdbcResourceManager,
-        //spannerMetadataResourceManager,
+        spannerResourceManager,
+        jdbcResourceManager,
+        spannerMetadataResourceManager,
         gcsResourceManager,
-        pubsubResourceManager
-        //cloudSqlResourceManager
+        pubsubResourceManager,
+        cloudSqlResourceManager
     );
   }
 
