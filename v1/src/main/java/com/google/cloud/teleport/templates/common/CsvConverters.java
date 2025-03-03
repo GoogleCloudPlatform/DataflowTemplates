@@ -21,7 +21,6 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider;
 import com.google.cloud.teleport.util.DualInputNestedValueProvider.TranslatorInput;
-import com.google.common.collect.ImmutableList;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.nio.channels.Channels;
@@ -143,9 +142,9 @@ public class CsvConverters {
 
     public abstract ValueProvider<String> inputFileSpec();
 
-    public abstract TupleTag<ImmutableList<String>> headerTag();
+    public abstract TupleTag<Iterable<String>> headerTag();
 
-    public abstract TupleTag<ImmutableList<String>> lineTag();
+    public abstract TupleTag<Iterable<String>> lineTag();
 
     public abstract ValueProvider<String> fileEncoding();
 
@@ -179,9 +178,9 @@ public class CsvConverters {
 
       public abstract Builder setInputFileSpec(ValueProvider<String> inputFileSpec);
 
-      public abstract Builder setHeaderTag(TupleTag<ImmutableList<String>> headerTag);
+      public abstract Builder setHeaderTag(TupleTag<Iterable<String>> headerTag);
 
-      public abstract Builder setLineTag(TupleTag<ImmutableList<String>> lineTag);
+      public abstract Builder setLineTag(TupleTag<Iterable<String>> lineTag);
 
       public abstract Builder setFileEncoding(ValueProvider<String> fileEncoding);
 
@@ -195,10 +194,10 @@ public class CsvConverters {
   }
 
   /** The {@link GetCsvRowsFn} class gets each row of a Csv file and outputs it as a string. */
-  static class GetCsvRowsFn extends DoFn<ReadableFile, ImmutableList<String>> {
+  static class GetCsvRowsFn extends DoFn<ReadableFile, Iterable<String>> {
 
-    private final TupleTag<ImmutableList<String>> headerTag;
-    private final TupleTag<ImmutableList<String>> linesTag;
+    private final TupleTag<Iterable<String>> headerTag;
+    private final TupleTag<Iterable<String>> linesTag;
     private ValueProvider<CSVFormat> csvFormat;
     private final ValueProvider<String> fileEncoding;
     private final ValueProvider<String> delimiter;
@@ -207,8 +206,8 @@ public class CsvConverters {
     private transient @Nullable HashSet<ResourceId> uniqueIds;
 
     GetCsvRowsFn(
-        TupleTag<ImmutableList<String>> headerTag,
-        TupleTag<ImmutableList<String>> linesTag,
+        TupleTag<Iterable<String>> headerTag,
+        TupleTag<Iterable<String>> linesTag,
         ValueProvider<String> csvFormat,
         ValueProvider<String> delimiter,
         ValueProvider<String> fileEncoding,
@@ -233,17 +232,15 @@ public class CsvConverters {
         if (hasHeaders.get()) {
           CSVParser parser =
               CSVParser.parse(bufferedReader, this.csvFormat.get().withFirstRecordAsHeader());
-          outputReceiver.get(this.headerTag).output(ImmutableList.copyOf(parser.getHeaderNames()));
+          outputReceiver.get(this.headerTag).output(parser.getHeaderNames());
           parser
               .iterator()
-              .forEachRemaining(
-                  record -> outputReceiver.get(this.linesTag).output(ImmutableList.copyOf(record)));
+              .forEachRemaining(record -> outputReceiver.get(this.linesTag).output(record));
         } else {
           CSVParser parser = CSVParser.parse(bufferedReader, this.csvFormat.get());
           parser
               .iterator()
-              .forEachRemaining(
-                  record -> outputReceiver.get(this.linesTag).output(ImmutableList.copyOf(record)));
+              .forEachRemaining(record -> outputReceiver.get(this.linesTag).output(record));
         }
       } catch (IOException ioe) {
         LOG.error("Headers do not match, consistency cannot be guaranteed");

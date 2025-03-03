@@ -162,12 +162,10 @@ public class CSVToBigQuery {
   private static final String FIELDS_ENTRY = "fields";
 
   /** The tag for the headers of the CSV if required. */
-  private static final TupleTag<ImmutableList<String>> CSV_HEADERS =
-      new TupleTag<ImmutableList<String>>() {};
+  private static final TupleTag<Iterable<String>> CSV_HEADERS = new TupleTag<Iterable<String>>() {};
 
   /** The tag for the lines of the CSV. */
-  private static final TupleTag<ImmutableList<String>> CSV_LINES =
-      new TupleTag<ImmutableList<String>>() {};
+  private static final TupleTag<Iterable<String>> CSV_LINES = new TupleTag<Iterable<String>>() {};
 
   /** The tag for the line of the CSV that matches destination table schema. */
   private static final TupleTag<TableRow> GOOD_RECORDS = new TupleTag<TableRow>() {};
@@ -183,7 +181,7 @@ public class CSVToBigQuery {
                   new TableFieldSchema().setName("RawContent").setType("STRING"),
                   new TableFieldSchema().setName("ErrorMsg").setType("STRING")));
 
-  private static class StringListToTableRowFn extends DoFn<ImmutableList<String>, TableRow> {
+  private static class StringListToTableRowFn extends DoFn<Iterable<String>, TableRow> {
     private final ValueProvider<String> delimiter;
     private final NestedValueProvider<List<String>, String> fields;
 
@@ -196,7 +194,7 @@ public class CSVToBigQuery {
     @ProcessElement
     public void processElement(ProcessContext context) throws IllegalArgumentException {
       TableRow outputTableRow = new TableRow();
-      String[] rowValue = context.element().toArray(new String[0]);
+      String[] rowValue = ImmutableList.copyOf(context.element()).toArray(new String[0]);
       if (rowValue.length != fields.get().size()) {
         LOG.error("Number of fields in the schema and number of Csv headers do not match.");
         outputTableRow.set("RawContent", String.join(delimiter.get(), rowValue));
