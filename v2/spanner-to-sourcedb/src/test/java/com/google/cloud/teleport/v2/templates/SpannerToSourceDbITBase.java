@@ -206,7 +206,8 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     ja.add(jsObj);
     String shardFileContents = ja.toString();
     System.out.println("#####");
-    System.out.println(TestProperties.hostIp());
+    System.out.println(cloudSqlResourceManager.getHost());
+    System.out.println("Shard file contents: "+ shardFileContents);
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
