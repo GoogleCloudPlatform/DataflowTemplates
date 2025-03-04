@@ -57,8 +57,8 @@ public class ChildPartition implements Serializable {
   /**
    * Constructs a child partition, which will have its own token and the parent that it originated
    * from. Use this constructor for child partitions with a single parent (generated from a move or
-   * split). If a child partition has multiple parents use the constructor {
-   * ChildPartition(String, HashSet)}.
+   * split). If a child partition has multiple parents use the constructor { ChildPartition(String,
+   * HashSet)}.
    *
    * @param token the child partition token
    * @param parentToken the partition tokens of the parent that originated the child partition
