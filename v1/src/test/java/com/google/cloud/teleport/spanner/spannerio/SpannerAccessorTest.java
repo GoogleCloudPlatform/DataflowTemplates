@@ -22,7 +22,6 @@ import static org.mockito.Mockito.verify;
 
 import com.google.cloud.spanner.DatabaseId;
 import com.google.cloud.spanner.SpannerOptions;
-import org.apache.beam.sdk.extensions.gcp.auth.TestCredential;
 import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.junit.Before;
 import org.junit.Test;

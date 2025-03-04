@@ -898,6 +898,8 @@
                 <exclude>com.google.cloud.teleport.spanner.ddl.InformationSchemaScanner</exclude>
                 <!-- Excluding generated proto java files -->
                 <exclude>com.google.cloud.teleport.spanner.proto</exclude>
+                <!-- Excluding LocalSpannerIO changestream tests -->
+                <exclude>com.google.cloud.teleport.spanner.spannerio.changestreams</exclude>
               </excludes>
             </rule>
           </rules>
