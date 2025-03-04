@@ -405,7 +405,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
             .addParameter("network", "projects/span-cloud-migrations-testing/global/networks/test")
-            .addParameter("subnetwork", "projects/span-cloud-migrations-testing/regions/us-central1/subnetworks/test")
+            .addParameter("subnetwork", "regions/us-central1/subnetworks/test")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
