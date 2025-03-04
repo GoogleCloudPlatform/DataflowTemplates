@@ -36,9 +36,6 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-
-    <!-- TODO - remove line when repo is upgraded to Beam 2.59.0 -->
-    <beam-python.version>2.63.0</beam-python.version>
   </properties>
 
   <dependencies>
