@@ -143,6 +143,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
                 MYSQL_SOURCE_TYPE);
         System.out.println("######2");
         System.out.println(jobInfo.jobId());
+        System.out.println(cloudSqlResourceManager.getDatabaseName());
        }
     }
   }
@@ -158,11 +159,11 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        spannerMetadataResourceManager,
+        //spannerResourceManager,
+        //spannerMetadataResourceManager,
         gcsResourceManager,
-        pubsubResourceManager,
-        cloudSqlResourceManager
+        pubsubResourceManager
+        //cloudSqlResourceManager
     );
   }
 
@@ -242,11 +243,11 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
   private void writeRowInSpanner() {
     // Write a single record to Spanner
     Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder(TABLE).set("id").to(1).set("name").to("FF").build();
+        Mutation.newInsertOrUpdateBuilder(TABLE).set("id").to(2).set("name").to("FF").build();
     spannerResourceManager.write(m1);
 
     Mutation m2 =
-        Mutation.newInsertOrUpdateBuilder(TABLE).set("id").to(2).set("name").to("B").build();
+        Mutation.newInsertOrUpdateBuilder(TABLE).set("id").to(3).set("name").to("B").build();
     spannerResourceManager.write(m2);
 
     System.out.println("#######1");
@@ -259,12 +260,13 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> cloudSqlResourceManager.getRowCount(TABLE) == 2);
+                () -> cloudSqlResourceManager.getRowCount(TABLE) == 4);
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManager.readTable(TABLE);
-    assertThat(rows).hasSize(2);
-    assertThat(rows.get(0).get("id")).isEqualTo(1);
-    assertThat(rows.get(0).get("name")).isEqualTo("FF");
+    assertThat(rows).hasSize(4);
+    System.out.println(rows);
+    assertThat(rows.get(3).get("id")).isEqualTo(2);
+    assertThat(rows.get(3).get("name")).isEqualTo("FF");
   }
 
   private ConditionCheck writeJdbcData(
