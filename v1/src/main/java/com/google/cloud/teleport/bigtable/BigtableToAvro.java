@@ -52,318 +52,300 @@ import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.joda.time.format.DateTimeFormatter;
 import org.joda.time.format.ISODateTimeFormat;
 
-
-
-
 /**
- * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS. Currently,
- * filtering on Cloud Bigtable table is not supported.
+ * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS. 
+ * 25/02 Added support for filtering on Cloud Bigtable table .
  *
  * <p>Check out <a
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_Avro.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
-        name = "Cloud_Bigtable_to_GCS_Avro",
-        category = TemplateCategory.BATCH,
-        displayName = "Cloud Bigtable to Avro Files in Cloud Storage",
-        description =
-                "The Bigtable to Cloud Storage Avro template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in Avro format. "
-                        + "You can use the template to move data from Bigtable to Cloud Storage.",
-        optionsClass = Options.class,
-        documentation =
-                "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-avro",
-        contactInformation = "https://cloud.google.com/support",
-        requirements = {
-                "The Bigtable table must exist.",
-                "The output Cloud Storage bucket must exist before running the pipeline."
-        })
-
-
+    name = "Cloud_Bigtable_to_GCS_Avro",
+    category = TemplateCategory.BATCH,
+    displayName = "Cloud Bigtable to Avro Files in Cloud Storage",
+    description =
+        "The Bigtable to Cloud Storage Avro template is a pipeline that reads data from a Bigtable table and writes it to a Cloud Storage bucket in Avro format. "
+            + "You can use the template to move data from Bigtable to Cloud Storage.",
+    optionsClass = Options.class,
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigtable-to-avro",
+    contactInformation = "https://cloud.google.com/support",
+    requirements = {
+      "The Bigtable table must exist.",
+      "The output Cloud Storage bucket must exist before running the pipeline."
+    })
 public class BigtableToAvro {
 
-    /**
-     * Options for the export pipeline.
-     */
+  /** Options for the export pipeline. */
+  public interface Options extends PipelineOptions {
+    @TemplateParameter.ProjectId(
+        order = 1,
+        groupName = "Source",
+        description = "Project ID",
+        helpText =
+            "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
+    ValueProvider<String> getBigtableProjectId();
 
-    public interface Options extends PipelineOptions {
-        @TemplateParameter.ProjectId(
-                order = 1,
-                groupName = "Source",
-                description = "Project ID",
-                helpText =
-                        "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from.")
-        ValueProvider<String> getBigtableProjectId();
+    @SuppressWarnings("unused")
+    void setBigtableProjectId(ValueProvider<String> projectId);
 
-        @SuppressWarnings("unused")
-        void setBigtableProjectId(ValueProvider<String> projectId);
+    @TemplateParameter.Text(
+        order = 2,
+        groupName = "Source",
+        regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
+        description = "Instance ID",
+        helpText = "The ID of the Bigtable instance that contains the table.")
+    ValueProvider<String> getBigtableInstanceId();
 
-        @TemplateParameter.Text(
-                order = 2,
-                groupName = "Source",
-                regexes = {"[a-z][a-z0-9\\-]+[a-z0-9]"},
-                description = "Instance ID",
-                helpText = "The ID of the Bigtable instance that contains the table.")
-        ValueProvider<String> getBigtableInstanceId();
+    @SuppressWarnings("unused")
+    void setBigtableInstanceId(ValueProvider<String> instanceId);
 
-        @SuppressWarnings("unused")
-        void setBigtableInstanceId(ValueProvider<String> instanceId);
+    @TemplateParameter.Text(
+        order = 3,
+        groupName = "Source",
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Table ID",
+        helpText = "The ID of the Bigtable table to export.")
+    ValueProvider<String> getBigtableTableId();
 
-        @TemplateParameter.Text(
-                order = 3,
-                groupName = "Source",
-                regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
-                description = "Table ID",
-                helpText = "The ID of the Bigtable table to export.")
-        ValueProvider<String> getBigtableTableId();
+    @SuppressWarnings("unused")
+    void setBigtableTableId(ValueProvider<String> tableId);
 
-        @SuppressWarnings("unused")
-        void setBigtableTableId(ValueProvider<String> tableId);
+    @TemplateParameter.GcsWriteFolder(
+        order = 4,
+        groupName = "Target",
+        description = "Output file directory in Cloud Storage",
+        helpText = "The Cloud Storage path where data is written.",
+        example = "gs://mybucket/somefolder")
+    ValueProvider<String> getOutputDirectory();
 
-        @TemplateParameter.GcsWriteFolder(
-                order = 4,
-                groupName = "Target",
-                description = "Output file directory in Cloud Storage",
-                helpText = "The Cloud Storage path where data is written.",
-                example = "gs://mybucket/somefolder")
-        ValueProvider<String> getOutputDirectory();
+    @SuppressWarnings("unused")
+    void setOutputDirectory(ValueProvider<String> outputDirectory);
 
-        @SuppressWarnings("unused")
-        void setOutputDirectory(ValueProvider<String> outputDirectory);
+    @TemplateParameter.Text(
+        order = 5,
+        groupName = "Target",
+        description = "Avro file prefix",
+        helpText = "The prefix of the Avro filename. For example, `output-`.")
+    @Default.String("part")
+    ValueProvider<String> getFilenamePrefix();
 
-        @TemplateParameter.Text(
-                order = 5,
-                groupName = "Target",
-                description = "Avro file prefix",
-                helpText = "The prefix of the Avro filename. For example, `output-`.")
-        @Default.String("part")
-        ValueProvider<String> getFilenamePrefix();
+    @SuppressWarnings("unused")
+    void setFilenamePrefix(ValueProvider<String> filenamePrefix);
 
-        @SuppressWarnings("unused")
-        void setFilenamePrefix(ValueProvider<String> filenamePrefix);
+    @TemplateParameter.Text(
+        order = 6,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
+        description = "Application profile ID",
+        helpText =
+            "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
+    @Default.String("default")
+    ValueProvider<String> getBigtableAppProfileId();
 
-        @TemplateParameter.Text(
-                order = 6,
-                groupName = "Source",
-                optional = true,
-                regexes = {"[_a-zA-Z0-9][-_.a-zA-Z0-9]*"},
-                description = "Application profile ID",
-                helpText =
-                        "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile.")
-        @Default.String("default")
-        ValueProvider<String> getBigtableAppProfileId();
+    @SuppressWarnings("unused")
+    void setBigtableAppProfileId(ValueProvider<String> appProfileId);
 
-        @SuppressWarnings("unused")
-        void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+    @TemplateParameter.Text(
+        order = 7,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
+        description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ) for exporting ",
+        helpText = "The start timestamp (inclusive) for exporting data. Data with timestamps greater than or equal to this timestamp will be exported. Example UTC timestamp: 2024-10-27T10:15:30.00Z"
+    )
+    ValueProvider<String> getStartTimestamp();
 
+    @SuppressWarnings("unused")
+    void setStartTimestamp(ValueProvider<String> startTimestamp);
 
-        @TemplateParameter.Text(
-                order = 7,
-                groupName = "Source",
-                optional = true,
-                regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
-                description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ) for exporting ",
-                helpText = "The start timestamp (inclusive) for exporting data. Data with timestamps greater than or equal to this timestamp will be exported. Example UTC timestamp: 2024-10-27T10:15:30.00Z"
-        )
-        ValueProvider<String> getStartTimestamp();
+    @TemplateParameter.Text(
+        order = 8,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
+        description = "End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
+        helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
+    )
+    ValueProvider<String> getEndTimestamp();
 
-        @SuppressWarnings("unused")
-        void setStartTimestamp(ValueProvider<String> startTimestamp);
+    @SuppressWarnings("unused")
+    void setEndTimestamp(ValueProvider<String> endTimestamp);
+  }
 
-        @TemplateParameter.Text(
-                order = 8,
-                groupName = "Source",
-                optional = true,
-                regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
-                description = "End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
-                helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
-        )
-        ValueProvider<String> getEndTimestamp();
+  /**
+   * Runs a pipeline to export data from a Cloud Bigtable table to Avro files in GCS.
+   *
+   * @param args arguments to the pipeline
+   */
+  public static void main(String[] args) {
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
-        @SuppressWarnings("unused")
-        void setEndTimestamp(ValueProvider<String> endTimestamp);
+    PipelineResult result = run(options);
+
+    // Wait for pipeline to finish only if it is not constructing a template.
+    if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
+      result.waitUntilFinish();
     }
+  }
 
-    /**
-     * Runs a pipeline to export data from a Cloud Bigtable table to Avro files in GCS.
-     *
-     * @param args arguments to the pipeline
-     */
-    public static void main(String[] args) {
-        Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+  public static PipelineResult run(Options options) {
+    Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
-        PipelineResult result = run(options);
-
-        // Wait for pipeline to finish only if it is not constructing a template.
-        if (options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
-            result.waitUntilFinish();
+            // Create a function to build the RowFilter based on the timestamps
+    SerializableFunction<String, Long> timestampConverter = utcTimestamp -> {
+        if (utcTimestamp == null || utcTimestamp.isEmpty()) {
+            return null;
         }
-    }
+        DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
+        return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
+    };
 
-    /**
-     * @noinspection checkstyle:Indentation, checkstyle:Indentation
-     */
-    public static PipelineResult run(Options options) {
+    // Runtime validation for timestamp parameters
+    ValueProvider<RowFilter> filterProvider = new DualInputNestedValueProvider<>(
+            options.getStartTimestamp(),
+            options.getEndTimestamp(),
+            (TranslatorInput<String, String> input) -> {
+                String startTimestamp = input.getX();
+                String endTimestamp = input.getY();
 
-        Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
+                boolean hasStart = startTimestamp != null && !startTimestamp.isEmpty();
+                boolean hasEnd = endTimestamp != null && !endTimestamp.isEmpty();
 
-        // Create a function to build the RowFilter based on the timestamps
-        SerializableFunction<String, Long> timestampConverter = utcTimestamp -> {
-            if (utcTimestamp == null || utcTimestamp.isEmpty()) {
-                return null;
-            }
-            DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
-            return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
-        };
+                // Check if exactly one timestamp is provided (which is invalid)
+                if ((hasStart && !hasEnd) || (!hasStart && hasEnd)) {
+                    throw new IllegalArgumentException(
+                            "Both startTimestamp and endTimestamp must be provided together, or neither should be provided.");
+                }
 
-        // Runtime validation for timestamp parameters
-        ValueProvider<RowFilter> filterProvider = new DualInputNestedValueProvider<>(
-                options.getStartTimestamp(),
-                options.getEndTimestamp(),
-                (TranslatorInput<String, String> input) -> {
-                    String startTimestamp = input.getX();
-                    String endTimestamp = input.getY();
+                // If neither timestamp is provided, return null (no filter)
+                if (!hasStart && !hasEnd) {
+                    return null;
+                }
 
-                    boolean hasStart = startTimestamp != null && !startTimestamp.isEmpty();
-                    boolean hasEnd = endTimestamp != null && !endTimestamp.isEmpty();
+                // Convert timestamps to microseconds
+                Long startMicros = timestampConverter.apply(startTimestamp);
+                Long endMicros = timestampConverter.apply(endTimestamp);
 
-                    // Check if exactly one timestamp is provided (which is invalid)
-                    if ((hasStart && !hasEnd) || (!hasStart && hasEnd)) {
-                        throw new IllegalArgumentException(
-                                "Both startTimestamp and endTimestamp must be provided together, or neither should be provided.");
-                    }
+                // Build the timestamp filter
+                com.google.cloud.bigtable.data.v2.models.Filters.TimestampRangeFilter filterBuilder =
+                        FILTERS.timestamp().range();
 
-                    // If neither timestamp is provided, return null (no filter)
-                    if (!hasStart && !hasEnd) {
-                        return null;
-                    }
+                if (startMicros != null) {
+                    filterBuilder.startClosed(startMicros);
+                }
+                if (endMicros != null) {
+                    filterBuilder.endOpen(endMicros);
+                }
 
-                    // Convert timestamps to microseconds
-                    Long startMicros = timestampConverter.apply(startTimestamp);
-                    Long endMicros = timestampConverter.apply(endTimestamp);
-
-                    // Build the timestamp filter
-                    com.google.cloud.bigtable.data.v2.models.Filters.TimestampRangeFilter filterBuilder =
-                            FILTERS.timestamp().range();
-
-                    if (startMicros != null) {
-                        filterBuilder.startClosed(startMicros);
-                    }
-                    if (endMicros != null) {
-                        filterBuilder.endOpen(endMicros);
-                    }
-
-                    return filterBuilder.toProto();
-                });
-
-        // Create basic BigtableIO.Read
-        BigtableIO.Read read =
-                BigtableIO.read()
-                        .withProjectId(options.getBigtableProjectId())
-                        .withInstanceId(options.getBigtableInstanceId())
-                        .withAppProfileId(options.getBigtableAppProfileId())
-                        .withTableId(options.getBigtableTableId());
-
-
-        read = read.withRowFilter(filterProvider);
-
-        // Do not validate input fields if it is running as a template.
-        if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
-            read = read.withoutValidation();
-        }
-
-        ValueProvider<String> filePathPrefix =
-                DualInputNestedValueProvider.of(
-                        options.getOutputDirectory(),
-                        options.getFilenamePrefix(),
-                        new SerializableFunction<TranslatorInput<String, String>, String>() {
-                            @Override
-                            public String apply(TranslatorInput<String, String> input) {
-                                return FileSystems.matchNewResource(input.getX(), true)
-                                        .resolve(input.getY(), StandardResolveOptions.RESOLVE_FILE)
-                                        .toString();
-                            }
+                return filterBuilder.toProto();
             });
 
-        pipeline
-                .apply("Read from Bigtable", read)
-                .apply("Transform to Avro", MapElements.via(new BigtableToAvroFn()))
-                .apply(
-                        "Write to Avro in GCS",
-                        AvroIO.write(BigtableRow.class).to(filePathPrefix).withSuffix(".avro"));
+    BigtableIO.Read read =
+        BigtableIO.read()
+            .withProjectId(options.getBigtableProjectId())
+            .withInstanceId(options.getBigtableInstanceId())
+            .withAppProfileId(options.getBigtableAppProfileId())
+            .withTableId(options.getBigtableTableId());
 
-        return pipeline.run();
+    read = read.withRowFilter(filterProvider);
+
+    // Do not validate input fields if it is running as a template.
+    if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
+      read = read.withoutValidation();
     }
 
+    ValueProvider<String> filePathPrefix =
+        DualInputNestedValueProvider.of(
+            options.getOutputDirectory(),
+            options.getFilenamePrefix(),
+            new SerializableFunction<TranslatorInput<String, String>, String>() {
+              @Override
+              public String apply(TranslatorInput<String, String> input) {
+                return FileSystems.matchNewResource(input.getX(), true)
+                    .resolve(input.getY(), StandardResolveOptions.RESOLVE_FILE)
+                    .toString();
+              }
+            });
 
-    /**
-     * Translates Bigtable {@link Row} to Avro {@link BigtableRow}.
-     */
-    static class BigtableToAvroFn extends SimpleFunction<Row, BigtableRow> {
-        @Override
-        public BigtableRow apply(Row row) {
-            ByteBuffer key = ByteBuffer.wrap(toByteArray(row.getKey()));
-            List<BigtableCell> cells = new ArrayList<>();
-            for (Family family : row.getFamiliesList()) {
-                String familyName = family.getName();
-                for (Column column : family.getColumnsList()) {
-                    ByteBuffer qualifier = ByteBuffer.wrap(toByteArray(column.getQualifier()));
-                    for (Cell cell : column.getCellsList()) {
-                        long timestamp = cell.getTimestampMicros();
-                        ByteBuffer value = ByteBuffer.wrap(toByteArray(cell.getValue()));
-                        cells.add(new BigtableCell(familyName, qualifier, timestamp, value));
-                    }
-                }
-            }
-            return new BigtableRow(key, cells);
+    pipeline
+        .apply("Read from Bigtable", read)
+        .apply("Transform to Avro", MapElements.via(new BigtableToAvroFn()))
+        .apply(
+            "Write to Avro in GCS",
+            AvroIO.write(BigtableRow.class).to(filePathPrefix).withSuffix(".avro"));
+
+    return pipeline.run();
+  }
+
+  /** Translates Bigtable {@link Row} to Avro {@link BigtableRow}. */
+  static class BigtableToAvroFn extends SimpleFunction<Row, BigtableRow> {
+    @Override
+    public BigtableRow apply(Row row) {
+      ByteBuffer key = ByteBuffer.wrap(toByteArray(row.getKey()));
+      List<BigtableCell> cells = new ArrayList<>();
+      for (Family family : row.getFamiliesList()) {
+        String familyName = family.getName();
+        for (Column column : family.getColumnsList()) {
+          ByteBuffer qualifier = ByteBuffer.wrap(toByteArray(column.getQualifier()));
+          for (Cell cell : column.getCellsList()) {
+            long timestamp = cell.getTimestampMicros();
+            ByteBuffer value = ByteBuffer.wrap(toByteArray(cell.getValue()));
+            cells.add(new BigtableCell(familyName, qualifier, timestamp, value));
+          }
         }
+      }
+      return new BigtableRow(key, cells);
+    }
+  }
+
+  /**
+   * Extracts the byte array from the given {@link ByteString} without copy.
+   *
+   * @param byteString A {@link ByteString} from which to extract the array.
+   * @return an array of byte.
+   */
+  protected static byte[] toByteArray(final ByteString byteString) {
+    try {
+      ZeroCopyByteOutput byteOutput = new ZeroCopyByteOutput();
+      UnsafeByteOperations.unsafeWriteTo(byteString, byteOutput);
+      return byteOutput.bytes;
+    } catch (IOException e) {
+      return byteString.toByteArray();
+    }
+  }
+
+  private static final class ZeroCopyByteOutput extends ByteOutput {
+    private byte[] bytes;
+
+    @Override
+    public void writeLazy(byte[] value, int offset, int length) {
+      if (offset != 0 || length != value.length) {
+        throw new UnsupportedOperationException();
+      }
+      bytes = value;
     }
 
-    /**
-     * Extracts the byte array from the given {@link ByteString} without copy.
-     *
-     * @param byteString A {@link ByteString} from which to extract the array.
-     * @return an array of byte.
-     */
-    protected static byte[] toByteArray(final ByteString byteString) {
-        try {
-            ZeroCopyByteOutput byteOutput = new ZeroCopyByteOutput();
-            UnsafeByteOperations.unsafeWriteTo(byteString, byteOutput);
-            return byteOutput.bytes;
-        } catch (IOException e) {
-            return byteString.toByteArray();
-        }
+    @Override
+    public void write(byte value) {
+      throw new UnsupportedOperationException();
     }
 
-    private static final class ZeroCopyByteOutput extends ByteOutput {
-        private byte[] bytes;
-
-        @Override
-        public void writeLazy(byte[] value, int offset, int length) {
-            if (offset != 0 || length != value.length) {
-                throw new UnsupportedOperationException();
-            }
-            bytes = value;
-        }
-
-        @Override
-        public void write(byte value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void write(byte[] value, int offset, int length) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void write(ByteBuffer value) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void writeLazy(ByteBuffer value) {
-            throw new UnsupportedOperationException();
-        }
+    @Override
+    public void write(byte[] value, int offset, int length) {
+      throw new UnsupportedOperationException();
     }
+
+    @Override
+    public void write(ByteBuffer value) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void writeLazy(ByteBuffer value) {
+      throw new UnsupportedOperationException();
+    }
+  }
 }
