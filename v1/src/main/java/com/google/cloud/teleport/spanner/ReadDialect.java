@@ -17,8 +17,8 @@ package com.google.cloud.teleport.spanner;
 
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerAccessor;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
