@@ -196,7 +196,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(cloudSqlResourceManager.getUsername());
-    shard.setHost("10.94.208.4");
+    shard.setHost(cloudSqlResourceManager.getHost());
     shard.setPassword(cloudSqlResourceManager.getPassword());
     shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
     shard.setDbName(cloudSqlResourceManager.getDatabaseName());
