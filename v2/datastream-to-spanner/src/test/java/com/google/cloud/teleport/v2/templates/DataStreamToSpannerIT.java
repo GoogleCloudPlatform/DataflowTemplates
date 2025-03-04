@@ -42,6 +42,7 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
@@ -58,6 +59,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
@@ -99,6 +101,8 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
   private SpannerResourceManager spannerResourceManager;
   private PubsubResourceManager pubsubResourceManager;
 
+  private GcsResourceManager gcsResourceManager;
+
   @Before
   public void setUp() throws IOException {
     datastreamResourceManager =
@@ -107,8 +111,41 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
             .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
 
-    gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
-    dlqGcsPrefix = getGcsPath(testName + "/dlq/").replace("gs://" + artifactBucketName, "");
+    gcsResourceManager = setUpGcsResourceManager();
+    gcsPrefix =
+        getGcsPath(testName + "/cdc/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
+    dlqGcsPrefix =
+        getGcsPath(testName + "/dlq/", gcsResourceManager)
+            .replace("gs://" + gcsResourceManager.getBucket(), "");
+  }
+
+  public GcsResourceManager setUpGcsResourceManager() {
+    GcsResourceManager spannerTestsGcsClient;
+    if (TestProperties.project().equals("cloud-teleport-testing")) {
+      List<String> bucketList =
+          List.of(
+              "cloud-teleport-spanner-it-0",
+              "cloud-teleport-spanner-it-1",
+              "cloud-teleport-spanner-it-2",
+              "cloud-teleport-spanner-it-3",
+              "cloud-teleport-spanner-it-4",
+              "cloud-teleport-spanner-it-5",
+              "cloud-teleport-spanner-it-6",
+              "cloud-teleport-spanner-it-7",
+              "cloud-teleport-spanner-it-8",
+              "cloud-teleport-spanner-it-9");
+      Random random = new Random();
+      int randomIndex = random.nextInt(bucketList.size());
+      String randomBucketName = bucketList.get(randomIndex);
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
+              .build();
+
+    } else {
+      spannerTestsGcsClient = gcsClient;
+    }
+    return spannerTestsGcsClient;
   }
 
   @After
@@ -117,7 +154,8 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
         cloudSqlResourceManager,
         datastreamResourceManager,
         spannerResourceManager,
-        pubsubResourceManager);
+        pubsubResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -186,7 +224,9 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
         spannerDialect,
         config ->
             paramsAdder.apply(
-                config.addParameter("sessionFilePath", getGcsPath("input/mysql-session.json"))));
+                config.addParameter(
+                    "sessionFilePath",
+                    getGcsPath("input/mysql-session.json", gcsResourceManager))));
   }
 
   private void simpleOracleToSpannerTest(
@@ -228,7 +268,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
 
     // Generate session file
     if (jdbcType.equals(JDBCType.MYSQL)) {
-      gcsClient.createArtifact(
+      gcsResourceManager.createArtifact(
           "input/mysql-session.json",
           generateSessionFile(
               cloudSqlResourceManager.getDatabaseName(),
@@ -277,7 +317,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
     // Create Datastream GCS Destination Connection profile and config
     DestinationConfig destinationConfig =
         datastreamResourceManager.buildGCSDestinationConfig(
-            "gcs-profile", artifactBucketName, gcsPrefix, fileFormat);
+            "gcs-profile", gcsResourceManager.getBucket(), gcsPrefix, fileFormat);
 
     // Create and start Datastream stream
     Stream stream =
@@ -296,7 +336,8 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
                 .addParameter("instanceId", spannerResourceManager.getInstanceId())
                 .addParameter("databaseId", spannerResourceManager.getDatabaseId())
                 .addParameter("projectId", PROJECT)
-                .addParameter("deadLetterQueueDirectory", getGcsPath(testName) + "/dlq/")
+                .addParameter(
+                    "deadLetterQueueDirectory", getGcsPath(testName, gcsResourceManager) + "/dlq/")
                 .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
                 .addParameter(
                     "inputFileFormat",
@@ -372,8 +413,8 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
     subscription = pubsubResourceManager.createSubscription(topic, "it-sub");
     dlqSubscription = pubsubResourceManager.createSubscription(dlqTopic, "dlq-sub");
-    gcsClient.createNotification(topic.toString(), gcsPrefix.substring(1));
-    gcsClient.createNotification(dlqTopic.toString(), dlqGcsPrefix.substring(1));
+    gcsResourceManager.createNotification(topic.toString(), gcsPrefix.substring(1));
+    gcsResourceManager.createNotification(dlqTopic.toString(), dlqGcsPrefix.substring(1));
   }
 
   private void createSpannerTables(List<String> tableNames, Dialect spannerDialect) {

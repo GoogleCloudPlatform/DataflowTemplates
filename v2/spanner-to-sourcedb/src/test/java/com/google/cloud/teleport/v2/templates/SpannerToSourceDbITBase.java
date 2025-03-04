@@ -108,7 +108,17 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     GcsResourceManager spannerTestsGcsClient;
     if (TestProperties.project().equals("cloud-teleport-testing")) {
       List<String> bucketList =
-          List.of("cloud-teleport-spanner-it-1", "cloud-teleport-spanner-it-2");
+          List.of(
+              "cloud-teleport-spanner-it-0",
+              "cloud-teleport-spanner-it-1",
+              "cloud-teleport-spanner-it-2",
+              "cloud-teleport-spanner-it-3",
+              "cloud-teleport-spanner-it-4",
+              "cloud-teleport-spanner-it-5",
+              "cloud-teleport-spanner-it-6",
+              "cloud-teleport-spanner-it-7",
+              "cloud-teleport-spanner-it-8",
+              "cloud-teleport-spanner-it-9");
       Random random = new Random();
       int randomIndex = random.nextInt(bucketList.size());
       String randomBucketName = bucketList.get(randomIndex);
