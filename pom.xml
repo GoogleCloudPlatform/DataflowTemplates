@@ -369,6 +369,7 @@
             <exclude>**/CustomTransformationImplFetcher.*</exclude>
             <exclude>**/JarFileReader.*</exclude>
             <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
+            <exclude>**/CustomTransformationWithCassandraForIT.*</exclude>
             <exclude>**/models/*</exclude>
             <exclude>**/exceptions/*</exclude>
           </excludes>
@@ -697,7 +698,7 @@
                 <exclude>**/KafkaToKafkaIT.java</exclude>
               </excludes>
               <excludedGroups>
-                ${direct-runner.tests}
+                ${direct-runner.tests},
                 com.google.cloud.teleport.metadata.SkipRunnerV2Test
               </excludedGroups>
               <groups>
