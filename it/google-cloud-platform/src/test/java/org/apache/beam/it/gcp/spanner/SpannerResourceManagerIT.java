@@ -22,6 +22,7 @@ import static org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts.assertThatS
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -102,6 +103,73 @@ public class SpannerResourceManagerIT extends GCPBaseIT {
             List.of(
                 Map.of("RowId", 1, "FirstName", "John", "LastName", "Doe", "Company", "Google"),
                 Map.of("RowId", 2, "FirstName", "Jane", "LastName", "Doe", "Company", "Alphabet")));
+  }
+
+  @Test
+  public void testResourceManagerWriteInTransactionAndExecuteDML() {
+    // Arrange
+    spannerResourceManager.executeDdlStatement(
+        "CREATE TABLE "
+            + TABLE_ID
+            + " ("
+            + "RowId INT64 NOT NULL,"
+            + "FirstName STRING(1024),"
+            + "LastName STRING(1024),"
+            + "Company STRING(1024)"
+            + ") PRIMARY KEY (RowId)");
+
+    List<Mutation> mutations =
+        List.of(
+            Mutation.newInsertBuilder(TABLE_ID)
+                .set("RowId")
+                .to(1)
+                .set("FirstName")
+                .to("John")
+                .set("LastName")
+                .to("Doe")
+                .set("Company")
+                .to("Google")
+                .build(),
+            Mutation.newInsertBuilder(TABLE_ID)
+                .set("RowId")
+                .to(2)
+                .set("FirstName")
+                .to("Jane")
+                .set("LastName")
+                .to("Doe")
+                .set("Company")
+                .to("Alphabet")
+                .build());
+
+    List<String> statements =
+        Arrays.asList(
+            "INSERT INTO "
+                + TABLE_ID
+                + " (RowId, FirstName, LastName, Company) values (3, 'Tester', 'Doe', 'Youtube')",
+            "INSERT INTO "
+                + TABLE_ID
+                + " (RowId, FirstName, LastName, Company) values (4, 'Jacob', 'Doe', 'DeepMind')");
+
+    // Act
+    spannerResourceManager.writeInTransaction(mutations);
+    spannerResourceManager.executeDMLStatements(statements);
+    long rowCount = spannerResourceManager.getRowCount(TABLE_ID);
+
+    List<Struct> fetchRecords =
+        spannerResourceManager.readTableRecords(
+            TABLE_ID, List.of("RowId", "FirstName", "LastName", "Company"));
+
+    // Assert
+    assertThat(rowCount).isEqualTo(4);
+    assertThat(fetchRecords).hasSize(4);
+    assertThatStructs(fetchRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(
+            List.of(
+                Map.of("RowId", 1, "FirstName", "John", "LastName", "Doe", "Company", "Google"),
+                Map.of("RowId", 2, "FirstName", "Jane", "LastName", "Doe", "Company", "Alphabet"),
+                Map.of("RowId", 3, "FirstName", "Tester", "LastName", "Doe", "Company", "Youtube"),
+                Map.of(
+                    "RowId", 4, "FirstName", "Jacob", "LastName", "Doe", "Company", "DeepMind")));
   }
 
   @After
