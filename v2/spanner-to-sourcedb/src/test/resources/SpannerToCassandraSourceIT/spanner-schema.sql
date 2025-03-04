@@ -95,6 +95,25 @@ CREATE TABLE IF NOT EXISTS alldatatypecolumns (
     frozen_list_of_sets_column JSON,
     varint_column STRING(MAX),
     inet_column STRING(MAX)
+    map_bool_column JSON,
+    map_float_column JSON,
+    map_double_column JSON,
+    map_tinyint_column JSON,
+    map_smallint_column JSON,
+    map_int_column JSON,
+    map_bigint_column JSON,
+    map_varint_column JSON,
+    map_decimal_column JSON,
+    map_ascii_column JSON,
+    map_varchar_column JSON,
+    map_blob_column JSON,
+    map_date_column JSON,
+    map_time_column JSON,
+    map_timestamp_column JSON,
+    map_duration_column JSON,
+    map_uuid_column JSON,
+    map_timeuuid_column JSON,
+    map_inet_column JSON
 ) PRIMARY KEY(varchar_column);
 
 CREATE CHANGE STREAM allstream

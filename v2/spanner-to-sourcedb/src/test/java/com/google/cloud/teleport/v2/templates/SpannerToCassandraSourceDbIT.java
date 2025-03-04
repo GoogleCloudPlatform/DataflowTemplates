@@ -483,6 +483,48 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to("123456789")
             .set("inet_column")
             .to("192.168.1.10")
+            .set("map_bool_column")
+            .to(Value.json("{\"true\": false, \"false\": true}"))
+            .set("map_float_column")
+            .to(Value.json("{\"3.14\": 1.618}"))
+            .set("map_double_column")
+            .to(Value.json("{\"2.718\": 1.414}"))
+            .set("map_tinyint_column")
+            .to(Value.json("{\"127\": 100, \"-128\": -100}"))
+            .set("map_smallint_column")
+            .to(Value.json("{\"32767\": 2000, \"-32768\": \"-2000\"}"))
+            .set("map_int_column")
+            .to(Value.json("{\"2147483647\": \"100000\", \"-2147483648\": \"-100000\"}"))
+            .set("map_bigint_column")
+            .to(Value.json("{\"9223372036854775807\": \"9007199254740991\"}"))
+            .set("map_varint_column")
+            .to(Value.json("{\"12345678901234567890\": \"98765432101234567890\"}"))
+            .set("map_decimal_column")
+            .to(Value.json("{\"12345.6789\": \"9876.54321\"}"))
+            .set("map_ascii_column")
+            .to(Value.json("{\"example1\": \"string1\", \"example2\": \"string2\"}"))
+            .set("map_varchar_column")
+            .to(Value.json("{\"key1\": \"value1\", \"key2\": \"value2\"}"))
+            .set("map_uuid_column")
+            .to(
+                Value.json(
+                    "{\"550e8400-e29b-41d4-a716-446655440000\": \"b430e5b6-4f06-4dd9-85f7-df10b77fc382\"}"))
+            .set("map_timeuuid_column")
+            .to(
+                Value.json(
+                    "{\"b430e5b6-4f06-4dd9-85f7-df10b77fc382\": \"550e8400-e29b-41d4-a716-446655440000\"}"))
+            .set("map_blob_column")
+            .to(Value.json("{\"R29vZ2xl\": \"Q29tcGFueQ==\"}"))
+            .set("map_date_column")
+            .to(Value.json("{\"2025-01-27\": \"2025-02-28\"}"))
+            .set("map_time_column")
+            .to(Value.json("{\"12:30:00\": \"13:30:00\"}"))
+            .set("map_timestamp_column")
+            .to(Value.json("{\"2025-01-27T10:30:00Z\": \"2025-02-27T10:30:00Z\"}"))
+            .set("map_duration_column")
+            .to(Value.json("{\"P1Y2M3DT4H5M6.789S\": \"P1D\"}"))
+            .set("map_inet_column")
+            .to(Value.json("{\"192.168.0.1\": \"10.0.0.1\", \"127.0.0.1\": \"::1\"}"))
             .build();
 
     spannerResourceManager.write(mutation);
@@ -681,7 +723,106 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 .isEqualTo(java.math.BigInteger.valueOf(123456789L)),
         () ->
             assertThat(row.getBytesUnsafe("bytes_column"))
-                .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())));
+                .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())),
+        () ->
+            assertThat(row.getMap("map_bool_column", Boolean.class, Boolean.class))
+                .isEqualTo(Map.of(Boolean.TRUE, Boolean.FALSE, Boolean.FALSE, Boolean.TRUE)),
+        () ->
+            assertThat(row.getMap("map_float_column", Float.class, Float.class))
+                .isEqualTo(Map.of(3.14f, 1.618f)),
+        () ->
+            assertThat(row.getMap("map_double_column", Double.class, Double.class))
+                .isEqualTo(Map.of(2.718, 1.414)),
+        () ->
+            assertThat(row.getMap("map_tinyint_column", Byte.class, Byte.class))
+                .isEqualTo(Map.of((byte) 127, (byte) 100, (byte) -128, (byte) -100)),
+        () ->
+            assertThat(row.getMap("map_smallint_column", Short.class, Short.class))
+                .isEqualTo(Map.of((short) 32767, (short) 2000, (short) -32768, (short) -2000)),
+        () ->
+            assertThat(row.getMap("map_int_column", Integer.class, Integer.class))
+                .isEqualTo(Map.of(2147483647, 100000, -2147483648, -100000)),
+        () ->
+            assertThat(row.getMap("map_bigint_column", Long.class, Long.class))
+                .isEqualTo(Map.of(9223372036854775807L, 9007199254740991L)),
+        () ->
+            assertThat(
+                    row.getMap(
+                        "map_varint_column",
+                        java.math.BigInteger.class,
+                        java.math.BigInteger.class))
+                .isEqualTo(
+                    Map.of(
+                        new java.math.BigInteger("12345678901234567890"),
+                        new java.math.BigInteger("98765432101234567890"))),
+        () ->
+            assertThat(
+                    row.getMap(
+                        "map_decimal_column",
+                        java.math.BigDecimal.class,
+                        java.math.BigDecimal.class))
+                .isEqualTo(
+                    Map.of(
+                        new java.math.BigDecimal("12345.6789"),
+                        new java.math.BigDecimal("9876.54321"))),
+        () ->
+            assertThat(row.getMap("map_ascii_column", String.class, String.class))
+                .isEqualTo(Map.of("example1", "string1", "example2", "string2")),
+        () ->
+            assertThat(row.getMap("map_varchar_column", String.class, String.class))
+                .isEqualTo(Map.of("key1", "value1", "key2", "value2")),
+        () ->
+            assertThat(row.getMap("map_blob_column", ByteBuffer.class, ByteBuffer.class))
+                .isEqualTo(
+                    Map.of(
+                        ByteBuffer.wrap("Google".getBytes()),
+                        ByteBuffer.wrap("Company".getBytes()))),
+        () ->
+            assertThat(
+                    row.getMap(
+                        "map_date_column", java.time.LocalDate.class, java.time.LocalDate.class))
+                .isEqualTo(
+                    Map.of(
+                        java.time.LocalDate.parse("2025-01-27"),
+                        java.time.LocalDate.parse("2025-02-28"))),
+        () ->
+            assertThat(
+                    row.getMap(
+                        "map_time_column", java.time.LocalTime.class, java.time.LocalTime.class))
+                .isEqualTo(
+                    Map.of(
+                        java.time.LocalTime.parse("12:30:00"),
+                        java.time.LocalTime.parse("13:30:00"))),
+        () ->
+            assertThat(
+                    row.getMap(
+                        "map_timestamp_column", java.time.Instant.class, java.time.Instant.class))
+                .isEqualTo(
+                    Map.of(
+                        java.time.Instant.parse("2025-01-27T10:30:00Z"),
+                        java.time.Instant.parse("2025-02-27T10:30:00Z"))),
+        () ->
+            assertThat(
+                    row.getMap(
+                        "map_duration_column", java.time.Duration.class, java.time.Duration.class))
+                .isEqualTo(
+                    Map.of(java.time.Duration.parse("PT1H30M"), java.time.Duration.parse("PT2H"))),
+        () ->
+            assertThat(row.getMap("map_uuid_column", java.util.UUID.class, java.util.UUID.class))
+                .isEqualTo(
+                    Map.of(
+                        java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000"),
+                        java.util.UUID.fromString("b430e5b6-4f06-4dd9-85f7-df10b77fc382"))),
+        () ->
+            assertThat(
+                    row.getMap("map_timeuuid_column", java.util.UUID.class, java.util.UUID.class))
+                .isEqualTo(
+                    Map.of(
+                        java.util.UUID.fromString("b430e5b6-4f06-4dd9-85f7-df10b77fc382"),
+                        java.util.UUID.fromString("550e8400-e29b-41d4-a716-446655440000"))),
+        () ->
+            assertThat(row.getMap("map_inet_column", String.class, String.class))
+                .isEqualTo(Map.of("192.168.0.1", "10.0.0.1", "127.0.0.1", "::1")));
   }
 
   /**

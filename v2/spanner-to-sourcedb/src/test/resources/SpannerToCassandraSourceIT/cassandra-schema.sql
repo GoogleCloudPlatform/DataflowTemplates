@@ -95,4 +95,23 @@ CREATE TABLE AllDatatypeColumns (
     frozen_list_of_sets_column list<frozen<set<text>>>,
     varint_column varint,
     inet_column INET
+    map_bool_column map<boolean, boolean>,
+    map_float_column map<float, float>,
+    map_double_column map<double, double>,
+    map_tinyint_column map<tinyint, tinyint>,
+    map_smallint_column map<smallint, smallint>,
+    map_int_column map<int, int>,
+    map_bigint_column map<bigint, bigint>,
+    map_varint_column map<varint, varint>,
+    map_decimal_column map<decimal, decimal>,
+    map_ascii_column map<ascii, text>,
+    map_varchar_column map<text, text>,
+    map_blob_column map<blob, blob>,
+    map_date_column map<date, date>,
+    map_time_column map<time, time>,
+    map_timestamp_column map<timestamp, timestamp>,
+    map_duration_column map<duration, duration>,
+    map_uuid_column map<uuid, uuid>,
+    map_timeuuid_column map<timeuuid, timeuuid>,
+    map_inet_column map<inet, inet>
 );
