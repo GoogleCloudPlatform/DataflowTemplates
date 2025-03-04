@@ -117,7 +117,7 @@ public class SpannerToSourceDbEndToEndIT extends SpannerToSourceDbITBase {
         createAndUploadShardConfigToGcs(gcsResourceManager, cloudSqlResourceManager);
         createAndUploadJarToGcs(gcsResourceManager);
         gcsClient.createArtifact(
-            "input/mysql-session.json",
+            "input/session.json",
             generateSessionFile(
                 cloudSqlResourceManager.getDatabaseName(),
                 spannerResourceManager.getDatabaseId()));
