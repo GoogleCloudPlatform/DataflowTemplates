@@ -53,4 +53,28 @@ public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
     JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
     runLoadTest(tables100GB, mySQLSource);
   }
+
+  @Test
+  public void crossDbTxn_backfill100Gb() throws IOException, ParseException, InterruptedException {
+    setUpResourceManagers(
+        "DataStreamToSpanner100GbLT/spanner-schema.sql", /* separateShadowTableDb= */ true);
+    HashMap<String, Integer> tables100GB = new HashMap<>();
+    for (int i = 1; i <= 10; i++) {
+      tables100GB.put("person" + i, 6500000);
+    }
+
+    // Setup Datastream
+    String hostIp =
+        secretClient.accessSecret(
+            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-ip-address/versions/1");
+    String username =
+        secretClient.accessSecret(
+            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-username/versions/1");
+    String password =
+        secretClient.accessSecret(
+            "projects/269744978479/secrets/nokill-datastream-mysql-to-spanner-cloudsql-password/versions/1");
+
+    JDBCSource mySQLSource = getMySQLSource(hostIp, username, password);
+    runLoadTest(tables100GB, mySQLSource);
+  }
 }

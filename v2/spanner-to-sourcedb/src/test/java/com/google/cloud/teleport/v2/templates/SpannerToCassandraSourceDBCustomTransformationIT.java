@@ -142,9 +142,10 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    * appears in Cassandra, validating end-to-end data consistency.
    *
    * @throws InterruptedException if the thread is interrupted during execution.
+   * @throws IOException if an I/O error occurs during the test execution.
    */
   @Test
-  public void testCustomTransformationForCassandra() throws InterruptedException {
+  public void testCustomTransformationForCassandra() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     writeBasicRowInSpanner();
     assertBasicRowInCassandraDB();
