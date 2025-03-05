@@ -169,13 +169,28 @@ public interface JdbcToBigQueryOptions
       optional = true,
       description = "The name of a column of numeric type that will be used for partitioning.",
       helpText =
-          "If this parameter is provided with the name of the `table` defined as an optional parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.")
+          "If `partitionColumn` is specified along with the `table`, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery)"
+              + " using ranges. Currently, supports `Long` and `DateTime` partition columns. Pass the column type through `partitionColumnType`.")
   String getPartitionColumn();
 
   void setPartitionColumn(String partitionColumn);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Enum(
       order = 14,
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("long"),
+        @TemplateParameter.TemplateEnumOption("datetime")
+      },
+      optional = true,
+      description = "Partition column type.",
+      helpText = "The type of the `partitionColumn`, accepts either `long` or `datetime`.")
+  @Default.String("long")
+  String getPartitionColumnType();
+
+  void setPartitionColumnType(String partitionColumnType);
+
+  @TemplateParameter.Text(
+      order = 15,
       optional = true,
       description = "Name of the table in the external database.",
       helpText =
@@ -186,7 +201,7 @@ public interface JdbcToBigQueryOptions
   void setTable(String table);
 
   @TemplateParameter.Integer(
-      order = 15,
+      order = 16,
       optional = true,
       description = "The number of partitions.",
       helpText =
@@ -195,28 +210,30 @@ public interface JdbcToBigQueryOptions
 
   void setNumPartitions(Integer numPartitions);
 
-  @TemplateParameter.Long(
-      order = 16,
+  @TemplateParameter.Text(
+      order = 17,
       optional = true,
       description = "Lower bound of partition column.",
       helpText =
-          "The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
-  Long getLowerBound();
+          "The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` "
+              + "partitionColumnType accepts lower bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`.")
+  String getLowerBound();
 
-  void setLowerBound(Long lowerBound);
+  void setLowerBound(String lowerBound);
 
-  @TemplateParameter.Long(
-      order = 17,
+  @TemplateParameter.Text(
+      order = 18,
       optional = true,
       description = "Upper bound of partition column",
       helpText =
-          "The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.")
-  Long getUpperBound();
+          "The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` "
+              + "partitionColumnType accepts upper bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`.")
+  String getUpperBound();
 
-  void setUpperBound(Long lowerBound);
+  void setUpperBound(String upperBound);
 
   @TemplateParameter.Integer(
-      order = 18,
+      order = 19,
       optional = true,
       description = "Fetch Size",
       // TODO: remove the "Not used for partitioned reads" once
@@ -229,7 +246,7 @@ public interface JdbcToBigQueryOptions
   void setFetchSize(Integer fetchSize);
 
   @TemplateParameter.Enum(
-      order = 19,
+      order = 20,
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("CREATE_IF_NEEDED"),
         @TemplateParameter.TemplateEnumOption("CREATE_NEVER")
@@ -244,7 +261,7 @@ public interface JdbcToBigQueryOptions
   void setCreateDisposition(String createDisposition);
 
   @TemplateParameter.GcsReadFile(
-      order = 20,
+      order = 21,
       optional = true,
       description = "Cloud Storage path to BigQuery JSON schema",
       helpText =
@@ -255,7 +272,7 @@ public interface JdbcToBigQueryOptions
   void setBigQuerySchemaPath(String path);
 
   @TemplateParameter.BigQueryTable(
-      order = 21,
+      order = 22,
       optional = true,
       description =
           "Table for messages that failed to reach the output table (i.e., Deadletter table) when using Storage Write API",

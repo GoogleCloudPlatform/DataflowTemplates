@@ -19,11 +19,14 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueArrayMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.reflect.TypeToken;
+import org.apache.avro.Schema;
 
 /** Represent Unified type mapping, value extractor and value mappings for Cassandra. */
 @AutoValue
@@ -31,6 +34,8 @@ public abstract class CassandraMappings {
   public abstract ImmutableMap<String, UnifiedTypeMapping> typeMapping();
 
   public abstract ImmutableMap<String, CassandraFieldMapper<?>> fieldMapping();
+
+  abstract ImmutableMap<String, Class> typeToClassMapping();
 
   public static Builder builder() {
     return new AutoValue_CassandraMappings.Builder();
@@ -41,6 +46,8 @@ public abstract class CassandraMappings {
     abstract ImmutableMap.Builder<String, UnifiedTypeMapping> typeMappingBuilder();
 
     abstract ImmutableMap.Builder<String, CassandraFieldMapper<?>> fieldMappingBuilder();
+
+    abstract ImmutableMap.Builder<String, Class> typeToClassMappingBuilder();
 
     /**
      * Maintain mappings for a given type, as primitive as well as part of collections.
@@ -61,6 +68,10 @@ public abstract class CassandraMappings {
         CassandraRowValueExtractor<T> rowValueExtractor,
         CassandraRowValueMapper<T> rowValueMapper,
         Class<T> typeClass) {
+      // typeClass is Null for "UNSUPPORTED" type.
+      if (typeClass != null) {
+        this.typeToClassMappingBuilder().put(cassandraType.toUpperCase(), typeClass);
+      }
       this.typeMappingBuilder()
           .put(cassandraType.toUpperCase(), UnifiedMappingProvider.getMapping(type));
       this.fieldMappingBuilder()
@@ -108,6 +119,46 @@ public abstract class CassandraMappings {
                   CassandraRowValueArrayMapper.create(rowValueMapper)));
     }
 
-    public abstract CassandraMappings build();
+    abstract CassandraMappings autoBuild();
+
+    public CassandraMappings build() {
+      addMapBindings();
+      return autoBuild();
+    }
+
+    /** Add bindings for handling Cassandra `Map` Types to Json. */
+    private void addMapBindings() {
+      /* Add Mappings for Map Types.*/
+      ImmutableMap<String, Class> classMappings = typeToClassMappingBuilder().build();
+      ImmutableMap<String, CassandraFieldMapper<?>> fieldMappers = fieldMappingBuilder().build();
+      ImmutableMap<String, UnifiedTypeMapping> typeMappings = typeMappingBuilder().build();
+      ImmutableSet<String> primitiveTypes = classMappings.keySet();
+
+      for (String key : primitiveTypes) {
+        Class keyClass = classMappings.get(key);
+        for (String value : primitiveTypes) {
+          // The Map type as represented in Cassandra Schema
+          String mapType = "MAP<" + key.toUpperCase() + "," + value.toUpperCase() + ">";
+
+          // Get the mappers for Key and Value.
+          Class valueClass = classMappings.get(value);
+          Schema keySchema = typeMappings.get(key).getSchema(new Long[] {}, new Long[] {});
+          Schema valueSchema = typeMappings.get(value).getSchema(new Long[] {}, new Long[] {});
+          CassandraRowValueMapper<?> keyValueMapper = fieldMappers.get(key).rowValueMapper();
+          CassandraRowValueMapper<?> valueValueMapper = fieldMappers.get(value).rowValueMapper();
+          // Add Schema Mapping for the Map Type.
+          typeMappingBuilder()
+              .put(mapType, UnifiedMappingProvider.getMapping(UnifiedMappingProvider.Type.JSON));
+          // Add Value Mapping for the Map Type.
+          fieldMappingBuilder()
+              .put(
+                  mapType,
+                  CassandraFieldMapper.create(
+                      (row, name) -> row.getMap(name, keyClass, valueClass),
+                      CassandraRowValueMapMapper.create(
+                          keyValueMapper, valueValueMapper, keySchema, valueSchema)));
+        }
+      }
+    }
   }
 }
