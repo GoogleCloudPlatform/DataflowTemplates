@@ -18,9 +18,11 @@ package com.google.cloud.teleport.v2.templates.dbutils.connection;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
+import com.datastax.oss.driver.api.core.type.codec.registry.MutableCodecRegistry;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
+import com.google.cloud.teleport.v2.templates.codec.DurationCodec;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
 import java.util.List;
@@ -82,6 +84,9 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
       CassandraShard cassandraShard = (CassandraShard) shard;
       try {
         CqlSession session = createCqlSession(cassandraShard);
+        MutableCodecRegistry registry =
+            (MutableCodecRegistry) session.getContext().getCodecRegistry();
+        registry.register(new DurationCodec());
         String connectionKey = generateConnectionKey(cassandraShard);
         connectionPoolMap.put(connectionKey, session);
         LOG.info("Connection initialized for key: {}", connectionKey);

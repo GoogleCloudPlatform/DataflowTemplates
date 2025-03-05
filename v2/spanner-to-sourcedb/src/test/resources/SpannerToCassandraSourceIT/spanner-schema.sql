@@ -105,6 +105,47 @@ CREATE TABLE IF NOT EXISTS alldatatypecolumns (
     inet_column STRING(MAX)
 ) PRIMARY KEY(varchar_column);
 
+CREATE TABLE IF NOT EXISTS boundaryconversiontesttable (
+    varchar_column STRING(20) NOT NULL,
+    tinyint_column INT64,
+    smallint_column INT64,
+    int_column INT64,
+    bigint_column INT64,
+    float_column FLOAT64,
+    double_column FLOAT64,
+    decimal_column NUMERIC,
+    bool_column BOOL,
+    ascii_column STRING(MAX),
+    text_column STRING(MAX),
+    bytes_column BYTES(MAX),
+     date_column STRING(MAX),
+    time_column STRING(MAX),
+    timestamp_column STRING(MAX),
+    duration_column STRING(MAX),
+    uuid_column STRING(MAX),
+    timeuuid_column STRING(MAX),
+    inet_column STRING(MAX),
+    map_bool_column JSON,
+    map_float_column JSON,
+    map_double_column JSON,
+    map_tinyint_column JSON,
+    map_smallint_column JSON,
+    map_int_column JSON,
+    map_bigint_column JSON,
+    map_varint_column JSON,
+    map_decimal_column JSON,
+    map_ascii_column JSON,
+    map_varchar_column JSON,
+    map_blob_column JSON,
+    map_date_column JSON,
+    map_time_column JSON,
+    map_timestamp_column JSON,
+    map_duration_column JSON,
+    map_uuid_column JSON,
+    map_timeuuid_column JSON,
+    map_inet_column JSON
+) PRIMARY KEY(varchar_column);
+
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   value_capture_type = 'NEW_ROW',
