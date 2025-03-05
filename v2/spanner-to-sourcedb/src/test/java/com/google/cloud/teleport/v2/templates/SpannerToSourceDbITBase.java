@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -137,7 +138,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
-    return CassandraResourceManager.builder(testName).build();
+    /* The default is Cassandra 4.1 image. TODO: Explore testing with non 4.1 tags. */
+
+    /* Max Cassandra Keyspace is 48 characters. Base Resource Manager adds 24 characters of date-time at the end.
+     * That's why we need to take a smaller subsequence of the testId.
+     */
+    String uniqueId = testId.substring(0, Math.min(20, testId.length()));
+    return CassandraResourceManager.builder(uniqueId).build();
   }
 
   protected void createCassandraSchema(
@@ -152,7 +159,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     String[] ddls = ddl.split(";");
     for (String d : ddls) {
       if (!d.isBlank()) {
-        cassandraResourceManager.execute(d);
+        cassandraResourceManager.executeStatement(d);
       }
     }
   }
