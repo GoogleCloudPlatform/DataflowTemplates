@@ -39,17 +39,23 @@ public class CsvConvertersTest {
   private static final String CSV_RESOURCES_DIR = "CsvConvertersTest/";
   private static final String HEADER_CSV_FILE_PATH =
       Resources.getResource(CSV_RESOURCES_DIR + "with_headers.csv").getPath();
+  private static final String NO_HEADER_CSV_FILE_PATH =
+      Resources.getResource(CSV_RESOURCES_DIR + "no_header.csv").getPath();
   private ValueProvider<Boolean> containsHeaders = StaticValueProvider.of(true);
+  private ValueProvider<Boolean> containsNoHeaders = StaticValueProvider.of(false);
   private ValueProvider<String> delimiter = StaticValueProvider.of(",");
   private ValueProvider<String> csvFormat = StaticValueProvider.of("Default");
   private ValueProvider<String> csvFileEncoding = StaticValueProvider.of("UTF-8");
-  private ValueProvider<String> inputFileSpec = StaticValueProvider.of(HEADER_CSV_FILE_PATH);
+  private ValueProvider<String> inputFileSpecWithHeaders =
+      StaticValueProvider.of(HEADER_CSV_FILE_PATH);
+  private ValueProvider<String> inputFileSpecWithoutHeaders =
+      StaticValueProvider.of(NO_HEADER_CSV_FILE_PATH);
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   /** Tests {@link CsvConverters.ReadCsv} reads a Csv with commas in quotes correctly. */
   @Test
-  public void testReadWithCommasInQuotes() {
+  public void testReadWithHeaders() {
 
     CsvConverters.CsvPipelineOptions options =
         PipelineOptionsFactory.create().as(CsvConverters.CsvPipelineOptions.class);
@@ -67,13 +73,13 @@ public class CsvConvertersTest {
                 .setCsvFormat(options.getCsvFormat())
                 .setDelimiter(options.getDelimiter())
                 .setHasHeaders(options.getContainsHeaders())
-                .setInputFileSpec(inputFileSpec)
+                .setInputFileSpec(inputFileSpecWithHeaders)
                 .setHeaderTag(CSV_HEADERS)
                 .setLineTag(CSV_LINES)
                 .setFileEncoding(options.getCsvFileEncoding())
                 .build());
 
-    List<String> expectedLines = Arrays.asList("1,2", "3,4", "5,6");
+    List<String> expectedLines = Arrays.asList("abc", "def", "123,456", "\"quoted_string\"");
 
     PAssert.that(readCsvHeadersOut.get(CSV_LINES))
         .satisfies(
@@ -83,12 +89,51 @@ public class CsvConvertersTest {
               return null;
             });
 
-    List<String> expectedHeaders = Arrays.asList("a", "b", "c");
+    List<String> expectedHeaders = Arrays.asList("a", "b", "c1,c2", "\"d\"");
     PAssert.that(readCsvHeadersOut.get(CSV_HEADERS))
         .satisfies(
             collection -> {
               Iterable<String> result = collection.iterator().next();
               assertEquals(result, expectedHeaders);
+              return null;
+            });
+
+    //  Execute pipeline
+    pipeline.run();
+  }
+
+  @Test
+  public void testReadWithoutHeaders() {
+
+    CsvConverters.CsvPipelineOptions options =
+        PipelineOptionsFactory.create().as(CsvConverters.CsvPipelineOptions.class);
+
+    options.setContainsHeaders(containsNoHeaders);
+    options.setDelimiter(delimiter);
+    options.setCsvFormat(csvFormat);
+    options.setCsvFileEncoding(csvFileEncoding);
+
+    // Build pipeline with headers.
+    PCollectionTuple readCsvHeadersOut =
+        pipeline.apply(
+            "TestReadWithCommasInQuotes",
+            CsvConverters.ReadCsv.newBuilder()
+                .setCsvFormat(options.getCsvFormat())
+                .setDelimiter(options.getDelimiter())
+                .setHasHeaders(options.getContainsHeaders())
+                .setInputFileSpec(inputFileSpecWithoutHeaders)
+                .setHeaderTag(CSV_HEADERS)
+                .setLineTag(CSV_LINES)
+                .setFileEncoding(options.getCsvFileEncoding())
+                .build());
+
+    List<String> expectedLines = Arrays.asList("abc", "def", "123,456", "\"quoted_string\"");
+
+    PAssert.that(readCsvHeadersOut.get(CSV_LINES))
+        .satisfies(
+            collection -> {
+              Iterable<String> result = collection.iterator().next();
+              assertEquals(result, expectedLines);
               return null;
             });
 
