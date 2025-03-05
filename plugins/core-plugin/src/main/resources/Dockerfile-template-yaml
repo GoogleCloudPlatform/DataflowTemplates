@@ -29,9 +29,9 @@ RUN python -m venv /venv \
 
 # Cache provider environments for faster startup and expansion time
 RUN mkdir -p ~/.apache_beam/cache/jars
-RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-expansion-service-2.63.0.jar https://repo1.maven.org/maven2/org/apache/beam/beam-sdks-java-io-expansion-service/2.63.0/beam-sdks-java-io-expansion-service-2.63.0.jar
-RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-extensions-schemaio-expansion-service-2.63.0.jar https://repo1.maven.org/maven2/org/apache/beam/beam-sdks-java-extensions-schemaio-expansion-service/2.63.0/beam-sdks-java-extensions-schemaio-expansion-service-2.63.0.jar
-RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-google-cloud-platform-expansion-service-2.63.0.jar https://repo1.maven.org/maven2/org/apache/beam/beam-sdks-java-io-google-cloud-platform-expansion-service/2.63.0/beam-sdks-java-io-google-cloud-platform-expansion-service-2.63.0.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-expansion-service-${beamVersion}.jar https://repo1.maven.org/maven2/org/apache/beam/beam-sdks-java-io-expansion-service/${beamVersion}/beam-sdks-java-io-expansion-service-${beamVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-extensions-schemaio-expansion-service-${beamVersion}.jar https://repo1.maven.org/maven2/org/apache/beam/beam-sdks-java-extensions-schemaio-expansion-service/${beamVersion}/beam-sdks-java-extensions-schemaio-expansion-service-${beamVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-google-cloud-platform-expansion-service-${beamVersion}.jar https://repo1.maven.org/maven2/org/apache/beam/beam-sdks-java-io-google-cloud-platform-expansion-service/${beamVersion}/beam-sdks-java-io-google-cloud-platform-expansion-service-${beamVersion}.jar
 RUN python -m apache_beam.yaml.cache_provider_artifacts
 
 #============================================================#
