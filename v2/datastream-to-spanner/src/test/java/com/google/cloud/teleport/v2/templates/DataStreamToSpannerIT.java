@@ -382,7 +382,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
     tableNames.forEach(
         tableName ->
             spannerResourceManager.executeDdlStatement(
-                "CREATE TABLE IF NOT EXISTS"
+                "CREATE TABLE IF NOT EXISTS "
                     + tableName
                     + " ("
                     + ROW_ID
