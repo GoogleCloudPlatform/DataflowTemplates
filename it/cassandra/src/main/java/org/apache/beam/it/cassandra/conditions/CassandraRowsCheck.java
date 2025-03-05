@@ -22,19 +22,18 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.auto.value.AutoValue;
 import javax.annotation.Nullable;
+import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.conditions.ConditionCheck;
 
 /**
  * Condition check for verifying the number of rows in a Cassandra table. This class is generic,
  * allowing any type of Cassandra resource manager to be used at runtime.
- *
- * @param <T> Type of the Cassandra resource manager, must extend AutoCloseable.
  */
 @AutoValue
-public abstract class CassandraRowsCheck<T> extends ConditionCheck {
+public abstract class CassandraRowsCheck extends ConditionCheck {
 
   @Nullable
-  abstract T resourceManager();
+  abstract CassandraResourceManager resourceManager();
 
   abstract String tableName();
 
@@ -61,20 +60,13 @@ public abstract class CassandraRowsCheck<T> extends ConditionCheck {
    * @param tableName The name of the table to count rows from.
    * @return The number of rows in the table.
    */
-  private long getRowCount(T resourceManager, String tableName) {
+  private long getRowCount(CassandraResourceManager resourceManager, String tableName) {
     if (resourceManager == null) {
       throw new IllegalArgumentException("CassandraResourceManager must not be null.");
     }
-
     try {
-      String query = String.format("SELECT COUNT(*) FROM %s", tableName);
-      ResultSet resultSet =
-          (ResultSet)
-              resourceManager
-                  .getClass()
-                  .getMethod("executeStatement", String.class, int.class)
-                  .invoke(resourceManager, query, 10);
-
+      String query = String.format("SELECT COUNT(*) FROM %s USING TIMEOUT 10s", tableName);
+      ResultSet resultSet = resourceManager.executeStatement(query);
       Row row = resultSet.one();
       if (row != null) {
         return row.getLong(0);
@@ -113,27 +105,25 @@ public abstract class CassandraRowsCheck<T> extends ConditionCheck {
   /**
    * Builder for {@link CassandraRowsCheck}. Now allows setting the CassandraResourceManager at
    * runtime.
-   *
-   * @param <T> Type of the CassandraResourceManager.
    */
-  public static <T> Builder<T> builder(String tableName) {
-    return new AutoValue_CassandraRowsCheck.Builder<T>().setTableName(tableName);
+  public static Builder builder(String tableName) {
+    return new AutoValue_CassandraRowsCheck.Builder().setTableName(tableName);
   }
 
   @AutoValue.Builder
-  public abstract static class Builder<T> {
+  public abstract static class Builder {
 
-    public abstract Builder<T> setResourceManager(T resourceManager);
+    public abstract Builder setResourceManager(CassandraResourceManager resourceManager);
 
-    public abstract Builder<T> setTableName(String tableName);
+    public abstract Builder setTableName(String tableName);
 
-    public abstract Builder<T> setMinRows(Integer minRows);
+    public abstract Builder setMinRows(Integer minRows);
 
-    public abstract Builder<T> setMaxRows(Integer maxRows);
+    public abstract Builder setMaxRows(Integer maxRows);
 
-    abstract CassandraRowsCheck<T> autoBuild();
+    abstract CassandraRowsCheck autoBuild();
 
-    public CassandraRowsCheck<T> build() {
+    public CassandraRowsCheck build() {
       return autoBuild();
     }
   }
