@@ -339,7 +339,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .setCredentialsProvider(credentialsProvider)
             .build();
     Stream stream =
-        createDatastreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
+        createDataStreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
 
     String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
     // default parameters
@@ -368,7 +368,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return jobInfo;
   }
 
-  public Stream createDatastreamResources(
+  public Stream createDataStreamResources(
       String artifactBucketName,
       String gcsPrefix,
       JDBCSource jdbcSource,
@@ -395,7 +395,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   protected ConditionCheck writeJdbcData(
       String tableName,
       Integer numRows,
-      List<String> columns,
+      Map<String, Object> columns,
       Map<String, List<Map<String, Object>>> cdcEvents,
       CloudSqlResourceManager cloudSqlResourceManager) {
     return new ConditionCheck() {
@@ -411,8 +411,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (int i = 0; i < numRows; i++) {
           Map<String, Object> values = new HashMap<>();
-          values.put(columns.get(0), i);
-          values.put(columns.get(1), RandomStringUtils.randomAlphabetic(10));
+          values.put("id", i);
+          values.putAll(columns);
           rows.add(values);
         }
         cdcEvents.put(tableName, rows);
@@ -431,22 +431,17 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
   }
 
-  protected JDBCSource createMySqlDatabase(CloudSqlResourceManager cloudSqlResourceManager) {
-    cloudSqlResourceManager.createTable("Authors", createJdbcSchema());
+  protected JDBCSource createMySqlDatabase(CloudSqlResourceManager cloudSqlResourceManager, Map<String, Map<String, String>> tables) {
+    for (HashMap.Entry<String, Map<String, String>> entry: tables.entrySet()) {
+      cloudSqlResourceManager.createTable(entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
+    }
     return MySQLSource.builder(
             cloudSqlResourceManager.getHost(),
             cloudSqlResourceManager.getUsername(),
             cloudSqlResourceManager.getPassword(),
             cloudSqlResourceManager.getPort())
         .setAllowedTables(
-            Map.of(cloudSqlResourceManager.getDatabaseName(), Arrays.asList("Authors")))
+            Map.of(cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList()))
         .build();
-  }
-
-  private JDBCResourceManager.JDBCSchema createJdbcSchema() {
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put("id", "INT" + " NOT NULL");
-    columns.put("name", "VARCHAR(200)");
-    return new JDBCResourceManager.JDBCSchema(columns, "id");
   }
 }

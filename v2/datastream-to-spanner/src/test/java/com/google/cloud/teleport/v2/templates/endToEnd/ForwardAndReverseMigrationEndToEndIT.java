@@ -26,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -47,6 +48,7 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Integration test for end-to-end Testing of all Spanner migration Flex templates for basic run
@@ -60,6 +62,10 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
   private static final String SESSION_FILE_RESOURCE = "EndToEndTesting/session.json";
 
   private static final String TABLE = "Authors";
+  private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS = new HashMap<>(){{
+    put("id", "INT" + " NOT NULL");
+    put("name", "VARCHAR(200)");
+  }};
   private static final HashSet<ForwardAndReverseMigrationEndToEndIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo rrJobInfo;
@@ -72,7 +78,9 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
 
-  private static final List<String> COLUMNS = List.of("id", "name");
+  private static final Map<String, Object> COLUMNS = new HashMap<>(){{
+    put("name", RandomStringUtils.randomAlphabetic(10));
+  }};
 
   private static final Integer NUM_EVENTS = 2;
 
@@ -94,7 +102,9 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
 
         // create MySql Resources
         cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-        jdbcSource = createMySqlDatabase(cloudSqlResourceManager);
+        jdbcSource = createMySqlDatabase(cloudSqlResourceManager, new HashMap<>(){{
+          put(TABLE, AUTHOR_TABLE_COLUMNS);
+        }});
 
         // create and upload GCS Resources
         gcsResourceManager =
