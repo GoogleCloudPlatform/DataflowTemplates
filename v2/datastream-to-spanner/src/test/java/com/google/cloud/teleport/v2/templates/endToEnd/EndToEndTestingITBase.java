@@ -39,7 +39,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -62,7 +61,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -76,7 +74,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
     SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
+        SpannerResourceManager.builder("e2e-main-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
 
@@ -106,9 +104,9 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return spannerResourceManager;
   }
 
-  protected SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
+  protected SpannerResourceManager createSpannerMetadataDatabase() {
     SpannerResourceManager spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
+        SpannerResourceManager.builder("e2e-meta-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
     String dummy = "create table t1(id INT64 ) primary key(id)";
@@ -121,9 +119,13 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   public SubscriptionName createPubsubResources(
-      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
-    String topicNameSuffix = "rr-it" + identifierSuffix;
-    String subscriptionNameSuffix = "rr-it-sub" + identifierSuffix;
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager,
+      String mode) {
+    String topicNameSuffix = mode + "-it" + identifierSuffix;
+    String subscriptionNameSuffix = mode + "-it-sub" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
@@ -131,35 +133,21 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
-    prefix += "/retry/";
-    gcsClient.createNotification(topic.toString(), prefix);
-    return subscription;
-  }
-
-  public SubscriptionName createPubsubResources(
-      String identifierSuffix,
-      PubsubResourceManager pubsubResourceManager,
-      String gcsPrefix,
-      GcsResourceManager gcsResourceManager) {
-    String topicNameSuffix = "it" + identifierSuffix;
-    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
-    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
-    String prefix = gcsPrefix;
-    if (prefix.startsWith("/")) {
-      prefix = prefix.substring(1);
+    if (mode == "rr") {
+      prefix += "/retry/";
     }
     gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
 
   protected void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, CloudSqlResourceManager cloudSqlResourceManager) {
+      GcsResourceManager gcsResourceManager,
+      CloudSqlResourceManager cloudSqlResourceManager,
+      String privateHost) {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(cloudSqlResourceManager.getUsername());
-    shard.setHost("10.94.208.4");
+    shard.setHost(privateHost);
     shard.setPassword(cloudSqlResourceManager.getPassword());
     shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
     shard.setDbName(cloudSqlResourceManager.getDatabaseName());
@@ -268,12 +256,17 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       String sourceType)
       throws IOException {
     String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
+
+    // create subscription
     SubscriptionName rrSubscriptionName =
         createPubsubResources(
             getClass().getSimpleName(),
             pubsubResourceManager,
-            getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
-    // default parameters
+            getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
+            gcsResourceManager,
+            "rr");
+
+    // Launch Dataflow template
     flexTemplateDataflowJobResourceManager =
         FlexTemplateDataflowJobResourceManager.builder(rrJobName)
             .withTemplateName("Spanner_to_SourceDb")
@@ -298,6 +291,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
+
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
@@ -319,11 +313,12 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       throws IOException {
     String testRootDir = getClass().getSimpleName();
 
+    // create subscriptions
     String gcsPrefix =
         String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
     SubscriptionName subscription =
         createPubsubResources(
-            testRootDir + testName, pubsubResourceManager, gcsPrefix, gcsResourceManager);
+            testRootDir + testName, pubsubResourceManager, gcsPrefix, gcsResourceManager, "fwd");
 
     String dlqGcsPrefix =
         String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "dlq"});
@@ -332,8 +327,11 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             testRootDir + testName + "dlq",
             pubsubResourceManager,
             dlqGcsPrefix,
-            gcsResourceManager);
+            gcsResourceManager,
+            "fwd");
     String artifactBucket = TestProperties.artifactBucket();
+
+    // launch datastream
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
@@ -342,7 +340,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         createDataStreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
 
     String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
-    // default parameters
+    // launch dataflow template
     flexTemplateDataflowJobResourceManager =
         FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Cloud_Datastream_to_Spanner")
@@ -357,11 +355,11 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            // .addParameter("sessionFilePath", getGcsPath("input/session.json",
-            // gcsResourceManager))
+            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
+
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
@@ -373,7 +371,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       String gcsPrefix,
       JDBCSource jdbcSource,
       DatastreamResourceManager datastreamResourceManager) {
-    // To-do, for future postgres load testing, add a parameter to accept other sources
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
 
@@ -431,9 +428,11 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
   }
 
-  protected JDBCSource createMySqlDatabase(CloudSqlResourceManager cloudSqlResourceManager, Map<String, Map<String, String>> tables) {
-    for (HashMap.Entry<String, Map<String, String>> entry: tables.entrySet()) {
-      cloudSqlResourceManager.createTable(entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
+  protected JDBCSource createMySqlDatabase(
+      CloudSqlResourceManager cloudSqlResourceManager, Map<String, Map<String, String>> tables) {
+    for (HashMap.Entry<String, Map<String, String>> entry : tables.entrySet()) {
+      cloudSqlResourceManager.createTable(
+          entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
     }
     return MySQLSource.builder(
             cloudSqlResourceManager.getHost(),
