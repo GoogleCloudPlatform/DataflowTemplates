@@ -39,6 +39,14 @@ public abstract class Table implements Serializable {
   @Nullable
   public abstract String interleaveInParent();
 
+  public enum InterleaveType {
+    IN,
+    IN_PARENT
+  };
+
+  @Nullable
+  public abstract InterleaveType interleaveType();
+
   public abstract ImmutableList<IndexColumn> primaryKeys();
 
   public abstract boolean onDeleteCascade();
@@ -117,7 +125,8 @@ public abstract class Table implements Serializable {
     appendable.append("\n)");
     if (interleaveInParent() != null) {
       appendable
-          .append(" \nINTERLEAVE IN PARENT ")
+          .append(" \nINTERLEAVE IN ")
+          .append(interleaveType() == InterleaveType.IN ? "" : "PARENT ")
           .append(quoteIdentifier(interleaveInParent(), dialect()));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
@@ -156,7 +165,8 @@ public abstract class Table implements Serializable {
     appendable.append(")");
     if (interleaveInParent() != null) {
       appendable
-          .append(",\nINTERLEAVE IN PARENT ")
+          .append(",\nINTERLEAVE IN ")
+          .append(interleaveType() == InterleaveType.IN ? " " : "PARENT ")
           .append(quoteIdentifier(interleaveInParent(), dialect()));
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
@@ -205,6 +215,8 @@ public abstract class Table implements Serializable {
     public abstract String name();
 
     public abstract Builder interleaveInParent(String parent);
+
+    public abstract Builder interleaveType(Table.InterleaveType type);
 
     abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
 

@@ -62,9 +62,8 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setMaximumPoolSize(connectionHelperRequest.getMaxConnections());
       config.setConnectionInitSql(connectionHelperRequest.getConnectionInitQuery());
       Properties jdbcProperties = new Properties();
-      if (connectionHelperRequest.getProperties() != null
-          && !connectionHelperRequest.getProperties().isEmpty()) {
-        try (StringReader reader = new StringReader(connectionHelperRequest.getProperties())) {
+      if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
+        try (StringReader reader = new StringReader(shard.getConnectionProperties())) {
           jdbcProperties.load(reader);
         } catch (IOException e) {
           LOG.error("Error converting string to properties: {}", e.getMessage());

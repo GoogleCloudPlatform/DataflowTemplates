@@ -350,6 +350,31 @@ below -
 ]
 ```
 
+#### Specifying connection properties for JDBC
+
+```json
+[
+    {
+    "logicalShardId": "shard1",
+    "host": "10.11.12.13",
+    "user": "root",
+    "password":"<YOUR_PWD_HERE>",
+    "port": "3306",
+    "dbName": "db1", 
+    "connectionProperties": "jdbcCompliantTruncation=true"
+    },
+    {
+    "logicalShardId": "shard2",
+    "host": "10.11.12.14",
+    "user": "root",
+    "password":"<YOUR_PWD_HERE>",
+    "port": "3306",
+    "dbName": "db2", 
+    "connectionProperties": "jdbcCompliantTruncation=true"
+    }
+]
+```
+
 This file is generated from the configuration provided in the `var.shard_list`
 parameter.
 

@@ -40,17 +40,19 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to 500.
 * **runMode**: This is the run mode type, whether regular or with retryDLQ.Default is regular. retryDLQ is used to retry the severe DLQ records only.
 * **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to 10.
-* **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql, but it can also be configured to use cassandra.
+* **sourceType**: The type of source database to reverse replicate to. Defaults to: mysql.
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
 * **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
 
+
+
 ## Getting Started
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -132,7 +134,7 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SHADOW_TABLE_PREFIX=shadow_
+export SHADOW_TABLE_PREFIX=rev_shadow_
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -213,7 +215,7 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SHADOW_TABLE_PREFIX=shadow_
+export SHADOW_TABLE_PREFIX=rev_shadow_
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -294,7 +296,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     sourceShardsFilePath = "<sourceShardsFilePath>"
     # startTimestamp = ""
     # endTimestamp = ""
-    # shadowTablePrefix = "shadow_"
+    # shadowTablePrefix = "rev_shadow_"
     # sessionFilePath = "<sessionFilePath>"
     # filtrationMode = "forward_migration"
     # shardingCustomJarPath = ""
