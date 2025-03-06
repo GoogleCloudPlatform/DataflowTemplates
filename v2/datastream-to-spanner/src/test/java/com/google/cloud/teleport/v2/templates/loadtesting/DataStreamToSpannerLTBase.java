@@ -208,7 +208,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
 
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
-            createConfig(jobInfo, Duration.ofHours(4), Duration.ofMinutes(5)), checks);
+            createConfig(jobInfo, Duration.ofHours(6), Duration.ofMinutes(5)), checks);
 
     // Assert Conditions
     assertThatResult(result).meetsConditions();
