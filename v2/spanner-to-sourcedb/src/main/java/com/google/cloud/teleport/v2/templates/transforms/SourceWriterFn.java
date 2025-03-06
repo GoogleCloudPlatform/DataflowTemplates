@@ -15,6 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
+import com.datastax.oss.driver.api.core.AllNodesFailedException;
+import com.datastax.oss.driver.api.core.DriverTimeoutException;
+import com.datastax.oss.driver.api.core.NodeUnavailableException;
+import com.datastax.oss.driver.api.core.connection.BusyConnectionException;
+import com.datastax.oss.driver.api.core.connection.ConnectionInitException;
 import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
 import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -235,15 +240,19 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       } catch (InvalidTransformationException ex) {
         invalidTransformationException.inc();
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (ChangeEventConvertorException
-          | CodecNotFoundException
-          | QueryExecutionException ex) {
+      } catch (ChangeEventConvertorException | CodecNotFoundException ex) {
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (SpannerException
           | IllegalStateException
           | com.mysql.cj.jdbc.exceptions.CommunicationsException
           | java.sql.SQLIntegrityConstraintViolationException
           | java.sql.SQLTransientConnectionException
+          | ConnectionInitException
+          | DriverTimeoutException
+          | AllNodesFailedException
+          | BusyConnectionException
+          | NodeUnavailableException
+          | QueryExecutionException
           | ConnectionException ex) {
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (java.sql.SQLNonTransientConnectionException ex) {

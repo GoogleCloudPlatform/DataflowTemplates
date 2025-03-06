@@ -15,12 +15,15 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor.CUSTOM_TRANSFORMATION_AVRO_SCHEMA;
+
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -30,11 +33,14 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -67,6 +73,15 @@ public class AvroToValueMapper {
     Value apply(Object recordValue, Schema fieldSchema);
   }
 
+  /**
+   * Extract value compatible with {@link Value} interface from avro.
+   *
+   * @param <T> type of the value.
+   */
+  interface AvroValueExtractor<T> {
+    T extract(Object recordValue, Schema fieldSchema);
+  }
+
   static final Map<Dialect, Map<Type, AvroToValueFunction>> CONVERTOR_MAP = initConvertorMap();
 
   public static Map<Dialect, Map<Type, AvroToValueFunction>> convertorMap() {
@@ -80,40 +95,115 @@ public class AvroToValueMapper {
     return convertorMap;
   }
 
+  /* TODO refactor this to avoid redundancy in Value.Foo and Value.FooArray */
   static Map<Type, AvroToValueFunction> getGsqlMap() {
     Map<Type, AvroToValueFunction> gsqlFunctions = new HashMap<>();
     gsqlFunctions.put(
         Type.bool(),
         (recordValue, fieldSchema) -> Value.bool(avroFieldToBoolean(recordValue, fieldSchema)));
     gsqlFunctions.put(
+        Type.array(Type.bool()),
+        (recordValue, fieldSchema) ->
+            Value.boolArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToBoolean)));
+
+    gsqlFunctions.put(
         Type.int64(),
         (recordValue, fieldSchema) -> Value.int64(avroFieldToLong(recordValue, fieldSchema)));
+    gsqlFunctions.put(
+        Type.array(Type.int64()),
+        (recordValue, fieldSchema) ->
+            Value.int64Array(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToLong)));
+
+    gsqlFunctions.put(
+        Type.float32(),
+        (recordValue, fieldSchema) -> Value.float32(avroFieldToFloat32(recordValue, fieldSchema)));
+    gsqlFunctions.put(
+        Type.array(Type.float32()),
+        (recordValue, fieldSchema) ->
+            Value.float32Array(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToFloat32)));
+
     gsqlFunctions.put(
         Type.float64(),
         (recordValue, fieldSchema) -> Value.float64(avroFieldToDouble(recordValue, fieldSchema)));
     gsqlFunctions.put(
+        Type.array(Type.float64()),
+        (recordValue, fieldSchema) ->
+            Value.float64Array(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToDouble)));
+
+    gsqlFunctions.put(
         Type.string(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
     gsqlFunctions.put(
+        Type.array(Type.string()),
+        (recordValue, fieldSchema) ->
+            Value.stringArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
+
+    gsqlFunctions.put(
         Type.json(),
         (recordValue, fieldSchema) -> Value.string(avroFieldToString(recordValue, fieldSchema)));
+    gsqlFunctions.put(
+        Type.array(Type.json()),
+        (recordValue, fieldSchema) ->
+            Value.jsonArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToString)));
+
     gsqlFunctions.put(
         Type.numeric(),
         (recordValue, fieldSchema) ->
             Value.numeric(avroFieldToNumericBigDecimal(recordValue, fieldSchema)));
     gsqlFunctions.put(
+        Type.array(Type.numeric()),
+        (recordValue, fieldSchema) ->
+            Value.numericArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToNumericBigDecimal)));
+
+    gsqlFunctions.put(
         Type.bytes(),
         (recordValue, fieldSchema) -> Value.bytes(avroFieldToByteArray(recordValue, fieldSchema)));
+    gsqlFunctions.put(
+        Type.array(Type.bytes()),
+        (recordValue, fieldSchema) ->
+            Value.bytesArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToByteArray)));
+
     gsqlFunctions.put(
         Type.timestamp(),
         (recordValue, fieldSchema) ->
             Value.timestamp(avroFieldToTimestamp(recordValue, fieldSchema)));
     gsqlFunctions.put(
+        Type.array(Type.timestamp()),
+        (recordValue, fieldSchema) ->
+            Value.timestampArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToTimestamp)));
+
+    gsqlFunctions.put(
         Type.date(),
         (recordValue, fieldSchema) -> Value.date(avroFieldToDate(recordValue, fieldSchema)));
+    gsqlFunctions.put(
+        Type.array(Type.date()),
+        (recordValue, fieldSchema) ->
+            Value.dateArray(
+                avroArrayFieldToSpannerArray(
+                    recordValue, fieldSchema, AvroToValueMapper::avroFieldToDate)));
+
     return gsqlFunctions;
   }
 
+  /* TODO Support for AvroArrays to PG */
   static Map<Type, AvroToValueFunction> getPgMap() {
     Map<Type, AvroToValueFunction> pgFunctions = new HashMap<>();
     pgFunctions.put(
@@ -186,6 +276,23 @@ public class AvroToValueMapper {
           "Unable to convert "
               + fieldSchema.getType()
               + " to Long, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
+    }
+  }
+
+  static Float avroFieldToFloat32(Object recordValue, Schema fieldSchema) {
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      return Float.valueOf(recordValue.toString());
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getType()
+              + " to float, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());
@@ -322,6 +429,44 @@ public class AvroToValueMapper {
           "Unable to convert "
               + fieldSchema.getName()
               + " to Date, with value: "
+              + recordValue
+              + ", Exception: "
+              + e.getMessage());
+    }
+  }
+
+  /**
+   * Maps an Avro Array to the expected Array type on Spanner.
+   *
+   * @param recordValue value of the array field.
+   * @param fieldSchema schema of the array type.
+   * @param valueExtractor - Converter for converting avro field to expected type of Spanner's array
+   *     element.
+   * @return - Iterable for the spanner mapped values.
+   * @param <T> - Expected Type of Spanner's array element.
+   * @throws AvroTypeConvertorException - For any conversion exception.
+   */
+  static <T> Iterable<T> avroArrayFieldToSpannerArray(
+      Object recordValue, Schema fieldSchema, AvroValueExtractor<T> valueExtractor) {
+    Schema elementSchema =
+        (fieldSchema.equals(CUSTOM_TRANSFORMATION_AVRO_SCHEMA))
+            ? CUSTOM_TRANSFORMATION_AVRO_SCHEMA
+            : SchemaBuilder.builder().type(fieldSchema.getElementType());
+    List<T> recordArrayList = new ArrayList<T>();
+    try {
+      if (recordValue == null) {
+        return null;
+      }
+      for (int i = 0; i < Array.getLength(recordValue); i++) {
+        recordArrayList.add(valueExtractor.extract(Array.get(recordValue, i), elementSchema));
+      }
+      return recordArrayList;
+
+    } catch (Exception e) {
+      throw new AvroTypeConvertorException(
+          "Unable to convert "
+              + fieldSchema.getName()
+              + " to Array, with value: "
               + recordValue
               + ", Exception: "
               + e.getMessage());

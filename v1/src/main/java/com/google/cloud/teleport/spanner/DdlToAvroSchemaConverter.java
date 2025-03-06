@@ -33,6 +33,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMEN
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAME;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
@@ -69,6 +70,7 @@ import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
@@ -119,6 +121,9 @@ public class DdlToAvroSchemaConverter {
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       if (table.interleaveInParent() != null) {
         recordBuilder.prop(SPANNER_PARENT, table.interleaveInParent());
+        recordBuilder.prop(
+            SPANNER_INTERLEAVE_TYPE,
+            table.interleaveType() == InterleaveType.IN ? "IN" : "IN PARENT");
         recordBuilder.prop(
             SPANNER_ON_DELETE_ACTION, table.onDeleteCascade() ? "cascade" : "no action");
       }
@@ -181,10 +186,16 @@ public class DdlToAvroSchemaConverter {
             if (cm.sequenceKind() != null) {
               fieldBuilder.prop(SPANNER_SEQUENCE_KIND, cm.sequenceKind());
             }
-            fieldBuilder.prop(
-                SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
-            fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));
-            fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(cm.skipRangeMax()));
+            if (cm.counterStartValue() != null) {
+              fieldBuilder.prop(
+                  SPANNER_SEQUENCE_COUNTER_START, String.valueOf(cm.counterStartValue()));
+            }
+            if (cm.skipRangeMin() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MIN, String.valueOf(cm.skipRangeMin()));
+            }
+            if (cm.skipRangeMax() != null) {
+              fieldBuilder.prop(SPANNER_SEQUENCE_SKIP_RANGE_MAX, String.valueOf(cm.skipRangeMax()));
+            }
           } else if (cm.defaultExpression() != null) {
             fieldBuilder.prop(DEFAULT_EXPRESSION, cm.defaultExpression());
           }
@@ -486,6 +497,9 @@ public class DdlToAvroSchemaConverter {
       case JSON:
       case PG_JSONB:
         return SchemaBuilder.builder().stringType();
+      case UUID:
+      case PG_UUID:
+        return LogicalTypes.uuid().addToSchema(SchemaBuilder.builder().stringType());
       case BYTES:
       case PG_BYTEA:
       case PROTO:

@@ -42,14 +42,14 @@
     <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
-    <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
+    <maven-shade-plugin.version>3.3.0</maven-shade-plugin.version>
     <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.62.0</beam.version>
-    <beam-python.version>2.62.0</beam-python.version>
+    <beam.version>2.63.0</beam.version>
+    <beam-python.version>2.63.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
@@ -84,7 +84,7 @@
     <truth.version>1.1.5</truth.version>
 
     <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.55.0</gax.version>
+    <gax.version>2.57.0</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -369,6 +369,7 @@
             <exclude>**/CustomTransformationImplFetcher.*</exclude>
             <exclude>**/JarFileReader.*</exclude>
             <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
+            <exclude>**/CustomTransformationWithCassandraForIT.*</exclude>
             <exclude>**/models/*</exclude>
             <exclude>**/exceptions/*</exclude>
           </excludes>
@@ -697,7 +698,7 @@
                 <exclude>**/KafkaToKafkaIT.java</exclude>
               </excludes>
               <excludedGroups>
-                ${direct-runner.tests}
+                ${direct-runner.tests},
                 com.google.cloud.teleport.metadata.SkipRunnerV2Test
               </excludedGroups>
               <groups>

@@ -52,7 +52,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -134,7 +134,7 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SHADOW_TABLE_PREFIX=shadow_
+export SHADOW_TABLE_PREFIX=rev_shadow_
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -215,7 +215,7 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SHADOW_TABLE_PREFIX=shadow_
+export SHADOW_TABLE_PREFIX=rev_shadow_
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -296,7 +296,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     sourceShardsFilePath = "<sourceShardsFilePath>"
     # startTimestamp = ""
     # endTimestamp = ""
-    # shadowTablePrefix = "shadow_"
+    # shadowTablePrefix = "rev_shadow_"
     # sessionFilePath = "<sessionFilePath>"
     # filtrationMode = "forward_migration"
     # shardingCustomJarPath = ""

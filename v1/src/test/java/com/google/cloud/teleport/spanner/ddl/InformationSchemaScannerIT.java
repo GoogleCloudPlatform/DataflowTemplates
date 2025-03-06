@@ -748,6 +748,7 @@ public class InformationSchemaScannerIT {
                 + "  \"userid\"                              bigint NOT NULL,"
                 + "  \"messageid\"                           bigint NOT NULL,"
                 + "  \"orderid\"                             bigint NOT NULL,"
+                + "  \"orderid_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_number(orderid)) VIRTUAL HIDDEN,"
                 + "  \"subject\"                             character varying,"
                 + "  \"subject_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(subject)) STORED HIDDEN,"
                 + "  \"body\"                                character varying,"
@@ -979,7 +980,8 @@ public class InformationSchemaScannerIT {
   public void pgGeneratedColumns() throws Exception {
     String statement =
         "CREATE TABLE \"T\" ( \"id\"                     bigint NOT NULL,"
-            + " \"generated\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_stored\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_virtual\" bigint GENERATED ALWAYS AS ((id / '1'::bigint)) VIRTUAL, "
             + " PRIMARY KEY (\"id\") )";
 
     SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));

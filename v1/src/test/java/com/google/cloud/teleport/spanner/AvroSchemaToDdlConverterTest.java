@@ -206,7 +206,16 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"type\" : [ \"null\", {"
             + "    \"type\" : \"array\", \"items\" : [ \"null\", \"float\"]}],"
             + "    \"sqlType\" : \"ARRAY<FLOAT32>(vector_length=>128)\""
-            + " }],"
+            + "  }, {"
+            + "    \"name\" : \"UuidColumn\","
+            + "    \"type\" : [ \"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"} ],"
+            + "    \"sqlType\":\"UUID\""
+            + "  }, {"
+            + "    \"name\" : \"UuidArrayColumn\","
+            + "    \"type\" : [ \"null\", {\"type\":\"array\","
+            + "    \"items\":[\"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"}]}],"
+            + "    \"sqlType\":\"ARRAY<UUID>\""
+            + "  }],"
             + "  \"googleStorage\" : \"CloudSpanner\","
             + "  \"spannerParent\" : \"\","
             + "  \"googleFormatVersion\" : \"booleans\","
@@ -278,6 +287,8 @@ public class AvroSchemaToDdlConverterTest {
                 + " `HiddenColumn`    INT64 HIDDEN,"
                 + " `MyTokens`                              TOKENLIST AS ((TOKENIZE_FULLTEXT(MyData))) HIDDEN,"
                 + " `Embeddings`                            ARRAY<FLOAT32>(vector_length=>128),"
+                + " `UuidColumn`      UUID,"
+                + " `UuidArrayColumn` ARRAY<UUID>,"
                 + " CONSTRAINT `ck` CHECK(`first_name` != 'last_name'),"
                 + " ) PRIMARY KEY (`id` ASC, `gen_id` ASC, `last_name` DESC)"
                 + " CREATE INDEX `UsersByFirstName` ON `Users` (`first_name`)"
@@ -435,6 +446,14 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"float641\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
+            + "    \"name\" : \"uuidColumn\","
+            + "    \"type\" : [ \"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"} ],"
+            + "    \"sqlType\":\"uuid\""
+            + "  }, {"
+            + "    \"name\" : \"uuidArrayColumn\","
+            + "    \"type\":[\"null\",{\"type\":\"array\",\"items\":[\"null\", "
+            + "    {\"type\":\"string\",\"logicalType\":\"uuid\"}]}], \"sqlType\":\"uuid[]\""
+            + "  }, {"
             + "    \"name\" : \"timestamp1\","
             + "    \"type\" : [ \"null\", {\"type\":\"long\",\"logicalType\":\"timestamp-micros\"}]"
             + "  } ],  \"googleStorage\" : \"CloudSpanner\",  \"spannerParent\" : \"\", "
@@ -493,6 +512,8 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"integer1\"        bigint,"
                 + " \"float321\"        real,"
                 + " \"float641\"        double precision,"
+                + " \"uuidColumn\"      uuid,"
+                + " \"uuidArrayColumn\" uuid[],"
                 + " \"timestamp1\"      timestamp with time zone,"
                 + " CONSTRAINT \"ck\" CHECK(\"first_name\" != \"last_name\"),"
                 + " PRIMARY KEY (\"id\", \"gen_id\", \"last_name\")"
@@ -1310,5 +1331,257 @@ public class AvroSchemaToDdlConverterTest {
                 + "\"id\"                                    bigint NOT NULL,\n\t"
                 + "\"location\"                              character varying NOT NULL PLACEMENT KEY,\n\t"
                 + "PRIMARY KEY (\"id\")\n)\n\n"));
+  }
+
+  @Test
+  public void interleaveTable() {
+    String parentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    // Confirming backwards compatibility, so that an avro schema with no interleave type is treated
+    // as IN PARENT by default.
+    String interleaveInParentTableNoInterleaveType =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTableNoInterleaveType\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    String interleaveInParentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN PARENT\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    String interleaveInTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"STRING(MAX)\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"`k1` ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(parentTable));
+    schemas.add(parser.parse(interleaveInParentTableNoInterleaveType));
+    schemas.add(parser.parse(interleaveInParentTable));
+    schemas.add(parser.parse(interleaveInTable));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(4));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `ParentTable` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC)\n\n\n"
+                + "CREATE TABLE `interleaveInParentTable` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC),\nINTERLEAVE IN PARENT `ParentTable`\n\n"
+                + "CREATE TABLE `interleaveInParentTableNoInterleaveType` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC),\nINTERLEAVE IN PARENT `ParentTable`\n\n"
+                + "CREATE TABLE `interleaveInTable` (\n\t"
+                + "`k1`                                    STRING(MAX) NOT NULL,\n\t"
+                + "`v1`                                    STRING(MAX) NOT NULL,\n"
+                + ") PRIMARY KEY (`k1` ASC),\nINTERLEAVE IN  `ParentTable`\n\n"));
+  }
+
+  @Test
+  public void pgInterleaveTable() {
+    String parentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"ParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    // Confirming backwards compatibility, so that an avro schema with no interleave type is treated
+    // as IN PARENT by default.
+    String interleaveInParentTableNoInterleaveType =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTableNoInterleaveType\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    String interleaveInParentTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInParentTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN PARENT\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    String interleaveInTable =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"interleaveInTable\","
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"fields\" : [ {"
+            + "    \"name\" : \"k1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }, {"
+            + "    \"name\" : \"v1\","
+            + "    \"type\" : \"string\","
+            + "    \"sqlType\" : \"character varying\","
+            + "    \"notNull\" : \"true\""
+            + "  }],"
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"spannerParent\" : \"ParentTable\","
+            + "  \"spannerInterleaveType\" : \"IN\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerPrimaryKey_0\" : \"k1 ASC\""
+            + "}";
+
+    Collection<Schema> schemas = new ArrayList<>();
+    Schema.Parser parser = new Schema.Parser();
+    schemas.add(parser.parse(parentTable));
+    schemas.add(parser.parse(interleaveInParentTableNoInterleaveType));
+    schemas.add(parser.parse(interleaveInParentTable));
+    schemas.add(parser.parse(interleaveInTable));
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter(Dialect.POSTGRESQL);
+    Ddl ddl = converter.toDdl(schemas);
+    assertThat(ddl.allTables(), hasSize(4));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"ParentTable\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ")\n\n\n"
+                + "CREATE TABLE \"interleaveInParentTable\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ") \nINTERLEAVE IN PARENT \"ParentTable\"\n\n"
+                + "CREATE TABLE \"interleaveInParentTableNoInterleaveType\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ") \nINTERLEAVE IN PARENT \"ParentTable\"\n\n"
+                + "CREATE TABLE \"interleaveInTable\" (\n\t"
+                + "\"k1\"                                    character varying NOT NULL,\n\t"
+                + "\"v1\"                                    character varying NOT NULL,\n\t"
+                + "PRIMARY KEY (\"k1\")\n"
+                + ") \nINTERLEAVE IN  \"ParentTable\"\n\n"));
   }
 }

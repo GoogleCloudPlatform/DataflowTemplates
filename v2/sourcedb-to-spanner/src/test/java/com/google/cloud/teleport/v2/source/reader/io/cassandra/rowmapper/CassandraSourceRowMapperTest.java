@@ -15,8 +15,14 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper;
 
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.LIST_TYPES_TABLE;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.LIST_TYPES_TABLE_AVRO_ROWS;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.MAP_TYPES_TABLE;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.MAP_TYPES_TABLE_AVRO_ROWS;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.PRIMITIVE_TYPES_TABLE;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.PRIMITIVE_TYPES_TABLE_AVRO_ROWS;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TYPES_TABLE;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TYPES_TABLE_AVRO_ROWS;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
@@ -44,6 +50,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.List;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -74,6 +81,26 @@ public class CassandraSourceRowMapperTest {
 
   @Test
   public void testCassandraSourceRowMapperBasic() throws RetriableSchemaDiscoveryException {
+    cassandraSourceRowMapperTestHelper(PRIMITIVE_TYPES_TABLE, PRIMITIVE_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  @Test
+  public void testCassandraSourceRowMapperList() throws RetriableSchemaDiscoveryException {
+    cassandraSourceRowMapperTestHelper(LIST_TYPES_TABLE, LIST_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  @Test
+  public void testCassandraSourceRowMapperSet() throws RetriableSchemaDiscoveryException {
+    cassandraSourceRowMapperTestHelper(SET_TYPES_TABLE, SET_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  @Test
+  public void testCassandraSourceRowMapperMap() throws RetriableSchemaDiscoveryException {
+    cassandraSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  private void cassandraSourceRowMapperTestHelper(String tableName, List<String> expectedRows)
+      throws RetriableSchemaDiscoveryException {
 
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(
@@ -89,11 +116,10 @@ public class CassandraSourceRowMapperTest {
                 .build());
 
     SourceTableSchema.Builder sourceTableSchemaBuilder =
-        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(PRIMITIVE_TYPES_TABLE);
+        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
     new CassandraSchemaDiscovery()
-        .discoverTableSchema(
-            dataSource, sourceSchemaReference, ImmutableList.of(PRIMITIVE_TYPES_TABLE))
-        .get(PRIMITIVE_TYPES_TABLE)
+        .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
+        .get(tableName)
         .forEach(sourceTableSchemaBuilder::addSourceColumnNameToSourceColumnType);
 
     CassandraSourceRowMapper cassandraSourceRowMapper =
@@ -103,7 +129,7 @@ public class CassandraSourceRowMapperTest {
             .build();
 
     ResultSet resultSet;
-    String query = "SELECT * FROM " + PRIMITIVE_TYPES_TABLE;
+    String query = "SELECT * FROM " + tableName;
     com.datastax.oss.driver.api.core.cql.SimpleStatement statement =
         SimpleStatement.newInstance(query);
     Cluster cluster =
@@ -123,26 +149,23 @@ public class CassandraSourceRowMapperTest {
       cassandraSourceRowMapper.map(resultSet).forEachRemaining(row -> readRowsBuilder.add(row));
       ImmutableList<SourceRow> readRows = readRowsBuilder.build();
 
-      readRows.forEach(r -> assertThat(r.tableName() == PRIMITIVE_TYPES_TABLE));
+      readRows.forEach(r -> assertThat(r.tableName() == tableName));
       readRows.forEach(r -> assertThat(r.sourceSchemaReference() == sourceSchemaReference));
       assertThat(
               readRows.stream()
                   .map(r -> r.getPayload().toString())
                   .sorted()
                   .collect(ImmutableList.toImmutableList()))
-          .isEqualTo(
-              PRIMITIVE_TYPES_TABLE_AVRO_ROWS.stream()
-                  .sorted()
-                  .collect(ImmutableList.toImmutableList()));
+          .isEqualTo(expectedRows.stream().sorted().collect(ImmutableList.toImmutableList()));
 
       // Since we will use CassandraIO only for reads, we don't need to support the `deleteAsync`
       // and `saveAsync` functions of the CassandraIO mapper interface.
       assertThrows(
           UnsupportedOperationException.class,
-          () -> cassandraSourceRowMapper.deleteAsync(readRows.get(1)));
+          () -> cassandraSourceRowMapper.deleteAsync(readRows.get(0)));
       assertThrows(
           UnsupportedOperationException.class,
-          () -> cassandraSourceRowMapper.saveAsync(readRows.get(1)));
+          () -> cassandraSourceRowMapper.saveAsync(readRows.get(0)));
     }
   }
 

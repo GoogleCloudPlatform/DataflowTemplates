@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMEN
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
@@ -55,6 +56,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
+import com.google.cloud.teleport.spanner.common.SizedType;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
@@ -68,6 +70,7 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph.PropertyDeclaration;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -561,7 +564,7 @@ public class AvroSchemaToDdlConverter {
         }
         if (Strings.isNullOrEmpty(sqlType)) {
           Type spannerType = inferType(avroType, true);
-          sqlType = toString(spannerType, true);
+          sqlType = SizedType.typeString(spannerType, -1, true);
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
@@ -612,6 +615,16 @@ public class AvroSchemaToDdlConverter {
     String spannerParent = schema.getProp(SPANNER_PARENT);
     if (!Strings.isNullOrEmpty(spannerParent)) {
       table.interleaveInParent(spannerParent);
+
+      // Process the interleave type.
+      String spannerInterleaveType = schema.getProp(SPANNER_INTERLEAVE_TYPE);
+      if (!Strings.isNullOrEmpty(spannerInterleaveType)) {
+        table.interleaveType(
+            spannerInterleaveType.equals("IN") ? InterleaveType.IN : InterleaveType.IN_PARENT);
+      } else {
+        // Default to IN_PARENT for backwards compatibility with older exports.
+        table.interleaveType(InterleaveType.IN_PARENT);
+      }
 
       // Process the on delete action.
       String onDeleteAction = schema.getProp(SPANNER_ON_DELETE_ACTION);
@@ -685,6 +698,11 @@ public class AvroSchemaToDdlConverter {
             ? com.google.cloud.teleport.spanner.common.Type.float64()
             : com.google.cloud.teleport.spanner.common.Type.pgFloat8();
       case STRING:
+        if (LogicalTypes.uuid().equals(logicalType)) {
+          return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? com.google.cloud.teleport.spanner.common.Type.uuid()
+              : com.google.cloud.teleport.spanner.common.Type.pgUuid();
+        }
         return (dialect == Dialect.GOOGLE_STANDARD_SQL)
             ? com.google.cloud.teleport.spanner.common.Type.string()
             : com.google.cloud.teleport.spanner.common.Type.pgVarchar();
@@ -726,80 +744,5 @@ public class AvroSchemaToDdlConverter {
         }
     }
     throw new IllegalArgumentException("Cannot infer a type " + f);
-  }
-
-  private String toString(
-      com.google.cloud.teleport.spanner.common.Type spannerType, boolean supportArray) {
-    switch (spannerType.getCode()) {
-      case BOOL:
-        return "BOOL";
-      case PG_BOOL:
-        return "boolean";
-      case INT64:
-        return "INT64";
-      case PG_INT8:
-        return "bigint";
-      case FLOAT32:
-        return "FLOAT32";
-      case PG_FLOAT4:
-        return "real";
-      case FLOAT64:
-        return "FLOAT64";
-      case PG_FLOAT8:
-        return "double precision";
-      case STRING:
-        return "STRING(MAX)";
-      case PG_TEXT:
-        return "text";
-      case PG_VARCHAR:
-        return "character varying";
-      case BYTES:
-        return "BYTES(MAX)";
-      case PG_BYTEA:
-        return "bytea";
-      case TIMESTAMP:
-        return "TIMESTAMP";
-      case PG_TIMESTAMPTZ:
-        return "timestamp with time zone";
-      case PG_SPANNER_COMMIT_TIMESTAMP:
-        return "spanner.commit_timestamp";
-      case DATE:
-        return "DATE";
-      case PG_DATE:
-        return "date";
-      case NUMERIC:
-        return "NUMERIC";
-      case PG_NUMERIC:
-        return "numeric";
-      case JSON:
-        return "JSON";
-      case PROTO:
-        return "PROTO<" + spannerType.getProtoTypeFqn() + ">";
-      case ENUM:
-        return "ENUM<" + spannerType.getProtoTypeFqn() + ">";
-      case ARRAY:
-        {
-          if (supportArray) {
-            com.google.cloud.teleport.spanner.common.Type element =
-                spannerType.getArrayElementType();
-            String elementStr = toString(element, false);
-            return "ARRAY<" + elementStr + ">";
-          }
-          // otherwise fall through and throw an error.
-          break;
-        }
-      case PG_ARRAY:
-        {
-          if (supportArray) {
-            com.google.cloud.teleport.spanner.common.Type element =
-                spannerType.getArrayElementType();
-            String elementStr = toString(element, false);
-            return elementStr + "[]";
-          }
-          // otherwise fall through and throw an error.
-          break;
-        }
-    }
-    throw new IllegalArgumentException("Cannot to string the type " + spannerType);
   }
 }

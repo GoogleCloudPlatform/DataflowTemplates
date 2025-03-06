@@ -481,6 +481,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
         return Code.PROTO;
       } else if (columnType.startsWith("ENUM") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
         return Code.ENUM;
+      } else if (columnType.equalsIgnoreCase("UUID") && dialect == Dialect.GOOGLE_STANDARD_SQL) {
+        return Code.UUID;
       } else if (columnType.equalsIgnoreCase("bigint") && dialect == Dialect.POSTGRESQL) {
         return Code.PG_INT8;
       } else if (columnType.equalsIgnoreCase("real") && dialect == Dialect.POSTGRESQL) {
@@ -508,6 +510,8 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
       } else if (columnType.equalsIgnoreCase("spanner.commit_timestamp")
           && dialect == Dialect.POSTGRESQL) {
         return Code.PG_SPANNER_COMMIT_TIMESTAMP;
+      } else if (columnType.equalsIgnoreCase("uuid") && dialect == Dialect.POSTGRESQL) {
+        return Code.PG_UUID;
       } else {
         throw new IllegalArgumentException(
             "Unrecognized or unsupported column data type: " + columnType);

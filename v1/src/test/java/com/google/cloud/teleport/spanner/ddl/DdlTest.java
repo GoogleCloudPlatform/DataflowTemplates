@@ -261,6 +261,11 @@ public class DdlTest {
         .generatedAs("MOD(id+1, 64)")
         .stored()
         .endColumn()
+        .column("gen_id_virtual")
+        .pgInt8()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .endColumn()
         .column("first_name")
         .pgVarchar()
         .size(10)
@@ -336,6 +341,7 @@ public class DdlTest {
                 + " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
                 + " \"gen_id\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) STORED,"
+                + " \"gen_id_virtual\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) VIRTUAL,"
                 + " \"first_name\" character varying(10) DEFAULT John,"
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"

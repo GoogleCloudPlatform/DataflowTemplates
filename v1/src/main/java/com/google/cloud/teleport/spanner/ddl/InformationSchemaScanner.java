@@ -28,6 +28,7 @@ import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Optional;
@@ -226,7 +227,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         queryBuilder =
             Statement.newBuilder(
-                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.interleave_type, t.on_delete_action FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN"
                     + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')");
@@ -239,7 +240,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         queryBuilder =
             Statement.newBuilder(
-                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_schema, t.table_name, t.parent_table_name, t.interleave_type, t.on_delete_action FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN "
                     + "('information_schema', 'spanner_sys', 'pg_catalog')");
@@ -270,18 +271,39 @@ public class InformationSchemaScanner {
       // Parent table and child table has to be in same schema.
       String parentTableName =
           resultSet.isNull(2) ? null : getQualifiedName(tableSchema, resultSet.getString(2));
-      String onDeleteAction = resultSet.isNull(3) ? null : resultSet.getString(3);
+      String interleaveTypeStr = resultSet.isNull(3) ? null : resultSet.getString(3);
+      Table.InterleaveType interleaveType = null;
+      if (!Strings.isNullOrEmpty(interleaveTypeStr)) {
+        interleaveType =
+            interleaveTypeStr.equals("IN PARENT") ? InterleaveType.IN_PARENT : InterleaveType.IN;
+      }
+      String onDeleteAction = resultSet.isNull(4) ? null : resultSet.getString(4);
 
-      // Error out when the parent table or on delete action are set incorrectly.
-      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
+      boolean hasParentTable = !Strings.isNullOrEmpty(parentTableName);
+      boolean hasInterleaveType = !Strings.isNullOrEmpty(interleaveTypeStr);
+      boolean hasOnDeleteAction = !Strings.isNullOrEmpty(onDeleteAction);
+
+      // If parent_table_name is set, then it is required that there also be an interleave_type.
+      // Conversely, if there is no parent, then there should also be no interleave_type.
+      if (hasParentTable != hasInterleaveType) {
         throw new IllegalStateException(
             String.format(
-                "Invalid combination of parentTableName %s and onDeleteAction %s",
-                parentTableName, onDeleteAction));
+                "Invalid combination of parentTableName %s and interleaveType %s",
+                parentTableName, interleaveTypeStr));
+      }
+
+      // If this table is interleaved with IN PARENT semantics, then an ON DELETE action is
+      // required. Conversely, if this table is interleaved with IN semantics or is not interleaved
+      // at all, then it is required that there not be an ON DELETE action.
+      if (interleaveType == InterleaveType.IN_PARENT != hasOnDeleteAction) {
+        throw new IllegalStateException(
+            String.format(
+                "Invalid combination of interleaveType %s and onDeleteAction %s",
+                interleaveTypeStr, onDeleteAction));
       }
 
       boolean onDeleteCascade = false;
-      if (onDeleteAction != null) {
+      if (hasOnDeleteAction) {
         if (onDeleteAction.equals("CASCADE")) {
           onDeleteCascade = true;
         } else if (!onDeleteAction.equals("NO ACTION")) {
@@ -294,6 +316,7 @@ public class InformationSchemaScanner {
       builder
           .createTable(tableName)
           .interleaveInParent(parentTableName)
+          .interleaveType(interleaveType)
           .onDeleteCascade(onDeleteCascade)
           .endTable();
     }
@@ -345,6 +368,10 @@ public class InformationSchemaScanner {
       String defaultExpression = resultSet.isNull(9) ? null : resultSet.getString(9);
       boolean isIdentity = resultSet.getString(10).equalsIgnoreCase("YES");
       String identityKind = resultSet.isNull(11) ? null : resultSet.getString(11);
+      String sequenceKind = null;
+      if (identityKind != null && identityKind.equals("BIT_REVERSED_POSITIVE_SEQUENCE")) {
+        sequenceKind = "bit_reversed_positive";
+      }
       // The start_with_counter value is the initial value and cannot represent the actual state of
       // the counter. We need to apply the current counter to the DDL builder, instead of the one
       // retrieved from Information Schema.
@@ -375,7 +402,7 @@ public class InformationSchemaScanner {
           .isStored(isStored)
           .defaultExpression(defaultExpression)
           .isIdentityColumn(isIdentity)
-          .sequenceKind(identityKind)
+          .sequenceKind(sequenceKind)
           .counterStartValue(identityStartWithCounter)
           .skipRangeMin(identitySkipRangeMin)
           .skipRangeMax(identitySkipRangeMax)
@@ -1626,15 +1653,19 @@ public class InformationSchemaScanner {
     ResultSet resultSet = context.executeQuery(queryStatement);
     while (resultSet.next()) {
       String sequenceName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
-      builder.createSequence(sequenceName).endSequence();
 
       Statement sequenceCounterStatement;
       switch (dialect) {
         case GOOGLE_STANDARD_SQL:
+          ImmutableList.Builder<String> options = ImmutableList.builder();
+          options.add(
+              Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
+          builder.createSequence(sequenceName).options(options.build()).endSequence();
           sequenceCounterStatement =
               Statement.of("SELECT GET_INTERNAL_SEQUENCE_STATE(SEQUENCE " + sequenceName + ")");
           break;
         case POSTGRESQL:
+          builder.createSequence(sequenceName).endSequence();
           sequenceCounterStatement =
               Statement.of(
                   "SELECT spanner.GET_INTERNAL_SEQUENCE_STATE('"
@@ -1666,7 +1697,6 @@ public class InformationSchemaScanner {
                     + " ORDER BY t.name, t.option_name"));
 
     Map<String, ImmutableList.Builder<String>> allOptions = Maps.newHashMap();
-    Set<String> hasSequenceKind = new HashSet<>();
     while (resultSet.next()) {
       String sequenceName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
       String optionName = resultSet.getString(2);
@@ -1678,9 +1708,6 @@ public class InformationSchemaScanner {
         // The sequence is in use, we need to apply the current counter to
         // the DDL builder, instead of the one retrieved from Information Schema.
         continue;
-      }
-      if (optionName.equals(Sequence.SEQUENCE_KIND)) {
-        hasSequenceKind.add(sequenceName);
       }
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
@@ -1701,12 +1728,6 @@ public class InformationSchemaScanner {
       String sequenceName = entry.getKey();
       ImmutableList.Builder<String> options =
           allOptions.computeIfAbsent(sequenceName, k -> ImmutableList.builder());
-
-      if (!hasSequenceKind.contains(sequenceName)) {
-        // If the sequence kind is not specified, assign it to 'default'.
-        options.add(
-            Sequence.SEQUENCE_KIND + "=" + GSQL_LITERAL_QUOTE + "default" + GSQL_LITERAL_QUOTE);
-      }
 
       // Add a buffer to accommodate writes that may happen after import
       // is run. Note that this is not 100% failproof, since more writes may

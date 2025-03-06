@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.amazonaws.regions.Regions;
-import com.amazonaws.services.kinesis.clientlibrary.lib.worker.InitialPositionInStream;
 import com.google.cloud.secretmanager.v1.SecretVersionName;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -26,12 +24,16 @@ import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import javax.annotation.Nonnull;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.io.aws2.common.ClientConfiguration;
+import org.apache.beam.sdk.io.aws2.kinesis.KinesisIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
-import org.apache.beam.sdk.io.kinesis.KinesisIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.kinesis.common.InitialPositionInStream;
 
 /**
  * The {@link KinesisToPubsub} is a streaming pipeline which reads data from AWS Kinesis Data stream
@@ -125,7 +127,8 @@ public class KinesisToPubsub {
 
     // Create the pipeline
     Pipeline pipeline = Pipeline.create(options);
-
+    AwsBasicCredentials creds = AwsBasicCredentials.create(awsKeyId, awsSecretAccessKey);
+    StaticCredentialsProvider provider = StaticCredentialsProvider.create(creds);
     /*
      * Steps:
      *  1) Read messages in from Kinesis
@@ -137,8 +140,11 @@ public class KinesisToPubsub {
             "Read Kinesis Datastream",
             KinesisIO.read()
                 .withStreamName(kinesisDatastreamName)
-                .withAWSClientsProvider(
-                    awsKeyId, awsSecretAccessKey, Regions.fromName(options.getAwsRegion()))
+                .withClientConfiguration(
+                    ClientConfiguration.builder()
+                        .credentialsProvider(provider)
+                        .region(options.getAwsRegion())
+                        .build())
                 .withInitialPositionInStream(InitialPositionInStream.LATEST))
         .apply("Extract String message", ParDo.of(new KinesisDataTransforms.ExtractStringFn()))
         .apply("PubsubSink", PubsubIO.writeStrings().to(options.getOutputPubsubTopic()));

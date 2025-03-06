@@ -14,9 +14,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **readBootstrapServerAndTopic**: Kafka Bootstrap server and topic to read the input from. For example, `localhost:9092;topic1,topic2`.
-* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `KafkaAuthenticationMethod.NONE` for no authentication, `KafkaAuthenticationMethod.SASL_PLAIN` for SASL/PLAIN username and password, and `KafkaAuthenticationMethod.TLS` for certificate-based authentication. `KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Apache Kafka for BigQuery cluster, it allows to authenticate using application default credentials.
+* **kafkaReadAuthenticationMode**: The mode of authentication to use with the Kafka cluster. Use `KafkaAuthenticationMethod.NONE` for no authentication, `KafkaAuthenticationMethod.SASL_PLAIN` for SASL/PLAIN username and password, `KafkaAuthenticationMethod.SASL_SCRAM_512` for SASL_SCRAM_512 authentication and `KafkaAuthenticationMethod.TLS` for certificate-based authentication. `KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS` should be used only for Google Cloud Apache Kafka for BigQuery cluster, it allows to authenticate using application default credentials.
 * **writeBootstrapServerAndTopic**: Kafka topic to write the output to.
-* **kafkaWriteAuthenticationMethod**: The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password, and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
+* **kafkaWriteAuthenticationMethod**: The mode of authentication to use with the Kafka cluster. Use NONE for no authentication, SASL_PLAIN for SASL/PLAIN username and password,  SASL_SCRAM_512 for SASL_SCRAM_512 based authentication and TLS for certificate-based authentication. Defaults to: APPLICATION_DEFAULT_CREDENTIALS.
 
 ### Optional parameters
 
@@ -30,6 +30,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **kafkaReadTruststorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka TLS authentication For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 * **kafkaReadKeystorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java KeyStore (JKS) file for Kafka TLS authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 * **kafkaReadKeyPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the private key within the Java KeyStore (JKS) file for Kafka TLS authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadSaslScramUsernameSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka username to use with `SASL_SCRAM` authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadSaslScramPasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka password to use with `SASL_SCRAM` authentication. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
+* **kafkaReadSaslScramTruststoreLocation**: The Google Cloud Storage path to the Java TrustStore (JKS) file that contains the trusted certificates to use to verify the identity of the Kafka broker.
+* **kafkaReadSaslScramTruststorePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the password to use to access the Java TrustStore (JKS) file for Kafka SASL_SCRAM authentication For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`.
 * **kafkaWriteUsernameSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka username  for SASL_PLAIN authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`. Defaults to empty.
 * **kafkaWritePasswordSecretId**: The Google Cloud Secret Manager secret ID that contains the Kafka password to use for SASL_PLAIN authentication with the destination Kafka cluster. For example, `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>`. Defaults to empty.
 * **kafkaWriteKeystoreLocation**: The Google Cloud Storage path to the Java KeyStore (JKS) file that contains the TLS certificate and private key for authenticating with the destination Kafka cluster. For example, `gs://<BUCKET>/<KEYSTORE>.jks`.
@@ -44,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -131,6 +135,10 @@ export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
 export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
 export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
 export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID=<kafkaReadSaslScramUsernameSecretId>
+export KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID=<kafkaReadSaslScramPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION=<kafkaReadSaslScramTruststoreLocation>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadSaslScramTruststorePasswordSecretId>
 export KAFKA_WRITE_USERNAME_SECRET_ID=""
 export KAFKA_WRITE_PASSWORD_SECRET_ID=""
 export KAFKA_WRITE_KEYSTORE_LOCATION=<kafkaWriteKeystoreLocation>
@@ -155,6 +163,10 @@ gcloud dataflow flex-template run "kafka-to-kafka-job" \
   --parameters "kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID" \
   --parameters "kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID" \
   --parameters "kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadSaslScramUsernameSecretId=$KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID" \
+  --parameters "kafkaReadSaslScramPasswordSecretId=$KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID" \
+  --parameters "kafkaReadSaslScramTruststoreLocation=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION" \
+  --parameters "kafkaReadSaslScramTruststorePasswordSecretId=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID" \
   --parameters "writeBootstrapServerAndTopic=$WRITE_BOOTSTRAP_SERVER_AND_TOPIC" \
   --parameters "kafkaWriteAuthenticationMethod=$KAFKA_WRITE_AUTHENTICATION_METHOD" \
   --parameters "kafkaWriteUsernameSecretId=$KAFKA_WRITE_USERNAME_SECRET_ID" \
@@ -198,6 +210,10 @@ export KAFKA_READ_TRUSTSTORE_LOCATION=<kafkaReadTruststoreLocation>
 export KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadTruststorePasswordSecretId>
 export KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID=<kafkaReadKeystorePasswordSecretId>
 export KAFKA_READ_KEY_PASSWORD_SECRET_ID=<kafkaReadKeyPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID=<kafkaReadSaslScramUsernameSecretId>
+export KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID=<kafkaReadSaslScramPasswordSecretId>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION=<kafkaReadSaslScramTruststoreLocation>
+export KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID=<kafkaReadSaslScramTruststorePasswordSecretId>
 export KAFKA_WRITE_USERNAME_SECRET_ID=""
 export KAFKA_WRITE_PASSWORD_SECRET_ID=""
 export KAFKA_WRITE_KEYSTORE_LOCATION=<kafkaWriteKeystoreLocation>
@@ -213,7 +229,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-kafka-job" \
 -DtemplateName="Kafka_to_Kafka" \
--Dparameters="readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC,enableCommitOffsets=$ENABLE_COMMIT_OFFSETS,consumerGroupId=$CONSUMER_GROUP_ID,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION,kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION,kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID,kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID,writeBootstrapServerAndTopic=$WRITE_BOOTSTRAP_SERVER_AND_TOPIC,kafkaWriteAuthenticationMethod=$KAFKA_WRITE_AUTHENTICATION_METHOD,kafkaWriteUsernameSecretId=$KAFKA_WRITE_USERNAME_SECRET_ID,kafkaWritePasswordSecretId=$KAFKA_WRITE_PASSWORD_SECRET_ID,kafkaWriteKeystoreLocation=$KAFKA_WRITE_KEYSTORE_LOCATION,kafkaWriteTruststoreLocation=$KAFKA_WRITE_TRUSTSTORE_LOCATION,kafkaWriteTruststorePasswordSecretId=$KAFKA_WRITE_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaWriteKeystorePasswordSecretId=$KAFKA_WRITE_KEYSTORE_PASSWORD_SECRET_ID,kafkaWriteKeyPasswordSecretId=$KAFKA_WRITE_KEY_PASSWORD_SECRET_ID" \
+-Dparameters="readBootstrapServerAndTopic=$READ_BOOTSTRAP_SERVER_AND_TOPIC,enableCommitOffsets=$ENABLE_COMMIT_OFFSETS,consumerGroupId=$CONSUMER_GROUP_ID,kafkaReadOffset=$KAFKA_READ_OFFSET,kafkaReadAuthenticationMode=$KAFKA_READ_AUTHENTICATION_MODE,kafkaReadUsernameSecretId=$KAFKA_READ_USERNAME_SECRET_ID,kafkaReadPasswordSecretId=$KAFKA_READ_PASSWORD_SECRET_ID,kafkaReadKeystoreLocation=$KAFKA_READ_KEYSTORE_LOCATION,kafkaReadTruststoreLocation=$KAFKA_READ_TRUSTSTORE_LOCATION,kafkaReadTruststorePasswordSecretId=$KAFKA_READ_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaReadKeystorePasswordSecretId=$KAFKA_READ_KEYSTORE_PASSWORD_SECRET_ID,kafkaReadKeyPasswordSecretId=$KAFKA_READ_KEY_PASSWORD_SECRET_ID,kafkaReadSaslScramUsernameSecretId=$KAFKA_READ_SASL_SCRAM_USERNAME_SECRET_ID,kafkaReadSaslScramPasswordSecretId=$KAFKA_READ_SASL_SCRAM_PASSWORD_SECRET_ID,kafkaReadSaslScramTruststoreLocation=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_LOCATION,kafkaReadSaslScramTruststorePasswordSecretId=$KAFKA_READ_SASL_SCRAM_TRUSTSTORE_PASSWORD_SECRET_ID,writeBootstrapServerAndTopic=$WRITE_BOOTSTRAP_SERVER_AND_TOPIC,kafkaWriteAuthenticationMethod=$KAFKA_WRITE_AUTHENTICATION_METHOD,kafkaWriteUsernameSecretId=$KAFKA_WRITE_USERNAME_SECRET_ID,kafkaWritePasswordSecretId=$KAFKA_WRITE_PASSWORD_SECRET_ID,kafkaWriteKeystoreLocation=$KAFKA_WRITE_KEYSTORE_LOCATION,kafkaWriteTruststoreLocation=$KAFKA_WRITE_TRUSTSTORE_LOCATION,kafkaWriteTruststorePasswordSecretId=$KAFKA_WRITE_TRUSTSTORE_PASSWORD_SECRET_ID,kafkaWriteKeystorePasswordSecretId=$KAFKA_WRITE_KEYSTORE_PASSWORD_SECRET_ID,kafkaWriteKeyPasswordSecretId=$KAFKA_WRITE_KEY_PASSWORD_SECRET_ID" \
 -f v2/kafka-to-kafka
 ```
 
@@ -272,6 +288,10 @@ resource "google_dataflow_flex_template_job" "kafka_to_kafka" {
     # kafkaReadTruststorePasswordSecretId = "<kafkaReadTruststorePasswordSecretId>"
     # kafkaReadKeystorePasswordSecretId = "<kafkaReadKeystorePasswordSecretId>"
     # kafkaReadKeyPasswordSecretId = "<kafkaReadKeyPasswordSecretId>"
+    # kafkaReadSaslScramUsernameSecretId = "<kafkaReadSaslScramUsernameSecretId>"
+    # kafkaReadSaslScramPasswordSecretId = "<kafkaReadSaslScramPasswordSecretId>"
+    # kafkaReadSaslScramTruststoreLocation = "<kafkaReadSaslScramTruststoreLocation>"
+    # kafkaReadSaslScramTruststorePasswordSecretId = "<kafkaReadSaslScramTruststorePasswordSecretId>"
     # kafkaWriteUsernameSecretId = ""
     # kafkaWritePasswordSecretId = ""
     # kafkaWriteKeystoreLocation = "<kafkaWriteKeystoreLocation>"
