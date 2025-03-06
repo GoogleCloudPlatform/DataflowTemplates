@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.endToEnd;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
@@ -25,6 +24,7 @@ import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -36,25 +36,33 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -186,13 +194,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             put("spannerProjectId", PROJECT);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsPath(
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                        ? "input/cassandra-config.conf"
-                        : "input/shard.json",
-                    gcsResourceManager));
+            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
@@ -262,10 +264,15 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
-      String rrSubscriptionName,
+      PubsubResourceManager pubsubResourceManager,
       String sourceType)
       throws IOException {
     String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
+    SubscriptionName rrSubscriptionName =
+        createPubsubResources(
+            getClass().getSimpleName(),
+            pubsubResourceManager,
+            getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
     // default parameters
     flexTemplateDataflowJobResourceManager =
         FlexTemplateDataflowJobResourceManager.builder(rrJobName)
@@ -280,7 +287,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter(
                 "sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager))
             .addParameter("changeStreamName", "allstream")
-            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName)
+            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName.toString())
             .addParameter("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager))
             .addParameter("maxShardConnections", "5")
             .addParameter("maxNumWorkers", "1")
@@ -370,7 +377,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
 
-    // Create Datastream GCS Destination Connection profile and config
+    // Create DataStream GCS Destination Connection profile and config
     DestinationConfig destinationConfig =
         datastreamResourceManager.buildGCSDestinationConfig(
             "gcs",
@@ -378,10 +385,68 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             gcsPrefix,
             DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
 
-    // Create and start Datastream stream
+    // Create and start DataStream stream
     Stream stream =
         datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
     return stream;
+  }
+
+  protected ConditionCheck writeJdbcData(
+      String tableName,
+      Integer numRows,
+      List<String> columns,
+      Map<String, List<Map<String, Object>>> cdcEvents,
+      CloudSqlResourceManager cloudSqlResourceManager) {
+    return new ConditionCheck() {
+      @Override
+      protected String getDescription() {
+        return "Send initial JDBC events.";
+      }
+
+      @Override
+      protected CheckResult check() {
+        boolean success = true;
+        List<String> messages = new ArrayList<>();
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int i = 0; i < numRows; i++) {
+          Map<String, Object> values = new HashMap<>();
+          values.put(columns.get(0), i);
+          values.put(columns.get(1), RandomStringUtils.randomAlphabetic(10));
+          rows.add(values);
+        }
+        cdcEvents.put(tableName, rows);
+        success &= cloudSqlResourceManager.write(tableName, rows);
+        messages.add(String.format("%d rows to %s", rows.size(), tableName));
+
+        return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
+      }
+    };
+  }
+
+  protected String generateSessionFile(String srcDb, String spannerDb, String sessionFileResource)
+      throws IOException {
+    String sessionFile =
+        Files.readString(Paths.get(Resources.getResource(sessionFileResource).getPath()));
+    return sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
+  }
+
+  protected JDBCSource createMySqlDatabase(CloudSqlResourceManager cloudSqlResourceManager) {
+    cloudSqlResourceManager.createTable("Authors", createJdbcSchema());
+    return MySQLSource.builder(
+            cloudSqlResourceManager.getHost(),
+            cloudSqlResourceManager.getUsername(),
+            cloudSqlResourceManager.getPassword(),
+            cloudSqlResourceManager.getPort())
+        .setAllowedTables(
+            Map.of(cloudSqlResourceManager.getDatabaseName(), Arrays.asList("Authors")))
+        .build();
+  }
+
+  private JDBCResourceManager.JDBCSchema createJdbcSchema() {
+    HashMap<String, String> columns = new HashMap<>();
+    columns.put("id", "INT" + " NOT NULL");
+    columns.put("name", "VARCHAR(200)");
+    return new JDBCResourceManager.JDBCSchema(columns, "id");
   }
 }
