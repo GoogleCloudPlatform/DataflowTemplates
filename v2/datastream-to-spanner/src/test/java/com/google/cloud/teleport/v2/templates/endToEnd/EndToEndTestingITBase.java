@@ -253,7 +253,9 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
       PubsubResourceManager pubsubResourceManager,
-      String sourceType)
+      String sourceType,
+      String network,
+      String subnetwork)
       throws IOException {
     String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
 
@@ -286,8 +288,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addParameter("network", "test")
-            .addParameter("subnetwork", "regions/us-central1/subnetworks/test")
+            .addParameter("network", network)
+            .addParameter("subnetwork", subnetwork)
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
