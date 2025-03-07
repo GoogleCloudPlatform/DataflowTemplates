@@ -442,8 +442,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         generateSBOM && !Strings.isNullOrEmpty(stagingArtifactRegistry);
     String imagePath =
         stageImageBeforePromote
-            ? generateStagingFlexTemplateImagePath(
-                containerName, stagingArtifactRegistry, stagePrefix)
+            ? generateFlexTemplateImagePath(
+                containerName, null, null, stagingArtifactRegistry, stagePrefix)
             : imageSpec.getImage();
     String buildProjectId =
         stageImageBeforePromote
@@ -1090,13 +1090,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String artifactRegion,
       String artifactRegistry,
       String stagePrefix) {
-    String prefix = "";
-    if (artifactRegion != null && !artifactRegion.isEmpty()) {
-      prefix = artifactRegion + ".";
-    }
-
+    String prefix = Strings.isNullOrEmpty(artifactRegion) ? "" : artifactRegion + ".";
     // GCR paths can not contain ":", if the project id has it, it should be converted to "/".
-    String projectIdUrl = projectId.replace(':', '/');
+    String projectIdUrl = Strings.isNullOrEmpty(projectId) ? "" : projectId.replace(':', '/');
     return Optional.ofNullable(artifactRegistry)
         .map(
             value ->
@@ -1117,11 +1113,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                 + stagePrefix.toLowerCase()
                 + "/"
                 + containerName);
-  }
-
-  static String generateStagingFlexTemplateImagePath(
-      String containerName, String stagingArtifactRegistry, String stagePrefix) {
-    return stagingArtifactRegistry + "/" + stagePrefix + "/" + containerName;
   }
 
   private void gcsCopy(String fromPath, String toPath) throws InterruptedException, IOException {
