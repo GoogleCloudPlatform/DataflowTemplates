@@ -72,6 +72,12 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  @Parameter(defaultValue = "${artifactRegistry}", readonly = true, required = false)
+  protected String artifactRegistry;
+
+  @Parameter(defaultValue = "${stagingArtifactRegistry}", readonly = true, required = false)
+  protected String stagingArtifactRegistry;
+
   @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
   protected String gcpTempLocation;
 
@@ -185,6 +191,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                 javaTemplateLauncherEntryPoint,
                 pythonVersion,
                 beamVersion,
+                artifactRegistry,
+                stagingArtifactRegistry,
                 unifiedWorker,
                 generateSBOM);
 
