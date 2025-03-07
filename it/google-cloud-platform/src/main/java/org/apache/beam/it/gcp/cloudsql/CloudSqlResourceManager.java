@@ -188,6 +188,7 @@ public abstract class CloudSqlResourceManager
       this.setPassword(password);
       this.setHost(host);
       this.setPort(port);
+      this.useStaticContainer();
       return this;
     }
 
