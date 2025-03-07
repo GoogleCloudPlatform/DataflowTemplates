@@ -53,6 +53,9 @@ public class PromoteHelperTest {
                 "gcr.io/some-project",
                 new PromoteHelper.ArtifactRegImageSpec("some-project", "gcr.io", "us", null))
             .put(
+                "us.gcr.io/some-project",
+                new PromoteHelper.ArtifactRegImageSpec("some-project", "us.gcr.io", "us", null))
+            .put(
                 "gcr.io/google.com/some-project",
                 new PromoteHelper.ArtifactRegImageSpec(
                     "google.com:some-project", "gcr.io", "us", null))
@@ -67,7 +70,7 @@ public class PromoteHelperTest {
             .put(
                 "eu.gcr.io/some-project/some/image",
                 new PromoteHelper.ArtifactRegImageSpec(
-                    "some-project", "gcr.io", "eu", "some/image"))
+                    "some-project", "eu.gcr.io", "eu", "some/image"))
             .put(
                 "eu-docker.pkg.dev/some-project/some-repo/some-image",
                 new PromoteHelper.ArtifactRegImageSpec(

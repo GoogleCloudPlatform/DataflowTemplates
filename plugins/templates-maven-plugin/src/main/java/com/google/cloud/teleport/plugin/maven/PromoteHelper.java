@@ -136,16 +136,31 @@ class PromoteHelper {
   /** Add "latest" tag after promotion. */
   private void addTag() throws IOException, InterruptedException {
     // TODO: remove this once copy tag is supported by promote API
-    String[] command =
-        new String[] {
-          "gcloud",
-          "artifacts",
-          "docker",
-          "tags",
-          "add",
-          String.format("%s@%s", targetPath, sourceDigest),
-          String.format("%s:latest", targetPath)
-        };
+    String[] command;
+    if (targetSpec.repository.endsWith("gcr.io")) {
+      // gcr.io repository needs to use `gcloud container` to add tag
+      command =
+          new String[] {
+            "gcloud",
+            "container",
+            "images",
+            "add-tag",
+            "-q",
+            String.format("%s@%s", targetPath, sourceDigest),
+            String.format("%s:latest", targetPath)
+          };
+    } else {
+      command =
+          new String[] {
+            "gcloud",
+            "artifacts",
+            "docker",
+            "tags",
+            "add",
+            String.format("%s@%s", targetPath, sourceDigest),
+            String.format("%s:latest", targetPath)
+          };
+    }
     TemplatesStageMojo.runCommandCapturesOutput(command, null);
   }
 
@@ -200,6 +215,11 @@ class PromoteHelper {
 
     public final @Nullable String imageName;
 
+    /**
+     * Construct an {@code ArtifactRegImageSpec} from an image url. Supported image urls include
+     * [region.]gcr.io/projectId[/...] and region-docker.pkg.dev/projectId[/...]. See {@code
+     * PromoteHelperTest#testArtifactRegImageSpec} for example image urls.
+     */
     public ArtifactRegImageSpec(String imagePath) {
       String[] segments = imagePath.split("/", 3);
       if (segments.length < 3) {
@@ -216,7 +236,7 @@ class PromoteHelper {
       }
       this.project = segments[1];
       if (segments[0].endsWith("gcr.io")) {
-        this.repository = "gcr.io";
+        this.repository = segments[0];
         this.imageName = segments[2];
         if ("gcr.io".equals(segments[0])) {
           this.location = "us";

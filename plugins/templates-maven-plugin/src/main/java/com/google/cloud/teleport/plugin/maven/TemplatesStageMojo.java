@@ -113,7 +113,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   protected String artifactRegion;
 
   /**
-   * artifact registry.
+   * Artifact registry.
    *
    * <p>If not set, images will be built to [artifactRegion.]gcr.io/[projectId].
    *
@@ -1100,7 +1100,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     return Optional.ofNullable(artifactRegistry)
         .map(
             value ->
-                value.contains("gcr.io")
+                value.endsWith("gcr.io")
                     ? value
                         + "/"
                         + projectIdUrl
@@ -1394,8 +1394,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       Matcher matcher = IMAGE_WITH_SBOM_DIGEST.matcher(output);
       if (!matcher.find()) {
         throw new RuntimeException(
-            String.format(
-                "Error generating SBOM. Cannot obtain image digest from response: %s", output));
+            String.format("Cannot obtain image digest from response: %s", output));
       }
       digest = matcher.group("DIGEST");
     }
