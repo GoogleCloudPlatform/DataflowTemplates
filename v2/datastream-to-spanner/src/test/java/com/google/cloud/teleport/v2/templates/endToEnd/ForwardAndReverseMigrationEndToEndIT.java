@@ -105,8 +105,25 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
             createSpannerDatabase(ForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
+        // fetch secrets
+        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
+        String privateHost =
+            secretClient.accessSecret("projects/940149800767/secrets/private-ip-mysql/versions/1");
+        String publicHost =
+            secretClient.accessSecret("projects/940149800767/secrets/public-ip-mysql/versions/1");
+        String username =
+            secretClient.accessSecret("projects/940149800767/secrets/username-mysql/versions/1");
+        String password =
+            secretClient.accessSecret("projects/940149800767/secrets/password-mysql/versions/1");
+
+        System.out.println(privateHost);
+        System.out.println(publicHost);
+        System.out.println(username);
+        System.out.println(password);
         // create MySql Resources
-        cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
+        cloudSqlResourceManager =
+            CloudMySQLResourceManager.builder(testName, publicHost, username, password, 3306)
+                .build();
         jdbcSource =
             createMySqlDatabase(
                 cloudSqlResourceManager,
@@ -116,10 +133,6 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
                   }
                 });
 
-        // fetch secrets
-        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
-        String privateHost =
-            secretClient.accessSecret("projects/940149800767/secrets/private-ip-mysql/versions/1");
         // create and upload GCS Resources
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)

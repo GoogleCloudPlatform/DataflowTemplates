@@ -16,13 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
-import com.google.cloud.datastream.v1.DestinationConfig;
-import com.google.cloud.datastream.v1.SourceConfig;
-import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
@@ -43,31 +38,21 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
-import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
-import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
-import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
-  private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
-  public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
-  public DatastreamResourceManager datastreamResourceManager;
-  protected JDBCSource jdbcSource;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -132,53 +117,16 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     return subscription;
   }
 
-  public SubscriptionName createPubsubResources(
-      String identifierSuffix,
-      PubsubResourceManager pubsubResourceManager,
-      String gcsPrefix,
-      GcsResourceManager gcsResourceManager) {
-    String topicNameSuffix = "it" + identifierSuffix;
-    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
-    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
-    String prefix = gcsPrefix;
-    if (prefix.startsWith("/")) {
-      prefix = prefix.substring(1);
-    }
-    gcsResourceManager.createNotification(topic.toString(), prefix);
-    return subscription;
-  }
-
   protected void createAndUploadShardConfigToGcs(
       GcsResourceManager gcsResourceManager, MySQLResourceManager jdbcResourceManager)
       throws IOException {
     Shard shard = new Shard();
     shard.setLogicalShardId("Shard1");
     shard.setUser(jdbcResourceManager.getUsername());
-    shard.setHost("10.128.0.2");
+    shard.setHost(jdbcResourceManager.getHost());
     shard.setPassword(jdbcResourceManager.getPassword());
     shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
     shard.setDbName(jdbcResourceManager.getDatabaseName());
-    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
-    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
-    JsonArray ja = new JsonArray();
-    ja.add(jsObj);
-    String shardFileContents = ja.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
-  }
-
-  protected void createAndUploadShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, CloudSqlResourceManager cloudSqlResourceManager)
-      throws IOException {
-    Shard shard = new Shard();
-    shard.setLogicalShardId("Shard1");
-    shard.setUser(cloudSqlResourceManager.getUsername());
-    shard.setHost("10.94.208.4");
-    shard.setPassword(cloudSqlResourceManager.getPassword());
-    shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
-    shard.setDbName(cloudSqlResourceManager.getDatabaseName());
     JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
     jsObj.remove("secretManagerUri"); // remove field secretManagerUri
     JsonArray ja = new JsonArray();
@@ -350,132 +298,5 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.uploadArtifact(
         "input/customShard.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
-  }
-
-  public PipelineLauncher.LaunchInfo launchRRDataflowJob(
-      SpannerResourceManager spannerResourceManager,
-      GcsResourceManager gcsResourceManager,
-      SpannerResourceManager spannerMetadataResourceManager,
-      String rrSubscriptionName,
-      String sourceType)
-      throws IOException {
-    String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
-    // default parameters
-    flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(rrJobName)
-            .withTemplateName("Spanner_to_SourceDb")
-            .withTemplateModulePath("v2/spanner-to-sourcedb")
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerProjectId", PROJECT)
-            .addParameter("metadataDatabase", spannerMetadataResourceManager.getDatabaseId())
-            .addParameter("metadataInstance", spannerMetadataResourceManager.getInstanceId())
-            .addParameter(
-                "sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager))
-            .addParameter("changeStreamName", "allstream")
-            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName)
-            .addParameter("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager))
-            .addParameter("maxShardConnections", "5")
-            .addParameter("maxNumWorkers", "1")
-            .addParameter("numWorkers", "1")
-            .addParameter("sourceType", sourceType)
-            .addParameter("network", "test")
-            .addParameter("subnetwork", "regions/us-central1/subnetworks/test")
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
-            .build();
-    // Run
-    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
-    assertThatPipeline(jobInfo).isRunning();
-    return jobInfo;
-  }
-
-  public String getGcsPath(String... pathParts) {
-    checkArgument(pathParts.length != 0, "Must provide at least one path part");
-    checkArgument(
-        stream(pathParts).noneMatch(Strings::isNullOrEmpty), "No path part can be null or empty");
-
-    return String.format("gs://%s", String.join("/", pathParts));
-  }
-
-  public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
-      SpannerResourceManager spannerResourceManager,
-      GcsResourceManager gcsResourceManager,
-      PubsubResourceManager pubsubResourceManager)
-      throws IOException {
-    String testRootDir = getClass().getSimpleName();
-
-    String gcsPrefix =
-        String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
-    SubscriptionName subscription =
-        createPubsubResources(
-            testRootDir + testName, pubsubResourceManager, gcsPrefix, gcsResourceManager);
-
-    String dlqGcsPrefix =
-        String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "dlq"});
-    SubscriptionName dlqSubscription =
-        createPubsubResources(
-            testRootDir + testName + "dlq",
-            pubsubResourceManager,
-            dlqGcsPrefix,
-            gcsResourceManager);
-    String artifactBucket = TestProperties.artifactBucket();
-    datastreamResourceManager =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider)
-            .build();
-    Stream stream =
-        createDatastreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
-
-    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
-    // default parameters
-    flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(jobName)
-            .withTemplateName("Cloud_Datastream_to_Spanner")
-            .withTemplateModulePath("v2/datastream-to-spanner")
-            .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
-            .addParameter("streamName", stream.getName())
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("projectId", PROJECT)
-            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
-            .addParameter("gcsPubSubSubscription", subscription.toString())
-            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
-            .addParameter("datastreamSourceType", "mysql")
-            .addParameter("inputFileFormat", "avro")
-            // .addParameter("sessionFilePath", getGcsPath("input/session.json",
-            // gcsResourceManager))
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
-            .build();
-    // Run
-    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
-    assertThatPipeline(jobInfo).isRunning();
-    return jobInfo;
-  }
-
-  public Stream createDatastreamResources(
-      String artifactBucketName,
-      String gcsPrefix,
-      JDBCSource jdbcSource,
-      DatastreamResourceManager datastreamResourceManager) {
-    // To-do, for future postgres load testing, add a parameter to accept other sources
-    SourceConfig sourceConfig =
-        datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
-
-    // Create Datastream GCS Destination Connection profile and config
-    DestinationConfig destinationConfig =
-        datastreamResourceManager.buildGCSDestinationConfig(
-            "gcs",
-            artifactBucketName,
-            gcsPrefix,
-            DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
-
-    // Create and start Datastream stream
-    Stream stream =
-        datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
-    datastreamResourceManager.startStream(stream);
-    return stream;
   }
 }

@@ -649,7 +649,10 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
-      this.instanceId = "astha-testing";
+      if (System.getProperty("spannerInstanceId") != null) {
+        this.useStaticInstance = true;
+        this.instanceId = System.getProperty("spannerInstanceId");
+      }
       return this;
     }
 
