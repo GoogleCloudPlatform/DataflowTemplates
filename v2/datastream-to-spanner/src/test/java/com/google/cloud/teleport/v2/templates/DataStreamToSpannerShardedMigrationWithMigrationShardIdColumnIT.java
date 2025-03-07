@@ -36,6 +36,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -82,6 +83,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -101,7 +103,10 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
-      createAndUploadJarToGcs("shard1");
+      if (gcsResourceManager == null) {
+        gcsResourceManager = setUpGCSResourceManager("");
+      }
+      createAndUploadJarToGcs(gcsResourceManager, "shard1");
       CustomTransformation customTransformation =
           CustomTransformation.builder(
                   "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
@@ -115,6 +120,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                 "shard1",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
@@ -132,6 +138,7 @@ public class DataStreamToSpannerShardedMigrationWithMigrationShardIdColumnIT
                 "shard2",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");

@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -79,6 +80,7 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -101,7 +103,11 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
-      createAndUploadJarToGcs("SeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1");
+      if (gcsResourceManager == null) {
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
+      }
+      createAndUploadJarToGcs(
+          gcsResourceManager, "SeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1");
       if (jobInfo == null) {
         jobInfo =
             launchDataflowJob(
@@ -111,6 +117,7 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
                 "SeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put(

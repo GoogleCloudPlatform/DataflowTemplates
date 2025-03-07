@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -59,6 +60,7 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
   private static HashSet<DataStreamToSpannerMixedIT> testInstances = new HashSet<>();
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
   private static final String SPANNER_DDL_RESOURCE =
       "DataStreamToSpannerMixedIT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE =
@@ -76,6 +78,7 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpGCSResourceManager(getClass().getSimpleName());
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         jobInfo =
             launchDataflowJob(
@@ -85,6 +88,7 @@ public class DataStreamToSpannerMixedIT extends DataStreamToSpannerITBase {
                 "MixedIT",
                 spannerResourceManager,
                 pubsubResourceManager,
+                gcsResourceManager,
                 new HashMap<>() {
                   {
                     put("inputFileFormat", "avro");
