@@ -84,9 +84,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadCassandraConfigToGcs(
             gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
@@ -99,7 +97,9 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
         createAndUploadJarToGcs(gcsResourceManager);
         jobInfo =
             launchDataflowJob(
