@@ -41,6 +41,11 @@ public class CloudMySQLResourceManager extends CloudSqlResourceManager {
     return new Builder(testId);
   }
 
+  public static Builder builder(
+      String testId, String host, String username, String password, Integer port) {
+    return new Builder(testId, host, username, password, port);
+  }
+
   @Override
   public @NonNull String getJDBCPrefix() {
     return "mysql";
@@ -51,6 +56,10 @@ public class CloudMySQLResourceManager extends CloudSqlResourceManager {
 
     public Builder(String testId) {
       super(testId);
+    }
+
+    public Builder(String testId, String host, String username, String password, Integer port) {
+      super(testId, host, username, password, port);
     }
 
     @Override

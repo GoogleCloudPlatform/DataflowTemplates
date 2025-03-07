@@ -164,6 +164,15 @@ public abstract class CloudSqlResourceManager
       this.maybeUseStaticInstance();
     }
 
+    public Builder(String testId, String host, String username, String password, Integer port) {
+      super(testId, "", "");
+
+      this.setDatabaseName(generateDatabaseName(testId));
+      this.usingCustomDb = false;
+
+      this.setInstance(host, username, password, port);
+    }
+
     public Builder maybeUseStaticInstance() {
       this.configureHost();
       this.configurePort();
@@ -171,6 +180,14 @@ public abstract class CloudSqlResourceManager
       this.configurePassword();
       this.useStaticContainer();
 
+      return this;
+    }
+
+    public Builder setInstance(String host, String username, String password, Integer port) {
+      this.setUsername(username);
+      this.setPassword(password);
+      this.setHost(host);
+      this.setPort(port);
       return this;
     }
 
@@ -191,6 +208,10 @@ public abstract class CloudSqlResourceManager
       }
     }
 
+    protected void configureHost(String host, String port) {
+      this.setHost(host);
+    }
+
     protected abstract void configurePort();
 
     protected void configureUsername() {
@@ -200,6 +221,10 @@ public abstract class CloudSqlResourceManager
         LOG.info("-DcloudProxyUsername not specified, using default: " + getDefaultUsername());
         this.setUsername(getDefaultUsername());
       }
+    }
+
+    protected void configureUsername(String username) {
+      this.setUsername(username);
     }
 
     protected void configurePassword() {
@@ -214,6 +239,14 @@ public abstract class CloudSqlResourceManager
         LOG.info("-DcloudProxyUsername not specified, using default: " + DEFAULT_JDBC_USERNAME);
       }
       this.useStaticContainer();
+    }
+
+    protected void configurePassword(String password) {
+      this.setPassword(password);
+    }
+
+    protected void configurePort(Integer port) {
+      this.setPort(port);
     }
 
     @Override
