@@ -160,7 +160,9 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
                 gcsResourceManager,
                 spannerMetadataResourceManager,
                 pubsubResourceManager,
-                MYSQL_SOURCE_TYPE);
+                MYSQL_SOURCE_TYPE,
+                "test",
+                "regions/us-central1/subnetworks/test");
       }
     }
   }
