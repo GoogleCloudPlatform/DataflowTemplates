@@ -91,7 +91,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManager, SpannerToSourceDbTimezoneIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",

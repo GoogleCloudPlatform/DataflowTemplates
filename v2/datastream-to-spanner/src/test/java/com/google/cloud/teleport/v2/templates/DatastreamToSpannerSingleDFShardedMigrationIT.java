@@ -99,7 +99,7 @@ public class DatastreamToSpannerSingleDFShardedMigrationIT extends DataStreamToS
         pubsubResourceManager = setUpPubSubResourceManager();
       }
       if (gcsResourceManager == null) {
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
       }
       createAndUploadJarToGcs("shard1", gcsResourceManager);
       if (jobInfo == null) {

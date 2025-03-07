@@ -104,7 +104,7 @@ public class SeparateShadowTableDatabaseSingleDFShardedMigrationIT
         pubsubResourceManager = setUpPubSubResourceManager();
       }
       if (gcsResourceManager == null) {
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
       }
       createAndUploadJarToGcs(
           "SeparateShadowTableDatabaseSingleDFShardedMigrationIT_shard1", gcsResourceManager);

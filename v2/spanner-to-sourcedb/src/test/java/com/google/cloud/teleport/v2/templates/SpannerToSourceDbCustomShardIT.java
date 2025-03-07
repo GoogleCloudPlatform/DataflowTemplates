@@ -99,7 +99,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbCustomShardIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
 
         createAndUploadShardConfigToGcs();

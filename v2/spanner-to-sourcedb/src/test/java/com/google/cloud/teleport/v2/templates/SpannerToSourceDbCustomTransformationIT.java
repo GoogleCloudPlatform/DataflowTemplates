@@ -108,7 +108,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             jdbcResourceManager,
             SpannerToSourceDbCustomTransformationIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());

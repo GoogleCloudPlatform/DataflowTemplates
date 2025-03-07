@@ -86,7 +86,7 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
       if (jobInfo == null) {
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         createAndUploadJarToGcs("DatatypeIT", gcsResourceManager);
         CustomTransformation customTransformation =

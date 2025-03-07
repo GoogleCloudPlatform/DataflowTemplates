@@ -103,7 +103,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs();
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());

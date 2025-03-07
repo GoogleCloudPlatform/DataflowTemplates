@@ -95,7 +95,7 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
         pubsubResourceManager = setUpPubSubResourceManager();
       }
       if (gcsResourceManager == null) {
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
       }
       if (jobInfo1 == null) {
         jobInfo1 =

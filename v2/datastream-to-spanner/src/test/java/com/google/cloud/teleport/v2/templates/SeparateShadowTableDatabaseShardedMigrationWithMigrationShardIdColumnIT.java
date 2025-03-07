@@ -109,7 +109,7 @@ public class SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColu
         pubsubResourceManager = setUpPubSubResourceManager();
       }
       if (gcsResourceManager == null) {
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
       }
       createAndUploadJarToGcs(
           "SeparateShadowTableDatabaseShardedMigrationWithMigrationShardIdColumnIT_shard1",

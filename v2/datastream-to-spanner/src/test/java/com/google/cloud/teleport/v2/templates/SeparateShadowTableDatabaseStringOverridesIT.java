@@ -85,7 +85,7 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         Map<String, String> overridesMap =
             new HashMap<>() {

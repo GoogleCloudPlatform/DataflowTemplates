@@ -42,7 +42,6 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
@@ -113,41 +112,13 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
             .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
 
-    gcsResourceManager = setUpGcsResourceManager();
+    gcsResourceManager = setUpSpannerITGcsResourceManager();
     gcsPrefix =
         getGcsPath(testName + "/cdc/", gcsResourceManager)
             .replace("gs://" + gcsResourceManager.getBucket(), "");
     dlqGcsPrefix =
         getGcsPath(testName + "/dlq/", gcsResourceManager)
             .replace("gs://" + gcsResourceManager.getBucket(), "");
-  }
-
-  public GcsResourceManager setUpGcsResourceManager() {
-    GcsResourceManager spannerTestsGcsClient;
-    if (TestProperties.project().equals("cloud-teleport-testing")) {
-      List<String> bucketList =
-          List.of(
-              "cloud-teleport-spanner-it-0",
-              "cloud-teleport-spanner-it-1",
-              "cloud-teleport-spanner-it-2",
-              "cloud-teleport-spanner-it-3",
-              "cloud-teleport-spanner-it-4",
-              "cloud-teleport-spanner-it-5",
-              "cloud-teleport-spanner-it-6",
-              "cloud-teleport-spanner-it-7",
-              "cloud-teleport-spanner-it-8",
-              "cloud-teleport-spanner-it-9");
-      Random random = new Random();
-      int randomIndex = random.nextInt(bucketList.size());
-      String randomBucketName = bucketList.get(randomIndex);
-      spannerTestsGcsClient =
-          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
-              .build();
-
-    } else {
-      spannerTestsGcsClient = gcsClient;
-    }
-    return spannerTestsGcsClient;
   }
 
   @After

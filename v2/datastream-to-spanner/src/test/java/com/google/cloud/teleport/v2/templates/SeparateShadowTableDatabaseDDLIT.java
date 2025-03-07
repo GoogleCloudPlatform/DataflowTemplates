@@ -91,7 +91,7 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         createAndUploadJarToGcs("SeparateShadowTableDatabaseDDLIT", gcsResourceManager);
         CustomTransformation customTransformation =

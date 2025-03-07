@@ -29,10 +29,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Random;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
@@ -62,34 +60,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     return SpannerResourceManager.builder(testName, PROJECT, REGION)
         .maybeUseStaticInstance()
         .build();
-  }
-
-  public GcsResourceManager setUpGcsResourceManager() {
-    GcsResourceManager spannerTestsGcsClient;
-    if (TestProperties.project().equals("cloud-teleport-testing")) {
-      List<String> bucketList =
-          List.of(
-              "cloud-teleport-spanner-it-0",
-              "cloud-teleport-spanner-it-1",
-              "cloud-teleport-spanner-it-2",
-              "cloud-teleport-spanner-it-3",
-              "cloud-teleport-spanner-it-4",
-              "cloud-teleport-spanner-it-5",
-              "cloud-teleport-spanner-it-6",
-              "cloud-teleport-spanner-it-7",
-              "cloud-teleport-spanner-it-8",
-              "cloud-teleport-spanner-it-9");
-      Random random = new Random();
-      int randomIndex = random.nextInt(bucketList.size());
-      String randomBucketName = bucketList.get(randomIndex);
-      spannerTestsGcsClient =
-          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
-              .build();
-
-    } else {
-      spannerTestsGcsClient = gcsClient;
-    }
-    return spannerTestsGcsClient;
   }
 
   public SpannerResourceManager setUpShadowSpannerResourceManager() {

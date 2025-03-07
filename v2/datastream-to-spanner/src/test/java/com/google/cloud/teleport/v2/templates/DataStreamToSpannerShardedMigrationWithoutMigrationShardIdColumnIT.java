@@ -90,7 +90,7 @@ public class DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT
         pubsubResourceManager = setUpPubSubResourceManager();
       }
       if (gcsResourceManager == null) {
-        gcsResourceManager = setUpGcsResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
       }
       if (jobInfo1 == null) {
         jobInfo1 =

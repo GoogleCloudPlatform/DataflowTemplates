@@ -36,12 +36,7 @@ import java.io.IOException;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
@@ -418,6 +413,23 @@ public abstract class TemplateTestBase {
       // Print stacktrace when command fails
       "-e"
     };
+  }
+
+  public GcsResourceManager setUpSpannerITGcsResourceManager() {
+    GcsResourceManager spannerTestsGcsClient;
+    if (TestProperties.project().equals("cloud-teleport-testing")) {
+      List<String> bucketList = TestConstants.SPANNER_TEST_BUCKETS;
+      Random random = new Random();
+      int randomIndex = random.nextInt(bucketList.size());
+      String randomBucketName = bucketList.get(randomIndex);
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
+              .build();
+
+    } else {
+      spannerTestsGcsClient = gcsClient;
+    }
+    return spannerTestsGcsClient;
   }
 
   private List<String> getModulesBuild(String pomPath) {
