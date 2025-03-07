@@ -347,6 +347,10 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
     notificationList.clear();
   }
 
+  public String getBucket() {
+    return bucket;
+  }
+
   private void consumePages(Page<Blob> firstPage, Consumer<Iterable<Blob>> consumeBlobs) {
     Page<Blob> currentPage = firstPage;
     while (true) {

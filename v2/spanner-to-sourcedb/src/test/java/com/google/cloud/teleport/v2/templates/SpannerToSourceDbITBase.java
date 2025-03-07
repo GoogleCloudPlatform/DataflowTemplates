@@ -102,7 +102,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   public SubscriptionName createPubsubResources(
-      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
     String topicNameSuffix = "rr-it" + identifierSuffix;
     String subscriptionNameSuffix = "rr-it-sub" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
@@ -113,7 +116,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       prefix = prefix.substring(1);
     }
     prefix += "/retry/";
-    gcsClient.createNotification(topic.toString(), prefix);
+    gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
 
@@ -280,7 +283,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   public String getGcsFullPath(
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(), identifierSuffix, gcsResourceManager.runId(), artifactId);
   }
 
   protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
