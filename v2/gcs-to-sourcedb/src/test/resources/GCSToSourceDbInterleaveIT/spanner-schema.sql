@@ -1,11 +1,11 @@
-CREATE TABLE parent1 (
+CREATE TABLE IF NOT EXISTS parent1 (
  id INT64 NOT NULL,
  update_ts TIMESTAMP,
  in_ts TIMESTAMP,
 ) PRIMARY KEY(id);
 
 
-CREATE TABLE child11 (
+CREATE TABLE IF NOT EXISTS child11 (
  child_id INT64 NOT NULL,
  parent_id INT64,
  update_ts TIMESTAMP,
@@ -20,14 +20,14 @@ CREATE INDEX par_ind ON child11(parent_id);
 
 
 
-CREATE TABLE parent2 (
+CREATE TABLE IF NOT EXISTS parent2 (
  id INT64 NOT NULL,
  update_ts TIMESTAMP,
  in_ts TIMESTAMP,
 ) PRIMARY KEY(id);
 
 
-CREATE TABLE child21 (
+CREATE TABLE IF NOT EXISTS child21 (
  child_id INT64 NOT NULL,
  id INT64 NOT NULL,
  update_ts TIMESTAMP,
