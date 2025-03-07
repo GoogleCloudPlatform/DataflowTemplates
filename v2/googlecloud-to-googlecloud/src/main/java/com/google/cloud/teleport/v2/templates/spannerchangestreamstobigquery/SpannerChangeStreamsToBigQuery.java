@@ -475,7 +475,7 @@ public final class SpannerChangeStreamsToBigQuery {
             : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
     String dlqDirectory =
         options.getDeadLetterQueueDirectory().isEmpty()
-            ? tempLocation + "dlq/"
+            ? tempLocation + "dlq/" + options.getJobName() + "/"
             : options.getDeadLetterQueueDirectory();
 
     LOG.info("Dead letter queue directory: {}", dlqDirectory);
