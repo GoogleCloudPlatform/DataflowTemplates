@@ -22,6 +22,10 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.spanner.spannerio.ReadOperation;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.cloud.teleport.templates.SpannerToText.SpannerToTextOptions;
 import com.google.cloud.teleport.templates.common.SpannerConverters;
 import com.google.cloud.teleport.templates.common.SpannerConverters.CreateTransactionFnWithTimestamp;
@@ -31,10 +35,6 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -144,7 +144,7 @@ public class SpannerToText {
             options.getTextWritePrefix(),
             options.getSpannerSnapshotTime());
 
-    /* CreateTransaction and CreateTransactionFn classes in LocalSpannerIO
+    /* CreateTransaction and CreateTransactionFn classes in SpannerIO
      * only take a timestamp object for exact staleness which works when
      * parameters are provided during template compile time. They do not work with
      * a Timestamp valueProvider which can take parameters at runtime. Hence a new
@@ -164,14 +164,14 @@ public class SpannerToText {
     PCollection<String> csv =
         pipeline
             .apply("Create export", spannerExport)
-            // We need to use LocalSpannerIO.readAll() instead of LocalSpannerIO.read()
+            // We need to use SpannerIO.readAll() instead of SpannerIO.read()
             // because ValueProvider parameters such as table name required for
-            // LocalSpannerIO.read() can be read only inside DoFn but LocalSpannerIO.read() is of
+            // SpannerIO.read() can be read only inside DoFn but SpannerIO.read() is of
             // type PTransform<PBegin, Struct>, which prevents prepending it with DoFn that reads
             // these parameters at the pipeline execution time.
             .apply(
                 "Read all records",
-                LocalSpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig))
+                SpannerIO.readAll().withTransaction(tx).withSpannerConfig(spannerConfig))
             .apply(
                 "Struct To Csv",
                 MapElements.into(TypeDescriptors.strings())

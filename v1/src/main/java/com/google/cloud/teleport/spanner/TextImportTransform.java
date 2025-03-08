@@ -25,6 +25,10 @@ import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.SpannerWriteResult;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.HashMultimap;
 import com.google.protobuf.util.JsonFormat;
@@ -53,10 +57,6 @@ import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
 import org.apache.beam.sdk.transforms.Create;
@@ -105,7 +105,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
   @Override
   public PDone expand(PBegin begin) {
     PCollectionView<Transaction> tx =
-        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollectionView<Dialect> dialectView =
         begin
@@ -203,7 +203,7 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
               .apply(
                   "Write mutations " + depth,
-                  LocalSpannerIO.write()
+                  SpannerIO.write()
                       .withSpannerConfig(spannerConfig)
                       .withCommitDeadline(Duration.standardMinutes(1))
                       .withMaxCumulativeBackoff(Duration.standardHours(2))
