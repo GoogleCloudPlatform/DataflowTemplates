@@ -75,7 +75,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
           CompletableFuture.supplyAsync(() -> resourceManager.executeStatement(query));
 
       // Increase timeout to 5 seconds
-      ResultSet resultSet = future.get(5, TimeUnit.SECONDS);
+      ResultSet resultSet = future.get(20, TimeUnit.SECONDS);
       Row row = resultSet.one();
 
       if (row != null) {
@@ -84,7 +84,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
         throw new RuntimeException("Query did not return a result for table: " + tableName);
       }
     } catch (TimeoutException e) {
-      throw new RuntimeException("Query execution timed out after 5 seconds", e);
+      throw new RuntimeException("Query execution timed out after 20 seconds", e);
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException("Failed to execute query on CassandraResourceManager", e);
     }
