@@ -65,7 +65,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
       throw new IllegalArgumentException("CassandraResourceManager must not be null.");
     }
     try {
-      String query = String.format("SELECT COUNT(*) FROM %s USING TIMEOUT 10s", tableName);
+      String query = String.format("SELECT COUNT(*) FROM %s", tableName);
       ResultSet resultSet = resourceManager.executeStatement(query);
       Row row = resultSet.one();
       if (row != null) {
