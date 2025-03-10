@@ -151,7 +151,6 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
         pubsubResourceManager);
   }
 
-  @Ignore("This test is disabled currently")
   @Test
   public void spannerToSourceFKTest() throws IOException, InterruptedException {
     assertThatPipeline(jobInfo).isRunning();

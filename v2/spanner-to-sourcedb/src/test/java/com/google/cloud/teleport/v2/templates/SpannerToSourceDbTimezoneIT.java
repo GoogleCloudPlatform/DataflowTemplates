@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbTimezoneIT.class);
@@ -138,7 +139,6 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
         pubsubResourceManager);
   }
 
-  @Ignore("This test is disabled currently")
   @Test
   public void timezoneTest() throws IOException, InterruptedException {
     assertThatPipeline(jobInfo).isRunning();

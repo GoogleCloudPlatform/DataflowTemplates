@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToCassandraSourceDBCustomTransformationIT.class);
@@ -145,7 +146,6 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    * @throws InterruptedException if the thread is interrupted during execution.
    * @throws IOException if an I/O error occurs during the test execution.
    */
-  @Ignore("This test is disabled currently")
   @Test
   public void testCustomTransformationForCassandra() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();

@@ -57,6 +57,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbIT.class);
@@ -139,7 +140,6 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         pubsubResourceManager);
   }
 
-  @Ignore("This test is disabled currently")
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();

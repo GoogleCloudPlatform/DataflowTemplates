@@ -47,6 +47,7 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBase {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlSourceLT.class);
 
@@ -97,7 +98,6 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
     cleanupResourceManagers();
   }
 
-  @Ignore("This test is disabled currently")
   @Test
   public void reverseReplication1KTpsWithCustomTransformation()
       throws IOException, ParseException, InterruptedException {
