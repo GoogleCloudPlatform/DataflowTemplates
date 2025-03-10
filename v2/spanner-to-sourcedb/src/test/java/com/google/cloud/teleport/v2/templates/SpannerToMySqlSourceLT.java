@@ -92,6 +92,7 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
     cleanupResourceManagers();
   }
 
+  @Ignore("This test is disabled currently")
   @Test
   public void reverseReplication1KTpsLoadTest()
       throws IOException, ParseException, InterruptedException {

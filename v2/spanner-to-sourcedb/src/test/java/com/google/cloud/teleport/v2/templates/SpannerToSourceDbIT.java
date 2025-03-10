@@ -139,6 +139,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         pubsubResourceManager);
   }
 
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();

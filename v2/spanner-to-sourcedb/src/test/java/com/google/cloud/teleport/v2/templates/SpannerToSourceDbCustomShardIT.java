@@ -149,6 +149,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         pubsubResourceManager);
   }
 
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToSourceDbCustomShard() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();

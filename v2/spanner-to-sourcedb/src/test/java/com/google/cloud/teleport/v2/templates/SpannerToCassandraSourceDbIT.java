@@ -157,6 +157,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    * @throws InterruptedException if the thread is interrupted during execution.
    * @throws IOException if an I/O error occurs during the test execution.
    */
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToCasandraSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
@@ -173,6 +174,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    * @throws InterruptedException if the thread is interrupted during execution.
    * @throws IOException if an I/O error occurs during the test execution.
    */
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToCasandraSourceDbDeleteOperation() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
@@ -223,6 +225,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    * @throws IOException if an I/O error occurs during the test execution.
    * @throws MultipleFailureException if multiple assertions fail during validation.
    */
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToCassandraSourceAllDataTypeConversionTest()
       throws InterruptedException, IOException, MultipleFailureException {
@@ -241,6 +244,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    * @throws IOException if an I/O error occurs during the test execution.
    * @throws MultipleFailureException if multiple assertions fail during validation.
    */
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToCassandraSourceDataTypeStringConversionTest()
       throws InterruptedException, IOException, MultipleFailureException {

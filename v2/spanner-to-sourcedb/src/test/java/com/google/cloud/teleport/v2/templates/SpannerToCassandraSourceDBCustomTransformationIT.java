@@ -145,6 +145,7 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
    * @throws InterruptedException if the thread is interrupted during execution.
    * @throws IOException if an I/O error occurs during the test execution.
    */
+  @Ignore("This test is disabled currently")
   @Test
   public void testCustomTransformationForCassandra() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();

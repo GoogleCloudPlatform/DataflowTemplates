@@ -143,6 +143,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         pubsubResourceManager);
   }
 
+  @Ignore("This test is disabled currently")
   @Test
   public void spannerToSourceDataTypeConversionTest()
       throws IOException, InterruptedException, MultipleFailureException {

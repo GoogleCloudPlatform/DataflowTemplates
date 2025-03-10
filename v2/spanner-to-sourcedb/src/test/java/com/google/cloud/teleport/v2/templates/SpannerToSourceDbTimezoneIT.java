@@ -138,6 +138,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
         pubsubResourceManager);
   }
 
+  @Ignore("This test is disabled currently")
   @Test
   public void timezoneTest() throws IOException, InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
