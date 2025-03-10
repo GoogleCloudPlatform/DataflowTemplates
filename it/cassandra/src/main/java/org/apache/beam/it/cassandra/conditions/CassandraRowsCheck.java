@@ -22,7 +22,9 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.auto.value.AutoValue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import javax.annotation.Nullable;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.conditions.ConditionCheck;
@@ -73,7 +75,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
           CompletableFuture.supplyAsync(() -> resourceManager.executeStatement(query));
 
       // Increase timeout to 5 seconds
-      ResultSet resultSet = future.get(10, TimeUnit.SECONDS);
+      ResultSet resultSet = future.get(5, TimeUnit.SECONDS);
       Row row = resultSet.one();
 
       if (row != null) {
@@ -82,7 +84,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
         throw new RuntimeException("Query did not return a result for table: " + tableName);
       }
     } catch (TimeoutException e) {
-      throw new RuntimeException("Query execution timed out after 10 seconds", e);
+      throw new RuntimeException("Query execution timed out after 5 seconds", e);
     } catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException("Failed to execute query on CassandraResourceManager", e);
     }
