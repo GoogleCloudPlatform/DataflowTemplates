@@ -46,6 +46,7 @@ import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 /**
  * Base class for SourceDbToSpanner integration tests. It provides helper functions related to
@@ -174,7 +175,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     LOG.info("Creating spanner DDL");
     String ddl =
         String.join(
-            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+            " ",
+            Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8)
+                .stream()
+                .map(line -> line.replaceAll("\\s*--.*$", ""))
+                .collect(ImmutableList.toImmutableList()));
     ddl = ddl.trim();
     List<String> ddls =
         Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).collect(Collectors.toList());
