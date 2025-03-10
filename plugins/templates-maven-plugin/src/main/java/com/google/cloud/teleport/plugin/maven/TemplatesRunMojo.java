@@ -86,6 +86,27 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
   @Parameter(defaultValue = "${artifactRegion}", readonly = true, required = false)
   protected String artifactRegion;
 
+  /**
+   * Artifact registry.
+   *
+   * <p>If not set, images will be built to [artifactRegion.]gcr.io/[projectId].
+   *
+   * <p>If set to "xxx.gcr.io", image will be built to xxx.gcr.io/[projectId].
+   *
+   * <p>Otherwise, image will be built to artifactRegion.
+   */
+  @Parameter(defaultValue = "${artifactRegistry}", readonly = true, required = false)
+  protected String artifactRegistry;
+
+  /**
+   * Staging artifact registry.
+   *
+   * <p>If set, images will first build inside stagingArtifactRegistry before promote to final
+   * destination. Only effective when generateSBOM.
+   */
+  @Parameter(defaultValue = "${stagingArtifactRegistry}", readonly = true, required = false)
+  protected String stagingArtifactRegistry;
+
   @Parameter(defaultValue = "${gcpTempLocation}", readonly = true, required = false)
   protected String gcpTempLocation;
 
@@ -194,6 +215,8 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
               javaTemplateLauncherEntryPoint,
               pythonVersion,
               beamVersion,
+              artifactRegistry,
+              stagingArtifactRegistry,
               unifiedWorker,
               generateSBOM);
 
