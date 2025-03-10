@@ -2061,6 +2061,12 @@ CREATE TABLE TestTable (
     Col_1024 STRING(100),
 ) PRIMARY KEY (Id);
 
+CREATE CHANGE STREAM allstream
+  FOR ALL OPTIONS (
+  value_capture_type = 'NEW_ROW',
+  retention_period = '7d'
+);
+
 
 
 

@@ -20,6 +20,8 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.ByteArray;
+import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -27,10 +29,7 @@ import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -52,19 +51,19 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDbITBase {
+public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToMySqlSourceDbWideRowMaxColumnsIT.class);
+      LoggerFactory.getLogger(SpannerToMySqlSourceDbWideRow10MbIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSourceDbWideRowIT/spanner-max-col-schema.sql";
+      "SpannerToSourceDbWideRowIT/spanner-16mb-schema.sql";
   private static final String SESSION_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/max-col-session.json";
-  private static final String TABLE1 = "testtable";
+      "SpannerToSourceDbWideRowIT/col-mb-session.json";
+  private static final String TABLE1 = "large_data";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/mysql-max-col-schema.sql";
+      "SpannerToSourceDbWideRowIT/mysql-10mb-schema.sql";
 
-  private static HashSet<SpannerToMySqlSourceDbWideRowMaxColumnsIT> testInstances = new HashSet<>();
+  private static HashSet<SpannerToMySqlSourceDbWideRow10MbIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager spannerMetadataResourceManager;
@@ -81,18 +80,17 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (SpannerToMySqlSourceDbWideRowMaxColumnsIT.class) {
+    synchronized (SpannerToMySqlSourceDbWideRow10MbIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager =
-            createSpannerDatabase(SpannerToMySqlSourceDbWideRowMaxColumnsIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(SpannerToMySqlSourceDbWideRow10MbIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(
-            jdbcResourceManager,
-            SpannerToMySqlSourceDbWideRowMaxColumnsIT.MYSQL_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager, SpannerToMySqlSourceDbWideRow10MbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
@@ -129,7 +127,7 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToMySqlSourceDbWideRowMaxColumnsIT instance : testInstances) {
+    for (SpannerToMySqlSourceDbWideRow10MbIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -151,42 +149,60 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
   }
 
   private void writeRowsInSpanner() {
-    List<Mutation> mutations = new ArrayList<>();
-    Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(TABLE1).set("Id").to("SampleTest");
+    LOG.info("Writing a basic row to Spanner...");
 
-    for (int i = 1; i <= 1024; i++) {
-      mutationBuilder.set("Col_" + i).to("TestValue_" + i);
-    }
+    Mutation mutation =
+        Mutation.newInsertBuilder(TABLE1)
+            .set("id")
+            .to(UUID.randomUUID().toString())
+            .set("large_blob")
+            .to(ByteArray.copyFrom(new byte[10 * 1024 * 1024])) // 10MB BLOB
+            .set("created_at")
+            .to(Timestamp.now())
+            .build();
 
-    mutations.add(mutationBuilder.build());
-    spannerResourceManager.write(mutations);
-    LOG.info("Inserted row with 1,024 columns into Spanner using Mutations");
+    spannerResourceManager.write(mutation);
+    LOG.info("Successfully inserted a 10MB row into Spanner.");
   }
 
   private final List<Throwable> assertionErrors = new ArrayList<>();
 
   private void assertRowInMySQL() throws MultipleFailureException {
+    LOG.info("Validating row in MySQL...");
+
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE1) == 1); // only one row is inserted
+                () -> {
+                  try {
+                    return jdbcResourceManager.getRowCount(TABLE1) == 1;
+                  } catch (Exception e) {
+                    LOG.error("Error while getting row count from MySQL", e);
+                    return false;
+                  }
+                });
+
     assertThatResult(result).meetsConditions();
 
-    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
-    assertThat(rows).hasSize(1);
-    Map<String, Object> row = rows.get(0);
-    for (int i = 1; i <= 1024; i++) {
-      String columnName = "Col_" + i;
-      String expectedValue = "TestValue_" + i;
+    try {
+      List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
+      assertThat(rows).hasSize(1);
 
-      try {
-        assertThat(row.get(columnName)).isEqualTo(expectedValue);
-      } catch (Throwable e) {
-        assertionErrors.add(e);
-      }
+      Map<String, Object> row = rows.get(0);
+      assertThat(row.get("id")).isNotNull();
+      assertThat(row.get("id").toString()).isNotEmpty();
+
+      Object largeBlob = row.get("large_blob");
+      assertThat(largeBlob).isNotNull();
+      assertThat(((byte[]) largeBlob).length).isEqualTo(10 * 1024 * 1024); // 10MB
+
+      LOG.info("Validation successful: 10MB row exists in MySQL.");
+
+    } catch (Exception e) {
+      assertionErrors.add(new AssertionError("MySQL validation failed", e));
     }
+
     if (!assertionErrors.isEmpty()) {
       throw new MultipleFailureException(assertionErrors);
     }
