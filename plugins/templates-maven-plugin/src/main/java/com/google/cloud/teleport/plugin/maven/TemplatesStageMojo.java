@@ -443,7 +443,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String imagePath =
         stageImageBeforePromote
             ? generateFlexTemplateImagePath(
-                containerName, null, null, stagingArtifactRegistry, stagePrefix)
+                containerName, projectId, null, stagingArtifactRegistry, stagePrefix)
             : imageSpec.getImage();
     String buildProjectId =
         stageImageBeforePromote
