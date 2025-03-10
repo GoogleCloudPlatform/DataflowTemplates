@@ -80,14 +80,11 @@ public class DurationCodecTest {
 
   @Test
   public void testParse() {
-    String durationString =
-        "2mo15d";
+    String durationString = "2mo15d";
     Duration parsed = durationCodec.parse(durationString);
 
     assertNotNull(parsed);
-    assertEquals(
-        Duration.ofDays(75),
-        parsed);
+    assertEquals(Duration.ofDays(75), parsed);
   }
 
   @Test
