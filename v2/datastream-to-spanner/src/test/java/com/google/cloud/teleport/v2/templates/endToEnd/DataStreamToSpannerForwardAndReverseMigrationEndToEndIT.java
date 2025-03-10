@@ -56,7 +56,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
+public class DataStreamToSpannerForwardAndReverseMigrationEndToEndIT extends DataStreamToSpannerEndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE = "EndToEndTesting/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "EndToEndTesting/session.json";
 
@@ -68,7 +68,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
           put("name", "VARCHAR(200)");
         }
       };
-  private static final HashSet<ForwardAndReverseMigrationEndToEndIT> testInstances =
+  private static final HashSet<DataStreamToSpannerForwardAndReverseMigrationEndToEndIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo rrJobInfo;
   private static PipelineLauncher.LaunchInfo fwdJobInfo;
@@ -97,12 +97,12 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (ForwardAndReverseMigrationEndToEndIT.class) {
+    synchronized (DataStreamToSpannerForwardAndReverseMigrationEndToEndIT.class) {
       testInstances.add(this);
       if (rrJobInfo == null || fwdJobInfo == null) {
         // create Spanner Resources
         spannerResourceManager =
-            createSpannerDatabase(ForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(DataStreamToSpannerForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         // fetch secrets
@@ -176,7 +176,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (ForwardAndReverseMigrationEndToEndIT instance : testInstances) {
+    for (DataStreamToSpannerForwardAndReverseMigrationEndToEndIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(

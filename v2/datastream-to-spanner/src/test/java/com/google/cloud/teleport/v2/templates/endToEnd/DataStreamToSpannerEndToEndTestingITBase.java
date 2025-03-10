@@ -64,9 +64,9 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public abstract class EndToEndTestingITBase extends TemplateTestBase {
+public abstract class DataStreamToSpannerEndToEndTestingITBase extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerEndToEndTestingITBase.class);
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
