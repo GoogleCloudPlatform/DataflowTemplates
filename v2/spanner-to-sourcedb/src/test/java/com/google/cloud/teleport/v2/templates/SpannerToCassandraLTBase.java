@@ -54,7 +54,13 @@ public class SpannerToCassandraLTBase extends SpannerToSourceDbLTBase {
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
-    return CassandraResourceManager.builder(testName).build();
+    /* The default is Cassandra 4.1 image. TODO: Explore testing with non 4.1 tags. */
+
+    /* Max Cassandra Keyspace is 48 characters. Base Resource Manager adds 24 characters of date-time at the end.
+     * That's why we need to take a smaller subsequence of the testName.
+     */
+    String uniqueId = testName.substring(0, Math.min(20, testName.length()));
+    return CassandraResourceManager.builder(uniqueId).build();
   }
 
   public void cleanupResourceManagers() {
