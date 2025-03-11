@@ -37,6 +37,10 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Iterab
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.ReadableDateTime;
 
+/**
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
+ */
 final class MutationUtils {
   private MutationUtils() {}
 

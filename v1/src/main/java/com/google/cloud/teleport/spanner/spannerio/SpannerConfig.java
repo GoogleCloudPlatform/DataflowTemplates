@@ -33,7 +33,12 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Immuta
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.joda.time.Duration;
 
-/** Configuration for a Cloud Spanner client. */
+/**
+ * Configuration for a Cloud Spanner client.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
+ */
 @AutoValue
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)

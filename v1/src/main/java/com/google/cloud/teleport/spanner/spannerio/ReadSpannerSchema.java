@@ -28,6 +28,9 @@ import org.apache.beam.sdk.values.PCollectionView;
 /**
  * This {@link DoFn} reads Cloud Spanner 'information_schema.*' tables to build the {@link
  * SpannerSchema}.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
  */
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)

@@ -50,6 +50,9 @@ import org.slf4j.LoggerFactory;
 /**
  * This transform reads from Cloud Spanner using the {@link com.google.cloud.spanner.BatchClient}.
  * Reads from multiple partitions are executed concurrently yet in the same read-only transaction.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
  */
 @AutoValue
 @SuppressWarnings({

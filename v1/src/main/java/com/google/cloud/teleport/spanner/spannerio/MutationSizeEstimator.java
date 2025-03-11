@@ -25,7 +25,12 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import java.math.BigDecimal;
 
-/** Estimates the logical size of {@link Mutation}. */
+/**
+ * Estimates the logical size of {@link Mutation}.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
+ */
 class MutationSizeEstimator {
 
   // Prevent construction.

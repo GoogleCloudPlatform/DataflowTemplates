@@ -23,6 +23,10 @@ import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import org.apache.beam.sdk.schemas.Schema;
 
+/**
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
+ */
 class SpannerTableSourceDef
     implements com.google.cloud.teleport.spanner.spannerio.SpannerSourceDef {
 

@@ -45,7 +45,12 @@ import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Manages lifecycle of {@link DatabaseClient} and {@link Spanner} instances. */
+/**
+ * Manages lifecycle of {@link DatabaseClient} and {@link Spanner} instances.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
+ */
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
 })
@@ -151,8 +156,10 @@ public class SpannerAccessor implements AutoCloseable {
           commitSettings.getRetrySettings().toBuilder();
       commitSettings.setRetrySettings(
           commitRetrySettingsBuilder
-              .setTotalTimeoutDuration(java.time.Duration.ofMillis(commitDeadline.get().getMillis()))
-              .setMaxRpcTimeoutDuration(java.time.Duration.ofMillis(commitDeadline.get().getMillis()))
+              .setTotalTimeoutDuration(
+                  java.time.Duration.ofMillis(commitDeadline.get().getMillis()))
+              .setMaxRpcTimeoutDuration(
+                  java.time.Duration.ofMillis(commitDeadline.get().getMillis()))
               .setInitialRpcTimeoutDuration(
                   java.time.Duration.ofMillis(commitDeadline.get().getMillis()))
               .build());

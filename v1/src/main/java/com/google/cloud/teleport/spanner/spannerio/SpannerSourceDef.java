@@ -21,6 +21,9 @@ import org.apache.beam.sdk.schemas.Schema;
 /**
  * Represents a source used for {@link SpannerIO#read()}. Currently, this could be either a table or
  * a query. Direct read sources are not yet supported.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
  */
 interface SpannerSourceDef extends Serializable {
 

@@ -20,7 +20,12 @@ import com.google.cloud.spanner.BatchTransactionId;
 import java.io.Serializable;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-/** A transaction object. */
+/**
+ * A transaction object.
+ *
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
+ * TODO: (b/402322178) Remove this local copy.
+ */
 @AutoValue
 @SuppressWarnings({
   "nullness" // TODO(https://github.com/apache/beam/issues/20497)
