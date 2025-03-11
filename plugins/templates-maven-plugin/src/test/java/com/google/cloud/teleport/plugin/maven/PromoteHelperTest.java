@@ -36,7 +36,7 @@ public class PromoteHelperTest {
     String[] cmds = helper.getPromoteFlexTemplateImageCmd();
     String cmd = String.join(" ", cmds);
     assertEquals(
-        "wget -O- -nv --header=Authorization: Bearer fake-token "
+        "wget -O- --content-on-error --header=Authorization: Bearer fake-token "
             + "--header=Content-Type: application/json "
             + "--post-data={\"source_repository\":\"projects/source-project/locations/us/repositories/source-repo\","
             + "\"source_version\":\"projects/source-project/locations/us/repositories/source-repo/packages/2020_10_10_rc00%2Fio_to_io/"

@@ -103,7 +103,7 @@ class PromoteHelper {
     return new String[] {
       "wget",
       "-O-",
-      "-nv",
+      "--content-on-error",
       "--header=" + authHeader,
       "--header=" + contentTypeHeader,
       "--post-data=" + postData,
@@ -117,7 +117,7 @@ class PromoteHelper {
         new String[] {
           "wget",
           "-O-",
-          "-nv",
+          "--content-on-error",
           String.format("--header=Authorization: Bearer %s", token),
           "https://artifactregistry.googleapis.com/v1/" + operation
         };
