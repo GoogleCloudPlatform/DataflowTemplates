@@ -72,7 +72,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
         CqlSession.builder()
             .addContactPoint(
                 new InetSocketAddress(resourceManager.getHost(), resourceManager.getPort()))
-            .withLocalDatacenter("datacenter1") // Ensure this matches your Cassandra setup
+            .withLocalDatacenter("datacenter1")
             .build()) {
 
       String query = String.format("SELECT COUNT(*) FROM %s", tableName);
@@ -81,6 +81,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
       ResultSet resultSet = session.execute(statement);
       Row row = resultSet.one();
       if (row != null) {
+        System.out.println("Row count in getRowCount: " + row.getLong(0));
         return row.getLong(0);
       } else {
         throw new RuntimeException("Query did not return a result for table: " + tableName);
@@ -93,6 +94,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
   @Override
   public CheckResult check() {
     long totalRows = getRowCount(resourceManager(), tableName());
+    System.out.println("Row count in check(): " + totalRows);
     if (totalRows < minRows()) {
       return new CheckResult(
           false,
