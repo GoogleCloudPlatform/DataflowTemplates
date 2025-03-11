@@ -18,9 +18,13 @@
 
 package org.apache.beam.it.cassandra.conditions;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.auto.value.AutoValue;
+import java.net.InetSocketAddress;
+import java.time.Duration;
 import javax.annotation.Nullable;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.conditions.ConditionCheck;
@@ -64,9 +68,17 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
     if (resourceManager == null) {
       throw new IllegalArgumentException("CassandraResourceManager must not be null.");
     }
-    try {
+    try (CqlSession session =
+        CqlSession.builder()
+            .addContactPoint(
+                new InetSocketAddress(resourceManager.getHost(), resourceManager.getPort()))
+            .withLocalDatacenter("datacenter1") // Ensure this matches your Cassandra setup
+            .build()) {
+
       String query = String.format("SELECT COUNT(*) FROM %s", tableName);
-      ResultSet resultSet = resourceManager.executeStatement(query);
+      SimpleStatement statement =
+          SimpleStatement.builder(query).setTimeout(Duration.ofSeconds(30)).build();
+      ResultSet resultSet = session.execute(statement);
       Row row = resultSet.one();
       if (row != null) {
         return row.getLong(0);
