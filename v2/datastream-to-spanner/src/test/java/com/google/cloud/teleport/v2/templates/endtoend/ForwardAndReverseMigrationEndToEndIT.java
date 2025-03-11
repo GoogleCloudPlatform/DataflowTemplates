@@ -108,20 +108,21 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         // fetch secrets
         secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
         String privateHost =
-            secretClient.accessSecret(
-                "projects/269744978479/secrets/end-to-end-private-ip/versions/1");
-        String publicHost =
-            secretClient.accessSecret(
-                "projects/269744978479/secrets/end-to-end-public-ip/versions/1");
-        String username =
-            secretClient.accessSecret("projects/269744978479/secrets/end-to-end-user/versions/1");
-        String password =
-            secretClient.accessSecret(
-                "projects/269744978479/secrets/end-to-end-password/versions/1");
-        String network =
-            secretClient.accessSecret("projects/269744978479/secrets/network-mysql/versions/1");
-        String subnetwork =
-            secretClient.accessSecret("projects/269744978479/secrets/subnetwork-mysql/versions/1");
+            "10.33.0.4";
+            // secretClient.accessSecret(
+            //     "projects/269744978479/secrets/end-to-end-private-ip/versions/1");
+        String publicHost = "34.170.126.170";
+            // secretClient.accessSecret(
+            //     "projects/269744978479/secrets/end-to-end-public-ip/versions/1");
+        String username = "user2";
+            //secretClient.accessSecret("projects/269744978479/secrets/end-to-end-user/versions/1");
+        String password = "password";
+            // secretClient.accessSecret(
+            //     "projects/269744978479/secrets/end-to-end-password/versions/1");
+        String network = "end-to-end";
+            //secretClient.accessSecret("projects/269744978479/secrets/network-mysql/versions/1");
+        String subnetwork ="regions/us-central1/subnetworks/e2e";
+            //secretClient.accessSecret("projects/269744978479/secrets/subnetwork-mysql/versions/1");
         // create MySql Resources
         cloudSqlResourceManager =
             CloudMySQLResourceManager.builder(testName, publicHost, username, password, 3306)
