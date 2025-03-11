@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
+import com.datastax.oss.driver.api.core.data.CqlDuration;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
@@ -23,7 +24,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -128,19 +128,19 @@ public class CassandraTypeHandler {
   }
 
   /**
-   * Generates a {@link Duration} based on the provided {@link CassandraTypeHandler}.
+   * Generates a {@link CqlDuration} based on the provided {@link CassandraTypeHandler}.
    *
    * <p>This method fetches a string value from the provided {@code valuesJson} object using the
-   * column name {@code colName}, and converts it into a {@link Duration} object. The string value
-   * should be in the ISO-8601 duration format (e.g., "PT20.345S").
+   * column name {@code colName}, and converts it into a {@link CqlDuration} object. The string
+   * value should be in the ISO-8601 duration format (e.g., "PT20.345S").
    *
    * @param durationString - The column value used to fetched from {@code valuesJson}.
-   * @return A {@link Duration} object representing the duration value from the Cassandra data.
+   * @return A {@link CqlDuration} object representing the duration value from the Cassandra data.
    * @throws IllegalArgumentException if the value is not a valid duration string.
    */
-  private static Duration handleCassandraDurationType(String durationString) {
+  private static CqlDuration handleCassandraDurationType(String durationString) {
     try {
-      return Duration.parse(durationString);
+      return CqlDuration.from(durationString);
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid duration format for: " + durationString, e);
     }
@@ -326,7 +326,8 @@ public class CassandraTypeHandler {
    * PreparedStatementValueObject}.
    *
    * <p>This method processes basic Cassandra types (e.g., text, bigint, boolean, timestamp) and
-   * special types such as {@link Instant}, {@link UUID}, {@link BigInteger}, and {@link Duration}.
+   * special types such as {@link Instant}, {@link UUID}, {@link BigInteger}, and {@link
+   * CqlDuration}.
    *
    * @param columnType The Cassandra column type (e.g., "text", "timestamp").
    * @param colValue The column value to parse and wrap.
