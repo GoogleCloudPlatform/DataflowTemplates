@@ -65,17 +65,23 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
       throw new IllegalArgumentException("CassandraResourceManager must not be null.");
     }
     try {
-      String query =
-          String.format("SELECT COUNT(*) FROM %s.%s", resourceManager.getKeyspaceName(), tableName);
+      String keyspace = resourceManager.getKeyspaceName();
+      String query = String.format("SELECT COUNT(*) FROM %s.%s", keyspace, tableName);
+
+      System.out.println("Executing query: " + query);
+
       ResultSet resultSet = resourceManager.executeStatement(query);
       Row row = resultSet.one();
+
       if (row != null) {
-        return row.getLong(0);
+        long count = row.getLong(0);
+        System.out.println("Row count: " + count);
+        return count;
       } else {
-        throw new RuntimeException("Query did not return a result for table: " + tableName);
+        throw new RuntimeException("Query returned no result for table: " + tableName);
       }
     } catch (Exception e) {
-      System.out.println("Failed to execute query on CassandraResourceManager" + e.getMessage());
+      e.printStackTrace();
       throw new RuntimeException("Failed to execute query on CassandraResourceManager", e);
     }
   }
