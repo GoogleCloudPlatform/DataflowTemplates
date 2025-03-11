@@ -18,13 +18,9 @@
 
 package org.apache.beam.it.cassandra.conditions;
 
-import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
-import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.auto.value.AutoValue;
-import java.net.InetSocketAddress;
-import java.time.Duration;
 import javax.annotation.Nullable;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.conditions.ConditionCheck;
@@ -68,27 +64,18 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
     if (resourceManager == null) {
       throw new IllegalArgumentException("CassandraResourceManager must not be null.");
     }
-    try (CqlSession session =
-        CqlSession.builder()
-            .addContactPoint(
-                new InetSocketAddress(resourceManager.getHost(), resourceManager.getPort()))
-            .withLocalDatacenter("datacenter1")
-            .build()) {
-
-      String query = String.format("SELECT COUNT(*) FROM %s", tableName);
-      SimpleStatement statement =
-          SimpleStatement.builder(query).setTimeout(Duration.ofSeconds(60)).build();
-      ResultSet resultSet = session.execute(statement);
+    try {
+      String query =
+          String.format("SELECT COUNT(*) FROM %s.%s", resourceManager.getKeyspaceName(), tableName);
+      ResultSet resultSet = resourceManager.executeStatement(query);
       Row row = resultSet.one();
       if (row != null) {
-        System.out.println("Row count in getRowCount: " + row.getLong(0));
         return row.getLong(0);
       } else {
-        System.out.println("Query did not return a result for table");
         throw new RuntimeException("Query did not return a result for table: " + tableName);
       }
     } catch (Exception e) {
-      System.out.println("Failed to execute query on CassandraResourceManager:" + e.getMessage());
+      System.out.println("Failed to execute query on CassandraResourceManager" + e.getMessage());
       throw new RuntimeException("Failed to execute query on CassandraResourceManager", e);
     }
   }
