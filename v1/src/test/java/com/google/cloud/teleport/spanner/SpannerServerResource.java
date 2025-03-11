@@ -50,9 +50,8 @@ public class SpannerServerResource extends ExternalResource {
   // Modify the following parameters to match your Cloud Spanner instance.
   private static final String EMULATOR_HOST = System.getenv("SPANNER_EMULATOR_HOST");
   private static final String DEFAULT_PROJECT_ID = "span-cloud-testing";
-  private static final String DEFAULT_INSTANCE_ID = "seanfox-eplus-instance";
-  // private final String host = "https://spanner.googleapis.com";
-  private final String host = "https://staging-wrenchworks.sandbox.googleapis.com";
+  private static final String DEFAULT_INSTANCE_ID = "test-instance";
+  private final String host = "https://spanner.googleapis.com";
   private final String projectId;
   private final String instanceId;
 
