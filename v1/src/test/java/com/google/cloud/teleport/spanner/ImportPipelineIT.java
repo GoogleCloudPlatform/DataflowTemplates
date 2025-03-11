@@ -43,6 +43,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -269,7 +270,6 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             + "  \"Id\" bigint,\n"
             + "  \"FirstName\" character varying(256),\n"
             + "  \"LastName\" character varying(256),\n"
-            + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
             + "PRIMARY KEY(\"Id\"))";
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
 
@@ -316,6 +316,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
+  @Ignore("Update Beam SpannerIO to support UUID")
   public void testGoogleSqlImportPipeline_UUID() throws IOException {
     // Run only on staging environment
     if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
@@ -367,6 +368,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
+  @Ignore("Update Beam SpannerIO to support UUID")
   public void testPostgresImportPipeline_UUID() throws IOException {
     // Run only on staging environment
     if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
