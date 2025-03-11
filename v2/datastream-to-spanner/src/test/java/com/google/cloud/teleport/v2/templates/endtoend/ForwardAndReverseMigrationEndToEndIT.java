@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.endToEnd;
+package com.google.cloud.teleport.v2.templates.endtoend;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
@@ -56,7 +56,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerForwardAndReverseMigrationEndToEndIT extends DataStreamToSpannerEndToEndTestingITBase {
+public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE = "EndToEndTesting/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "EndToEndTesting/session.json";
 
@@ -68,7 +68,7 @@ public class DataStreamToSpannerForwardAndReverseMigrationEndToEndIT extends Dat
           put("name", "VARCHAR(200)");
         }
       };
-  private static final HashSet<DataStreamToSpannerForwardAndReverseMigrationEndToEndIT> testInstances =
+  private static final HashSet<ForwardAndReverseMigrationEndToEndIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo rrJobInfo;
   private static PipelineLauncher.LaunchInfo fwdJobInfo;
@@ -97,12 +97,12 @@ public class DataStreamToSpannerForwardAndReverseMigrationEndToEndIT extends Dat
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerForwardAndReverseMigrationEndToEndIT.class) {
+    synchronized (ForwardAndReverseMigrationEndToEndIT.class) {
       testInstances.add(this);
       if (rrJobInfo == null || fwdJobInfo == null) {
         // create Spanner Resources
         spannerResourceManager =
-            createSpannerDatabase(DataStreamToSpannerForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(ForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         // fetch secrets
@@ -176,7 +176,7 @@ public class DataStreamToSpannerForwardAndReverseMigrationEndToEndIT extends Dat
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (DataStreamToSpannerForwardAndReverseMigrationEndToEndIT instance : testInstances) {
+    for (ForwardAndReverseMigrationEndToEndIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
