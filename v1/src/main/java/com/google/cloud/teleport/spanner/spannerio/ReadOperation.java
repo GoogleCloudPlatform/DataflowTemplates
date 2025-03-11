@@ -30,8 +30,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 /**
  * Encapsulates a spanner read operation.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 @AutoValue
 @SuppressWarnings({

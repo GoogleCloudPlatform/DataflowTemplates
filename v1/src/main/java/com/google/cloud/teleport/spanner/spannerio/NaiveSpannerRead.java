@@ -41,8 +41,8 @@ import org.slf4j.LoggerFactory;
 /**
  * A naive version of Spanner read that doesn't use the Batch API.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 @VisibleForTesting
 @AutoValue

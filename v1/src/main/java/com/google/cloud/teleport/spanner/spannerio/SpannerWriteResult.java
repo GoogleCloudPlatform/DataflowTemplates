@@ -37,8 +37,8 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Immuta
  * as the input is unbounded and this {@link PCollection} is using the {@link
  * org.apache.beam.sdk.transforms.windowing.GlobalWindow GlobalWindow}.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 public class SpannerWriteResult implements POutput {
   private final Pipeline pipeline;

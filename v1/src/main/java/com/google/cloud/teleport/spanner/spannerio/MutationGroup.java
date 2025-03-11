@@ -29,8 +29,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  *
  * <p>One of the mutations is chosen to be "primary", and can be used to determine partitions.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 public final class MutationGroup implements Serializable, Iterable<Mutation> {
   private final ImmutableList<Mutation> mutations;

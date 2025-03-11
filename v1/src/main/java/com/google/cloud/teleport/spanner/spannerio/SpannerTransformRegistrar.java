@@ -45,8 +45,8 @@ import org.joda.time.Duration;
  * com.google.cloud.teleport.spanner.spannerio.SpannerIO.ReadRows} as an external transform for
  * cross-language usage.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 @AutoService(ExternalTransformRegistrar.class)
 public class SpannerTransformRegistrar implements ExternalTransformRegistrar {

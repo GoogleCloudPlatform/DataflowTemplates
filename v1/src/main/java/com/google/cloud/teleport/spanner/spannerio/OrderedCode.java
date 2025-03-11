@@ -40,8 +40,8 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.primitives.Uns
  *
  * <p><b>This class is NOT thread safe.</b>
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 class OrderedCode {
   // We want to encode a few extra symbols in strings:

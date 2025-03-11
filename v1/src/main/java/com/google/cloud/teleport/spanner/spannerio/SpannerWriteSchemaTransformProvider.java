@@ -66,8 +66,8 @@ import org.checkerframework.checker.nullness.qual.NonNull;
  * perform the write operation and provides options to handle failed mutations, either by throwing
  * an error, or passing the failed mutation further in the pipeline for dealing with accordingly.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 @AutoService(SchemaTransformProvider.class)
 public class SpannerWriteSchemaTransformProvider

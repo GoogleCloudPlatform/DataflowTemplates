@@ -18,8 +18,8 @@ package com.google.cloud.teleport.spanner.spannerio;
 /**
  * Exception to signal that Spanner schema retrieval failed.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 public class SpannerSchemaRetrievalException extends RuntimeException {
   SpannerSchemaRetrievalException(String message, Throwable cause) {

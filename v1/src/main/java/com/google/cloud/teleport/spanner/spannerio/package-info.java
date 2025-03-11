@@ -21,8 +21,8 @@
  * href="https://developers.google.com/spanner/">Google Cloud Spanner</a>.
  */
 /**
- * This package is forked from apache beam
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * This package is forked from apache beam WARNING: This file is forked from Apache Beam. Ensure
+ * corresponding changes are made in Apache Beam to prevent code divergence. TODO: (b/402322178)
+ * Remove this local copy.
  */
 package com.google.cloud.teleport.spanner.spannerio;

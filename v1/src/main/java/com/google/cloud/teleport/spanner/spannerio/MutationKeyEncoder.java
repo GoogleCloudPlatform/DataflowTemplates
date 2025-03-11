@@ -42,8 +42,8 @@ import org.joda.time.MutableDateTime;
  * Given the Schema, Encodes the table name and Key into a lexicographically sortable {@code
  * byte[]}.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 class MutationKeyEncoder {
 

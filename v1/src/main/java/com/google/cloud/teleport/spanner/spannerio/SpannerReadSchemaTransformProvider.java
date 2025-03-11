@@ -54,8 +54,8 @@ import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
  * <p>The transformation leverages the {@link SpannerIO} to perform the read operation and maps the
  * results to Beam rows, preserving the schema.
  *
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * <p>WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 @AutoService(SchemaTransformProvider.class)
 public class SpannerReadSchemaTransformProvider

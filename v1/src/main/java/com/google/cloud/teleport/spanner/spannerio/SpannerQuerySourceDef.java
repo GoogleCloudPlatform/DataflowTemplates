@@ -23,8 +23,8 @@ import com.google.cloud.spanner.Statement;
 import org.apache.beam.sdk.schemas.Schema;
 
 /**
- * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache Beam to prevent code divergence.
- * TODO: (b/402322178) Remove this local copy.
+ * WARNING: This file is forked from Apache Beam. Ensure corresponding changes are made in Apache
+ * Beam to prevent code divergence. TODO: (b/402322178) Remove this local copy.
  */
 class SpannerQuerySourceDef
     implements com.google.cloud.teleport.spanner.spannerio.SpannerSourceDef {
