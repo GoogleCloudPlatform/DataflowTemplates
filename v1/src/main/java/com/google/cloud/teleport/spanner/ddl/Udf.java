@@ -60,7 +60,6 @@ public abstract class Udf implements Serializable {
   @Nullable
   public abstract SqlSecurity security();
 
-  @Nullable
   public abstract ImmutableList<UdfParameter> parameters();
 
   public void prettyPrint(Appendable appendable) throws IOException {
@@ -75,14 +74,18 @@ public abstract class Udf implements Serializable {
       appendable.append(parameter.prettyPrint());
     }
     appendable.append(")");
-    appendable.append(" RETURNS ").append(type());
+    if (type() != null) {
+      appendable.append(" RETURNS ").append(type());
+    }
     SqlSecurity rights = security();
     if (rights != null) {
       appendable.append(" SQL SECURITY ").append(rights.toString());
     }
-    appendable.append(" AS (");
-    appendable.append(definition());
-    appendable.append(")");
+    if (definition() != null) {
+      appendable.append(" AS (");
+      appendable.append(definition());
+      appendable.append(")");
+    }
   }
 
   public String prettyPrint() {
@@ -106,10 +109,19 @@ public abstract class Udf implements Serializable {
     Builder builder =
         autoToBuilder()
             .specificName(specificName())
-            .dialect(dialect())
-            .type(type())
-            .definition(definition())
-            .security(security());
+            .dialect(dialect());
+    if (name() != null) {
+      builder.name(name());
+    }
+    if (type() != null) {
+      builder.type(type());
+    }
+    if (definition() != null){
+      builder.definition(definition());
+    }
+    if (security() != null) {
+      builder.security(security());
+    }
     for (UdfParameter parameter : parameters()) {
       builder.addParameter(parameter);
     }
@@ -127,7 +139,6 @@ public abstract class Udf implements Serializable {
   /** A builder for {@link Udf}. */
   @AutoValue.Builder
   public abstract static class Builder {
-
     private Ddl.Builder ddlBuilder;
     private LinkedHashMap<String, UdfParameter> parametersMap = Maps.newLinkedHashMap();
     private ImmutableList.Builder<UdfParameter> parameters = ImmutableList.builder();
@@ -195,7 +206,6 @@ public abstract class Udf implements Serializable {
 
     public Udf build() {
       return new AutoValue_Udf.Builder()
-          .ddlBuilder(ddlBuilder)
           .specificName(specificName())
           .name(name())
           .dialect(dialect())
@@ -207,8 +217,7 @@ public abstract class Udf implements Serializable {
     }
 
     public Ddl.Builder endUdf() {
-      Udf udf = this.build();
-      ddlBuilder.addUdf(udf);
+      ddlBuilder.addUdf(build());
       return ddlBuilder;
     }
   }

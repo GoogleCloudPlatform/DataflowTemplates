@@ -1048,12 +1048,14 @@ public class InformationSchemaScanner {
     ResultSet resultSet = context.executeQuery(queryStatement);
 
     while (resultSet.next()) {
-      String functionName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+      String functionName =
+          resultSet.isNull(0) || resultSet.isNull(1) ? null :
+              getQualifiedName(resultSet.getString(0), resultSet.getString(1));
       String functionSpecificName =
           getQualifiedName(resultSet.getString(2), resultSet.getString(3));
-      String functionType = resultSet.getString(4);
-      String functionDefinition = resultSet.getString(5);
-      String functionSecurityType = resultSet.getString(6);
+      String functionType = resultSet.isNull(4) ? null : resultSet.getString(4);
+      String functionDefinition = resultSet.isNull(5) ? null : resultSet.getString(5);
+      String functionSecurityType = resultSet.isNull(6) ? null : resultSet.getString(6);
       LOG.debug("Schema user-defined function {}", functionName);
       builder
           .createUdf(functionSpecificName)

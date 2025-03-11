@@ -47,6 +47,11 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTE
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -70,6 +75,8 @@ import com.google.cloud.teleport.spanner.ddl.GraphElementTable.LabelToPropertyDe
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.PropertyDefinition;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
@@ -571,6 +578,74 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema.getProp(SPANNER_CHECK_CONSTRAINT + "0"),
         equalTo("CONSTRAINT ck CHECK (\"first_name\" != \"last_name\")"));
+  }
+
+  @Test
+  public void udfSimple() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("Foo")
+            .definition("SELECT 1")
+            .endUdf()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroUdf = result.iterator().next();
+
+    assertThat(avroUdf, notNullValue());
+
+    assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
+    assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(
+        avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
+    assertThat(
+        avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+
+    assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
+  }
+
+  @Test
+  public void udfAllOptions() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", false);
+    Ddl ddl =
+        Ddl.builder()
+            .createUdf("spanner.Foo")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("Foo")
+            .definition("SELECT 1")
+            .security(SqlSecurity.INVOKER)
+            .type("STRING")
+            .addParameter(
+                UdfParameter.parse("arg0 STRING", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(UdfParameter.parse("arg1 STRING DEFAULT \"bar\"", "spanner.Foo",
+                Dialect.GOOGLE_STANDARD_SQL))
+            .endUdf()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroUdf = result.iterator().next();
+
+    assertThat(avroUdf, notNullValue());
+
+    assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
+    assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_SECURITY), equalTo("INVOKER"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_TYPE), equalTo("STRING"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_PARAMETER + 0), equalTo("`arg0` STRING"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_PARAMETER + 1), equalTo("`arg1` STRING DEFAULT \"bar\""));
+
+    assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
   }
 
   @Test

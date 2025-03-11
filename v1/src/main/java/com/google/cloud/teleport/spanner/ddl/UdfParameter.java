@@ -48,6 +48,35 @@ public abstract class UdfParameter implements Serializable {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
+  public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect)
+       {
+    String[] paramParts = parameter.split(" ");
+    UdfParameter.Builder udfParameter = UdfParameter.builder(dialect)
+        .functionSpecificName(functionSpecificName)
+        .name(paramParts[0])
+        .type(paramParts[1]);
+    if (paramParts.length > 2) {
+      if (paramParts[2].equalsIgnoreCase("default")) {
+        if (paramParts.length == 3){
+          throw new RuntimeException(
+              "Missing default parameter expression in " + functionSpecificName);
+        }
+        String defaultExpression = "";
+        for (int i = 3; i < paramParts.length; i++) {
+          if (!defaultExpression.isEmpty()) {
+            defaultExpression += " ";
+          }
+          defaultExpression += paramParts[i];
+        }
+        udfParameter.defaultExpression(defaultExpression);
+      } else {
+        throw new RuntimeException(
+            "Unexpected parameter keyword \"" + paramParts[2] + "\" in " + functionSpecificName);
+      }
+    }
+    return udfParameter.autoBuild();
+  }
+
   public void prettyPrint(Appendable appendable) throws IOException {
     appendable.append(quoteIdentifier(name(), dialect()));
     appendable.append(" ");
