@@ -50,8 +50,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
       spannerResourceManagerForTables.executeDdlStatements(createTableQueries.subList(i, end));
     }
 
-    String query =
-        "SELECT COUNT(*) AS table_count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG = '' AND TABLE_SCHEMA = ''";
+    String query = "SELECT COUNT(*) AS table_count FROM INFORMATION_SCHEMA.TABLES";
     ImmutableList<Struct> results = spannerResourceManagerForTables.runQuery(query);
     assertFalse(results.isEmpty());
     long tableCount = results.get(0).getLong(0);
