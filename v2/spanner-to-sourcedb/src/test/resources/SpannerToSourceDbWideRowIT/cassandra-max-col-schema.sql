@@ -1,5 +1,5 @@
 CREATE TABLE TestTable (
-    Id TINYINT PRIMARY KEY,
+    Id TEXT PRIMARY KEY,
     Col_1 TEXT,
     Col_2 TEXT,
     Col_3 TEXT,
@@ -1022,6 +1022,5 @@ CREATE TABLE TestTable (
     Col_1020 TEXT,
     Col_1021 TEXT,
     Col_1022 TEXT,
-    Col_1023 TEXT,
-    Col_1024 TEXT,
+    Col_1023 TEXT
 );
