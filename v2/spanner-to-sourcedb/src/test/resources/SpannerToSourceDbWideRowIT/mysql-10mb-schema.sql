@@ -1,4 +1,4 @@
 CREATE TABLE large_data (
     id VARCHAR(36) PRIMARY KEY,
-    large_text LONGBLOB NOT NULL
+    large_blob LONGBLOB NOT NULL
 );

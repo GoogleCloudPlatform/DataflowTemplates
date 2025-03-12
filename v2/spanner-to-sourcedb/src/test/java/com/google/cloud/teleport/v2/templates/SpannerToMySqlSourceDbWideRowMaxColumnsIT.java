@@ -177,7 +177,7 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
     assertThat(rows).hasSize(1);
     Map<String, Object> row = rows.get(0);
-    for (int i = 1; i <= 1024; i++) {
+    for (int i = 1; i < 1024; i++) {
       String columnName = "Col_" + i;
       String expectedValue = "TestValue_" + i;
 

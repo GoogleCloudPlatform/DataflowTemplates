@@ -158,9 +158,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
     final int safeBlobSize = maxBlobSize - 1024; // 9.9MB to avoid limit issues
 
     try {
-      // Generate BLOB with 9.9MB to prevent exceeding Spanner limits
       byte[] blobData = new byte[safeBlobSize];
-
       Mutation mutation =
           Mutation.newInsertBuilder("large_data")
               .set("id")
@@ -180,7 +178,8 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
 
   private void assertRowInMySQL() throws MultipleFailureException {
     LOG.info("Validating row in MySQL...");
-
+    final int maxBlobSize = 10 * 1024 * 1024; // 10MB
+    final int safeBlobSize = maxBlobSize - 1024; // 9.9MB to avoid limit issues
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -206,7 +205,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
 
       Object largeBlob = row.get("large_blob");
       assertThat(largeBlob).isNotNull();
-      assertThat(((byte[]) largeBlob).length).isEqualTo(10 * 1024 * 1024); // 10MB
+      assertThat(((byte[]) largeBlob).length).isEqualTo(safeBlobSize); // 10MB
 
       LOG.info("Validation successful: 10MB row exists in MySQL.");
 

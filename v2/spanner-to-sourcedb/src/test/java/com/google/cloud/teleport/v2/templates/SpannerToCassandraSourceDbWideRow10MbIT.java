@@ -160,9 +160,7 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
     final int safeBlobSize = maxBlobSize - 1024; // 9.9MB to avoid limit issues
 
     try {
-      // Generate BLOB with 9.9MB to prevent exceeding Spanner limits
       byte[] blobData = new byte[safeBlobSize];
-
       Mutation mutation =
           Mutation.newInsertBuilder("large_data")
               .set("id")
@@ -201,7 +199,8 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
 
   private void assertBasicRowInCassandraDB() {
     LOG.info("Validating row in Cassandra...");
-
+    final int maxBlobSize = 10 * 1024 * 1024; // 10MB
+    final int safeBlobSize = maxBlobSize - 1024; // 9.9MB to avoid limit issues
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -221,7 +220,7 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
 
     assertThat(row.getUuid("id")).isNotNull();
     assertThat(row.getBytesUnsafe("large_blob")).isNotNull();
-    assertThat(row.getBytesUnsafe("large_blob").remaining()).isEqualTo(10 * 1024 * 1024); // 10MB
+    assertThat(row.getBytesUnsafe("large_blob").remaining()).isEqualTo(safeBlobSize); // 10MB
 
     LOG.info("Validation successful: 10MB row exists in Cassandra.");
   }
