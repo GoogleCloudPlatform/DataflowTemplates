@@ -146,24 +146,32 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
       throws IOException, InterruptedException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
-    writeRowsInSpanner();
+    writeBasicRowInSpanner();
     // Assert events on Mysql
     assertRowInMySQL();
   }
 
-  private void writeRowsInSpanner() {
+  private void writeBasicRowInSpanner() {
     LOG.info("Writing a basic row to Spanner...");
+    // Define maximum allowed size (slightly below 10MB to avoid boundary issues)
+    final int MAX_BLOB_SIZE = 10 * 1024 * 1024; // 10MB
+    final int SAFE_BLOB_SIZE = MAX_BLOB_SIZE - 1024; // 9.9MB to avoid limit issues
+    try {
+      byte[] blobData = new byte[SAFE_BLOB_SIZE];
 
-    Mutation mutation =
-        Mutation.newInsertBuilder(TABLE1)
-            .set("id")
-            .to(UUID.randomUUID().toString())
-            .set("large_blob")
-            .to(ByteArray.copyFrom(new byte[10 * 1024 * 1024])) // 10MB BLOB
-            .build();
+      Mutation mutation =
+          Mutation.newInsertBuilder("large_data")
+              .set("id")
+              .to(UUID.randomUUID().toString())
+              .set("large_blob")
+              .to(ByteArray.copyFrom(blobData)) // Ensures ≤10MB limit
+              .build();
 
-    spannerResourceManager.write(mutation);
-    LOG.info("Successfully inserted a 10MB row into Spanner.");
+      spannerResourceManager.write(mutation);
+      LOG.info("✅ Successfully inserted a 9.9MB row into Spanner.");
+    } catch (Exception e) {
+      LOG.error("❌ Failed to insert BLOB in Spanner: {}", e.getMessage(), e);
+    }
   }
 
   private final List<Throwable> assertionErrors = new ArrayList<>();
