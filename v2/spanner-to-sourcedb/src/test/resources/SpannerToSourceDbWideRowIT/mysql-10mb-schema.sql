@@ -1,5 +1,4 @@
 CREATE TABLE large_data (
     id VARCHAR(36) PRIMARY KEY,
-    large_text LONGBLOB NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    large_text LONGBLOB NOT NULL
 );

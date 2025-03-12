@@ -21,7 +21,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.ByteArray;
-import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -161,8 +160,6 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
             .to(UUID.randomUUID().toString())
             .set("large_blob")
             .to(ByteArray.copyFrom(new byte[10 * 1024 * 1024])) // 10MB BLOB
-            .set("created_at")
-            .to(Timestamp.now())
             .build();
 
     spannerResourceManager.write(mutation);

@@ -1,7 +1,6 @@
 CREATE TABLE large_data (
     id STRING(36) NOT NULL,
-    large_blob BYTES(16777216) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+    large_blob BYTES(16777216) NOT NULL
 ) PRIMARY KEY (id);
 
 CREATE CHANGE STREAM allstream
