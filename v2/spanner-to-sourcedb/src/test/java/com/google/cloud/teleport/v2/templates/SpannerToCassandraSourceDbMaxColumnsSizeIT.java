@@ -15,10 +15,21 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
+import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
+
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.cloud.spanner.Mutation;
 import com.google.pubsub.v1.SubscriptionName;
+import java.io.IOException;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -31,18 +42,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
-import static com.google.common.truth.Truth.assertThat;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static org.junit.Assert.assertEquals;
 
 public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceDbITBase {
 
