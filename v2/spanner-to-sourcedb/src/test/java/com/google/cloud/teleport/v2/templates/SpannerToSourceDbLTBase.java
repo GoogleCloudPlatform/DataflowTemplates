@@ -155,6 +155,7 @@ public class SpannerToSourceDbLTBase extends TemplateLoadTestBase {
     SpannerResourceManager spannerMetadataResourceManager =
         SpannerResourceManager.builder("rr-meta-" + testName, project, region)
             .maybeUseStaticInstance()
+            .setNodeCount(4)
             .build();
     String dummy = "create table t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
