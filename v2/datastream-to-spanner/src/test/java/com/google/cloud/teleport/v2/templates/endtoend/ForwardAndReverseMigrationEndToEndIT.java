@@ -124,7 +124,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         // secretClient.accessSecret("projects/269744978479/secrets/subnetwork-mysql/versions/1");
         // create MySql Resources
         cloudSqlResourceManager =
-            CloudMySQLResourceManager.builder(testName, publicHost, username, password, 3306)
+            CloudMySQLResourceManager.builder(testName, privateHost, username, password, 3306)
                 .build();
         jdbcSource =
             createMySqlDatabase(
