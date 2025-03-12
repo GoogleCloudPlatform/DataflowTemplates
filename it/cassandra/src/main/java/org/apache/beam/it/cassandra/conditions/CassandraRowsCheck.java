@@ -78,7 +78,7 @@ public abstract class CassandraRowsCheck extends ConditionCheck {
       String query =
           String.format("SELECT COUNT(*) FROM %s.%s", resourceManager.getKeyspaceName(), tableName);
       SimpleStatement statement =
-          SimpleStatement.builder(query).setTimeout(Duration.ofSeconds(20)).build();
+          SimpleStatement.builder(query).setTimeout(Duration.ofSeconds(120)).build();
       ResultSet resultSet = session.execute(statement);
       Row row = resultSet.one();
       if (row != null) {
