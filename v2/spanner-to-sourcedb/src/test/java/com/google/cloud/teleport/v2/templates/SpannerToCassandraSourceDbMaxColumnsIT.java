@@ -181,7 +181,7 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
       LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
       String primaryKeyColumn = row.getString("Col_0");
       assertEquals("SampleTest", primaryKeyColumn);
-      for (int i = 1; i <= 1024; i++) {
+      for (int i = 1; i < 1024; i++) {
         assertEquals("TestValue_" + i, row.getString("Col_" + i));
       }
     }

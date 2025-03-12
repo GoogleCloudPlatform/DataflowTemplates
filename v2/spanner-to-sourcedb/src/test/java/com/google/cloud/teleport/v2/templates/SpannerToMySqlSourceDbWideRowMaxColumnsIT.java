@@ -155,7 +155,7 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
     Mutation.WriteBuilder mutationBuilder =
         Mutation.newInsertOrUpdateBuilder(TABLE1).set("Id").to("SampleTest");
 
-    for (int i = 1; i <= 1024; i++) {
+    for (int i = 1; i < 1024; i++) {
       mutationBuilder.set("Col_" + i).to("TestValue_" + i);
     }
 
