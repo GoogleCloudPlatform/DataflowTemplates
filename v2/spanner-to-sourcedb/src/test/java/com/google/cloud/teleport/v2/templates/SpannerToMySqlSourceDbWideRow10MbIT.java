@@ -153,11 +153,13 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
 
   private void writeBasicRowInSpanner() {
     LOG.info("Writing a basic row to Spanner...");
-    // Define maximum allowed size (slightly below 10MB to avoid boundary issues)
-    final int MAX_BLOB_SIZE = 10 * 1024 * 1024; // 10MB
-    final int SAFE_BLOB_SIZE = MAX_BLOB_SIZE - 1024; // 9.9MB to avoid limit issues
+
+    final int maxBlobSize = 10 * 1024 * 1024; // 10MB
+    final int safeBlobSize = maxBlobSize - 1024; // 9.9MB to avoid limit issues
+
     try {
-      byte[] blobData = new byte[SAFE_BLOB_SIZE];
+      // Generate BLOB with 9.9MB to prevent exceeding Spanner limits
+      byte[] blobData = new byte[safeBlobSize];
 
       Mutation mutation =
           Mutation.newInsertBuilder("large_data")
