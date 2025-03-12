@@ -82,11 +82,6 @@ public class CassandraConnectionHelperTest {
         mockedCqlSession.when(CqlSession::builder).thenReturn(cqlSessionBuilder);
         when(cqlSessionBuilder.withConfigLoader(driverConfigLoader)).thenReturn(cqlSessionBuilder);
         when(cqlSessionBuilder.build()).thenReturn(cqlSession);
-        MutableCodecRegistry mockRegistry = mock(MutableCodecRegistry.class);
-        doNothing().when(mockRegistry).register((TypeCodec<?>) any());
-        DriverContext mockContext = mock(DriverContext.class);
-        when(mockContext.getCodecRegistry()).thenReturn(mockRegistry);
-        when(cqlSession.getContext()).thenReturn(mockContext);
         ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
         when(request.getShards()).thenReturn(Collections.singletonList(cassandraShard));
         when(request.getMaxConnections()).thenReturn(10);
