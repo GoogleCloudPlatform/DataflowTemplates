@@ -172,7 +172,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put("varchar_set_col", "[]")
         .put("timestamp_col", "NULL")
         .put("tinyint_set_col", "[]")
-        .put("time_col", "P0D")
+        .put("time_col", "0")
         .put("bigint_boolean_map_col", "{}")
         .put("text_list_col", "[]")
         .put("boolean_list_col", "[]")
@@ -259,7 +259,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put("varchar_set_col", "[]")
         .put("timestamp_col", "1970-01-01T00:00:00Z")
         .put("tinyint_set_col", "[]")
-        .put("time_col", "P0D")
+        .put("time_col", "0")
         .put("bigint_boolean_map_col", "{}")
         .put("text_list_col", "[]")
         .put("boolean_list_col", "[]")
@@ -345,7 +345,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             "{\"-128\":\"184467440000000000000\",\"127\":\"-184467440000000000000\"}")
         .put("text_set_col", "[G,KNOWS,LEONARDO,LER,MATHEMATICIAN,O,OG]")
         .put("double_set_col", "[-Infinity,-1.7976931348623157E308,0.0,3.1415926,Infinity,NaN]")
-        .put("time_list_col", "[P0D,P0DT23H59M59.999999999S]")
+        .put("time_list_col", "[0,86399999999999]")
         .put("frozen_ascii_list_col", "[a,b]")
         .put("int_list_col", "[-2147483648,0,2147483647]")
         .put("ascii_list_col", "[a,~]")
@@ -355,15 +355,13 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             "timestamp_set_col",
             "[1970-01-01T00:00:00Z,1970-01-01T00:00:00Z,1969-12-31T23:59:59.999000000Z]")
         .put("ascii_col", "~~~~~~~")
-        .put(
-            "time_tinyint_map_col",
-            "{\"{\\\"years\\\": 0, \\\"months\\\": 0, \\\"days\\\": 0, \\\"hours\\\": 0, \\\"minutes\\\": 0, \\\"seconds\\\": 0, \\\"nanos\\\": 0}\":\"127\",\"{\\\"years\\\": 0, \\\"months\\\": 0, \\\"days\\\": 0, \\\"hours\\\": 0, \\\"minutes\\\": 0, \\\"seconds\\\": 0, \\\"nanos\\\": 86399999999999}\":\"-128\"}")
+        .put("time_tinyint_map_col", "{\"0\":\"127\",\"86399999999999\":\"-128\"}")
         .put("float_col", "3.4028235E38")
         .put("bigint_set_col", "[-9223372036854775808,0,9223372036854775807]")
         .put("varchar_set_col", "[a,~]")
         .put("timestamp_col", "1969-12-31T23:59:59.999000000Z")
         .put("tinyint_set_col", "[-128,0,127]")
-        .put("time_col", "P0DT23H59M59.999999999S")
+        .put("time_col", "86399999999999")
         .put("bigint_boolean_map_col", "{\"42\":\"true\",\"84\":\"false\"}")
         .put("text_list_col", "[G,O,OG,LER,KNOWS,LEONARDO,MATHEMATICIAN]")
         .put("boolean_list_col", "[true,false]")
@@ -371,11 +369,9 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put(
             "timeuuid_set_col",
             "[00000000-0000-1000-9000-000000000000,88888888-8888-1888-9888-888888888888,ffffffff-ffff-1fff-9fff-ffffffffffff]")
-        .put(
-            "int_time_map_col",
-            "{\"1\":\"{\\\"years\\\": 0, \\\"months\\\": 0, \\\"days\\\": 0, \\\"hours\\\": 0, \\\"minutes\\\": 0, \\\"seconds\\\": 0, \\\"nanos\\\": 0}\",\"42\":\"{\\\"years\\\": 0, \\\"months\\\": 0, \\\"days\\\": 0, \\\"hours\\\": 0, \\\"minutes\\\": 0, \\\"seconds\\\": 0, \\\"nanos\\\": 2400}\"}")
+        .put("int_time_map_col", "{\"1\":\"0\",\"42\":\"2400\"}")
         .put("timeuuid_col", "ffffffff-ffff-1fff-9fff-ffffffffffff")
-        .put("time_set_col", "[P0D,P0DT23H59M59.999999999S]")
+        .put("time_set_col", "[0,86399999999999]")
         .put("boolean_set_col", "[false,true]")
         .put("bigint_col", "9223372036854775807")
         .put("float_set_col", "[-Infinity,-3.4028235E38,0.0,3.4028235E38,Infinity,NaN]")
