@@ -42,6 +42,7 @@ import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -53,6 +54,7 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -101,6 +103,37 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
+  public SubscriptionName createRRPubsubResources(
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+    String topicNameSuffix = "rr-it" + identifierSuffix;
+    String subscriptionNameSuffix = "rr-it-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    prefix += "/retry/";
+    gcsClient.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
+  public SubscriptionName createFwdPubsubResources(
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+    String topicNameSuffix = "it" + identifierSuffix;
+    String subscriptionNameSuffix = "it-sub" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    gcsClient.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
   public SubscriptionName createPubsubResources(
       String identifierSuffix,
       PubsubResourceManager pubsubResourceManager,
@@ -137,6 +170,27 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     String shardFileContents = ja.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void rrCreateAndUploadShardConfigToGcs(
+      GcsResourceManager gcsResourceManager,
+      MySQLResourceManager jdbcResourceManager,
+      String gcsPathPrefix)
+      throws IOException {
+    Shard shard = new Shard();
+    shard.setLogicalShardId("Shard1");
+    shard.setUser(jdbcResourceManager.getUsername());
+    shard.setHost(jdbcResourceManager.getHost());
+    shard.setPassword(jdbcResourceManager.getPassword());
+    shard.setPort(String.valueOf(jdbcResourceManager.getPort()));
+    shard.setDbName(jdbcResourceManager.getDatabaseName());
+    JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
+    jsObj.remove("secretManagerUri"); // remove field secretManagerUri
+    JsonArray ja = new JsonArray();
+    ja.add(jsObj);
+    String shardFileContents = ja.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact(gcsPathPrefix + "/shard.json", shardFileContents);
   }
 
   protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
@@ -255,6 +309,88 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
+  }
+
+  public PipelineLauncher.LaunchInfo launchRRDataflowJob(
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String rrSubscriptionName,
+      String gcsPathPrefix)
+      throws IOException {
+    String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
+    // default parameters
+    flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(rrJobName)
+            .withTemplateName("Spanner_to_SourceDb")
+            .withTemplateModulePath("v2/spanner-to-sourcedb")
+            .addParameter(
+                "sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json", gcsResourceManager))
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("metadataDatabase", spannerMetadataResourceManager.getDatabaseId())
+            .addParameter("metadataInstance", spannerMetadataResourceManager.getInstanceId())
+            .addParameter(
+                "sourceShardsFilePath",
+                getGcsPath(gcsPathPrefix + "/shard.json", gcsResourceManager))
+            .addParameter("changeStreamName", "allstream")
+            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName)
+            .addParameter(
+                "deadLetterQueueDirectory",
+                getGcsPath(gcsPathPrefix + "/rr/dlq", gcsResourceManager))
+            .addParameter("maxShardConnections", "5")
+            .addParameter("maxNumWorkers", "1")
+            .addParameter("numWorkers", "1")
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+            .build();
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    System.out.println("#####1");
+    System.out.println(jobInfo.jobId());
+    System.out.println(getGcsPath(gcsPathPrefix + "/rr/dlq", gcsResourceManager));
+    System.out.println(rrSubscriptionName);
+    return jobInfo;
+  }
+
+  public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      String gcsPathPrefix,
+      SubscriptionName fwdSubscription,
+      SubscriptionName dlqSubscription)
+      throws IOException {
+    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
+    // default parameters
+    flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
+            .withTemplateName("Cloud_Datastream_to_Spanner")
+            .withTemplateModulePath("v2/datastream-to-spanner")
+            .addParameter("inputFilePattern", getGcsPath(gcsPathPrefix + "/cdc/"))
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", PROJECT)
+            .addParameter("deadLetterQueueDirectory", getGcsPath(gcsPathPrefix + "/dlq"))
+            .addParameter("gcsPubSubSubscription", fwdSubscription.toString())
+            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+            .addParameter("datastreamSourceType", "mysql")
+            .addParameter("inputFileFormat", "avro")
+            .addParameter(
+                "sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json", gcsResourceManager))
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+            .build();
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    System.out.println("#####2");
+    System.out.println(jobInfo.jobId());
+    System.out.println(getGcsPath(gcsPathPrefix + "/dlq"));
+    System.out.println(fwdSubscription.toString());
+    System.out.println(dlqSubscription.toString());
     return jobInfo;
   }
 
