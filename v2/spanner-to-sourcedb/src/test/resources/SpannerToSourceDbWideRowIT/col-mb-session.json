@@ -39,7 +39,7 @@
           }
         },
         "c159": {
-          "Name": "large_data",
+          "Name": "large_blob",
           "T": {
             "Name": "BYTES",
             "Len": 9223372036854775807,
@@ -148,7 +148,7 @@
           }
         },
         "c159": {
-          "Name": "large_text",
+          "Name": "large_blob",
           "Type": {
             "Name": "longblob",
             "Mods": [
