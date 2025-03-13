@@ -26,6 +26,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType.Kind;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
@@ -137,6 +139,35 @@ public class DdlTest {
     assertNotNull(ddl.hashCode());
     assertTrue(ddl.tablesReferenced("Users").contains("AllowedNames"));
     assertTrue(ddl.tablesReferenced("Users").size() == 1);
+  }
+
+  @Test
+  public void testDdlCassandraOptions() {
+
+    Ddl.Builder builder = Ddl.builder();
+
+    builder
+        .createTable("Users")
+        .column("id")
+        .int64()
+        .notNull()
+        .columnOptions(ImmutableList.of("CASSANDRA_TYPE=\"int\"", "SOME_UNKNOWN_OPTION"))
+        .endColumn()
+        .column("first_name")
+        .string()
+        .size(10)
+        .endColumn()
+        .primaryKey()
+        .asc("id")
+        .end()
+        .endTable();
+    Ddl ddl = builder.build();
+    assertEquals(
+        ddl.table("Users").column("id").cassandraAnnotation().cassandraType(),
+        CassandraType.fromAnnotation("int"));
+    assertEquals(
+        ddl.table("Users").column("first_name").cassandraAnnotation().cassandraType().getKind(),
+        Kind.NONE);
   }
 
   @Test

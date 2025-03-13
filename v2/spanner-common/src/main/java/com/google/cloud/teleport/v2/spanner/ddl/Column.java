@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.spanner.ddl;
 
 import com.google.auto.value.AutoValue;
+import com.google.auto.value.extension.memoized.Memoized;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -34,6 +36,11 @@ public abstract class Column implements Serializable {
   public abstract Type type();
 
   public abstract ImmutableList<String> columnOptions();
+
+  @Memoized
+  public CassandraAnnotations cassandraAnnotation() {
+    return CassandraAnnotations.fromColumnOptions(columnOptions(), name());
+  }
 
   @Nullable
   public abstract Integer size();
