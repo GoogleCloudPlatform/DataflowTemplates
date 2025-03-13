@@ -142,7 +142,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
   }
 
   @Test
-  public void spannerToSourceDataTypeConversionTest()
+  public void spannerToMYSQLSourceDB10MBTest()
       throws IOException, InterruptedException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner

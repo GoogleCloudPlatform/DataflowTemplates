@@ -147,7 +147,7 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
    * @throws IOException if an I/O error occurs during the test execution.
    */
   @Test
-  public void spannerToCasandraSourceDbBasic() throws InterruptedException, IOException {
+  public void spannerToCasandraSourceDb10MBTest() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     writeBasicRowInSpanner();
     assertBasicRowInCassandraDB();
