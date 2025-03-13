@@ -175,12 +175,7 @@ public class CassandraMappingsProvider {
               Row::getString,
               valuePassThrough,
               String.class)
-          .put(
-              "TIME",
-              UnifiedMappingProvider.Type.INTERVAL_NANO,
-              Row::getTime,
-              cassandraTimeToIntervalNano,
-              Long.class)
+          .put("TIME", UnifiedMappingProvider.Type.LONG, Row::getTime, valuePassThrough, Long.class)
           .put(
               "TIMESTAMP",
               UnifiedMappingProvider.Type.TIMESTAMP,

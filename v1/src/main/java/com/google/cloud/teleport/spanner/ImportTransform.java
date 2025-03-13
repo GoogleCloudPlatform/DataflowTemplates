@@ -32,6 +32,11 @@ import com.google.cloud.teleport.spanner.ddl.Udf;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
+import com.google.cloud.teleport.spanner.spannerio.SpannerAccessor;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.SpannerWriteResult;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.base.Verify;
@@ -67,11 +72,6 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
@@ -174,7 +174,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         schemas.apply("Build avro DDL", Combine.globally(AsList.fn()));
 
     PCollectionView<Transaction> tx =
-        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollection<Ddl> informationSchemaDdl =
         begin.apply(
@@ -274,7 +274,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       SpannerWriteResult result =
           mutations.apply(
               "Write mutations " + depth,
-              LocalSpannerIO.write()
+              SpannerIO.write()
                   .withSchemaReadySignal(ddl)
                   .withSpannerConfig(spannerConfig)
                   .withCommitDeadline(Duration.standardMinutes(1))
@@ -409,7 +409,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
     private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
-    private transient LocalSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
     private static final Logger LOG = LoggerFactory.getLogger(CreateTables.class);
 
     /* If the schema has a lot of DDL changes after data load, it's preferable to create
@@ -465,7 +465,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
                         @Setup
                         public void setup() {
-                          spannerAccessor = LocalSpannerAccessor.getOrCreate(spannerConfig);
+                          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
                         }
 
                         @Teardown
