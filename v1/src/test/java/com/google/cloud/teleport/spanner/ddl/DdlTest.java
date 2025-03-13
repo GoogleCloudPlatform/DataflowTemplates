@@ -36,6 +36,7 @@ import com.google.cloud.teleport.spanner.ddl.GraphElementTable.LabelToPropertyDe
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.PropertyDefinition;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn.IndexColumnsBuilder;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn.Order;
+import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
@@ -1132,6 +1133,48 @@ public class DdlTest {
         equalToCompressingWhiteSpace(
             " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
                 + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void udfs() {
+    Ddl ddl =
+        Ddl.builder()
+            .createUdf("spanner.Foo1")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("spanner.Foo2")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("STRING")
+            .addParameter(
+                UdfParameter.parse("arg0 STRING", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(UdfParameter.parse("arg1 STRING DEFAULT 'bar'", "spanner.Foo",
+                Dialect.GOOGLE_STANDARD_SQL))
+            .endUdf()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE FUNCTION `Foo1`() AS (SELECT 'bar')\n"
+                + "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
+                + " RETURNS STRING SQL SECURITY INVOKER AS (SELECT 'bar')"));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo1`() AS (SELECT 'bar')"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
+                + " RETURNS STRING SQL SECURITY INVOKER AS (SELECT 'bar')"));
     assertNotNull(ddl.hashCode());
   }
 
