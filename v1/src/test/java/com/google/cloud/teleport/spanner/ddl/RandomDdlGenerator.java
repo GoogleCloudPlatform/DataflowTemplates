@@ -229,10 +229,12 @@ public abstract class RandomDdlGenerator {
 
   private void generateUdf(Ddl.Builder builder) {
     String name = generateIdentifier(getMaxIdLength());
-    Udf.Builder udfBuilder = builder.createUdf(name)
-        .definition("select 1")
-        .dialect(Dialect.GOOGLE_STANDARD_SQL)
-        .name(name);
+    Udf.Builder udfBuilder =
+        builder
+            .createUdf(name)
+            .definition("select 1")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name(name);
     if (getRandom().nextBoolean()) {
       Type type = generateType(PK_TYPES, -1);
       udfBuilder.type(type.getCode().getName());
@@ -244,11 +246,10 @@ public abstract class RandomDdlGenerator {
     for (int i = 0; i < numUdfParameters; i++) {
       String paramName = generateIdentifier(getMaxIdLength());
       Type type = generateType(PK_TYPES, -1);
-      UdfParameter.Builder udfParameterBuilder = udfBuilder.parameter(paramName)
-          .type(type.getCode().getName());
+      UdfParameter.Builder udfParameterBuilder =
+          udfBuilder.parameter(paramName).type(type.getCode().getName());
       if (getRandom().nextBoolean()) {
-        udfParameterBuilder.defaultExpression(
-        addDefaultValueToColumn(type));
+        udfParameterBuilder.defaultExpression(addDefaultValueToColumn(type));
       }
       udfParameterBuilder.endUdfParameter();
     }

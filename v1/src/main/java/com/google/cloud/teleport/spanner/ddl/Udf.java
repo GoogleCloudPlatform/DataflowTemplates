@@ -106,17 +106,14 @@ public abstract class Udf implements Serializable {
   public abstract Builder autoToBuilder();
 
   public Builder toBuilder() {
-    Builder builder =
-        autoToBuilder()
-            .specificName(specificName())
-            .dialect(dialect());
+    Builder builder = autoToBuilder().specificName(specificName()).dialect(dialect());
     if (name() != null) {
       builder.name(name());
     }
     if (type() != null) {
       builder.type(type());
     }
-    if (definition() != null){
+    if (definition() != null) {
       builder.definition(definition());
     }
     if (security() != null) {

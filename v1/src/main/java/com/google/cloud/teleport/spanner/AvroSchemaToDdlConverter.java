@@ -152,6 +152,7 @@ public class AvroSchemaToDdlConverter {
     }
     return builder.build();
   }
+
   public Udf toUdf(String functionSpecificName, Schema schema) {
     if (functionSpecificName == null) {
       functionSpecificName = getSpannerObjectName(schema);
@@ -159,7 +160,8 @@ public class AvroSchemaToDdlConverter {
     LOG.debug("Converting to Ddl functionSpecificName {}", functionSpecificName);
 
     Udf.Builder builder =
-        Udf.builder(dialect).specificName(functionSpecificName)
+        Udf.builder(dialect)
+            .specificName(functionSpecificName)
             .name(schema.getProp(SPANNER_UDF_NAME))
             .type(schema.getProp(SPANNER_UDF_TYPE))
             .definition(schema.getProp(SPANNER_UDF_DEFINITION));

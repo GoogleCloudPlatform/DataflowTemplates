@@ -1049,8 +1049,9 @@ public class InformationSchemaScanner {
 
     while (resultSet.next()) {
       String functionName =
-          resultSet.isNull(0) || resultSet.isNull(1) ? null :
-              getQualifiedName(resultSet.getString(0), resultSet.getString(1));
+          resultSet.isNull(0) || resultSet.isNull(1)
+              ? null
+              : getQualifiedName(resultSet.getString(0), resultSet.getString(1));
       String functionSpecificName =
           getQualifiedName(resultSet.getString(2), resultSet.getString(3));
       String functionType = resultSet.isNull(4) ? null : resultSet.getString(4);

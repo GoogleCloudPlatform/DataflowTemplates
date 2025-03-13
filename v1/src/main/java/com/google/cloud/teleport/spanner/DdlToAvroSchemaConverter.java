@@ -120,7 +120,7 @@ public class DdlToAvroSchemaConverter {
       recordBuilder.prop(SPANNER_ENTITY, SPANNER_NAMED_SCHEMA);
       schemas.add(recordBuilder.fields().endRecord());
     }
-    for (Udf udf :ddl.udfs()) {
+    for (Udf udf : ddl.udfs()) {
       LOG.info("DdlToAvo Udf {}", udf.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
           SchemaBuilder.record(generateAvroSchemaName(udf.specificName()))

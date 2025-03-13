@@ -649,9 +649,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                     LOG.info("Exporting user-defined function: " + udfName);
                     // This file will contain the schema definition for the placement.
                     c.output(
-                        KV.of(
-                            udfName,
-                            Collections.singleton(udfName + ".avro-00000-of-00001")));
+                        KV.of(udfName, Collections.singleton(udfName + ".avro-00000-of-00001")));
                   }
                 }));
 

@@ -1026,10 +1026,10 @@ public class CopyDbTest {
             .definition("(SELECT 'bar')")
             .security(SqlSecurity.INVOKER)
             .type("STRING")
+            .addParameter(UdfParameter.parse("arg0 STRING", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
             .addParameter(
-                UdfParameter.parse("arg0 STRING", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
-            .addParameter(UdfParameter.parse("arg1 STRING DEFAULT 'bar'", "s1.Foo2",
-                Dialect.GOOGLE_STANDARD_SQL))
+                UdfParameter.parse(
+                    "arg1 STRING DEFAULT 'bar'", "s1.Foo2", Dialect.GOOGLE_STANDARD_SQL))
             .endUdf()
             .build();
     createAndPopulate(ddl, 0);

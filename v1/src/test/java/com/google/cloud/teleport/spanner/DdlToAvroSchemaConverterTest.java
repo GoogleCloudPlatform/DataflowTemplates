@@ -602,10 +602,8 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroUdf.getNamespace(), equalTo("spannertest"));
     assertThat(avroUdf.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
     assertThat(avroUdf.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
-    assertThat(
-        avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
-    assertThat(
-        avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_NAME), equalTo("Foo"));
+    assertThat(avroUdf.getProp(SPANNER_UDF_DEFINITION), equalTo("SELECT 1"));
 
     assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
   }
@@ -624,8 +622,9 @@ public class DdlToAvroSchemaConverterTest {
             .type("STRING")
             .addParameter(
                 UdfParameter.parse("arg0 STRING", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
-            .addParameter(UdfParameter.parse("arg1 STRING DEFAULT \"bar\"", "spanner.Foo",
-                Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(
+                UdfParameter.parse(
+                    "arg1 STRING DEFAULT \"bar\"", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
             .endUdf()
             .build();
 
@@ -643,7 +642,8 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(avroUdf.getProp(SPANNER_UDF_SECURITY), equalTo("INVOKER"));
     assertThat(avroUdf.getProp(SPANNER_UDF_TYPE), equalTo("STRING"));
     assertThat(avroUdf.getProp(SPANNER_UDF_PARAMETER + 0), equalTo("`arg0` STRING"));
-    assertThat(avroUdf.getProp(SPANNER_UDF_PARAMETER + 1), equalTo("`arg1` STRING DEFAULT \"bar\""));
+    assertThat(
+        avroUdf.getProp(SPANNER_UDF_PARAMETER + 1), equalTo("`arg1` STRING DEFAULT \"bar\""));
 
     assertThat(avroUdf.getName(), equalTo("spanner_Foo"));
   }

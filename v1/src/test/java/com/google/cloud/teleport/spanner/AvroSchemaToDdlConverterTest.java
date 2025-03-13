@@ -736,9 +736,7 @@ public class AvroSchemaToDdlConverterTest {
     Ddl ddl = converter.toDdl(Collections.singleton(schema));
     assertThat(ddl.udfs(), hasSize(1));
     assertThat(
-        ddl.prettyPrint(),
-        equalToCompressingWhiteSpace(
-            "CREATE FUNCTION `Foo`() AS (SELECT 1)"));
+        ddl.prettyPrint(), equalToCompressingWhiteSpace("CREATE FUNCTION `Foo`() AS (SELECT 1)"));
   }
 
   @Test

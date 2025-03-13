@@ -48,16 +48,16 @@ public abstract class UdfParameter implements Serializable {
     return builder(Dialect.GOOGLE_STANDARD_SQL);
   }
 
-  public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect)
-       {
+  public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
     String[] paramParts = parameter.split(" ");
-    UdfParameter.Builder udfParameter = UdfParameter.builder(dialect)
-        .functionSpecificName(functionSpecificName)
-        .name(paramParts[0])
-        .type(paramParts[1]);
+    UdfParameter.Builder udfParameter =
+        UdfParameter.builder(dialect)
+            .functionSpecificName(functionSpecificName)
+            .name(paramParts[0])
+            .type(paramParts[1]);
     if (paramParts.length > 2) {
       if (paramParts[2].equalsIgnoreCase("default")) {
-        if (paramParts.length == 3){
+        if (paramParts.length == 3) {
           throw new RuntimeException(
               "Missing default parameter expression in " + functionSpecificName);
         }
