@@ -1,0 +1,29 @@
+{
+  "name": "RabbitMq to Pub/Sub",
+  "description": "Streaming pipeline. Ingests RabbitMQ Queue Messages to a Pub/Sub topic",
+  "parameters": [
+    {
+      "name": "connectionUrl",
+      "label": "Rabbitmq Connection Url",
+      "helpText": "plain text such as (amqp://username:password@ampq_server:5671) or secret resource ID (projects/{project}/secrets/{secret}/versions/{secret_version})",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "queue",
+      "label": "Rabbitmq queue name",
+      "helpText": "RabbitMq queue to read data from",
+      "regexes": [],
+      "paramType": "TEXT"
+    },
+    {
+      "name": "outputTopic",
+      "label": "Pub/Sub output topic",
+      "helpText": "Pub/Sub topic to write the output, in the format of 'projects/yourproject/topics/yourtopic'",
+      "regexes": [
+        "^projects\\/[^\\n\\r\\/]+\\/topics\\/[^\\n\\r\\/]+$"
+      ],
+      "paramType": "TEXT"
+    }
+  ]
+}

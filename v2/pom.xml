@@ -716,6 +716,7 @@
         <module>pubsub-to-kafka</module>
         <module>pubsub-to-mongodb</module>
         <module>pubsub-to-redis</module>
+        <module>rabbitmq-to-pubsub</module>
         <module>sourcedb-to-spanner</module>
         <module>spanner-change-streams-to-sharded-file-sink</module>
         <module>spanner-common</module>
