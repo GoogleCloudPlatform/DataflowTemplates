@@ -18,7 +18,10 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
@@ -46,6 +49,9 @@ func main() {
 		log.Fatalf("%v\n", err)
 	}
 
+	rand.Seed(time.Now().UnixNano())
+	randomTeleportSpannerInstance := "teleport" + fmt.Sprint(rand.Intn(4)+1)
+
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
@@ -59,7 +65,7 @@ func main() {
 		mvnFlags.ThreadCount(4),
 		mvnFlags.IntegrationTestParallelism(3),
 		mvnFlags.StaticBigtableInstance("teleport"),
-		mvnFlags.StaticSpannerInstance("teleport"),
+		mvnFlags.StaticSpannerInstance(randomTeleportSpannerInstance),
 		mvnFlags.InternalMaven(),
 		flags.Region(),
 		flags.Project(),
