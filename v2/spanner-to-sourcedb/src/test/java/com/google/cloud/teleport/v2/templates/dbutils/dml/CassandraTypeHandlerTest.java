@@ -24,6 +24,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import com.datastax.oss.driver.api.core.data.CqlDuration;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
@@ -35,7 +36,6 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -360,7 +360,7 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertEquals(Duration.parse("P4DT1H"), castResult);
+    assertEquals(CqlDuration.from("P4DT1H"), castResult);
   }
 
   @Test
@@ -1122,7 +1122,7 @@ public class CassandraTypeHandlerTest {
     Object localTime1 = castToExpectedType("time", "14:30:45");
     assertTrue(localTime1 instanceof LocalTime);
     assertEquals(
-        Duration.ofHours(5), castToExpectedType("duration", Duration.ofHours(5).toString()));
+        CqlDuration.from("5h"), castToExpectedType("duration", CqlDuration.from("5h").toString()));
   }
 
   @Test
