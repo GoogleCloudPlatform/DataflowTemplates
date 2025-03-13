@@ -203,7 +203,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
       assertThat(row.get("id")).isNotNull();
       assertThat(row.get("id").toString()).isNotEmpty();
 
-      Object largeBlob = row.get("large_blob");
+      Object largeBlob = row.get("large_text");
       assertThat(largeBlob).isNotNull();
       assertThat(((byte[]) largeBlob).length).isEqualTo(safeBlobSize); // 10MB
 
