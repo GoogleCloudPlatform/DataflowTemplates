@@ -20,7 +20,10 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 
+@RunWith(MockitoJUnitRunner.class)
 public class AvroTestingHelper {
   public static final Schema TIMESTAMPTZ_SCHEMA =
       SchemaBuilder.record("timestampTz")
