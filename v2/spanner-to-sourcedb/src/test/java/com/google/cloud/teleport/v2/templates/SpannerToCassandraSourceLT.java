@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,26 +15,21 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
 import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.List;
+import org.apache.beam.it.cassandra.conditions.CassandraRowsCheck;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.gcp.datagenerator.DataGenerator;
-import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,26 +42,25 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBase {
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlSourceLT.class);
+public class SpannerToCassandraSourceLT extends SpannerToCassandraLTBase {
 
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraSourceLT.class);
   private String generatorSchemaPath;
   private final String artifactBucket = TestProperties.artifactBucket();
-  private final String spannerDdlResource = "SpannerToMySqlSourceLT/spanner-schema.sql";
-  private final String sessionFileResource = "SpannerToMySqlCustomTransformationLT/session.json";
+  private final String spannerDdlResource = "SpannerToCassandraSourceLT/spanner-schema.sql";
+  private static final String cassandraDdlResource =
+      "SpannerToCassandraSourceLT/cassandra-schema.sql";
   private final String dataGeneratorSchemaResource =
-      "SpannerToMySqlSourceLT/datagenerator-schema.json";
-  private final String table = "Person";
+      "SpannerToCassandraSourceLT/datagenerator-schema.json";
+  private final String table = "person";
   private final int maxWorkers = 50;
   private final int numWorkers = 20;
   private PipelineLauncher.LaunchInfo jobInfo;
-  private PipelineLauncher.LaunchInfo readerJobInfo;
   private final int numShards = 1;
 
   @Before
-  public void setup() throws IOException, InterruptedException {
-    setupResourceManagers(spannerDdlResource, sessionFileResource, artifactBucket);
-    setupMySQLResourceManager(numShards);
+  public void setup() throws IOException {
+    setupResourceManagers(spannerDdlResource, cassandraDdlResource, artifactBucket);
     generatorSchemaPath =
         getFullGcsPath(
             artifactBucket,
@@ -75,36 +69,30 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
                     "input/schema.json",
                     Resources.getResource(dataGeneratorSchemaResource).getPath())
                 .name());
-
-    createMySQLSchema(jdbcResourceManagers);
-    CustomTransformation customTransformation =
-        CustomTransformation.builder(
-                "input/customShard.jar", "com.custom.CustomTransformationWithShardForLiveIT")
-            .build();
-    createAndUploadJarToGcs(gcsResourceManager);
     jobInfo =
         launchDataflowJob(
             artifactBucket,
             numWorkers,
             maxWorkers,
-            customTransformation,
-            MYSQL_SOURCE_TYPE,
+            null,
+            CASSANDRA_SOURCE_TYPE,
             SOURCE_SHARDS_FILE_NAME);
   }
 
   @After
-  public void tearDown() {
+  public void teardown() {
     cleanupResourceManagers();
   }
 
   @Test
-  public void reverseReplication1KTpsWithCustomTransformation()
+  public void reverseReplicationCassandra1KTpsLoadTest()
       throws IOException, ParseException, InterruptedException {
-    // Start data generator
+
+    Integer numRecords = 300000;
     DataGenerator dataGenerator =
         DataGenerator.builderWithSchemaLocation(testName, generatorSchemaPath)
             .setQPS("1000")
-            .setMessagesLimit(String.valueOf(300000))
+            .setMessagesLimit(String.valueOf(numRecords))
             .setSpannerInstanceName(spannerResourceManager.getInstanceId())
             .setSpannerDatabaseName(spannerResourceManager.getDatabaseId())
             .setSpannerTableName(table)
@@ -118,17 +106,17 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
     dataGenerator.execute(Duration.ofMinutes(90));
     assertThatPipeline(jobInfo).isRunning();
 
-    JDBCRowsCheck check =
-        JDBCRowsCheck.builder(jdbcResourceManagers.get(0), table)
-            .setMinRows(300000)
-            .setMaxRows(300000)
+    CassandraRowsCheck check =
+        CassandraRowsCheck.builder(table)
+            .setResourceManager(cassandraResourceManager)
+            .setMinRows(numRecords)
+            .setMaxRows(numRecords)
             .build();
 
     PipelineOperator.Result result =
         pipelineOperator.waitForCondition(
             createConfig(jobInfo, Duration.ofMinutes(10), Duration.ofSeconds(30)), check);
 
-    // Assert Conditions
     assertThatResult(result).meetsConditions();
 
     PipelineOperator.Result result1 =
@@ -137,27 +125,5 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
     assertThatResult(result1).isLaunchFinished();
 
     exportMetrics(jobInfo, numShards);
-  }
-
-  private void createMySQLSchema(List<JDBCResourceManager> jdbcResourceManagers) {
-    if (!(jdbcResourceManagers.get(0) instanceof MySQLResourceManager)) {
-      throw new IllegalArgumentException(jdbcResourceManagers.get(0).getClass().getSimpleName());
-    }
-    MySQLResourceManager jdbcResourceManager = (MySQLResourceManager) jdbcResourceManagers.get(0);
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put("first_name1", "varchar(500)");
-    columns.put("last_name1", "varchar(500)");
-    columns.put("full_name1", "varchar(1500)");
-    columns.put("first_name2", "varchar(500)");
-    columns.put("last_name2", "varchar(500)");
-    columns.put("full_name2", "varchar(1500)");
-    columns.put("first_name3", "varchar(500)");
-    columns.put("last_name3", "varchar(500)");
-    columns.put("full_name3", "varchar(1500)");
-    columns.put("ID", "varchar(100) NOT NULL");
-
-    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "ID");
-
-    jdbcResourceManager.createTable(table, schema);
   }
 }
