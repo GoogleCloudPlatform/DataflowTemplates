@@ -831,5 +831,6 @@
     <module>plaintext-logging</module>
     <module>python</module>
     <module>yaml</module>
+      <module>it/cassandra</module>
   </modules>
 </project>
