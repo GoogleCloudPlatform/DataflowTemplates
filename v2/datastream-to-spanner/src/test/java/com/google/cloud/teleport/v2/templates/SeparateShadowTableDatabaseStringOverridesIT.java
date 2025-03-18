@@ -34,6 +34,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -67,6 +68,7 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
   public static SpannerResourceManager spannerResourceManager;
 
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -83,6 +85,7 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
         Map<String, String> overridesMap =
             new HashMap<>() {
@@ -103,7 +106,8 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
                 pubsubResourceManager,
                 overridesMap,
                 null,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -119,7 +123,10 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -134,7 +141,8 @@ public class SeparateShadowTableDatabaseStringOverridesIT extends DataStreamToSp
                         jobInfo,
                         MYSQL_TABLE,
                         "cdc_person1.avro",
-                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro"),
+                        "DataStreamToSpannerStringOverridesIT/mysql-cdc-person1.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, SPANNER_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)

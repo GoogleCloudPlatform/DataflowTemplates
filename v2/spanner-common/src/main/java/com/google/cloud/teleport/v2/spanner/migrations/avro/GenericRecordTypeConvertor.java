@@ -279,6 +279,10 @@ public class GenericRecordTypeConvertor {
   static Object getObjectMapValueForArrayFieldValue(
       Object fieldValue, Schema fieldSchema, String fieldName) {
 
+    if (fieldValue instanceof List) {
+      fieldValue = ((List<Object>) fieldValue).toArray();
+    }
+
     List<Object> recordArrayList = new ArrayList<Object>();
     Schema elementSchema = fieldSchema.getElementType();
     if (fieldValue == null) {
@@ -439,6 +443,9 @@ public class GenericRecordTypeConvertor {
    *     type.
    */
   static Object handleArrayAvroTypes(Object recordValue, Schema fieldSchema, String recordColName) {
+    if (recordValue instanceof List) {
+      recordValue = ((List<Object>) recordValue).toArray();
+    }
 
     if (!fieldSchema.getType().equals(Schema.Type.ARRAY)) {
       return recordValue;
