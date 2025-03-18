@@ -77,6 +77,7 @@ public class CassandraConnectionHelperTest {
         mockedCqlSession.when(CqlSession::builder).thenReturn(cqlSessionBuilder);
         when(cqlSessionBuilder.withConfigLoader(driverConfigLoader)).thenReturn(cqlSessionBuilder);
         when(cqlSessionBuilder.build()).thenReturn(cqlSession);
+        
         ConnectionHelperRequest request = mock(ConnectionHelperRequest.class);
         when(request.getShards()).thenReturn(Collections.singletonList(cassandraShard));
         when(request.getMaxConnections()).thenReturn(10);
