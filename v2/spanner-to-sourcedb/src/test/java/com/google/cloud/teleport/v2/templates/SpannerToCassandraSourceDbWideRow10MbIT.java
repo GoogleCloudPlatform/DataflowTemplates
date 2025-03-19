@@ -102,7 +102,8 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
+                gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
