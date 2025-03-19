@@ -61,6 +61,7 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
+
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
 
@@ -86,8 +87,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
-   *
-   * @throws IOException
    */
   @Before
   public void setUp() throws IOException, InterruptedException {
@@ -140,8 +139,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
 
   /**
    * Cleanup dataflow job and all the resources and resource managers.
-   *
-   * @throws IOException
    */
   @AfterClass
   public static void cleanUp() throws IOException {
@@ -352,7 +349,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private boolean assertAllDatatypeTransformationTable() {
-    List<Map<String, Object>>  rows =
+    List<Map<String, Object>> rows =
         jdbcResourceManager.runSQLQuery(
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
     if (rows.size() != 2) {
@@ -366,13 +363,16 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     if (!row1.get("bigint_column").equals(1000)) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[])row1.get("binary_column"), "bin_column".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals((byte[]) row1.get("binary_column"),
+        "bin_column".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[])row1.get("bit_column"), "1".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals((byte[]) row1.get("bit_column"),
+        "1".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[])row1.get("blob_column"), "blob_column".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals((byte[]) row1.get("blob_column"),
+        "blob_column".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
     if (!row1.get("bool_column").equals(true)) {
@@ -422,13 +422,16 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     if (!row0.get("bigint_column").equals(12346)) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[])row0.get("binary_column"), "binary_column_appended".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals((byte[]) row0.get("binary_column"),
+        "binary_column_appended".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[])row0.get("bit_column"), "5".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals((byte[]) row0.get("bit_column"),
+        "5".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[])row0.get("blob_column"), "blob_column_appended".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals((byte[]) row0.get("blob_column"),
+        "blob_column_appended".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
     if (!row0.get("bool_column").equals(false)) {
