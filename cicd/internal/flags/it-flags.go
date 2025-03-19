@@ -44,8 +44,8 @@ var (
 
 // Registers all it flags. Must be called before flag.Parse().
 func RegisterItFlags() {
-	flag.StringVar(&dRegion, "it-region", "", "The GCP region to use for storing test artifacts")
-	flag.StringVar(&dProject, "it-project", "", "The GCP project to run the integration tests in")
+	flag.StringVar(&dRegion, "it-region", "asia-south1", "The GCP region to use for storing test artifacts")
+	flag.StringVar(&dProject, "it-project", "daring-fiber-439305-v4", "The GCP project to run the integration tests in")
 	flag.StringVar(&dArtifactBucket, "it-artifact-bucket", "", "A GCP bucket to store test artifacts")
 	flag.StringVar(&dStageBucket, "it-stage-bucket", "", "(optional) A GCP bucket to stage templates")
 	flag.StringVar(&dHostIp, "it-host-ip", "", "(optional) The ip that the gitactions runner is listening on")
@@ -53,10 +53,10 @@ func RegisterItFlags() {
 	flag.StringVar(&dSpannerHost, "it-spanner-host", "", "(optional) A custom endpoint to override Spanner API requests")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
-	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "10.128.0.34", "Hostname or IP address of static Cloud Auth Proxy")
-	flag.StringVar(&dCloudProxyMySqlPort, "it-cloud-proxy-mysql-port", "33134", "MySql port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "34.93.17.234", "Hostname or IP address of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyMySqlPort, "it-cloud-proxy-mysql-port", "3306", "MySql port number on static Cloud Auth Proxy")
 	flag.StringVar(&dCloudProxyPostgresPort, "it-cloud-proxy-postgres-port", "33136", "Postgres port number on static Cloud Auth Proxy")
-	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "Ollion", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")

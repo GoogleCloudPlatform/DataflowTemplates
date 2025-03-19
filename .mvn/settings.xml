@@ -14,17 +14,21 @@
             </activation>
             <!-- Also update repo values in plugins/core-plugin/s.m.j.c.g.c.t/plugin/DockerfileGenerator.java-->
             <repositories>
+<!--                <repository>-->
+<!--                    <id>central</id>-->
+<!--                    <name>Maven Central remote repository</name>-->
+<!--                    <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/ah-3p-staging-maven</url>-->
+<!--                    <layout>default</layout>-->
+<!--                    <releases>-->
+<!--                        <enabled>true</enabled>-->
+<!--                    </releases>-->
+<!--                    <snapshots>-->
+<!--                        <enabled>true</enabled>-->
+<!--                    </snapshots>-->
+<!--                </repository>-->
                 <repository>
-                    <id>central</id>
-                    <name>Maven Central remote repository</name>
-                    <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/ah-3p-staging-maven</url>
-                    <layout>default</layout>
-                    <releases>
-                        <enabled>true</enabled>
-                    </releases>
-                    <snapshots>
-                        <enabled>true</enabled>
-                    </snapshots>
+                    <id>maven-central</id>
+                    <url>https://repo.maven.apache.org/maven2/</url>
                 </repository>
             </repositories>
             <properties>
@@ -35,17 +39,17 @@
         </profile>
     </profiles>
     <mirrors>
-        <mirror>
-            <id>google-maven-central</id>
-            <name>GCS Maven Central mirror</name>
-            <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-            <mirrorOf>external:https:*</mirrorOf>
-        </mirror>
-        <mirror>
-            <id>central-proxy</id>
-            <name>Local proxy of central repo</name>
-            <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/ah-3p-staging-maven</url>
-            <mirrorOf>external:artifactregistry:*</mirrorOf>
-        </mirror>
+<!--        <mirror>-->
+<!--            <id>google-maven-central</id>-->
+<!--            <name>GCS Maven Central mirror</name>-->
+<!--            <url>https://maven-central.storage-download.googleapis.com/maven2/</url>-->
+<!--            <mirrorOf>external:https:*</mirrorOf>-->
+<!--        </mirror>-->
+<!--        <mirror>-->
+<!--            <id>central-proxy</id>-->
+<!--            <name>Local proxy of central repo</name>-->
+<!--            <url>artifactregistry://us-maven.pkg.dev/artifact-foundry-prod/ah-3p-staging-maven</url>-->
+<!--            <mirrorOf>external:artifactregistry:*</mirrorOf>-->
+<!--        </mirror>-->
     </mirrors>
 </settings>
