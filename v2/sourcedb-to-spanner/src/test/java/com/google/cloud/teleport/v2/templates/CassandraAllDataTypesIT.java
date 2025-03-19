@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,6 +51,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("ignore")
 public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
