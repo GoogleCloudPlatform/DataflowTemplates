@@ -37,7 +37,6 @@ on:
       - 'v2/gcs-to-sourcedb/**'
       - 'v2/sourcedb-to-spanner/**'
       - 'v2/spanner-to-sourcedb/**'
-      - '!test-infra/**'
   schedule:
   - cron: "3 */12 * * *"
   workflow_dispatch:
