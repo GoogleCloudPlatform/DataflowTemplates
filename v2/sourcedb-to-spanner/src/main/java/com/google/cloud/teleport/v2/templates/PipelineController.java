@@ -64,11 +64,6 @@ public class PipelineController {
       SpannerConfig spannerConfig,
       DbConfigContainer dbConfigContainer) {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-
-    LOG.info(
-        "Spanner tables = {}, ddl = {}",
-        ddl.allTables().stream().map(t -> t.name()).collect(Collectors.toList()),
-        ddl);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(options, ddl);
     TableSelector tableSelector = new TableSelector(options.getTables(), ddl, schemaMapper);
 
@@ -110,6 +105,9 @@ public class PipelineController {
 
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
 
+    LOG.info(
+        "running migration for shards: {}",
+        shards.stream().map(Shard::getHost).collect(Collectors.toList()));
     for (Shard shard : shards) {
       for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
         // Read data from source

@@ -190,7 +190,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("time_millis_col", 48035000);
     genericRecord.put("timestamp_micros_col", 1602599400056483L);
     genericRecord.put("timestamp_millis_col", 1602599400056L);
-    genericRecord.put("json_col", "{\"k1\":\"v1\"}");
+    genericRecord.put("json_col", "{\"k1\":\"476F6F676C65\"}");
     genericRecord.put("number_col", "289452");
     genericRecord.put("varchar_col", "Hellogcds");
     genericRecord.put("time_interval_col", -3020398999999L);
@@ -257,7 +257,16 @@ public class GenericRecordTypeConvertorTest {
             genericRecord.get(col),
             genericRecord.getSchema().getField(col).schema(),
             getTestCassandraAnnotationNone());
-    assertEquals("Test json_col conversion: ", "{\"k1\":\"v1\"}", result);
+    assertEquals("Test json_col conversion: ", "{\"k1\":\"476F6F676C65\"}", result);
+
+    col = "json_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotation("cassandra_type='map<string,blob>'"));
+    assertEquals("Test json_col conversion with map annotation: ", "{\"k1\":\"R29vZ2xl\"}", result);
 
     col = "number_col";
     result =

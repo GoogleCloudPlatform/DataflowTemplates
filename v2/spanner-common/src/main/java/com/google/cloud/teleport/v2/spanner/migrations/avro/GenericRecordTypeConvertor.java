@@ -580,8 +580,8 @@ public class GenericRecordTypeConvertor {
     } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
         && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.JSON)) {
       if (cassandraAnnotations.cassandraType().getKind().equals(Kind.MAP)) {
-        /* TODO Add handler to marshal Map Types as needed by Cassandra Adapter. */
-        return recordValue.toString();
+        return AvroJsonToCassandraMapConvertor.handleJsonToMap(
+            recordValue, cassandraAnnotations, fieldName, fieldSchema);
       } else {
         return recordValue.toString();
       }
