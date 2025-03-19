@@ -137,9 +137,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     }
   }
 
-  /**
-   * Cleanup dataflow job and all the resources and resource managers.
-   */
+  /** Cleanup dataflow job and all the resources and resource managers. */
   @AfterClass
   public static void cleanUp() throws IOException {
     for (SpannerToSourceDbCustomTransformationIT instance : testInstances) {
@@ -334,8 +332,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)),
-                this::assertUsersTable);
+                createConfig(jobInfo, Duration.ofMinutes(15)), this::assertUsersTable);
 
     assertThatResult(result).meetsConditions();
 
@@ -363,16 +360,16 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     if (!row1.get("bigint_column").equals(1000)) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[]) row1.get("binary_column"),
-        "bin_column".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals(
+        (byte[]) row1.get("binary_column"), "bin_column".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[]) row1.get("bit_column"),
-        "1".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals(
+        (byte[]) row1.get("bit_column"), "1".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[]) row1.get("blob_column"),
-        "blob_column".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals(
+        (byte[]) row1.get("blob_column"), "blob_column".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
     if (!row1.get("bool_column").equals(true)) {
@@ -422,15 +419,17 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     if (!row0.get("bigint_column").equals(12346)) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[]) row0.get("binary_column"),
+    if (!java.util.Arrays.equals(
+        (byte[]) row0.get("binary_column"),
         "binary_column_appended".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[]) row0.get("bit_column"),
-        "5".getBytes(StandardCharsets.UTF_8))) {
+    if (!java.util.Arrays.equals(
+        (byte[]) row0.get("bit_column"), "5".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
-    if (!java.util.Arrays.equals((byte[]) row0.get("blob_column"),
+    if (!java.util.Arrays.equals(
+        (byte[]) row0.get("blob_column"),
         "blob_column_appended".getBytes(StandardCharsets.UTF_8))) {
       return false;
     }
