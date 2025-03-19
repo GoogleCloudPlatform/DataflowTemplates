@@ -199,7 +199,7 @@ public class GCSToSourceDbInterleaveMultiShardIT extends TemplateTestBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(writerJobInfo, Duration.ofMinutes(30)),
+                createConfig(writerJobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
     assertThatResult(result).meetsConditions();
     // child21 is the last row to be inserted. Hence by this time all other records must be updated
@@ -283,7 +283,7 @@ public class GCSToSourceDbInterleaveMultiShardIT extends TemplateTestBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(writerJobInfo, Duration.ofMinutes(30)),
+                createConfig(writerJobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 2);
     assertThatResult(result).meetsConditions();
     // we added one extra child row in spanner. Hence by this time all other records must be updated
@@ -322,7 +322,7 @@ public class GCSToSourceDbInterleaveMultiShardIT extends TemplateTestBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(writerJobInfo, Duration.ofMinutes(30)),
+                createConfig(writerJobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 0);
     assertThatResult(result).meetsConditions();
     // parent2 is the last row to be deleted. Hence by this time all other records must be deleted
