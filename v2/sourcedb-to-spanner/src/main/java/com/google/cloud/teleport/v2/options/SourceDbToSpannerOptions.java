@@ -253,4 +253,3 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setNamespace(String value);
 }
-
