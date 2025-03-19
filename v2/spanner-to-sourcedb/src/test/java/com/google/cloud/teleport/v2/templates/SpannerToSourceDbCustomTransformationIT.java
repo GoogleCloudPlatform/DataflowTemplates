@@ -62,7 +62,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("This test is disabled currently")
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
