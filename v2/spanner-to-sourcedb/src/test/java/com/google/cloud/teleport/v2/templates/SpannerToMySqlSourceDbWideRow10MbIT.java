@@ -106,7 +106,8 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
+                gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,

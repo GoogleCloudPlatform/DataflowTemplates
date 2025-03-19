@@ -88,7 +88,8 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
+                gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
