@@ -339,12 +339,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 1);
-    /*
-     * Added to handle updates.
-     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
-     */
-    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+                this::assertUsersTable);
 
     assertThatResult(result).meetsConditions();
 
@@ -352,74 +347,148 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
-    /*
-     * Added to handle updates.
-     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
-     */
-    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+                this::assertAllDatatypeTransformationTable);
+
     assertThatResult(result).meetsConditions();
+  }
 
-    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
-    assertThat(rows).hasSize(1);
-    assertThat(rows.get(0).get("id")).isEqualTo(1);
-    assertThat(rows.get(0).get("first_name")).isEqualTo("AA");
-    assertThat(rows.get(0).get("last_name")).isEqualTo("BB");
-
-    rows =
+  private boolean assertAllDatatypeTransformationTable() {
+    List<Map<String, Object>>  rows =
         jdbcResourceManager.runSQLQuery(
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
-    assertThat(rows).hasSize(2);
-    assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
-    assertThat(rows.get(1).get("bigint_column")).isEqualTo(1000);
-    assertThat(rows.get(1).get("binary_column"))
-        .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(1).get("blob_column"))
-        .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(1).get("bool_column")).isEqualTo(true);
-    assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
-    assertThat(rows.get(1).get("datetime_column"))
-        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
-    assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
-    assertThat(rows.get(1).get("double_column")).isEqualTo(123456.123);
-    assertThat(rows.get(1).get("enum_column")).isEqualTo("1");
-    assertThat(rows.get(1).get("float_column")).isEqualTo(12345.67f);
-    assertThat(rows.get(1).get("int_column")).isEqualTo(100);
-    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
-    assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
-    assertThat(rows.get(1).get("timestamp_column"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
-    assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
-    assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    if (rows.size() != 2) {
+      return false;
+    }
 
-    assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
-    assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346);
-    assertThat(rows.get(0).get("binary_column"))
-        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(0).get("blob_column"))
-        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(0).get("bool_column")).isEqualTo(false);
-    assertThat(rows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
-    assertThat(rows.get(0).get("datetime_column"))
-        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
-    assertThat(rows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
-    assertThat(rows.get(0).get("double_column")).isEqualTo(124.456);
-    assertThat(rows.get(0).get("enum_column")).isEqualTo("3");
-    assertThat(rows.get(0).get("float_column")).isEqualTo(124.45f);
-    assertThat(rows.get(0).get("int_column")).isEqualTo(124);
-    assertThat(rows.get(0).get("text_column")).isEqualTo("Sample text append");
-    assertThat(rows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
-    assertThat(rows.get(0).get("timestamp_column"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
-    assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
-    assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+    Map<String, Object> row1 = rows.get(1);
+    if (!row1.get("varchar_column").equals("example2")) {
+      return false;
+    }
+    if (!row1.get("bigint_column").equals(1000)) {
+      return false;
+    }
+    if (!java.util.Arrays.equals((byte[])row1.get("binary_column"), "bin_column".getBytes(StandardCharsets.UTF_8))) {
+      return false;
+    }
+    if (!java.util.Arrays.equals((byte[])row1.get("bit_column"), "1".getBytes(StandardCharsets.UTF_8))) {
+      return false;
+    }
+    if (!java.util.Arrays.equals((byte[])row1.get("blob_column"), "blob_column".getBytes(StandardCharsets.UTF_8))) {
+      return false;
+    }
+    if (!row1.get("bool_column").equals(true)) {
+      return false;
+    }
+    if (!row1.get("date_column").equals(java.sql.Date.valueOf("2024-01-01"))) {
+      return false;
+    }
+    if (!row1.get("datetime_column").equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56))) {
+      return false;
+    }
+    if (!row1.get("decimal_column").equals(new BigDecimal("99999.99"))) {
+      return false;
+    }
+    if (!row1.get("double_column").equals(123456.123)) {
+      return false;
+    }
+    if (!row1.get("enum_column").equals("1")) {
+      return false;
+    }
+    if (!row1.get("float_column").equals(12345.67f)) {
+      return false;
+    }
+    if (!row1.get("int_column").equals(100)) {
+      return false;
+    }
+    if (!row1.get("text_column").equals("Sample text for entry 2")) {
+      return false;
+    }
+    if (!row1.get("time_column").equals(java.sql.Time.valueOf("14:30:00"))) {
+      return false;
+    }
+    if (!row1.get("timestamp_column").equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"))) {
+      return false;
+    }
+    if (!row1.get("tinyint_column").equals(2)) {
+      return false;
+    }
+    if (!row1.get("year_column").equals(java.sql.Date.valueOf("2024-01-01"))) {
+      return false;
+    }
 
-    rows =
+    Map<String, Object> row0 = rows.get(0);
+    if (!row0.get("varchar_column").equals("example")) {
+      return false;
+    }
+    if (!row0.get("bigint_column").equals(12346)) {
+      return false;
+    }
+    if (!java.util.Arrays.equals((byte[])row0.get("binary_column"), "binary_column_appended".getBytes(StandardCharsets.UTF_8))) {
+      return false;
+    }
+    if (!java.util.Arrays.equals((byte[])row0.get("bit_column"), "5".getBytes(StandardCharsets.UTF_8))) {
+      return false;
+    }
+    if (!java.util.Arrays.equals((byte[])row0.get("blob_column"), "blob_column_appended".getBytes(StandardCharsets.UTF_8))) {
+      return false;
+    }
+    if (!row0.get("bool_column").equals(false)) {
+      return false;
+    }
+    if (!row0.get("date_column").equals(java.sql.Date.valueOf("2024-01-02"))) {
+      return false;
+    }
+    if (!row0.get("datetime_column").equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55))) {
+      return false;
+    }
+    if (!row0.get("decimal_column").equals(new BigDecimal("12344.67"))) {
+      return false;
+    }
+    if (!row0.get("double_column").equals(124.456)) {
+      return false;
+    }
+    if (!row0.get("enum_column").equals("3")) {
+      return false;
+    }
+    if (!row0.get("float_column").equals(124.45f)) {
+      return false;
+    }
+    if (!row0.get("int_column").equals(124)) {
+      return false;
+    }
+    if (!row0.get("text_column").equals("Sample text append")) {
+      return false;
+    }
+    if (!row0.get("time_column").equals(java.sql.Time.valueOf("14:40:00"))) {
+      return false;
+    }
+    if (!row0.get("timestamp_column").equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"))) {
+      return false;
+    }
+    if (!row0.get("tinyint_column").equals(2)) {
+      return false;
+    }
+    if (!row0.get("year_column").equals(java.sql.Date.valueOf("2025-01-01"))) {
+      return false;
+    }
+
+    List<Map<String, Object>> example1Rows =
         jdbcResourceManager.runSQLQuery(
             String.format(
                 "select * from %s where %s like '%s'", TABLE2, "varchar_column", "example1"));
-    assertThat(rows).hasSize(0);
+    return example1Rows.isEmpty();
+  }
+
+  private boolean assertUsersTable() {
+    try {
+      List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
+      return rows.size() == 1
+          && rows.get(0).get("id").equals(1)
+          && rows.get(0).get("first_name").equals("AA")
+          && rows.get(0).get("last_name").equals("BB");
+    } catch (Exception e) {
+      LOG.error("Error while asserting Users table", e);
+      return false;
+    }
   }
 }
