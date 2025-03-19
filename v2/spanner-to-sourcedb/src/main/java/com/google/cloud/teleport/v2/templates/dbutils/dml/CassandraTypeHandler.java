@@ -172,30 +172,9 @@ public class CassandraTypeHandler {
       return ByteBuffer.wrap((byte[]) colValue);
     } else if (colValue instanceof ByteBuffer) {
       return (ByteBuffer) colValue;
+    } else {
+      return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
     }
-    return ByteBuffer.wrap(java.util.Base64.getDecoder().decode((String) colValue));
-  }
-
-  /**
-   * Converts a hexadecimal string into a byte array.
-   *
-   * @param binaryEncodedStr the hexadecimal string to be converted. It must have an even number of
-   *     characters, as each pair of characters represents one byte.
-   * @return a byte array representing the binary data equivalent of the hexadecimal string.
-   */
-  private static byte[] convertBinaryEncodedStringToByteArray(String binaryEncodedStr) {
-    int length = binaryEncodedStr.length();
-    int byteCount = (length + 7) / 8;
-    byte[] byteArray = new byte[byteCount];
-
-    for (int i = 0; i < byteCount; i++) {
-      int startIndex = i * 8;
-      int endIndex = Math.min(startIndex + 8, length);
-      String byteString = binaryEncodedStr.substring(startIndex, endIndex);
-      byteArray[i] = (byte) Integer.parseInt(byteString, 2);
-    }
-
-    return byteArray;
   }
 
   /**
@@ -322,20 +301,17 @@ public class CassandraTypeHandler {
       String spannerType, String columnName, JSONObject valuesJson) {
     try {
       if (spannerType.contains("string")) {
-        return valuesJson.optString(columnName);
+        String value = valuesJson.optString(columnName);
+        return value.isEmpty() ? null : value;
       } else if (spannerType.contains("bytes")) {
         if (valuesJson.isNull(columnName)) {
           return null;
         }
         String hexEncodedString = valuesJson.optString(columnName);
-        return safeHandle(
-            () -> {
-              try {
-                return safeHandle(() -> convertBinaryEncodedStringToByteArray(hexEncodedString));
-              } catch (IllegalArgumentException e) {
-                return parseBlobType(hexEncodedString);
-              }
-            });
+        if (hexEncodedString.isEmpty()) {
+          return null;
+        }
+        return safeHandle(() -> parseBlobType(hexEncodedString));
       } else {
         return valuesJson.isNull(columnName) ? null : valuesJson.opt(columnName);
       }

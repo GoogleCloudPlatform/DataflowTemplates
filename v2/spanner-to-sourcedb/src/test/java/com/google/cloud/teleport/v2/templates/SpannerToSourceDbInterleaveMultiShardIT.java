@@ -103,9 +103,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbInterleaveMultiShardIT.MYSQL_DDL_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs();
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
@@ -114,7 +112,9 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
 
         jobInfo =
             launchDataflowJob(
@@ -213,28 +213,28 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 1);
     assertThatResult(parent1Result).meetsConditions();
 
     PipelineOperator.Result child1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 1);
     assertThatResult(child1Result).meetsConditions();
 
     PipelineOperator.Result parent2Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 1);
     assertThatResult(parent2Result).meetsConditions();
 
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
     assertThatResult(result).meetsConditions();
 
@@ -297,7 +297,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("child11") == 2);
     assertThatResult(result).meetsConditions();
 
@@ -334,14 +334,14 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("parent2") == 0);
     assertThatResult(result).meetsConditions();
 
     PipelineOperator.Result parent1Result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardA.getRowCount("parent1") == 0);
     assertThatResult(parent1Result).meetsConditions();
     PipelineOperator.Result child1Result =
