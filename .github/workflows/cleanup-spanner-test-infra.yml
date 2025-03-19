@@ -15,11 +15,8 @@
 name: Cleanup Spanner Test Infra
 
 on:
-  pull_request:
-    branches:
-    - 'main'
   schedule:
-    - cron: "0 0 * * *" # Run daily at midnight
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 concurrency:
