@@ -66,7 +66,6 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
       createMysqlSchema(mySQLResourceManager, tableName);
       createSpannerSchema(spannerResourceManager, tableName);
     }
-    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
