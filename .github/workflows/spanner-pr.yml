@@ -161,7 +161,7 @@ jobs:
     - name: Run Integration Tests
       run: |
         ./cicd/run-it-tests \
-        --modules-to-build="v2/sourcedb-to-spanner" \
+        --modules-to-build="SPANNER" \
         --it-region="asia-south1" \
         --it-project="daring-fiber-439305-v4" \
         --it-artifact-bucket="ollion-teleport-testing" \
