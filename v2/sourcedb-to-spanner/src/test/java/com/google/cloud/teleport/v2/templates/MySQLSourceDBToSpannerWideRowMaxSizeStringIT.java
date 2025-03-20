@@ -9,6 +9,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,7 +17,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,14 +27,12 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-
-public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
+public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static final Integer NUM_COLUMNS = 1017;
+  private static final Integer MAX_CHARACTER_SIZE = 2621440;
   private static final String TABLENAME = "WiderowTable";
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
-
 
   @Before
   public void setUp() {
@@ -50,42 +48,33 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private JDBCResourceManager.JDBCSchema getMySQLSchema() {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INT");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columns.put("col" + i, "INT");
-    }
+    columns.put("max_string_col", "MEDIUMTEXT");
     return new JDBCResourceManager.JDBCSchema(columns, "id");
+  }
+
+  private List<Map<String, Object>> getMySQLData() {
+    List<Map<String, Object>> data = new ArrayList<>();
+    Map<String, Object> values = new HashMap<>();
+    values.put("id", 1);
+    values.put("max_string_col", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+    data.add(values);
+    return data;
   }
 
   private String getSpannerSchema() {
     StringBuilder schema = new StringBuilder();
     schema.append("CREATE TABLE WiderowTable (");
     schema.append("id INT64 NOT NULL,");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      schema.append("col" + i + " INT64,");
-    }
+    schema.append("max_string_col STRING(MAX),");
     schema.append(") PRIMARY KEY (id)");
     return schema.toString();
   }
 
-  private List<Map<String,Object>> getMySQLData() {
-    List<Map<String,Object>> data = new ArrayList<>();
-
-    for (int i = 0; i < 100; i++) {
-      Map<String,Object> row = new HashMap<>();
-      row.put("id", i);
-      for (int j = 0; j < NUM_COLUMNS; j++) {
-        row.put("col" + j, i + j);
-      }
-      data.add(row);
-    }
-    return data;
-  }
-
   @Test
-  public void testMaxColumnsPerTable() throws IOException{
+  public void testMySQLToSpannerWiderowForMaxSizeString() throws Exception {
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
-    mySQLResourceManager.write(TABLENAME, getMySQLData());
-    createSpannerDDL(spannerResourceManager, getSpannerSchema());
+    mySQLResourceManager.write( TABLENAME,getMySQLData());
+    createSpannerDDL(spannerResourceManager,getSpannerSchema());
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -98,13 +87,8 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
         );
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    List<String> COLUMNS = new ArrayList<>();
-    COLUMNS.add("id");
-    for (int i = 1; i <= NUM_COLUMNS; i++) {
-      COLUMNS.add("Col_" + i);
-    }
     SpannerAsserts.assertThatStructs(
-        spannerResourceManager.readTableRecords("WiderowTable", COLUMNS ))
+            spannerResourceManager.readTableRecords(TABLENAME, "id", "max_string_col"))
         .hasRecordsUnorderedCaseInsensitiveColumns(getMySQLData());
   }
 }
