@@ -47,14 +47,16 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
 
   private List<Map<String, Object>> getMySQLData() {
     List<Map<String, Object>> data = new ArrayList<>();
-    Map<String, Object> values = new HashMap<>();
-    values.put("id", 1);
-    values.put("col1", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
-    values.put("col2", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
-    values.put("col3", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
-    values.put("col4", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
-    values.put("col5", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
-    data.add(values);
+    for ( int i=0; i<10; i++) {
+      Map<String, Object> values = new HashMap<>();
+      values.put("id", i);
+      values.put("col1", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+      values.put("col2", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+      values.put("col3", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+      values.put("col4", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+      values.put("col5", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+      data.add(values);
+    }
     return data;
   }
 
