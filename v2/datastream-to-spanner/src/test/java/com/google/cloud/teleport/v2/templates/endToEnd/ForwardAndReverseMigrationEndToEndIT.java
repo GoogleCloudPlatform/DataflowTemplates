@@ -121,9 +121,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         System.out.println(username);
         System.out.println(password);
         // create MySql Resources
-        cloudSqlResourceManager =
-            CloudMySQLResourceManager.builder(testName, publicHost, username, password, 3306)
-                .build();
+        cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
         jdbcSource =
             createMySqlDatabase(
                 cloudSqlResourceManager,
