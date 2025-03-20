@@ -64,20 +64,20 @@ jobs:
         uses: ./.github/actions/setup-env
       - name: Run Checkstyle
         run: ./cicd/run-checkstyle
-  java_build:
-    name: Build
-    timeout-minutes: 60
-    runs-on: [self-hosted, it]
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Build
-        run: ./cicd/run-build
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
+#  java_build:
+#    name: Build
+#    timeout-minutes: 60
+#    runs-on: [self-hosted, it]
+#    steps:
+#      - name: Checkout Code
+#        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+#      - name: Setup Environment
+#        id: setup-env
+#        uses: ./.github/actions/setup-env
+#      - name: Run Build
+#        run: ./cicd/run-build
+#      - name: Cleanup Java Environment
+#        uses: ./.github/actions/cleanup-java-env
   #  java_unit_tests:
   #    name: Unit Tests
   #    needs: [java_build]

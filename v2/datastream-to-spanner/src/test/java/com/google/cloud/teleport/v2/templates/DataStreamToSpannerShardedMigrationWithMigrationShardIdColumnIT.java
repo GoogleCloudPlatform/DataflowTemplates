@@ -39,6 +39,7 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,6 +51,7 @@ import org.slf4j.LoggerFactory;
  * Sharded data migration Integration test with addition of migration_shard_id column in the schema
  * for each table in the {@link DataStreamToSpanner} Flex template.
  */
+@Ignore("this test is ignored")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)

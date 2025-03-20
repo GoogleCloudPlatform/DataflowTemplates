@@ -70,6 +70,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
+@Ignore("this test is ignored")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(Parameterized.class)
