@@ -199,6 +199,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
           paramsAdder)
       throws IOException {
     // Arrange
+    String setDefaultTimeZoneStatement =
+        "ALTER DATABASE db SET OPTIONS (default_time_zone = 'UTC')";
     String createEmptyTableStatement =
         String.format(
             "CREATE TABLE `%s_EmptyTable` (\n" + "  id INT64 NOT NULL,\n" + ") PRIMARY KEY(id)",
@@ -248,6 +250,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + " OPTIONS (sort_order_sharding=TRUE)",
             testName, testName);
 
+    // Setting default time zone needs to be the first statement because it requires
+    // an empty database without any tables.
+    spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createRootTableStatement);
     spannerResourceManager.executeDdlStatement(setDefaultSequenceKindStatement);
@@ -337,6 +342,7 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
           paramsAdder)
       throws IOException {
     // Arrange
+    String setDefaultTimeZoneStatement = "ALTER DATABASE db SET spanner.default_time_zone = 'UTC'";
     String createEmptyTableStatement =
         String.format(
             "CREATE TABLE \"%s_EmptyTable\" (\n" + "  id bigint NOT NULL,\nPRIMARY KEY(id)\n" + ")",
@@ -378,6 +384,9 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
                 + " WITH (sort_order_sharding=TRUE, disable_automatic_uid_column=TRUE)",
             testName, testName);
 
+    // Setting default time zone needs to be the first statement because it requires
+    // an empty database without any tables.
+    spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
     spannerResourceManager.executeDdlStatement(createRootTableStatement);
     spannerResourceManager.executeDdlStatement(createSingersTableStatement);
