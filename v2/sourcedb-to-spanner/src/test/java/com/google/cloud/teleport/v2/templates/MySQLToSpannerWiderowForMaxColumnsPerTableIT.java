@@ -1,7 +1,29 @@
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates;
+
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -16,25 +38,15 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-
 public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final Integer NUM_COLUMNS = 1017;
   private static final String TABLENAME = "WiderowTable";
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
-
 
   @Before
   public void setUp() {
@@ -67,11 +79,11 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     return schema.toString();
   }
 
-  private List<Map<String,Object>> getMySQLData() {
-    List<Map<String,Object>> data = new ArrayList<>();
+  private List<Map<String, Object>> getMySQLData() {
+    List<Map<String, Object>> data = new ArrayList<>();
 
     for (int i = 0; i < 100; i++) {
-      Map<String,Object> row = new HashMap<>();
+      Map<String, Object> row = new HashMap<>();
       row.put("id", i);
       for (int j = 0; j < NUM_COLUMNS; j++) {
         row.put("col" + j, i + j);
@@ -82,7 +94,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   }
 
   @Test
-  public void testMaxColumnsPerTable() throws IOException{
+  public void testMaxColumnsPerTable() throws IOException {
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
     mySQLResourceManager.write(TABLENAME, getMySQLData());
     createSpannerDDL(spannerResourceManager, getSpannerSchema());
@@ -94,8 +106,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
             mySQLResourceManager,
             spannerResourceManager,
             null,
-            null
-        );
+            null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
     List<String> COLUMNS = new ArrayList<>();
@@ -104,7 +115,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
       COLUMNS.add("Col_" + i);
     }
     SpannerAsserts.assertThatStructs(
-        spannerResourceManager.readTableRecords("WiderowTable", COLUMNS ))
+            spannerResourceManager.readTableRecords("WiderowTable", COLUMNS))
         .hasRecordsUnorderedCaseInsensitiveColumns(getMySQLData());
   }
 }
