@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.clickhouse.templates;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.google.api.services.bigquery.model.TableRow;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.clickhouse.options.BigQueryToClickHouseOptions;
 import com.google.cloud.teleport.v2.clickhouse.utils.ClickHouseUtils;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
@@ -40,6 +42,29 @@ import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Template(
+    name = "BigQuery_to_ClickHouse",
+    category = TemplateCategory.BATCH,
+    displayName = "BigQuery to ClickHouse",
+    description =
+        "The BigQuery to ClickHouse template is a batch pipeline that ingests data from a BigQuery table into ClickHouse table. "
+            + "The template can either read the entire table or read specific records using a supplied query.",
+    optionsClass = BigQueryToClickHouseOptions.class,
+    skipOptions = {
+      "javascriptTextTransformReloadIntervalMinutes",
+      "pythonExternalTextTransformGcsPath",
+      "pythonExternalTextTransformFunctionName"
+    },
+    flexContainerName = "bigquery-to-clickhouse",
+    documentation =
+        "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-clickhouse",
+    contactInformation = "https://cloud.google.com/support",
+    preview = true,
+    requirements = {
+      "The source BigQuery table must exist.",
+      "The ClickHouse target table must exist prior running.",
+      "This ClickHouse target table must have the exact same column names as the the source table/query."
+    })
 public class BigQueryToClickHouse {
 
   private static final Logger log = LoggerFactory.getLogger(BigQueryToClickHouse.class);
