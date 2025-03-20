@@ -325,7 +325,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             "[-99999999999999999999999999999.999999999,0,99999999999999999999999999999.999999999]")
         .put(
             "date_double_map_col",
-            "{\"0\":\"NaN\",\"304\":\"3.14\",\"365\":\"Infinity\",\"365243\":\"0.0\",\"7305\":\"-Infinity\"}")
+            "{\"1970-01-01\":\"NaN\",\"1970-11-01\":\"3.14\",\"1971-01-01\":\"Infinity\",\"1990-01-01\":\"-Infinity\",\"2970-01-01\":\"0.0\"}")
         .put(
             "uuid_ascii_map_col",
             "{\"00000000-0000-1000-9000-000000000000\":\"abc\",\"ffffffff-ffff-1fff-9fff-ffffffffffff\":\"def\"}")
@@ -383,7 +383,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put(
             "varchar_bigint_map_col",
             "{\"abcd\":\"-9223372036854775808\",\"efgh\":\"9223372036854775807\"}")
-        .put("blob_int_map_col", "{\"0000000000000001\":\"1\",\"000000000000002a\":\"42\"}")
+        .put("blob_int_map_col", "{\"AAAAAAAAAAE=\":\"1\",\"AAAAAAAAACo=\":\"42\"}")
         .put("smallint_col", "32767")
         .put(
             "varint_blob_map_col",
@@ -394,7 +394,9 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put("varint_list_col", "[-9223372036854775808,0,9223372036854775808]")
         .put("text_col", "NULL")
         .put("float_smallint_map_col", "{\"3.14\":\"32767\",\"Infinity\":\"-32768\"}")
-        .put("smallint_timestamp_map_col", "{\"-128\":\"0\",\"127\":\"-1000\"}")
+        .put(
+            "smallint_timestamp_map_col",
+            "{\"-128\":\"1970-01-01T00:00:00Z\",\"127\":\"1969-12-31T23:59:59.999Z\"}")
         .put(
             "text_timeuuid_map_col",
             "{\"a\":\"00000000-0000-1000-9000-000000000000\",\"~\":\"ffffffff-ffff-1fff-9fff-ffffffffffff\"}")
@@ -417,7 +419,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put("tinyint_list_col", "[-128,0,127]")
         .put(
             "timestamp_uuid_map_col",
-            "{\"-1000\":\"ffffffff-ffff-1fff-9fff-ffffffffffff\",\"0\":\"00000000-0000-1000-9000-000000000000\"}")
+            "{\"1969-12-31T23:59:59.999Z\":\"ffffffff-ffff-1fff-9fff-ffffffffffff\",\"1970-01-01T00:00:00Z\":\"00000000-0000-1000-9000-000000000000\"}")
         .put(
             "decimal_duration_map_col",
             "{\"12.34\":\"{\\\"years\\\": 0, \\\"months\\\": 0, \\\"days\\\": -10675199, \\\"hours\\\": 0, \\\"minutes\\\": 0, \\\"seconds\\\": 0, \\\"nanos\\\": -10085000000000}\",\"34.45\":\"{\\\"years\\\": 0, \\\"months\\\": 0, \\\"days\\\": 10675199, \\\"hours\\\": 0, \\\"minutes\\\": 0, \\\"seconds\\\": 0, \\\"nanos\\\": 10085000000000}\"}")
