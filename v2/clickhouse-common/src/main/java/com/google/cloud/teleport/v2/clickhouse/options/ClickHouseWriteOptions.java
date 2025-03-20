@@ -60,6 +60,7 @@ public interface ClickHouseWriteOptions extends PipelineOptions {
 
   @TemplateParameter.Password(
       order = 3,
+      optional = true,
       description = "Password for ClickHouse endpoint",
       helpText = "The ClickHouse password to authenticate with.")
   String getClickHousePassword();
