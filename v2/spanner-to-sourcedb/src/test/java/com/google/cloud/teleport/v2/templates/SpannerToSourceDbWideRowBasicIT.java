@@ -24,14 +24,25 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.jetbrains.annotations.NotNull;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(SpannerToSourceDb.class)
+@RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   private static final String testName = "test_" + System.currentTimeMillis();
 

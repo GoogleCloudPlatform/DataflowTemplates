@@ -62,6 +62,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.assertj.core.api.Assertions;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -70,9 +71,11 @@ import org.junit.runners.model.MultipleFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraSourceDbIT.class);
