@@ -142,7 +142,7 @@ jobs:
   #        if: always()
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
-    needs: [spotless_check, checkstyle_check, java_build]
+    needs: [spotless_check, checkstyle_check]
     timeout-minutes: 240
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, it]
