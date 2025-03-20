@@ -1031,4 +1031,3 @@ CREATE CHANGE STREAM allstream
   retention_period = '7d'
 );
 
-
