@@ -123,9 +123,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         String subnetwork = "regions/us-central1/subnetworks/e2e";
         // secretClient.accessSecret("projects/269744978479/secrets/subnetwork-mysql/versions/1");
         // create MySql Resources
-        cloudSqlResourceManager =
-            CloudMySQLResourceManager.builder(testName, privateHost, username, password, 3306)
-                .build();
+        cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
         jdbcSource =
             createMySqlDatabase(
                 cloudSqlResourceManager,
@@ -139,7 +137,8 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        createAndUploadShardConfigToGcs(gcsResourceManager, cloudSqlResourceManager, privateHost);
+        createAndUploadShardConfigToGcs(
+            gcsResourceManager, cloudSqlResourceManager, cloudSqlResourceManager.getHost());
         createAndUploadJarToGcs(gcsResourceManager);
         gcsResourceManager.createArtifact(
             "input/session.json",

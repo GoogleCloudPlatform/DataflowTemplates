@@ -288,8 +288,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addParameter("network", network)
-            .addParameter("subnetwork", subnetwork)
+            // .addParameter("network", network)
+            // .addParameter("subnetwork", subnetwork)
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
