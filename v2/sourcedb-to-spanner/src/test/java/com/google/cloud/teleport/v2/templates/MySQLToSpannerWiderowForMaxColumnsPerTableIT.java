@@ -109,13 +109,13 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    List<String> COLUMNS = new ArrayList<>();
-    COLUMNS.add("id");
+    List<String> columns = new ArrayList<>();
+    columns.add("id");
     for (int i = 1; i <= NUM_COLUMNS; i++) {
-      COLUMNS.add("Col_" + i);
+      columns.add("col" + i);
     }
     SpannerAsserts.assertThatStructs(
-            spannerResourceManager.readTableRecords("WiderowTable", COLUMNS))
+            spannerResourceManager.readTableRecords("WiderowTable", columns))
         .hasRecordsUnorderedCaseInsensitiveColumns(getMySQLData());
   }
 }

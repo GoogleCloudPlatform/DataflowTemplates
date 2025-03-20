@@ -27,20 +27,17 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-public class MySQLSourceDbtoSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSpannerITBase {
-  /**
-   * CREATE TABLE test_key_size ( id INT AUTO_INCREMENT PRIMARY KEY, col1 VARCHAR(150) NOT NULL,
-   * col2 VARCHAR(150) NOT NULL, col3 VARCHAR(150) NOT NULL, col4 VARCHAR(150) NOT NULL, col5
-   * VARCHAR(150) NOT NULL, UNIQUE KEY idx_large (col1, col2, col3, col4,col5) )
-   */
+public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSpannerITBase {
+
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   private static final Integer MAX_CHARACTER_SIZE = 150;
-  private static final String TABLENAME = "test_key_size";
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
-  private static String MYSQL_DDL_RESOURCE = "";
-  private static String SPANNER_DDL_RESOURCE = "";
+  private static final String MYSQL_DDL_RESOURCE =
+      "WideRow/SourceDbToSpannerMaxSizeTableKey/mysql-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
 
   @Before
   public void setUp() {
