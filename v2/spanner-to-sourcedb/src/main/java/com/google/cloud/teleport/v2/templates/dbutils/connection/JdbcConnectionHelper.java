@@ -53,7 +53,13 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
     connectionPoolMap = new HashMap<>();
     for (Shard shard : connectionHelperRequest.getShards()) {
       String sourceConnectionUrl =
-          "jdbc:mysql://" + shard.getHost() + ":" + shard.getPort() + "/" + shard.getDbName();
+          "jdbc:mysql://"
+              + shard.getHost()
+              + ":"
+              + shard.getPort()
+              + "/"
+              + shard.getDbName()
+              + "?maxAllowedPacket=67108864";
       HikariConfig config = new HikariConfig();
       config.setJdbcUrl(sourceConnectionUrl);
       config.setUsername(shard.getUserName());
