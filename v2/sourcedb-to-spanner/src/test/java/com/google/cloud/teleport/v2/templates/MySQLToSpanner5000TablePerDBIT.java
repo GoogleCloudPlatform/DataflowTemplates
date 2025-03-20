@@ -88,7 +88,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private JDBCResourceManager.JDBCSchema getMySQLSchema() {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INTEGER NOT NULL");
-    columns.put("name", "VARCHAR(200)");
+    columns.put("name", "VARCHAR(20)");
     return new JDBCResourceManager.JDBCSchema(columns, "id");
   }
 
@@ -110,6 +110,6 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
       SpannerResourceManager spannerResourceManager, String tableName) {
     spannerResourceManager.executeDdlStatement(
         String.format(
-            "CREATE TABLE %s (id INT64 NOT NULL, name STRING(200)) PRIMARY KEY (id)", tableName));
+            "CREATE TABLE %s (id INT64 NOT NULL, name STRING(20)) PRIMARY KEY (id)", tableName));
   }
 }
