@@ -346,130 +346,277 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private boolean assertAllDatatypeTransformationTable() {
+
     List<Map<String, Object>> rows =
         jdbcResourceManager.runSQLQuery(
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
     if (rows.size() != 2) {
       return false;
+    } else {
+      LOG.info("assertAllDatatypeTransformationTable: rows.size() = {}", rows.size());
     }
 
     Map<String, Object> row1 = rows.get(1);
     if (!row1.get("varchar_column").equals("example2")) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: varchar_column expected: {}, actual: {}",
+          "example2",
+          row1.get("varchar_column"));
       return false;
     }
     if (!row1.get("bigint_column").equals(1000)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: bigint_column expected: {}, actual: {}",
+          1000,
+          row1.get("bigint_column"));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row1.get("binary_column"), "bin_column".getBytes(StandardCharsets.UTF_8))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: binary_column expected: {}, actual: {}",
+          "bin_column",
+          new String((byte[]) row1.get("binary_column"), StandardCharsets.UTF_8));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row1.get("bit_column"), "1".getBytes(StandardCharsets.UTF_8))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: bit_column expected: {}, actual: {}",
+          "1",
+          new String((byte[]) row1.get("bit_column"), StandardCharsets.UTF_8));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row1.get("blob_column"), "blob_column".getBytes(StandardCharsets.UTF_8))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: blob_column expected: {}, actual: {}",
+          "blob_column",
+          new String((byte[]) row1.get("blob_column"), StandardCharsets.UTF_8));
       return false;
     }
     if (!row1.get("bool_column").equals(true)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: bool_column expected: {}, actual: {}",
+          true,
+          row1.get("bool_column"));
       return false;
     }
     if (!row1.get("date_column").equals(java.sql.Date.valueOf("2024-01-01"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: date_column expected: {}, actual: {}",
+          java.sql.Date.valueOf("2024-01-01"),
+          row1.get("date_column"));
       return false;
     }
     if (!row1.get("datetime_column").equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: datetime_column expected: {}, actual: {}",
+          java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56),
+          row1.get("datetime_column"));
       return false;
     }
     if (!row1.get("decimal_column").equals(new BigDecimal("99999.99"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: decimal_column expected: {}, actual: {}",
+          new BigDecimal("99999.99"),
+          row1.get("decimal_column"));
       return false;
     }
     if (!row1.get("double_column").equals(123456.123)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: double_column expected: {}, actual: {}",
+          123456.123,
+          row1.get("double_column"));
       return false;
     }
     if (!row1.get("enum_column").equals("1")) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: enum_column expected: {}, actual: {}",
+          "1",
+          row1.get("enum_column"));
       return false;
     }
     if (!row1.get("float_column").equals(12345.67f)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: float_column expected: {}, actual: {}",
+          12345.67f,
+          row1.get("float_column"));
       return false;
     }
     if (!row1.get("int_column").equals(100)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: int_column expected: {}, actual: {}",
+          100,
+          row1.get("int_column"));
       return false;
     }
     if (!row1.get("text_column").equals("Sample text for entry 2")) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: text_column expected: {}, actual: {}",
+          "Sample text for entry 2",
+          row1.get("text_column"));
       return false;
     }
     if (!row1.get("time_column").equals(java.sql.Time.valueOf("14:30:00"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: time_column expected: {}, actual: {}",
+          java.sql.Time.valueOf("14:30:00"),
+          row1.get("time_column"));
       return false;
     }
     if (!row1.get("timestamp_column").equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: timestamp_column expected: {}, actual: {}",
+          java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"),
+          row1.get("timestamp_column"));
       return false;
     }
     if (!row1.get("tinyint_column").equals(2)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: tinyint_column expected: {}, actual: {}",
+          2,
+          row1.get("tinyint_column"));
       return false;
     }
     if (!row1.get("year_column").equals(java.sql.Date.valueOf("2024-01-01"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: year_column expected: {}, actual: {}",
+          java.sql.Date.valueOf("2024-01-01"),
+          row1.get("year_column"));
       return false;
     }
 
     Map<String, Object> row0 = rows.get(0);
     if (!row0.get("varchar_column").equals("example")) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: varchar_column expected: {}, actual: {}",
+          "example",
+          row0.get("varchar_column"));
       return false;
     }
     if (!row0.get("bigint_column").equals(12346)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: bigint_column expected: {}, actual: {}",
+          12346,
+          row0.get("bigint_column"));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row0.get("binary_column"),
         "binary_column_appended".getBytes(StandardCharsets.UTF_8))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: binary_column expected: {}, actual: {}",
+          "binary_column_appended",
+          new String((byte[]) row0.get("binary_column"), StandardCharsets.UTF_8));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row0.get("bit_column"), "5".getBytes(StandardCharsets.UTF_8))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: bit_column expected: {}, actual: {}",
+          "5",
+          new String((byte[]) row0.get("bit_column"), StandardCharsets.UTF_8));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row0.get("blob_column"),
         "blob_column_appended".getBytes(StandardCharsets.UTF_8))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: blob_column expected: {}, actual: {}",
+          "blob_column_appended",
+          new String((byte[]) row0.get("blob_column"), StandardCharsets.UTF_8));
       return false;
     }
     if (!row0.get("bool_column").equals(false)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: bool_column expected: {}, actual: {}",
+          false,
+          row0.get("bool_column"));
       return false;
     }
     if (!row0.get("date_column").equals(java.sql.Date.valueOf("2024-01-02"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: date_column expected: {}, actual: {}",
+          java.sql.Date.valueOf("2024-01-02"),
+          row0.get("date_column"));
       return false;
     }
     if (!row0.get("datetime_column").equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: datetime_column expected: {}, actual: {}",
+          java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55),
+          row0.get("datetime_column"));
       return false;
     }
     if (!row0.get("decimal_column").equals(new BigDecimal("12344.67"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: decimal_column expected: {}, actual: {}",
+          new BigDecimal("12344.67"),
+          row0.get("decimal_column"));
       return false;
     }
     if (!row0.get("double_column").equals(124.456)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: double_column expected: {}, actual: {}",
+          124.456,
+          row0.get("double_column"));
       return false;
     }
     if (!row0.get("enum_column").equals("3")) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: enum_column expected: {}, actual: {}",
+          "3",
+          row0.get("enum_column"));
       return false;
     }
     if (!row0.get("float_column").equals(124.45f)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: float_column expected: {}, actual: {}",
+          124.45f,
+          row0.get("float_column"));
       return false;
     }
     if (!row0.get("int_column").equals(124)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: int_column expected: {}, actual: {}",
+          124,
+          row0.get("int_column"));
       return false;
     }
     if (!row0.get("text_column").equals("Sample text append")) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: text_column expected: {}, actual: {}",
+          "Sample text append",
+          row0.get("text_column"));
       return false;
     }
     if (!row0.get("time_column").equals(java.sql.Time.valueOf("14:40:00"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: time_column expected: {}, actual: {}",
+          java.sql.Time.valueOf("14:40:00"),
+          row0.get("time_column"));
       return false;
     }
     if (!row0.get("timestamp_column").equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: timestamp_column expected: {}, actual: {}",
+          java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"),
+          row0.get("timestamp_column"));
       return false;
     }
     if (!row0.get("tinyint_column").equals(2)) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: tinyint_column expected: {}, actual: {}",
+          2,
+          row0.get("tinyint_column"));
       return false;
     }
     if (!row0.get("year_column").equals(java.sql.Date.valueOf("2025-01-01"))) {
+      LOG.error(
+          "assertAllDatatypeTransformationTable: year_column expected: {}, actual: {}",
+          java.sql.Date.valueOf("2025-01-01"),
+          row0.get("year_column"));
       return false;
     }
 
