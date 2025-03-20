@@ -43,9 +43,11 @@ import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
@@ -282,6 +284,16 @@ public class GenericRecordTypeConvertorTest {
                             .addToSchema(Schema.create(Schema.Type.LONG))),
                 "testFiled"))
         .isEqualTo(new String[] {"2025-02-19T14:51:49.018Z"});
+
+    assertThat(
+            GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
+                ImmutableList.of(1739976709018L),
+                SchemaBuilder.array()
+                    .items(
+                        LogicalTypes.timestampMillis()
+                            .addToSchema(Schema.create(Schema.Type.LONG))),
+                "testFiled"))
+        .isEqualTo(new String[] {"2025-02-19T14:51:49.018Z"});
     assertThat(
             GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
                 new GenericRecord[] {
@@ -463,7 +475,9 @@ public class GenericRecordTypeConvertorTest {
                   AvroTestingHelper.createIntervalNanosRecord(
                       1000L, 1000L, 3890L, 25L, null, 12L, 9L),
                 })
-            .set("timeStampArrayCol", new Long[] {1602599400056L, null})
+            .set(
+                "timeStampArrayCol",
+                Arrays.stream((new Long[] {1602599400056L, null})).collect(Collectors.toList()))
             .build();
     ArrayList<Timestamp> expectedTimeStampArray = new ArrayList<>();
     expectedTimeStampArray.add(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z"));

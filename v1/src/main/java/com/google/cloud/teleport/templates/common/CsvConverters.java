@@ -142,9 +142,9 @@ public class CsvConverters {
 
     public abstract ValueProvider<String> inputFileSpec();
 
-    public abstract TupleTag<String> headerTag();
+    public abstract TupleTag<Iterable<String>> headerTag();
 
-    public abstract TupleTag<String> lineTag();
+    public abstract TupleTag<Iterable<String>> lineTag();
 
     public abstract ValueProvider<String> fileEncoding();
 
@@ -178,9 +178,9 @@ public class CsvConverters {
 
       public abstract Builder setInputFileSpec(ValueProvider<String> inputFileSpec);
 
-      public abstract Builder setHeaderTag(TupleTag<String> headerTag);
+      public abstract Builder setHeaderTag(TupleTag<Iterable<String>> headerTag);
 
-      public abstract Builder setLineTag(TupleTag<String> lineTag);
+      public abstract Builder setLineTag(TupleTag<Iterable<String>> lineTag);
 
       public abstract Builder setFileEncoding(ValueProvider<String> fileEncoding);
 
@@ -194,10 +194,10 @@ public class CsvConverters {
   }
 
   /** The {@link GetCsvRowsFn} class gets each row of a Csv file and outputs it as a string. */
-  static class GetCsvRowsFn extends DoFn<ReadableFile, String> {
+  static class GetCsvRowsFn extends DoFn<ReadableFile, Iterable<String>> {
 
-    private final TupleTag<String> headerTag;
-    private final TupleTag<String> linesTag;
+    private final TupleTag<Iterable<String>> headerTag;
+    private final TupleTag<Iterable<String>> linesTag;
     private ValueProvider<CSVFormat> csvFormat;
     private final ValueProvider<String> fileEncoding;
     private final ValueProvider<String> delimiter;
@@ -206,8 +206,8 @@ public class CsvConverters {
     private transient @Nullable HashSet<ResourceId> uniqueIds;
 
     GetCsvRowsFn(
-        TupleTag<String> headerTag,
-        TupleTag<String> linesTag,
+        TupleTag<Iterable<String>> headerTag,
+        TupleTag<Iterable<String>> linesTag,
         ValueProvider<String> csvFormat,
         ValueProvider<String> delimiter,
         ValueProvider<String> fileEncoding,
@@ -232,25 +232,15 @@ public class CsvConverters {
         if (hasHeaders.get()) {
           CSVParser parser =
               CSVParser.parse(bufferedReader, this.csvFormat.get().withFirstRecordAsHeader());
-          outputReceiver
-              .get(this.headerTag)
-              .output(String.join(this.delimiter.get(), parser.getHeaderNames()));
+          outputReceiver.get(this.headerTag).output(parser.getHeaderNames());
           parser
               .iterator()
-              .forEachRemaining(
-                  record ->
-                      outputReceiver
-                          .get(this.linesTag)
-                          .output(String.join(this.delimiter.get(), record)));
+              .forEachRemaining(record -> outputReceiver.get(this.linesTag).output(record));
         } else {
           CSVParser parser = CSVParser.parse(bufferedReader, this.csvFormat.get());
           parser
               .iterator()
-              .forEachRemaining(
-                  record ->
-                      outputReceiver
-                          .get(this.linesTag)
-                          .output(String.join(this.delimiter.get(), record)));
+              .forEachRemaining(record -> outputReceiver.get(this.linesTag).output(record));
         }
       } catch (IOException ioe) {
         LOG.error("Headers do not match, consistency cannot be guaranteed");

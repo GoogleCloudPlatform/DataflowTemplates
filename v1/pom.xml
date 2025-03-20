@@ -885,6 +885,8 @@
             <exclude>**/*InformationSchemaScanner.*</exclude>
             <!-- Excluding auto-generated classes. -->
             <exclude>**/*AutoValue_*</exclude>
+            <!-- Excluding LocalSpannerIO changestream tests -->
+            <exclude>**/*com/google/cloud/teleport/spanner/spannerio/changestreams/**/*</exclude>
           </excludes>
           <rules>
             <rule>

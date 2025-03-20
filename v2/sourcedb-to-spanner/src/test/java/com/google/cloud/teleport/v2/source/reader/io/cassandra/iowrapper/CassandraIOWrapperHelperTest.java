@@ -147,6 +147,14 @@ public class CassandraIOWrapperHelperTest {
                 CassandraIOWrapperHelper.buildSchemaDiscovery(),
                 cassandraSchemaReference))
         .isEqualTo(List.of(BASIC_TEST_TABLE));
+
+    assertThat(
+            CassandraIOWrapperHelper.getTablesToRead(
+                List.of(BASIC_TEST_TABLE, "Non-existing-table"),
+                dataSource,
+                CassandraIOWrapperHelper.buildSchemaDiscovery(),
+                cassandraSchemaReference))
+        .isEqualTo(List.of(BASIC_TEST_TABLE));
   }
 
   @Test
