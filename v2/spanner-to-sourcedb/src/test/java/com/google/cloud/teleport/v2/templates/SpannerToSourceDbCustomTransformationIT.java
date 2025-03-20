@@ -353,31 +353,29 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     if (rows.size() != 2) {
       return false;
     } else {
-      LOG.info("assertAllDatatypeTransformationTable: rows.size() = {}", rows.size());
+      System.out.println("assertAllDatatypeTransformationTable: rows.size() = " + rows.size());
     }
 
     Map<String, Object> row1 = rows.get(1);
     if (!row1.get("varchar_column").equals("example2")) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: varchar_column expected: {}, actual: {}",
-          "example2",
+      System.out.println(
+          "assertAllDatatypeTransformationTable: varchar_column expected: " + "example2" + ", actual: " +
           row1.get("varchar_column"));
       return false;
     }
     if (!row1.get("bigint_column").equals(1000)) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: bigint_column expected: {}, actual: {}",
-          1000,
-          row1.get("bigint_column"));
+      System.out.println(
+          "assertAllDatatypeTransformationTable: bigint_column expected: " + 1000 + ",actual: "
+              + row1.get("bigint_column"));
       return false;
     }
     if (!java.util.Arrays.equals(
         (byte[]) row1.get("binary_column"), "bin_column".getBytes(StandardCharsets.UTF_8))) {
       LOG.error(
-          "assertAllDatatypeTransformationTable: binary_column expected: {}, actual: {}",
-          "bin_column",
+          "assertAllDatatypeTransformationTable: binary_column expected: " + "bin_column" + ", actual: " +
           new String((byte[]) row1.get("binary_column"), StandardCharsets.UTF_8));
       return false;
+
     }
     if (!java.util.Arrays.equals(
         (byte[]) row1.get("bit_column"), "1".getBytes(StandardCharsets.UTF_8))) {
@@ -389,10 +387,10 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     }
     if (!java.util.Arrays.equals(
         (byte[]) row1.get("blob_column"), "blob_column".getBytes(StandardCharsets.UTF_8))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: blob_column expected: {}, actual: {}",
-          "blob_column",
+      System.out.println(
+          "assertAllDatatypeTransformationTable: blob_column expected: " + "blob_column" + ", actual: " +
           new String((byte[]) row1.get("blob_column"), StandardCharsets.UTF_8));
+
       return false;
     }
     if (!row1.get("bool_column").equals(true)) {
@@ -403,9 +401,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row1.get("date_column").equals(java.sql.Date.valueOf("2024-01-01"))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: date_column expected: {}, actual: {}",
-          java.sql.Date.valueOf("2024-01-01"),
+      System.out.println(
+          "assertAllDatatypeTransformationTable: date_column expected: " +
+          java.sql.Date.valueOf("2024-01-01") + ", actual: " +
           row1.get("date_column"));
       return false;
     }
@@ -417,9 +415,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row1.get("decimal_column").equals(new BigDecimal("99999.99"))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: decimal_column expected: {}, actual: {}",
-          new BigDecimal("99999.99"),
+      System.out.println(
+          "assertAllDatatypeTransformationTable: decimal_column expected: " +
+          new BigDecimal("99999.99") + ", actual: " +
           row1.get("decimal_column"));
       return false;
     }
@@ -431,9 +429,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row1.get("enum_column").equals("1")) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: enum_column expected: {}, actual: {}",
-          "1",
+      System.out.println(
+          "assertAllDatatypeTransformationTable: enum_column expected: " +
+          "1" + ", actual: " +
           row1.get("enum_column"));
       return false;
     }
@@ -445,9 +443,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row1.get("int_column").equals(100)) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: int_column expected: {}, actual: {}",
-          100,
+      System.out.println(
+          "assertAllDatatypeTransformationTable: int_column expected: " +
+          100 + ", actual: " +
           row1.get("int_column"));
       return false;
     }
@@ -459,9 +457,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row1.get("time_column").equals(java.sql.Time.valueOf("14:30:00"))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: time_column expected: {}, actual: {}",
-          java.sql.Time.valueOf("14:30:00"),
+      System.out.println(
+          "assertAllDatatypeTransformationTable: time_column expected: " +
+          java.sql.Time.valueOf("14:30:00") + ", actual: " +
           row1.get("time_column"));
       return false;
     }
@@ -473,9 +471,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row1.get("tinyint_column").equals(2)) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: tinyint_column expected: {}, actual: {}",
-          2,
+      System.out.println(
+          "assertAllDatatypeTransformationTable: tinyint_column expected: " +
+          2 + ", actual: " +
           row1.get("tinyint_column"));
       return false;
     }
@@ -489,9 +487,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
 
     Map<String, Object> row0 = rows.get(0);
     if (!row0.get("varchar_column").equals("example")) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: varchar_column expected: {}, actual: {}",
-          "example",
+      System.out.println(
+          "assertAllDatatypeTransformationTable: varchar_column expected: " +
+          "example" + ", actual: " +
           row0.get("varchar_column"));
       return false;
     }
@@ -506,10 +504,11 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         (byte[]) row0.get("binary_column"),
         "binary_column_appended".getBytes(StandardCharsets.UTF_8))) {
       LOG.error(
-          "assertAllDatatypeTransformationTable: binary_column expected: {}, actual: {}",
-          "binary_column_appended",
+          "assertAllDatatypeTransformationTable: binary_column expected: " +
+          "binary_column_appended" + ", actual: " +
           new String((byte[]) row0.get("binary_column"), StandardCharsets.UTF_8));
       return false;
+
     }
     if (!java.util.Arrays.equals(
         (byte[]) row0.get("bit_column"), "5".getBytes(StandardCharsets.UTF_8))) {
@@ -523,8 +522,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         (byte[]) row0.get("blob_column"),
         "blob_column_appended".getBytes(StandardCharsets.UTF_8))) {
       LOG.error(
-          "assertAllDatatypeTransformationTable: blob_column expected: {}, actual: {}",
-          "blob_column_appended",
+          "assertAllDatatypeTransformationTable: blob_column expected: " +
+          "blob_column_appended" + ", actual: " +
           new String((byte[]) row0.get("blob_column"), StandardCharsets.UTF_8));
       return false;
     }
@@ -536,9 +535,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row0.get("date_column").equals(java.sql.Date.valueOf("2024-01-02"))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: date_column expected: {}, actual: {}",
-          java.sql.Date.valueOf("2024-01-02"),
+      System.out.println(
+          "assertAllDatatypeTransformationTable: date_column expected: " +
+          java.sql.Date.valueOf("2024-01-02") + ", actual: " +
           row0.get("date_column"));
       return false;
     }
@@ -550,9 +549,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row0.get("decimal_column").equals(new BigDecimal("12344.67"))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: decimal_column expected: {}, actual: {}",
-          new BigDecimal("12344.67"),
+      System.out.println(
+          "assertAllDatatypeTransformationTable: decimal_column expected: " +
+          new BigDecimal("12344.67") + ", actual: " +
           row0.get("decimal_column"));
       return false;
     }
@@ -564,9 +563,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row0.get("enum_column").equals("3")) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: enum_column expected: {}, actual: {}",
-          "3",
+      System.out.println(
+          "assertAllDatatypeTransformationTable: enum_column expected: " +
+          "3" + ", actual: " +
           row0.get("enum_column"));
       return false;
     }
@@ -578,9 +577,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row0.get("int_column").equals(124)) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: int_column expected: {}, actual: {}",
-          124,
+      System.out.println(
+          "assertAllDatatypeTransformationTable: int_column expected: " +
+          124 + ", actual: " +
           row0.get("int_column"));
       return false;
     }
@@ -592,9 +591,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row0.get("time_column").equals(java.sql.Time.valueOf("14:40:00"))) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: time_column expected: {}, actual: {}",
-          java.sql.Time.valueOf("14:40:00"),
+      System.out.println(
+          "assertAllDatatypeTransformationTable: time_column expected: " +
+          java.sql.Time.valueOf("14:40:00") + ", actual: " +
           row0.get("time_column"));
       return false;
     }
@@ -606,9 +605,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
       return false;
     }
     if (!row0.get("tinyint_column").equals(2)) {
-      LOG.error(
-          "assertAllDatatypeTransformationTable: tinyint_column expected: {}, actual: {}",
-          2,
+      System.out.println(
+          "assertAllDatatypeTransformationTable: tinyint_column expected: " +
+          2 + ", actual: " +
           row0.get("tinyint_column"));
       return false;
     }
@@ -619,6 +618,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
           row0.get("year_column"));
       return false;
     }
+
 
     List<Map<String, Object>> example1Rows =
         jdbcResourceManager.runSQLQuery(
