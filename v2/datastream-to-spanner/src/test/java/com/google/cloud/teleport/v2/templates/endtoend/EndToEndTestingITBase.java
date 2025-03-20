@@ -337,6 +337,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
     Stream stream =
         createDataStreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
