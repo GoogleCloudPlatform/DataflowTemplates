@@ -535,6 +535,11 @@
       <version>${datastax.query.builder.version}</version>
       <scope>compile</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+      <version>4.29.4</version>
+    </dependency>
   </dependencies>
 
   <build>
@@ -625,9 +630,6 @@
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-bigtable-v2
-                </ignoredUsedUndeclaredDependency>
-                <ignoredUsedUndeclaredDependency>
-                  com.google.protobuf:protobuf-java
                 </ignoredUsedUndeclaredDependency>
                 <ignoredUsedUndeclaredDependency>
                   com.google.api.grpc:proto-google-cloud-spanner-admin-database-v1
