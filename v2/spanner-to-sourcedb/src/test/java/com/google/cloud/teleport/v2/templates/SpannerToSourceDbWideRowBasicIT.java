@@ -75,8 +75,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
           String.format(
               "CREATE TABLE %s (\n"
                   + "  Id INT64 NOT NULL,\n"
-                  + "  Name STRING(100),\n"
-                  + "  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP()\n" // 🔹 Removed extra comma
+                  + "  Name STRING(100)\n"
                   + ") PRIMARY KEY (Id)",
               tableName));
     }
