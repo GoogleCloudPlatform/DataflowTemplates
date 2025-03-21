@@ -42,7 +42,6 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -55,9 +54,8 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("This test is disabled currently")
 public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase {
-
+  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 64 MiB
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToMySqlSourceDbWideRow10MbIT.class);
   private static final String SPANNER_DDL_RESOURCE =
@@ -93,7 +91,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
-
+        increasePacketSize();
         createMySQLSchema(
             jdbcResourceManager, SpannerToMySqlSourceDbWideRow10MbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
@@ -142,6 +140,13 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
+  }
+
+  private void increasePacketSize() {
+    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    String allowedSessionPacket = "SET SESSION max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    jdbcResourceManager.runSQLQuery(allowedGlobalPacket);
+    jdbcResourceManager.runSQLQuery(allowedSessionPacket);
   }
 
   @Test

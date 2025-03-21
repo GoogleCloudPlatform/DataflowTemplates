@@ -531,7 +531,7 @@ public class CassandraTypeHandler {
    * @return a {@link List} containing parsed values, or an empty list if {@code colValue} is null
    */
   private static List<?> parseCassandraList(String columnType, JSONArray colValue) {
-    if (colValue == null) {
+    if (colValue == null || colValue.isEmpty()) {
       return Collections.emptyList();
     }
     String innerType = extractInnerType(columnType);
@@ -586,7 +586,7 @@ public class CassandraTypeHandler {
    * @return a {@link Set} containing parsed values, or an empty set if {@code colValue} is null
    */
   private static Set<?> parseCassandraSet(String columnType, JSONArray colValue) {
-    if (colValue == null) {
+    if (colValue == null || colValue.isEmpty()) {
       return Collections.emptySet();
     }
     String innerType = extractInnerType(columnType);
@@ -607,7 +607,7 @@ public class CassandraTypeHandler {
    *     null
    */
   private static Map<?, ?> parseCassandraMap(String columnType, JSONObject colValue) {
-    if (colValue == null) {
+    if (colValue == null || colValue.isEmpty()) {
       return Collections.emptyMap();
     }
     String[] keyValueTypes = extractKeyValueTypes(columnType);
