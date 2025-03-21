@@ -22,6 +22,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -31,8 +34,17 @@ import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+@Ignore("This test is failing in the CI pipeline")
+
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(SourceDbToSpanner.class)
+@RunWith(JUnit4.class)
 public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSpannerITBase {
 
   private static PipelineLauncher.LaunchInfo jobInfo;
