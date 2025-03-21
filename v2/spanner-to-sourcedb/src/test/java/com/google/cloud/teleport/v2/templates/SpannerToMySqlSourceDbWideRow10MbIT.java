@@ -145,8 +145,8 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
   private void increasePacketSize() {
     String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
     String allowedSessionPacket = "SET SESSION max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    jdbcResourceManager.runSQLQuery(allowedGlobalPacket);
-    jdbcResourceManager.runSQLQuery(allowedSessionPacket);
+    jdbcResourceManager.runSQLUpdate(allowedGlobalPacket);
+    jdbcResourceManager.runSQLUpdate(allowedSessionPacket);
   }
 
   @Test
