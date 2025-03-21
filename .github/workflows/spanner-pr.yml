@@ -190,11 +190,12 @@ jobs:
       run: make build
     - name: Store Path to File
       run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
-    - name: Change Directory
-      run: cd ..; pwd
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+    - name: Debug - Check cicd Directory
+      run: ls -lah ${{ github.workspace }}/main-repo/cicd
     - name: Run Integration Tests
+      working-directory: ${{ github.workspace }}/main-repo
       run: |
         ./cicd/run-it-tests \
         --modules-to-build="SPANNER" \
