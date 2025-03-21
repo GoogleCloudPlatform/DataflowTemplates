@@ -301,8 +301,7 @@ public class CassandraTypeHandler {
       String spannerType, String columnName, JSONObject valuesJson) {
     try {
       if (spannerType.contains("string")) {
-        String value = valuesJson.optString(columnName);
-        return value.isEmpty() ? null : value;
+        return valuesJson.optString(columnName, null);
       } else if (spannerType.contains("bytes")) {
         if (valuesJson.isNull(columnName)) {
           return null;
