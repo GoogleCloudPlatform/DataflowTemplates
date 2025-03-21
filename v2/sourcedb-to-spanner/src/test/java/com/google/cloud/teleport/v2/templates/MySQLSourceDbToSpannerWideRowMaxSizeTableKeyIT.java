@@ -17,14 +17,13 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -41,7 +40,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @Ignore("This test is failing in the CI pipeline")
-
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
