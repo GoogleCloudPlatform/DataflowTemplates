@@ -170,10 +170,12 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         path: spanner-migration-tool
         fetch-depth: 0
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        path: main-repo
     - name: Debug - Check Directory
       run: ls -lah ${{ github.workspace }}/spanner-migration-tool
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
@@ -188,6 +190,8 @@ jobs:
       run: make build
     - name: Store Path to File
       run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
+    - name: Checkout Code
+      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
     - name: Run Integration Tests
       run: |
         ./cicd/run-it-tests \

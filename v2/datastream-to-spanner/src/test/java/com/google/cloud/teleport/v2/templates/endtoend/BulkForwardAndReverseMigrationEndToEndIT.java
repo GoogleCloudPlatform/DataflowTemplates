@@ -15,31 +15,18 @@
  */
 package com.google.cloud.teleport.v2.templates.endtoend;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
-import static com.google.common.truth.Truth.assertThat;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-
-import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -99,9 +86,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     skipBaseCleanup = true;
     synchronized (BulkForwardAndReverseMigrationEndToEndIT.class) {
       testInstances.add(this);
-      if (rrJobInfo == null || fwdJobInfo == null) {
-
-      }
+      if (rrJobInfo == null || fwdJobInfo == null) {}
     }
   }
 
@@ -118,7 +103,5 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
   }
 
   @Test
-  public void spannerToSourceDbBasic() {
-
-  }
+  public void spannerToSourceDbBasic() {}
 }
