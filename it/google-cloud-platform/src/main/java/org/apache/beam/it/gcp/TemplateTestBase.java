@@ -584,8 +584,18 @@ public abstract class TemplateTestBase {
       Runtime.getRuntime()
           .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
     }
+    printJobLink(testName, launchInfo);
 
     return launchInfo;
+  }
+
+  public void printJobLink(String testName, LaunchInfo launchInfo) {
+    LOG.info(
+        "Dataflow Console link for {}: https://console.cloud.google.com/dataflow/jobs/{}/{}?project={}",
+        testName,
+        launchInfo.region(),
+        launchInfo.jobId(),
+        launchInfo.projectId());
   }
 
   /** Get the Cloud Storage base path for this test suite. */
