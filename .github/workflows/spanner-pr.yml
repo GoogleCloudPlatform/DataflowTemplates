@@ -158,16 +158,36 @@ jobs:
       uses: ./.github/actions/cleanup-java-env
   java_integration_tests_templates:
     name: Dataflow Templates Integration Tests
-    needs: [java_integration_smoke_tests_templates]
+    needs: []
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, it]
+    runs-on: [self-hosted, spanner-poc]
     steps:
+    - name: Checkout SMT Code
+      uses: actions/checkout@v4
+      with:
+        repository: GoogleCloudPlatform/spanner-migration-tool
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: spanner-migration-tool
+        fetch-depth: 0
+    - name: Debug - Check Directory
+      run: ls -lah ${{ github.workspace }}/spanner-migration-tool
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - name: Install Angular CLI
+      run: npm install -g @angular/cli
+    - name: Prepare Go Modules
+      working-directory: ${{ github.workspace }}/spanner-migration-tool
+      run: make build
+    - name: Store Path to File
+      run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
     - name: Run Integration Tests
       run: |
         ./cicd/run-it-tests \
@@ -208,3 +228,36 @@ jobs:
         --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
+  smt_installation:
+    name: Install SMT
+    needs: [ ]
+    timeout-minutes: 60
+    runs-on: [ self-hosted, spanner-poc ]
+    steps:
+    - name: Checkout SMT Code
+      uses: actions/checkout@v4
+      with:
+        repository: GoogleCloudPlatform/spanner-migration-tool
+        token: ${{ secrets.GITHUB_TOKEN }}
+        path: spanner-migration-tool
+        fetch-depth: 0
+    - name: Checkout Code
+      uses: actions/checkout@v4
+      with:
+        path: main-repo
+    - name: Debug - Check Directory
+      run: ls -lah ${{ github.workspace }}/spanner-migration-tool
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+    - name: Install Angular CLI
+      run: npm install -g @angular/cli
+    - name: Prepare Go Modules
+      working-directory: ${{ github.workspace }}/spanner-migration-tool
+      run: make build
+    - name: Store Path to File
+      run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
