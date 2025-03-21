@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.collect.ImmutableMap;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -47,9 +48,12 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLToSpanner5000TablePerDBIT.class);
   private static final int NUM_TABLES = 5000;
-  private static PipelineLauncher.LaunchInfo jobInfo;
-  private static MySQLResourceManager mySQLResourceManager;
-  private static SpannerResourceManager spannerResourceManager;
+  private static final String COL_ID = "id";
+  private static final String COL_NAME = "name";
+
+  private PipelineLauncher.LaunchInfo jobInfo;
+  private MySQLResourceManager mySQLResourceManager;
+  private SpannerResourceManager spannerResourceManager;
 
   @Before
   public void setUp() {
@@ -64,22 +68,27 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
 
   @Test
   public void testMySQLToSpannerMigration() throws Exception {
-    IntStream.range(0, NUM_TABLES).forEach(this::createSchemas);
+    // Create schemas for all tables in parallel
+    IntStream.range(0, NUM_TABLES).parallel().forEach(this::createSchemas);
 
+    // Launch the Dataflow migration job
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
-            null,
-            null,
+            null, // source options
+            null, // target options
             mySQLResourceManager,
             spannerResourceManager,
-            null,
-            null);
+            null, // job options
+            null // pipeline options
+            );
 
+    // Wait for pipeline completion and verify success
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 
-    IntStream.range(0, NUM_TABLES).forEach(this::verifySpannerData);
+    // Verify migrated data in parallel
+    IntStream.range(0, NUM_TABLES).parallel().forEach(this::verifySpannerData);
   }
 
   private void createSchemas(int tableNumber) {
@@ -91,21 +100,21 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private void verifySpannerData(int tableNumber) {
     String tableName = "table_" + tableNumber;
     SpannerAsserts.assertThatStructs(
-            spannerResourceManager.readTableRecords(tableName, "id", "name"))
+            spannerResourceManager.readTableRecords(tableName, COL_ID, COL_NAME))
         .hasRecordsUnorderedCaseInsensitiveColumns(getMySQLData());
   }
 
   private JDBCResourceManager.JDBCSchema getMySQLSchema() {
     Map<String, String> columns =
-        Map.of(
-            "id", "INTEGER NOT NULL",
-            "name", "VARCHAR(20)");
-    return new JDBCResourceManager.JDBCSchema(columns, "id");
+        ImmutableMap.of(
+            COL_ID, "INTEGER NOT NULL",
+            COL_NAME, "VARCHAR(20)");
+    return new JDBCResourceManager.JDBCSchema(columns, COL_ID);
   }
 
   private List<Map<String, Object>> getMySQLData() {
     return Collections.singletonList(
-        Map.of("id", 1, "name", RandomStringUtils.randomAlphabetic(10)));
+        ImmutableMap.of(COL_ID, 1, COL_NAME, RandomStringUtils.randomAlphabetic(10)));
   }
 
   private void createMySQLSchema(MySQLResourceManager mySQLResourceManager, String tableName) {
