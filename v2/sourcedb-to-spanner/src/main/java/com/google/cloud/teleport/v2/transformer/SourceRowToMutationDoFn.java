@@ -65,9 +65,20 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
   @Nullable
   public abstract CustomTransformation customTransformation();
 
+  public abstract boolean insertOnly();
+
+  /**
+   * Creates {@link SourceRowToMutationDoFn}.
+   *
+   * @param iSchemaMapper schema Mapper.
+   * @param customTransformation Custom transformation.
+   * @param insertOnly set true if you would like the mutations to use inserts and false for
+   *     upserts.
+   * @return SourceRowToMutationDoFn.
+   */
   public static SourceRowToMutationDoFn create(
-      ISchemaMapper iSchemaMapper, CustomTransformation customTransformation) {
-    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper, customTransformation);
+      ISchemaMapper iSchemaMapper, CustomTransformation customTransformation, boolean insertOnly) {
+    return new AutoValue_SourceRowToMutationDoFn(iSchemaMapper, customTransformation, insertOnly);
   }
 
   /** Setup function to load custom transformation jars. */
@@ -101,7 +112,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
 
       String spannerTableName = iSchemaMapper().getSpannerTableName("", srcTableName);
       // TODO: Move the mutation generation to writer. Create generic record here instead
-      Mutation mutation = mutationFromMap(spannerTableName, values);
+      Mutation mutation = mutationFromMap(spannerTableName, values, insertOnly());
       output
           .get(SourceDbToSpannerConstants.ROW_TRANSFORMATION_SUCCESS)
           .output(RowContext.builder().setRow(sourceRow).setMutation(mutation).build());
@@ -114,8 +125,12 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
     }
   }
 
-  private Mutation mutationFromMap(String spannerTableName, Map<String, Value> values) {
-    Mutation.WriteBuilder builder = Mutation.newInsertOrUpdateBuilder(spannerTableName);
+  private Mutation mutationFromMap(
+      String spannerTableName, Map<String, Value> values, boolean insertOnly) {
+    Mutation.WriteBuilder builder =
+        (insertOnly)
+            ? Mutation.newInsertBuilder(spannerTableName)
+            : Mutation.newInsertOrUpdateBuilder(spannerTableName);
     for (String spannerColName : values.keySet()) {
       Value value = values.get(spannerColName);
       if (value != null) {
