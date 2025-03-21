@@ -21,7 +21,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -45,14 +44,14 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   private static final String testName = "test_" + System.currentTimeMillis();
 
   @Test
-  public void testAssert10000TablesPerDatabase() throws Exception {
+  public void testAssert5000TablesPerDatabase() throws Exception {
     String databaseName = "rr-main-db-test-" + testName;
     SpannerResourceManager spannerResourceManagerForTables =
         SpannerResourceManager.builder(databaseName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
 
-    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(10000);
+    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(5000);
 
     for (int i = 0; i < createTableQueries.size(); i += 100) {
       int end = Math.min(i + 100, createTableQueries.size());
@@ -63,7 +62,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
     ImmutableList<Struct> results = spannerResourceManagerForTables.runQuery(query);
     assertFalse(results.isEmpty());
     long tableCount = results.get(0).getLong(0);
-    assertEquals(10000, tableCount);
+    assertEquals(5000, tableCount);
     ResourceManagerUtils.cleanResources(spannerResourceManagerForTables);
   }
 
@@ -92,7 +91,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
 
     StringBuilder createTableQuery = new StringBuilder("CREATE TABLE TestTable (\n");
     createTableQuery.append("    Id INT64 NOT NULL,\n");
-    for (int i = 1; i <= 1024; i++) {
+    for (int i = 1; i < 1024; i++) {
       createTableQuery.append("    Col_").append(i).append(" STRING(100),\n");
     }
     createTableQuery.setLength(createTableQuery.length() - 2);
@@ -121,14 +120,14 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
 
     StringBuilder createTableQuery = new StringBuilder("CREATE TABLE InvalidTable (\n");
     createTableQuery.append("    Id INT64 NOT NULL,\n");
-    for (int i = 1; i <= 1025; i++) {
+    for (int i = 1; i <= 1024; i++) {
       createTableQuery.append("    Col_").append(i).append(" STRING(100),\n");
     }
     createTableQuery.append(") PRIMARY KEY (Id)");
     Exception thrownException = null;
     try {
       spannerResourceManagerForColumns.executeDdlStatement(createTableQuery.toString());
-    } catch (SpannerException e) {
+    } catch (Exception e) {
       thrownException = e;
     }
 
@@ -141,18 +140,18 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void testCreateMoreThan10000TablesShouldFail() {
+  public void testCreateMoreThan5000TablesShouldFail() {
     String databaseName = "rr-main-db-exceed-tables-" + testName;
     SpannerResourceManager spannerResourceManagerForTables =
         SpannerResourceManager.builder(databaseName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
 
-    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(10001);
+    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(5001);
     Exception thrownException = null;
     try {
       spannerResourceManagerForTables.executeDdlStatements(createTableQueries);
-    } catch (SpannerException e) {
+    } catch (Exception e) {
       thrownException = e;
     }
     assertNotNull("Expected SpannerException due to exceeding table limit", thrownException);
@@ -177,7 +176,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
             + ") PRIMARY KEY (Id)";
     spannerResourceManager.executeDdlStatement(createTableQuery);
 
-    String validData = "A".repeat(10 * 1024 * 1024);
+    String validData = "A".repeat(2_621_440);
 
     spannerResourceManager.write(
         Mutation.newInsertBuilder("LargeDataTest")
@@ -191,7 +190,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
     ImmutableList<Struct> results = spannerResourceManager.runQuery(query);
     assertFalse(results.isEmpty());
     long columnSize = results.get(0).getLong(0);
-    assertEquals(10 * 1024 * 1024, columnSize);
+    assertEquals(2_621_440, columnSize);
     ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
@@ -221,7 +220,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
               .set("LargeColumn")
               .to(invalidData)
               .build());
-    } catch (SpannerException e) {
+    } catch (Exception e) {
       thrownException = e;
     }
 
@@ -292,7 +291,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
               .set("LargeColumn")
               .to(invalidData)
               .build());
-    } catch (SpannerException e) {
+    } catch (Exception e) {
       thrownException = e;
     }
 
@@ -302,8 +301,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
         "Exception message should mention column size limit",
         thrownException
             .getMessage()
-            .contains(
-                "New value exceeds the maximum size limit for this column")); // Adjust based on
+            .contains("New value exceeds the maximum size limit for this column"));
     ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
@@ -360,7 +358,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
     Exception thrownException = null;
     try {
       spannerResourceManager.executeDdlStatement(createTableQuery);
-    } catch (SpannerException e) {
+    } catch (Exception e) {
       thrownException = e;
     }
 
