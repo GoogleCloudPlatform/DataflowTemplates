@@ -24,6 +24,8 @@ import static org.junit.Assert.assertEquals;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
@@ -40,9 +42,15 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(SpannerToSourceDb.class)
+@RunWith(JUnit4.class)
 public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG =

@@ -55,7 +55,7 @@ import org.slf4j.LoggerFactory;
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase {
-
+  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToMySqlSourceDbWideRow10MbIT.class);
   private static final String SPANNER_DDL_RESOURCE =
@@ -91,7 +91,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
-
+        increasePacketSize();
         createMySQLSchema(
             jdbcResourceManager, SpannerToMySqlSourceDbWideRow10MbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
@@ -140,6 +140,11 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager);
+  }
+
+  private void increasePacketSize() {
+    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    jdbcResourceManager.runSQLUpdate(allowedGlobalPacket);
   }
 
   @Test
@@ -204,7 +209,7 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
       assertThat(row.get("id")).isNotNull();
       assertThat(row.get("id").toString()).isNotEmpty();
 
-      Object largeBlob = row.get("large_text");
+      Object largeBlob = row.get("large_blob");
       assertThat(largeBlob).isNotNull();
       assertThat(((byte[]) largeBlob).length).isEqualTo(safeBlobSize); // 10MB
 

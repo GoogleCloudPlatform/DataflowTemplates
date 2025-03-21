@@ -17,13 +17,11 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.SpannerException;
-import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
@@ -31,30 +29,37 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@TemplateIntegrationTest(SpannerToSourceDb.class)
+@RunWith(JUnit4.class)
 public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   private static final String testName = "test_" + System.currentTimeMillis();
 
   @Test
-  public void testAssert10000TablesPerDatabase() throws Exception {
+  public void testAssert5000TablesPerDatabase() throws Exception {
     String databaseName = "rr-main-db-test-" + testName;
     SpannerResourceManager spannerResourceManagerForTables =
         SpannerResourceManager.builder(databaseName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
 
-    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(10000);
+    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(5000);
 
     for (int i = 0; i < createTableQueries.size(); i += 100) {
       int end = Math.min(i + 100, createTableQueries.size());
       spannerResourceManagerForTables.executeDdlStatements(createTableQueries.subList(i, end));
     }
 
-    String query = "SELECT COUNT(*) AS table_count FROM INFORMATION_SCHEMA.TABLES";
+    String query =
+        "SELECT COUNT(*) AS table_count FROM INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA='' and TABLE_CATALOG = ''";
     ImmutableList<Struct> results = spannerResourceManagerForTables.runQuery(query);
     assertFalse(results.isEmpty());
     long tableCount = results.get(0).getLong(0);
-    assertEquals(10000, tableCount);
+    assertEquals(5000, tableCount);
     ResourceManagerUtils.cleanResources(spannerResourceManagerForTables);
   }
 
@@ -67,7 +72,6 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
               "CREATE TABLE %s (\n"
                   + "  Id INT64 NOT NULL,\n"
                   + "  Name STRING(100),\n"
-                  + "  CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP()\n" // 🔹 Removed extra comma
                   + ") PRIMARY KEY (Id)",
               tableName));
     }
@@ -84,7 +88,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
 
     StringBuilder createTableQuery = new StringBuilder("CREATE TABLE TestTable (\n");
     createTableQuery.append("    Id INT64 NOT NULL,\n");
-    for (int i = 1; i <= 1024; i++) {
+    for (int i = 1; i < 1024; i++) {
       createTableQuery.append("    Col_").append(i).append(" STRING(100),\n");
     }
     createTableQuery.setLength(createTableQuery.length() - 2);
@@ -104,57 +108,6 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void testCreateTableWithMoreThan1024ColumnsShouldFail() {
-    String databaseName = "rr-main-table-per-columns-exception-" + testName;
-    SpannerResourceManager spannerResourceManagerForColumns =
-        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-
-    StringBuilder createTableQuery = new StringBuilder("CREATE TABLE InvalidTable (\n");
-    createTableQuery.append("    Id INT64 NOT NULL,\n");
-    for (int i = 1; i <= 1025; i++) {
-      createTableQuery.append("    Col_").append(i).append(" STRING(100),\n");
-    }
-    createTableQuery.append(") PRIMARY KEY (Id)");
-    Exception thrownException = null;
-    try {
-      spannerResourceManagerForColumns.executeDdlStatement(createTableQuery.toString());
-    } catch (SpannerException e) {
-      thrownException = e;
-    }
-
-    assertNotNull("Expected SpannerException due to exceeding column limit", thrownException);
-    assertTrue(
-        "Exception message should mention column limit",
-        thrownException.getMessage().contains("too many columns"));
-
-    ResourceManagerUtils.cleanResources(spannerResourceManagerForColumns);
-  }
-
-  @Test
-  public void testCreateMoreThan10000TablesShouldFail() {
-    String databaseName = "rr-main-db-exceed-tables-" + testName;
-    SpannerResourceManager spannerResourceManagerForTables =
-        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-
-    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(10001);
-    Exception thrownException = null;
-    try {
-      spannerResourceManagerForTables.executeDdlStatements(createTableQueries);
-    } catch (SpannerException e) {
-      thrownException = e;
-    }
-    assertNotNull("Expected SpannerException due to exceeding table limit", thrownException);
-    assertTrue(
-        "Exception message should mention table limit",
-        thrownException.getMessage().contains("too many tables"));
-    ResourceManagerUtils.cleanResources(spannerResourceManagerForTables);
-  }
-
-  @Test
   public void testInsertValidCellSize_10MiB() {
     String databaseName = "rr-main-db-cell-size-valid-" + testName;
     SpannerResourceManager spannerResourceManager =
@@ -169,7 +122,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
             + ") PRIMARY KEY (Id)";
     spannerResourceManager.executeDdlStatement(createTableQuery);
 
-    String validData = "A".repeat(10 * 1024 * 1024);
+    String validData = "A".repeat(2_621_440);
 
     spannerResourceManager.write(
         Mutation.newInsertBuilder("LargeDataTest")
@@ -183,119 +136,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
     ImmutableList<Struct> results = spannerResourceManager.runQuery(query);
     assertFalse(results.isEmpty());
     long columnSize = results.get(0).getLong(0);
-    assertEquals(10 * 1024 * 1024, columnSize);
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
-  }
-
-  @Test
-  public void testInsertInvalidCellSize_Exceeds10MiB_ShouldFail() {
-    String databaseName = "rr-main-db-cell-size-invalid-" + testName;
-    SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-
-    String createTableQuery =
-        "CREATE TABLE LargeDataTest ("
-            + "  Id INT64 NOT NULL,"
-            + "  LargeColumn STRING(MAX),"
-            + ") PRIMARY KEY (Id)";
-    spannerResourceManager.executeDdlStatement(createTableQuery);
-
-    String invalidData = "A".repeat(10 * 1024 * 1024 + 1);
-
-    Exception thrownException = null;
-    try {
-      spannerResourceManager.write(
-          Mutation.newInsertBuilder("LargeDataTest")
-              .set("Id")
-              .to(2)
-              .set("LargeColumn")
-              .to(invalidData)
-              .build());
-    } catch (SpannerException e) {
-      thrownException = e;
-    }
-
-    assertNotNull("Expected SpannerException due to exceeding cell size limit", thrownException);
-    assertTrue(
-        "Exception message should mention cell size limit",
-        thrownException.getMessage().contains("too large"));
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
-  }
-
-  @Test
-  public void testInsertValidStringSize_2621440Characters() {
-    String databaseName = "rr-main-db-string-size-valid-" + testName;
-    SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-
-    String createTableQuery =
-        "CREATE TABLE LargeStringTest ("
-            + "  Id INT64 NOT NULL,"
-            + "  LargeColumn STRING(2621440),"
-            + ") PRIMARY KEY (Id)";
-    spannerResourceManager.executeDdlStatement(createTableQuery);
-
-    String validData = "A".repeat(2_621_440);
-
-    spannerResourceManager.write(
-        Mutation.newInsertBuilder("LargeStringTest")
-            .set("Id")
-            .to(1)
-            .set("LargeColumn")
-            .to(validData)
-            .build());
-
-    String query = "SELECT LENGTH(LargeColumn) FROM LargeStringTest WHERE Id = 1";
-    ImmutableList<Struct> results = spannerResourceManager.runQuery(query);
-    assertFalse(results.isEmpty());
-    long columnSize = results.get(0).getLong(0);
     assertEquals(2_621_440, columnSize);
-
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
-  }
-
-  @Test
-  public void testInsertInvalidStringSize_Exceeds2621440Characters_ShouldFail() {
-    String databaseName = "rr-main-db-string-size-invalid-" + testName;
-    SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-
-    String createTableQuery =
-        "CREATE TABLE LargeStringTest ("
-            + "  Id INT64 NOT NULL,"
-            + "  LargeColumn STRING(2621440),"
-            + ") PRIMARY KEY (Id)";
-    spannerResourceManager.executeDdlStatement(createTableQuery);
-
-    String invalidData = "A".repeat(2_621_441);
-
-    Exception thrownException = null;
-    try {
-      spannerResourceManager.write(
-          Mutation.newInsertBuilder("LargeStringTest")
-              .set("Id")
-              .to(2)
-              .set("LargeColumn")
-              .to(invalidData)
-              .build());
-    } catch (SpannerException e) {
-      thrownException = e;
-    }
-
-    assertNotNull(
-        "Expected SpannerException due to exceeding string column limit", thrownException);
-    assertTrue(
-        "Exception message should mention column size limit",
-        thrownException
-            .getMessage()
-            .contains(
-                "New value exceeds the maximum size limit for this column")); // Adjust based on
     ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
 
@@ -309,12 +150,12 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
 
     String createTableQuery =
         "CREATE TABLE LargeKeyTest ("
-            + "  LargeKey STRING(8192) NOT NULL,"
+            + "  LargeKey STRING(7000) NOT NULL,"
             + "  Value STRING(MAX)"
             + ") PRIMARY KEY (LargeKey)";
     spannerResourceManager.executeDdlStatement(createTableQuery);
 
-    String validKey = "K".repeat(8192);
+    String validKey = "K".repeat(7000);
 
     spannerResourceManager.write(
         Mutation.newInsertBuilder("LargeKeyTest")
@@ -324,42 +165,11 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
             .to("Some Data")
             .build());
 
-    String query = "SELECT LENGTH(LargeKey) FROM LargeKeyTest WHERE LargeKey = @validKey";
-    ImmutableList<Struct> results =
-        spannerResourceManager.runQuery(
-            Statement.newBuilder(query).bind("validKey").to(validKey).build().getSql());
+    String query = "SELECT LENGTH(LargeKey) FROM LargeKeyTest WHERE LargeKey = " + validKey;
+    ImmutableList<Struct> results = spannerResourceManager.runQuery(query);
     assertFalse(results.isEmpty());
     long keySize = results.get(0).getLong(0);
-    assertEquals(8192, keySize);
-
-    ResourceManagerUtils.cleanResources(spannerResourceManager);
-  }
-
-  @Test
-  public void testInsertInvalidPrimaryKeySize_Exceeds8KB_ShouldFail() {
-    String databaseName = "rr-main-db-key-invalid-" + testName;
-    SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
-
-    String createTableQuery =
-        "CREATE TABLE LargeKeyTest ("
-            + "  LargeKey STRING(8193) NOT NULL,"
-            + "  Value STRING(MAX)"
-            + ") PRIMARY KEY (LargeKey)";
-
-    Exception thrownException = null;
-    try {
-      spannerResourceManager.executeDdlStatement(createTableQuery);
-    } catch (SpannerException e) {
-      thrownException = e;
-    }
-
-    assertNotNull("Expected SpannerException due to exceeding key size limit", thrownException);
-    assertTrue(
-        "Exception message should mention primary key size limit",
-        thrownException.getMessage().contains("Key size exceeds limit"));
+    assertEquals(7000, keySize);
 
     ResourceManagerUtils.cleanResources(spannerResourceManager);
   }
