@@ -361,7 +361,8 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     String createSequenceStatement =
         String.format(
-            "CREATE SEQUENCE \"%s_Sequence1\" BIT_REVERSED_POSITIVE SKIP RANGE 99 999", tableNamePrefix);
+            "CREATE SEQUENCE \"%s_Sequence1\" BIT_REVERSED_POSITIVE SKIP RANGE 99 999",
+            tableNamePrefix);
     String createSequenceNoSpecifiedKindStatement =
         String.format("CREATE SEQUENCE \"%s_Sequence2\"", tableNamePrefix);
     String createRootTableStatement =
@@ -416,17 +417,20 @@ public class ExportPipelineIT extends SpannerTemplateITBase {
 
     List<Artifact> singersArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Singers")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Singers")));
     List<Artifact> emptyArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Empty")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Empty")));
     List<Artifact> searchIndexArtifacts =
         gcsClient.listArtifacts(
             "output/",
             Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "SearchIndex")));
     List<Artifact> identityArtifacts =
         gcsClient.listArtifacts(
-            "output/", Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Identity")));
+            "output/",
+            Pattern.compile(String.format(".*/%s_%s.*\\.avro.*", tableNamePrefix, "Identity")));
     List<Artifact> sequenceArtifacts =
         gcsClient.listArtifacts(
             "output/",
