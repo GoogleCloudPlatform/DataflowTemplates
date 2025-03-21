@@ -25,3 +25,4 @@
 **/*.tfstate
 **/*.tfstate.backup
 **/.terraform*
+.qodo
