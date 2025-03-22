@@ -49,7 +49,8 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final Integer MAX_CHARACTER_SIZE = 2621440;
   private static final String TABLENAME = "WideRowTable";
-  private static final String SPANNER_DDL_RESOURCE = "WideRow/MYSQLSourceDBToSpannerMaxRowSize/spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "WideRow/MYSQLSourceDBToSpannerMaxRowSize/spanner-schema.sql";
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
