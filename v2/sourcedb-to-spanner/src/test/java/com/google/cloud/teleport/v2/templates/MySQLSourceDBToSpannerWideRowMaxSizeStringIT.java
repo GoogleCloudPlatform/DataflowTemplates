@@ -44,7 +44,7 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final Integer MAX_CHARACTER_SIZE = 2621440;
-  private static final String TABLENAME = "WiderowTable";
+  private static final String TABLENAME = "WideRowTable";
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
@@ -76,16 +76,16 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   }
 
   private String getSpannerSchema() {
-    StringBuilder schema = new StringBuilder();
-    schema.append("CREATE TABLE WiderowTable (");
-    schema.append("id INT64 NOT NULL,");
-    schema.append("max_string_col STRING(MAX),");
-    schema.append(") PRIMARY KEY (id)");
-    return schema.toString();
+    String schema = "CREATE TABLE IF NOT EXISTS " + TABLENAME + " (" +
+        "id INT64 NOT NULL," +
+        "max_string_col STRING(MAX)," +
+        ") PRIMARY KEY (id)";
+    return schema;
   }
 
   @Test
   public void testMySQLToSpannerWiderowForMaxSizeString() throws Exception {
+
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
     createSpannerDDL(spannerResourceManager, getSpannerSchema());
 
