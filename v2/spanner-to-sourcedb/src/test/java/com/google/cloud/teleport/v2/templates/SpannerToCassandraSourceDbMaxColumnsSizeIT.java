@@ -41,7 +41,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,7 +52,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("This test is disabled currently")
+// @Ignore("This test is disabled currently")
 public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG =
@@ -62,7 +61,7 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerToSourceDbWideRowIT/spanner-max-col-size-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/cassandra-max-col-schema.sql";
+      "SpannerToSourceDbWideRowIT/cassandra-max-col-size-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/cassandra-config-template.conf";
 
@@ -179,7 +178,7 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)), () -> getRowCount(TEST_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(15)), () -> getRowCount(TEST_TABLE) == 1);
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
