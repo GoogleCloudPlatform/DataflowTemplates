@@ -19,18 +19,19 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
 
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Objects;
+import java.util.List;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -48,22 +49,25 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 @Ignore("This test is disabled currently")
-public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToSourceDbITBase {
-  private static final Logger LOG =
-      LoggerFactory.getLogger(SpannerToCassandraSourceDBCustomTransformationIT.class);
-  private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToCassandraSourceIT/spanner-transformation-schema.sql";
-  private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToCassandraSourceIT/cassandra-transformation-schema.sql";
-  private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
-      "SpannerToCassandraSourceIT/cassandra-config-template.conf";
+public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITBase {
 
-  private static final String CUSTOMER_TABLE = "Customers";
-  private static final HashSet<SpannerToCassandraSourceDBCustomTransformationIT> testInstances =
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerToCassandraSourceDbMaxColumnsIT.class);
+
+  private static final String SPANNER_DDL_RESOURCE =
+      "SpannerToSourceDbWideRowIT/spanner-max-col-schema.sql";
+  private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
+      "SpannerToSourceDbWideRowIT/cassandra-max-col-schema.sql";
+  private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
+      "SpannerToSourceDbWideRowIT/cassandra-config-template.conf";
+
+  private static final String TEST_TABLE = "TestTable";
+  private static final HashSet<SpannerToCassandraSourceDbMaxColumnsIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
@@ -72,39 +76,31 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
+  private final List<Throwable> assertionErrors = new ArrayList<>();
 
-  /**
-   * Setup resource managers and Launch dataflow job once during the execution of this test class.
-   *
-   * @throws IOException
-   */
   @Before
-  public void setUp() throws IOException, InterruptedException {
+  public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (SpannerToCassandraSourceDBCustomTransformationIT.class) {
+    synchronized (SpannerToCassandraSourceDbMaxColumnsIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
+        gcsResourceManager =
+            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+                .build();
         createAndUploadCassandraConfigToGcs(
             gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
         createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
         pubsubResourceManager = setUpPubSubResourceManager();
-        CustomTransformation customTransformation =
-            CustomTransformation.builder(
-                    "input/customShard.jar", "com.custom.CustomTransformationWithCassandraForIT")
-                .build();
         subscriptionName =
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager)
-                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
                 gcsResourceManager);
-        createAndUploadJarToGcs(gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -115,20 +111,15 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
                 null,
                 null,
                 null,
-                customTransformation,
+                null,
                 CASSANDRA_SOURCE_TYPE);
       }
     }
   }
 
-  /**
-   * Cleanup dataflow job and all the resources and resource managers.
-   *
-   * @throws IOException
-   */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToCassandraSourceDBCustomTransformationIT instance : testInstances) {
+    for (SpannerToCassandraSourceDbMaxColumnsIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -140,77 +131,15 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
   }
 
   /**
-   * Tests the data flow from Spanner to Cassandra.
+   * Retrieves the total row count of a specified table in Cassandra.
    *
-   * <p>This test ensures that a basic row is successfully written to Spanner and subsequently
-   * appears in Cassandra, validating end-to-end data consistency.
+   * <p>This method executes a `SELECT COUNT(*)` query on the given table and returns the number of
+   * rows present in it.
    *
-   * @throws InterruptedException if the thread is interrupted during execution.
-   * @throws IOException if an I/O error occurs during the test execution.
+   * @param tableName the name of the table whose row count is to be retrieved.
+   * @return the total number of rows in the specified table.
+   * @throws RuntimeException if the query does not return a result.
    */
-  @Test
-  public void testCustomTransformationForCassandra() throws InterruptedException, IOException {
-    assertThatPipeline(jobInfo).isRunning();
-    writeBasicRowInSpanner();
-    assertBasicRowInCassandraDB();
-  }
-
-  private void writeBasicRowInSpanner() {
-    Mutation m1 =
-        Mutation.newInsertOrUpdateBuilder(CUSTOMER_TABLE)
-            .set("id")
-            .to(1)
-            .set("first_name")
-            .to("Jone")
-            .set("last_name")
-            .to("Woe")
-            .build();
-    spannerResourceManager.write(m1);
-  }
-
-  private void assertBasicRowInCassandraDB() throws InterruptedException {
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> getRowCount(CUSTOMER_TABLE) == 1);
-
-    /*
-     * Added to handle updates.
-     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
-     */
-    Thread.sleep(Duration.ofMinutes(1L).toMillis());
-
-    assertThatResult(result).meetsConditions();
-
-    Iterable<Row> rows;
-    try {
-      LOG.info("Reading from Cassandra table: {}", CUSTOMER_TABLE);
-      rows = cassandraResourceManager.readTable(CUSTOMER_TABLE);
-      LOG.info("Cassandra Rows: {}", rows.toString());
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to read from Cassandra table: " + CUSTOMER_TABLE, e);
-    }
-
-    /*
-     * Added to handle updates.
-     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
-     */
-    Thread.sleep(Duration.ofMinutes(1L).toMillis());
-
-    assertThat(rows).hasSize(1);
-
-    for (Row row : rows) {
-      LOG.info("Cassandra Row to Assert: {}", row.getFormattedContents());
-      assertThat(row.getString("full_name")).isEqualTo("Jone Woe");
-      assertThat(row.getString("first_name")).isEqualTo("Jone");
-      assertThat(row.getString("last_name")).isEqualTo("Woe");
-      assertThat(Objects.requireNonNull(row.getString("empty_string")).isEmpty()).isTrue();
-      assertThat(row.isNull("null_key")).isTrue();
-      assertThat(row.getInt("id")).isEqualTo(1);
-    }
-  }
-
   private long getRowCount(String tableName) {
     String query = String.format("SELECT COUNT(*) FROM %s", tableName);
     ResultSet resultSet = cassandraResourceManager.executeStatement(query);
@@ -220,5 +149,54 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
     } else {
       throw new RuntimeException("Query did not return a result for table: " + tableName);
     }
+  }
+
+  /** Writes a row with 1,024 columns in Spanner and verifies replication to Cassandra. */
+  @Test
+  public void testSpannerToCassandraWithMaxColumns() throws InterruptedException, IOException {
+    assertThatPipeline(jobInfo).isRunning();
+    writeRowWithMaxColumnsInSpanner();
+    assertRowWithMaxColumnsInCassandra();
+  }
+
+  private void writeRowWithMaxColumnsInSpanner() {
+    List<Mutation> mutations = new ArrayList<>();
+    Mutation.WriteBuilder mutationBuilder =
+        Mutation.newInsertOrUpdateBuilder(TEST_TABLE).set("Id").to("SampleTest");
+
+    for (int i = 1; i < 1024; i++) {
+      mutationBuilder.set("Col_" + i).to("TestValue_" + i);
+    }
+
+    mutations.add(mutationBuilder.build());
+    spannerResourceManager.write(mutations);
+    LOG.info("Inserted row with 1,024 columns into Spanner using Mutations");
+  }
+
+  private void assertRowWithMaxColumnsInCassandra() {
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(15)), () -> getRowCount(TEST_TABLE) == 1);
+    assertThatResult(result).meetsConditions();
+
+    Iterable<Row> rows;
+    try {
+      rows = cassandraResourceManager.readTable(TEST_TABLE);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to read from Cassandra table: " + TEST_TABLE, e);
+    }
+
+    assertThat(rows).hasSize(1);
+    for (Row row : rows) {
+      LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
+      String primaryKeyColumn = row.getString("Col_0");
+      assertEquals("SampleTest", primaryKeyColumn);
+      for (int i = 1; i < 1024; i++) {
+        assertEquals("TestValue_" + i, row.getString("Col_" + i));
+      }
+    }
+    LOG.info("Successfully validated 1,024 columns in Cassandra");
   }
 }

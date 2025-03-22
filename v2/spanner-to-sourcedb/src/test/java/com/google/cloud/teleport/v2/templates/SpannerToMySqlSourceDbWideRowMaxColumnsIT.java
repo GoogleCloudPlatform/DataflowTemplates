@@ -20,7 +20,6 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -28,6 +27,7 @@ import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -45,31 +45,33 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.junit.runners.model.MultipleFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for checking the timezone conversion. */
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 @Ignore("This test is disabled currently")
-public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
+public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDbITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbTimezoneIT.class);
-
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerToMySqlSourceDbWideRowMaxColumnsIT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSourceDbTimezoneIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbTimezoneIT/session.json";
+      "SpannerToSourceDbWideRowIT/spanner-max-col-schema.sql";
+  private static final String SESSION_FILE_RESOURCE =
+      "SpannerToSourceDbWideRowIT/max-col-session.json";
+  private static final String TABLE1 = "testtable";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbTimezoneIT/mysql-schema.sql";
+      "SpannerToSourceDbWideRowIT/mysql-max-col-schema.sql";
 
-  private static final String TABLE = "Users";
-  private static final HashSet<SpannerToSourceDbTimezoneIT> testInstances = new HashSet<>();
+  private static HashSet<SpannerToMySqlSourceDbWideRowMaxColumnsIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
-  private static SpannerResourceManager spannerMetadataResourceManager;
-  private static MySQLResourceManager jdbcResourceManager;
-  private static GcsResourceManager gcsResourceManager;
+  public static SpannerResourceManager spannerMetadataResourceManager;
+  public static MySQLResourceManager jdbcResourceManager;
+  public static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private SubscriptionName subscriptionName;
 
@@ -81,30 +83,31 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (SpannerToSourceDbIT.class) {
+    synchronized (SpannerToMySqlSourceDbWideRowMaxColumnsIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager =
-            createSpannerDatabase(SpannerToSourceDbTimezoneIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(SpannerToMySqlSourceDbWideRowMaxColumnsIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
         createMySQLSchema(
-            jdbcResourceManager, SpannerToSourceDbTimezoneIT.MYSQL_SCHEMA_FILE_RESOURCE);
+            jdbcResourceManager,
+            SpannerToMySqlSourceDbWideRowMaxColumnsIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
+        gcsResourceManager =
+            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+                .build();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
-            "input/session.json",
-            Resources.getResource(SpannerToSourceDbTimezoneIT.SESSION_FILE_RESOURCE).getPath());
+            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
         subscriptionName =
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager)
-                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
                 gcsResourceManager);
         jobInfo =
             launchDataflowJob(
@@ -115,7 +118,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                "+10:00",
+                null,
                 null,
                 MYSQL_SOURCE_TYPE);
       }
@@ -129,7 +132,7 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (SpannerToSourceDbTimezoneIT instance : testInstances) {
+    for (SpannerToMySqlSourceDbWideRowMaxColumnsIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -141,59 +144,54 @@ public class SpannerToSourceDbTimezoneIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void timezoneTest() throws IOException, InterruptedException {
+  public void spannerToMySQLSourceDbMaxColTest()
+      throws IOException, InterruptedException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
-    writeRowInSpanner();
+    writeRowsInSpanner();
     // Assert events on Mysql
     assertRowInMySQL();
   }
 
-  private void writeRowInSpanner() {
-    Mutation m =
-        Mutation.newInsertOrUpdateBuilder("Users")
-            .set("id")
-            .to(1)
-            .set("time_colm")
-            .to(Timestamp.parseTimestamp("2024-02-02T00:00:00Z"))
-            .build();
-    spannerResourceManager.write(m);
-    Mutation m2 =
-        Mutation.newInsertOrUpdateBuilder("Users")
-            .set("id")
-            .to(2)
-            .set("time_colm")
-            .to(Timestamp.parseTimestamp("2024-02-02T10:00:00Z"))
-            .build();
-    spannerResourceManager.write(m2);
-    Mutation m3 =
-        Mutation.newInsertOrUpdateBuilder("Users")
-            .set("id")
-            .to(3)
-            .set("time_colm")
-            .to(Timestamp.parseTimestamp("2024-02-02T20:00:00Z"))
-            .build();
-    spannerResourceManager.write(m3);
+  private void writeRowsInSpanner() {
+    List<Mutation> mutations = new ArrayList<>();
+    Mutation.WriteBuilder mutationBuilder =
+        Mutation.newInsertOrUpdateBuilder(TABLE1).set("Id").to("SampleTest");
+
+    for (int i = 1; i < 1024; i++) {
+      mutationBuilder.set("Col_" + i).to("TestValue_" + i);
+    }
+
+    mutations.add(mutationBuilder.build());
+    spannerResourceManager.write(mutations);
+    LOG.info("Inserted row with 1,024 columns into Spanner using Mutations");
   }
 
-  private void assertRowInMySQL() throws InterruptedException {
+  private final List<Throwable> assertionErrors = new ArrayList<>();
+
+  private void assertRowInMySQL() throws MultipleFailureException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 3);
+                () -> jdbcResourceManager.getRowCount(TABLE1) == 1); // only one row is inserted
     assertThatResult(result).meetsConditions();
-    List<Map<String, Object>> rows =
-        jdbcResourceManager.runSQLQuery("SELECT id,time_colm FROM Users ORDER BY id");
-    assertThat(rows).hasSize(3);
-    assertThat(rows.get(0).get("id")).isEqualTo(1);
-    assertThat(rows.get(0).get("time_colm"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-02-02 10:00:00.0"));
-    assertThat(rows.get(1).get("id")).isEqualTo(2);
-    assertThat(rows.get(1).get("time_colm"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-02-02 20:00:00.0"));
-    assertThat(rows.get(2).get("id")).isEqualTo(3);
-    assertThat(rows.get(2).get("time_colm"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-02-03 06:00:00.0"));
+
+    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE1);
+    assertThat(rows).hasSize(1);
+    Map<String, Object> row = rows.get(0);
+    for (int i = 1; i <= 100; i++) {
+      String columnName = "Col_" + i;
+      String expectedValue = "TestValue_" + i;
+
+      try {
+        assertThat(row.get(columnName)).isEqualTo(expectedValue);
+      } catch (Throwable e) {
+        assertionErrors.add(e);
+      }
+    }
+    if (!assertionErrors.isEmpty()) {
+      throw new MultipleFailureException(assertionErrors);
+    }
   }
 }

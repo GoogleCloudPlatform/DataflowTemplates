@@ -33,8 +33,6 @@ public class CassandraSourceSchemaReader {
    * column names, column types, and kinds, for the given keyspace. It uses a prepared statement for
    * safe and efficient execution.
    *
-   * @param keyspace The name of the Cassandra keyspace for which metadata is to be retrieved. Must
-   *     not be {@code null} or empty.
    * @param cassandraShard the shard information
    * @return A {@link ResultSet} containing the metadata rows with columns:
    *     <ul>

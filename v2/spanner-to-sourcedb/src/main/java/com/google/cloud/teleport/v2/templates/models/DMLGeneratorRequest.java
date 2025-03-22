@@ -99,6 +99,31 @@ public class DMLGeneratorRequest {
     return customTransformationResponse;
   }
 
+  @Override
+  public String toString() {
+    return "DMLGeneratorRequest{"
+        + "modType='"
+        + modType
+        + '\''
+        + ", spannerTableName='"
+        + spannerTableName
+        + '\''
+        + ", schema="
+        + (schema != null ? schema.toString() : "null")
+        + ", newValuesJson="
+        + (newValuesJson != null ? newValuesJson.toString() : "null")
+        + ", keyValuesJson="
+        + (keyValuesJson != null ? keyValuesJson.toString() : "null")
+        + ", sourceDbTimezoneOffset='"
+        + sourceDbTimezoneOffset
+        + '\''
+        + ", customTransformationResponse="
+        + (customTransformationResponse != null ? customTransformationResponse.toString() : "null")
+        + ", commitTimestamp="
+        + (commitTimestamp != null ? commitTimestamp.toString() : "null")
+        + '}';
+  }
+
   public static class Builder {
     private final String modType;
     private final String spannerTableName;

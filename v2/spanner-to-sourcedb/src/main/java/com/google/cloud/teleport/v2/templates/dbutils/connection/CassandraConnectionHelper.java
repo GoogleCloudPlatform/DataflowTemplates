@@ -46,7 +46,6 @@ import org.slf4j.LoggerFactory;
  * </pre>
  */
 public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> {
-
   /** Logger for logging information and errors. */
   private static final Logger LOG = LoggerFactory.getLogger(CassandraConnectionHelper.class);
 

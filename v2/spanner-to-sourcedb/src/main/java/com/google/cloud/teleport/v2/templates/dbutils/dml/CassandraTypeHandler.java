@@ -301,8 +301,7 @@ public class CassandraTypeHandler {
       String spannerType, String columnName, JSONObject valuesJson) {
     try {
       if (spannerType.contains("string")) {
-        String value = valuesJson.optString(columnName);
-        return value.isEmpty() ? null : value;
+        return valuesJson.optString(columnName, null);
       } else if (spannerType.contains("bytes")) {
         if (valuesJson.isNull(columnName)) {
           return null;
@@ -531,7 +530,7 @@ public class CassandraTypeHandler {
    * @return a {@link List} containing parsed values, or an empty list if {@code colValue} is null
    */
   private static List<?> parseCassandraList(String columnType, JSONArray colValue) {
-    if (colValue == null) {
+    if (colValue == null || colValue.isEmpty()) {
       return Collections.emptyList();
     }
     String innerType = extractInnerType(columnType);
@@ -549,7 +548,7 @@ public class CassandraTypeHandler {
    * @param columnType the Cassandra column type
    * @return the extracted inner type as a {@link String}
    */
-  private static String extractInnerType(String columnType) {
+  public static String extractInnerType(String columnType) {
     return columnType.substring(columnType.indexOf('<') + 1, columnType.lastIndexOf('>'));
   }
 
@@ -586,7 +585,7 @@ public class CassandraTypeHandler {
    * @return a {@link Set} containing parsed values, or an empty set if {@code colValue} is null
    */
   private static Set<?> parseCassandraSet(String columnType, JSONArray colValue) {
-    if (colValue == null) {
+    if (colValue == null || colValue.isEmpty()) {
       return Collections.emptySet();
     }
     String innerType = extractInnerType(columnType);
@@ -607,7 +606,7 @@ public class CassandraTypeHandler {
    *     null
    */
   private static Map<?, ?> parseCassandraMap(String columnType, JSONObject colValue) {
-    if (colValue == null) {
+    if (colValue == null || colValue.isEmpty()) {
       return Collections.emptyMap();
     }
     String[] keyValueTypes = extractKeyValueTypes(columnType);
@@ -652,9 +651,10 @@ public class CassandraTypeHandler {
     Object columnValue = handleSpannerColumnType(spannerType, columnName, valuesJson);
 
     if (columnValue == null) {
-      LOG.warn("Column value is null for column: {}, type: {}", columnName, spannerType);
+      LOG.info("Column value is null for column: {}, type: {}", columnName, spannerType);
       return PreparedStatementValueObject.create(cassandraType, NullClass.INSTANCE);
     }
+    LOG.info("Column value is {} for column: {}, type: {}", columnValue, columnName, spannerType);
     return PreparedStatementValueObject.create(cassandraType, columnValue);
   }
 

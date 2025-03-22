@@ -30,8 +30,8 @@ var (
 // Registers all common flags. Must be called before flag.Parse().
 func RegisterLtFlags() {
 	flag.StringVar(&dexportProject, "lt-export-project", "daring-fiber-439305-v4", "The GCP project to export load test metrics")
-	flag.StringVar(&dexportDataset, "lt-export-dataset", "df", "The GCP BigQuery dataset to export metrics")
-	flag.StringVar(&dexportTable, "lt-export-table", "dataflow", "A GCP BigQuery table to store metrics")
+	flag.StringVar(&dexportDataset, "lt-export-dataset", "rr", "The GCP BigQuery dataset to export metrics")
+	flag.StringVar(&dexportTable, "lt-export-table", "rr", "A GCP BigQuery table to store metrics")
 }
 
 func ExportProject() string {

@@ -77,7 +77,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn("DMLGeneratorRequest is null. Cannot process the request.");
       return new DMLGeneratorResponse("");
     }
-
+    LOG.info("DMLGeneratorRequest is {}", dmlGeneratorRequest);
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     Schema schema = dmlGeneratorRequest.getSchema();
 
@@ -260,8 +260,18 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     String escapedTableName = "\"" + tableName.replace("\"", "\"\"") + "\"";
 
     String deleteConditions =
-        allColumnNamesAndValues.keySet().stream()
-            .map(columnName -> "\"" + columnName.replace("\"", "\"\"") + "\" = ?")
+        allColumnNamesAndValues.entrySet().stream()
+            .map(
+                entry -> {
+                  String columnName = entry.getKey();
+                  PreparedStatementValueObject<?> valueObject = entry.getValue();
+                  int dataTypeCode = isCollectionDataType(valueObject.dataType());
+                  if (dataTypeCode > 0) {
+                    String operator = (dataTypeCode == 1) ? " CONTAINS " : " CONTAINS KEY ";
+                    return "\"" + columnName.replace("\"", "\"\"") + "\"" + operator + "?";
+                  }
+                  return "\"" + columnName.replace("\"", "\"\"") + "\" = ?";
+                })
             .collect(Collectors.joining(" AND "));
 
     List<PreparedStatementValueObject<?>> values =
@@ -278,6 +288,19 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
 
     return new PreparedStatementGeneratedResponse(preparedStatement, values);
+  }
+
+  private static int isCollectionDataType(String dataType) {
+    if (dataType.startsWith("frozen<")) {
+      return isCollectionDataType(CassandraTypeHandler.extractInnerType(dataType));
+    }
+    if (dataType.startsWith("list<") || dataType.startsWith("set<")) {
+      return 1;
+    }
+    if (dataType.startsWith("map<")) {
+      return 2;
+    }
+    return 0;
   }
 
   /**
@@ -321,9 +344,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       if (customTransformColumns != null
           && customTransformColumns.contains(sourceColDef.getName())) {
         String cassandraType = sourceColDef.getType().getName().toLowerCase();
+        Object customValue = customTransformationResponse.get(colName);
         columnValue =
             PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(colName));
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
         response.put(sourceColDef.getName(), columnValue);
         continue;
       }
@@ -398,9 +423,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
           && customTransformColumns.contains(sourceColDef.getName())) {
         String cassandraType = sourceColDef.getType().getName().toLowerCase();
         String columnName = spannerColDef.getName();
+        Object customValue = customTransformationResponse.get(columnName);
         columnValue =
             PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(columnName));
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
       } else if (keyValuesJson.has(spannerColumnName)) {
         columnValue =
             getMappedColumnValue(

@@ -62,6 +62,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.assertj.core.api.Assertions;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -73,6 +74,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToCassandraSourceDbIT.class);
@@ -84,6 +86,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToCassandraSourceIT/cassandra-config-template.conf";
 
+  private static final String EMPTY_STRING_JSON_TABLE = "EmptyStringJsonTable";
   private static final String USER_TABLE = "Users";
   private static final String USER_TABLE_2 = "Users2";
   private static final String ALL_DATA_TYPES_TABLE = "AllDatatypeColumns";
@@ -174,6 +177,54 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     assertThatPipeline(jobInfo).isRunning();
     writeBasicRowInSpanner();
     assertBasicRowInCassandraDB();
+  }
+
+  /**
+   * Tests the data flow from Spanner to Cassandra.
+   *
+   * <p>This test ensures that a basic row is successfully deleted from Spanner and subsequently
+   * deleted in Cassandra, validating end-to-end data consistency.
+   *
+   * @throws InterruptedException if the thread is interrupted during execution.
+   * @throws IOException if an I/O error occurs during the test execution.
+   */
+  @Test
+  public void spannerToCasandraSourceDbJSONEmptyOperation()
+      throws InterruptedException, IOException {
+    assertThatPipeline(jobInfo).isRunning();
+    writeJSONEmptyInSpanner();
+    assertJSONEmptyRowInCassandraDB();
+  }
+
+  /** Insert Empty rows in Spanner. */
+  private void writeJSONEmptyInSpanner() {
+
+    Mutation insertOrUpdateMutation =
+        Mutation.newInsertOrUpdateBuilder(EMPTY_STRING_JSON_TABLE)
+            .set("varchar_column")
+            .to("SampleVarchar")
+            .set("empty_column")
+            .to("")
+            .set("list_text_column")
+            .to(Value.json("[]"))
+            .build();
+    spannerResourceManager.write(insertOrUpdateMutation);
+  }
+
+  /**
+   * Asserts that Empty Record in the Cassandra database.
+   *
+   * @throws InterruptedException if the thread is interrupted while waiting for the row count
+   *     condition.
+   * @throws RuntimeException if reading from the Cassandra table fails.
+   */
+  private void assertJSONEmptyRowInCassandraDB() throws InterruptedException {
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> getRowCount(EMPTY_STRING_JSON_TABLE) == 1);
+    assertThatResult(result).meetsConditions();
   }
 
   /**

@@ -41,7 +41,7 @@ public class CustomTransformationFetcher implements ISpannerMigrationTransformer
   @Override
   public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("Customers")) {
+    if (request.getTableName().equalsIgnoreCase("Customers")) {
       Map<String, Object> requestRow = request.getRequestRow();
       Map<String, Object> responseRow = new HashMap<>();
 
@@ -58,7 +58,7 @@ public class CustomTransformationFetcher implements ISpannerMigrationTransformer
   @Override
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("Customers")) {
+    if (request.getTableName().equalsIgnoreCase("Customers")) {
       Map<String, Object> requestRow = request.getRequestRow();
       Map<String, Object> responseRow = new HashMap<>();
       String fullName = (String) requestRow.get("full_name");
