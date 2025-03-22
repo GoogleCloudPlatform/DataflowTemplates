@@ -262,8 +262,18 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     String escapedTableName = "\"" + tableName.replace("\"", "\"\"") + "\"";
 
     String deleteConditions =
-        allColumnNamesAndValues.keySet().stream()
-            .map(columnName -> "\"" + columnName.replace("\"", "\"\"") + "\" = ?")
+        allColumnNamesAndValues.entrySet().stream()
+            .map(
+                entry -> {
+                  String columnName = entry.getKey();
+                  PreparedStatementValueObject<?> valueObject = entry.getValue();
+                  int dataTypeCode = isCollectionDataType(valueObject.dataType());
+                  if (dataTypeCode > 0) {
+                    String operator = (dataTypeCode == 1) ? " CONTAINS " : " CONTAINS KEY ";
+                    return "\"" + columnName.replace("\"", "\"\"") + "\"" + operator + "?";
+                  }
+                  return "\"" + columnName.replace("\"", "\"\"") + "\" = ?";
+                })
             .collect(Collectors.joining(" AND "));
 
     List<PreparedStatementValueObject<?>> values =
@@ -280,6 +290,19 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             "DELETE FROM %s USING TIMESTAMP ? WHERE %s", escapedTableName, deleteConditions);
 
     return new PreparedStatementGeneratedResponse(preparedStatement, values);
+  }
+
+  private static int isCollectionDataType(String dataType) {
+    if (dataType.startsWith("frozen<")) {
+      return isCollectionDataType(CassandraTypeHandler.extractInnerType(dataType));
+    }
+    if (dataType.startsWith("list<") || dataType.startsWith("set<")) {
+      return 1;
+    }
+    if (dataType.startsWith("map<")) {
+      return 2;
+    }
+    return 0;
   }
 
   /**

@@ -87,6 +87,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToCassandraSourceIT/cassandra-config-template.conf";
 
+  private static final String STRING_JSON_TABLE = "StringJsonTable";
   private static final String USER_TABLE = "Users";
   private static final String USER_TABLE_2 = "Users2";
   private static final String ALL_DATA_TYPES_TABLE = "AllDatatypeColumns";
@@ -177,6 +178,63 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     assertThatPipeline(jobInfo).isRunning();
     writeBasicRowInSpanner();
     assertBasicRowInCassandraDB();
+  }
+
+  /**
+   * Tests the data flow from Spanner to Cassandra.
+   *
+   * <p>This test ensures that a basic row is successfully deleted from Spanner and subsequently
+   * deleted in Cassandra, validating end-to-end data consistency.
+   *
+   * @throws InterruptedException if the thread is interrupted during execution.
+   * @throws IOException if an I/O error occurs during the test execution.
+   */
+  @Test
+  public void spannerToCasandraSourceDbJSONDeleteOperation()
+      throws InterruptedException, IOException {
+    assertThatPipeline(jobInfo).isRunning();
+    writeJSONDeleteInSpanner();
+    assertJSONDeleteRowInCassandraDB();
+  }
+
+  /** Delete rows in Spanner where list_text_column contains "banana". */
+  private void writeJSONDeleteInSpanner() {
+
+    Mutation insertOrUpdateMutation =
+        Mutation.newInsertOrUpdateBuilder(STRING_JSON_TABLE)
+            .set("varchar_column")
+            .to("SampleVarchar")
+            .set("tinyint_column")
+            .to(127)
+            .set("list_text_column")
+            .to(Value.json("[\"apple\", \"banana\", \"cherry\"]"))
+            .build();
+
+    spannerResourceManager.write(insertOrUpdateMutation);
+
+    String deleteQuery =
+        "DELETE FROM "
+            + STRING_JSON_TABLE
+            + " WHERE JSON_VALUE(list_text_column, '$[1]') = 'banana' OR "
+            + " JSON_VALUE(list_text_column, '$') LIKE '%banana%'";
+
+    spannerResourceManager.executeDdlStatement(deleteQuery);
+  }
+
+  /**
+   * Asserts that delete the Cassandra database.
+   *
+   * @throws InterruptedException if the thread is interrupted while waiting for the row count
+   *     condition.
+   * @throws RuntimeException if reading from the Cassandra table fails.
+   */
+  private void assertJSONDeleteRowInCassandraDB() throws InterruptedException {
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> getRowCount(STRING_JSON_TABLE) == 0);
+    assertThatResult(result).meetsConditions();
   }
 
   /**

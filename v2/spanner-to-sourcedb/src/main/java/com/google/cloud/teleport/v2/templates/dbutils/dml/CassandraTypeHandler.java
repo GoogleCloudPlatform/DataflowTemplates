@@ -548,7 +548,7 @@ public class CassandraTypeHandler {
    * @param columnType the Cassandra column type
    * @return the extracted inner type as a {@link String}
    */
-  private static String extractInnerType(String columnType) {
+  public static String extractInnerType(String columnType) {
     return columnType.substring(columnType.indexOf('<') + 1, columnType.lastIndexOf('>'));
   }
 

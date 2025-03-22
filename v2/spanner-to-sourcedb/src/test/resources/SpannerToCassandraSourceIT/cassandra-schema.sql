@@ -137,3 +137,9 @@ CREATE TABLE BoundaryConversionTestTable (
     map_timeuuid_column map<timeuuid, timeuuid>,
     map_inet_column map<inet, inet>
 );
+
+CREATE TABLE StringJsonTable (
+    varchar_column text PRIMARY KEY,
+    tinyint_column tinyint,
+    list_text_column list<text>,
+) PRIMARY KEY(varchar_column);
