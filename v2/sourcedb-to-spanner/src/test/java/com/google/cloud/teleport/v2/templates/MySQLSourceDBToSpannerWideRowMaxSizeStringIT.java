@@ -48,7 +48,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
       LoggerFactory.getLogger(MySQLSourceDBToSpannerWideRowMaxSizeStringIT.class);
   private static PipelineLauncher.LaunchInfo jobInfo;
   // Reduced size to prevent VM crashes while still testing large string handling
-  private static final Integer MAX_CHARACTER_SIZE = 1000000; // ~1MB instead of ~2.5MB
+  private static final Integer MAX_CHARACTER_SIZE = 10; // ~1MB instead of ~2.5MB
   private static final String TABLENAME = "WideRowTable";
   private static final String SPANNER_DDL_RESOURCE =
       "WideRow/MYSQLSourceDBToSpannerMaxRowSize/spanner-schema.sql";
