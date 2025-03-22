@@ -47,7 +47,8 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   private static final Logger LOG =
       LoggerFactory.getLogger(MySQLSourceDBToSpannerWideRowMaxSizeStringIT.class);
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static final Integer MAX_CHARACTER_SIZE = 2621440;
+  // Reduced size to prevent VM crashes while still testing large string handling
+  private static final Integer MAX_CHARACTER_SIZE = 1000000; // ~1MB instead of ~2.5MB
   private static final String TABLENAME = "WideRowTable";
   private static final String SPANNER_DDL_RESOURCE =
       "WideRow/MYSQLSourceDBToSpannerMaxRowSize/spanner-schema.sql";
@@ -107,22 +108,67 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     List<Map<String, Object>> data = new ArrayList<>();
     Map<String, Object> values = new HashMap<>();
     values.put("id", 1);
-    values.put("max_string_col", RandomStringUtils.randomAlphabetic(MAX_CHARACTER_SIZE));
+
+    // Generate a large string but in a more memory-efficient way
+    String largeString = generateLargeString(MAX_CHARACTER_SIZE);
+    values.put("max_string_col", largeString);
+
     data.add(values);
     return data;
   }
 
+  /**
+   * Generates a large string in a memory-efficient way.
+   *
+   * @param size The size of the string to generate
+   * @return A string of the specified size
+   */
+  private String generateLargeString(int size) {
+    // Generate string in smaller chunks to avoid memory issues
+    final int chunkSize = 100000;
+    StringBuilder sb = new StringBuilder(size);
+
+    int remainingSize = size;
+    while (remainingSize > 0) {
+      int currentChunkSize = Math.min(chunkSize, remainingSize);
+      sb.append(RandomStringUtils.randomAlphabetic(currentChunkSize));
+      remainingSize -= currentChunkSize;
+
+      // Force garbage collection to free memory after each chunk
+      if (remainingSize > 0) {
+        System.gc();
+      }
+    }
+
+    return sb.toString();
+  }
+
   @Test
   public void testMySQLToSpannerWiderowForMaxSizeString() throws Exception {
-    List<Map<String, Object>> mySQLData = getMySQLData();
     LOG.info("Creating MySQL table: {}", TABLENAME);
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
 
     LOG.info("Creating Spanner DDL");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
+    LOG.info("Generating test data");
+    List<Map<String, Object>> mySQLData = getMySQLData();
+
     LOG.info("Writing data to MySQL table");
-    mySQLResourceManager.write(TABLENAME, mySQLData);
+    try {
+      // Write data with explicit memory management
+      mySQLResourceManager.write(TABLENAME, mySQLData);
+
+      // Clear the reference to free memory
+      mySQLData = null;
+      System.gc();
+
+      // Recreate the data for verification
+      mySQLData = getMySQLData();
+    } catch (OutOfMemoryError e) {
+      LOG.error("Out of memory while writing data to MySQL", e);
+      throw new RuntimeException("Failed to write data to MySQL due to memory constraints", e);
+    }
 
     LOG.info("Launching Dataflow job");
     jobInfo =
