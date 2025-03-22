@@ -114,6 +114,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
 
   @Test
   public void testMySQLToSpannerWiderowForMaxSizeString() throws Exception {
+    List<Map<String, Object>> mySQLData = getMySQLData();
     LOG.info("Creating MySQL table: {}", TABLENAME);
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
 
@@ -121,7 +122,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
     LOG.info("Writing data to MySQL table");
-    mySQLResourceManager.write(TABLENAME, getMySQLData());
+    mySQLResourceManager.write(TABLENAME, mySQLData);
 
     LOG.info("Launching Dataflow job");
     jobInfo =
@@ -141,6 +142,6 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     LOG.info("Verifying data in Spanner");
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.readTableRecords(TABLENAME, "id", "max_string_col"))
-        .hasRecordsUnorderedCaseInsensitiveColumns(getMySQLData());
+        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
   }
 }
