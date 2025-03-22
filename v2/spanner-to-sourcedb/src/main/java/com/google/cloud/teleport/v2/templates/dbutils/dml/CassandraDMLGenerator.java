@@ -344,9 +344,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       if (customTransformColumns != null
           && customTransformColumns.contains(sourceColDef.getName())) {
         String cassandraType = sourceColDef.getType().getName().toLowerCase();
+        Object customValue = customTransformationResponse.get(colName);
         columnValue =
             PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(colName));
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
         response.put(sourceColDef.getName(), columnValue);
         continue;
       }
@@ -421,9 +423,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
           && customTransformColumns.contains(sourceColDef.getName())) {
         String cassandraType = sourceColDef.getType().getName().toLowerCase();
         String columnName = spannerColDef.getName();
+        Object customValue = customTransformationResponse.get(columnName);
         columnValue =
             PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(columnName));
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
       } else if (keyValuesJson.has(spannerColumnName)) {
         columnValue =
             getMappedColumnValue(

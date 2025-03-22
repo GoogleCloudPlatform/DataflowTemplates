@@ -146,14 +146,6 @@ CREATE TABLE IF NOT EXISTS boundaryconversiontesttable (
     map_inet_column JSON
 ) PRIMARY KEY(varchar_column);
 
-DROP TABLE IF EXISTS stringjsontable;
-
-CREATE TABLE IF NOT EXISTS stringjsontable (
-    varchar_column STRING(20) NOT NULL,
-    tinyint_column STRING(MAX),
-    list_text_column JSON,
-) PRIMARY KEY(varchar_column);
-
 DROP TABLE IF EXISTS emptystringjsontable;
 
 CREATE TABLE IF NOT EXISTS emptystringjsontable (
