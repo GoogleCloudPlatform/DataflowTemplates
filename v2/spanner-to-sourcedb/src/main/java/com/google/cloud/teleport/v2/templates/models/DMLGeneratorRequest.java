@@ -109,18 +109,18 @@ public class DMLGeneratorRequest {
         + spannerTableName
         + '\''
         + ", schema="
-        + schema
+        + (schema != null ? schema.toString() : "null")
         + ", newValuesJson="
-        + newValuesJson
+        + (newValuesJson != null ? newValuesJson.toString() : "null")
         + ", keyValuesJson="
-        + keyValuesJson
+        + (keyValuesJson != null ? keyValuesJson.toString() : "null")
         + ", sourceDbTimezoneOffset='"
         + sourceDbTimezoneOffset
         + '\''
         + ", customTransformationResponse="
-        + customTransformationResponse
+        + (customTransformationResponse != null ? customTransformationResponse.toString() : "null")
         + ", commitTimestamp="
-        + commitTimestamp
+        + (commitTimestamp != null ? commitTimestamp.toString() : "null")
         + '}';
   }
 

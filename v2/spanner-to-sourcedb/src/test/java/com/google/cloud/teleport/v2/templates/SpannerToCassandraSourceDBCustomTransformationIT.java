@@ -30,6 +30,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.Objects;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -39,7 +40,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -50,7 +50,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("This test is disabled currently")
 public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToCassandraSourceDBCustomTransformationIT.class);
@@ -204,6 +203,8 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
       assertThat(row.getString("full_name")).isEqualTo("Jone Woe");
       assertThat(row.getString("first_name")).isEqualTo("Jone");
       assertThat(row.getString("last_name")).isEqualTo("Woe");
+      assertThat(Objects.requireNonNull(row.getString("empty_string")).isEmpty()).isTrue();
+      assertThat(row.isNull("null_key")).isTrue();
       assertThat(row.getInt("id")).isEqualTo(1);
     }
   }

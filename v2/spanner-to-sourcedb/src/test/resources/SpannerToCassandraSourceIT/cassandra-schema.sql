@@ -143,3 +143,9 @@ CREATE TABLE StringJsonTable (
     tinyint_column tinyint,
     list_text_column list<text>,
 ) PRIMARY KEY(varchar_column);
+
+CREATE TABLE EmptyStringJsonTable (
+    varchar_column text PRIMARY KEY,
+    empty_column text,
+    list_text_column list<text>,
+) PRIMARY KEY(varchar_column);
