@@ -87,8 +87,9 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   @Test
   public void testMySQLToSpannerWiderowForMaxSizeString() throws Exception {
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
-    mySQLResourceManager.write(TABLENAME, getMySQLData());
     createSpannerDDL(spannerResourceManager, getSpannerSchema());
+
+    mySQLResourceManager.write(TABLENAME, getMySQLData());
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
