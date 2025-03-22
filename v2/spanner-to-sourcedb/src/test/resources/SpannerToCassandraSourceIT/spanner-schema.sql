@@ -146,6 +146,14 @@ CREATE TABLE IF NOT EXISTS boundaryconversiontesttable (
     map_inet_column JSON
 ) PRIMARY KEY(varchar_column);
 
+DROP TABLE IF EXISTS emptystringjsontable;
+
+CREATE TABLE IF NOT EXISTS emptystringjsontable (
+    varchar_column STRING(20) NOT NULL,
+    empty_column STRING(MAX),
+    list_text_column JSON,
+) PRIMARY KEY(varchar_column);
+
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   value_capture_type = 'NEW_ROW',
