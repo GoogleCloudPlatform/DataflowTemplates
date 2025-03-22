@@ -13,6 +13,10 @@
     "manifestFile": "Identity-manifest.json"
   }],
   "databaseOptions": [{
+    "optionName": "default_time_zone",
+    "optionType": "character varying",
+    "optionValue": "UTC"
+  }, {
     "optionName": "default_sequence_kind",
     "optionType": "character varying",
     "optionValue": "bit_reversed_positive"

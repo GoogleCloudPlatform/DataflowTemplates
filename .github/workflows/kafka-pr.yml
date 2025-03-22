@@ -33,6 +33,7 @@ on:
       - 'v2/kafka-to-bigquery/**'
       - 'v2/kafka-to-gcs/**'
       - 'v2/kafka-to-kafka/**'
+      - 'v2/pubsub-to-kafka/**'
   schedule:
     - cron: "6 */12 * * *"
   workflow_dispatch:
