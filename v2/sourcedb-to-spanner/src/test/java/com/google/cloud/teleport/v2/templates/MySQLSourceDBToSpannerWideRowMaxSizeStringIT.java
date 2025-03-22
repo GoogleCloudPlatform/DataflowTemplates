@@ -76,10 +76,13 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   }
 
   private String getSpannerSchema() {
-    String schema = "CREATE TABLE IF NOT EXISTS " + TABLENAME + " (" +
-        "id INT64 NOT NULL," +
-        "max_string_col STRING(MAX)," +
-        ") PRIMARY KEY (id)";
+    String schema =
+        "CREATE TABLE IF NOT EXISTS "
+            + TABLENAME
+            + " ("
+            + "id INT64 NOT NULL,"
+            + "max_string_col STRING(MAX),"
+            + ") PRIMARY KEY (id)";
     return schema;
   }
 
