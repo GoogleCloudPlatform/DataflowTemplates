@@ -81,7 +81,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
             + TABLENAME
             + " ("
             + "id INT64 NOT NULL,"
-            + "max_string_col STRING(MAX),"
+            + "max_string_col STRING(MAX)"
             + ") PRIMARY KEY (id)";
     return schema;
   }
