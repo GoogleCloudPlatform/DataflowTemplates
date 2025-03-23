@@ -61,8 +61,14 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
     ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
+  private void increasePacketSize() {
+    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
+  }
+
   @Test
   public void wideRowMaxSizeTableKey() throws Exception {
+    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
