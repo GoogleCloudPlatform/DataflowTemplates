@@ -1,10 +1,7 @@
-CREATE TABLE test_key_size (
-    id INT64 NOT NULL,
-    col1 STRING(MAX) NOT NULL,
-    col2 STRING(MAX) NOT NULL,
-    col3 STRING(MAX) NOT NULL,
-    col4 STRING(MAX) NOT NULL,
-    col5 STRING(MAX) NOT NULL,
-    CONSTRAINT pk PRIMARY KEY (id),
-    CONSTRAINT idx_large UNIQUE (col1, col2, col3, col4, col5)
+CREATE TABLE LargePrimaryKeyTable (
+    pk_col1 STRING(255) NOT NULL,
+    pk_col2 STRING(255) NOT NULL,
+    pk_col3 STRING(255) NOT NULL,
+    value_col STRING(MAX),
+    PRIMARY KEY (pk_col1, pk_col2, pk_col3)
 );
