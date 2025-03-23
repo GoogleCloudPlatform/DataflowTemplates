@@ -20,12 +20,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.google.common.collect.ImmutableList;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -33,7 +27,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -48,8 +41,10 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
 
   private static final String TABLE_NAME = "LargePrimaryKeyTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
-  private static final String MYSQL_DUMP_FILE_RESOURCE ="WideRow/SourceDbToSpannerMaxSizeTableKey/mysql-schema.sql";
-  private static final String SPANNER_SCHEMA_FILE_RESOURCE ="WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
+  private static final String MYSQL_DUMP_FILE_RESOURCE =
+      "WideRow/SourceDbToSpannerMaxSizeTableKey/mysql-schema.sql";
+  private static final String SPANNER_SCHEMA_FILE_RESOURCE =
+      "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
@@ -78,13 +73,13 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
             mySQLResourceManager,
             spannerResourceManager,
             null,
-            null
-        );
+            null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
     // Verify the data in Spanner
     ImmutableList<Struct> wideRowData =
-        spannerResourceManager.readTableRecords(TABLE_NAME, "pk_col1", "pk_col2", "pk_col3", "value_col");
+        spannerResourceManager.readTableRecords(
+            TABLE_NAME, "pk_col1", "pk_col2", "pk_col3", "value_col");
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
