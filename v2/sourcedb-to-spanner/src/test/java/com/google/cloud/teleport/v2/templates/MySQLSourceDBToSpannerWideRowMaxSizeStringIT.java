@@ -17,12 +17,15 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.collect.ImmutableList;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -40,10 +43,14 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE = "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/mysql-schema.sql";
-  private static final String SPANNER_SCHEMA_FILE_RESOURCE = "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/spanner-schema.sql";
-//  private static final String SESSION_FILE_RESOURCE = "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/session.json";
+  private static final String MYSQL_DUMP_FILE_RESOURCE =
+      "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/mysql-schema.sql";
+  private static final String SPANNER_SCHEMA_FILE_RESOURCE =
+      "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/spanner-schema.sql";
+  //  private static final String SESSION_FILE_RESOURCE =
+  // "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/session.json";
   private static final String TABLE = "WideRowTable";
+
   @Before
   public void setUp() throws Exception {
     mySQLResourceManager = setUpMySQLResourceManager();
@@ -59,19 +66,22 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   public void wideRowMaxSizeString() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
-    jobInfo = launchDataflowJob(
-        getClass().getSimpleName(),
-        null,
-        null,
-        mySQLResourceManager,
-        spannerResourceManager,
-        null,
-        null);
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            mySQLResourceManager,
+            spannerResourceManager,
+            null,
+            null);
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 
     // Verify the data in Spanner
+    ImmutableList<Struct> wideRowData =
+        spannerResourceManager.readTableRecords(TABLE, "id", "max_string_col");
+    SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
-
 }

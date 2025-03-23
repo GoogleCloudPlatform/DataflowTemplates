@@ -3,3 +3,5 @@ CREATE TABLE IF NOT EXISTS WideRowTable (
     max_string_col LONGTEXT,
     PRIMARY KEY (id)
 );
+
+INSERT INTO WideRowTable (id, max_string_col) VALUES (1, REPEAT('a', 65535));
