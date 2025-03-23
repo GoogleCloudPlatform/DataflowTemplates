@@ -50,6 +50,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   //  private static final String SESSION_FILE_RESOURCE =
   // "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/session.json";
   private static final String TABLE = "WideRowTable";
+  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
   @Before
   public void setUp() throws Exception {
@@ -62,8 +63,14 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
+  private void increasePacketSize() {
+    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
+  }
+
   @Test
   public void wideRowMaxSizeString() throws Exception {
+    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
