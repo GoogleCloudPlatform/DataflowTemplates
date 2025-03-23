@@ -48,6 +48,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -55,6 +56,10 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
 
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToCassandraSourceDbMaxColumnsIT.class);
+
+  private static final int NUM_COLS = 1024;
+  private static final String PRIMARY_KEY = "id";
+  private static final String SECONDARY_KEY_PREFIX = "col_";
 
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerToSourceDbWideRowIT/spanner-max-col-schema.sql";
@@ -159,10 +164,10 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
   private void writeRowWithMaxColumnsInSpanner() {
     List<Mutation> mutations = new ArrayList<>();
     Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(TEST_TABLE).set("Id").to("SampleTest");
+        Mutation.newInsertOrUpdateBuilder(TEST_TABLE).set(PRIMARY_KEY).to("SampleTest");
 
-    for (int i = 1; i < 1024; i++) {
-      mutationBuilder.set("Col_" + i).to("TestValue_" + i);
+    for (int i = 1; i < NUM_COLS; i++) {
+      mutationBuilder.set(SECONDARY_KEY_PREFIX + i).to("TestValue_" + i);
     }
 
     mutations.add(mutationBuilder.build());
@@ -175,7 +180,7 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)), () -> getRowCount(TEST_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(15)), () -> getRowCount(TEST_TABLE) == 1);
     assertThatResult(result).meetsConditions();
 
     Iterable<Row> rows;
@@ -188,10 +193,10 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
     assertThat(rows).hasSize(1);
     for (Row row : rows) {
       LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
-      String primaryKeyColumn = row.getString("Col_0");
+      String primaryKeyColumn = row.getString(PRIMARY_KEY);
       assertEquals("SampleTest", primaryKeyColumn);
-      for (int i = 1; i < 1024; i++) {
-        assertEquals("TestValue_" + i, row.getString("Col_" + i));
+      for (int i = 1; i < NUM_COLS; i++) {
+        assertEquals("TestValue_" + i, row.getString(SECONDARY_KEY_PREFIX + i));
       }
     }
     LOG.info("Successfully validated 1,024 columns in Cassandra");

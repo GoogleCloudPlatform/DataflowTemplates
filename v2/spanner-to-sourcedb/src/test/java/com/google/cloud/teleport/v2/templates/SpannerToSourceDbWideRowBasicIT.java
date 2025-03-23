@@ -33,6 +33,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -55,7 +56,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
     }
 
     String query =
-        "SELECT COUNT(*) AS table_count FROM INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA='' and TABLE_CATALOG = ''";
+        "SELECT COUNT(*) AS table_count FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_CATALOG = '' AND TABLE_SCHEMA = ''";
     ImmutableList<Struct> results = spannerResourceManagerForTables.runQuery(query);
     assertFalse(results.isEmpty());
     long tableCount = results.get(0).getLong(0);
@@ -71,7 +72,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
           String.format(
               "CREATE TABLE %s (\n"
                   + "  Id INT64 NOT NULL,\n"
-                  + "  Name STRING(100),\n"
+                  + "  Name STRING(100)\n"
                   + ") PRIMARY KEY (Id)",
               tableName));
     }
@@ -141,6 +142,40 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
   }
 
   @Test
+  public void testInsertValidStringSize_2621440Characters() {
+    String databaseName = "rr-main-db-string-size-valid-" + testName;
+    SpannerResourceManager spannerResourceManager =
+        SpannerResourceManager.builder(databaseName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
+
+    String createTableQuery =
+        "CREATE TABLE LargeStringTest ("
+            + "  Id INT64 NOT NULL,"
+            + "  LargeColumn STRING(2621440),"
+            + ") PRIMARY KEY (Id)";
+    spannerResourceManager.executeDdlStatement(createTableQuery);
+
+    String validData = "A".repeat(2_621_440);
+
+    spannerResourceManager.write(
+        Mutation.newInsertBuilder("LargeStringTest")
+            .set("Id")
+            .to(1)
+            .set("LargeColumn")
+            .to(validData)
+            .build());
+
+    String query = "SELECT LENGTH(LargeColumn) FROM LargeStringTest WHERE Id = 1";
+    ImmutableList<Struct> results = spannerResourceManager.runQuery(query);
+    assertFalse(results.isEmpty());
+    long columnSize = results.get(0).getLong(0);
+    assertEquals(2_621_440, columnSize);
+
+    ResourceManagerUtils.cleanResources(spannerResourceManager);
+  }
+
+  @Test
   public void testInsertValidPrimaryKeySize_8KB() {
     String databaseName = "rr-main-db-key-valid-" + testName;
     SpannerResourceManager spannerResourceManager =
@@ -150,12 +185,12 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
 
     String createTableQuery =
         "CREATE TABLE LargeKeyTest ("
-            + "  LargeKey STRING(7000) NOT NULL,"
+            + "  LargeKey STRING(8192) NOT NULL,"
             + "  Value STRING(MAX)"
             + ") PRIMARY KEY (LargeKey)";
     spannerResourceManager.executeDdlStatement(createTableQuery);
 
-    String validKey = "K".repeat(7000);
+    String validKey = "K".repeat(8192);
 
     spannerResourceManager.write(
         Mutation.newInsertBuilder("LargeKeyTest")
@@ -165,11 +200,11 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
             .to("Some Data")
             .build());
 
-    String query = "SELECT LENGTH(LargeKey) FROM LargeKeyTest WHERE LargeKey = " + validKey;
+    String query = "SELECT LENGTH(LargeKey) FROM LargeKeyTest";
     ImmutableList<Struct> results = spannerResourceManager.runQuery(query);
     assertFalse(results.isEmpty());
     long keySize = results.get(0).getLong(0);
-    assertEquals(7000, keySize);
+    assertEquals(8192, keySize);
 
     ResourceManagerUtils.cleanResources(spannerResourceManager);
   }

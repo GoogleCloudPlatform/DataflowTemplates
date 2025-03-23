@@ -32,6 +32,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.UUID;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -162,8 +163,9 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
 
     try {
       byte[] blobData = new byte[safeBlobSize];
+      new Random().nextBytes(blobData);
       Mutation mutation =
-          Mutation.newInsertBuilder("large_data")
+          Mutation.newInsertOrUpdateBuilder(LARGE_DATA_TABLE)
               .set("id")
               .to(UUID.randomUUID().toString())
               .set("large_blob")

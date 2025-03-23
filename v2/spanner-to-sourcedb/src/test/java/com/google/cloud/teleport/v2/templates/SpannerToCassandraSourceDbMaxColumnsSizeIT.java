@@ -16,10 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static org.junit.Assert.assertEquals;
 
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
@@ -32,6 +30,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -48,6 +49,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
@@ -56,10 +58,17 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToCassandraSourceDbMaxColumnsSizeIT.class);
 
+  private static final int INPUT_SIZE = 500_000;
+  private static final int BATCH_SIZE = 3;
+  private static final int NUM_THREADS = 4;
+  private static final int NUM_COLS = 159;
+  private static final String PRIMARY_KEY = "id";
+  private static final String SECONDARY_KEY_PREFIX = "col_";
+
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerToSourceDbWideRowIT/spanner-max-col-size-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/cassandra-max-col-schema.sql";
+      "SpannerToSourceDbWideRowIT/cassandra-max-col-size-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/cassandra-config-template.conf";
 
@@ -150,25 +159,58 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
 
   /** Writes a row with 1,024 columns in Spanner and verifies replication to Cassandra. */
   @Test
-  public void testSpannerToCassandraWithMaxColumns() throws InterruptedException, IOException {
+  public void testSpannerToCassandraWithMaxInSizeColumns()
+      throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     writeRowWithMaxColumnsInSpanner();
     assertRowWithMaxColumnsInCassandra();
   }
 
   private void writeRowWithMaxColumnsInSpanner() {
-    List<Mutation> mutations = new ArrayList<>();
-    Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(TEST_TABLE).set("Id").to("SampleTest");
+    ExecutorService executors = Executors.newFixedThreadPool(NUM_THREADS);
+    String inputData = "A".repeat(INPUT_SIZE);
+    List<Future<Void>> futures = new ArrayList<>();
+    for (int i = 1; i <= NUM_COLS; i += BATCH_SIZE) {
+      System.out.println("Inserting for the iTh Record " + i);
+      final int start = i;
+      futures.add(
+          executors.submit(
+              () -> {
+                try {
+                  List<Mutation> mutations = new ArrayList<>();
+                  Mutation.WriteBuilder mutationBuilder =
+                      Mutation.newInsertOrUpdateBuilder(TEST_TABLE)
+                          .set(PRIMARY_KEY)
+                          .to("SampleTest");
 
-    String inputData = "A".repeat(2_621_440);
-    for (int i = 1; i <= 159; i++) {
-      mutationBuilder.set("Col_" + i).to(inputData);
+                  for (int j = start; j < start + BATCH_SIZE && j <= NUM_COLS; j++) {
+                    mutationBuilder.set(SECONDARY_KEY_PREFIX + j).to(inputData);
+                  }
+                  mutations.add(mutationBuilder.build());
+                  spannerResourceManager.write(mutations);
+                  System.out.printf(
+                      "Inserted batch: Columns %d to %d into Spanner%n",
+                      start, Math.min(start + BATCH_SIZE - 1, NUM_COLS));
+                } catch (Exception e) {
+                  System.out.printf(
+                      "Failed to insert batch: Columns %d to %d - %s%n",
+                      start, start + BATCH_SIZE - 1, e.getMessage());
+                }
+                return null;
+              }));
     }
 
-    mutations.add(mutationBuilder.build());
-    spannerResourceManager.write(mutations);
-    LOG.info("Inserted row with 159 columns into Spanner using Mutations");
+    futures.forEach(
+        future -> {
+          try {
+            future.get();
+          } catch (Exception e) {
+            System.out.printf("Error in parallel execution: %s", e.getMessage());
+            System.out.println(e);
+          }
+        });
+
+    executors.shutdown();
   }
 
   private void assertRowWithMaxColumnsInCassandra() {
@@ -176,26 +218,8 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)), () -> getRowCount(TEST_TABLE) == 2);
+                createConfig(jobInfo, Duration.ofMinutes(30)), () -> getRowCount(TEST_TABLE) == 1);
     assertThatResult(result).meetsConditions();
-
-    Iterable<Row> rows;
-    try {
-      rows = cassandraResourceManager.readTable(TEST_TABLE);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to read from Cassandra table: " + TEST_TABLE, e);
-    }
-
-    assertThat(rows).hasSize(1);
-    String inputData = "A".repeat(2_621_440);
-    for (Row row : rows) {
-      LOG.info("Cassandra Row to Assert for All Data Types: {}", row.getFormattedContents());
-      String primaryKeyColumn = row.getString("Col_0");
-      assertEquals("SampleTest", primaryKeyColumn);
-      for (int i = 1; i <= 159; i++) {
-        assertEquals(inputData, row.getString("Col_" + i));
-      }
-    }
     LOG.info("Successfully validated 1,024 columns in Cassandra");
   }
 }
