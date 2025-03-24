@@ -23,6 +23,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.StringJoiner;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -71,11 +72,14 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     ddl.append("CREATE TABLE " + TABLENAME + " (");
     ddl.append("id INT NOT NULL,");
     columns.add("id");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
+    for (int i = 0; i < NUM_COLUMNS - 1; i++) {
       ddl.append("col" + i + " INT,");
       columns.add("col" + i);
     }
-    ddl.append("PRIMARY KEY (id));");
+    // Last column without trailing comma
+    ddl.append("col" + (NUM_COLUMNS - 1) + " INT");
+    columns.add("col" + (NUM_COLUMNS - 1));
+    ddl.append(" PRIMARY KEY (id));");
     return ddl.toString();
   }
 
@@ -83,21 +87,28 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     StringBuilder schema = new StringBuilder();
     schema.append("CREATE TABLE " + TABLENAME + " (");
     schema.append("id INT64 NOT NULL,");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
+    for (int i = 0; i < NUM_COLUMNS - 1; i++) {
       schema.append("col" + i + " INT64,");
     }
+    // Last column without trailing comma
+    schema.append("col" + (NUM_COLUMNS - 1) + " INT64");
     schema.append(") PRIMARY KEY (id);");
     return schema.toString();
   }
 
   private String getMySQLInsertStatement() {
-    // Use more efficient StringJoiner approach
-    StringBuilder columnNames = new StringBuilder("id");
-    StringBuilder values = new StringBuilder("1");
+    // Use StringJoiner for efficiency
+    StringJoiner columnNames = new StringJoiner(", ");
+    StringJoiner values = new StringJoiner(", ");
 
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columnNames.append(", col").append(i);
-      values.append(", ").append(i + 1);
+    // Add the ID column
+    columnNames.add("id");
+    values.add("1");
+
+    // Add all the other columns, ensuring we match exactly what's in the DDL
+    for (int i = 0; i < NUM_COLUMNS - 1; i++) {
+      columnNames.add("col" + i);
+      values.add(String.valueOf(i + 1));
     }
 
     return String.format("INSERT INTO %s (%s) VALUES (%s);", TABLENAME, columnNames, values);
@@ -106,8 +117,8 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     increasePacketSize();
-    String mySQLDDL = getMySQLDDL() + "\n" + getMySQLInsertStatement();
-    loadSQLToJdbcResourceManager(mySQLResourceManager, mySQLDDL);
+    String mysqlSchema = getMySQLDDL() + ";\n" + getMySQLInsertStatement();
+    loadSQLToJdbcResourceManager(mySQLResourceManager, mysqlSchema);
     spannerResourceManager.executeDdlStatement(getSpannerDDL());
 
     jobInfo =
