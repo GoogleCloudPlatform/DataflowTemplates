@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -47,7 +48,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
-  private static List<String> columns;
+  private static final List<String> columns = new ArrayList<>();
 
   @Before
   public void setUp() {
