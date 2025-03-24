@@ -23,7 +23,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -49,8 +48,6 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
-  private static final List<String> columns = new ArrayList<>();
-
   @Before
   public void setUp() {
     mySQLResourceManager = setUpMySQLResourceManager();
@@ -68,57 +65,46 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   }
 
   private String getMySQLDDL() {
-    StringBuilder ddl = new StringBuilder();
-    ddl.append("CREATE TABLE " + TABLENAME + " (");
-    ddl.append("id INT NOT NULL,");
-    columns.add("id");
-    for (int i = 0; i < NUM_COLUMNS - 1; i++) {
-      ddl.append("col" + i + " INT,");
-      columns.add("col" + i);
+    StringBuilder mysqlColumns = new StringBuilder();
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      mysqlColumns.append("col").append(i).append(" INT");
+      if (i < NUM_COLUMNS - 1) {
+        mysqlColumns.append(", ");
+      }
     }
-    // Last column without trailing comma
-    ddl.append("col" + (NUM_COLUMNS - 1) + " INT");
-    columns.add("col" + (NUM_COLUMNS - 1));
-    ddl.append(" PRIMARY KEY (id));");
-    return ddl.toString();
+    return String.format(
+        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id));", TABLENAME, mysqlColumns);
   }
 
   private String getSpannerDDL() {
-    StringBuilder schema = new StringBuilder();
-    schema.append("CREATE TABLE " + TABLENAME + " (");
-    schema.append("id INT64 NOT NULL,");
-    for (int i = 0; i < NUM_COLUMNS - 1; i++) {
-      schema.append("col" + i + " INT64,");
+    StringBuilder spannerColumns = new StringBuilder();
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      spannerColumns.append("col").append(i).append(" INT64");
+      if (i < NUM_COLUMNS - 1) {
+        spannerColumns.append(", ");
+      }
     }
-    // Last column without trailing comma
-    schema.append("col" + (NUM_COLUMNS - 1) + " INT64");
-    schema.append(") PRIMARY KEY (id);");
-    return schema.toString();
+    return String.format(
+        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id);", TABLENAME, spannerColumns);
   }
 
   private String getMySQLInsertStatement() {
-    // Use StringJoiner for efficiency
-    StringJoiner columnNames = new StringJoiner(", ");
-    StringJoiner values = new StringJoiner(", ");
-
-    // Add the ID column
-    columnNames.add("id");
-    values.add("1");
-
-    // Add all the other columns, ensuring we match exactly what's in the DDL
-    for (int i = 0; i < NUM_COLUMNS - 1; i++) {
-      columnNames.add("col" + i);
-      values.add(String.valueOf(i + 1));
+    StringBuilder columns = new StringBuilder();
+    StringBuilder values = new StringBuilder();
+    columns.append("id");
+    values.append("1");
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      columns.append(", col").append(i);
+      values.append(",").append(i);
     }
-
-    return String.format("INSERT INTO %s (%s) VALUES (%s);", TABLENAME, columnNames, values);
+    return String.format("INSERT INTO %s (%s) VALUES (%s);", TABLENAME, columns, values);
   }
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     increasePacketSize();
-    String mysqlSchema = getMySQLDDL();
-    loadSQLToJdbcResourceManager(mySQLResourceManager, mysqlSchema);
+    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL());
+    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLInsertStatement());
     spannerResourceManager.executeDdlStatement(getSpannerDDL());
 
     jobInfo =
@@ -132,7 +118,16 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    ImmutableList<Struct> wideRowData = spannerResourceManager.readTableRecords(TABLENAME, columns);
-    SpannerAsserts.assertThatStructs(wideRowData).hasRows(0);
+
+    // create a list of columns to verify the data in Spanner
+    List<String> expectedColumns = new ArrayList<>();
+    expectedColumns.add("id");
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      expectedColumns.add("col" + i);
+    }
+
+    ImmutableList<Struct> wideRowData =
+        spannerResourceManager.readTableRecords(TABLENAME, expectedColumns);
+    SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
