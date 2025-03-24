@@ -17,16 +17,16 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import java.util.ArrayList;
-import java.util.HashMap;
+import com.google.common.collect.ImmutableList;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -40,12 +40,14 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static final Integer NUM_COLUMNS = 1000;
+  private static final Integer NUM_COLUMNS = 1023;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
+
+  private List<String> COLUMNS;
 
   @Before
   public void setUp() {
@@ -67,8 +69,10 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     StringBuilder ddl = new StringBuilder();
     ddl.append("CREATE TABLE " + TABLENAME + " (");
     ddl.append("id INT NOT NULL,");
+    COLUMNS.add("id");
     for (int i = 0; i < NUM_COLUMNS; i++) {
       ddl.append("col" + i + " INT,");
+      COLUMNS.add("col" + i);
     }
     ddl.append("PRIMARY KEY (id))");
     return ddl.toString();
@@ -85,26 +89,28 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     return schema.toString();
   }
 
-  private List<Map<String, Object>> getMySQLData() {
-    List<Map<String, Object>> data = new ArrayList<>();
-
-    for (int i = 0; i < 100; i++) {
-      Map<String, Object> row = new HashMap<>();
-      row.put("id", i);
-      for (int j = 0; j < NUM_COLUMNS; j++) {
-        row.put("col" + j, i + j);
-      }
-      data.add(row);
+  private String getMySQLInsertStatement() {
+    StringBuilder insert = new StringBuilder();
+    insert.append("INSERT INTO " + TABLENAME + " (id, ");
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      insert.append("col" + i + ", ");
     }
-    return data;
+    insert.delete(insert.length() - 2, insert.length());
+    insert.append(") VALUES (");
+    insert.append("?, ");
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      insert.append("?, ");
+    }
+    insert.delete(insert.length() - 2, insert.length());
+    insert.append(")");
+    return insert.toString();
   }
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     increasePacketSize();
-    List<Map<String, Object>> mysqlData = getMySQLData();
-
-    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL());
+    String mySQLDDL = getMySQLDDL() + "\n" + getMySQLInsertStatement();
+    loadSQLToJdbcResourceManager(mySQLResourceManager, mySQLDDL);
     spannerResourceManager.executeDdlStatement(getSpannerDDL());
 
     jobInfo =
@@ -118,13 +124,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    List<String> columns = new ArrayList<>();
-    columns.add("id");
-    for (int i = 1; i <= NUM_COLUMNS; i++) {
-      columns.add("col" + i);
-    }
-    //    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLENAME,
-    // columns))
-    //        .hasRecordsUnorderedCaseInsensitiveColumns(mysqlData);
+    ImmutableList<Struct> wideRowData = spannerResourceManager.readTableRecords(TABLENAME, COLUMNS);
+    SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
