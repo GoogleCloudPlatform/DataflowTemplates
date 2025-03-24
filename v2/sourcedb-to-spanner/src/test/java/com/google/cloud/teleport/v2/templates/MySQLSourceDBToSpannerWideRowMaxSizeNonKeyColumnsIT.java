@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -32,25 +32,22 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for testing MySQL to Spanner migration with wide tables (1024 columns). */
-@Ignore("ignore due to long running")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
+public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceDbToSpannerITBase {
   // Instance variables - not static to prevent state issues between tests
   private PipelineLauncher.LaunchInfo jobInfo;
   private MySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   // Constants
-  private static final Integer NUM_COLUMNS = 1016;
+  private static final Integer NUM_NON_KEY_COLUMNS = 100;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
@@ -79,8 +76,8 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     // Use StringJoiner for more efficient string concatenation
     StringJoiner columnsJoiner = new StringJoiner(", ");
 
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columnsJoiner.add("col" + i + " INT");
+    for (int i = 1; i < NUM_NON_KEY_COLUMNS; i++) {
+      columnsJoiner.add("col" + i + " MEDIUMTEXT");
     }
 
     return String.format(
@@ -97,8 +94,8 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     // Use StringJoiner for more efficient string concatenation
     StringJoiner columnsJoiner = new StringJoiner(", ");
 
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columnsJoiner.add("col" + i + " INT64");
+    for (int i = 1; i < NUM_NON_KEY_COLUMNS; i++) {
+      columnsJoiner.add("col" + i + " STRING(MAX)");
     }
 
     return String.format(
@@ -119,9 +116,9 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     columnsJoiner.add("id");
     valuesJoiner.add("1");
 
-    for (int i = 0; i < NUM_COLUMNS; i++) {
+    for (int i = 1; i < NUM_NON_KEY_COLUMNS; i++) {
       columnsJoiner.add("col" + i);
-      valuesJoiner.add(String.valueOf(i));
+      valuesJoiner.add("REPEAT('A', 16777215)");
     }
 
     return String.format(
@@ -137,7 +134,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private List<String> getColumnsList() {
     List<String> columns = new ArrayList<>();
     columns.add("id");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
+    for (int i = 1; i < NUM_NON_KEY_COLUMNS; i++) {
       columns.add("col" + i);
     }
     return columns;
