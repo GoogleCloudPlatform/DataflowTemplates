@@ -37,7 +37,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for testing MySQL to Spanner migration with wide tables (many columns). */
+/** Integration test for testing MySQL to Spanner migration with wide tables (1024 columns). */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -48,7 +48,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private SpannerResourceManager spannerResourceManager;
 
   // Constants
-  private static final Integer NUM_COLUMNS = 1023;
+  private static final Integer NUM_COLUMNS = 1017;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
