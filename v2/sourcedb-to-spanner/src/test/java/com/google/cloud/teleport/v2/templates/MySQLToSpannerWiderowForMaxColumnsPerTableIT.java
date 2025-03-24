@@ -82,7 +82,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     }
 
     return String.format(
-        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id));",
+        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))",
         TABLENAME, columnsJoiner.toString());
   }
 
@@ -100,7 +100,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     }
 
     return String.format(
-        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id);",
+        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)",
         TABLENAME, columnsJoiner.toString());
   }
 
@@ -123,7 +123,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     }
 
     return String.format(
-        "INSERT INTO %s (%s) VALUES (%s);",
+        "INSERT INTO %s (%s) VALUES (%s)",
         TABLENAME, columnsJoiner.toString(), valuesJoiner.toString());
   }
 
@@ -177,18 +177,5 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
     // Verify row count
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
-
-    //    // Optionally verify actual data values
-    //    if (!wideRowData.isEmpty()) {
-    //      Struct row = wideRowData.get(0);
-    //      // Verify ID
-    //      assert row.getLong("id") == 1L : "ID column doesn't match expected value";
-    //
-    //      // Verify a few sample columns
-    //      assert row.getLong("col0") == 0L : "col0 doesn't match expected value";
-    //      assert row.getLong("col50") == 50L : "col50 doesn't match expected value";
-    //      assert row.getLong("col" + (NUM_COLUMNS - 1)) == (NUM_COLUMNS - 1) :
-    //          "Last column doesn't match expected value";
-    //    }
   }
 }
