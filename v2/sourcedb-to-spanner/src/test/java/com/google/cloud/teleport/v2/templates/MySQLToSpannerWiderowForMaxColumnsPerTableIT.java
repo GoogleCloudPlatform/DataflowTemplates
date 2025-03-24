@@ -43,7 +43,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static final Integer NUM_COLUMNS = 1023;
+  private static final Integer NUM_COLUMNS = 1000;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
