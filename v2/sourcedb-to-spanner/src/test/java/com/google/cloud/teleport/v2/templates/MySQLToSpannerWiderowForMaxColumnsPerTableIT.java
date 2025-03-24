@@ -105,7 +105,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     List<Map<String, Object>> mysqlData = getMySQLData();
 
     loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL());
-    createSpannerDDL(spannerResourceManager, getSpannerDDL());
+    spannerResourceManager.executeDdlStatement(getSpannerDDL());
 
     jobInfo =
         launchDataflowJob(
