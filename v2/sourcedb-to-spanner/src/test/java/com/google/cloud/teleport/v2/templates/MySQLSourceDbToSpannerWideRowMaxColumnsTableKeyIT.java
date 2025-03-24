@@ -21,6 +21,8 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -43,9 +45,9 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   private static final String TABLE_NAME = "LargePrimaryKeyTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/SourceDbToSpannerMaxSizeTableKey/mysql-schema.sql";
+      "WideRow/MaxColumnsTableKeyIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
-      "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
+      "WideRow/MaxColumnsTableKeyIT/spanner-schema.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
@@ -83,10 +85,14 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
+
+    List<String> columns = new ArrayList<>();
+    for (int i = 1; i <= 16; i++) {
+      columns.add("pk_col" + i);
+    }
     // Verify the data in Spanner
     ImmutableList<Struct> wideRowData =
-        spannerResourceManager.readTableRecords(
-            TABLE_NAME, "pk_col1", "pk_col2", "pk_col3", "value_col");
+        spannerResourceManager.readTableRecords(TABLE_NAME, columns);
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
