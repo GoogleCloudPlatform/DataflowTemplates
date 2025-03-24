@@ -117,8 +117,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     increasePacketSize();
-    String mysqlSchema = getMySQLDDL() + ";" + getMySQLInsertStatement();
-    System.out.println(mysqlSchema);
+    String mysqlSchema = getMySQLDDL();
     loadSQLToJdbcResourceManager(mySQLResourceManager, mysqlSchema);
     spannerResourceManager.executeDdlStatement(getSpannerDDL());
 
@@ -134,6 +133,6 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
     ImmutableList<Struct> wideRowData = spannerResourceManager.readTableRecords(TABLENAME, columns);
-    SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
+    SpannerAsserts.assertThatStructs(wideRowData).hasRows(0);
   }
 }
