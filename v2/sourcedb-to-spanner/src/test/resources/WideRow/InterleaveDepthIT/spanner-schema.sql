@@ -1,0 +1,53 @@
+CREATE TABLE parent (
+    id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (id);
+
+CREATE TABLE child1 (
+    id INT64 NOT NULL,
+    parent_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (parent_id, id),
+  INTERLEAVE IN PARENT parent ON DELETE CASCADE;
+
+CREATE TABLE child2 (
+    id INT64 NOT NULL,
+    child1_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (child1_id, id),
+  INTERLEAVE IN PARENT child1 ON DELETE CASCADE;
+
+CREATE TABLE child3 (
+    id INT64 NOT NULL,
+    child2_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (child2_id, id),
+  INTERLEAVE IN PARENT child2 ON DELETE CASCADE;
+
+CREATE TABLE child4 (
+    id INT64 NOT NULL,
+    child3_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (child3_id, id),
+  INTERLEAVE IN PARENT child3 ON DELETE CASCADE;
+
+CREATE TABLE child5 (
+    id INT64 NOT NULL,
+    child4_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (child4_id, id),
+  INTERLEAVE IN PARENT child4 ON DELETE CASCADE;
+
+CREATE TABLE child6 (
+    id INT64 NOT NULL,
+    child5_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (child5_id, id),
+  INTERLEAVE IN PARENT child5 ON DELETE CASCADE;
+
+CREATE TABLE child7 (
+    id INT64 NOT NULL,
+    child6_id INT64 NOT NULL,
+    name STRING(255) NOT NULL,
+) PRIMARY KEY (child6_id, id),
+  INTERLEAVE IN PARENT child6 ON DELETE CASCADE;
