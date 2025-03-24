@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
@@ -31,6 +32,8 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+
 @Ignore("ignore due to long running")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -41,6 +44,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private static final int NUM_TABLES = 5000;
   private static final String COL_ID = "id";
   private static final String COL_NAME = "name";
+  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024;
 
   private PipelineLauncher.LaunchInfo jobInfo;
   private MySQLResourceManager mySQLResourceManager;
@@ -57,6 +61,54 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
+  private void increasePacketSize() {
+    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
+  }
+
+  private String getMySQLSchema(){
+    StringBuilder tables = new StringBuilder();
+    for (int i = 0; i < NUM_TABLES; i++) {
+      tables.append("CREATE TABLE table").append(i).append(" (");
+      tables.append(COL_ID + " INT PRIMARY KEY, ");
+      tables.append(COL_NAME + " VARCHAR(255))");
+      if (i < NUM_TABLES - 1) {
+        tables.append(";");
+      }
+    }
+    return tables.toString();
+  }
+
+  private String getSpannerSchema(){
+    StringBuilder tables = new StringBuilder();
+    for (int i = 0; i < NUM_TABLES; i++) {
+      tables.append("CREATE TABLE table").append(i).append(" (");
+      tables.append(COL_ID + " INT64, ");
+      tables.append(COL_NAME + " STRING(MAX)) PRIMARY KEY (").append(COL_ID).append(")");
+      if (i < NUM_TABLES - 1) {
+        tables.append(";");
+      }
+    }
+    return tables.toString();
+  }
+
+
   @Test
-  public void testMySQLToSpannerMigration() throws Exception {}
+  public void testMySQLToSpannerMigration() throws Exception {
+    increasePacketSize();
+    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLSchema());
+    spannerResourceManager.executeDdlStatement(getSpannerSchema());
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            mySQLResourceManager,
+            spannerResourceManager,
+            null,
+            null
+        );
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    assertThatResult(result).isLaunchFinished();
+  }
 }
