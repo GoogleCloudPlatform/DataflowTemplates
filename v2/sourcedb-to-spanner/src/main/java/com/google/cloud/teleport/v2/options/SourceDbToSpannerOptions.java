@@ -252,4 +252,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getNamespace();
 
   void setNamespace(String value);
+
+  @TemplateParameter.Text(
+      order = 21,
+      optional = true,
+      description = "Use Inserts instead of Upserts for spanner mutations.",
+      helpText =
+          "By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.")
+  @Default.Boolean(false)
+  Boolean getInsertOnlyModeForSpannerMutations();
+
+  void setInsertOnlyModeForSpannerMutations(Boolean value);
 }
