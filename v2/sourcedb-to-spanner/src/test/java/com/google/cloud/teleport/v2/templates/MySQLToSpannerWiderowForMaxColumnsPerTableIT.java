@@ -75,7 +75,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
       ddl.append("col" + i + " INT,");
       columns.add("col" + i);
     }
-    ddl.append("PRIMARY KEY (id))");
+    ddl.append("PRIMARY KEY (id));");
     return ddl.toString();
   }
 
@@ -86,25 +86,21 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     for (int i = 0; i < NUM_COLUMNS; i++) {
       schema.append("col" + i + " INT64,");
     }
-    schema.append(") PRIMARY KEY (id)");
+    schema.append(") PRIMARY KEY (id);");
     return schema.toString();
   }
 
   private String getMySQLInsertStatement() {
-    StringBuilder insert = new StringBuilder();
-    insert.append("INSERT INTO " + TABLENAME + " (id, ");
+    // Use more efficient StringJoiner approach
+    StringBuilder columnNames = new StringBuilder("id");
+    StringBuilder values = new StringBuilder("1");
+
     for (int i = 0; i < NUM_COLUMNS; i++) {
-      insert.append("col" + i + ", ");
+      columnNames.append(", col").append(i);
+      values.append(", ").append(i + 1);
     }
-    insert.delete(insert.length() - 2, insert.length());
-    insert.append(") VALUES (");
-    insert.append("?, ");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      insert.append("?, ");
-    }
-    insert.delete(insert.length() - 2, insert.length());
-    insert.append(")");
-    return insert.toString();
+
+    return String.format("INSERT INTO %s (%s) VALUES (%s);", TABLENAME, columnNames, values);
   }
 
   @Test
