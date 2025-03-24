@@ -47,7 +47,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
-  private List<String> COLUMNS;
+  private static List<String> columns;
 
   @Before
   public void setUp() {
@@ -69,10 +69,10 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     StringBuilder ddl = new StringBuilder();
     ddl.append("CREATE TABLE " + TABLENAME + " (");
     ddl.append("id INT NOT NULL,");
-    COLUMNS.add("id");
+    columns.add("id");
     for (int i = 0; i < NUM_COLUMNS; i++) {
       ddl.append("col" + i + " INT,");
-      COLUMNS.add("col" + i);
+      columns.add("col" + i);
     }
     ddl.append("PRIMARY KEY (id))");
     return ddl.toString();
@@ -124,7 +124,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
-    ImmutableList<Struct> wideRowData = spannerResourceManager.readTableRecords(TABLENAME, COLUMNS);
+    ImmutableList<Struct> wideRowData = spannerResourceManager.readTableRecords(TABLENAME, columns);
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
