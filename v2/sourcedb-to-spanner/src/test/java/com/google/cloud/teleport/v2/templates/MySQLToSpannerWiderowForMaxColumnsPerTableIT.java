@@ -117,7 +117,8 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     increasePacketSize();
-    String mysqlSchema = getMySQLDDL() + ";\n" + getMySQLInsertStatement();
+    String mysqlSchema = getMySQLDDL() + ";" + getMySQLInsertStatement();
+    System.out.println(mysqlSchema);
     loadSQLToJdbcResourceManager(mySQLResourceManager, mysqlSchema);
     spannerResourceManager.executeDdlStatement(getSpannerDDL());
 
