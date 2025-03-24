@@ -33,20 +33,20 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("This test is failing in the CI pipeline")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
-  private static final Integer NUM_COLUMNS = 1017;
+  private static final Integer NUM_COLUMNS = 1023;
   private static final String TABLENAME = "WiderowTable";
+  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
+
   private static MySQLResourceManager mySQLResourceManager;
   private static SpannerResourceManager spannerResourceManager;
 
@@ -59,6 +59,11 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
+  }
+
+  private void increasePacketSize() {
+    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
+    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
   }
 
   private JDBCResourceManager.JDBCSchema getMySQLSchema() {
@@ -97,6 +102,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testMaxColumnsPerTable() throws IOException {
+    increasePacketSize();
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
     mySQLResourceManager.write(TABLENAME, getMySQLData());
     createSpannerDDL(spannerResourceManager, getSpannerSchema());
