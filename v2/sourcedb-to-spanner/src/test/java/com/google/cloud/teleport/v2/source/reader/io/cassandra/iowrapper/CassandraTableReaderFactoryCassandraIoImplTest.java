@@ -15,17 +15,22 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraTableReaderFactoryCassandraIoImpl.DEFAULT_CONNECTION_TIMEOUT_MILLIS;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraTableReaderFactoryCassandraIoImpl.DEFAULT_CONSISTENCY;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraTableReaderFactoryCassandraIoImpl.DEFAULT_READ_TIMEOUT_MILLIS;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.PRIMITIVE_TYPES_TABLE;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.PRIMITIVE_TYPES_TABLE_ROW_COUNT;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
+import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
@@ -45,6 +50,7 @@ import com.google.common.io.Resources;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
+import java.time.Duration;
 import org.apache.beam.sdk.io.localcassandra.CassandraIO;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -153,5 +159,54 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
       verify(mockCassandraIORead, times(1)).withUsername(testUserName);
       verify(mockCassandraIORead, times(1)).withPassword(testPassword);
     }
+  }
+
+  @Test
+  public void testDefaults() {
+    final Duration testTimeout = Duration.ofMillis(42);
+    final String testConsistency = "ONE";
+    DataSource dataSourceWithoutDefaults =
+        DataSource.ofCassandra(
+            CassandraDataSource.builder()
+                .setOptionsMap(OptionsMap.driverDefaults())
+                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                .overrideOptionInOptionsMap(
+                    TypedDriverOption.CONNECTION_CONNECT_TIMEOUT, testTimeout)
+                .overrideOptionInOptionsMap(TypedDriverOption.REQUEST_TIMEOUT, testTimeout)
+                .overrideOptionInOptionsMap(TypedDriverOption.REQUEST_CONSISTENCY, testConsistency)
+                .build());
+    DriverExecutionProfile profileWithoutDefaults =
+        dataSourceWithoutDefaults
+            .cassandra()
+            .driverConfigLoader()
+            .getInitialConfig()
+            .getDefaultProfile();
+    DriverExecutionProfile profileWithDefaults =
+        dataSourceWithoutDefaults
+            .cassandra()
+            .driverConfigLoader()
+            .getInitialConfig()
+            .getDefaultProfile()
+            .without(TypedDriverOption.REQUEST_CONSISTENCY.getRawOption())
+            .without(TypedDriverOption.CONNECTION_CONNECT_TIMEOUT.getRawOption())
+            .without(TypedDriverOption.REQUEST_TIMEOUT.getRawOption());
+
+    assertThat(
+            CassandraTableReaderFactoryCassandraIoImpl.getConnectionTimeout(profileWithoutDefaults))
+        .isEqualTo((int) testTimeout.toMillis());
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.getReadTimeout(profileWithoutDefaults))
+        .isEqualTo((int) testTimeout.toMillis());
+    assertThat(
+            CassandraTableReaderFactoryCassandraIoImpl.getConsistencyLevel(profileWithoutDefaults))
+        .isEqualTo(testConsistency);
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.getConnectionTimeout(profileWithDefaults))
+        .isEqualTo(DEFAULT_CONNECTION_TIMEOUT_MILLIS);
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.getReadTimeout(profileWithDefaults))
+        .isEqualTo(DEFAULT_READ_TIMEOUT_MILLIS);
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.getConsistencyLevel(profileWithDefaults))
+        .isEqualTo(DEFAULT_CONSISTENCY);
   }
 }
