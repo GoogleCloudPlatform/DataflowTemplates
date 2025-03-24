@@ -263,15 +263,4 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Boolean getInsertOnlyModeForSpannerMutations();
 
   void setInsertOnlyModeForSpannerMutations(Boolean value);
-
-  @TemplateParameter.Text(
-      order = 22,
-      optional = true,
-      description = "BatchSize for Spanner Mutation.",
-      helpText =
-          "BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.")
-  @Default.Long(-1)
-  Long getBatchSizeForSpannerMutations();
-
-  void setBatchSizeForSpannerMutations(Long value);
 }
