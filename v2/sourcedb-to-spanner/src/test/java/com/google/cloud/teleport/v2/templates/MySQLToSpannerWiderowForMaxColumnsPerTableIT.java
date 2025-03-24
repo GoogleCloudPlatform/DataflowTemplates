@@ -77,7 +77,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   private String getSpannerSchema() {
     StringBuilder schema = new StringBuilder();
-    schema.append("CREATE TABLE WiderowTable (");
+    schema.append("CREATE TABLE " + TABLENAME + " (");
     schema.append("id INT64 NOT NULL,");
     for (int i = 0; i < NUM_COLUMNS; i++) {
       schema.append("col" + i + " INT64,");
@@ -103,9 +103,12 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @Test
   public void testMaxColumnsPerTable() throws IOException {
     increasePacketSize();
+    List<Map<String, Object>> mysqlData = getMySQLData();
     mySQLResourceManager.createTable(TABLENAME, getMySQLSchema());
-    mySQLResourceManager.write(TABLENAME, getMySQLData());
     createSpannerDDL(spannerResourceManager, getSpannerSchema());
+
+    mySQLResourceManager.write(TABLENAME, mysqlData);
+
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -122,8 +125,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     for (int i = 1; i <= NUM_COLUMNS; i++) {
       columns.add("col" + i);
     }
-    SpannerAsserts.assertThatStructs(
-            spannerResourceManager.readTableRecords("WiderowTable", columns))
-        .hasRecordsUnorderedCaseInsensitiveColumns(getMySQLData());
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLENAME, columns))
+        .hasRecordsUnorderedCaseInsensitiveColumns(mysqlData);
   }
 }
