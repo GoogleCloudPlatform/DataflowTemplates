@@ -44,7 +44,6 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -189,7 +188,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    */
   @Test
   public void spannerToCasandraSourceDbJSONEmptyOperation()
-      throws InterruptedException, IOException {
+      throws InterruptedException, IOException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     writeJSONEmptyInSpanner();
     assertJSONEmptyRowInCassandraDB();
@@ -206,7 +205,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .set("double_float_map_col")
             .to(Value.json("{}"))
             .set("decimal_set_col")
-            .to(Value.numericArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("date_double_map_col")
             .to(Value.json("{}"))
             .set("uuid_ascii_map_col")
@@ -214,67 +213,67 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .set("ascii_text_map_col")
             .to(Value.json("{}"))
             .set("timestamp_list_col")
-            .to(Value.timestampArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("int_set_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("smallint_set_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("varchar_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("inet_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("bigint_list_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("tinyint_varint_map_col")
             .to(Value.json("{}"))
             .set("text_set_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("double_set_col")
-            .to(Value.float64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("time_list_col")
-            .to(Value.timestampArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("frozen_ascii_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("int_list_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("ascii_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("date_set_col")
-            .to(Value.dateArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("double_inet_map_col")
             .to(Value.json("{}"))
             .set("timestamp_set_col")
-            .to(Value.timestampArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("time_tinyint_map_col")
             .to(Value.json("{}"))
             .set("bigint_set_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("varchar_set_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("tinyint_set_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("bigint_boolean_map_col")
             .to(Value.json("{}"))
             .set("text_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("boolean_list_col")
-            .to(Value.boolArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("blob_list_col")
-            .to(Value.bytesArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("timeuuid_set_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("int_time_map_col")
             .to(Value.json("{}"))
             .set("time_set_col")
-            .to(Value.timestampArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("boolean_set_col")
-            .to(Value.boolArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("float_set_col")
-            .to(Value.float64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("ascii_set_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("uuid_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("varchar_bigint_map_col")
             .to(Value.json("{}"))
             .set("blob_int_map_col")
@@ -282,13 +281,13 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .set("varint_blob_map_col")
             .to(Value.json("{}"))
             .set("double_list_col")
-            .to(Value.float64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("float_list_col")
-            .to(Value.float64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("smallint_list_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("varint_list_col")
-            .to(Value.numericArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("float_smallint_map_col")
             .to(Value.json("{}"))
             .set("smallint_timestamp_map_col")
@@ -296,35 +295,35 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .set("text_timeuuid_map_col")
             .to(Value.json("{}"))
             .set("timeuuid_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("date_list_col")
-            .to(Value.dateArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("uuid_set_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("boolean_decimal_map_col")
             .to(Value.json("{}"))
             .set("blob_set_col")
-            .to(Value.bytesArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("inet_text_map_col")
             .to(Value.json("{}"))
             .set("varint_set_col")
-            .to(Value.numericArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("tinyint_list_col")
-            .to(Value.int64Array(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("timestamp_uuid_map_col")
             .to(Value.json("{}"))
             .set("decimal_duration_map_col")
             .to(Value.json("{}"))
             .set("decimal_list_col")
-            .to(Value.numericArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("inet_set_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("timeuuid_varchar_map_col")
             .to(Value.json("{}"))
             .set("duration_list_col")
-            .to(Value.stringArray(Collections.emptyList()))
+            .to(Value.json("[]"))
             .set("frozen_ascii_set_col")
-            .to(Value.stringArray(Collections.emptyList()));
+            .to(Value.json("[]"));
 
     Mutation mutation = mutationBuilder.build();
     spannerResourceManager.write(mutation);
@@ -337,13 +336,101 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
    *     condition.
    * @throws RuntimeException if reading from the Cassandra table fails.
    */
-  private void assertJSONEmptyRowInCassandraDB() throws InterruptedException {
+  private void assertJSONEmptyRowInCassandraDB()
+      throws InterruptedException, MultipleFailureException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> getRowCount(EMPTY_STRING_JSON_TABLE) == 1);
     assertThatResult(result).meetsConditions();
+
+    Iterable<Row> rows;
+    try {
+      rows = cassandraResourceManager.readTable(EMPTY_STRING_JSON_TABLE);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to read from Cassandra table: " + EMPTY_STRING_JSON_TABLE, e);
+    }
+
+    assertThat(rows).hasSize(1);
+    Row row = rows.iterator().next();
+    LOG.info("[AssertJSONEmptyRowInCassandraDB] row: {}", row.getFormattedContents());
+
+    assertAll(
+        () -> assertThat(row.getString("varchar_column")).isEqualTo("SampleVarchar"),
+        () -> assertThat(row.getString("empty_column")).isEmpty(),
+        () -> assertThat(row.getMap("double_float_map_col", Double.class, Float.class)).isEmpty(),
+        () ->
+            assertThat(row.getMap("date_double_map_col", LocalDate.class, Double.class)).isEmpty(),
+        () -> assertThat(row.getMap("uuid_ascii_map_col", UUID.class, String.class)).isEmpty(),
+        () -> assertThat(row.getMap("ascii_text_map_col", String.class, String.class)).isEmpty(),
+        () ->
+            assertThat(row.getMap("tinyint_varint_map_col", String.class, String.class)).isEmpty(),
+        () -> assertThat(row.getMap("time_tinyint_map_col", String.class, Byte.class)).isEmpty(),
+        () -> assertThat(row.getMap("bigint_boolean_map_col", Long.class, Boolean.class)).isEmpty(),
+        () -> assertThat(row.getMap("varchar_bigint_map_col", String.class, Long.class)).isEmpty(),
+        () -> assertThat(row.getMap("blob_int_map_col", ByteBuffer.class, Integer.class)).isEmpty(),
+        () ->
+            assertThat(row.getMap("varint_blob_map_col", String.class, ByteBuffer.class)).isEmpty(),
+        () -> assertThat(row.getMap("float_smallint_map_col", Float.class, Short.class)).isEmpty(),
+        () ->
+            assertThat(row.getMap("smallint_timestamp_map_col", Short.class, Instant.class))
+                .isEmpty(),
+        () -> assertThat(row.getMap("text_timeuuid_map_col", String.class, UUID.class)).isEmpty(),
+        () ->
+            assertThat(row.getMap("inet_text_map_col", InetAddress.class, String.class)).isEmpty(),
+        () -> assertThat(row.getMap("timestamp_uuid_map_col", String.class, UUID.class)).isEmpty(),
+        () ->
+            assertThat(row.getMap("boolean_decimal_map_col", Boolean.class, BigDecimal.class))
+                .isEmpty(),
+        () ->
+            assertThat(row.getMap("decimal_duration_map_col", BigDecimal.class, String.class))
+                .isEmpty(),
+        () ->
+            assertThat(row.getMap("double_inet_map_col", Double.class, InetAddress.class))
+                .isEmpty(),
+        () ->
+            assertThat(row.getMap("timeuuid_varchar_map_col", UUID.class, String.class)).isEmpty(),
+        () -> assertThat(row.getMap("int_time_map_col", Integer.class, String.class)).isEmpty(),
+        () -> assertThat(row.getList("timestamp_list_col", Instant.class)).isEmpty(),
+        () -> assertThat(row.getList("varchar_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("inet_list_col", InetAddress.class)).isEmpty(),
+        () -> assertThat(row.getList("bigint_list_col", Long.class)).isEmpty(),
+        () -> assertThat(row.getList("time_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("frozen_ascii_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("int_list_col", Integer.class)).isEmpty(),
+        () -> assertThat(row.getList("ascii_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("date_list_col", LocalDate.class)).isEmpty(),
+        () -> assertThat(row.getList("double_list_col", Double.class)).isEmpty(),
+        () -> assertThat(row.getList("float_list_col", Float.class)).isEmpty(),
+        () -> assertThat(row.getList("smallint_list_col", Short.class)).isEmpty(),
+        () -> assertThat(row.getList("varint_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("text_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("boolean_list_col", Boolean.class)).isEmpty(),
+        () -> assertThat(row.getList("blob_list_col", ByteBuffer.class)).isEmpty(),
+        () -> assertThat(row.getList("timeuuid_list_col", UUID.class)).isEmpty(),
+        () -> assertThat(row.getList("duration_list_col", String.class)).isEmpty(),
+        () -> assertThat(row.getList("decimal_list_col", BigDecimal.class)).isEmpty(),
+        () -> assertThat(row.getList("tinyint_list_col", Byte.class)).isEmpty(),
+        () -> assertThat(row.getSet("decimal_set_col", BigDecimal.class)).isEmpty(),
+        () -> assertThat(row.getSet("int_set_col", Integer.class)).isEmpty(),
+        () -> assertThat(row.getSet("smallint_set_col", Short.class)).isEmpty(),
+        () -> assertThat(row.getSet("text_set_col", String.class)).isEmpty(),
+        () -> assertThat(row.getSet("double_set_col", Double.class)).isEmpty(),
+        () -> assertThat(row.getSet("date_set_col", LocalDate.class)).isEmpty(),
+        () -> assertThat(row.getSet("timestamp_set_col", String.class)).isEmpty(),
+        () -> assertThat(row.getSet("bigint_set_col", Long.class)).isEmpty(),
+        () -> assertThat(row.getSet("varchar_set_col", String.class)).isEmpty(),
+        () -> assertThat(row.getSet("tinyint_set_col", Byte.class)).isEmpty(),
+        () -> assertThat(row.getSet("boolean_set_col", Boolean.class)).isEmpty(),
+        () -> assertThat(row.getSet("float_set_col", Float.class)).isEmpty(),
+        () -> assertThat(row.getSet("ascii_set_col", String.class)).isEmpty(),
+        () -> assertThat(row.getSet("uuid_set_col", UUID.class)).isEmpty(),
+        () -> assertThat(row.getSet("varint_set_col", String.class)).isEmpty(),
+        () -> assertThat(row.getSet("blob_set_col", ByteBuffer.class)).isEmpty(),
+        () -> assertThat(row.getSet("inet_set_col", InetAddress.class)).isEmpty(),
+        () -> assertThat(row.getSet("frozen_ascii_set_col", String.class)).isEmpty());
   }
 
   /**
