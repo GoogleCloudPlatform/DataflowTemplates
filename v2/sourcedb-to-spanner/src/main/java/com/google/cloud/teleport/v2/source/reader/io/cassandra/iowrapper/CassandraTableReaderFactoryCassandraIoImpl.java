@@ -25,11 +25,15 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.cassandra.CassandraIO;
-import org.apache.beam.sdk.io.cassandra.CassandraIO.Read;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO.Read;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+
+/* Todo(vardhanvthigle)
+ * Switch to upstream cassandra IO once the fix for https://github.com/apache/beam/issues/34160 is available in dataflow.
+ */
 
 /**
  * Generate Table Reader For Cassandra using the upstream {@link CassandraIO.Read} implementation.

@@ -45,7 +45,7 @@ import com.google.common.io.Resources;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
-import org.apache.beam.sdk.io.cassandra.CassandraIO;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Count;
