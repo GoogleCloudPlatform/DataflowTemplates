@@ -33,7 +33,11 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -46,6 +50,16 @@ class CassandraIOWrapperHelper {
   private static final Logger LOG = LoggerFactory.getLogger(CassandraIOWrapperHelper.class);
 
   static DataSource buildDataSource(String gcsPath) {
+    // DO NOT SUBMIT
+    try {
+      LOG.info(
+          "Extra Files are {}",
+          Files.list(Paths.get("/extra_files"))
+              .map(p -> p.getFileName())
+              .collect(Collectors.toList()));
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
     DataSource dataSource;
     try {
       dataSource =
