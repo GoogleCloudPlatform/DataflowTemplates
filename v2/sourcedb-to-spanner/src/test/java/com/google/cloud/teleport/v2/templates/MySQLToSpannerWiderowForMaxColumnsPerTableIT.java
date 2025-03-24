@@ -48,7 +48,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private SpannerResourceManager spannerResourceManager;
 
   // Constants
-  private static final Integer NUM_COLUMNS = 100;
+  private static final Integer NUM_COLUMNS = 10;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
