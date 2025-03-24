@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -31,8 +33,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 @Ignore("ignore due to long running")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
@@ -66,7 +66,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
   }
 
-  private String getMySQLSchema(){
+  private String getMySQLSchema() {
     StringBuilder tables = new StringBuilder();
     for (int i = 0; i < NUM_TABLES; i++) {
       tables.append("CREATE TABLE table").append(i).append(" (");
@@ -79,7 +79,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     return tables.toString();
   }
 
-  private String getSpannerSchema(){
+  private String getSpannerSchema() {
     StringBuilder tables = new StringBuilder();
     for (int i = 0; i < NUM_TABLES; i++) {
       tables.append("CREATE TABLE table").append(i).append(" (");
@@ -91,7 +91,6 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     }
     return tables.toString();
   }
-
 
   @Test
   public void testMySQLToSpannerMigration() throws Exception {
@@ -106,8 +105,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
             mySQLResourceManager,
             spannerResourceManager,
             null,
-            null
-        );
+            null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
   }
