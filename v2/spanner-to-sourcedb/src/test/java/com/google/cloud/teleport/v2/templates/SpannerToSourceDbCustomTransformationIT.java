@@ -162,11 +162,11 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
-    // Assert events on Mysql
+    // Assert insert events on Mysql
     assertRowInMySQLInserts();
     // Delete row in Spanner
-    deleteSpannerRow();
-    // Assert row deletion in Spanner
+    deleteRowInSpanner();
+    // Assert delete events on MySql
     assertRowInMySQLDelete();
   }
 
@@ -254,6 +254,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             .to("2024")
             .build();
     spannerResourceManager.write(m);
+    m = Mutation.delete("AllDatatypeTransformation", Key.of("example2"));
+    spannerResourceManager.write(m);
     m =
         Mutation.newInsertBuilder("AllDatatypeTransformation")
             .set("varchar_column")
@@ -336,11 +338,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     spannerResourceManager.write(m);
   }
 
-  private void deleteSpannerRow() {
-    Mutation m = Mutation.delete("AllDatatypeTransformation", Key.of("example2"));
-    spannerResourceManager.write(m);
-  }
-
   private void assertRowInMySQLInserts() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
@@ -355,7 +352,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount(TABLE2) == 3);
+                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
     assertThatResult(result).meetsConditions();
 
@@ -368,29 +365,29 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     rows =
         jdbcResourceManager.runSQLQuery(
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
-    assertThat(rows).hasSize(3);
-    assertThat(rows.get(2).get("varchar_column")).isEqualTo("example2");
-    assertThat(rows.get(2).get("bigint_column")).isEqualTo(1000);
-    assertThat(rows.get(2).get("binary_column"))
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
+    assertThat(rows.get(1).get("bigint_column")).isEqualTo(1000);
+    assertThat(rows.get(1).get("binary_column"))
         .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(2).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(2).get("blob_column"))
+    assertThat(rows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("blob_column"))
         .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(2).get("bool_column")).isEqualTo(true);
-    assertThat(rows.get(2).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
-    assertThat(rows.get(2).get("datetime_column"))
+    assertThat(rows.get(1).get("bool_column")).isEqualTo(true);
+    assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    assertThat(rows.get(1).get("datetime_column"))
         .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
-    assertThat(rows.get(2).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
-    assertThat(rows.get(2).get("double_column")).isEqualTo(123456.123);
-    assertThat(rows.get(2).get("enum_column")).isEqualTo("1");
-    assertThat(rows.get(2).get("float_column")).isEqualTo(12345.67f);
-    assertThat(rows.get(2).get("int_column")).isEqualTo(100);
-    assertThat(rows.get(2).get("text_column")).isEqualTo("Sample text for entry 2");
-    assertThat(rows.get(2).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
-    assertThat(rows.get(2).get("timestamp_column"))
+    assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
+    assertThat(rows.get(1).get("double_column")).isEqualTo(123456.123);
+    assertThat(rows.get(1).get("enum_column")).isEqualTo("1");
+    assertThat(rows.get(1).get("float_column")).isEqualTo(12345.67f);
+    assertThat(rows.get(1).get("int_column")).isEqualTo(100);
+    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
+    assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
+    assertThat(rows.get(1).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
-    assertThat(rows.get(2).get("tinyint_column")).isEqualTo(2);
-    assertThat(rows.get(2).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+    assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
+    assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
 
     assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
     assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346);
@@ -414,6 +411,17 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
     assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+
+    rows =
+        jdbcResourceManager.runSQLQuery(
+            String.format(
+                "select * from %s where %s like '%s'", TABLE2, "varchar_column", "example1"));
+    assertThat(rows).hasSize(0);
+  }
+
+  private void deleteRowInSpanner() {
+    Mutation m = Mutation.delete("AllDatatypeTransformation", Key.of("example2"));
+    spannerResourceManager.write(m);
   }
 
   private void assertRowInMySQLDelete() throws InterruptedException {
@@ -421,14 +429,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
-                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
+                () -> jdbcResourceManager.getRowCount(TABLE2) == 1);
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
     assertThatResult(result).meetsConditions();
-
-    List<Map<String, Object>> rows =
-        jdbcResourceManager.runSQLQuery(
-            String.format(
-                "select * from %s where %s like '%s'", TABLE2, "varchar_column", "example1"));
-    assertThat(rows).hasSize(0);
   }
 }
