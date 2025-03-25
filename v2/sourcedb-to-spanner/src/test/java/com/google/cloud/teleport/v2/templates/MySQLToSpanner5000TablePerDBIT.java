@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -45,10 +46,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
 
   // Reduced number of tables to prevent container crashes
   // You can gradually increase this value based on your environment's capacity
-  private static final int NUM_TABLES = 100; // Reduced from 5000
-  private static final int BATCH_SIZE = 10; // Create tables in batches of 10
-  private static final String COL_ID = "id";
-  private static final String COL_NAME = "name";
+  private static final int NUM_TABLES = 5000; // Reduced from 5000
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024;
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/5000TablePerDBIT/mysql-schema.sql";
@@ -88,5 +86,13 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
             null);
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
+
+    for (int i = 0; i < NUM_TABLES; i++) {
+      String tableName = "table" + i + 1;
+      assertEquals(
+          "Table " + tableName + " should have the same number of rows",
+          0,
+          spannerResourceManager.getRowCount(tableName).longValue());
+    }
   }
 }
