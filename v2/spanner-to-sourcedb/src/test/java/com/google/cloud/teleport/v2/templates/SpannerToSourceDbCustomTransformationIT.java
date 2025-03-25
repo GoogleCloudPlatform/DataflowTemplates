@@ -348,10 +348,10 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
 
     System.out.println("#########");
     System.out.println(jdbcResourceManager.getRowCount(TABLE2));
-    List<Map<String, Object>> rows_ =
+    List<Map<String, Object>> r =
         jdbcResourceManager.runSQLQuery(
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
-    for (Map<String, Object> row : rows_) {
+    for (Map<String, Object> row : r) {
       System.out.println(row.get("varchar_column"));
     }
 
