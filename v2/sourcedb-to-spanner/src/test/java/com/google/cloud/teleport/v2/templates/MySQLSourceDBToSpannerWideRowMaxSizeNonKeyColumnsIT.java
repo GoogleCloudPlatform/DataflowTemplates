@@ -21,10 +21,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.util.StringJoiner;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -33,12 +30,10 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
 
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
@@ -51,8 +46,10 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
 
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
-  private static final String MYSQL_DUMP_FILE_RESOURCE = "WideRow/MaxSizeNonKeyColumnIT/mysql-schema.sql";
-  private static final String SPANNER_SCHEMA_FILE_RESOURCE = "WideRow/MaxSizeNonKeyColumnIT/spanner-schema.sql";
+  private static final String MYSQL_DUMP_FILE_RESOURCE =
+      "WideRow/MaxSizeNonKeyColumnIT/mysql-schema.sql";
+  private static final String SPANNER_SCHEMA_FILE_RESOURCE =
+      "WideRow/MaxSizeNonKeyColumnIT/spanner-schema.sql";
 
   @Before
   public void setUp() {
