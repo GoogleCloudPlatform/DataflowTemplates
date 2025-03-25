@@ -48,7 +48,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
   private SpannerResourceManager spannerResourceManager;
 
   // Constants
-  private static final Integer NUM_NON_KEY_COLUMNS = 100;
+  private static final Integer NUM_NON_KEY_COLUMNS = 160;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
@@ -120,7 +120,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
 
     for (int i = 1; i < NUM_NON_KEY_COLUMNS; i++) {
       columnsJoiner.add("col" + i);
-      valuesJoiner.add("REPEAT('A', 16777215)");
+      valuesJoiner.add("REPEAT('A', 2621440)");
     }
 
     return String.format(
