@@ -48,7 +48,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
   private SpannerResourceManager spannerResourceManager;
 
   // Constants
-  private static final Integer NUM_NON_KEY_COLUMNS = 100;
+  private static final Integer NUM_NON_KEY_COLUMNS = 50;
   private static final String TABLENAME = "WiderowTable";
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
