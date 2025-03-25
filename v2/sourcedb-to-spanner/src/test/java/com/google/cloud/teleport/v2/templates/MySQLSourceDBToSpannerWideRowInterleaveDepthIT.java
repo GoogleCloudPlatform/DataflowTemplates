@@ -84,7 +84,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
       String tableName = "child" + i;
       assertEquals(
           "Interleaved depth " + i + " migrated",
-          0,
+          1,
           spannerResourceManager.getRowCount(tableName).longValue());
     }
   }
