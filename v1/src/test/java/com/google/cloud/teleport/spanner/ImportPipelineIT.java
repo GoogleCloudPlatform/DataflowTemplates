@@ -188,6 +188,9 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
       throws IOException {
     // Arrange
     uploadImportPipelineArtifacts("googlesql");
+    String setDefaultTimeZoneStatement =
+        "ALTER DATABASE db SET OPTIONS (default_time_zone = 'UTC')";
+    spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
     String createEmptyTableStatement =
         "CREATE TABLE EmptyTable (\n" + "  id INT64 NOT NULL,\n" + ") PRIMARY KEY(id)";
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
@@ -261,6 +264,8 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
       throws IOException {
     // Arrange
     uploadImportPipelineArtifacts("postgres");
+    String setDefaultTimeZoneStatement = "ALTER DATABASE db SET spanner.default_time_zone = 'UTC'";
+    spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
     String createEmptyTableStatement =
         "CREATE TABLE \"EmptyTable\" (\n" + "  id bigint NOT NULL,\nPRIMARY KEY(id)\n" + ")";
     spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
