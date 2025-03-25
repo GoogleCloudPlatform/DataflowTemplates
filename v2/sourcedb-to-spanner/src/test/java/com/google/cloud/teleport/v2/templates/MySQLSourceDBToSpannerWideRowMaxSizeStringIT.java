@@ -46,9 +46,9 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   public static SpannerResourceManager spannerResourceManager;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/mysql-schema.sql";
+      "WideRow/RowMaxSizeString/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
-      "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/spanner-schema.sql";
+      "WideRow/RowMaxSizeString/spanner-schema.sql";
   //  private static final String SESSION_FILE_RESOURCE =
   // "WideRow/MYSQLSourceDBToSpannerRowMaxSizeString/session.json";
   private static final String TABLE = "WideRowTable";
