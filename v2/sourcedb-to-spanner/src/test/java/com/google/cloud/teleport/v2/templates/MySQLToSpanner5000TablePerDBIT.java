@@ -20,6 +20,7 @@ import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import java.util.HashMap;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -52,6 +53,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
       "WideRow/5000TablePerDBIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/5000TablePerDBIT/spanner-schema.sql";
+  private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
 
   @Before
   public void setUp() {
@@ -82,8 +84,13 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            null,
+            new HashMap<String, String>() {
+              {
+                put("workerMachineType", WORKER_MACHINE_TYPE);
+              }
+            },
             null);
+
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 
