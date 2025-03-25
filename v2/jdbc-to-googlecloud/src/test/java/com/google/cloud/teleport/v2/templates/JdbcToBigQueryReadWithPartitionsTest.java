@@ -64,7 +64,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
         Statement statement = conn.createStatement()) {
       statement.execute(
           "CREATE TABLE book (BOOK_ID bigint primary key, TITLE varchar(128), SELL_TIME timestamp)");
-      statement.execute("INSERT INTO book VALUES (1, 'ABC', '2024-12-24 06:00:00.000')");
+      statement.execute("INSERT INTO book VALUES (1, 'ABC', '2024-12-24 06:00:00.000000Z')");
     }
 
     // setup BQ
