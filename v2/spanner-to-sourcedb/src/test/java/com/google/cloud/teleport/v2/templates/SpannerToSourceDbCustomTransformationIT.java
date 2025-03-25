@@ -254,8 +254,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             .to("2024")
             .build();
     spannerResourceManager.write(m);
-    m = Mutation.delete("AllDatatypeTransformation", Key.of("example2"));
-    spannerResourceManager.write(m);
     m =
         Mutation.newInsertBuilder("AllDatatypeTransformation")
             .set("varchar_column")
@@ -347,6 +345,14 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
 
     assertThatResult(result).meetsConditions();
+
+    System.out.println(jdbcResourceManager.getRowCount(TABLE2));
+    List<Map<String, Object>> rows_ =
+        jdbcResourceManager.runSQLQuery(
+            String.format("select * from %s order by %s", TABLE2, "varchar_column"));
+    for (Map<String, Object> row : rows_) {
+      System.out.println(row.get("varchar_column"));
+    }
 
     result =
         pipelineOperator()
