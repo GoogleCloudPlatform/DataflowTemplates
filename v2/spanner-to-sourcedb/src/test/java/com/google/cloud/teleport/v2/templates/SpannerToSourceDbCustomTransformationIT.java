@@ -346,6 +346,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
 
     assertThatResult(result).meetsConditions();
 
+    System.out.println("#########");
     System.out.println(jdbcResourceManager.getRowCount(TABLE2));
     List<Map<String, Object>> rows_ =
         jdbcResourceManager.runSQLQuery(
