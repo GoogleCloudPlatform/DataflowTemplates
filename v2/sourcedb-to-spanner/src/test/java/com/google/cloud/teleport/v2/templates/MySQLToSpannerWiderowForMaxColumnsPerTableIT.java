@@ -39,7 +39,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for testing MySQL to Spanner migration with wide tables (1024 columns). */
-@Ignore("ignore due to long running")
+@Ignore("test is completed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
