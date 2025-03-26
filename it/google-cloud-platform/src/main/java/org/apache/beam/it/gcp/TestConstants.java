@@ -15,4 +15,7 @@ public class TestConstants {
           "cloud-teleport-spanner-it-7",
           "cloud-teleport-spanner-it-8",
           "cloud-teleport-spanner-it-9");
+
+  public static final List<String> SPANNER_TEST_INSTANCES =
+      List.of("teleport", "teleport1", "teleport2", "teleport3", "teleport4");
 }
