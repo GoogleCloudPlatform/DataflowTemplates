@@ -15,11 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates.loadtesting;
 
+import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
+import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
+@Category(TemplateLoadTest.class)
+@TemplateLoadTest(SourceDbToSpanner.class)
+@RunWith(JUnit4.class)
 public class MySQLSourceDbToSpannerWideRow1600MBNonKeyColumnsLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
   private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
