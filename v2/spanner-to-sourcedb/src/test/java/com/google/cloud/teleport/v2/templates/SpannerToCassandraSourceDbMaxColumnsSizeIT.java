@@ -157,7 +157,7 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
     }
   }
 
-  /** Writes a row with 1,024 columns in Spanner and verifies replication to Cassandra. */
+  /** Writes a row with 159 columns in Spanner and verifies replication to Mysql. */
   @Test
   public void testSpannerToCassandraWithMaxInSizeColumns()
       throws InterruptedException, IOException {
