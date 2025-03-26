@@ -651,13 +651,17 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
-      if (System.getProperty("spannerInstanceId") != null) {
+      if (System.getProperty("spannerInstanceId") != null
+          && projectId == "cloud-teleport-testing") {
         this.useStaticInstance = true;
         List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
         Random random = new Random();
         int randomIndex = random.nextInt(instanceList.size());
         String randomInstanceName = instanceList.get(randomIndex);
         this.instanceId = randomInstanceName;
+      } else if (System.getProperty("spannerInstanceId") != null) {
+        this.useStaticInstance = true;
+        this.instanceId = System.getProperty("spannerInstanceId");
       }
       return this;
     }
