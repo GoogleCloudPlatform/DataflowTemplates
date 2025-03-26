@@ -86,6 +86,9 @@ public class SpannerServerResource extends ExternalResource {
     if (!client.isClosed()) {
       client.close();
     }
+    if (!instanceAdminClient.isShutdown()) {
+      instanceAdminClient.shutdown();
+    }
   }
 
   private Database buildDatabase(String dbName, ByteString protoDescriptors) {
