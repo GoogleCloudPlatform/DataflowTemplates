@@ -241,6 +241,8 @@ Please ensure that the Cassandra Cluster you are migrating from is healthy and t
 #### Prerequisite-4: Spanner
 You will need to provision a spanner database where you would like to migrate the data. The database would need to have tables with a schema that maps to the schema on the source.
 The tables which are present both on Spanner and Cassandra would be the ones that are migrated.
+#### Prerequisite-5: GCS
+You would need a GCS bucket to stage your build, driver configuration file, and provide an output directory for DLQs.
 ### Run Migration
 
 **Using the staged template**:
@@ -254,10 +256,17 @@ need valid resources for the required parameters.
 Provided that, the following command line can be used:
 
 ```shell
+### Basic Job Paramters
 export PROJECT=<your-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
+### The number of works controls the fanout of dataflow job to read from Cassandra.
+### While you might need to finetune this for best performance, a number close to number of nodes on Cassandra Cluster might be good place to start.
+export MAX_WORKERS="<MAX_NUMBER_OF_DATAFLOW_WORKERS_TO_READ_FROM_CASSANDRA>"
+export NUM_WORKERS="<INITIAL_NUMBER_OF_DATAFLOW_WORKERS_TO_READ_FROM_CASSANDRA>"
+### The type of machine. `e2-standard-32` might be good starting point for most use cases.
+eport  MACHINE_TYPE="<WORKER_MACHINE_TYPE>"
 
 ### Required
 export SOURCE_CONFIG_URL=<gs://path/to/Cassandra-Driver-Config-File>
@@ -291,6 +300,9 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --network "$NETWORK"
+  --max-workers "$MAX_WORKERS"
+  --num-workers "$NUM_WORKERS"
+  --worker-machine-type "$MACHINE_TYPE"
   --subnetwork "$SUBNETWORK"
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "sourceDbDialect=CASSANDRA" \
@@ -308,7 +320,16 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
 
 For more information about the command, please check:
 https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
-
+### Troubleshooting Cassandra Bulk Migration.
+#### Read Timeout
+It's possible that long-running range reads cause Read timeouts on Cassandra servers.
+This would appear as `com.datastax.driver.core.exceptions.ReadTimeoutException` in the worker logs.
+In case your job fails due to many exceptions like the above, here are a few steps you can follow for mitigation:
+1. Increase the timeouts in the driver configuration file which are described in the [configuration-file](#prerequisite-2--configuration-file) section above.
+2. Increase read_request_timeout and range_request_timeout on the server side.
+3. In case the iops, or, data throughput of the dataflow job is close to the max throughput supported by your cassandra cluster, consider reducing  `maxWorkers` to limit the fanout of the dataflow job.
+#### Throughput on Spanner raises and falls in sharp bursts
+It's possible that the default configuration could lead to spanner throughput raise and fall in sharp bursts. In case this is observed, you can disable spanner batch writes by setting `batchSizeForSpannerMutations` as 0.
 
 
 ## Terraform

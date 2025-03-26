@@ -66,6 +66,9 @@ public class CassandraDataSourceTest {
                 .getDefaultProfile()
                 .getString(TypedDriverOption.AUTH_PROVIDER_PASSWORD.getRawOption()))
         .isEqualTo("test");
+    assertThat(cassandraDataSource.numPartitions()).isNull();
+    assertThat(cassandraDataSource.toBuilder().setNumPartitions(42).build().numPartitions())
+        .isEqualTo(42);
   }
 
   @Test

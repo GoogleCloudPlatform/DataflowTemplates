@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -36,8 +37,9 @@ public final class CassandraIoWrapper implements IoWrapper {
   private ImmutableMap<SourceTableReference, PTransform<PBegin, PCollection<SourceRow>>>
       tableReaders;
 
-  public CassandraIoWrapper(String gcsPath, List<String> sourceTables) {
-    DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(gcsPath);
+  public CassandraIoWrapper(
+      String gcsPath, List<String> sourceTables, @Nullable Integer numPartitions) {
+    DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(gcsPath, numPartitions);
     SchemaDiscovery schemaDiscovery = CassandraIOWrapperHelper.buildSchemaDiscovery();
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(

@@ -88,7 +88,28 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
             .withCoder(SerializableCoder.of(SourceRow.class))
             .withMapperFactoryFn(
                 CassandraSourceRowMapperFactoryFn.create(cassandraSourceRowMapper));
-    return setCredentials(tableReader, profile);
+    return setNumPartitions(
+        setCredentials(tableReader, profile), cassandraDataSource, sourceTableSchema.tableName());
+  }
+
+  @VisibleForTesting
+  protected static CassandraIO.Read<SourceRow> setNumPartitions(
+      CassandraIO.Read<SourceRow> tableReader, CassandraDataSource dataSource, String tableName) {
+    Integer numPartitions = dataSource.numPartitions();
+    if (numPartitions != null && numPartitions > 0) {
+      LOG.info(
+          "Setting numPartitions as {} for DataSource {}, tableName {}",
+          numPartitions,
+          dataSource,
+          tableName);
+      return tableReader.withMinNumberOfSplits(numPartitions);
+    } else {
+      LOG.info(
+          "numPartitions would be auto Inferred to number of hosts, for DataSource {}, tableName {}",
+          dataSource,
+          tableName);
+      return tableReader;
+    }
   }
 
   @VisibleForTesting
