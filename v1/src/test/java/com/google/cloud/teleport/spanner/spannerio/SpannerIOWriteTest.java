@@ -330,7 +330,7 @@ public class SpannerIOWriteTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SINK),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     PROJECT_NAME,
@@ -360,7 +360,7 @@ public class SpannerIOWriteTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SINK),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     PROJECT_NAME,
@@ -390,7 +390,7 @@ public class SpannerIOWriteTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SINK),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     DEFAULT_PROJECT,
@@ -423,7 +423,7 @@ public class SpannerIOWriteTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SINK),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     DEFAULT_PROJECT,
@@ -453,7 +453,7 @@ public class SpannerIOWriteTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SINK),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     PROJECT_NAME,
@@ -489,7 +489,7 @@ public class SpannerIOWriteTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SINK),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     PROJECT_NAME,
