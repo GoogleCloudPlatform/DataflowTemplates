@@ -48,9 +48,9 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.63.0</beam.version>
-    <beam-python.version>2.63.0</beam-python.version>
-    <beam-maven-repo></beam-maven-repo>
+    <beam.version>2.64.0</beam.version>
+    <beam-python.version>2.64.0rc2</beam-python.version>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1402</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
@@ -84,7 +84,7 @@
     <truth.version>1.1.5</truth.version>
 
     <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.57.0</gax.version>
+    <gax.version>2.59.1</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -737,7 +737,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <activeByDefault>false</activeByDefault>
+        <jdk>[1.)</jdk>
       </activation>
       <repositories>
         <repository>

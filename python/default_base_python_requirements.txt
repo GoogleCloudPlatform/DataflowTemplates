@@ -1,2 +1,2 @@
-apache-beam[gcp]
+apache-beam[gcp]==2.64.0rc2
 setuptools
