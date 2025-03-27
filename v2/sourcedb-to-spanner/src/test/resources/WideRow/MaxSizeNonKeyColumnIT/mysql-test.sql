@@ -40,33 +40,14 @@ col37 MEDIUMTEXT,
 col38 MEDIUMTEXT,
 col39 MEDIUMTEXT,
 col40 MEDIUMTEXT,
-col41 MEDIUMTEXT,
-col42 MEDIUMTEXT,
-col43 MEDIUMTEXT,
-col44 MEDIUMTEXT,
-col45 MEDIUMTEXT,
-col46 MEDIUMTEXT,
-col47 MEDIUMTEXT,
-col48 MEDIUMTEXT,
-col49 MEDIUMTEXT,
-col50 MEDIUMTEXT
+col41 MEDIUMTEXT
 );
 
 INSERT INTO MaxNonKeyTable (
-id, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14, col15, col16, col17, col18, col19, col20, col21, col22, col23, col24, col25, col26, col27, col28, col29, col30, col31, col32, col33, col34, col35, col36, col37, col38, col39, col40, col41, col42, col43, col44, col45, col46, col47, col48, col49, col50
+id, col1, col2, col3, col4, col5, col6, col7, col8, col9, col10, col11, col12, col13, col14, col15, col16, col17, col18, col19, col20, col21, col22, col23, col24, col25, col26, col27, col28, col29, col30, col31, col32, col33, col34, col35, col36, col37, col38, col39, col40
 )
 VALUES (
 1,
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
-REPEAT('A', 2621440),
 REPEAT('A', 2621440),
 REPEAT('A', 2621440),
 REPEAT('A', 2621440),
