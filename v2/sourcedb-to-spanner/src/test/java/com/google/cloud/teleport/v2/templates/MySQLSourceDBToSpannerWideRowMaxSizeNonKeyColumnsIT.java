@@ -84,6 +84,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
             new HashMap<String, String>() {
               {
                 put("workerMachineType", WORKER_MACHINE_TYPE);
+                put("numPartitions","1000");
               }
             },
             null);
