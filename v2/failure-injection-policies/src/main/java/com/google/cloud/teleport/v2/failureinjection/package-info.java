@@ -13,23 +13,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.spanner.service;
 
-import com.google.cloud.ServiceFactory;
-import com.google.cloud.spanner.Spanner;
-import com.google.cloud.spanner.SpannerOptions;
-import java.io.Serializable;
-
-public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, Serializable {
-
-  public SpannerService(String parameter) {}
-
-  @Override
-  public Spanner create(SpannerOptions spannerOptions) {
-
-    SpannerOptions.Builder builder = spannerOptions.toBuilder();
-    builder.setServiceFactory(null);
-
-    return builder.build().getService();
-  }
-}
+/** Package containing Failure injection policies. */
+package com.google.cloud.teleport.v2.failureinjection;

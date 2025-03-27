@@ -19,6 +19,8 @@ import com.google.cloud.ServiceFactory;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.spi.v1.SpannerInterceptorProvider;
+import com.google.cloud.teleport.v2.failureinjection.ErrorInjectionPolicy;
+import com.google.cloud.teleport.v2.failureinjection.ErrorInjectionPolicyFactory;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -33,11 +35,8 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.cloud.teleport.v2.failureInjection.ErrorInjectionPolicyFactory;
-import com.google.cloud.teleport.v2.failureInjection.ErrorInjectionPolicy;
 
-public class SpannerService
-    implements ServiceFactory<Spanner, SpannerOptions>, Serializable {
+public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerService.class);
 
@@ -107,7 +106,8 @@ public class SpannerService
   @Override
   public Spanner create(SpannerOptions spannerOptions) {
     SpannerInterceptorProvider interceptorProvider =
-        SpannerInterceptorProvider.createDefault().with(new GrpcErrorInjector(errorInjectionPolicy));
+        SpannerInterceptorProvider.createDefault()
+            .with(new GrpcErrorInjector(errorInjectionPolicy));
 
     SpannerOptions.Builder builder = spannerOptions.toBuilder();
     builder.setInterceptorProvider(interceptorProvider);
