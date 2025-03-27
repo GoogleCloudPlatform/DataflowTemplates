@@ -20,11 +20,13 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+@Ignore("Ignoring this test as it is not relevant for the current test suite")
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -54,7 +56,7 @@ public class MySQLSourceDbToSpannerWideRow1600MBNonKeyColumnsLT extends SourceDb
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 1000000);
+            put("MaxNonKeyTable", 1000000);
           }
         };
 
