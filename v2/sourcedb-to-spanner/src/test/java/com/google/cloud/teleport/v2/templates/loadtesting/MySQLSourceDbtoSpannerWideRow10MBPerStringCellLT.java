@@ -67,11 +67,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerStringCellLT extends SourceDbTo
         };
 
     Map<String, String> env =
-        new HashMap<>() {
-          {
-            //            put("launchMachineType", LAUNCHER_MACHINE_TYPE);
-          }
-        };
+        new HashMap<>() {};
 
     runLoadTest(expectedCountPerTable, params, env);
   }

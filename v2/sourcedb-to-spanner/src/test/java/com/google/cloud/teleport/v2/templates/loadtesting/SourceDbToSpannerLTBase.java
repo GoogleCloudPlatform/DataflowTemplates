@@ -49,7 +49,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
 
   private static final String SPEC_PATH =
       "gs://dataflow-templates/latest/flex/Sourcedb_to_Spanner_Flex";
-  private static final int SPANNER_NODE_COUNT = 10;
+  private static final int SPANNER_NODE_COUNT = 1;
 
   private static final int MAX_WORKERS = 100;
 
