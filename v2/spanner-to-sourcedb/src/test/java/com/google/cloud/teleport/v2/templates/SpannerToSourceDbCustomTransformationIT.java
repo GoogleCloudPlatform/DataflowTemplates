@@ -352,6 +352,14 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                   List<Map<String, Object>> rows =
                       jdbcResourceManager.runSQLQuery(
                           String.format("select * from %s order by %s", TABLE2, "varchar_column"));
+                  System.out.println("#########");
+                  System.out.println(jdbcResourceManager.getRowCount(TABLE2));
+                  for (Map<String, Object> r : rows) {
+                    for (Map.Entry<String, Object> entry : r.entrySet()) {
+                      System.out.println("Key: " + entry.getKey() + ", Value: " + entry.getValue());
+                    }
+                  }
+                  System.out.println();
                   return jdbcResourceManager.getRowCount(TABLE2) == 2 && checkCondition(rows);
                 });
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
