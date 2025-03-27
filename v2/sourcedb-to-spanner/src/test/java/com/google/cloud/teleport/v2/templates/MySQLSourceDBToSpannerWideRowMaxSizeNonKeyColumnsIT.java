@@ -47,9 +47,9 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
   private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
   private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/MaxSizeNonKeyColumnIT/mysql-schema.sql";
+      "WideRow/MaxSizeNonKeyColumnIT/mysql-test.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
-      "WideRow/MaxSizeNonKeyColumnIT/spanner-schema.sql";
+      "WideRow/MaxSizeNonKeyColumnIT/spanner-test.sql";
 
   @Before
   public void setUp() {
