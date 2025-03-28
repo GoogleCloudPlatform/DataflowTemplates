@@ -31,7 +31,7 @@ public class Shard implements Serializable {
   private String namespace;
   private String secretManagerUri;
   private String connectionProperties;
-  private String isShardedMigration;
+  private Boolean isShardedMigration;
 
   private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
 
@@ -45,7 +45,7 @@ public class Shard implements Serializable {
       String namespace,
       String secretManagerUri,
       String connectionProperties,
-      String isShardedMigration) {
+      Boolean isShardedMigration) {
     this.logicalShardId = logicalShardId;
     this.host = host;
     this.port = port;
@@ -135,8 +135,14 @@ public class Shard implements Serializable {
   public Map<String, String> getDbNameToLogicalShardIdMap() {
     return dbNameToLogicalShardIdMap;
   }
-  public String getIsShardedMigration() { return isShardedMigration;}
-  public void setIsShardedMigration(String isShardedMigration) {this.isShardedMigration = isShardedMigration;}
+
+  public Boolean getIsShardedMigration() {
+    return isShardedMigration;
+  }
+
+  public void setIsShardedMigration(Boolean isShardedMigration) {
+    this.isShardedMigration = isShardedMigration;
+  }
 
   @Override
   public String toString() {

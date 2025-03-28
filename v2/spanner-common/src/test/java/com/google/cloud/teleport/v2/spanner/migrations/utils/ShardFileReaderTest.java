@@ -64,7 +64,31 @@ public final class ShardFileReaderTest {
                 "test",
                 null,
                 null,
-                "jdbcCompliantTruncation=true"));
+                "jdbcCompliantTruncation=true",
+                false));
+
+    assertEquals(shards, expectedShards);
+  }
+
+  @Test
+  public void shardFileWithSingleShard() {
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    List<Shard> shards =
+        shardFileReader.getOrderedShardDetails(
+            "src/test/resources/single-shard-with-sharding.json");
+    List<Shard> expectedShards =
+        Arrays.asList(
+            new Shard(
+                "shardA",
+                "hostShardA",
+                "3306",
+                "test",
+                "test",
+                "test",
+                "namespaceA",
+                null,
+                "jdbcCompliantTruncation=true",
+                true));
 
     assertEquals(shards, expectedShards);
   }
@@ -104,7 +128,8 @@ public final class ShardFileReaderTest {
                 "test",
                 "namespaceA",
                 "projects/123/secrets/secretA/versions/latest",
-                null),
+                null,
+                false),
             new Shard(
                 "shardB",
                 "hostShardB",
@@ -114,7 +139,8 @@ public final class ShardFileReaderTest {
                 "test",
                 null,
                 "projects/123/secrets/secretB",
-                null),
+                null,
+                false),
             new Shard(
                 "shardC",
                 "hostShardC",
@@ -124,8 +150,10 @@ public final class ShardFileReaderTest {
                 "test",
                 "namespaceC",
                 "projects/123/secrets/secretC/",
-                null),
-            new Shard("shardD", "hostShardD", "3306", "test", "test", "test", null, null, null));
+                null,
+                false),
+            new Shard(
+                "shardD", "hostShardD", "3306", "test", "test", "test", null, null, null, false));
 
     assertEquals(shards, expectedShards);
   }
@@ -178,10 +206,11 @@ public final class ShardFileReaderTest {
             "",
             "namespace1",
             null,
-            testConnectionProperties);
+            testConnectionProperties,
+            false);
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     shard1.getDbNameToLogicalShardIdMap().put("person2", "1-1-1-1-person2");
-    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "pass1", "", null, null, "");
+    Shard shard2 = new Shard("", "1.1.1.2", "3306", "test1", "pass1", "", null, null, "", false);
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
@@ -218,7 +247,8 @@ public final class ShardFileReaderTest {
             "",
             null,
             "projects/123/secrets/secretA/versions/latest",
-            "");
+            "",
+            false);
     shard1.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-1-person");
     shard1.getDbNameToLogicalShardIdMap().put("person2", "1-1-1-1-person2");
     Shard shard2 =
@@ -231,7 +261,8 @@ public final class ShardFileReaderTest {
             "",
             null,
             "projects/123/secrets/secretB/versions/latest",
-            "");
+            "",
+            false);
     shard2.getDbNameToLogicalShardIdMap().put("person1", "1-1-1-2-person");
     shard2.getDbNameToLogicalShardIdMap().put("person20", "1-1-1-2-person2");
     List<Shard> expectedShards = new ArrayList<>(Arrays.asList(shard1, shard2));
