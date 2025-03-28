@@ -204,8 +204,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
             options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
 
-    List<javax.swing.text.TableView.TableRow> rows =
-        fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
+    List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
     assertThat(rows.get(0).get("BOOK_ID")).isEqualTo(1);
