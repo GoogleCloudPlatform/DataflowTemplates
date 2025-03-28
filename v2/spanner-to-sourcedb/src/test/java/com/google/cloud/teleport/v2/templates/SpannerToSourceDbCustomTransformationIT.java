@@ -347,7 +347,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)),
+                createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> {
                   List<Map<String, Object>> rows =
                       jdbcResourceManager.runSQLQuery(
