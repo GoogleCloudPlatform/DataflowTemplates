@@ -30,13 +30,11 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("Ignore this test as it is not able to load 1600MB of row data into Spanner")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -46,8 +44,8 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
-  private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
+  private static final int MAX_ALLOWED_PACKET = 1073741824; // 128 MiB
+  private static final String WORKER_MACHINE_TYPE = "n2-standard-8";
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/MaxSizeNonKeyColumnIT/mysql-test.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
