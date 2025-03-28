@@ -77,6 +77,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn("DMLGeneratorRequest is null. Cannot process the request.");
       return new DMLGeneratorResponse("");
     }
+    LOG.info("DMLGeneratorRequest is {}", dmlGeneratorRequest);
 
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     Schema schema = dmlGeneratorRequest.getSchema();
