@@ -359,7 +359,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                       System.out.println("Key: " + entry.getKey() + ", Value: " + entry.getValue());
                     }
                   }
-                  System.out.println();
+                  System.out.println("count");
+                  System.out.println(jdbcResourceManager.getRowCount(TABLE2) == 2);
                   return jdbcResourceManager.getRowCount(TABLE2) == 2 && checkCondition(rows);
                 });
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
@@ -429,6 +430,47 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   boolean checkCondition(List<Map<String, Object>> rows) {
+    System.out.println(
+        "varchar_column "
+            + rows.get(1).get("varchar_column").equals("example2")
+            + "bigint_column "
+            + rows.get(1).get("bigint_column").equals(1000)
+            + "binary_column "
+            + rows.get(1).get("binary_column").equals("bin_column".getBytes(StandardCharsets.UTF_8))
+            + "bit_column "
+            + rows.get(1).get("bit_column").equals("1".getBytes(StandardCharsets.UTF_8))
+            + "blob_column "
+            + rows.get(1).get("blob_column").equals("blob_column".getBytes(StandardCharsets.UTF_8))
+            + "bool_column "
+            + rows.get(1).get("bool_column").equals(true)
+            + "date_column "
+            + rows.get(1).get("date_column").equals(java.sql.Date.valueOf("2024-01-01"))
+            + "datetime_column "
+            + rows.get(1)
+                .get("datetime_column")
+                .equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56))
+            + "decimal_column "
+            + rows.get(1).get("decimal_column").equals(new BigDecimal("99999.99"))
+            + "double_column "
+            + rows.get(1).get("double_column").equals(123456.123)
+            + "enum_column "
+            + rows.get(1).get("enum_column").equals("1")
+            + "float_column "
+            + rows.get(1).get("float_column").equals(12345.67f)
+            + "int_column "
+            + rows.get(1).get("int_column").equals(100)
+            + "text_column "
+            + rows.get(1).get("text_column").equals("Sample text for entry 2")
+            + "time_column "
+            + rows.get(1).get("time_column").equals(java.sql.Time.valueOf("14:30:00"))
+            + "timestamp_column "
+            + rows.get(1)
+                .get("timestamp_column")
+                .equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"))
+            + "tinyint_column "
+            + rows.get(1).get("tinyint_column").equals(2)
+            + "year_column "
+            + rows.get(1).get("year_column").equals(java.sql.Date.valueOf("2024-01-01")));
     return rows.get(1).get("varchar_column").equals("example2")
         && rows.get(1).get("bigint_column").equals(1000)
         && rows.get(1).get("binary_column").equals("bin_column".getBytes(StandardCharsets.UTF_8))
