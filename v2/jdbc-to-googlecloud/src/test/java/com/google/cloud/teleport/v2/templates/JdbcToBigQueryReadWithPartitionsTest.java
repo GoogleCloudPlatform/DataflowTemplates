@@ -121,8 +121,8 @@ public class JdbcToBigQueryReadWithPartitionsTest {
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
-    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
-    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
+    assertThat(rows.get(0).get("BOOK_ID")).isEqualTo(1);
+    assertThat(rows.get(0).get("TITLE")).isEqualTo("ABC");
   }
 
   @Test
@@ -136,8 +136,8 @@ public class JdbcToBigQueryReadWithPartitionsTest {
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
-    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
-    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
+    assertThat(rows.get(0).get("BOOK_ID")).isEqualTo(1);
+    assertThat(rows.get(0).get("TITLE")).isEqualTo("ABC");
   }
 
   @Test
@@ -155,8 +155,8 @@ public class JdbcToBigQueryReadWithPartitionsTest {
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
-    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
-    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
+    assertThat(rows.get(0).get("BOOK_ID")).isEqualTo(1);
+    assertThat(rows.get(0).get("TITLE")).isEqualTo("ABC");
   }
 
   @Test
@@ -188,8 +188,8 @@ public class JdbcToBigQueryReadWithPartitionsTest {
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
-    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
-    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
+    assertThat(rows.get(0).get("BOOK_ID")).isEqualTo(1);
+    assertThat(rows.get(0).get("TITLE")).isEqualTo("ABC");
   }
 
   @Test
@@ -208,8 +208,8 @@ public class JdbcToBigQueryReadWithPartitionsTest {
         fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
-    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
-    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
+    assertThat(rows.get(0).get("BOOK_ID")).isEqualTo(1);
+    assertThat(rows.get(0).get("TITLE")).isEqualTo("ABC");
   }
 
   @Test
