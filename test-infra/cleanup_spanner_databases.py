@@ -11,7 +11,7 @@ def delete_old_spanner_databases():
       create_time = database.create_time
       if create_time:
         time_difference = datetime.datetime.now(datetime.UTC) - create_time
-        if time_difference > datetime.timedelta(hours=5):
+        if time_difference > datetime.timedelta(hours=20):
           print(f"Deleting database {database.name} in instance {instance_id}")
           try:
             database_id = database.name.split('/')[-1]
