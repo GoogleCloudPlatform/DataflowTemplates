@@ -84,7 +84,10 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     spannerResourceManager =
-        SpannerResourceManager.builder(testName, PROJECT, REGION).maybeUseStaticInstance().build();
+        SpannerResourceManager.builder(testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .useCustomHost(SpannerResourceManager.DEFAULT_SPANNER_HOST)
+            .build();
     bigQueryResourceManager =
         BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
