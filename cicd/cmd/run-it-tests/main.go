@@ -72,10 +72,10 @@ func main() {
 		flags.RetryFailures(),
 		// flags.StaticOracleHost(),
 		// flags.StaticOracleSysPassword(),
-		// flags.CloudProxyHost(),
-		// flags.CloudProxyMySqlPort(),
-		// flags.CloudProxyPostgresPort(),
-		// flags.CloudProxyPassword(),
+		flags.CloudProxyHost(),
+		flags.CloudProxyMySqlPort(),
+// 		flags.CloudProxyPostgresPort(),
+		flags.CloudProxyPassword(),
 		flags.UnifiedWorkerHarnessContainerImage())
 		// flags.CloudProxyPassword())
 	if err != nil {

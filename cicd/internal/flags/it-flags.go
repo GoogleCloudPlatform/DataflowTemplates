@@ -34,9 +34,11 @@ var (
 	dReleaseMode                        bool
 	dRetryFailures                      string
 	dCloudProxyHost                     string
+	dCloudProxyPort                     string
+	dCloudProxyUsername                 string
+	dCloudProxyPassword                 string
 	dCloudProxyMySqlPort                string
 	dCloudProxyPostgresPort             string
-	dCloudProxyPassword                 string
 	dOracleHost                         string
 	dCloudOracleSysPassword             string
 	dUnifiedWorkerHarnessContainerImage string
@@ -53,10 +55,12 @@ func RegisterItFlags() {
 	flag.StringVar(&dSpannerHost, "it-spanner-host", "", "(optional) A custom endpoint to override Spanner API requests")
 	flag.BoolVar(&dReleaseMode, "it-release", false, "(optional) Set if tests are being executed for a release")
 	flag.StringVar(&dRetryFailures, "it-retry-failures", "0", "Number of retries attempts for failing tests")
-	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "10.128.0.34", "Hostname or IP address of static Cloud Auth Proxy")
-	flag.StringVar(&dCloudProxyMySqlPort, "it-cloud-proxy-mysql-port", "33134", "MySql port number on static Cloud Auth Proxy")
-	flag.StringVar(&dCloudProxyPostgresPort, "it-cloud-proxy-postgres-port", "33136", "Postgres port number on static Cloud Auth Proxy")
-	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyHost, "it-cloud-proxy-host", "34.100.173.155", "Hostname or IP address of static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPort, "it-cloud-proxy-port", "3306", "MySql port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyMySqlPort, "it-cloud-proxy-mysql-port", "3306", "MySql port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPostgresPort, "it-cloud-proxy-postgress-port", "5432", "MySql port number on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyUsername, "it-cloud-proxy-mysql-user-name", "ollion", "Mysql User name on static Cloud Auth Proxy")
+	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "Ollion@2025", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
@@ -133,11 +137,19 @@ func CloudProxyHost() string {
 }
 
 func CloudProxyMySqlPort() string {
-	return "-DcloudProxyMySqlPort=" + dCloudProxyMySqlPort
+	return "-DcloudProxyMySqlPort=" + dCloudProxyPort
 }
 
 func CloudProxyPostgresPort() string {
 	return "-DcloudProxyPostgresPort=" + dCloudProxyPostgresPort
+}
+
+func CloudProxyPort() string {
+	return "-DcloudProxyPort=" + dCloudProxyPort
+}
+
+func CloudProxyUsername() string {
+	return "-DcloudProxyUsername=" + dCloudProxyUsername
 }
 
 func CloudProxyPassword() string {
