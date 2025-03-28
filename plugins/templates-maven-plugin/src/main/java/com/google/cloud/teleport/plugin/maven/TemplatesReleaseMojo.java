@@ -170,52 +170,42 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         return;
       }
 
+      LOG.info("Staging {} templates", templateDefinitions.size());
+      String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
+      if (stagePrefix == null || stagePrefix.isEmpty()) {
+        throw new IllegalArgumentException("Stage Prefix must be informed for releases");
+      }
+      TemplatesStageMojo configuredMojo =
+          new TemplatesStageMojo(
+              project,
+              session,
+              outputDirectory,
+              outputClassesDirectory,
+              resourcesDirectory,
+              targetDirectory,
+              projectId,
+              templateName,
+              bucketName,
+              librariesBucketName,
+              stagePrefix,
+              useRegion,
+              artifactRegion,
+              gcpTempLocation,
+              baseContainerImage,
+              basePythonContainerImage,
+              pythonTemplateLauncherEntryPoint,
+              javaTemplateLauncherEntryPoint,
+              pythonVersion,
+              beamVersion,
+              artifactRegistry,
+              stagingArtifactRegistry,
+              unifiedWorker,
+              generateSBOM);
+      final boolean validateFlag = true;
+      configuredMojo.stageTemplates(templateDefinitions, pluginManager, validateFlag);
       for (TemplateDefinitions definition : templateDefinitions) {
-
-        ImageSpec imageSpec = definition.buildSpecModel(true);
-        String currentTemplateName = imageSpec.getMetadata().getName();
-
-        if (stagePrefix == null || stagePrefix.isEmpty()) {
-          throw new IllegalArgumentException("Stage Prefix must be informed for releases");
-        }
-
-        LOG.info("Staging template {}...", currentTemplateName);
-
-        String useRegion = StringUtils.isNotEmpty(region) ? region : "us-central1";
-
-        // TODO: is there a better way to get the plugin on the _same project_?
-        TemplatesStageMojo configuredMojo =
-            new TemplatesStageMojo(
-                project,
-                session,
-                outputDirectory,
-                outputClassesDirectory,
-                resourcesDirectory,
-                targetDirectory,
-                projectId,
-                templateName,
-                bucketName,
-                librariesBucketName,
-                stagePrefix,
-                useRegion,
-                artifactRegion,
-                gcpTempLocation,
-                baseContainerImage,
-                basePythonContainerImage,
-                pythonTemplateLauncherEntryPoint,
-                javaTemplateLauncherEntryPoint,
-                pythonVersion,
-                beamVersion,
-                artifactRegistry,
-                stagingArtifactRegistry,
-                unifiedWorker,
-                generateSBOM);
-
-        String templatePath = configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
-
+        ImageSpec imageSpec = definition.buildSpecModel(validateFlag);
         if (!definition.getTemplateAnnotation().stageImageOnly()) {
-          LOG.info("Template staged: {}", templatePath);
-
           // Export the specs for collection
           generator.saveMetadata(definition, imageSpec.getMetadata(), targetDirectory);
           if (definition.isFlex()) {

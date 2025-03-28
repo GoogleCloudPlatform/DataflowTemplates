@@ -38,6 +38,7 @@ import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import dev.failsafe.Failsafe;
 import dev.failsafe.RetryPolicy;
 import freemarker.template.TemplateException;
@@ -81,7 +82,7 @@ import org.twdata.maven.mojoexecutor.MojoExecutor.Element;
  *
  * <p>The process is different for Classic Templates and Flex Templates, please check {@link
  * #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and {@link
- * #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)}, respectively.
+ * #stageFlexTemplates(List, String, BuildPluginManager)}, respectively.
  */
 @Mojo(
     name = "stage",
@@ -266,8 +267,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       List<TemplateDefinitions> templateDefinitions =
           TemplateDefinitionsParser.scanDefinitions(loader);
       for (TemplateDefinitions definition : templateDefinitions) {
-
-        ImageSpec imageSpec = definition.buildSpecModel(false);
         String currentTemplateName = definition.getTemplateAnnotation().name();
         String currentDisplayName = definition.getTemplateAnnotation().displayName();
 
@@ -281,7 +280,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         }
 
         LOG.info("Staging template {}...", currentTemplateName);
-        stageTemplate(definition, imageSpec, pluginManager);
+        stageTemplate(definition, pluginManager, false);
       }
 
     } catch (DependencyResolutionRequiredException e) {
@@ -296,16 +295,93 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   /**
    * Stages a template based on its specific type. See {@link
    * #stageClassicTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} and {@link
-   * #stageFlexTemplate(TemplateDefinitions, ImageSpec, BuildPluginManager)} for more details.
+   * #stageFlexTemplates(List, String, BuildPluginManager)} for more details.
    */
   public String stageTemplate(
-      TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
+      TemplateDefinitions definition, BuildPluginManager pluginManager, boolean validateFlag)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
     if (definition.isClassic()) {
+      ImageSpec imageSpec = definition.buildSpecModel(validateFlag);
       return stageClassicTemplate(definition, imageSpec, pluginManager);
-    } else {
-      return stageFlexTemplate(definition, imageSpec, pluginManager);
     }
+    ArrayList<FlexTemplateStagingStatus> status =
+        stageTemplates(ImmutableList.of(definition), pluginManager, validateFlag);
+    return status.get(0).templatePath;
+  }
+
+  static class FlexTemplateStagingStatus {
+    // template definitons
+    final TemplateDefinitions definitions;
+    final ImageSpec imageSpec;
+    // progress tracking
+    private @Nullable File imageSpecFile;
+    private String templatePath;
+    private String imagePath;
+
+    FlexTemplateStagingStatus(TemplateDefinitions definition, ImageSpec imageSpec) {
+      this.definitions = definition;
+      this.imageSpec = imageSpec;
+      imageSpecFile = null;
+      templatePath = "";
+    }
+
+    /** Set all status variables after a step completed. */
+    void setStatus(@Nullable File imageSpecFile, String templatePath, String imagePath) {
+      this.imageSpecFile = imageSpecFile;
+      this.templatePath = templatePath;
+      this.imagePath = imagePath;
+    }
+
+    void updateImageSpecFile(File imageSpecFile) {
+      this.imageSpecFile = imageSpecFile;
+    }
+
+    @Nullable File getImageSpecFile() {
+      return imageSpecFile;
+    }
+
+    String getTemplatePath() {
+      return templatePath;
+    }
+
+    String getImagePath() {
+      return imagePath;
+    }
+  }
+
+  /** Stages all templates under the module. */
+  public ArrayList<FlexTemplateStagingStatus> stageTemplates(
+      List<TemplateDefinitions> templateDefinitions,
+      BuildPluginManager pluginManager,
+      boolean validateFlag)
+      throws MojoExecutionException, IOException, InterruptedException, TemplateException {
+    ArrayList<FlexTemplateStagingStatus> flexTemplates = new ArrayList<>();
+    for (TemplateDefinitions definition : templateDefinitions) {
+      ImageSpec imageSpec = definition.buildSpecModel(validateFlag);
+      if (definition.isClassic()) {
+        stageClassicTemplate(definition, imageSpec, pluginManager);
+      } else {
+        flexTemplates.add(new FlexTemplateStagingStatus(definition, imageSpec));
+      }
+    }
+    if (flexTemplates.size() == 0) {
+      return flexTemplates;
+    }
+    boolean stageImageBeforePromote =
+        generateSBOM && !Strings.isNullOrEmpty(stagingArtifactRegistry);
+    // parse build project from a sample container name
+    String containerName =
+        flexTemplates.get(0).definitions.getTemplateAnnotation().flexContainerName();
+    String buildProjectId =
+        stageImageBeforePromote
+            ? new PromoteHelper.ArtifactRegImageSpec(
+                    generateFlexTemplateImagePath(
+                        containerName, projectId, null, stagingArtifactRegistry, stagePrefix))
+                .project
+            : projectId;
+    stageFlexTemplates(flexTemplates, buildProjectId, pluginManager);
+    postStageFlexTemplates(flexTemplates, buildProjectId);
+    return flexTemplates;
   }
 
   /**
@@ -409,173 +485,207 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
    * <p>Step 3: Use `gcloud dataflow build` to create the Template based on the image created by
    * JIB, and uploads the metadata file to the proper directory.
    */
-  protected String stageFlexTemplate(
-      TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
+  protected void stageFlexTemplates(
+      List<FlexTemplateStagingStatus> flexTemplates,
+      String buildProjectId,
+      BuildPluginManager pluginManager)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
-
-    // These are set by the .mvn/settings.xml file. This tells the plugin to use Airlock repos
-    // for building artifacts in Dockerfile-based images (XLANG, PYTHON, YAML). Airlock deps are
-    // only available when running PRs on DataflowTemplates GitHub repo and when releasing
-    // internally, so avoid specifying these 3 parameters when building custom templates externally.
-    if (!Strings.isNullOrEmpty(saSecretName)
-        && !Strings.isNullOrEmpty(airlockPythonRepo)
-        && !Strings.isNullOrEmpty(airlockJavaRepo)) {
-      internalMaven = true;
-    }
-
-    // Override some image spec attributes available only during staging/release:
-    String version = TemplateDefinitionsParser.parseVersion(stagePrefix);
-    String containerName = definition.getTemplateAnnotation().flexContainerName();
-    imageSpec.setAdditionalUserLabel("goog-dataflow-provided-template-version", version);
-    imageSpec.setImage(
-        generateFlexTemplateImagePath(
-            containerName, projectId, artifactRegion, artifactRegistry, stagePrefix));
-
-    if (beamVersion == null || beamVersion.isEmpty()) {
-      beamVersion = project.getProperties().getProperty("beam-python.version");
-    }
-
-    String currentTemplateName = definition.getTemplateAnnotation().name();
-    TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
-
     boolean stageImageBeforePromote =
         generateSBOM && !Strings.isNullOrEmpty(stagingArtifactRegistry);
-    String imagePath =
-        stageImageBeforePromote
-            ? generateFlexTemplateImagePath(
-                containerName, projectId, null, stagingArtifactRegistry, stagePrefix)
-            : imageSpec.getImage();
-    String buildProjectId =
-        stageImageBeforePromote
-            ? new PromoteHelper.ArtifactRegImageSpec(imagePath).project
-            : projectId;
-    LOG.info("Stage image to GCR: {}", imagePath);
+    for (FlexTemplateStagingStatus flexTemplateStatus : flexTemplates) {
+      TemplateDefinitions definition = flexTemplateStatus.definitions;
+      ImageSpec imageSpec = flexTemplateStatus.imageSpec;
 
-    boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
-
-    String metadataFile = "";
-    if (!stageImageOnly) {
-      metadataFile =
-          generator
-              .saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory)
-              .getName();
-    }
-
-    File xlangOutputDir;
-    File commandSpecFile;
-    if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
-      xlangOutputDir =
-          new File(outputClassesDirectory.getPath() + "/" + containerName + "/resources");
-      commandSpecFile = generator.saveCommandSpec(definition, xlangOutputDir);
-    } else {
-      commandSpecFile = generator.saveCommandSpec(definition, outputClassesDirectory);
-    }
-    String appRoot = "/template/" + containerName;
-    String commandSpec = appRoot + "/resources/" + commandSpecFile.getName();
-
-    String templatePath =
-        "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
-    File imageSpecFile = null;
-
-    if (definition.getTemplateAnnotation().type() == TemplateType.JAVA
-        || definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
-      stageFlexJavaTemplate(
-          definition,
-          pluginManager,
-          currentTemplateName,
-          buildProjectId,
-          imagePath,
-          metadataFile,
-          appRoot,
-          commandSpec,
-          commandSpecFile.getName(),
-          templatePath);
-
-      // stageFlexJavaTemplate calls `gcloud dataflow flex-template build` command, which takes
-      // metadataFile as input and generates its own imageSpecFile at templatePath location, but it
-      // doesn't use metadataFile as-is and only picks a few attributes from it.
-      // Below, we are going to override this file with the one generated by the plugin, to avoid
-      // having a dependency on gcloud CLI. Otherwise every time a new attribute is added to the
-      // metadata we'll have to update gcloud CLI logic accordingly.
-      // TODO: Check if the same should be applied to Python templates:
-      if (!stageImageOnly) {
-        imageSpecFile = generator.saveImageSpec(definition, imageSpec, outputClassesDirectory);
-        LOG.info(
-            "Overriding Flex template spec file generated by gcloud command at [{}] with local file"
-                + " [{}]",
-            templatePath,
-            imageSpecFile.getName());
+      // These are set by the .mvn/settings.xml file. This tells the plugin to use Airlock repos
+      // for building artifacts in Dockerfile-based images (XLANG, PYTHON, YAML). Airlock deps are
+      // only available when running PRs on DataflowTemplates GitHub repo and when releasing
+      // internally, so avoid specifying these 3 parameters when building custom templates
+      // externally.
+      if (!Strings.isNullOrEmpty(saSecretName)
+          && !Strings.isNullOrEmpty(airlockPythonRepo)
+          && !Strings.isNullOrEmpty(airlockJavaRepo)) {
+        internalMaven = true;
       }
-    } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
-      stageFlexPythonTemplate(
-          definition,
-          currentTemplateName,
-          buildProjectId,
-          imagePath,
-          metadataFile,
-          containerName,
-          templatePath);
-    } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
-      stageFlexYamlTemplate(
-          definition,
-          currentTemplateName,
-          buildProjectId,
-          imagePath,
-          metadataFile,
-          containerName,
-          templatePath);
-    } else {
-      throw new IllegalArgumentException(
-          "Type not known: " + definition.getTemplateAnnotation().type());
-    }
 
-    if (generateSBOM) {
-      // generate SBOM
-      File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-      performVulnerabilityScanAndGenerateUserSBOM(imagePath, buildProjectId, buildDir);
-      GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePath);
-      Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
-      String digest = runnable.getDigest();
+      // Override some image spec attributes available only during staging/release:
+      String version = TemplateDefinitionsParser.parseVersion(stagePrefix);
+      String containerName = definition.getTemplateAnnotation().flexContainerName();
+      imageSpec.setAdditionalUserLabel("goog-dataflow-provided-template-version", version);
+      imageSpec.setImage(
+          generateFlexTemplateImagePath(
+              containerName, projectId, artifactRegion, artifactRegistry, stagePrefix));
 
-      if (stageImageBeforePromote) {
-        // promote image
-        PromoteHelper promoteHelper = new PromoteHelper(imagePath, imageSpec.getImage(), digest);
-        promoteHelper.promote();
+      if (beamVersion == null || beamVersion.isEmpty()) {
+        beamVersion = project.getProperties().getProperty("beam-python.version");
+      }
 
+      String currentTemplateName = definition.getTemplateAnnotation().name();
+      TemplateSpecsGenerator generator = new TemplateSpecsGenerator();
+
+      String imagePath =
+          stageImageBeforePromote
+              ? generateFlexTemplateImagePath(
+                  containerName, projectId, null, stagingArtifactRegistry, stagePrefix)
+              : imageSpec.getImage();
+      LOG.info("Stage image to GCR: {}", imagePath);
+
+      boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
+
+      String metadataFile = "";
+      if (!stageImageOnly) {
+        metadataFile =
+            generator
+                .saveMetadata(definition, imageSpec.getMetadata(), outputClassesDirectory)
+                .getName();
+      }
+
+      File xlangOutputDir;
+      File commandSpecFile;
+      if (definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
+        xlangOutputDir =
+            new File(outputClassesDirectory.getPath() + "/" + containerName + "/resources");
+        commandSpecFile = generator.saveCommandSpec(definition, xlangOutputDir);
+      } else {
+        commandSpecFile = generator.saveCommandSpec(definition, outputClassesDirectory);
+      }
+      String appRoot = "/template/" + containerName;
+      String commandSpec = appRoot + "/resources/" + commandSpecFile.getName();
+
+      String templatePath =
+          "gs://" + bucketNameOnly(bucketName) + "/" + stagePrefix + "/flex/" + currentTemplateName;
+      File imageSpecFile = null;
+
+      if (definition.getTemplateAnnotation().type() == TemplateType.JAVA
+          || definition.getTemplateAnnotation().type() == TemplateType.XLANG) {
+        stageFlexJavaTemplate(
+            definition,
+            pluginManager,
+            currentTemplateName,
+            buildProjectId,
+            imagePath,
+            metadataFile,
+            appRoot,
+            commandSpec,
+            commandSpecFile.getName(),
+            templatePath);
+
+        // stageFlexJavaTemplate calls `gcloud dataflow flex-template build` command, which takes
+        // metadataFile as input and generates its own imageSpecFile at templatePath location, but
+        // it
+        // doesn't use metadataFile as-is and only picks a few attributes from it.
+        // Below, we are going to override this file with the one generated by the plugin, to avoid
+        // having a dependency on gcloud CLI. Otherwise every time a new attribute is added to the
+        // metadata we'll have to update gcloud CLI logic accordingly.
+        // TODO: Check if the same should be applied to Python templates:
         if (!stageImageOnly) {
-          // overwrite image spec file
-          if (imageSpecFile == null) {
-            File folder = new File(outputClassesDirectory.getAbsolutePath() + containerName);
-            if (!folder.exists()) {
-              folder.mkdir();
-            }
-            imageSpecFile = new File(folder, currentTemplateName + "-spec-generated-metadata.json");
-            gcsCopy(templatePath, imageSpecFile.getAbsolutePath());
-          }
+          imageSpecFile = generator.saveImageSpec(definition, imageSpec, outputClassesDirectory);
+          LOG.info(
+              "Overriding Flex template spec file generated by gcloud command at [{}] with local file"
+                  + " [{}]",
+              templatePath,
+              imageSpecFile.getName());
+        }
+      } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
+        stageFlexPythonTemplate(
+            definition,
+            currentTemplateName,
+            buildProjectId,
+            imagePath,
+            metadataFile,
+            containerName,
+            templatePath);
+      } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
+        stageFlexYamlTemplate(
+            definition,
+            currentTemplateName,
+            buildProjectId,
+            imagePath,
+            metadataFile,
+            containerName,
+            templatePath);
+      } else {
+        throw new IllegalArgumentException(
+            "Type not known: " + definition.getTemplateAnnotation().type());
+      }
 
-          String content =
-              new String(Files.readAllBytes(imageSpecFile.toPath()), StandardCharsets.UTF_8);
-          String replaced = content.replace(imagePath, imageSpec.getImage());
-          // verify we have replaced the image path. Note: the file content may already have the
-          // final target image path if it was overwritten before (see "Overriding Flex template
-          // spec file ...") above
-          if (replaced.equals(content) && !content.contains(imageSpec.getImage())) {
-            throw new RuntimeException(
-                String.format(
-                    "Unable overwrite %s to %s. Content: %s",
-                    imagePath, imageSpec.getImage(), content.substring(0, 1000)));
+      flexTemplateStatus.setStatus(imageSpecFile, templatePath, imagePath);
+    }
+  }
+
+  /**
+   * Post stage template steps
+   *
+   * <p>Scan vulneribilities, export sbom, promote image, if needed.
+   *
+   * <p>Override iamge spec file, if needed.
+   */
+  private void postStageFlexTemplates(
+      List<FlexTemplateStagingStatus> flexTemplates, String builfProjectId)
+      throws IOException, InterruptedException {
+    if (generateSBOM) {
+      File buildDir = new File(outputClassesDirectory.getAbsolutePath());
+      // this is a time-consuming step. Execute once for all templates
+      performVulnerabilityScanAndGenerateUserSBOM(flexTemplates, builfProjectId, buildDir);
+
+      boolean stageImageBeforePromote = !Strings.isNullOrEmpty(stagingArtifactRegistry);
+      for (FlexTemplateStagingStatus flexTemplateStatus : flexTemplates) {
+        TemplateDefinitions definition = flexTemplateStatus.definitions;
+        ImageSpec imageSpec = flexTemplateStatus.imageSpec;
+        @Nullable File imageSpecFile = flexTemplateStatus.getImageSpecFile();
+        String templatePath = flexTemplateStatus.getTemplatePath();
+        String imagePath = flexTemplateStatus.getImagePath();
+        boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
+        String containerName = definition.getTemplateAnnotation().flexContainerName();
+        String currentTemplateName = definition.getTemplateAnnotation().name();
+
+        GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePath);
+        Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
+        String digest = runnable.getDigest();
+
+        if (stageImageBeforePromote) {
+          // promote image
+          PromoteHelper promoteHelper = new PromoteHelper(imagePath, imageSpec.getImage(), digest);
+          promoteHelper.promote();
+
+          if (!stageImageOnly) {
+            // overwrite image spec file
+            if (imageSpecFile == null) {
+              File folder = new File(outputClassesDirectory.getAbsolutePath() + containerName);
+              if (!folder.exists()) {
+                folder.mkdir();
+              }
+              imageSpecFile =
+                  new File(folder, currentTemplateName + "-spec-generated-metadata.json");
+              gcsCopy(templatePath, imageSpecFile.getAbsolutePath());
+              flexTemplateStatus.updateImageSpecFile(imageSpecFile);
+            }
+
+            String content =
+                new String(Files.readAllBytes(imageSpecFile.toPath()), StandardCharsets.UTF_8);
+            String replaced = content.replace(imagePath, imageSpec.getImage());
+            // verify we have replaced the image path. Note: the file content may already have the
+            // final target image path if it was overwritten before (see "Overriding Flex template
+            // spec file ...") above
+            if (replaced.equals(content) && !content.contains(imageSpec.getImage())) {
+              throw new RuntimeException(
+                  String.format(
+                      "Unable overwrite %s to %s. Content: %s",
+                      imagePath, imageSpec.getImage(), content.substring(0, 1000)));
+            }
+            Files.writeString(imageSpecFile.toPath(), replaced);
           }
-          Files.writeString(imageSpecFile.toPath(), replaced);
         }
       }
     }
 
-    if (imageSpecFile != null) {
-      gcsCopy(imageSpecFile.getAbsolutePath(), templatePath);
+    for (FlexTemplateStagingStatus flexTemplateStatus : flexTemplates) {
+      @Nullable File imageSpecFile = flexTemplateStatus.getImageSpecFile();
+      String templatePath = flexTemplateStatus.getTemplatePath();
+      if (imageSpecFile != null) {
+        gcsCopy(imageSpecFile.getAbsolutePath(), templatePath);
+      }
+      LOG.info("{} flex Template was staged!", flexTemplates.size());
     }
-
-    LOG.info("Flex Template was staged! {}", stageImageOnly ? imageSpec.getImage() : templatePath);
-    return templatePath;
   }
 
   private void stageFlexJavaTemplate(
@@ -1311,39 +1421,43 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private static void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePath, String buildProjectId, File buildDir)
+      List<FlexTemplateStagingStatus> flexTemplates, String buildProjectId, File buildDir)
       throws IOException, InterruptedException {
-    LOG.info("Generating user SBOM and Performing security scan for {}...", imagePath);
+    LOG.info(
+        "Generating user SBOM and Performing security scan for {} images", flexTemplates.size());
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      writer.write(
-          "steps:\n"
-              + "- name: 'gcr.io/cloud-builders/docker:24.0.9'\n"
-              + "  entrypoint: bash\n"
-              + "  args:\n"
-              + "  - -c\n"
-              + "  - |-\n"
-              + "    mkdir -p ~/.docker/cli-plugins\n"
-              + "    curl -sSfL https://raw.githubusercontent.com/docker/sbom-cli-plugin/main/install.sh | sh -s --\n"
-              + "    docker sbom "
-              + imagePath
-              + " --format=spdx-json --output=/workspace/user-sbom.json\n"
-              + "- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'\n"
-              + "  entrypoint: gcloud\n"
-              + "  args:\n"
-              + "  - artifacts\n"
-              + "  - sbom\n"
-              + "  - load\n"
-              + "  - --source=/workspace/user-sbom.json\n"
-              + "  - --uri="
-              + imagePath
-              + "\n"
-              + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
-              + "  args:\n"
-              + "  - --image="
-              + imagePath
-              + ":latest");
+      writer.write("steps:\n");
+      for (FlexTemplateStagingStatus status : flexTemplates) {
+        String imagePath = status.getImagePath();
+        writer.write(
+            "- name: 'gcr.io/cloud-builders/docker:24.0.9'\n"
+                + "  entrypoint: bash\n"
+                + "  args:\n"
+                + "  - -c\n"
+                + "  - |-\n"
+                + "    mkdir -p ~/.docker/cli-plugins\n"
+                + "    curl -sSfL https://raw.githubusercontent.com/docker/sbom-cli-plugin/main/install.sh | sh -s --\n"
+                + "    docker sbom "
+                + imagePath
+                + " --format=spdx-json --output=/workspace/user-sbom.json\n"
+                + "- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'\n"
+                + "  entrypoint: gcloud\n"
+                + "  args:\n"
+                + "  - artifacts\n"
+                + "  - sbom\n"
+                + "  - load\n"
+                + "  - --source=/workspace/user-sbom.json\n"
+                + "  - --uri="
+                + imagePath
+                + "\n"
+                + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
+                + "  args:\n"
+                + "  - --image="
+                + imagePath
+                + ":latest\n");
+      }
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
