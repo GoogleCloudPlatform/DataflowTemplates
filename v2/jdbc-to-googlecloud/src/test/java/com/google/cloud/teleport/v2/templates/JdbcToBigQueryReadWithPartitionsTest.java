@@ -30,7 +30,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
@@ -205,7 +204,8 @@ public class JdbcToBigQueryReadWithPartitionsTest {
             options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
 
-    List<javax.swing.text.TableView.TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
+    List<javax.swing.text.TableView.TableRow> rows =
+        fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
     assertThat(rows.size()).isEqualTo(1);
     assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
