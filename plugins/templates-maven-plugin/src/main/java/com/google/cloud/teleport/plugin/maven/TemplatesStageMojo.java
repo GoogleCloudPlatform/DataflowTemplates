@@ -264,7 +264,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       LOG.info("Staging Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
+          TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
       for (TemplateDefinitions definition : templateDefinitions) {
 
         ImageSpec imageSpec = definition.buildSpecModel(false);

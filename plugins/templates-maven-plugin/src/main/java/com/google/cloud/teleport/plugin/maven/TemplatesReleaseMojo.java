@@ -156,7 +156,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
       LOG.info("Releasing Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
+          TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
 
       if (templateName != null && !templateName.isEmpty()) {
         templateDefinitions =

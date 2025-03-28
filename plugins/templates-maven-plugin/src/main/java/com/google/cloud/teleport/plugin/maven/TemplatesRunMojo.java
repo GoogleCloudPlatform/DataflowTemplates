@@ -168,7 +168,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
       LOG.info("Staging Templates to bucket '{}'...", bucketNameOnly(bucketName));
 
       List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
+          TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
 
       Optional<TemplateDefinitions> definitionsOptional =
           templateDefinitions.stream()
