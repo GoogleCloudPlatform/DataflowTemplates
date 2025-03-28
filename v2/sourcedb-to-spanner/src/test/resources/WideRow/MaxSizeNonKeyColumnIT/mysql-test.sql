@@ -1,7 +1,6 @@
 CREATE TABLE IF NOT EXISTS
-  LoadTestTable ( id INT
-  PRIMARY KEY
-    ,
+  LoadTestTable (
+  id INT PRIMARY KEY,
     Data1 MEDIUMTEXT,
     Data2 MEDIUMTEXT,
     Data3 MEDIUMTEXT,
