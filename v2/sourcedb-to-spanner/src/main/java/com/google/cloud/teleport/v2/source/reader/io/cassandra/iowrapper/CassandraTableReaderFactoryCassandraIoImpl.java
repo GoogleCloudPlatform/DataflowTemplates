@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
+import com.datastax.driver.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraSourceRowMapper;
@@ -25,16 +26,32 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.coders.SerializableCoder;
-import org.apache.beam.sdk.io.cassandra.CassandraIO;
-import org.apache.beam.sdk.io.cassandra.CassandraIO.Read;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO.Read;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/* Todo(vardhanvthigle)
+ * Switch to upstream cassandra IO once the fix for https://github.com/apache/beam/issues/34160 is available in dataflow.
+ */
 
 /**
  * Generate Table Reader For Cassandra using the upstream {@link CassandraIO.Read} implementation.
  */
 public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTableReaderFactory {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(CassandraTableReaderFactoryCassandraIoImpl.class);
+
+  /* Default Connection Timeout in Milliseconds */
+  @VisibleForTesting protected static final Integer DEFAULT_CONNECTION_TIMEOUT_MILLIS = 10 * 1000;
+  /* Default Read timeout. */
+  @VisibleForTesting protected static final Integer DEFAULT_READ_TIMEOUT_MILLIS = 3600 * 1000;
+
+  @VisibleForTesting
+  protected static final String DEFAULT_CONSISTENCY = ConsistencyLevel.QUORUM.name();
 
   /**
    * Returns a Table Reader for given Cassandra Source using the upstream {@link CassandraIO.Read}.
@@ -64,12 +81,47 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
             .withKeyspace(cassandraDataSource.loggedKeySpace())
             .withLocalDc(cassandraDataSource.localDataCenter())
             .withConsistencyLevel(
-                profile.getString(TypedDriverOption.REQUEST_SERIAL_CONSISTENCY.getRawOption()))
+                profile.getString(TypedDriverOption.REQUEST_CONSISTENCY.getRawOption()))
+            .withConnectTimeout(getConnectionTimeout(profile))
+            .withReadTimeout(getReadTimeout(profile))
             .withEntity(SourceRow.class)
             .withCoder(SerializableCoder.of(SourceRow.class))
             .withMapperFactoryFn(
                 CassandraSourceRowMapperFactoryFn.create(cassandraSourceRowMapper));
     return setCredentials(tableReader, profile);
+  }
+
+  @VisibleForTesting
+  protected static String getConsistencyLevel(DriverExecutionProfile profile) {
+    String consistencyLevel =
+        profile.isDefined(TypedDriverOption.REQUEST_CONSISTENCY.getRawOption())
+            ? profile.getString(TypedDriverOption.REQUEST_CONSISTENCY.getRawOption())
+            : DEFAULT_CONSISTENCY;
+    LOG.info("Set Consistency Level {}", consistencyLevel);
+    return consistencyLevel;
+  }
+
+  @VisibleForTesting
+  protected static Integer getConnectionTimeout(DriverExecutionProfile profile) {
+    int timeout =
+        profile.isDefined(TypedDriverOption.CONNECTION_CONNECT_TIMEOUT.getRawOption())
+            ? (int)
+                profile
+                    .getDuration(TypedDriverOption.CONNECTION_CONNECT_TIMEOUT.getRawOption())
+                    .toMillis()
+            : DEFAULT_CONNECTION_TIMEOUT_MILLIS;
+    LOG.info("Set Connection Timeout = {} milliseconds", timeout);
+    return timeout;
+  }
+
+  @VisibleForTesting
+  protected static Integer getReadTimeout(DriverExecutionProfile profile) {
+    int timeout =
+        profile.isDefined(TypedDriverOption.REQUEST_TIMEOUT.getRawOption())
+            ? (int) profile.getDuration(TypedDriverOption.REQUEST_TIMEOUT.getRawOption()).toMillis()
+            : DEFAULT_READ_TIMEOUT_MILLIS;
+    LOG.info("Set Read Timeout = {} milliseconds", timeout);
+    return timeout;
   }
 
   @VisibleForTesting

@@ -89,7 +89,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
     // Transform source data to Spanner Compatible Data
     SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(schemaMapper, customTransformation);
+        SourceRowToMutationDoFn.create(
+            schemaMapper, customTransformation, options.getInsertOnlyModeForSpannerMutations());
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",

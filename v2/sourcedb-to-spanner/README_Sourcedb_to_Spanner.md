@@ -31,7 +31,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **instanceId** (Cloud Spanner Instance Id.): The destination Cloud Spanner instance.
 * **databaseId** (Cloud Spanner Database Id.): The destination Cloud Spanner database.
 * **projectId** (Cloud Spanner Project Id.): This is the name of the Cloud Spanner project.
-* **outputDirectory** (GCS path of the ouput directory): The GCS path of the Directory where all error and skipped events are dumped to be used during migrations
+* **outputDirectory** (GCS path of the output directory): The GCS path of the Directory where all error and skipped events are dumped to be used during migrations
 
 #### Optional Parameters
 * **jdbcDriverJars** (Comma-separated Cloud Storage path(s) of the JDBC driver(s)): The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar).
@@ -213,6 +213,103 @@ mvn clean package -PtemplatesRun \
 -Dparameters="jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,defaultLogLevel=$DEFAULT_LOG_LEVEL" \
 -f v2/sourcedb-to-spanner
 ```
+
+## Cassandra to Spanner Bulk Migration
+### Prerequisites
+For Bulk data migration from Cassandra to spanner here are a few prerequisites you will need:
+
+#### Prerequisite-1: Network Connectivity
+1. Choose a VPC in the project where you would like to run the dataflow job (default is the vpc named `default` in the project).
+2. Ensure that the VPC has network connectivity to nodes in your Cassandra Cluster. Depending on where your Cassandra Cluster is hosted, you might need one or more of the following steps:
+
+       * Configure Firewalls in your GCP project and the place where Cassandra Cluster is hosted to allow egress access from the dataflow VPC to Cassandra nodes. The usual port used by Cassandra for Client/Server communication is 9042.
+       * Network Peering between the VPCs where Cassandra is hosted and the dataflow VPC.
+#### Prerequisite-2: Configuration File
+You will need to upload the Cassandra driver configuration file to GCS.
+You might already be using one for your production application, but in case you need to create one, you could refer to the [reference.conf](https://github.com/apache/cassandra-java-driver/blob/4.x/core/src/main/resources/reference.conf).
+This configuration file would be referred by the dataflow job to infer various client side parameters need to connect to Cassandra cluster.
+For the smooth execution of the migration, ensure that these basic parameters are correct:
+1. basic.contact-points: `basic.contact-points` must point to the ip addresses and port number of the nodes of the Cassandra cluster which are discoverable from the VPC where you would run the dataflow job.
+2. basic.session-keyspace: `basic.session-keyspace` much point to the keyspace which you would like to migrate to spanner as a part of this run. Note that a single run of a dataflow job can migration one or more tables within a single Cassandra keyspace.
+3. Optionally, you would also need to ensure that these parameters are updated correctly:
+
+       * `advanced.auth-provider`: with username/password credentials.
+       * `basic.request.timeout`: keep this large enough for reading ring rages. If unset, defaults to 3600_000 milliseconds.
+       * `connection.connect-timeout`: timeout for socket connection. If unset, defaults to 10_000 milliseconds.
+#### Prerequisite-3: Cassandra Cluster Health
+Please ensure that the Cassandra Cluster you are migrating from is healthy and the tables you are migrating don't need any repairs for best performance.
+#### Prerequisite-4: Spanner
+You will need to provision a spanner database where you would like to migrate the data. The database would need to have tables with a schema that maps to the schema on the source.
+The tables which are present both on Spanner and Cassandra would be the ones that are migrated.
+### Run Migration
+
+**Using the staged template**:
+
+Follow [above](#staging-the-template) to build the template and stage it in GCS.
+This step prints the path of the staged template which is passed as `TEMPLATE_SPEC_GCSPATH` below.
+
+To start a job with the staged template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
+
+```shell
+export PROJECT=<your-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=us-central1
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
+
+### Required
+export SOURCE_CONFIG_URL=<gs://path/to/Cassandra-Driver-Config-File>
+export INSTANCE_ID=<instanceId>
+export DATABASE_ID=<databaseId>
+export PROJECT_ID=<projectId>
+#### Stores DLQ.
+export OUTPUT_DIRECTORY=<outputDirectory>
+
+### Optional
+#### Use A session file in case you would like the Cassandra and Spanner Tables to have different names.
+export SESSION_FILE_PATH=""
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
+#### Set insert only mode to true, in case you would run bulk migration in parallel to dual writes.
+#### This mode stops the bulk template from overwriting rows that already exist in spanner.
+#### If you are not replicating live changes to spanner in parallel, you could choose to set this mode to false.
+#### Setting this mode to false causes the bulk template to overwrite existing rows in spanner.
+#### false is the default if unset.
+export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS="true"
+#### Region for dataflow workers (Required ony if you want to configure network and subnetwork.
+expoert WORKER_REGION="${REGION}"
+#### Network where you would like to run dataflow. Defaults to default. This VPC must have access to Cassandra nodes you would like to migrate from.
+export NETWORK="<VPC_NAME>"
+#### Subnet where you would like to run dataflow. Defaults to default. This subnet must have access to Cassandra nodes you would like to migrate from.
+export SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
+
+
+gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --network "$NETWORK"
+  --subnetwork "$SUBNETWORK"
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --parameters "sourceDbDialect=CASSANDRA" \
+  --parameters "insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS" \
+  --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
+  --parameters "instanceId=$INSTANCE_ID" \
+  --parameters "databaseId=$DATABASE_ID" \
+  --parameters "projectId=$PROJECT_ID" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
+  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
+```
+
+For more information about the command, please check:
+https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
+
+
 
 ## Terraform
 

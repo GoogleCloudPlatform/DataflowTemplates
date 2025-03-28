@@ -508,10 +508,22 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       }
     } else if (definition.getTemplateAnnotation().type() == TemplateType.PYTHON) {
       stageFlexPythonTemplate(
-          definition, currentTemplateName, imagePath, metadataFile, containerName, templatePath);
+          definition,
+          currentTemplateName,
+          buildProjectId,
+          imagePath,
+          metadataFile,
+          containerName,
+          templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
       stageFlexYamlTemplate(
-          definition, currentTemplateName, imagePath, metadataFile, containerName, templatePath);
+          definition,
+          currentTemplateName,
+          buildProjectId,
+          imagePath,
+          metadataFile,
+          containerName,
+          templatePath);
     } else {
       throw new IllegalArgumentException(
           "Type not known: " + definition.getTemplateAnnotation().type());
@@ -533,8 +545,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         if (!stageImageOnly) {
           // overwrite image spec file
           if (imageSpecFile == null) {
-            imageSpecFile =
-                new File(outputClassesDirectory.getAbsolutePath() + "/" + containerName);
+            File folder = new File(outputClassesDirectory.getAbsolutePath() + containerName);
+            if (!folder.exists()) {
+              folder.mkdir();
+            }
+            imageSpecFile = new File(folder, currentTemplateName + "-spec-generated-metadata.json");
             gcsCopy(templatePath, imageSpecFile.getAbsolutePath());
           }
 
@@ -550,7 +565,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                     "Unable overwrite %s to %s. Content: %s",
                     imagePath, imageSpec.getImage(), content.substring(0, 1000)));
           }
-          Files.writeString(imageSpecFile.toPath(), content);
+          Files.writeString(imageSpecFile.toPath(), replaced);
         }
       }
     }
@@ -559,7 +574,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       gcsCopy(imageSpecFile.getAbsolutePath(), templatePath);
     }
 
-    LOG.info("Flex Template was staged! {}", stageImageOnly ? imagePath : templatePath);
+    LOG.info("Flex Template was staged! {}", stageImageOnly ? imageSpec.getImage() : templatePath);
     return templatePath;
   }
 
@@ -761,6 +776,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   private void stageFlexYamlTemplate(
       TemplateDefinitions definition,
       String currentTemplateName,
+      String buildProjectId,
       String imagePath,
       String metadataFile,
       String containerName,
@@ -805,7 +821,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
 
     LOG.info("Staging YAML image using Dockerfile");
-    stageYamlUsingDockerfile(imagePath, containerName);
+    stageYamlUsingDockerfile(buildProjectId, imagePath, containerName);
 
     // Skip GCS spec file creation
     if (definition.getTemplateAnnotation().stageImageOnly()) {
@@ -822,7 +838,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--image",
           imagePath,
           "--project",
-          projectId,
+          buildProjectId,
           "--sdk-language",
           "PYTHON",
           "--metadata-file",
@@ -850,6 +866,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   private void stageFlexPythonTemplate(
       TemplateDefinitions definition,
       String currentTemplateName,
+      String buildProjectId,
       String imagePath,
       String metadataFile,
       String containerName,
@@ -901,7 +918,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
 
     LOG.info("Staging PYTHON image using Dockerfile");
-    stagePythonUsingDockerfile(imagePath, containerName);
+    stagePythonUsingDockerfile(buildProjectId, imagePath, containerName);
 
     // Skip GCS spec file creation
     if (definition.getTemplateAnnotation().stageImageOnly()) {
@@ -918,7 +935,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "--image",
           imagePath,
           "--project",
-          projectId,
+          buildProjectId,
           "--sdk-language",
           definition.getTemplateAnnotation().type().name(),
           "--metadata-file",
@@ -943,7 +960,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void stageYamlUsingDockerfile(String imagePath, String yamlTemplateName)
+  private void stageYamlUsingDockerfile(
+      String buildProjectId, String imagePath, String yamlTemplateName)
       throws IOException, InterruptedException {
     File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + yamlTemplateName);
 
@@ -1000,7 +1018,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               "--disk-size",
               "200",
               "--project",
-              projectId
+              buildProjectId
             },
             directory,
             cloudBuildLogs);
@@ -1014,7 +1032,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private void stagePythonUsingDockerfile(String imagePath, String containerName)
+  private void stagePythonUsingDockerfile(
+      String buildProjectId, String imagePath, String containerName)
       throws IOException, InterruptedException {
     File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + containerName);
 
@@ -1070,7 +1089,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               "--disk-size",
               "200",
               "--project",
-              projectId
+              buildProjectId
             },
             directory,
             cloudBuildLogs);

@@ -39,6 +39,7 @@ var (
 			"v2/kafka-to-gcs/",
 			"v2/kafka-to-kafka/",
 			"v2/kafka-to-pubsub/",
+			"v2/pubsub-to-kafka/",
 			"plugins/templates-maven-plugin",
 		},
 // 		SPANNER: {"v2/datastream-to-spanner/",

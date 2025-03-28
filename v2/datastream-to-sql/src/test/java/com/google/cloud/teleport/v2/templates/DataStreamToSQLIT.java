@@ -23,6 +23,7 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.Strings;
 import com.google.pubsub.v1.SubscriptionName;
@@ -36,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -58,12 +60,14 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(DataStreamToSQL.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSQLIT extends TemplateTestBase {
@@ -74,6 +78,7 @@ public class DataStreamToSQLIT extends TemplateTestBase {
     POSTGRES
   }
 
+  @Rule public Timeout timeout = new Timeout(10, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "row_id";

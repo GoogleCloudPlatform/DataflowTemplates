@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
-import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
@@ -131,9 +130,6 @@ public abstract class CassandraDataSource implements Serializable {
     abstract CassandraDataSource autoBuild();
 
     public CassandraDataSource build() {
-      /* Prefer to use quorum read until we encounter a strong use case to not do so. */
-      this.overrideOptionInOptionsMap(
-          TypedDriverOption.REQUEST_CONSISTENCY, ConsistencyLevel.QUORUM.toString());
       return autoBuild();
     }
   }
