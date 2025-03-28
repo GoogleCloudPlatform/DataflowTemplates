@@ -1,0 +1,74 @@
+CREATE TABLE parent (
+	id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE TABLE child1 (
+	id INT64 NOT NULL ,
+	parent_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX parent_id ON child1 (parent_id);
+
+ALTER TABLE child1 ADD CONSTRAINT child1_ibfk_1 FOREIGN KEY (parent_id) REFERENCES parent (id) ON DELETE CASCADE;
+
+CREATE TABLE child2 (
+	id INT64 NOT NULL ,
+	child1_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX child1_id ON child2 (child1_id);
+
+ALTER TABLE child2 ADD CONSTRAINT child2_ibfk_1 FOREIGN KEY (child1_id) REFERENCES child1 (id) ON DELETE CASCADE;
+
+CREATE TABLE child3 (
+	id INT64 NOT NULL ,
+	child2_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX child2_id ON child3 (child2_id);
+
+ALTER TABLE child3 ADD CONSTRAINT child3_ibfk_1 FOREIGN KEY (child2_id) REFERENCES child2 (id) ON DELETE CASCADE;
+
+CREATE TABLE child4 (
+	id INT64 NOT NULL ,
+	child3_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX child3_id ON child4 (child3_id);
+
+ALTER TABLE child4 ADD CONSTRAINT child4_ibfk_1 FOREIGN KEY (child3_id) REFERENCES child3 (id) ON DELETE CASCADE;
+
+CREATE TABLE child5 (
+	id INT64 NOT NULL ,
+	child4_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX child4_id ON child5 (child4_id);
+
+ALTER TABLE child5 ADD CONSTRAINT child5_ibfk_1 FOREIGN KEY (child4_id) REFERENCES child4 (id) ON DELETE CASCADE;
+
+CREATE TABLE child6 (
+	id INT64 NOT NULL ,
+	child5_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX child5_id ON child6 (child5_id);
+
+ALTER TABLE child6 ADD CONSTRAINT child6_ibfk_1 FOREIGN KEY (child5_id) REFERENCES child5 (id) ON DELETE CASCADE;
+
+CREATE TABLE child7 (
+	id INT64 NOT NULL ,
+	child6_id INT64 NOT NULL ,
+	name STRING(255) NOT NULL ,
+) PRIMARY KEY (id);
+
+CREATE INDEX child6_id ON child7 (child6_id);
+
+ALTER TABLE child7 ADD CONSTRAINT child7_ibfk_1 FOREIGN KEY (child6_id) REFERENCES child6 (id) ON DELETE CASCADE;
