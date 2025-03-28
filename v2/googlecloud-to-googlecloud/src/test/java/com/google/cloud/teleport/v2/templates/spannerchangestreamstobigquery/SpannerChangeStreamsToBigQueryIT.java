@@ -138,6 +138,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
                     .addParameter(
@@ -211,6 +212,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
                     .addParameter(
@@ -275,6 +277,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
                     .addParameter(
@@ -342,6 +345,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
                     .addParameter(
@@ -447,6 +451,7 @@ public class SpannerChangeStreamsToBigQueryIT extends TemplateTestBase {
             paramsAdder.apply(
                 LaunchConfig.builder(testName, specPath)
                     .addParameter("spannerProjectId", PROJECT)
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
                     .addParameter("spannerInstanceId", spannerResourceManager.getInstanceId())
                     .addParameter("spannerDatabase", spannerResourceManager.getDatabaseId())
                     .addParameter(
