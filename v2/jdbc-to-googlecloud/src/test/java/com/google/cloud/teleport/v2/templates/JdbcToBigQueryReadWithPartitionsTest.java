@@ -64,7 +64,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
         Statement statement = conn.createStatement()) {
       statement.execute(
           "CREATE TABLE book (BOOK_ID bigint primary key, TITLE varchar(128), SELL_TIME timestamp)");
-      statement.execute("INSERT INTO book VALUES (1, 'ABC', '2024-12-24 06:00:00.000000Z')");
+      statement.execute("INSERT INTO book VALUES (1, 'ABC', '2024-12-24 06:00:00.000')");
     }
 
     // setup BQ
@@ -123,7 +123,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000")));
   }
 
   @Test
@@ -140,7 +140,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000")));
   }
 
   @Test
@@ -161,7 +161,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000")));
   }
 
   @Test
@@ -196,7 +196,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000")));
   }
 
   @Test
@@ -217,7 +217,7 @@ public class JdbcToBigQueryReadWithPartitionsTest {
                 new TableRow()
                     .set("BOOK_ID", 1)
                     .set("TITLE", "ABC")
-                    .set("SELL_TIME", "2024-12-24 06:00:00.000000Z")));
+                    .set("SELL_TIME", "2024-12-24 06:00:00.000")));
   }
 
   @Test
