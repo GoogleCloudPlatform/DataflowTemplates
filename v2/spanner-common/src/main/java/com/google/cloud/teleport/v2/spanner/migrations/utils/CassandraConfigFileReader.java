@@ -45,6 +45,7 @@ public class CassandraConfigFileReader {
       OptionsMap optionsMap =
           CassandraDriverConfigLoader.getOptionsMapFromFile(cassandraConfigFilePath);
       CassandraShard shard = new CassandraShard(optionsMap);
+      shard.setIsShardedMigration(true);
       LOG.info("Successfully created CassandraShard: {}", shard);
       return Collections.singletonList(shard);
     } catch (FileNotFoundException e) {

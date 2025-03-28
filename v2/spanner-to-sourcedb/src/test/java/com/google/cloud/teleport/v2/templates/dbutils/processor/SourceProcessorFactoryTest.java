@@ -52,7 +52,8 @@ public class SourceProcessorFactoryTest {
                 "mydatabase",
                 "mynamespace",
                 "projects/myproject/secrets/mysecret/versions/latest",
-                ""));
+                "",
+                false));
     int maxConnections = 10;
     JdbcConnectionHelper mockConnectionHelper = Mockito.mock(JdbcConnectionHelper.class);
     doNothing().when(mockConnectionHelper).init(any());
@@ -81,7 +82,8 @@ public class SourceProcessorFactoryTest {
                 "mydatabase",
                 "mynamespace",
                 "projects/myproject/secrets/mysecret/versions/latest",
-                ""));
+                "",
+                false));
     int maxConnections = 10;
 
     SourceProcessorFactory.createSourceProcessor("invalid_source", shards, maxConnections);

@@ -538,7 +538,7 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
-    if (shards.size() == 1) {
+    if (shards.size() == 1 && !shards.get(0).getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
       if (shard.getLogicalShardId() == null) {

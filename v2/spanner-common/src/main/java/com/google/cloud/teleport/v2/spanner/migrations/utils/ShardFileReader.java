@@ -69,6 +69,9 @@ public class ShardFileReader {
 
       for (Shard shard : shardList) {
         LOG.info(" The shard is: {} ", shard);
+        if (shard.getIsShardedMigration() == null) {
+          shard.setIsShardedMigration(false);
+        }
         String password =
             resolvePassword(
                 sourceShardsFilePath,
@@ -232,7 +235,8 @@ public class ShardFileReader {
               "",
               namespace,
               (String) (dataShard.get("secretManagerUri")),
-              dataShard.getOrDefault("connectionProperties", "").toString());
+              dataShard.getOrDefault("connectionProperties", "").toString(),
+              false);
 
       for (Map database : databases) {
         shard

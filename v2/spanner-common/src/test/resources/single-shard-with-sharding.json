@@ -1,0 +1,13 @@
+[
+  {
+  "logicalShardId":"shardA",
+  "host":"hostShardA",
+  "user":"test",
+  "password":"test",
+  "port":"3306",
+  "dbName":"test",
+  "namespace": "namespaceA",
+  "connectionProperties": "jdbcCompliantTruncation=true",
+  "isShardedMigration": true
+  }
+]
