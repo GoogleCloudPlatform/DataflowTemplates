@@ -30,6 +30,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryServices;
 import org.apache.beam.sdk.io.gcp.testing.FakeBigQueryServices;
@@ -120,13 +121,9 @@ public class JdbcToBigQueryReadWithPartitionsTest {
 
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
-    List<TableRow> rowsWithoutTime = new List<TableRow>();
-    for (TableRow row : rows) {
-      rowsWithoutTime.add(new TableRow().set("BOOK_ID", row["BOOK_ID"]).set("TITLE", row["TITLE"]));
-    }
-
-    assertThat(rowsWithoutTime)
-        .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", 1).set("TITLE", "ABC")));
+    assertThat(rows.size()).isEqualTo(1);
+    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
+    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
   }
 
   @Test
@@ -139,13 +136,9 @@ public class JdbcToBigQueryReadWithPartitionsTest {
 
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
-    List<TableRow> rowsWithoutTime = new List<TableRow>();
-    for (TableRow row : rows) {
-      rowsWithoutTime.add(new TableRow().set("BOOK_ID", row["BOOK_ID"]).set("TITLE", row["TITLE"]));
-    }
-
-    assertThat(rowsWithoutTime)
-        .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", 1).set("TITLE", "ABC")));
+    assertThat(rows.size()).isEqualTo(1);
+    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
+    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
   }
 
   @Test
@@ -162,13 +155,9 @@ public class JdbcToBigQueryReadWithPartitionsTest {
 
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
-    List<TableRow> rowsWithoutTime = new List<TableRow>();
-    for (TableRow row : rows) {
-      rowsWithoutTime.add(new TableRow().set("BOOK_ID", row["BOOK_ID"]).set("TITLE", row["TITLE"]));
-    }
-
-    assertThat(rowsWithoutTime)
-        .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", 1).set("TITLE", "ABC")));
+    assertThat(rows.size()).isEqualTo(1);
+    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
+    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
   }
 
   @Test
@@ -199,13 +188,9 @@ public class JdbcToBigQueryReadWithPartitionsTest {
 
     List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
-    List<TableRow> rowsWithoutTime = new List<TableRow>();
-    for (TableRow row : rows) {
-      rowsWithoutTime.add(new TableRow().set("BOOK_ID", row["BOOK_ID"]).set("TITLE", row["TITLE"]));
-    }
-
-    assertThat(rowsWithoutTime)
-        .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", 1).set("TITLE", "ABC")));
+    assertThat(rows.size()).isEqualTo(1);
+    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
+    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
   }
 
   @Test
@@ -220,15 +205,11 @@ public class JdbcToBigQueryReadWithPartitionsTest {
             options, JdbcToBigQuery.writeToBQTransform(options).withTestServices(bigQueryServices))
         .waitUntilFinish();
 
-    List<TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
+    List<javax.swing.text.TableView.TableRow> rows = fakeDatasetService.getAllRows(PROJECT, DATASET, TABLE);
     // Filter out time to avoid timezone issues
-    List<TableRow> rowsWithoutTime = new List<TableRow>();
-    for (TableRow row : rows) {
-      rowsWithoutTime.add(new TableRow().set("BOOK_ID", row["BOOK_ID"]).set("TITLE", row["TITLE"]));
-    }
-
-    assertThat(rowsWithoutTime)
-        .isEqualTo(ImmutableList.of(new TableRow().set("BOOK_ID", 1).set("TITLE", "ABC")));
+    assertThat(rows.size()).isEqualTo(1);
+    assertThat(rows.get(0)["BOOK_ID"]).isEqualTo(1);
+    assertThat(rows.get(0)["TITLE"]).isEqualTo("ABC");
   }
 
   @Test
