@@ -53,7 +53,8 @@ public final class ShardFileReaderTest {
                 "test",
                 "namespaceA",
                 null,
-                "jdbcCompliantTruncation=true"),
+                "jdbcCompliantTruncation=true",
+                false),
             new Shard(
                 "shardB",
                 "hostShardB",
