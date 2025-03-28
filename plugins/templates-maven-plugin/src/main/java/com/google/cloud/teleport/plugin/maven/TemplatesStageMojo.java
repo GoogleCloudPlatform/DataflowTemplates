@@ -999,8 +999,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + imagePath
                       + "']\n"
                       + "options:\n"
+                      + "  logging: CLOUD_LOGGING_ONLY\n"
                       + "  requestedVerifyOption: VERIFIED"
-                  : ""));
+                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
@@ -1023,12 +1024,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             directory,
             cloudBuildLogs);
 
-    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
-    // successful runs.
-    if (stageProcess.waitFor() != 0) {
-      LOG.warn(
-          "Possible error building container image using gcloud. Check logs for details. {}",
-          cloudBuildLogs);
+    int retval = stageProcess.waitFor();
+    if (retval != 0) {
+      throw new RuntimeException(
+          String.format(
+              "Error building yaml image using gcloud. Code %d. Check logs for details.\n%s",
+              retval, cloudBuildLogs));
     }
   }
 
@@ -1070,8 +1071,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + imagePath
                       + "']\n"
                       + "options:\n"
+                      + "  logging: CLOUD_LOGGING_ONLY\n"
                       + "  requestedVerifyOption: VERIFIED"
-                  : ""));
+                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
@@ -1094,12 +1096,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             directory,
             cloudBuildLogs);
 
-    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
-    // successful runs.
-    if (stageProcess.waitFor() != 0) {
-      LOG.warn(
-          "Possible error building container image using gcloud. Check logs for details. {}",
-          cloudBuildLogs);
+    int retval = stageProcess.waitFor();
+    if (retval != 0) {
+      throw new RuntimeException(
+          String.format(
+              "Error building Python image using gcloud. Code %d. Check logs for details. %s",
+              retval, cloudBuildLogs));
     }
   }
 
@@ -1169,6 +1171,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + imagePath
               + "']\n"
               + "options:\n"
+              + "  logging: CLOUD_LOGGING_ONLY\n"
               + "  requestedVerifyOption: VERIFIED");
     }
 
@@ -1188,12 +1191,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             directory,
             cloudBuildLogs);
 
-    // Ideally this should raise an exception, but in GitHub Actions this returns NZE even for
-    // successful runs.
-    if (stageProcess.waitFor() != 0) {
-      LOG.warn(
-          "Possible error building container image using gcloud. Check logs for details. {}",
-          cloudBuildLogs);
+    int retval = stageProcess.waitFor();
+    if (retval != 0) {
+      throw new RuntimeException(
+          String.format(
+              "Possible error building Flex image using gcloud. Code %d. Check logs for details. %s",
+              retval, cloudBuildLogs));
     }
   }
 
@@ -1239,8 +1242,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + imagePath
                       + "']\n"
                       + "options:\n"
+                      + "  logging: CLOUD_LOGGING_ONLY\n"
                       + "  requestedVerifyOption: VERIFIED"
-                  : ""));
+                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
@@ -1263,12 +1267,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             directory,
             cloudBuildLogs);
 
-    // Ideally this should raise an exception, but this returns NZE even for
-    // successful runs.
-    if (stageProcess.waitFor() != 0) {
-      LOG.warn(
-          "Possible error building container image using gcloud. Check logs for details. {}",
-          cloudBuildLogs);
+    int retval = stageProcess.waitFor();
+    if (retval != 0) {
+      throw new RuntimeException(
+          String.format(
+              "Possible error building Xlang image using gcloud. Code %d. Check logs for details. %s",
+              retval, cloudBuildLogs));
     }
   }
 
