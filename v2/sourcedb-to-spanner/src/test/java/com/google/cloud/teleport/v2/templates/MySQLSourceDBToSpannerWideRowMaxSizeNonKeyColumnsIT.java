@@ -44,8 +44,9 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final int MAX_ALLOWED_PACKET = 1073741824; // 128 MiB
-  private static final String WORKER_MACHINE_TYPE = "n2-standard-8";
+  private static final int MAX_ALLOWED_PACKET = 500 * 1024 * 1024;
+  ; // 128 MiB
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/MaxSizeNonKeyColumnIT/mysql-test.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
@@ -69,7 +70,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
-    //    increasePacketSize();
+    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
 

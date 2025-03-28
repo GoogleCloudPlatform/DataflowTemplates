@@ -28,13 +28,11 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("Dataflow is failing")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -47,12 +45,12 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   // Reduced number of tables to prevent container crashes
   // You can gradually increase this value based on your environment's capacity
   private static final int NUM_TABLES = 5000; // Reduced from 5000
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024;
+  private static final int MAX_ALLOWED_PACKET = 500 * 1024 * 1024;
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/5000TablePerDBIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/5000TablePerDBIT/spanner-schema.sql";
-  private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
 
   @Before
   public void setUp() {
