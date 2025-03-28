@@ -38,7 +38,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for testing MySQL to Spanner migration with wide tables (1024 columns). */
+/** Integration test for testing MySQL to Spanner migration with wide tables (1016 columns). */
 @Ignore("test is completed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)

@@ -29,10 +29,8 @@ import org.junit.runners.JUnit4;
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLSourceDbtoSpannerWideRow10MBPerStringCellLT extends SourceDbToSpannerLTBase {
-  //  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String WORKER_MACHINE_TYPE = "n2-standard-4";
-  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
-  private static final String FETCH_SIZE = "10"; // "8000";
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
+  private static final String FETCH_SIZE = "4000"; // "8000";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerStringCellTest() throws Exception {
@@ -55,7 +53,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerStringCellLT extends SourceDbTo
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 10);
+            put("WideRowTable", 36000);
           }
         };
 
