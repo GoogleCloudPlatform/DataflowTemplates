@@ -53,7 +53,7 @@ public class MySQLSourceDbToSpannerWideRow1600MBNonKeyColumnsLT extends SourceDb
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("MaxNonKeyTable", 1000000);
+            put("MaxNonKeyTable", 10);
           }
         };
 
