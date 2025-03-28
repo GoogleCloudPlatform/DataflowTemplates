@@ -160,7 +160,7 @@ public class SpannerIOReadTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SOURCE),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     PROJECT_ID, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
@@ -199,7 +199,7 @@ public class SpannerIOReadTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SOURCE),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
@@ -223,7 +223,7 @@ public class SpannerIOReadTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SOURCE),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
@@ -316,7 +316,7 @@ public class SpannerIOReadTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SOURCE),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     PROJECT_ID, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
@@ -339,7 +339,7 @@ public class SpannerIOReadTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SOURCE),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
@@ -362,7 +362,7 @@ public class SpannerIOReadTest implements Serializable {
     assertThat(
         Lineage.query(result.metrics(), Lineage.Type.SOURCE),
         hasItem(
-            Lineage.getFqName(
+            LineageUtils.getFqName(
                 "spanner",
                 ImmutableList.of(
                     DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));

@@ -47,12 +47,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
+import org.junit.runners.Parameterized;
 
 /** Integration test for {@link TextImportPipeline}. */
 @Category({TemplateIntegrationTest.class, SpannerStagingTest.class})
 @TemplateIntegrationTest(TextImportPipeline.class)
-@RunWith(JUnit4.class)
+@RunWith(Parameterized.class)
 public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
   private SpannerResourceManager googleSqlResourceManager;
@@ -130,6 +130,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerHost", spannerHost)
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
@@ -225,6 +226,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerHost", spannerHost)
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
@@ -325,6 +327,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerHost", spannerHost)
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
@@ -421,6 +424,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
             .addParameter("databaseId", googleSqlResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerHost", spannerHost)
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
@@ -495,6 +499,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("instanceId", postgresResourceManager.getInstanceId())
             .addParameter("databaseId", postgresResourceManager.getDatabaseId())
             .addParameter("spannerProjectId", PROJECT)
+            .addParameter("spannerHost", spannerHost)
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
