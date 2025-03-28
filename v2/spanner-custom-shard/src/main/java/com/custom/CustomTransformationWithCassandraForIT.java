@@ -46,6 +46,8 @@ public class CustomTransformationWithCassandraForIT implements ISpannerMigration
       Map<String, Object> requestRow = request.getRequestRow();
       Map<String, Object> row = new HashMap<>();
       row.put("full_name", requestRow.get("first_name") + " " + requestRow.get("last_name"));
+      row.put("empty_string", "");
+      row.put("null_key", null);
       MigrationTransformationResponse response = new MigrationTransformationResponse(row, false);
       return response;
     }

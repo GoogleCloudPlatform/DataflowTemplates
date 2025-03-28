@@ -174,16 +174,16 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             .putAll(pkColumnNameValues)
             .putAll(columnNameValues)
             .build();
-    switch (modType) {
-      case "INSERT":
-      case "UPDATE":
-        return getUpsertStatementCQL(sourceTable.getName(), timestamp, allColumnNamesAndValues);
-      case "DELETE":
-        return getDeleteStatementCQL(sourceTable.getName(), timestamp, allColumnNamesAndValues);
-      default:
+    return switch (modType) {
+      case "INSERT", "UPDATE" -> getUpsertStatementCQL(
+          sourceTable.getName(), timestamp, allColumnNamesAndValues);
+      case "DELETE" -> getDeleteStatementCQL(
+          sourceTable.getName(), timestamp, allColumnNamesAndValues);
+      default -> {
         LOG.error("Unsupported modType: {} for table {}", modType, spannerTable.getName());
-        return new DMLGeneratorResponse("");
-    }
+        yield new DMLGeneratorResponse("");
+      }
+    };
   }
 
   /**
@@ -321,9 +321,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       if (customTransformColumns != null
           && customTransformColumns.contains(sourceColDef.getName())) {
         String cassandraType = sourceColDef.getType().getName().toLowerCase();
+        Object customValue = customTransformationResponse.get(colName);
         columnValue =
             PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(colName));
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
         response.put(sourceColDef.getName(), columnValue);
         continue;
       }
@@ -398,9 +400,11 @@ public class CassandraDMLGenerator implements IDMLGenerator {
           && customTransformColumns.contains(sourceColDef.getName())) {
         String cassandraType = sourceColDef.getType().getName().toLowerCase();
         String columnName = spannerColDef.getName();
+        Object customValue = customTransformationResponse.get(columnName);
         columnValue =
             PreparedStatementValueObject.create(
-                cassandraType, customTransformationResponse.get(columnName));
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
       } else if (keyValuesJson.has(spannerColumnName)) {
         columnValue =
             getMappedColumnValue(
