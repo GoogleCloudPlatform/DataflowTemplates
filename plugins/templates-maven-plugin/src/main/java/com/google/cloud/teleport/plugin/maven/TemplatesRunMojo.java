@@ -227,8 +227,7 @@ public class TemplatesRunMojo extends TemplatesBaseMojo {
                   + "-"
                   + new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date());
 
-      String stagedTemplatePath =
-          configuredMojo.stageTemplate(definition, imageSpec, pluginManager);
+      String stagedTemplatePath = configuredMojo.stageTemplate(definition, pluginManager, false);
 
       Job job;
       if (definition.isClassic()) {
