@@ -44,7 +44,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeNonKeyColumnsIT extends SourceD
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  private static final int MAX_ALLOWED_PACKET = 500 * 1024 * 1024;
+  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024;
   ; // 128 MiB
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
   private static final String MYSQL_DUMP_FILE_RESOURCE =
