@@ -16,6 +16,8 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -31,13 +33,12 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("This test is completed")
+// @Ignore("This test is completed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -48,6 +49,8 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       "WideRow/MaxColumnsTableKeyIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/MaxColumnsTableKeyIT/spanner-schema.sql";
+  private static final String SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE =
+      "WideRow/MaxColumnsTableKeyIT/spanner-schema-exceeding-keys.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
@@ -94,5 +97,21 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
     ImmutableList<Struct> wideRowData =
         spannerResourceManager.readTableRecords(TABLE_NAME, columns);
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
+  }
+
+  @Test
+  public void wideRowExceedingMaxColumnsTableKeyTest() throws Exception {
+    try {
+      // Attempt to create the Spanner DDL with more than 16 key columns
+      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
+      // The job should fail due to Spanner's limitation of maximum 16 key columns
+      fail("Expected an exception when creating schema with more than 16 key columns");
+    } catch (Exception e) {
+      // Expected exception due to Spanner's limitation of 16 key columns
+      assertTrue(
+          "Exception should mention key column limitation",
+          e.getMessage().contains("has too many keys")
+              || e.getMessage().contains("the limit is 16"));
+    }
   }
 }

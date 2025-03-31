@@ -32,5 +32,5 @@ INSERT INTO LargePrimaryKeyTable (
     REPEAT('E', 48), REPEAT('F', 48), REPEAT('G', 48), REPEAT('H', 48),
     REPEAT('I', 48), REPEAT('J', 48), REPEAT('K', 48), REPEAT('L', 48),
     REPEAT('M', 48), REPEAT('N', 48), REPEAT('O', 48), REPEAT('P', 48),
-    '8KB of total size of table key'
+    '3KB of total size of table key'
 );

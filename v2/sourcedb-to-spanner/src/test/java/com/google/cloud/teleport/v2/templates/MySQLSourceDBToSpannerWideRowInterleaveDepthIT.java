@@ -96,9 +96,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
       // Verify that the exception contains a message about the interleave depth limit
       assertTrue(
           "Exception should mention interleave depth limit",
-          e.getMessage().contains("exceeds maximum interleave depth")
-              || e.getMessage().contains("maximum hierarchy depth")
-              || e.getMessage().contains("interleave depth too large")
+          e.getMessage().contains("too deeply nested")
               || e.getMessage().contains("the limit is 8 tables"));
     }
   }
