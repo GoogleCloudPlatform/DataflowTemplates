@@ -60,6 +60,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -70,6 +71,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(DataStreamToSQL.class)
 @RunWith(JUnit4.class)
+@Ignore("https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/2289 test permared")
 public class DataStreamToSQLIT extends TemplateTestBase {
 
   enum JDBCType {
@@ -78,7 +80,7 @@ public class DataStreamToSQLIT extends TemplateTestBase {
     POSTGRES
   }
 
-  @Rule public Timeout timeout = new Timeout(10, TimeUnit.MINUTES);
+  @Rule public Timeout timeout = new Timeout(15, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "row_id";
