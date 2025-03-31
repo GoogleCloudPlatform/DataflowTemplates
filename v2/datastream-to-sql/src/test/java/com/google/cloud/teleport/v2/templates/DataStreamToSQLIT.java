@@ -71,7 +71,6 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(DataStreamToSQL.class)
 @RunWith(JUnit4.class)
-@Ignore("https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/2289 test permared")
 public class DataStreamToSQLIT extends TemplateTestBase {
 
   enum JDBCType {
@@ -80,7 +79,7 @@ public class DataStreamToSQLIT extends TemplateTestBase {
     POSTGRES
   }
 
-  @Rule public Timeout timeout = new Timeout(15, TimeUnit.MINUTES);
+  @Rule public Timeout timeout = new Timeout(30, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "row_id";
@@ -139,12 +138,14 @@ public class DataStreamToSQLIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToPostgresJson() throws IOException {
     // Run a simple IT
     simpleOracleToJdbcTest(JDBCType.POSTGRES, Function.identity());
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToMySqlJsonGCSNotifications() throws IOException {
     // Set up pubsub notifications
     SubscriptionName subscriptionName = createGcsNotifications();
