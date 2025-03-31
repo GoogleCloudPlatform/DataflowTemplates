@@ -17,6 +17,8 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -27,13 +29,12 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("this test is passed")
+// @Ignore("this test is passed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -46,8 +47,8 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
       "WideRow/InterleaveDepthIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/InterleaveDepthIT/spanner-schema.sql";
-
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024;
+  private static final String SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE =
+      "WideRow/InterleaveDepthIT/spanner-schema-depth-8.sql";
 
   @Before
   public void setUp() {
@@ -60,14 +61,8 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void wideRowInterleaveDepthTest() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
@@ -88,6 +83,23 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
           "Interleaved depth " + i + " migrated",
           1,
           spannerResourceManager.getRowCount(tableName).longValue());
+    }
+  }
+
+  @Test
+  public void wideRowInterleaveDepth8FailureTest() throws Exception {
+    try {
+      // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of 7)
+      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
+      fail("Expected an exception when creating schema with interleave depth of 8");
+    } catch (Exception e) {
+      // Verify that the exception contains a message about the interleave depth limit
+      assertTrue(
+          "Exception should mention interleave depth limit",
+          e.getMessage().contains("exceeds maximum interleave depth")
+              || e.getMessage().contains("maximum hierarchy depth")
+              || e.getMessage().contains("interleave depth too large")
+              || e.getMessage().contains("the limit is 8 tables"));
     }
   }
 }
