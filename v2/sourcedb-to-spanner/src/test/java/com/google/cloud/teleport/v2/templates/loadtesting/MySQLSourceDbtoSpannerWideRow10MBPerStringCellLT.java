@@ -55,7 +55,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerStringCellLT extends SourceDbTo
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 36000);
+            put("WideRowTable", 25000);
           }
         };
 

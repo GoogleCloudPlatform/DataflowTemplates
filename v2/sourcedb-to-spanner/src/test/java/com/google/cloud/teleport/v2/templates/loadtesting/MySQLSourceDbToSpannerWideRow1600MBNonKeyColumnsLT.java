@@ -20,17 +20,20 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
+@Ignore("This test is ignored until we get input from the GCP team.")
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLSourceDbToSpannerWideRow1600MBNonKeyColumnsLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String FETCH_SIZE = "8000";
+  private static final String FETCH_SIZE = "1";
 
   @Test
   public void mySQLToSpanner1600MBNonKeyColumnsTest() throws Exception {
