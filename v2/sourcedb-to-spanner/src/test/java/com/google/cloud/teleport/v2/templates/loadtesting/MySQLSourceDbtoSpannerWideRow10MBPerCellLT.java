@@ -29,12 +29,12 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLSourceDbtoSpannerWideRow10MBPerStringCellLT extends SourceDbToSpannerLTBase {
+public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
   private static final String FETCH_SIZE = "4000"; // "8000";
 
   @Test
-  public void mySQLToSpannerWideRow10MBPerStringCellTest() throws Exception {
+  public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
     //    ToDo: Replace with the Google's secrets values
     String username =
         accessSecret(
@@ -49,7 +49,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerStringCellLT extends SourceDbTo
     int port = 3306;
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
-    createSpannerDDL("SourceDbToSpannerLT/WideRow/spanner-schema-10mb-per-string-cell.sql");
+    createSpannerDDL("SourceDbToSpannerLT/WideRow/spanner-schema-10mib-per-cell.sql");
 
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
