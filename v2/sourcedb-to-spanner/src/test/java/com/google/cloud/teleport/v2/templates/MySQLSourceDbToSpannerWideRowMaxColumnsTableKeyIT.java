@@ -44,7 +44,6 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbToSpannerITBase {
   private static final String TABLE_NAME = "LargePrimaryKeyTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/MaxColumnsTableKeyIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
@@ -67,14 +66,8 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
     ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void wideRowMaxColumnsTableKeyTest() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
