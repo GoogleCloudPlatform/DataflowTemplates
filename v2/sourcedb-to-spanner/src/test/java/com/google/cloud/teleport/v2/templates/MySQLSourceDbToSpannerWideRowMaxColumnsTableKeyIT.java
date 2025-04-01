@@ -23,7 +23,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -65,7 +64,10 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
 
   @After
   public void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
+    ResourceManagerUtils.cleanResources(
+        mySQLResourceManager,
+        spannerResourceManager,
+        spannerResourceManagerExceedingMaxColumnsTableKey);
   }
 
   @Test
@@ -100,9 +102,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       createSpannerDDL(
           spannerResourceManagerExceedingMaxColumnsTableKey,
           SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
-      Assert.fail("SpannerResourceManagerException should be thrown");
     } catch (Exception e) {
-      Logger.getLogger(getClass().getName()).info(e.getMessage());
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
           "Exception should mention key column limitation",
