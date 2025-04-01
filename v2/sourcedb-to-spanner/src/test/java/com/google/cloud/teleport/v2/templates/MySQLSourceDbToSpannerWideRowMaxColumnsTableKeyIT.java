@@ -16,8 +16,6 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -32,6 +30,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -101,14 +100,11 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       createSpannerDDL(
           spannerResourceManagerExceedingMaxColumnsTableKey,
           SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
-      // The job should fail due to Spanner's limitation of maximum 16 key columns
-      fail("Expected an exception when creating schema with more than 16 key columns");
     } catch (Exception e) {
       // Expected exception due to Spanner's limitation of 16 key columns
-      assertTrue(
+      Assert.assertTrue(
           "Exception should mention key column limitation",
-          e.getMessage().contains("has too many keys")
-              || e.getMessage().contains("the limit is 16"));
+          e.getMessage().contains("the limit is 16"));
     }
   }
 }
