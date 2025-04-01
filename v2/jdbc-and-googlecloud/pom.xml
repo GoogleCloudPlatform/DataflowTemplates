@@ -26,7 +26,7 @@
     <version>1.0-SNAPSHOT</version>
   </parent>
 
-  <artifactId>jdbc-to-googlecloud</artifactId>
+  <artifactId>jdbc-and-googlecloud</artifactId>
 
   <dependencies>
     <dependency>

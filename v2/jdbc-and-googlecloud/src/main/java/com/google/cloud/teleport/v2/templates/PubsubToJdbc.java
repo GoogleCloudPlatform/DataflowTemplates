@@ -32,7 +32,9 @@ import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
+import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.values.PCollection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -111,10 +113,10 @@ public class PubsubToJdbc {
             "readFromPubSubSubscription",
             PubsubIO.readStrings().fromSubscription(options.getInputSubscription()));
 
-    DynamicJdbcIO.DynamicDataSourceConfiguration dataSourceConfiguration =
-        DynamicJdbcIO.DynamicDataSourceConfiguration.create(
-                options.getDriverClassName(),
-                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()).get())
+    JdbcIO.DataSourceConfiguration dataSourceConfiguration =
+        JdbcIO.DataSourceConfiguration.create(
+                ValueProvider.StaticValueProvider.of(options.getDriverClassName()),
+                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()))
             .withDriverJars(options.getDriverJars());
     if (options.getUsername() != null) {
       dataSourceConfiguration =

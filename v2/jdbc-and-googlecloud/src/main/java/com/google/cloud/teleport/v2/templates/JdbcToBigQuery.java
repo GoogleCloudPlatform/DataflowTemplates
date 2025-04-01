@@ -65,7 +65,7 @@ import org.joda.time.format.DateTimeFormatter;
  * A template that copies data from a relational database using JDBC to an existing BigQuery table.
  *
  * <p>Check out <a
- * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/jdbc-to-googlecloud/README_Jdbc_to_BigQuery_Flex.md">README</a>
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/jdbc-and-googlecloud/README_Jdbc_to_BigQuery_Flex.md">README</a>
  * for instructions on how to use or modify this template.
  */
 @Template(
