@@ -48,6 +48,9 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   private static final String SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE =
       "WideRow/InterleaveDepthIT/spanner-schema-depth-8.sql";
 
+  private static final String MYSQL_DUMP_FILE_RESOURCE =
+      "WideRow/InterleaveDepthIT/mysql-schema.sql";
+
   @Before
   public void setUp() {
     mySQLResourceManager = setUpMySQLResourceManager();
@@ -61,6 +64,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
 
   @Test
   public void wideRowInterleaveDepthTest() throws Exception {
+    loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -87,8 +91,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   public void wideRowInterleaveDepth8FailureTest() {
     try {
       // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of
-      createSpannerDDL(
-          spannerResourceManagerInterleaveDepth8Failure, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
+      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
     } catch (Exception e) {
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
