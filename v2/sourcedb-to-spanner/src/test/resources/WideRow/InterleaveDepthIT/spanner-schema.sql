@@ -1,10 +1,8 @@
--- Top-level parent table.
 CREATE TABLE Parent (
   ParentID INT64 NOT NULL,
   Value STRING(100)
 ) PRIMARY KEY (ParentID);
 
--- Depth 1: Child table interleaved in Parent.
 CREATE TABLE Child1 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,
@@ -12,7 +10,6 @@ CREATE TABLE Child1 (
 ) PRIMARY KEY (ParentID, Child1ID),
   INTERLEAVE IN PARENT Parent ON DELETE CASCADE;
 
--- Depth 2: Grandchild table interleaved in Child1.
 CREATE TABLE Child2 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,
@@ -21,7 +18,6 @@ CREATE TABLE Child2 (
 ) PRIMARY KEY (ParentID, Child1ID, Child2ID),
   INTERLEAVE IN PARENT Child1 ON DELETE CASCADE;
 
--- Depth 3: Great-grandchild table interleaved in Child2.
 CREATE TABLE Child3 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,
@@ -31,7 +27,6 @@ CREATE TABLE Child3 (
 ) PRIMARY KEY (ParentID, Child1ID, Child2ID, Child3ID),
   INTERLEAVE IN PARENT Child2 ON DELETE CASCADE;
 
--- Depth 4: Table interleaved in Child3.
 CREATE TABLE Child4 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,
@@ -42,7 +37,6 @@ CREATE TABLE Child4 (
 ) PRIMARY KEY (ParentID, Child1ID, Child2ID, Child3ID, Child4ID),
   INTERLEAVE IN PARENT Child3 ON DELETE CASCADE;
 
--- Depth 5: Table interleaved in Child4.
 CREATE TABLE Child5 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,
@@ -54,7 +48,6 @@ CREATE TABLE Child5 (
 ) PRIMARY KEY (ParentID, Child1ID, Child2ID, Child3ID, Child4ID, Child5ID),
   INTERLEAVE IN PARENT Child4 ON DELETE CASCADE;
 
--- Depth 6: Table interleaved in Child5.
 CREATE TABLE Child6 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,
@@ -67,7 +60,6 @@ CREATE TABLE Child6 (
 ) PRIMARY KEY (ParentID, Child1ID, Child2ID, Child3ID, Child4ID, Child5ID, Child6ID),
   INTERLEAVE IN PARENT Child5 ON DELETE CASCADE;
 
--- Depth 7: Table interleaved in Child6.
 CREATE TABLE Child7 (
   ParentID INT64 NOT NULL,
   Child1ID INT64 NOT NULL,

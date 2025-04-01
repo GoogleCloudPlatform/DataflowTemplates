@@ -12,5 +12,5 @@ INSERT INTO LargePrimaryKeyTable (
     REPEAT('A', 255),
     REPEAT('B', 255),
     REPEAT('C', 255),
-    '8KB of total size of table key'
+    '3KB of total size of table key as per the mysql limitation'
 );
