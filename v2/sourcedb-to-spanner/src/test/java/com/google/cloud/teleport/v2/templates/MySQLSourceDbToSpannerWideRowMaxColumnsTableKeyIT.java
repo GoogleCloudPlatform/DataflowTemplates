@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -100,8 +101,9 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       createSpannerDDL(
           spannerResourceManagerExceedingMaxColumnsTableKey,
           SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
-    } catch (Exception e) {
+    } catch (IOException e) {
       // Expected exception due to Spanner's limitation of 16 key columns
+      System.out.println("========== Exception occurred: ============= " + e.getMessage());
       Assert.assertTrue(
           "Exception should mention key column limitation",
           e.getMessage().contains("the limit is 16"));
