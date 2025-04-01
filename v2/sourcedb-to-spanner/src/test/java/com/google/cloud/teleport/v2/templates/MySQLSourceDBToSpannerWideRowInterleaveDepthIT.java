@@ -26,6 +26,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -86,19 +87,18 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
     }
   }
 
-  //  @Test
-  //  public void wideRowInterleaveDepth8FailureTest() throws Exception {
-  //    try {
-  //      // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of
-  // 7)
-  //      createSpannerDDL(
-  //          spannerResourceManagerInterleaveDepth8Failure, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
-  //      fail("Expected an exception when creating schema with interleave depth of 8");
-  //    } catch (Exception e) {
-  //      // Verify that the exception contains a message about the interleave depth limit
-  //      assertTrue(
-  //          "Exception should mention interleave depth limit",e.getMessage().contains("the limit
-  // is 8 tables"));
-  //    }
-  //  }
+  @Test
+  public void wideRowInterleaveDepth8FailureTest() throws Exception {
+    try {
+      // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of
+      createSpannerDDL(
+          spannerResourceManagerInterleaveDepth8Failure, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
+    } catch (Exception e) {
+      // Verify that the exception contains a message about the interleave depth limit
+      System.out.println(e.getMessage());
+      Assert.assertTrue(
+          "Exception should mention interleave depth limit",
+          e.getMessage().contains("the limit is 8 tables"));
+    }
+  }
 }
