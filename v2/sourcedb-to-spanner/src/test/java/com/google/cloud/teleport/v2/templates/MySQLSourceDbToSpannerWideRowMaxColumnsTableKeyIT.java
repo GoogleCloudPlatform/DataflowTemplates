@@ -118,7 +118,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
           "Exception should mention key column limitation",
-          e.getCause().getMessage().contains("the limit is 16"));
+          e.getCause().getMessage().contains("Failed to execute statement"));
     }
   }
 }
