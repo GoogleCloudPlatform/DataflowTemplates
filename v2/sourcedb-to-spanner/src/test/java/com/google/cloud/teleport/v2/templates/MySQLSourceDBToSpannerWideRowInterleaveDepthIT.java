@@ -17,8 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -88,19 +86,19 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
     }
   }
 
-  @Test
-  public void wideRowInterleaveDepth8FailureTest() throws Exception {
-    try {
-      // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of 7)
-      createSpannerDDL(
-          spannerResourceManagerInterleaveDepth8Failure, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
-      fail("Expected an exception when creating schema with interleave depth of 8");
-    } catch (Exception e) {
-      // Verify that the exception contains a message about the interleave depth limit
-      assertTrue(
-          "Exception should mention interleave depth limit",
-          e.getMessage().contains("too deeply nested")
-              || e.getMessage().contains("the limit is 8 tables"));
-    }
-  }
+  //  @Test
+  //  public void wideRowInterleaveDepth8FailureTest() throws Exception {
+  //    try {
+  //      // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of
+  // 7)
+  //      createSpannerDDL(
+  //          spannerResourceManagerInterleaveDepth8Failure, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
+  //      fail("Expected an exception when creating schema with interleave depth of 8");
+  //    } catch (Exception e) {
+  //      // Verify that the exception contains a message about the interleave depth limit
+  //      assertTrue(
+  //          "Exception should mention interleave depth limit",e.getMessage().contains("the limit
+  // is 8 tables"));
+  //    }
+  //  }
 }

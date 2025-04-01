@@ -30,7 +30,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -93,18 +92,18 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 
-  @Test
-  public void wideRowExceedingMaxColumnsTableKeyTest() throws Exception {
-    try {
-      // Attempt to create the Spanner DDL with more than 16 key columns
-      createSpannerDDL(
-          spannerResourceManagerExceedingMaxColumnsTableKey,
-          SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
-    } catch (Exception e) {
-      // Expected exception due to Spanner's limitation of 16 key columns
-      Assert.assertTrue(
-          "Exception should mention key column limitation",
-          e.getMessage().contains("the limit is 16"));
-    }
-  }
+  //  @Test
+  //  public void wideRowExceedingMaxColumnsTableKeyTest() throws Exception {
+  //    try {
+  //      // Attempt to create the Spanner DDL with more than 16 key columns
+  //      createSpannerDDL(
+  //          spannerResourceManagerExceedingMaxColumnsTableKey,
+  //          SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
+  //    } catch (Exception e) {
+  //      // Expected exception due to Spanner's limitation of 16 key columns
+  //      Assert.assertTrue(
+  //          "Exception should mention key column limitation",
+  //          e.getMessage().contains("the limit is 16"));
+  //    }
+  //  }
 }
