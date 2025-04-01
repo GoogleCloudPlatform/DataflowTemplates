@@ -42,6 +42,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   private PipelineLauncher.LaunchInfo jobInfo;
   private MySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
+  private SpannerResourceManager spannerResourceManagerInterleaveDepth8Failure;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/InterleaveDepthIT/mysql-schema.sql";
@@ -54,6 +55,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   public void setUp() {
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
+    spannerResourceManagerInterleaveDepth8Failure = setUpSpannerResourceManager();
   }
 
   @After
@@ -90,7 +92,8 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   public void wideRowInterleaveDepth8FailureTest() throws Exception {
     try {
       // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of 7)
-      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
+      createSpannerDDL(
+          spannerResourceManagerInterleaveDepth8Failure, SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE);
       fail("Expected an exception when creating schema with interleave depth of 8");
     } catch (Exception e) {
       // Verify that the exception contains a message about the interleave depth limit

@@ -54,11 +54,13 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static SpannerResourceManager spannerResourceManagerExceedingMaxColumnsTableKey;
 
   @Before
   public void setUp() throws Exception {
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
+    spannerResourceManagerExceedingMaxColumnsTableKey = setUpSpannerResourceManager();
   }
 
   @After
@@ -96,7 +98,9 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   public void wideRowExceedingMaxColumnsTableKeyTest() throws Exception {
     try {
       // Attempt to create the Spanner DDL with more than 16 key columns
-      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
+      createSpannerDDL(
+          spannerResourceManagerExceedingMaxColumnsTableKey,
+          SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
       // The job should fail due to Spanner's limitation of maximum 16 key columns
       fail("Expected an exception when creating schema with more than 16 key columns");
     } catch (Exception e) {
