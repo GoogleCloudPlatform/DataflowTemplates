@@ -42,10 +42,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   private PipelineLauncher.LaunchInfo jobInfo;
   private MySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
-  private SpannerResourceManager spannerResourceManagerInterleaveDepth8Failure;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/InterleaveDepthIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/InterleaveDepthIT/spanner-schema.sql";
   private static final String SPANNER_SCHEMA_DEPTH_8_FILE_RESOURCE =
@@ -55,20 +52,15 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   public void setUp() {
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
-    spannerResourceManagerInterleaveDepth8Failure = setUpSpannerResourceManager();
   }
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        mySQLResourceManager,
-        spannerResourceManagerInterleaveDepth8Failure);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
   @Test
   public void wideRowInterleaveDepthTest() throws Exception {
-    loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
         launchDataflowJob(

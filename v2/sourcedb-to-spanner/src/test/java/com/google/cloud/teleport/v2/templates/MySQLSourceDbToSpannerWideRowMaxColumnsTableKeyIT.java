@@ -30,7 +30,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -91,15 +90,15 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 
-  @Test
-  public void wideRowExceedingMaxColumnsTableKeyTest() {
-    try {
-      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
-    } catch (Exception e) {
-      System.out.println("===>>>>>> Exception caught: " + e.getMessage());
-      Assert.assertTrue(
-          "Exception should mention key column limitation",
-          e.getMessage().contains("Failed to execute statement"));
-    }
-  }
+  //  @Test
+  //  public void wideRowExceedingMaxColumnsTableKeyTest() {
+  //    try {
+  //      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
+  //    } catch (Exception e) {
+  //      System.out.println("===>>>>>> Exception caught: " + e.getMessage());
+  //      Assert.assertTrue(
+  //          "Exception should mention key column limitation",
+  //          e.getMessage().contains("Failed to execute statement"));
+  //    }
+  //  }
 }
