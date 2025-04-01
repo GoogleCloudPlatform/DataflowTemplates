@@ -95,19 +95,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   }
 
   @Test
-  public void wideRowExceedingMaxColumnsTableKeyTest() throws Exception {
-    //    SpannerResourceManagerException thrown =
-    //        Assert.assertThrows(
-    //            SpannerResourceManagerException.class,
-    //            () ->
-    //                createSpannerDDL(
-    //                    spannerResourceManagerExceedingMaxColumnsTableKey,
-    //                    SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE));
-    //    Assert.assertTrue(
-    //        "Exception should mention key column limitation",
-    //        thrown.getCause().getMessage().contains("the limit is 16"));
-    //  }
-
+  public void wideRowExceedingMaxColumnsTableKeyTest() {
     try {
       createSpannerDDL(
           spannerResourceManagerExceedingMaxColumnsTableKey,
