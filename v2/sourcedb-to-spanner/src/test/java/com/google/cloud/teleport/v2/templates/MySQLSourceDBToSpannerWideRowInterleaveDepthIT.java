@@ -88,7 +88,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   }
 
   @Test
-  public void wideRowInterleaveDepth8FailureTest() throws Exception {
+  public void wideRowInterleaveDepth8FailureTest() {
     try {
       // Attempt to create a schema with interleave depth of 8 (which exceeds Spanner's limit of
       createSpannerDDL(
