@@ -24,8 +24,8 @@ import java.util.HashMap;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -41,13 +41,12 @@ import org.junit.runners.JUnit4;
 public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
 
   private PipelineLauncher.LaunchInfo jobInfo;
-  private MySQLResourceManager mySQLResourceManager;
+  private CloudMySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   // Reduced number of tables to prevent container crashes
   // You can gradually increase this value based on your environment's capacity
   private static final int NUM_TABLES = 5000; // Reduced from 5000
-  private static final int MAX_ALLOWED_PACKET = 500 * 1024 * 1024;
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/5000TablePerDBIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
@@ -56,7 +55,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
 
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    mySQLResourceManager = setUpCloudMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -65,14 +64,8 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void testMySQLToSpannerMigration() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
 

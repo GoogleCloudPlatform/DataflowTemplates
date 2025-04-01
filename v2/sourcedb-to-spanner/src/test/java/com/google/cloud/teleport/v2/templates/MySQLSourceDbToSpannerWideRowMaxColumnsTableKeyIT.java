@@ -53,21 +53,16 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
-  public static SpannerResourceManager spannerResourceManagerExceedingMaxColumnsTableKey;
 
   @Before
   public void setUp() throws Exception {
     mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
-    spannerResourceManagerExceedingMaxColumnsTableKey = setUpSpannerResourceManager();
   }
 
   @After
   public void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(
-        mySQLResourceManager,
-        spannerResourceManager,
-        spannerResourceManagerExceedingMaxColumnsTableKey);
+    ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
   @Test
@@ -99,9 +94,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   @Test
   public void wideRowExceedingMaxColumnsTableKeyTest() {
     try {
-      createSpannerDDL(
-          spannerResourceManagerExceedingMaxColumnsTableKey,
-          SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
+      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
     } catch (Exception e) {
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(

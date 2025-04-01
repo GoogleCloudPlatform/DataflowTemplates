@@ -60,7 +60,10 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
 
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager,
+        mySQLResourceManager,
+        spannerResourceManagerInterleaveDepth8Failure);
   }
 
   @Test
