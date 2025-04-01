@@ -1216,15 +1216,6 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testCastToExpectedTypeForNull() {
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          CassandraTypeHandler.castToExpectedType("text", null);
-        });
-  }
-
-  @Test
   public void testCastToExpectedTypeForDate_String() {
     String dateString = "2025-01-09"; // Format: yyyy-MM-dd
     Object result = CassandraTypeHandler.castToExpectedType("date", dateString);

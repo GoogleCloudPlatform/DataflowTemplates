@@ -336,6 +336,9 @@ public class CassandraTypeHandler {
    */
   private static PreparedStatementValueObject<?> parseAndCastToCassandraType(
       String columnType, Object colValue) {
+    if (colValue == null) {
+      return null;
+    }
 
     if (columnType.startsWith("frozen<")) {
       return parseAndCastToCassandraType(extractInnerType(columnType), colValue);
@@ -531,7 +534,7 @@ public class CassandraTypeHandler {
    * @return a {@link List} containing parsed values, or an empty list if {@code colValue} is null
    */
   private static List<?> parseCassandraList(String columnType, JSONArray colValue) {
-    if (colValue == null || colValue.isEmpty()) {
+    if (colValue.isEmpty()) {
       return Collections.emptyList();
     }
     String innerType = extractInnerType(columnType);
@@ -586,7 +589,7 @@ public class CassandraTypeHandler {
    * @return a {@link Set} containing parsed values, or an empty set if {@code colValue} is null
    */
   private static Set<?> parseCassandraSet(String columnType, JSONArray colValue) {
-    if (colValue == null || colValue.isEmpty()) {
+    if (colValue.isEmpty()) {
       return Collections.emptySet();
     }
     String innerType = extractInnerType(columnType);
@@ -607,7 +610,7 @@ public class CassandraTypeHandler {
    *     null
    */
   private static Map<?, ?> parseCassandraMap(String columnType, JSONObject colValue) {
-    if (colValue == null || colValue.isEmpty()) {
+    if (colValue.isEmpty()) {
       return Collections.emptyMap();
     }
     String[] keyValueTypes = extractKeyValueTypes(columnType);
@@ -670,7 +673,9 @@ public class CassandraTypeHandler {
    */
   public static Object castToExpectedType(String cassandraType, Object columnValue) {
     try {
-      return parseAndCastToCassandraType(cassandraType, columnValue).value();
+      PreparedStatementValueObject<?> valueObject =
+          parseAndCastToCassandraType(cassandraType, columnValue);
+      return valueObject != null ? valueObject.value() : null;
     } catch (IllegalArgumentException e) {
       LOG.error("Error converting value for column: {}, type: {}", cassandraType, e.getMessage());
       throw new IllegalArgumentException(
