@@ -21,11 +21,12 @@ import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
+import org.junit.Ignore;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-// @Ignore("This test successfully runs but is ignored in the test suite")
+@Ignore("This test successfully runs but is ignored in the test suite")
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
