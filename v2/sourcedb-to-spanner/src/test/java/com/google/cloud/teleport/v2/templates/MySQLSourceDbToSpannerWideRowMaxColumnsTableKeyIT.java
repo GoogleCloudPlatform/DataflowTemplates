@@ -95,7 +95,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   }
 
   @Test
-  public void wideRowExceedingMaxColumnsTableKeyTest() {
+  public void wideRowExceedingMaxColumnsTableKeyTest() throws Exception {
     //    SpannerResourceManagerException thrown =
     //        Assert.assertThrows(
     //            SpannerResourceManagerException.class,
@@ -118,7 +118,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
           "Exception should mention key column limitation",
-          e.getCause().getMessage().contains("Failed to execute statement"));
+          e.getMessage().contains("Failed to execute statement"));
     }
   }
 }
