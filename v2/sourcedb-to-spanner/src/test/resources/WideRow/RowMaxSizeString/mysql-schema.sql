@@ -1,7 +1,7 @@
 -- MySQL schema for testing very large string migration
 CREATE TABLE WideRowTable (
   id INT PRIMARY KEY,
-  max_string_col TEXT
+  max_string_col MEDIUMTEXT
 );
 
 -- Insert a row with normal size data that should succeed
