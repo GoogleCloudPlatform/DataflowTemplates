@@ -21,13 +21,13 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.SpannerResourceManagerException;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
@@ -96,17 +96,15 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
 
   @Test
   public void wideRowExceedingMaxColumnsTableKeyTest() {
-    try {
-      // Attempt to create the Spanner DDL with more than 16 key columns
-      createSpannerDDL(
-          spannerResourceManagerExceedingMaxColumnsTableKey,
-          SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE);
-    } catch (IOException e) {
-      // Expected exception due to Spanner's limitation of 16 key columns
-      System.out.println("========== Exception occurred: ============= " + e.getMessage());
-      Assert.assertTrue(
-          "Exception should mention key column limitation",
-          e.getMessage().contains("the limit is 16"));
-    }
+    SpannerResourceManagerException thrown =
+        Assert.assertThrows(
+            SpannerResourceManagerException.class,
+            () ->
+                createSpannerDDL(
+                    spannerResourceManagerExceedingMaxColumnsTableKey,
+                    SPANNER_SCHEMA_EXCEEDING_KEYS_FILE_RESOURCE));
+    Assert.assertTrue(
+        "Exception should mention key column limitation",
+        thrown.getCause().getMessage().contains("the limit is 16"));
   }
 }
