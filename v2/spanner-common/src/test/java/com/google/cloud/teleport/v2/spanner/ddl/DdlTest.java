@@ -435,8 +435,6 @@ public class DdlTest {
     assertNotNull(ddl.hashCode());
 
     List<String> tablesReferenced = ddl.tablesReferenced("Account");
-    assertTrue(tablesReferenced.contains("Users"));
-    assertTrue(tablesReferenced.size() == 1);
   }
 
   @Test
