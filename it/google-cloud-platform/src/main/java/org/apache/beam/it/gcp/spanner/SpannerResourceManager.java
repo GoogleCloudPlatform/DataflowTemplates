@@ -652,7 +652,7 @@ public final class SpannerResourceManager implements ResourceManager {
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
       if (System.getProperty("spannerInstanceId") != null
-          && projectId == "cloud-teleport-testing") {
+          && projectId == "apache-beam-testing") {
         this.useStaticInstance = true;
         List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
         Random random = new Random();
