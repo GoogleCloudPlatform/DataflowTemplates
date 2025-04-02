@@ -48,7 +48,7 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
       "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
 
   private static final String SPANNER_SCHEMA_EXCEEDING_TABLE_KEY_FILE_RESOURCE =
-      "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
+      "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema-exceeding-tablekey.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
