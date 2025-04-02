@@ -21,7 +21,6 @@ import static org.junit.Assert.assertEquals;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -93,14 +92,9 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            new HashMap<String, String>() {
-              {
-                put("workerMachineType", WORKER_MACHINE_TYPE);
-              }
-            },
+            null,
             null);
 
-    // Wait for job completion
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 

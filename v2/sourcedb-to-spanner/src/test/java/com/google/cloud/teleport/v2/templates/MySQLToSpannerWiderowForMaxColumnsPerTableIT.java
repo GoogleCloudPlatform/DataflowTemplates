@@ -49,7 +49,6 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private SpannerResourceManager spannerResourceManager;
 
   private static final String TABLENAME = "WiderowTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
   @Before
   public void setUp() {
@@ -60,11 +59,6 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
-  }
-
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
   }
 
   /**
@@ -144,8 +138,6 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   public void testMaxColumnsPerTable() throws Exception {
     //    Limits to the max columns supported by MySQL (1017 columns)
     int maxColumns = 1023;
-    // Increase MySQL packet size to handle large statements
-    increasePacketSize();
 
     // Create table in MySQL
     loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL(maxColumns));
