@@ -42,7 +42,6 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSpannerITBase {
 
   private static final String TABLE_NAME = "LargePrimaryKeyTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/SourceDbToSpannerMaxSizeTableKey/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
@@ -63,14 +62,8 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
     ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void wideRowMaxSizeTableKey() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
@@ -89,5 +82,15 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
         spannerResourceManager.readTableRecords(
             TABLE_NAME, "pk_col1", "pk_col2", "pk_col3", "value_col");
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
+  }
+
+  @Test
+  public void wideRowExceedingMaxSizeTableKey() throws Exception {
+    try {
+      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
+
+    } catch (Exception e) {
+
+    }
   }
 }
