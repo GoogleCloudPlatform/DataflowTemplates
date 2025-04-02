@@ -123,7 +123,7 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         query =
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action"
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.interleave_type"
                     + " FROM information_schema.tables AS t"
                     + " WHERE t.table_catalog = '' AND t.table_schema = ''"
                     + " AND t.table_type='BASE TABLE'");
@@ -145,6 +145,7 @@ public class InformationSchemaScanner {
       String tableName = resultSet.getString(0);
       String parentTableName = resultSet.isNull(1) ? null : resultSet.getString(1);
       String onDeleteAction = resultSet.isNull(2) ? null : resultSet.getString(2);
+      String interleaveType = resultSet.isNull(3) ? null : resultSet.getString(3);
 
       // Error out when the parent table or on delete action are set incorrectly.
       if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
@@ -168,6 +169,7 @@ public class InformationSchemaScanner {
       builder
           .createTable(tableName)
           .interleaveInParent(parentTableName)
+          .interleaveType(interleaveType)
           .onDeleteCascade(onDeleteCascade)
           .endTable();
     }

@@ -37,6 +37,8 @@ public abstract class Table implements Serializable {
   @Nullable
   public abstract String interleaveInParent();
 
+  public abstract String interleaveType();
+
   public abstract ImmutableList<IndexColumn> primaryKeys();
 
   public abstract boolean onDeleteCascade();
@@ -217,6 +219,8 @@ public abstract class Table implements Serializable {
     public abstract String name();
 
     public abstract Builder interleaveInParent(String parent);
+
+    public abstract Builder interleaveType(String interleave);
 
     abstract Builder primaryKeys(ImmutableList<IndexColumn> value);
 
