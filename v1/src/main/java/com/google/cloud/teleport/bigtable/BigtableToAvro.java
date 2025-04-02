@@ -54,7 +54,7 @@ import org.joda.time.format.ISODateTimeFormat;
 
 /**
  * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS.
- * 
+ *
  *
  * <p>Check out <a
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_Avro.md">README</a>
