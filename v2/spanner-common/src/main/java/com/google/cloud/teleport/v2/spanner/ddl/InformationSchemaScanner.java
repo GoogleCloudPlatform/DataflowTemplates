@@ -131,7 +131,7 @@ public class InformationSchemaScanner {
       case POSTGRESQL:
         query =
             Statement.of(
-                "SELECT t.table_name, t.parent_table_name, t.on_delete_action FROM"
+                "SELECT t.table_name, t.parent_table_name, t.on_delete_action, t.interleave_type FROM"
                     + " information_schema.tables AS t"
                     + " WHERE t.table_schema NOT IN "
                     + "('information_schema', 'spanner_sys', 'pg_catalog')"
