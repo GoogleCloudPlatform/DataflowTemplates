@@ -13,15 +13,17 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.beam.sdk.io.gcp.spanner;
+package com.google.cloud.teleport.v2.failureinjection;
 
-import com.google.cloud.teleport.v2.spanner.service.SpannerService;
+import static org.junit.Assert.assertTrue;
 
-public class SpannerServiceFactoryImpl {
-  public static SpannerConfig createSpannerService(SpannerConfig spannerConfig, String parameter) {
-    if (spannerConfig.getServiceFactory() == null) {
-      spannerConfig = spannerConfig.withServiceFactory(new SpannerService(parameter));
-    }
-    return spannerConfig;
+import org.junit.Test;
+
+public class AlwaysFailPolicyTest {
+
+  @Test
+  public void testShouldInjectError() {
+    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy("");
+    assertTrue(alwaysFailPolicy.shouldInjectionError());
   }
 }

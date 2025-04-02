@@ -31,7 +31,6 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import java.io.Serializable;
-import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,24 +42,28 @@ public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, 
   private ErrorInjectionPolicy errorInjectionPolicy;
 
   /** Injects errors in streaming calls to simulate call restarts. */
-  private static class GrpcErrorInjector implements ClientInterceptor, Serializable {
+  protected static class GrpcErrorInjector implements ClientInterceptor, Serializable {
 
     private ErrorInjectionPolicy errorInjectionPolicy;
-    private final Random random = new Random();
 
     GrpcErrorInjector(ErrorInjectionPolicy errorInjectionPolicy) {
       this.errorInjectionPolicy = errorInjectionPolicy;
+    }
+
+    boolean isCloudSpannerDataAPI(String fullMethodName) {
+      if (fullMethodName.startsWith("google.spanner.v1.Spanner/BatchCreateSessions")
+          || fullMethodName.startsWith("google.spanner.v1.Spanner/CreateSession")) {
+        // filter out create session calls.
+        return false;
+      }
+      return fullMethodName.startsWith("google.spanner.v1.Spanner");
     }
 
     @Override
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
         final MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
       // Only inject errors in the Cloud Spanner data API.
-      if (!method.getFullMethodName().startsWith("google.spanner.v1.Spanner")) {
-        return next.newCall(method, callOptions);
-      }
-      if (method.getFullMethodName().startsWith("google.spanner.v1.Spanner/BatchCreateSessions")
-          || method.getFullMethodName().startsWith("google.spanner.v1.Spanner/CreateSession")) {
+      if (!isCloudSpannerDataAPI(method.getFullMethodName())) {
         return next.newCall(method, callOptions);
       }
 
@@ -77,8 +80,8 @@ public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, 
                   super.onMessage(message);
                   if (errorInjectionPolicy.shouldInjectionError()) {
                     // Cancel the call after at least one response has been received.
-                    // This will cause the call to terminate, then we can set UNAVAILABLE
-                    // in the onClose() handler to cause a retry.
+                    // This will cause the call to terminate, and if it is a write event, then event
+                    // is not committed in Spanner.
                     errorInjected.set(true);
                     clientCall.cancel("Cancelling call for injected error", null);
                   }
@@ -87,8 +90,8 @@ public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, 
                 @Override
                 public void onClose(Status status, Metadata metadata) {
                   if (errorInjected.get()) {
-                    // UNAVAILABLE error will cause the call to retry.
-                    status = Status.OUT_OF_RANGE.augmentDescription("INJECTED BY TEST");
+                    // Return an error as if it has been sent from Spanner.
+                    status = Status.DEADLINE_EXCEEDED.augmentDescription("INJECTED BY TEST");
                   }
                   super.onClose(status, metadata);
                 }

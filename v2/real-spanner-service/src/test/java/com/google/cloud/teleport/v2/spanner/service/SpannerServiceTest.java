@@ -13,15 +13,21 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package org.apache.beam.sdk.io.gcp.spanner;
+package com.google.cloud.teleport.v2.spanner.service;
 
-import com.google.cloud.teleport.v2.spanner.service.SpannerService;
+import static org.junit.Assert.assertNotNull;
 
-public class SpannerServiceFactoryImpl {
-  public static SpannerConfig createSpannerService(SpannerConfig spannerConfig, String parameter) {
-    if (spannerConfig.getServiceFactory() == null) {
-      spannerConfig = spannerConfig.withServiceFactory(new SpannerService(parameter));
-    }
-    return spannerConfig;
+import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.SpannerOptions;
+import org.junit.Test;
+
+public class SpannerServiceTest {
+
+  @Test
+  public void testCreate() {
+    SpannerService spannerService = new SpannerService("");
+    SpannerOptions options = SpannerOptions.newBuilder().build();
+    Spanner spanner = spannerService.create(options);
+    assertNotNull(spanner);
   }
 }

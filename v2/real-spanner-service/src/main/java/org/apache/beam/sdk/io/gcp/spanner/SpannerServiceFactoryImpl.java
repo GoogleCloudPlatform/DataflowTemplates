@@ -19,6 +19,9 @@ import com.google.cloud.teleport.v2.spanner.service.SpannerService;
 
 public class SpannerServiceFactoryImpl {
   public static SpannerConfig createSpannerService(SpannerConfig spannerConfig, String parameter) {
-    return spannerConfig.withServiceFactory(new SpannerService(parameter));
+    if (spannerConfig.getServiceFactory() == null) {
+      spannerConfig = spannerConfig.withServiceFactory(new SpannerService(parameter));
+    }
+    return spannerConfig;
   }
 }
