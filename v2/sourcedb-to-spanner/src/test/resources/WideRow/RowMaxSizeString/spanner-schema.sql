@@ -1,4 +1,4 @@
 CREATE TABLE WideRowTable (
   id INT64 NOT NULL,
-  max_bytes_col BYTES(MAX),
+  max_string_col BYTES(MAX),
 ) PRIMARY KEY (id);
