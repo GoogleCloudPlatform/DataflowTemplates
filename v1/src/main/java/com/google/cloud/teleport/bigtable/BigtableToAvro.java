@@ -152,8 +152,8 @@ public class BigtableToAvro {
         groupName = "Source",
         optional = true,
         regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
-        description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ) for exporting ",
-        helpText = "The start timestamp (inclusive) for exporting data. Data with timestamps greater than or equal to this timestamp will be exported. Example UTC timestamp: 2024-10-27T10:15:30.00Z"
+        description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ) for exporting",
+        helpText = "The start timestamp (inclusive) for exporting data. Data with timestamps greater than or equal to this timestamp will be exported. Example UTC timestamp: 2024-10-27T10:15:10.00Z"
     )
     ValueProvider<String> getStartTimestamp();
 
@@ -166,7 +166,7 @@ public class BigtableToAvro {
         optional = true,
         regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
         description = "End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
-        helpText = " Example UTC timestamp 2024-10-27T10:15:30.00Z"
+        helpText = "The end timestamp (inclusive) for exporting data. Data with timestamps less than or equal to this timestamp will be exported. Example UTC timestamp 2024-10-27T10:15:30.00Z"
     )
     ValueProvider<String> getEndTimestamp();
 
@@ -202,45 +202,8 @@ public class BigtableToAvro {
       return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
     };
 
-    // Runtime validation for timestamp parameters
-    ValueProvider<RowFilter> filterProvider = new DualInputNestedValueProvider<>(
-        options.getStartTimestamp(),
-        options.getEndTimestamp(),
-        (TranslatorInput<String, String> input) -> {
-          String startTimestamp = input.getX();
-          String endTimestamp = input.getY();
 
-          boolean hasStart = startTimestamp != null && !startTimestamp.isEmpty();
-          boolean hasEnd = endTimestamp != null && !endTimestamp.isEmpty();
-
-          // Check if exactly one timestamp is provided (which is invalid)
-          if ((hasStart && !hasEnd) || (!hasStart && hasEnd)) {
-            throw new IllegalArgumentException(
-                    "Both startTimestamp and endTimestamp must be provided together, or neither should be provided.");
-          }
-
-          // If neither timestamp is provided, return null (no filter)
-          if (!hasStart && !hasEnd) {
-            return null;
-          }
-
-          // Convert timestamps to microseconds
-          Long startMicros = timestampConverter.apply(startTimestamp);
-          Long endMicros = timestampConverter.apply(endTimestamp);
-
-          // Build the timestamp filter
-          com.google.cloud.bigtable.data.v2.models.Filters.TimestampRangeFilter filterBuilder =
-                  FILTERS.timestamp().range();
-
-          if (startMicros != null) {
-            filterBuilder.startClosed(startMicros);
-          }
-          if (endMicros != null) {
-            filterBuilder.endOpen(endMicros);
-          }
-
-          return filterBuilder.toProto();
-        });
+    ValueProvider<RowFilter> filterProvider = createRowFilterProvider(options);
 
     BigtableIO.Read read =
         BigtableIO.read()
@@ -281,6 +244,62 @@ public class BigtableToAvro {
 
     return pipeline.run();
   }
+
+  /**
+   * Creates a ValueProvider for RowFilter based on the provided Options.
+   *
+   * @param options The pipeline options containing start and end timestamps.
+   * @return A ValueProvider for RowFilter.
+   */
+  public static ValueProvider<RowFilter> createRowFilterProvider(Options options) {
+    SerializableFunction<String, Long> timestampConverter = utcTimestamp -> {
+      if (utcTimestamp == null || utcTimestamp.isEmpty()) {
+        return null;
+      }
+      DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
+      return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
+    };
+
+    return new DualInputNestedValueProvider<>(
+            options.getStartTimestamp(),
+            options.getEndTimestamp(),
+            (TranslatorInput<String, String> input) -> {
+              String startTimestamp = input.getX();
+              String endTimestamp = input.getY();
+
+              boolean hasStart = startTimestamp != null && !startTimestamp.isEmpty();
+              boolean hasEnd = endTimestamp != null && !endTimestamp.isEmpty();
+
+              // Check if exactly one timestamp is provided (which is invalid)
+              if ((hasStart && !hasEnd) || (!hasStart && hasEnd)) {
+                throw new IllegalArgumentException(
+                        "Both startTimestamp and endTimestamp must be provided together, or neither should be provided.");
+              }
+
+              // If neither timestamp is provided, return null (no filter)
+              if (!hasStart && !hasEnd) {
+                return null;
+              }
+
+              // Convert timestamps to microseconds
+              Long startMicros = timestampConverter.apply(startTimestamp);
+              Long endMicros = timestampConverter.apply(endTimestamp);
+
+              // Build the timestamp filter
+              com.google.cloud.bigtable.data.v2.models.Filters.TimestampRangeFilter filterBuilder =
+                      FILTERS.timestamp().range();
+
+              if (startMicros != null) {
+                filterBuilder.startClosed(startMicros);
+              }
+              if (endMicros != null) {
+                filterBuilder.endOpen(endMicros);
+              }
+
+              return filterBuilder.toProto();
+            });
+  }
+
 
   /** Translates Bigtable {@link Row} to Avro {@link BigtableRow}. */
   static class BigtableToAvroFn extends SimpleFunction<Row, BigtableRow> {
