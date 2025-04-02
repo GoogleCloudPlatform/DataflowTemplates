@@ -1,11 +1,14 @@
 
-JDBC to Pub/Sub Auto template
+JDBC to Pub/Sub template
 ---
 The Java Database Connectivity (JDBC) to Pub/Sub template is a batch pipeline
 that ingests data from JDBC source and writes the resulting records to a
 pre-existing Pub/Sub topic as a JSON string.
 
 
+:memo: This is a Google-provided template! Please
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-pubsub)
+on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Jdbc_to_PubSub).
 
 :bulb: This is a generated documentation based
 on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
@@ -15,23 +18,20 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **driverClassName**: JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`.
-* **connectionUrl**: Url connection string to connect to the JDBC source. Connection string can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS. For example, `jdbc:mysql://some-host:3306/sampledb`.
-* **driverJars**: Comma separate Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
-* **query**: Query to be executed on the source to extract the data. For example, `select * from sampledb.sample_table`.
-* **outputTopic**: The name of the topic to publish data to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
+* **driverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`.
+* **connectionUrl**: The JDBC connection URL string. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example: 'echo -n "jdbc:mysql://some-host:3306/sampledb" | gcloud kms encrypt --location=<location> --keyring=<keyring> --key=<key> --plaintext-file=- --ciphertext-file=- | base64' For example, `jdbc:mysql://some-host:3306/sampledb`.
+* **driverJars**: Comma-separated Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`.
+* **query**: The query to run on the source to extract the data. For example, `select * from sampledb.sample_table`.
+* **outputTopic**: The Pub/Sub topic to publish to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
 ### Optional parameters
 
-* **username**: User name to be used for the JDBC connection. User name can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **password**: Password to be used for the JDBC connection. Password can be passed in as plaintext or as a base64 encoded string encrypted by Google Cloud KMS.
-* **connectionProperties**: Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`.
-* **KMSEncryptionKey**: If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
-* **partitionColumn**: If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported.
-* **table**: Table to read from using partitions. This parameter also accepts a subquery in parentheses. For example, `(select id, name from Person) as subq`.
-* **numPartitions**: The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1.
-* **lowerBound**: Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
-* **upperBound**: Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types).
+* **username**: The username to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_username' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`.
+* **password**: The password to use for the JDBC connection. You can pass in this value as a string that's encrypted with a Cloud KMS key and then Base64-encoded. For example, `echo -n 'some_password' | glcloud kms encrypt --location=my_location --keyring=mykeyring --key=mykey --plaintext-file=- --ciphertext-file=- | base64`.
+* **connectionProperties**: The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.  For example, `unicode=true;characterEncoding=UTF-8`.
+* **KMSEncryptionKey**: The Cloud KMS Encryption Key to use to decrypt the username, password, and connection string. If a Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted and base64 encoded. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
+* **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
+* **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
 
 
@@ -48,7 +48,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 :star2: Those dependencies are pre-installed if you use Google Cloud Shell!
 
-[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/jdbc-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToPubSubAuto.java)
+[![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git&cloudshell_open_in_editor=v2/jdbc-and-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/JdbcToPubsub.java)
 
 ### Templates Plugin
 
@@ -78,8 +78,8 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
--DtemplateName="Jdbc_to_PubSub_Auto" \
--f v2/jdbc-to-googlecloud
+-DtemplateName="Jdbc_to_PubSub" \
+-f v2/jdbc-and-googlecloud
 ```
 
 
@@ -87,7 +87,7 @@ The command should build and save the template to Google Cloud, and then print
 the complete location on Cloud Storage:
 
 ```
-Flex Template was staged! gs://<bucket-name>/templates/flex/Jdbc_to_PubSub_Auto
+Flex Template was staged! gs://<bucket-name>/templates/flex/Jdbc_to_PubSub
 ```
 
 The specific path should be copied as it will be used in the following steps.
@@ -107,7 +107,7 @@ Provided that, the following command line can be used:
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
-export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Jdbc_to_PubSub_Auto"
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Jdbc_to_PubSub"
 
 ### Required
 export DRIVER_CLASS_NAME=<driverClassName>
@@ -121,13 +121,10 @@ export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export PARTITION_COLUMN=<partitionColumn>
-export TABLE=<table>
-export NUM_PARTITIONS=<numPartitions>
-export LOWER_BOUND=<lowerBound>
-export UPPER_BOUND=<upperBound>
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
-gcloud dataflow flex-template run "jdbc-to-pubsub-auto-job" \
+gcloud dataflow flex-template run "jdbc-to-pubsub-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
@@ -138,13 +135,10 @@ gcloud dataflow flex-template run "jdbc-to-pubsub-auto-job" \
   --parameters "driverJars=$DRIVER_JARS" \
   --parameters "connectionProperties=$CONNECTION_PROPERTIES" \
   --parameters "query=$QUERY" \
+  --parameters "outputTopic=$OUTPUT_TOPIC" \
   --parameters "KMSEncryptionKey=$KMSENCRYPTION_KEY" \
-  --parameters "partitionColumn=$PARTITION_COLUMN" \
-  --parameters "table=$TABLE" \
-  --parameters "numPartitions=$NUM_PARTITIONS" \
-  --parameters "lowerBound=$LOWER_BOUND" \
-  --parameters "upperBound=$UPPER_BOUND" \
-  --parameters "outputTopic=$OUTPUT_TOPIC"
+  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
 
 For more information about the command, please check:
@@ -174,21 +168,18 @@ export USERNAME=<username>
 export PASSWORD=<password>
 export CONNECTION_PROPERTIES=<connectionProperties>
 export KMSENCRYPTION_KEY=<KMSEncryptionKey>
-export PARTITION_COLUMN=<partitionColumn>
-export TABLE=<table>
-export NUM_PARTITIONS=<numPartitions>
-export LOWER_BOUND=<lowerBound>
-export UPPER_BOUND=<upperBound>
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 -Dregion="$REGION" \
--DjobName="jdbc-to-pubsub-auto-job" \
--DtemplateName="Jdbc_to_PubSub_Auto" \
--Dparameters="driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,query=$QUERY,KMSEncryptionKey=$KMSENCRYPTION_KEY,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,outputTopic=$OUTPUT_TOPIC" \
--f v2/jdbc-to-googlecloud
+-DjobName="jdbc-to-pubsub-job" \
+-DtemplateName="Jdbc_to_PubSub" \
+-Dparameters="driverClassName=$DRIVER_CLASS_NAME,connectionUrl=$CONNECTION_URL,username=$USERNAME,password=$PASSWORD,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,query=$QUERY,outputTopic=$OUTPUT_TOPIC,KMSEncryptionKey=$KMSENCRYPTION_KEY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-f v2/jdbc-and-googlecloud
 ```
 
 ## Terraform
@@ -205,7 +196,7 @@ To use the autogenerated module, execute the standard
 [terraform workflow](https://developer.hashicorp.com/terraform/intro/core-workflow):
 
 ```shell
-cd v2/jdbc-to-googlecloud/terraform/Jdbc_to_PubSub_Auto
+cd v2/jdbc-and-googlecloud/terraform/Jdbc_to_PubSub
 terraform init
 terraform apply
 ```
@@ -225,11 +216,11 @@ variable "region" {
   default = "us-central1"
 }
 
-resource "google_dataflow_flex_template_job" "jdbc_to_pubsub_auto" {
+resource "google_dataflow_flex_template_job" "jdbc_to_pubsub" {
 
   provider          = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Jdbc_to_PubSub_Auto"
-  name              = "jdbc-to-pubsub-auto"
+  container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Jdbc_to_PubSub"
+  name              = "jdbc-to-pubsub"
   region            = var.region
   parameters        = {
     driverClassName = "<driverClassName>"
@@ -241,11 +232,8 @@ resource "google_dataflow_flex_template_job" "jdbc_to_pubsub_auto" {
     # password = "<password>"
     # connectionProperties = "<connectionProperties>"
     # KMSEncryptionKey = "<KMSEncryptionKey>"
-    # partitionColumn = "<partitionColumn>"
-    # table = "<table>"
-    # numPartitions = "<numPartitions>"
-    # lowerBound = "<lowerBound>"
-    # upperBound = "<upperBound>"
+    # disabledAlgorithms = "<disabledAlgorithms>"
+    # extraFilesToStage = "<extraFilesToStage>"
   }
 }
 ```
