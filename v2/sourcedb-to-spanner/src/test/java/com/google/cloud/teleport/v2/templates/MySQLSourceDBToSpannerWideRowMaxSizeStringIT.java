@@ -51,7 +51,6 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
       "WideRow/RowMaxSizeString/spanner-schema.sql";
 
   private static final String TABLE = "WideRowTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
   @Before
   public void setUp() throws Exception {
@@ -64,14 +63,8 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void wideRowMaxSizeString() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
@@ -88,6 +81,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     assertThatResult(result).isLaunchFinished();
 
     // Verify the data in Spanner
+    //    This will also verify the failure as the failed data will not be inserted into Spanner
     ImmutableList<Struct> wideRowData =
         spannerResourceManager.readTableRecords(TABLE, "id", "max_string_col");
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
