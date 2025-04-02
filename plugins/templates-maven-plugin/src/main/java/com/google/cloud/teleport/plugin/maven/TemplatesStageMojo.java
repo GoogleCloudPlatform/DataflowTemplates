@@ -426,10 +426,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Override some image spec attributes available only during staging/release:
     String version = TemplateDefinitionsParser.parseVersion(stagePrefix);
     String containerName = definition.getTemplateAnnotation().flexContainerName();
+    boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
     imageSpec.setAdditionalUserLabel("goog-dataflow-provided-template-version", version);
     imageSpec.setImage(
         generateFlexTemplateImagePath(
-            containerName, projectId, artifactRegion, artifactRegistry, stagePrefix));
+            containerName, projectId, artifactRegion, artifactRegistry, stagePrefix, stageImageOnly));
 
     if (beamVersion == null || beamVersion.isEmpty()) {
       beamVersion = project.getProperties().getProperty("beam-python.version");
@@ -443,15 +444,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String imagePath =
         stageImageBeforePromote
             ? generateFlexTemplateImagePath(
-                containerName, projectId, null, stagingArtifactRegistry, stagePrefix)
+                containerName, projectId, null, stagingArtifactRegistry, stagePrefix, stageImageOnly)
             : imageSpec.getImage();
     String buildProjectId =
         stageImageBeforePromote
             ? new PromoteHelper.ArtifactRegImageSpec(imagePath).project
             : projectId;
     LOG.info("Stage image to GCR: {}", imagePath);
-
-    boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
 
     String metadataFile = "";
     if (!stageImageOnly) {
@@ -1110,10 +1109,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String projectId,
       String artifactRegion,
       String artifactRegistry,
-      String stagePrefix) {
+      String stagePrefix,
+      boolean skipStagingPart) {
     String prefix = Strings.isNullOrEmpty(artifactRegion) ? "" : artifactRegion + ".";
     // GCR paths can not contain ":", if the project id has it, it should be converted to "/".
     String projectIdUrl = Strings.isNullOrEmpty(projectId) ? "" : projectId.replace(':', '/');
+    String stagingPart = skipStagingPart ? "" : stagePrefix.toLowerCase() + "/";
     return Optional.ofNullable(artifactRegistry)
         .map(
             value ->
@@ -1122,8 +1123,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                         + "/"
                         + projectIdUrl
                         + "/"
-                        + stagePrefix.toLowerCase()
-                        + "/"
+                        + stagingPart
                         + containerName
                     : value + "/" + stagePrefix.toLowerCase() + "/" + containerName)
         .orElse(
@@ -1131,8 +1131,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                 + "gcr.io/"
                 + projectIdUrl
                 + "/"
-                + stagePrefix.toLowerCase()
-                + "/"
+                + stagingPart
                 + containerName);
   }
 
