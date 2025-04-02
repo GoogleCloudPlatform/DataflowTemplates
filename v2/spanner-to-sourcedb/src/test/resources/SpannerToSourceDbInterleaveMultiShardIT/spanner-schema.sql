@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS child21 (
   in_ts TIMESTAMP,
   migration_shard_id STRING(50),
 )  PRIMARY KEY(id, child_id),
- INTERLEAVE IN PARENT parent2 ON DELETE CASCADE;
+ INTERLEAVE IN parent2;
 
 CREATE INDEX par_ind_5 ON child21(id);
 

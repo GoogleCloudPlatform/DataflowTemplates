@@ -35,6 +35,6 @@ CREATE TABLE IF NOT EXISTS Articles (
     published_date DATE,
     author_id INT64 NOT NULL,
 ) PRIMARY KEY (author_id, id),
-INTERLEAVE IN PARENT Authors;
+INTERLEAVE IN Authors;
 
 CREATE INDEX author_id ON Articles (author_id);
