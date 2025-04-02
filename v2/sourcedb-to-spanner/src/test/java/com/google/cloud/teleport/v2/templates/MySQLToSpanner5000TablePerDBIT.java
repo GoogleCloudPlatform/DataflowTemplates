@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertEquals;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -29,6 +31,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -50,6 +54,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLToSpanner5000TablePerDBIT.class);
   private CloudMySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
+  private PipelineLauncher.LaunchInfo jobInfo;
 
   private static final int NUM_TABLES = 5000;
   private static final int BATCH_SIZE = 100; // Number of tables per batch
@@ -73,17 +78,35 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
 
   @Test
   public void testMySQLToSpannerMigration() throws Exception {
-    // Create tables in both MySQL and Spanner
+    // Create tables with data in MySQL and empty tables in Spanner
     createMySQLTables();
     createSpannerTables();
+
+    // Launch the migration job
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            mySQLResourceManager,
+            spannerResourceManager,
+            null,
+            null);
+
+    // Wait for job completion
+    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    assertThatResult(result).isLaunchFinished();
 
     // Verify tables in Spanner
     verifySpannerTables();
   }
 
-  /** Creates MySQL tables in batches using multiple threads with retry capabilities. */
+  /**
+   * Creates MySQL tables in batches using multiple threads with retry capabilities. Each table will
+   * have one record inserted right after creation.
+   */
   private void createMySQLTables() throws Exception {
-    LOG.info("Creating {} MySQL tables in batches with retry capability", NUM_TABLES);
+    LOG.info("Creating {} MySQL tables with data in batches", NUM_TABLES);
 
     ExecutorService executor = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
     List<Future<?>> futures = new ArrayList<>();
@@ -146,7 +169,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
               failureCount.get(), MAX_RETRIES));
     }
 
-    LOG.info("Successfully created {} MySQL tables", NUM_TABLES);
+    LOG.info("Successfully created {} MySQL tables with data", NUM_TABLES);
   }
 
   /**
@@ -156,11 +179,11 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private boolean createMySQLTablesBatch(int startIdx, int endIdx) throws Exception {
     StringBuilder batchSql = new StringBuilder();
 
-    // Build batch SQL statement
+    // Build batch SQL statement with CREATE TABLE and INSERT
     for (int i = startIdx; i < endIdx; i++) {
       String tableName = getTableName(i);
-      batchSql.append(generateMySQLTableDDL(tableName));
-      batchSql.append(";\n");
+      batchSql.append(generateMySQLTableDDL(tableName, i));
+      batchSql.append("\n");
     }
 
     try {
@@ -172,16 +195,25 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     }
   }
 
-  /** Generates DDL for creating a MySQL table. */
-  private String generateMySQLTableDDL(String tableName) {
+  /**
+   * Generates DDL for creating a MySQL table and inserting one record.
+   *
+   * @param tableName The name of the table to create
+   * @param index The index of the table (used to generate unique data values)
+   * @return SQL statements for both table creation and data insertion
+   */
+  private String generateMySQLTableDDL(String tableName, int index) {
+    String randomValue = UUID.randomUUID().toString().substring(0, 8);
+
     return String.format(
         "CREATE TABLE IF NOT EXISTS %s ("
             + "  id INT PRIMARY KEY,"
             + "  name VARCHAR(255),"
             + "  value VARCHAR(255),"
             + "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
-            + ")",
-        tableName);
+            + ");"
+            + "INSERT INTO %s (id, name, value) VALUES (%d, 'name-%d', 'value-%s');",
+        tableName, tableName, index + 1, index + 1, randomValue);
   }
 
   /** Creates Spanner tables in batches with retry capability. */
@@ -307,7 +339,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
     return false;
   }
 
-  /** Verifies all tables were created in Spanner and have the expected row count. */
+  /** Verifies all tables were created in Spanner and have 1 row each (migrated from MySQL). */
   private void verifySpannerTables() {
     LOG.info("Verifying {} Spanner tables", NUM_TABLES);
 
@@ -321,8 +353,8 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
               String tableName = getTableName(i);
               try {
                 assertEquals(
-                    String.format("Table %s should have the expected number of rows", tableName),
-                    0,
+                    String.format("Table %s should have exactly 1 row", tableName),
+                    1,
                     spannerResourceManager.getRowCount(tableName).longValue());
                 verifiedCount.incrementAndGet();
               } catch (Exception e) {
