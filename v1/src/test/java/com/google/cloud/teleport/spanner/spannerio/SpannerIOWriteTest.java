@@ -87,7 +87,6 @@ import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableSet;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.Iterables;
 import org.joda.time.Duration;
@@ -119,6 +118,17 @@ public class SpannerIOWriteTest implements Serializable {
   private static final String INSTANCE_NAME = "test-instance";
   private static final String DATABASE_NAME = "test-database";
   private static final String TABLE_NAME = "test-table";
+  private static final String FQ_NAME =
+      "spanner:"
+          + PROJECT_NAME
+          + "."
+          + INSTANCE_CONFIG_NAME
+          + "."
+          + INSTANCE_NAME
+          + "."
+          + DATABASE_NAME
+          + "."
+          + TABLE_NAME;
   private static final SpannerConfig SPANNER_CONFIG =
       SpannerConfig.create()
           .withDatabaseId(DATABASE_NAME)
@@ -126,6 +136,17 @@ public class SpannerIOWriteTest implements Serializable {
           .withProjectId(PROJECT_NAME);
   private static final String DEFAULT_PROJECT =
       Lineage.wrapSegment(SpannerOptions.getDefaultProjectId());
+  private static final String DEFAULT_FQ_NAME =
+      "spanner:"
+          + DEFAULT_PROJECT
+          + "."
+          + INSTANCE_CONFIG_NAME
+          + "."
+          + INSTANCE_NAME
+          + "."
+          + DATABASE_NAME
+          + "."
+          + TABLE_NAME;
 
   @Rule public transient TestPipeline pipeline = TestPipeline.create();
   @Rule public transient ExpectedException thrown = ExpectedException.none();
@@ -327,17 +348,7 @@ public class SpannerIOWriteTest implements Serializable {
     PipelineResult result = pipeline.run();
 
     verifyBatches(buildMutationBatch(buildUpsertMutation(2L)));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SINK),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    PROJECT_NAME,
-                    INSTANCE_CONFIG_NAME,
-                    INSTANCE_NAME,
-                    DATABASE_NAME,
-                    TABLE_NAME))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SINK), hasItem(FQ_NAME));
   }
 
   @Test
@@ -357,17 +368,7 @@ public class SpannerIOWriteTest implements Serializable {
     PipelineResult result = pipeline.run();
 
     verifyBatches(buildMutationBatch(buildUpsertMutation(2L)));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SINK),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    PROJECT_NAME,
-                    INSTANCE_CONFIG_NAME,
-                    INSTANCE_NAME,
-                    DATABASE_NAME,
-                    TABLE_NAME))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SINK), hasItem(FQ_NAME));
   }
 
   @Test
@@ -387,17 +388,7 @@ public class SpannerIOWriteTest implements Serializable {
             any(ReadQueryUpdateTransactionOption.class));
 
     verifyTableWriteRequestMetricWasSet(config, TABLE_NAME, "ok", 1);
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SINK),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    DEFAULT_PROJECT,
-                    INSTANCE_CONFIG_NAME,
-                    INSTANCE_NAME,
-                    DATABASE_NAME,
-                    TABLE_NAME))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SINK), hasItem(DEFAULT_FQ_NAME));
   }
 
   @Test
@@ -420,17 +411,7 @@ public class SpannerIOWriteTest implements Serializable {
             any(ReadQueryUpdateTransactionOption.class));
 
     verifyTableWriteRequestMetricWasSet(config, TABLE_NAME, "ok", 1);
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SINK),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    DEFAULT_PROJECT,
-                    INSTANCE_CONFIG_NAME,
-                    INSTANCE_NAME,
-                    DATABASE_NAME,
-                    TABLE_NAME))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SINK), hasItem(DEFAULT_FQ_NAME));
   }
 
   @Test
@@ -450,17 +431,7 @@ public class SpannerIOWriteTest implements Serializable {
     verifyBatches(
         buildMutationBatch(
             buildUpsertMutation(1L), buildUpsertMutation(2L), buildUpsertMutation(3L)));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SINK),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    PROJECT_NAME,
-                    INSTANCE_CONFIG_NAME,
-                    INSTANCE_NAME,
-                    DATABASE_NAME,
-                    TABLE_NAME))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SINK), hasItem(FQ_NAME));
   }
 
   @Test
@@ -486,17 +457,7 @@ public class SpannerIOWriteTest implements Serializable {
     verifyBatches(
         buildMutationBatch(
             buildUpsertMutation(1L), buildUpsertMutation(2L), buildUpsertMutation(3L)));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SINK),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    PROJECT_NAME,
-                    INSTANCE_CONFIG_NAME,
-                    INSTANCE_NAME,
-                    DATABASE_NAME,
-                    TABLE_NAME))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SINK), hasItem(FQ_NAME));
   }
 
   @Test
