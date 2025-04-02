@@ -90,7 +90,7 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
   @Test
   public void wideRowExceedingMaxSizeTableKey() throws Exception {
     try {
-      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
+      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_TABLE_KEY_FILE_RESOURCE);
     } catch (Exception e) {
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
