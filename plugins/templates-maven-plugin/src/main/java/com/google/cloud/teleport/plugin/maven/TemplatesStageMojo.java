@@ -1130,7 +1130,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             value ->
                 value.endsWith("gcr.io")
                     ? value + "/" + projectIdUrl + "/" + stagingPart + containerName
-                    : value + stagingPart + "/" + containerName)
+                    : value + "/" + stagingPart + containerName)
         .orElse(prefix + "gcr.io/" + projectIdUrl + "/" + stagingPart + containerName);
   }
 
