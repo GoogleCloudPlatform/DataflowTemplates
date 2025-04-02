@@ -40,8 +40,9 @@ public interface KafkaToBigQueryFlexOptions
       order = 1,
       name = "readBootstrapServerAndTopic",
       groupName = "Source",
-      description = "Source Kafka Topic",
-      helpText = "Kafka Topic to read the input from.")
+      description = "Source Kafka Bootstrap server and topic",
+      helpText = "Kafka Bootstrap server and topic to read the input from.",
+      example = "localhost:9092;topic1,topic2")
   String getReadBootstrapServerAndTopic();
 
   void setReadBootstrapServerAndTopic(String value);
