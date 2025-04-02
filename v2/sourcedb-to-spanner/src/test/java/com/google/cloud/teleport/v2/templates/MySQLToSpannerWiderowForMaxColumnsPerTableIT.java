@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -67,13 +67,10 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    * @return MySQL DDL statement
    */
   private String getMySQLDDL(int maxColumns) {
-    // Use StringJoiner for more efficient string concatenation
     StringJoiner columnsJoiner = new StringJoiner(", ");
-
     for (int i = 0; i < maxColumns; i++) {
       columnsJoiner.add("col" + i + " INT");
     }
-
     return String.format(
         "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))",
         TABLENAME, columnsJoiner.toString());
@@ -85,13 +82,10 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    * @return Spanner DDL statement
    */
   private String getSpannerDDL(int maxColumns) {
-    // Use StringJoiner for more efficient string concatenation
     StringJoiner columnsJoiner = new StringJoiner(", ");
-
     for (int i = 0; i < maxColumns; i++) {
       columnsJoiner.add("col" + i + " INT64");
     }
-
     return String.format(
         "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)",
         TABLENAME, columnsJoiner.toString());
@@ -103,7 +97,6 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    * @return MySQL INSERT statement
    */
   private String getMySQLInsertStatement(int maxColumns) {
-    // Use StringJoiner for more efficient string concatenation
     StringJoiner columnsJoiner = new StringJoiner(", ");
     StringJoiner valuesJoiner = new StringJoiner(", ");
 
@@ -136,7 +129,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
-    //    Limits to the max columns supported by MySQL (1017 columns)
+    // Limits to the max columns supported by MySQL (1017 columns total, including 'id')
     int maxColumns = 1023;
 
     // Create table in MySQL
@@ -174,15 +167,13 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testExceedingMaxColumnsPerTable() throws Exception {
+    int maxColumns = 1025;
     try {
-      int maxColumns = 1025;
       spannerResourceManager.executeDdlStatement(getSpannerDDL(maxColumns));
+      Assert.fail(
+          "Expected exception due to exceeding maximum columns, but no exception was thrown.");
     } catch (Exception e) {
-      /*
-       * Here the exception is "Table WiderowTable has too many columns; the limit is 1024."
-       * The executeDdlStatement method will throw an exception "Failed to execute statement".
-       * So we are asserting the message contains "Failed to execute statement".
-       */
+      // Assert that the exception message contains the expected text indicating failure.
       Assert.assertTrue(
           "Exception should mention column limitation",
           e.getMessage().contains("Failed to execute statement"));
