@@ -17,10 +17,12 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -87,10 +89,35 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 
+  // This test is expected to fail because the key size exceeds the maximum allowed size.
+  public void insertExceedingMaxSizeTableKey() throws Exception {
+    String tableName = "TestKeyComposite";
+    List<Mutation> mutations =
+        List.of(
+            Mutation.newInsertBuilder(tableName)
+                .set("pk1")
+                .to("a".repeat(4000))
+                .set("pk2")
+                .to("b".repeat(4000))
+                .set("value")
+                .to("Valid composite key size.")
+                .build(),
+            Mutation.newInsertBuilder(tableName)
+                .set("pk1")
+                .to("a".repeat(5000))
+                .set("pk2")
+                .to("b".repeat(5000))
+                .set("value")
+                .to("Exceeds key size limit.")
+                .build());
+    spannerResourceManager.write(mutations);
+  }
+
   @Test
   public void wideRowExceedingMaxSizeTableKey() throws Exception {
     try {
       createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_TABLE_KEY_FILE_RESOURCE);
+      insertExceedingMaxSizeTableKey();
     } catch (Exception e) {
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
