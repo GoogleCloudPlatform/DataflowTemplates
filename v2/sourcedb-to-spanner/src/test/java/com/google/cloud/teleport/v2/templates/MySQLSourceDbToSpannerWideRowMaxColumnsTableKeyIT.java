@@ -26,9 +26,9 @@ import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -49,12 +49,12 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
       "WideRow/MaxColumnsTableKeyIT/spanner-schema.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
-  public static MySQLResourceManager mySQLResourceManager;
+  public static CloudMySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
   @Before
   public void setUp() throws Exception {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    mySQLResourceManager = setUpCloudMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
