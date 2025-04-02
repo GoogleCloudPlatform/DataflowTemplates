@@ -73,3 +73,12 @@ CREATE TABLE child7 (
     CONSTRAINT child7_ibfk_1 FOREIGN KEY (child6_id)
         REFERENCES child6(id) ON DELETE CASCADE
 );
+
+INSERT INTO parent (id, name) VALUES (1, 'Parent 1');
+INSERT INTO child1 (id, parent_id, name) VALUES (101, 1, 'Child1 Row 101');
+INSERT INTO child2 (id, child1_id, name) VALUES (201, 101, 'Child2 Row 201');
+INSERT INTO child3 (id, child2_id, name) VALUES (301, 201, 'Child3 Row 301');
+INSERT INTO child4 (id, child3_id, name) VALUES (401, 301, 'Child4 Row 401');
+INSERT INTO child5 (id, child4_id, name) VALUES (501, 401, 'Child5 Row 501');
+INSERT INTO child6 (id, child5_id, name) VALUES (601, 501, 'Child6 Row 601');
+INSERT INTO child7 (id, child6_id, name) VALUES (701, 601, 'Child7 Row 701');
