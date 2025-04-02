@@ -687,6 +687,7 @@
         <module>dataplex</module>
         <module>datastream-common</module>
         <module>datastream-to-bigquery</module>
+        <module>datastream-mongodb-to-mongodb</module>
         <module>datastream-to-mongodb</module>
         <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>

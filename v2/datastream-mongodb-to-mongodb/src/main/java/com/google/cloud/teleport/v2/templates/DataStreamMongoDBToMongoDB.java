@@ -1,0 +1,1170 @@
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.v2.templates;
+
+import static com.mongodb.client.model.Filters.eq;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
+import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueManager;
+import com.google.cloud.teleport.v2.cdc.dlq.PubSubNotifiedDlqIO;
+import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
+import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
+import com.google.cloud.teleport.v2.templates.DataStreamMongoDBToMongoDB.Options;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
+import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn;
+import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
+import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
+import com.mongodb.bulk.BulkWriteResult;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.DeleteOneModel;
+import com.mongodb.client.model.ReplaceOneModel;
+import com.mongodb.client.model.ReplaceOptions;
+import com.mongodb.client.model.WriteModel;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.SerializableCoder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
+import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Description;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.StreamingOptions;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.DoFn.FinishBundle;
+import org.apache.beam.sdk.transforms.DoFn.FinishBundleContext;
+import org.apache.beam.sdk.transforms.DoFn.Setup;
+import org.apache.beam.sdk.transforms.DoFn.StartBundle;
+import org.apache.beam.sdk.transforms.DoFn.Teardown;
+import org.apache.beam.sdk.transforms.Flatten;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.windowing.GlobalWindow;
+import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionList;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
+import org.bson.Document;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * This pipeline ingests DataStream data from GCS. The data is then transformed to JSON documents
+ * and added to the target database.
+ *
+ * <p>Example Usage:
+ *
+ * <pre>
+ * # Set the pipeline vars
+ * PROJECT=my-project
+ * BUCKET_NAME=my-bucket
+ * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/datastream-mongodb-to-mongodb
+ * CONNECTION_URI=mongodb://xxx
+ * TARGET_DATABASE=my-database
+ * STREAM_NAME=my-stream
+ * INPUT_FILE_PATTERN=gs://${BUCKET_NAME}/
+ * INPUT_FILE_FORMAT=avro
+ * TEMP_LOCATION=gs://${BUCKET_NAME}/dataflow/tmp/
+ *
+ * # Build and upload the template
+ * mvn clean package \
+ * -Dimage="gcr.io/${PROJECT}/dataflow/datastream-mongodb-to-mongodb:latest" \
+ * -Dbase-container-image="gcr.io/dataflow-templates-base/java11-template-launcher-base:latest" \
+ * -Dapp-root="/template/datastream-mongodb-to-mongodb" \
+ * -Dcommand-spec=${APP_ROOT}/resources/datastream-mongodb-to-mongodb-command-spec.json
+ *
+ * # Execute the template
+ * gcloud dataflow flex-template run "datastream-mongodb-to-mongodb-`date +%Y%m%d-%H%M%S`" \
+ * --template-file-gcs-location=${PIPELINE_FOLDER}/templates/datastream-mongodb-to-mongodb.json \
+ * --parameters connectionUri=${CONNECTION_URI} \
+ * --parameters databaseName=${TARGET_DATABASE} \
+ * --parameters streamName=${STREAM_NAME} \
+ * --parameters inputFilePattern=${INPUT_FILE_PATTERN} \
+ * --parameters inputFileFormat=${INPUT_FILE_FORMAT} \
+ * --parameters tempLocation=${TEMP_LOCATION} \
+ * </pre>
+ */
+@Template(
+    name = "Cloud_Datastream_MongoDB_to_MongoDB",
+    category = TemplateCategory.STREAMING,
+    displayName = "Datastream to MongoDB",
+    description = "A pipeline which sends Datastream output files in GCS to MongoDB.",
+    flexContainerName = "datastream-mongodb-to-mongodb",
+    optionsClass = Options.class)
+public class DataStreamMongoDBToMongoDB {
+
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamMongoDBToMongoDB.class);
+  private static final String AVRO_SUFFIX = "avro";
+  private static final String JSON_SUFFIX = "json";
+  public static final Set<String> MAPPER_IGNORE_FIELDS =
+      new HashSet<String>(
+          Arrays.asList(
+              "_metadata_stream",
+              "_metadata_schema",
+              "_metadata_table",
+              "_metadata_source",
+              "_metadata_ssn",
+              "_metadata_rs_id",
+              "_metadata_tx_id",
+              "_metadata_uuid",
+              "_metadata_dlq_reconsumed",
+              "_metadata_error",
+              "_metadata_retry_count",
+              "_metadata_timestamp",
+              "_metadata_read_timestamp",
+              "_metadata_read_method",
+              "_metadata_deleted",
+              "_metadata_primary_keys",
+              "_metadata_log_file",
+              "_metadata_log_position",
+              "_metadata_dataflow_timestamp",
+              "data",
+              "_metadata_timestamp_seconds",
+              "_metadata_timestamp_nanos"));
+
+  /**
+   * Options supported by the pipeline.
+   *
+   * <p>Inherits standard configuration options.
+   */
+  public interface Options extends StreamingOptions, DataflowPipelineWorkerPoolOptions {
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        description = "Shadow collection prefix",
+        helpText = "The prefix used to name shadow collections. Default: `shadow_`.")
+    @Default.String(DatastreamConstants.DEFAULT_SHADOW_COLLECTION_PREFIX)
+    String getShadowCollectionPrefix();
+
+    void setShadowCollectionPrefix(String value);
+
+    @TemplateParameter.Boolean(
+        order = 18,
+        optional = true,
+        description = "Process backfill events before CDC events",
+        helpText =
+            "When true, all backfill events are processed before any CDC events. Default: true")
+    @Default.Boolean(true)
+    Boolean getProcessBackfillFirst();
+
+    void setProcessBackfillFirst(Boolean value);
+
+    @TemplateParameter.Boolean(
+        order = 19,
+        optional = true,
+        description = "Use shadow tables for backfill events",
+        helpText =
+            "When false, backfill events are processed without shadow tables. Default: false")
+    @Default.Boolean(false)
+    Boolean getUseShadowTablesForBackfill();
+
+    void setUseShadowTablesForBackfill(Boolean value);
+
+    @TemplateParameter.Enum(
+        order = 20,
+        optional = true,
+        description = "Run mode - currently supported are : regular or retryDLQ",
+        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        helpText = "This is the run mode type, whether regular or with retryDLQ.")
+    @Default.String("regular")
+    String getRunMode();
+
+    void setRunMode(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 1,
+        description = "Cloud Storage Input File(s)",
+        groupName = "Source",
+        helpText = "Path of the file pattern glob to read from.",
+        example = "gs://your-bucket/path/*.avro")
+    String getInputFilePattern();
+
+    void setInputFilePattern(String value);
+
+    @TemplateParameter.Enum(
+        order = 2,
+        enumOptions = {@TemplateEnumOption("avro"), @TemplateEnumOption("json")},
+        optional = false,
+        description = "The GCS input format avro/json",
+        helpText = "The file format of the desired input files. Can be avro or json.")
+    @Default.String("avro")
+    String getInputFileFormat();
+
+    void setInputFileFormat(String value);
+
+    @TemplateParameter.PubsubSubscription(
+        order = 24,
+        optional = true,
+        description =
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
+                + " retry directory when running in regular mode.",
+        helpText =
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ"
+                + " retry directory when running in regular mode. For the name, use the format"
+                + " `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the"
+                + " deadLetterQueueDirectory and dlqRetryMinutes are ignored.")
+    String getDlqGcsPubSubSubscription();
+
+    void setDlqGcsPubSubSubscription(String value);
+
+    @TemplateParameter.PubsubSubscription(
+        order = 8,
+        optional = true,
+        description = "The Pub/Sub subscription being used in a Cloud Storage notification policy.",
+        helpText =
+            "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name,"
+                + " use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
+    String getGcsPubSubSubscription();
+
+    void setGcsPubSubSubscription(String value);
+
+    @TemplateParameter.Integer(
+        order = 22,
+        optional = true,
+        description = "Directory watch duration in minutes. Default: 10 minutes",
+        helpText =
+            "The Duration for which the pipeline should keep polling a directory in GCS. Datastream"
+                + "output files are arranged in a directory structure which depicts the timestamp "
+                + "of the event grouped by minutes. This parameter should be approximately equal to"
+                + "maximum delay which could occur between event occurring in source database and "
+                + "the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes")
+    @Default.Integer(10)
+    Integer getDirectoryWatchDurationInMinutes();
+
+    void setDirectoryWatchDurationInMinutes(Integer value);
+
+    @Description("The DataStream Stream to Reference.")
+    String getStreamName();
+
+    void setStreamName(String value);
+
+    @TemplateParameter.DateTime(
+        order = 5,
+        optional = true,
+        description =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).",
+        helpText =
+            "The starting DateTime used to fetch from Cloud Storage "
+                + "(https://tools.ietf.org/html/rfc3339).")
+    @Default.String("1970-01-01T00:00:00.00Z")
+    String getRfcStartDateTime();
+
+    void setRfcStartDateTime(String value);
+
+    @TemplateParameter.Text(
+        order = 14,
+        optional = true,
+        description = "Dead letter queue directory.",
+        helpText =
+            "The file path used when storing the error queue output. "
+                + "The default file path is a directory under the Dataflow job's temp location.")
+    @Default.String("")
+    String getDeadLetterQueueDirectory();
+
+    void setDeadLetterQueueDirectory(String value);
+
+    @TemplateParameter.Integer(
+        order = 15,
+        optional = true,
+        description = "Dead letter queue retry minutes",
+        helpText = "The number of minutes between dead letter queue retries. Defaults to `10`.")
+    @Default.Integer(10)
+    Integer getDlqRetryMinutes();
+
+    void setDlqRetryMinutes(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 16,
+        optional = true,
+        description = "Dead letter queue maximum retry count",
+        helpText =
+            "The max number of times temporary errors can be retried through DLQ. Defaults to `500`.")
+    @Default.Integer(500)
+    Integer getDlqMaxRetryCount();
+
+    void setDlqMaxRetryCount(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 6,
+        optional = true,
+        description = "File read concurrency",
+        helpText = "The number of concurrent DataStream files to read.")
+    @Default.Integer(10)
+    Integer getFileReadConcurrency();
+
+    void setFileReadConcurrency(Integer value);
+
+    @TemplateParameter.Text(
+        groupName = "Target",
+        order = 7,
+        description = "Connection URI for the target project",
+        helpText = "URI to connect to the target project")
+    String getConnectionUri();
+
+    void setConnectionUri(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Target",
+        order = 8,
+        description = "Database name",
+        helpText = "The database to write to.",
+        example = "(default)")
+    @Default.String("(default)")
+    String getDatabaseName();
+
+    void setDatabaseName(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Target",
+        order = 9,
+        description = "Database collection filter (optional)",
+        helpText =
+            "If specified, only replicate this collection. If not specified, replicate all collections.",
+        example = "my-collection",
+        optional = true)
+    String getDatabaseCollection();
+
+    void setDatabaseCollection(String value);
+
+    @TemplateParameter.Integer(
+        order = 11,
+        optional = true,
+        description = "Batch size",
+        helpText = "The batch size for writing to Database.")
+    @Default.Integer(500)
+    Integer getBatchSize();
+
+    void setBatchSize(Integer value);
+  }
+
+  /**
+   * Main entry point for executing the pipeline.
+   *
+   * @param args The command-line arguments to the pipeline.
+   */
+  public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
+    LOG.info("Starting DataStream to MongoDB pipeline...");
+
+    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    LOG.info("Pipeline options parsed and validated");
+
+    options.setStreaming(true);
+    LOG.info("Pipeline set to streaming mode");
+
+    validateOptions(options);
+    LOG.info("Options validated successfully");
+
+    run(options);
+  }
+
+  private static void validateOptions(Options options) {
+    String inputFileFormat = options.getInputFileFormat();
+    if (!(inputFileFormat.equals(AVRO_SUFFIX) || inputFileFormat.equals(JSON_SUFFIX))) {
+      throw new IllegalArgumentException(
+          "Input file format must be one of: avro, json or left empty - found " + inputFileFormat);
+    }
+  }
+
+  /**
+   * Runs the pipeline with the supplied options.
+   *
+   * <p>This pipeline processes all events (backfill/CDC) together, ordered by the timestamp field
+   * from the datastream records. Shadow collections are used to track event ordering and prevent
+   * duplicate processing.
+   *
+   * @param options The execution parameters to the pipeline.
+   */
+  public static void run(Options options) {
+    try {
+      LOG.info(
+          "Starting pipeline execution with options: inputFilePattern={}, fileType={}, databaseName={}",
+          options.getInputFilePattern(),
+          options.getInputFileFormat(),
+          options.getDatabaseName());
+
+      // Decode the connection string
+      String connectionString = options.getConnectionUri();
+      if (!connectionString.startsWith("mongodb://")
+          && !connectionString.startsWith("mongodb+srv://")) {
+        LOG.error(
+            "Invalid URL: {}, Must be in pattern of 'mongodb://<host1>:<port1>,<host2>:<port2>/database?options', or 'mongodb+srv://<host>/database?options'",
+            connectionString);
+        throw new IllegalArgumentException("Invalid connectionUri: " + connectionString);
+      }
+      LOG.info("Creating MongoDB client with connection string: {}", connectionString);
+      MongoClient mongoClient = MongoClients.create(connectionString);
+      LOG.info("MongoDB client created successfully");
+
+      // Choose processing mode based on options
+      LOG.info("Starting pipeline execution");
+      PipelineResult result;
+      if (options.getProcessBackfillFirst()) {
+        LOG.info("Using backfill-first processing mode");
+        result = runWithBackfillFirst(options, connectionString);
+      } else {
+        LOG.info("Using unified processing mode");
+        result = runAllEventsTogether(options, connectionString);
+      }
+      result.waitUntilFinish();
+      LOG.info("Pipeline execution completed");
+
+      // Cleanup - remove the shadow collections after the migration
+      LOG.info(
+          "Starting cleanup of shadow collections with prefix: {}",
+          options.getShadowCollectionPrefix());
+      cleanupShadowCollections(mongoClient, options.getShadowCollectionPrefix());
+      LOG.info("Shadow collections cleanup completed");
+
+      mongoClient.close();
+      LOG.info("MongoDB client closed");
+    } catch (Exception e) {
+      LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
+      throw e;
+    }
+  }
+
+  /**
+   * Runs the pipeline with backfill events processed before CDC events.
+   *
+   * <p>This pipeline first processes all backfill events, then processes CDC events. This ensures
+   * that the initial state of the database is established before any changes are applied.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @return The result of the pipeline execution.
+   */
+  private static PipelineResult runWithBackfillFirst(Options options, String connectionString) {
+    LOG.info("Creating pipeline with backfill-first processing");
+    Pipeline pipeline = Pipeline.create(options);
+
+    LOG.info("Building Dead Letter Queue manager");
+    DeadLetterQueueManager dlqManager = buildDlqManager(options);
+
+    // Ingest data from GCS
+    LOG.info("Ingesting data from GCS");
+    PCollection<FailsafeElement<String, String>> jsonRecords =
+        ingestAndNormalizeJson(options, dlqManager, pipeline)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    // Create MongoDbChangeEventContext objects
+    LOG.info("Creating MongoDbChangeEventContext objects");
+    PCollectionTuple changeEventContexts =
+        jsonRecords.apply(
+            ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
+                .withOutputTags(
+                    CreateMongoDbChangeEventContextFn.successfulCreationTag,
+                    TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+
+    // Set coders
+    changeEventContexts
+        .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    changeEventContexts
+        .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    // Handle failed creation with DLQ
+    writeFailedJsonToDlq(
+        options,
+        changeEventContexts,
+        dlqManager,
+        CreateMongoDbChangeEventContextFn.failedCreationTag);
+
+    // Split events into backfill and CDC streams
+    LOG.info("Splitting events into backfill and CDC streams");
+    PCollectionTuple splitEvents =
+        changeEventContexts
+            .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+            .apply(
+                "Split Backfill and CDC",
+                ParDo.of(new SplitBackfillAndCdcEventsFn())
+                    .withOutputTags(
+                        SplitBackfillAndCdcEventsFn.backfillTag,
+                        TupleTagList.of(SplitBackfillAndCdcEventsFn.cdcTag)));
+
+    // Set coders for split events
+    splitEvents
+        .get(SplitBackfillAndCdcEventsFn.backfillTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    splitEvents
+        .get(SplitBackfillAndCdcEventsFn.cdcTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+
+    // Process backfill events
+    LOG.info("Processing backfill events");
+    PCollectionTuple backfillResult;
+    if (options.getUseShadowTablesForBackfill()) {
+      // Use shadow tables for backfill (same as CDC processing)
+      backfillResult =
+          splitEvents
+              .get(SplitBackfillAndCdcEventsFn.backfillTag)
+              .apply(
+                  "Process Backfill with Shadow Tables",
+                  ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
+                      .withOutputTags(
+                          ProcessChangeEventFn.successfulWriteTag,
+                          TupleTagList.of(ProcessChangeEventFn.failedWriteTag)));
+    } else {
+      // Process backfill without shadow tables
+      backfillResult =
+          splitEvents
+              .get(SplitBackfillAndCdcEventsFn.backfillTag)
+              .apply(
+                  "Process Backfill without Shadow Tables",
+                  ParDo.of(
+                          new ProcessBackfillEventFn(
+                              connectionString, options.getDatabaseName(), options.getBatchSize()))
+                      .withOutputTags(
+                          ProcessBackfillEventFn.successfulWriteTag,
+                          TupleTagList.of(ProcessBackfillEventFn.failedWriteTag)));
+    }
+
+    // Set coders for backfill results
+    backfillResult
+        .get(
+            options.getUseShadowTablesForBackfill()
+                ? ProcessChangeEventFn.successfulWriteTag
+                : ProcessBackfillEventFn.successfulWriteTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    backfillResult
+        .get(
+            options.getUseShadowTablesForBackfill()
+                ? ProcessChangeEventFn.failedWriteTag
+                : ProcessBackfillEventFn.failedWriteTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+
+    // Handle failed backfill writes with DLQ
+    writeFailedEventsToDlq(
+        options,
+        backfillResult,
+        dlqManager,
+        options.getUseShadowTablesForBackfill()
+            ? ProcessChangeEventFn.failedWriteTag
+            : ProcessBackfillEventFn.failedWriteTag);
+
+    // Process CDC events
+    LOG.info("Processing CDC events");
+    PCollectionTuple cdcResult =
+        splitEvents
+            .get(SplitBackfillAndCdcEventsFn.cdcTag)
+            .apply(
+                "Process CDC Events",
+                ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
+                    .withOutputTags(
+                        ProcessChangeEventFn.successfulWriteTag,
+                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)));
+
+    // Set coders for CDC results
+    cdcResult
+        .get(ProcessChangeEventFn.successfulWriteTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+    cdcResult
+        .get(ProcessChangeEventFn.failedWriteTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+
+    // Handle failed CDC writes with DLQ
+    writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+
+    // Execute the pipeline
+    LOG.info("Executing pipeline");
+    return pipeline.run();
+  }
+
+  /**
+   * Runs the pipeline with all events processed together.
+   *
+   * <p>This pipeline processes both backfill and CDC events in a unified flow, ordered primarily by
+   * their timestamps. Events with the same timestamp are ordered by type, with backfill events
+   * processed before CDC events. Shadow collections are used to track event ordering and prevent
+   * duplicate processing.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @return The result of the pipeline execution.
+   */
+  private static PipelineResult runAllEventsTogether(Options options, String connectionString) {
+    /*
+     * Stages:
+     *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
+     *   2) Convert json strings to MongoDbChangeEvents
+     *   3) Write the change events with transactions
+     */
+
+    LOG.info("Creating pipeline");
+    Pipeline pipeline = Pipeline.create(options);
+
+    LOG.info("Building Dead Letter Queue manager");
+    DeadLetterQueueManager dlqManager = buildDlqManager(options);
+
+    /*
+     * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
+     *   a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
+     */
+    LOG.info("Stage 1: Starting ingestion of data from GCS");
+    PCollection<FailsafeElement<String, String>> jsonRecords =
+        ingestAndNormalizeJson(options, dlqManager, pipeline)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+    LOG.info("Stage 1: Completed ingestion of data from GCS");
+
+    /*
+     * Stage 2: Create MongoDbChangeEventContext objects with error handling
+     */
+    LOG.info("Stage 2: Creating MongoDbChangeEventContext objects");
+    PCollectionTuple changeEventContexts =
+        jsonRecords.apply(
+            ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
+                .withOutputTags(
+                    CreateMongoDbChangeEventContextFn.successfulCreationTag,
+                    TupleTagList.of(CreateMongoDbChangeEventContextFn.failedCreationTag)));
+
+    /* Set coder for successful creation */
+    changeEventContexts
+        .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+
+    /* Set coder for failed creation */
+    changeEventContexts
+        .get(CreateMongoDbChangeEventContextFn.failedCreationTag)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    // Handle failed creation with DLQ
+    LOG.info("Setting up DLQ handling for failed event creation");
+    writeFailedJsonToDlq(
+        options,
+        changeEventContexts,
+        dlqManager,
+        CreateMongoDbChangeEventContextFn.failedCreationTag);
+
+    /* Stage 3: Iterate through the success events and write with transactions */
+    LOG.info("Stage 3: Processing change events and writing to the destination database");
+    PCollectionTuple writeResult =
+        changeEventContexts
+            .get(CreateMongoDbChangeEventContextFn.successfulCreationTag)
+            .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class))
+            .apply(
+                "Transactional write events",
+                ParDo.of(new ProcessChangeEventFn(connectionString, options.getDatabaseName()))
+                    .withOutputTags(
+                        ProcessChangeEventFn.successfulWriteTag,
+                        TupleTagList.of(ProcessChangeEventFn.failedWriteTag)));
+
+    /* Set coder for successful writes */
+    writeResult
+        .get(ProcessChangeEventFn.successfulWriteTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+
+    /* Set coder for failed writes */
+    writeResult
+        .get(ProcessChangeEventFn.failedWriteTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+
+    /* Handle failed writes with DLQ */
+    LOG.info("Setting up DLQ handling for failed writes");
+    writeFailedEventsToDlq(options, writeResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
+
+    // Execute the pipeline and return the result.
+    LOG.info("Executing pipeline");
+    return pipeline.run();
+  }
+
+  private static DeadLetterQueueManager buildDlqManager(Options options) {
+    LOG.info("Building Dead Letter Queue manager");
+    String tempLocation = null;
+    try {
+      tempLocation = options.as(DataflowPipelineOptions.class).getTempLocation();
+      if (tempLocation != null) {
+        tempLocation = tempLocation.endsWith("/") ? tempLocation : tempLocation + "/";
+        LOG.info("Using temp location from pipeline options: {}", tempLocation);
+      } else {
+        // If tempLocation is null, use a default location
+        tempLocation = "/tmp/";
+        LOG.warn("TempLocation is null, using default location: {}", tempLocation);
+      }
+    } catch (Exception e) {
+      // If we can't get the temp location, use a default
+      tempLocation = "/tmp/";
+      LOG.warn("Error getting tempLocation, using default location: {}", tempLocation, e);
+    }
+
+    String dlqDirectory =
+        options.getDeadLetterQueueDirectory().isEmpty()
+            ? tempLocation + "dlq/"
+            : options.getDeadLetterQueueDirectory();
+    LOG.info("Dead-letter queue directory: {}", dlqDirectory);
+    options.setDeadLetterQueueDirectory(dlqDirectory);
+
+    if ("regular".equals(options.getRunMode())) {
+      LOG.info(
+          "Creating DLQ manager in regular mode with max retry count: {}",
+          options.getDlqMaxRetryCount());
+      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+    } else {
+      String retryDlqUri =
+          FileSystems.matchNewResource(dlqDirectory, true)
+              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
+              .toString();
+      LOG.info("Creating DLQ manager in retry mode with retry directory: {}", retryDlqUri);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+    }
+  }
+
+  private static PCollection<FailsafeElement<String, String>> ingestAndNormalizeJson(
+      Options options, DeadLetterQueueManager dlqManager, Pipeline pipeline) {
+    LOG.info("Starting ingestion and normalization of JSON data");
+    PCollection<FailsafeElement<String, String>> jsonRecords = null;
+    // Elements sent to the Dead Letter Queue are to be reconsumed.
+    // A DLQManager is to be created using PipelineOptions, and it is in charge
+    // of building pieces of the DLQ.
+    PCollectionTuple reconsumedElements = null;
+    boolean isRegularMode = "regular".equals(options.getRunMode());
+
+    LOG.info("Setting up DLQ reconsumption, mode: {}", isRegularMode ? "regular" : "retry");
+    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
+      LOG.info(
+          "Using PubSub notification for DLQ reconsumption with subscription: {}",
+          options.getDlqGcsPubSubSubscription());
+      reconsumedElements =
+          dlqManager.getReconsumerDataTransformForFiles(
+              pipeline.apply(
+                  "Read retry from PubSub",
+                  new PubSubNotifiedDlqIO(
+                      options.getDlqGcsPubSubSubscription(),
+                      // file paths to ignore when re-consuming for retry
+                      new ArrayList<String>(
+                          Arrays.asList("/severe/", "/tmp_retry", "/tmp_severe/", ".temp")))));
+    } else {
+      LOG.info(
+          "Using periodic polling for DLQ reconsumption with retry minutes: {}",
+          options.getDlqRetryMinutes());
+      reconsumedElements =
+          dlqManager.getReconsumerDataTransform(
+              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+    }
+
+    LOG.info("Processing retryable errors from DLQ");
+    PCollection<FailsafeElement<String, String>> dlqJsonRecords =
+        reconsumedElements
+            .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
+            .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    // Set coder for non-retryable errors
+    reconsumedElements
+        .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+
+    if (isRegularMode) {
+      LOG.info("Regular Datastream flow - reading from GCS: {}", options.getInputFilePattern());
+      PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
+          pipeline.apply(
+              new DataStreamIO(
+                      options.getStreamName(),
+                      options.getInputFilePattern(),
+                      options.getInputFileFormat(),
+                      options.getGcsPubSubSubscription(),
+                      options.getRfcStartDateTime())
+                  .withFileReadConcurrency(options.getFileReadConcurrency())
+                  .withoutDatastreamRecordsReshuffle()
+                  .withDirectoryWatchDuration(
+                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+      LOG.info(
+          "DataStreamIO configured with fileReadConcurrency: {}, directoryWatchDuration: {} minutes",
+          options.getFileReadConcurrency(),
+          options.getDirectoryWatchDurationInMinutes());
+
+      int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
+      LOG.info("Flattening and reshuffling records with maxNumWorkers: {}", maxNumWorkers);
+      jsonRecords =
+          PCollectionList.of(datastreamJsonRecords)
+              .and(dlqJsonRecords)
+              .apply(Flatten.pCollections())
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+              .apply(
+                  "Reshuffle",
+                  Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
+                      .withNumBuckets(maxNumWorkers * DatastreamConstants.MAX_DOFN_PER_WORKER));
+    } else {
+      LOG.info("DLQ retry flow - processing only DLQ records");
+      jsonRecords =
+          PCollectionList.of(dlqJsonRecords)
+              .apply(Flatten.pCollections())
+              .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+              .apply("Reshuffle", Reshuffle.viaRandomKey());
+    }
+    LOG.info("Completed ingestion and normalization of JSON data");
+    return jsonRecords;
+  }
+
+  private static void writeFailedJsonToDlq(
+      Options options,
+      PCollectionTuple results,
+      DeadLetterQueueManager dlqManager,
+      TupleTag<FailsafeElement<String, String>> failedTag) {
+    LOG.info("Setting up DLQ for failed JSON processing");
+    // Write failed writes to DLQ
+    results
+        .get(failedTag)
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply(
+            "DLQ: Write retryable Failures to GCS",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write To DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
+                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry_json/")
+                .setIncludePaneInfo(true)
+                .build());
+    LOG.info("DLQ setup completed for failed JSON processing");
+  }
+
+  private static void writeFailedEventsToDlq(
+      Options options,
+      PCollectionTuple results,
+      DeadLetterQueueManager dlqManager,
+      TupleTag<MongoDbChangeEventContext> failedTag) {
+    LOG.info("Setting up DLQ for failed MongoDB event processing");
+    // Write failed writes to DLQ
+    results
+        .get(failedTag)
+        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class))
+        .apply(
+            "DLQ: Write retryable Failures to GCS",
+            MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            "Write To DLQ",
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
+                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry_mongo_event/")
+                .setIncludePaneInfo(true)
+                .build());
+    LOG.info("DLQ setup completed for failed MongoDB event processing");
+  }
+
+  /** DoFn to split events into backfill and CDC streams. */
+  public static class SplitBackfillAndCdcEventsFn
+      extends DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SplitBackfillAndCdcEventsFn.class);
+
+    public static TupleTag<MongoDbChangeEventContext> backfillTag = new TupleTag<>("backfill");
+    public static TupleTag<MongoDbChangeEventContext> cdcTag = new TupleTag<>("cdc");
+
+    @ProcessElement
+    public void processElement(ProcessContext c, MultiOutputReceiver out) {
+      MongoDbChangeEventContext event = c.element();
+
+      if (isBackfillEvent(event)) {
+        LOG.debug("Classified event as backfill for document ID: {}", event.getDocumentId());
+        out.get(backfillTag).output(event);
+      } else {
+        LOG.debug("Classified event as CDC for document ID: {}", event.getDocumentId());
+        out.get(cdcTag).output(event);
+      }
+    }
+
+    private boolean isBackfillEvent(MongoDbChangeEventContext event) {
+      JsonNode jsonNode = event.getChangeEvent();
+
+      // Check for CDC-specific fields
+      boolean hasCdcFields =
+          jsonNode.has("_metadata_log_file")
+              || jsonNode.has("_metadata_log_position")
+              || jsonNode.has("_metadata_scn")
+              || jsonNode.has("_metadata_ssn")
+              || jsonNode.has("_metadata_rs_id");
+
+      // Check for change type
+      String changeType = null;
+      if (jsonNode.has(DatastreamConstants.EVENT_CHANGE_TYPE_KEY)) {
+        changeType = jsonNode.get(DatastreamConstants.EVENT_CHANGE_TYPE_KEY).asText();
+      }
+
+      // If it has CDC fields or a specific change type (not READ), it's a CDC event
+      return !hasCdcFields && (changeType == null || "READ".equals(changeType));
+    }
+  }
+
+  /** DoFn to process backfill events using MongoDB bulk writes. */
+  public static class ProcessBackfillEventFn
+      extends DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext> {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ProcessBackfillEventFn.class);
+
+    public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
+        new TupleTag<>("backfillSuccessfulWrite");
+    public static TupleTag<MongoDbChangeEventContext> failedWriteTag =
+        new TupleTag<>("backfillFailedWrite");
+
+    private final String connectionString;
+    private final String targetDatabaseName;
+    private final int batchSize;
+
+    // Maps to store buffered operations by collection
+    private transient Map<String, List<MongoDbChangeEventContext>> bufferedEvents;
+    private transient Map<String, MongoCollection<Document>> collectionMap;
+    private transient MongoClient client;
+
+    public ProcessBackfillEventFn(String connectionString, String databaseName, int batchSize) {
+      this.connectionString = connectionString;
+      this.targetDatabaseName = databaseName;
+      this.batchSize = batchSize;
+    }
+
+    @Setup
+    public void setup() {
+      LOG.info("Setting up MongoDB client for backfill processing with batch size: {}", batchSize);
+      client = MongoClients.create(connectionString);
+      bufferedEvents = new HashMap<>();
+      collectionMap = new HashMap<>();
+    }
+
+    @StartBundle
+    public void startBundle() {
+      LOG.debug("Starting new bundle for backfill processing");
+      bufferedEvents.clear();
+    }
+
+    @ProcessElement
+    public void processElement(ProcessContext context, MultiOutputReceiver out) {
+      MongoDbChangeEventContext element = context.element();
+      String collectionName = element.getDataCollection();
+
+      // Buffer the event
+      if (!bufferedEvents.containsKey(collectionName)) {
+        LOG.debug("Creating new buffer for collection: {}", collectionName);
+        bufferedEvents.put(collectionName, new ArrayList<>());
+
+        // Initialize collection reference if needed
+        if (!collectionMap.containsKey(collectionName)) {
+          MongoDatabase database = client.getDatabase(targetDatabaseName);
+          collectionMap.put(collectionName, database.getCollection(collectionName));
+        }
+      }
+
+      bufferedEvents.get(collectionName).add(element);
+
+      // If we've reached batch size for this collection, process the batch
+      if (bufferedEvents.get(collectionName).size() >= batchSize) {
+        LOG.debug(
+            "Batch size reached for collection {}, processing {} events",
+            collectionName,
+            bufferedEvents.get(collectionName).size());
+        processBatch(collectionName, out);
+      }
+    }
+
+    @FinishBundle
+    public void finishBundle(FinishBundleContext context) {
+      // Process any remaining batches
+      for (String collectionName : bufferedEvents.keySet()) {
+        if (!bufferedEvents.get(collectionName).isEmpty()) {
+          LOG.debug(
+              "Processing remaining {} events for collection {} at bundle finish",
+              bufferedEvents.get(collectionName).size(),
+              collectionName);
+          processBatchFinish(collectionName, context);
+        }
+      }
+    }
+
+    private void processBatch(String collectionName, MultiOutputReceiver out) {
+      List<MongoDbChangeEventContext> events = bufferedEvents.get(collectionName);
+      MongoCollection<Document> collection = collectionMap.get(collectionName);
+
+      if (events.isEmpty()) {
+        return;
+      }
+
+      try {
+        // Create bulk operation
+        List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
+
+        // Add operations to bulk
+        for (MongoDbChangeEventContext event : events) {
+          Object docId = event.getDocumentId();
+
+          if (event.isDeleteEvent()) {
+            // Add delete operation
+            bulkOperations.add(
+                new DeleteOneModel<>(eq(MongoDbChangeEventContext.DOC_ID_COL, docId)));
+          } else {
+            // Add upsert operation
+            bulkOperations.add(
+                new ReplaceOneModel<>(
+                    eq(MongoDbChangeEventContext.DOC_ID_COL, docId),
+                    event.getDataDocument(),
+                    new ReplaceOptions().upsert(true)));
+          }
+        }
+
+        // Execute bulk write
+        BulkWriteResult result = collection.bulkWrite(bulkOperations);
+        LOG.debug(
+            "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
+            collectionName,
+            result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size(),
+            result.getDeletedCount());
+
+        // Output successful events
+        for (MongoDbChangeEventContext event : events) {
+          out.get(successfulWriteTag).output(event);
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "Error processing backfill batch for collection {}: {}",
+            collectionName,
+            e.getMessage(),
+            e);
+
+        // On error, output all events as failed
+        for (MongoDbChangeEventContext event : events) {
+          out.get(failedWriteTag).output(event);
+        }
+      }
+
+      // Clear the processed batch
+      events.clear();
+    }
+
+    private void processBatchFinish(String collectionName, FinishBundleContext context) {
+      List<MongoDbChangeEventContext> events = bufferedEvents.get(collectionName);
+      MongoCollection<Document> collection = collectionMap.get(collectionName);
+
+      if (events.isEmpty()) {
+        return;
+      }
+
+      try {
+        // Create bulk operation
+        List<WriteModel<Document>> bulkOperations = new ArrayList<>(events.size());
+
+        // Add operations to bulk
+        for (MongoDbChangeEventContext event : events) {
+          Object docId = event.getDocumentId();
+
+          if (event.isDeleteEvent()) {
+            // Add delete operation
+            bulkOperations.add(
+                new DeleteOneModel<>(eq(MongoDbChangeEventContext.DOC_ID_COL, docId)));
+          } else {
+            // Add upsert operation
+            bulkOperations.add(
+                new ReplaceOneModel<>(
+                    eq(MongoDbChangeEventContext.DOC_ID_COL, docId),
+                    event.getDataDocument(),
+                    new ReplaceOptions().upsert(true)));
+          }
+        }
+
+        // Execute bulk write
+        BulkWriteResult result = collection.bulkWrite(bulkOperations);
+        LOG.debug(
+            "Bulk write completed for collection {}: {} inserts/updates, {} deletes",
+            collectionName,
+            result.getInsertedCount() + result.getModifiedCount() + result.getUpserts().size(),
+            result.getDeletedCount());
+
+        // Output successful events
+        for (MongoDbChangeEventContext event : events) {
+          context.output(successfulWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
+        }
+      } catch (Exception e) {
+        LOG.error(
+            "Error processing backfill batch for collection {}: {}",
+            collectionName,
+            e.getMessage(),
+            e);
+
+        // On error, output all events as failed
+        for (MongoDbChangeEventContext event : events) {
+          context.output(failedWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
+        }
+      }
+
+      // Clear the processed batch
+      events.clear();
+    }
+
+    @Teardown
+    public void teardown() {
+      if (client != null) {
+        LOG.info("Closing MongoDB client for backfill processing");
+        client.close();
+        client = null;
+      }
+    }
+  }
+
+  private static void cleanupShadowCollections(
+      MongoClient mongoClient, String shadowCollectionPrefix) {
+    LOG.info("Starting cleanup of shadow collections with prefix: {}", shadowCollectionPrefix);
+
+    // Get a list of all database names
+    List<String> databaseNames = mongoClient.listDatabaseNames().into(new ArrayList<>());
+    LOG.info("Found {} databases to check for shadow collections", databaseNames.size());
+
+    for (String databaseName : databaseNames) {
+      if (databaseName.equals("admin")
+          || databaseName.equals("local")
+          || databaseName.equals("config")) {
+        // Skip system databases
+        continue;
+      }
+      MongoDatabase database = mongoClient.getDatabase(databaseName);
+
+      // Get a list of all collection names in the database
+      List<String> collectionNames = database.listCollectionNames().into(new ArrayList<>());
+      database.listCollectionNames().into(collectionNames);
+
+      // Iterate through each collection and drop those with the prefix
+      for (String collectionName : collectionNames) {
+        if (collectionName.startsWith(shadowCollectionPrefix)) {
+          database.getCollection(collectionName).drop();
+          LOG.info("Dropped collection {} in database {}", collectionName, databaseName);
+        }
+      }
+    }
+  }
+}

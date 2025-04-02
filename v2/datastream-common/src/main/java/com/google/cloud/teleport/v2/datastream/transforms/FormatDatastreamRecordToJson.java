@@ -147,7 +147,11 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_schema", getMetadataSchema(record));
       outputObject.put("_metadata_lsn", getPostgresLsn(record));
       outputObject.put("_metadata_tx_id", getPostgresTxId(record));
-    } else {
+    } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
+      // Mongodb Specific Metadata
+      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+    } else if (sourceType.equals("oracle")) {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
       outputObject.put("_metadata_scn", getOracleScn(record));
@@ -241,7 +245,13 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getMetadataTable(GenericRecord record) {
-    return ((GenericRecord) record.get("source_metadata")).get("table").toString();
+    GenericRecord sourceMetadata = (GenericRecord) record.get("source_metadata");
+    if (sourceMetadata.getSchema().getField("table") != null
+        && sourceMetadata.get("table") != null) {
+      return sourceMetadata.get("table").toString();
+    }
+
+    return null;
   }
 
   private String getMetadataChangeType(GenericRecord record) {
@@ -335,6 +345,22 @@ public class FormatDatastreamRecordToJson
     if (sourceMetadata.getSchema().getField("tx_id") != null
         && sourceMetadata.get("tx_id") != null) {
       return sourceMetadata.get("tx_id").toString();
+    }
+
+    return null;
+  }
+
+  private String getSecondsFromMongoSortKeys(GenericRecord record) {
+    if (record.get("sort_keys") != null) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(0).toString();
+    }
+
+    return null;
+  }
+
+  private String getNanosFromMongoSortKeys(GenericRecord record) {
+    if (record.get("sort_keys") != null) {
+      return ((GenericData.Array<?>) record.get("sort_keys")).get(1).toString();
     }
 
     return null;
