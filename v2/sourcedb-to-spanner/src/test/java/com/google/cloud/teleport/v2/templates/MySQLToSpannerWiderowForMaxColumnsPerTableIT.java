@@ -69,6 +69,9 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     StringBuilder mysqlDDL = new StringBuilder();
     for (int i = 1; i <= maxColumns; i++) {
       mysqlDDL.append("col" + i + " INT");
+      if (i != maxColumns) {
+        mysqlDDL.append(", ");
+      }
     }
     return String.format(
         "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))", TABLENAME, mysqlDDL);
@@ -83,6 +86,9 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     StringBuilder spannerDDL = new StringBuilder();
     for (int i = 1; i <= maxColumns; i++) {
       spannerDDL.append("col" + i + " INT64");
+      if (i != maxColumns) {
+        spannerDDL.append(", ");
+      }
     }
     return String.format(
         "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)", TABLENAME, spannerDDL);
@@ -103,6 +109,10 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     for (int i = 1; i <= maxColumns; i++) {
       columns.append("col" + i);
       values.append(i);
+      if (i != maxColumns) {
+        columns.append(", ");
+        values.append(", ");
+      }
     }
 
     return String.format("INSERT INTO %s (%s) VALUES (%s)", TABLENAME, columns, values);
@@ -124,7 +134,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
-    // Limits to the max columns supported by MySQL (1017 columns total, including 'id')
+    // Limits to the max columns supported by MySQL/CloudSQL (1017 columns total, including 'id')
     int maxColumns = 1016;
 
     // Create table in MySQL
