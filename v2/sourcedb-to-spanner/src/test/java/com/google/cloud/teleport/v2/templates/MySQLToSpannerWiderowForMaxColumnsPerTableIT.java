@@ -23,7 +23,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -67,13 +66,12 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    * @return MySQL DDL statement
    */
   private String getMySQLDDL(int maxColumns) {
-    StringJoiner columnsJoiner = new StringJoiner(", ");
-    for (int i = 0; i < maxColumns; i++) {
-      columnsJoiner.add("col" + i + " INT");
+    StringBuilder mysqlDDL = new StringBuilder();
+    for (int i = 1; i <= maxColumns; i++) {
+      mysqlDDL.append("col" + i + " INT");
     }
     return String.format(
-        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))",
-        TABLENAME, columnsJoiner.toString());
+        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))", TABLENAME, mysqlDDL);
   }
 
   /**
@@ -82,13 +80,12 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    * @return Spanner DDL statement
    */
   private String getSpannerDDL(int maxColumns) {
-    StringJoiner columnsJoiner = new StringJoiner(", ");
-    for (int i = 0; i < maxColumns; i++) {
-      columnsJoiner.add("col" + i + " INT64");
+    StringBuilder spannerDDL = new StringBuilder();
+    for (int i = 1; i <= maxColumns; i++) {
+      spannerDDL.append("col" + i + " INT64");
     }
     return String.format(
-        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)",
-        TABLENAME, columnsJoiner.toString());
+        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)", TABLENAME, spannerDDL);
   }
 
   /**
@@ -97,20 +94,18 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    * @return MySQL INSERT statement
    */
   private String getMySQLInsertStatement(int maxColumns) {
-    StringJoiner columnsJoiner = new StringJoiner(", ");
-    StringJoiner valuesJoiner = new StringJoiner(", ");
+    StringBuilder columns = new StringBuilder();
+    StringBuilder values = new StringBuilder();
 
-    columnsJoiner.add("id");
-    valuesJoiner.add("1");
+    columns.append("id");
+    values.append("1");
 
-    for (int i = 0; i < maxColumns; i++) {
-      columnsJoiner.add("col" + i);
-      valuesJoiner.add(String.valueOf(i));
+    for (int i = 1; i <= maxColumns; i++) {
+      columns.append("col" + i);
+      values.append(i);
     }
 
-    return String.format(
-        "INSERT INTO %s (%s) VALUES (%s)",
-        TABLENAME, columnsJoiner.toString(), valuesJoiner.toString());
+    return String.format("INSERT INTO %s (%s) VALUES (%s)", TABLENAME, columns, values);
   }
 
   /**
@@ -121,7 +116,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   private List<String> getColumnsList(int maxColumns) {
     List<String> columns = new ArrayList<>();
     columns.add("id");
-    for (int i = 0; i < maxColumns; i++) {
+    for (int i = 1; i <= maxColumns; i++) {
       columns.add("col" + i);
     }
     return columns;
@@ -130,7 +125,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     // Limits to the max columns supported by MySQL (1017 columns total, including 'id')
-    int maxColumns = 1023;
+    int maxColumns = 1016;
 
     // Create table in MySQL
     loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL(maxColumns));
