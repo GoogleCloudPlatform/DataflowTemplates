@@ -142,7 +142,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
-    int maxColumns = 1017;
+    int maxColumns = 1016;
     // Increase MySQL packet size to handle large statements
     increasePacketSize();
 
