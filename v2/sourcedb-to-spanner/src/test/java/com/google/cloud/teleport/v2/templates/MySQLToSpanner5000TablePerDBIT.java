@@ -21,6 +21,7 @@ import static org.junit.Assert.assertEquals;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -55,10 +56,11 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private CloudMySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private PipelineLauncher.LaunchInfo jobInfo;
+  private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
 
   private static final int NUM_TABLES = 5000;
-  private static final int BATCH_SIZE = 100; // Number of tables per batch
-  private static final int THREAD_POOL_SIZE = 10; // Number of concurrent threads for table creation
+  private static final int BATCH_SIZE = 1000; // Number of tables per batch
+  private static final int THREAD_POOL_SIZE = 20; // Number of concurrent threads for table creation
 
   // Retry configuration
   private static final int MAX_RETRIES = 3;
@@ -90,7 +92,11 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            null,
+            new HashMap<String, String>() {
+              {
+                put("workerMachineType", WORKER_MACHINE_TYPE);
+              }
+            },
             null);
 
     // Wait for job completion
