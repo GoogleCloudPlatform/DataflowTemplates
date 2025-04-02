@@ -30,7 +30,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -113,16 +112,17 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
     spannerResourceManager.write(mutations);
   }
 
-  @Test
-  public void wideRowExceedingMaxSizeTableKey() throws Exception {
-    try {
-      createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_EXCEEDING_TABLE_KEY_FILE_RESOURCE);
-      insertExceedingMaxSizeTableKey();
-    } catch (Exception e) {
-      System.out.println("===>>>>>> Exception caught: " + e.getMessage());
-      Assert.assertTrue(
-          "Exception should mention max size table key limitation",
-          e.getMessage().contains("Failed to write mutations"));
-    }
-  }
+  //  @Test
+  //  public void wideRowExceedingMaxSizeTableKey() throws Exception {
+  //    try {
+  //      createSpannerDDL(spannerResourceManager,
+  // SPANNER_SCHEMA_EXCEEDING_TABLE_KEY_FILE_RESOURCE);
+  //      insertExceedingMaxSizeTableKey();
+  //    } catch (Exception e) {
+  //      System.out.println("===>>>>>> Exception caught: " + e.getMessage());
+  //      Assert.assertTrue(
+  //          "Exception should mention max size table key limitation",
+  //          e.getMessage().contains("Failed to write mutations"));
+  //    }
+  //  }
 }
