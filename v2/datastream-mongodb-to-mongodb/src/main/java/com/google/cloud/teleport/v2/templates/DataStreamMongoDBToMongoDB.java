@@ -91,43 +91,37 @@ import org.slf4j.LoggerFactory;
  * This pipeline ingests DataStream data from GCS. The data is then transformed to JSON documents
  * and added to the target database.
  *
- * <p>Example Usage:
- *
- * <pre>
- * # Set the pipeline vars
- * PROJECT=my-project
- * BUCKET_NAME=my-bucket
- * PIPELINE_FOLDER=gs://${BUCKET_NAME}/dataflow/pipelines/datastream-mongodb-to-mongodb
- * CONNECTION_URI=mongodb://xxx
- * TARGET_DATABASE=my-database
- * STREAM_NAME=my-stream
- * INPUT_FILE_PATTERN=gs://${BUCKET_NAME}/
- * INPUT_FILE_FORMAT=avro
- * TEMP_LOCATION=gs://${BUCKET_NAME}/dataflow/tmp/
- *
- * # Build and upload the template
- * mvn clean package \
- * -Dimage="gcr.io/${PROJECT}/dataflow/datastream-mongodb-to-mongodb:latest" \
- * -Dbase-container-image="gcr.io/dataflow-templates-base/java11-template-launcher-base:latest" \
- * -Dapp-root="/template/datastream-mongodb-to-mongodb" \
- * -Dcommand-spec=${APP_ROOT}/resources/datastream-mongodb-to-mongodb-command-spec.json
- *
- * # Execute the template
- * gcloud dataflow flex-template run "datastream-mongodb-to-mongodb-`date +%Y%m%d-%H%M%S`" \
- * --template-file-gcs-location=${PIPELINE_FOLDER}/templates/datastream-mongodb-to-mongodb.json \
- * --parameters connectionUri=${CONNECTION_URI} \
- * --parameters databaseName=${TARGET_DATABASE} \
- * --parameters streamName=${STREAM_NAME} \
- * --parameters inputFilePattern=${INPUT_FILE_PATTERN} \
- * --parameters inputFileFormat=${INPUT_FILE_FORMAT} \
- * --parameters tempLocation=${TEMP_LOCATION} \
- * </pre>
+ * <p>Check out <a
+ * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v2/datastream-mongodb-to-mongodb/README_Cloud_Datastream_MongoDB_to_MongoDB.md">README</a>
+ * for instructions on how to use or modify this template.
  */
 @Template(
     name = "Cloud_Datastream_MongoDB_to_MongoDB",
     category = TemplateCategory.STREAMING,
     displayName = "Datastream to MongoDB",
-    description = "A pipeline which sends Datastream output files in GCS to MongoDB.",
+    description = {
+      "The Datastream MongoDB to MongoDB template is a streaming pipeline that reads <a"
+          + " href=\"https://cloud.google.com/datastream/docs\">Datastream</a> events from a Cloud"
+          + " Storage bucket and writes them to a MongoDB database. It is intended for data"
+          + " migration from Datastream sources to MongoDB.\n",
+      "Data consistency is guaranteed only at the end of migration when all data has been written"
+          + " to the destination database. To store ordering information for each record written to"
+          + " the destination database, this template creates an additional collection (called a"
+          + " shadow collection) for each collection in the source database. This is used to ensure"
+          + " consistency at the end of migration. By default the shadow collection is used only on"
+          + " cdc events, it is configurable to be used on backfill events via setting"
+          + " `useShadowTablesForBackfill` to true. The shadow collections by default uses prefix"
+          + " `shadow_`, if it can cause collection name collision with the source database, please"
+          + " configure that by setting `shadowCollectionPrefix`. The shadow collections are not"
+          + " deleted after migration and can be used for validation purposes at the end of the"
+          + " migration.\n",
+      "The pipeline by default processes backfill events first with batch write, which is"
+          + " optimized for performance, followed by cdc events. This is configurable via setting"
+          + " `processBackfillFirst` to false to process backfill and cdc events together.\n",
+      "Any errors that occur during operation are recorded in error queues. The error"
+          + " queue is a Cloud Storage folder which stores all the Datastream events that had"
+          + " encountered errors."
+    },
     flexContainerName = "datastream-mongodb-to-mongodb",
     optionsClass = Options.class)
 public class DataStreamMongoDBToMongoDB {

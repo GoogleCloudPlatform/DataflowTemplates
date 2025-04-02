@@ -1,7 +1,31 @@
 
 Datastream to MongoDB template
 ---
-A pipeline which sends Datastream output files in GCS to MongoDB.
+The Datastream MongoDB to MongoDB template is a streaming pipeline that reads <a
+href="https://cloud.google.com/datastream/docs">Datastream</a> events from a
+Cloud Storage bucket and writes them to a MongoDB database. It is intended for
+data migration from Datastream sources to MongoDB.
+
+Data consistency is guaranteed only at the end of migration when all data has
+been written to the destination database. To store ordering information for each
+record written to the destination database, this template creates an additional
+collection (called a shadow collection) for each collection in the source
+database. This is used to ensure consistency at the end of migration. By default
+the shadow collection is used only on cdc events, it is configurable to be used
+on backfill events via setting `useShadowTablesForBackfill` to true. The shadow
+collections by default uses prefix `shadow_`, if it can cause collection name
+collision with the source database, please configure that by setting
+`shadowCollectionPrefix`. The shadow collections are not deleted after migration
+and can be used for validation purposes at the end of the migration.
+
+The pipeline by default processes backfill events first with batch write, which
+is optimized for performance, followed by cdc events. This is configurable via
+setting `processBackfillFirst` to false to process backfill and cdc events
+together.
+
+Any errors that occur during operation are recorded in error queues. The error
+queue is a Cloud Storage folder which stores all the Datastream events that had
+encountered errors.
 
 
 
@@ -29,6 +53,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **deadLetterQueueDirectory**: The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
 * **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to `10`.
 * **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to `500`.
+* **processBackfillFirst**: When true, all backfill events are processed before any CDC events. Default: true.
+* **useShadowTablesForBackfill**: When false, backfill events are processed without shadow tables. Default: false.
 * **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 * **directoryWatchDurationInMinutes**: The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 * **dlqGcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
@@ -125,6 +151,8 @@ export BATCH_SIZE=500
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
+export PROCESS_BACKFILL_FIRST=true
+export USE_SHADOW_TABLES_FOR_BACKFILL=false
 export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
@@ -146,6 +174,8 @@ gcloud dataflow flex-template run "cloud-datastream-mongodb-to-mongodb-job" \
   --parameters "deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY" \
   --parameters "dlqRetryMinutes=$DLQ_RETRY_MINUTES" \
   --parameters "dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT" \
+  --parameters "processBackfillFirst=$PROCESS_BACKFILL_FIRST" \
+  --parameters "useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL" \
   --parameters "runMode=$RUN_MODE" \
   --parameters "directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES" \
   --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION"
@@ -182,6 +212,8 @@ export BATCH_SIZE=500
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
+export PROCESS_BACKFILL_FIRST=true
+export USE_SHADOW_TABLES_FOR_BACKFILL=false
 export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
@@ -193,7 +225,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-mongodb-to-mongodb-job" \
 -DtemplateName="Cloud_Datastream_MongoDB_to_MongoDB" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,connectionUri=$CONNECTION_URI,databaseName=$DATABASE_NAME,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,databaseCollection=$DATABASE_COLLECTION,shadowCollectionPrefix=$SHADOW_COLLECTION_PREFIX,batchSize=$BATCH_SIZE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,connectionUri=$CONNECTION_URI,databaseName=$DATABASE_NAME,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,databaseCollection=$DATABASE_COLLECTION,shadowCollectionPrefix=$SHADOW_COLLECTION_PREFIX,batchSize=$BATCH_SIZE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,processBackfillFirst=$PROCESS_BACKFILL_FIRST,useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL,runMode=$RUN_MODE,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
 -f v2/datastream-mongodb-to-mongodb
 ```
 
@@ -251,6 +283,8 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_mongodb_to_mongod
     # deadLetterQueueDirectory = ""
     # dlqRetryMinutes = "10"
     # dlqMaxRetryCount = "500"
+    # processBackfillFirst = "true"
+    # useShadowTablesForBackfill = "false"
     # runMode = "regular"
     # directoryWatchDurationInMinutes = "10"
     # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"

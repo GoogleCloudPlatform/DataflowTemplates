@@ -41,8 +41,8 @@ variable "inputFilePattern" {
 
 variable "inputFileFormat" {
   type        = string
-  description = "The file format of the desired input files. Can be avro or json. Defaults to: json."
-  default     = "json"
+  description = "The file format of the desired input files. Can be avro or json. Defaults to: avro."
+  default     = "avro"
 }
 
 variable "rfcStartDateTime" {
@@ -108,6 +108,18 @@ variable "dlqRetryMinutes" {
 variable "dlqMaxRetryCount" {
   type        = number
   description = "The max number of times temporary errors can be retried through DLQ. Defaults to `500`."
+  default     = null
+}
+
+variable "processBackfillFirst" {
+  type        = bool
+  description = "When true, all backfill events are processed before any CDC events. Default: true"
+  default     = null
+}
+
+variable "useShadowTablesForBackfill" {
+  type        = bool
+  description = "When false, backfill events are processed without shadow tables. Default: false"
   default     = null
 }
 
@@ -267,6 +279,8 @@ resource "google_dataflow_flex_template_job" "generated" {
     deadLetterQueueDirectory        = var.deadLetterQueueDirectory
     dlqRetryMinutes                 = tostring(var.dlqRetryMinutes)
     dlqMaxRetryCount                = tostring(var.dlqMaxRetryCount)
+    processBackfillFirst            = tostring(var.processBackfillFirst)
+    useShadowTablesForBackfill      = tostring(var.useShadowTablesForBackfill)
     runMode                         = var.runMode
     directoryWatchDurationInMinutes = tostring(var.directoryWatchDurationInMinutes)
     dlqGcsPubSubSubscription        = var.dlqGcsPubSubSubscription
