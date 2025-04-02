@@ -430,7 +430,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     imageSpec.setAdditionalUserLabel("goog-dataflow-provided-template-version", version);
     imageSpec.setImage(
         generateFlexTemplateImagePath(
-            containerName, projectId, artifactRegion, artifactRegistry, stagePrefix, stageImageOnly));
+            containerName,
+            projectId,
+            artifactRegion,
+            artifactRegistry,
+            stagePrefix,
+            stageImageOnly));
 
     if (beamVersion == null || beamVersion.isEmpty()) {
       beamVersion = project.getProperties().getProperty("beam-python.version");
@@ -444,7 +449,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String imagePath =
         stageImageBeforePromote
             ? generateFlexTemplateImagePath(
-                containerName, projectId, null, stagingArtifactRegistry, stagePrefix, stageImageOnly)
+                containerName,
+                projectId,
+                null,
+                stagingArtifactRegistry,
+                stagePrefix,
+                stageImageOnly)
             : imageSpec.getImage();
     String buildProjectId =
         stageImageBeforePromote
@@ -1119,20 +1129,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         .map(
             value ->
                 value.endsWith("gcr.io")
-                    ? value
-                        + "/"
-                        + projectIdUrl
-                        + "/"
-                        + stagingPart
-                        + containerName
+                    ? value + "/" + projectIdUrl + "/" + stagingPart + containerName
                     : value + "/" + stagePrefix.toLowerCase() + "/" + containerName)
-        .orElse(
-            prefix
-                + "gcr.io/"
-                + projectIdUrl
-                + "/"
-                + stagingPart
-                + containerName);
+        .orElse(prefix + "gcr.io/" + projectIdUrl + "/" + stagingPart + containerName);
   }
 
   private void gcsCopy(String fromPath, String toPath) throws InterruptedException, IOException {
