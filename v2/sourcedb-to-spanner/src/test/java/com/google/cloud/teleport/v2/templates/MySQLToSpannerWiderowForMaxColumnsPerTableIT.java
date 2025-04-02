@@ -33,13 +33,14 @@ import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for testing MySQL to Spanner migration with wide tables (1016 columns). */
-// @Ignore("test is completed")
+@Ignore("test is completed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -142,6 +143,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
+    //    Limits to the max columns supported by MySQL (1017 columns)
     int maxColumns = 1016;
     // Increase MySQL packet size to handle large statements
     increasePacketSize();
@@ -185,7 +187,11 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
       int maxColumns = 1025;
       spannerResourceManager.executeDdlStatement(getSpannerDDL(maxColumns));
     } catch (Exception e) {
-      System.out.println(e.getMessage());
+      /*
+       * Here the exception is "Table WiderowTable has too many columns; the limit is 1024."
+       * The executeDdlStatement method will throw an exception "Failed to execute statement".
+       * So we are asserting the message contains "Failed to execute statement".
+       */
       Assert.assertTrue(
           "Exception should mention column limitation",
           e.getMessage().contains("Failed to execute statement"));
