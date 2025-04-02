@@ -122,7 +122,7 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
       System.out.println("===>>>>>> Exception caught: " + e.getMessage());
       Assert.assertTrue(
           "Exception should mention max size table key limitation",
-          e.getMessage().contains("Failed to execute statement"));
+          e.getMessage().contains("Failed to write mutations"));
     }
   }
 }
