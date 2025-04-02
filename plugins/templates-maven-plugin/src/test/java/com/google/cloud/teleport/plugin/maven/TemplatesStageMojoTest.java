@@ -81,33 +81,31 @@ public class TemplatesStageMojoTest {
         });
   }
 
-  @RunWith(JUnit4.class)
-  public class TemplatesStageMojoTest {
-    @Test
-    public void testGenerateFlexTemplateImagePathSkipStagingPart() {
-      String containerName = "name";
-      String projectId = "some-project";
-      String stagePrefix = "some-prefix";
-      boolean skipStagingPart = true;
-      ImmutableMap<String, String> testCases =
-          ImmutableMap.<String, String>builder()
-              .put("", "gcr.io/some-project/name")
-              .put("gcr.io", "gcr.io/some-project/name")
-              .put("eu.gcr.io", "eu.gcr.io/some-project/name")
-              .put(
-                  "us-docker.pkg.dev/other-project/other-repo",
-                  "us-docker.pkg.dev/other-project/other-repo/name")
-              .build();
-      testCases.forEach(
-          (key, value) -> {
-            // workaround for null key we intended to test
-            if (Strings.isNullOrEmpty(key)) {
-              key = null;
-            }
-            assertEquals(
-                value,
-                TemplatesStageMojo.generateFlexTemplateImagePath(
-                    containerName, projectId, null, key, stagePrefix, skipStagingPart));
-          });
-    }
+  @Test
+  public void testGenerateFlexTemplateImagePathSkipStagingPart() {
+    String containerName = "name";
+    String projectId = "some-project";
+    String stagePrefix = "some-prefix";
+    boolean skipStagingPart = true;
+    ImmutableMap<String, String> testCases =
+        ImmutableMap.<String, String>builder()
+            .put("", "gcr.io/some-project/name")
+            .put("gcr.io", "gcr.io/some-project/name")
+            .put("eu.gcr.io", "eu.gcr.io/some-project/name")
+            .put(
+                "us-docker.pkg.dev/other-project/other-repo",
+                "us-docker.pkg.dev/other-project/other-repo/name")
+            .build();
+    testCases.forEach(
+        (key, value) -> {
+          // workaround for null key we intended to test
+          if (Strings.isNullOrEmpty(key)) {
+            key = null;
+          }
+          assertEquals(
+              value,
+              TemplatesStageMojo.generateFlexTemplateImagePath(
+                  containerName, projectId, null, key, stagePrefix, skipStagingPart));
+        });
+  }
 }
