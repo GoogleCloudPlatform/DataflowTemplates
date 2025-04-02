@@ -103,8 +103,8 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     StringBuilder columns = new StringBuilder();
     StringBuilder values = new StringBuilder();
 
-    columns.append("id");
-    values.append("1");
+    columns.append("id,");
+    values.append("1, ");
 
     for (int i = 1; i <= maxColumns; i++) {
       columns.append("col" + i);
@@ -125,9 +125,12 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
    */
   private List<String> getColumnsList(int maxColumns) {
     List<String> columns = new ArrayList<>();
-    columns.add("id");
+    columns.add("id, ");
     for (int i = 1; i <= maxColumns; i++) {
       columns.add("col" + i);
+      if (i != maxColumns) {
+        columns.add(", ");
+      }
     }
     return columns;
   }
