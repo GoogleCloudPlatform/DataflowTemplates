@@ -27,9 +27,9 @@ import java.util.StringJoiner;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -46,7 +46,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
   private PipelineLauncher.LaunchInfo jobInfo;
-  private MySQLResourceManager mySQLResourceManager;
+  private CloudMySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
   private static final String TABLENAME = "WiderowTable";
@@ -54,7 +54,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    mySQLResourceManager = setUpCloudMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -144,7 +144,7 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
   @Test
   public void testMaxColumnsPerTable() throws Exception {
     //    Limits to the max columns supported by MySQL (1017 columns)
-    int maxColumns = 1016;
+    int maxColumns = 1023;
     // Increase MySQL packet size to handle large statements
     increasePacketSize();
 
