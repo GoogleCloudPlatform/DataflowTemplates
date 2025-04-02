@@ -27,15 +27,12 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("This test is completed")
+// @Ignore("This test is completed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -45,6 +42,9 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/SourceDbToSpannerMaxSizeTableKey/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
+      "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
+
+  private static final String SPANNER_SCHEMA_EXCEEDING_TABLE_KEY_FILE_RESOURCE =
       "WideRow/SourceDbToSpannerMaxSizeTableKey/spanner-schema.sql";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -88,9 +88,11 @@ public class MySQLSourceDbToSpannerWideRowMaxSizeTableKeyIT extends SourceDbToSp
   public void wideRowExceedingMaxSizeTableKey() throws Exception {
     try {
       createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
-
     } catch (Exception e) {
-
+      System.out.println("===>>>>>> Exception caught: " + e.getMessage());
+      Assert.assertTrue(
+          "Exception should mention max size table key limitation",
+          e.getMessage().contains("Failed to execute statement"));
     }
   }
 }
