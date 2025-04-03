@@ -29,8 +29,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -69,8 +67,6 @@ import org.slf4j.LoggerFactory;
       "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class SourceDbToSpanner {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
