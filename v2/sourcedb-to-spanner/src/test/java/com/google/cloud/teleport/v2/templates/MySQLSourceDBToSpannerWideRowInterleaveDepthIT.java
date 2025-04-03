@@ -40,12 +40,11 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
   private MySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/InterleaveDepthIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/InterleaveDepthIT/spanner-schema.sql";
 
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024;
+  private static final String MYSQL_DUMP_FILE_RESOURCE =
+      "WideRow/InterleaveDepthIT/mysql-schema.sql";
 
   @Before
   public void setUp() {
@@ -58,14 +57,8 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void wideRowInterleaveDepthTest() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
@@ -81,7 +74,7 @@ public class MySQLSourceDBToSpannerWideRowInterleaveDepthIT extends SourceDbToSp
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
     for (int i = 1; i <= 7; i++) {
-      String tableName = "child" + i;
+      String tableName = "Level" + i;
       assertEquals(
           "Interleaved depth " + i + " migrated",
           1,

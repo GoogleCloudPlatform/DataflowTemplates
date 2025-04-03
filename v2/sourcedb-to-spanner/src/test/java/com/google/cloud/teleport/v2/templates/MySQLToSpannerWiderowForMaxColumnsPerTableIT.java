@@ -23,13 +23,12 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringJoiner;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,24 +36,20 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for testing MySQL to Spanner migration with wide tables (1024 columns). */
+/** Integration test for testing MySQL to Spanner migration with wide tables (1016 columns). */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpannerITBase {
-
   private PipelineLauncher.LaunchInfo jobInfo;
-  private MySQLResourceManager mySQLResourceManager;
+  private CloudMySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
 
-  // Constants
-  private static final Integer NUM_COLUMNS = 1016;
   private static final String TABLENAME = "WiderowTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
 
   @Before
   public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
+    mySQLResourceManager = setUpCloudMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
@@ -63,79 +58,53 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
+  private String getMySQLDDL(int maxColumns) {
+    StringBuilder mysqlDDL = new StringBuilder();
+    for (int i = 1; i <= maxColumns; i++) {
+      mysqlDDL.append("col" + i + " INT");
+      if (i != maxColumns) {
+        mysqlDDL.append(", ");
+      }
+    }
+    return String.format(
+        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))", TABLENAME, mysqlDDL);
   }
 
-  /**
-   * Builds the MySQL CREATE TABLE statement with the specified number of columns.
-   *
-   * @return MySQL DDL statement
-   */
-  private String getMySQLDDL() {
-    // Use StringJoiner for more efficient string concatenation
-    StringJoiner columnsJoiner = new StringJoiner(", ");
+  private String getSpannerDDL(int maxColumns) {
+    StringBuilder spannerDDL = new StringBuilder();
+    for (int i = 1; i <= maxColumns; i++) {
+      spannerDDL.append("col" + i + " INT64");
+      if (i != maxColumns) {
+        spannerDDL.append(", ");
+      }
+    }
+    return String.format(
+        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)", TABLENAME, spannerDDL);
+  }
 
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columnsJoiner.add("col" + i + " INT");
+  private String getMySQLInsertStatement(int maxColumns) {
+    StringBuilder columns = new StringBuilder();
+    StringBuilder values = new StringBuilder();
+
+    columns.append("id,");
+    values.append("1, ");
+
+    for (int i = 1; i <= maxColumns; i++) {
+      columns.append("col" + i);
+      values.append(i);
+      if (i != maxColumns) {
+        columns.append(", ");
+        values.append(", ");
+      }
     }
 
-    return String.format(
-        "CREATE TABLE %s (id INT NOT NULL, %s, PRIMARY KEY (id))",
-        TABLENAME, columnsJoiner.toString());
+    return String.format("INSERT INTO %s (%s) VALUES (%s)", TABLENAME, columns, values);
   }
 
-  /**
-   * Builds the Spanner CREATE TABLE statement with the specified number of columns.
-   *
-   * @return Spanner DDL statement
-   */
-  private String getSpannerDDL() {
-    // Use StringJoiner for more efficient string concatenation
-    StringJoiner columnsJoiner = new StringJoiner(", ");
-
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columnsJoiner.add("col" + i + " INT64");
-    }
-
-    return String.format(
-        "CREATE TABLE %s (id INT64 NOT NULL, %s) PRIMARY KEY (id)",
-        TABLENAME, columnsJoiner.toString());
-  }
-
-  /**
-   * Builds the MySQL INSERT statement with values for each column.
-   *
-   * @return MySQL INSERT statement
-   */
-  private String getMySQLInsertStatement() {
-    // Use StringJoiner for more efficient string concatenation
-    StringJoiner columnsJoiner = new StringJoiner(", ");
-    StringJoiner valuesJoiner = new StringJoiner(", ");
-
-    columnsJoiner.add("id");
-    valuesJoiner.add("1");
-
-    for (int i = 0; i < NUM_COLUMNS; i++) {
-      columnsJoiner.add("col" + i);
-      valuesJoiner.add(String.valueOf(i));
-    }
-
-    return String.format(
-        "INSERT INTO %s (%s) VALUES (%s)",
-        TABLENAME, columnsJoiner.toString(), valuesJoiner.toString());
-  }
-
-  /**
-   * Creates a list of column names for verification queries.
-   *
-   * @return List of column names
-   */
-  private List<String> getColumnsList() {
+  private List<String> getColumnsList(int maxColumns) {
     List<String> columns = new ArrayList<>();
     columns.add("id");
-    for (int i = 0; i < NUM_COLUMNS; i++) {
+    for (int i = 1; i <= maxColumns; i++) {
       columns.add("col" + i);
     }
     return columns;
@@ -143,19 +112,15 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
 
   @Test
   public void testMaxColumnsPerTable() throws Exception {
-    // Increase MySQL packet size to handle large statements
-    increasePacketSize();
+    // Limits to the max columns supported by MySQL/CloudSQL (1017 columns total, including 'id')
+    int maxColumns = 1016;
 
-    // Create table in MySQL
-    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL());
+    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLDDL(maxColumns));
 
-    // Insert test data in MySQL
-    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLInsertStatement());
+    loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLInsertStatement(maxColumns));
 
-    // Create matching table in Spanner
-    spannerResourceManager.executeDdlStatement(getSpannerDDL());
+    spannerResourceManager.executeDdlStatement(getSpannerDDL(maxColumns));
 
-    // Launch the migration job
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -166,16 +131,13 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
             null,
             null);
 
-    // Wait for job completion
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
     assertThatResult(result).isLaunchFinished();
 
-    // Verify data in Spanner
-    List<String> expectedColumns = getColumnsList();
+    List<String> expectedColumns = getColumnsList(maxColumns);
     ImmutableList<Struct> wideRowData =
         spannerResourceManager.readTableRecords(TABLENAME, expectedColumns);
 
-    // Verify row count
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }

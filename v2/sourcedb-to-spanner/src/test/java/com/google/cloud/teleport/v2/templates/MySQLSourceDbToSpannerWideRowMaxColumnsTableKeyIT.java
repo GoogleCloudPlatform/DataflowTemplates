@@ -39,9 +39,11 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+
+// This test is constrained to 16 columns in the primary key for both Spanner and MySQL, with a
+// MySQL size limit of 3072 bytes.
 public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbToSpannerITBase {
   private static final String TABLE_NAME = "LargePrimaryKeyTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
   private static final String MYSQL_DUMP_FILE_RESOURCE =
       "WideRow/MaxColumnsTableKeyIT/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
@@ -62,14 +64,8 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
     ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
   public void wideRowMaxColumnsTableKeyTest() throws Exception {
-    increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
@@ -88,7 +84,7 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
     for (int i = 1; i <= 16; i++) {
       columns.add("pk_col" + i);
     }
-    // Verify the data in Spanner
+
     ImmutableList<Struct> wideRowData =
         spannerResourceManager.readTableRecords(TABLE_NAME, columns);
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);

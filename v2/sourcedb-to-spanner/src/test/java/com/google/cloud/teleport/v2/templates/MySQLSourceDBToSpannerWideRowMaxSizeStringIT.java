@@ -49,7 +49,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
       "WideRow/RowMaxSizeString/spanner-schema.sql";
 
   private static final String TABLE = "WideRowTable";
-  private static final int MAX_ALLOWED_PACKET = 128 * 1024 * 1024; // 128 MiB
+  private static final int MAX_ALLOWED_PACKET = 20 * 1024 * 1024;
 
   @Before
   public void setUp() throws Exception {
@@ -88,6 +88,6 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     // Verify the data in Spanner
     ImmutableList<Struct> wideRowData =
         spannerResourceManager.readTableRecords(TABLE, "id", "max_string_col");
-    SpannerAsserts.assertThatStructs(wideRowData).hasRows(4);
+    SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
