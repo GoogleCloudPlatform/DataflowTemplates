@@ -1,8 +1,0 @@
-{
-	"mainClass": "com.google.cloud.dataflow.cdc.applier.CdcToBigQueryChangeApplierPipeline",
-	"classPath": "/template/cdc-agg/cdc-agg-conscrypt.jar:/template/cdc-agg/*:/template/cdc-agg/libs/*:/template/cdc-agg/classes",
-	"defaultParameterValues": {
-		"labels": "{\"goog-dataflow-provided-template-type\":\"flex\", \"goog-dataflow-provided-template-name\":\"cdc_agg\"}"
-	}
-}
-
