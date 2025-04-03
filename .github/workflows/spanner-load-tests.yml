@@ -46,7 +46,7 @@ jobs:
         ./cicd/run-load-tests \
         --modules-to-build="SPANNER" \
         --it-region="us-central1" \
-        --it-project="apache-beam-testing" \
+        --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1" \
         --lt-export-project="cloud-teleport-testing" \
@@ -102,9 +102,9 @@ jobs:
         ./cicd/run-load-test-observer \
         --modules-to-build="lt/observability" \
         --it-region="us-central1" \
-        --it-project="apache-beam-testing" \
+        --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --lt-export-project="apache-beam-testing" \
+        --lt-export-project="cloud-teleport-testing" \
         --lt-export-dataset="performance_tests" \
         --lt-export-table="template_performance_metrics"
     - name: Create Github issue on failure
