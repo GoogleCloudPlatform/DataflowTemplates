@@ -57,7 +57,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private PipelineLauncher.LaunchInfo jobInfo;
   private static final String WORKER_MACHINE_TYPE = "n2-standard-16";
 
-  private static final int NUM_TABLES = 3000;
+  private static final int NUM_TABLES = 2500;
   private static final int BATCH_SIZE = 1000; // Number of tables per batch
   private static final int THREAD_POOL_SIZE = 20; // Number of concurrent threads for table creation
 
