@@ -15,11 +15,13 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.transforms.BigQueryConverters.convertJsonToTableRow;
+
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
-import com.google.cloud.teleport.v2.transforms.BigQueryConverters.FailsafeJsonToTableRow;
 import com.google.cloud.teleport.v2.transforms.JavascriptTextTransformer.FailsafeJavascriptUdf;
+import com.google.cloud.teleport.v2.utils.BigQueryConstants;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
 import javax.annotation.Nullable;
@@ -32,10 +34,8 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
-import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PCollectionList;
-import org.apache.beam.sdk.values.PCollectionTuple;
-import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.*;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Throwables;
 
 /**
  * The {@link StringMessageToTableRow} class is a {@link PTransform} which transforms incoming Kafka
@@ -60,6 +60,8 @@ public abstract class StringMessageToTableRow
 
   public abstract @Nullable String fileSystemPath();
 
+  public abstract @Nullable Boolean persistKafkaKey();
+
   public abstract @Nullable String functionName();
 
   public abstract @Nullable Integer reloadIntervalMinutes();
@@ -75,6 +77,8 @@ public abstract class StringMessageToTableRow
   @AutoValue.Builder
   public abstract static class Builder {
     public abstract Builder setFileSystemPath(@Nullable String fileSystemPath);
+
+    public abstract Builder setPersistKafkaKey(@Nullable Boolean persistKafkaKey);
 
     public abstract Builder setFunctionName(@Nullable String functionName);
 
@@ -138,10 +142,7 @@ public abstract class StringMessageToTableRow
     PCollectionTuple tableRowOut =
         failsafeElements.apply(
             "JsonToTableRow",
-            FailsafeJsonToTableRow.<KafkaRecord<String, String>>newBuilder()
-                .setSuccessTag(TABLE_ROW_OUT)
-                .setFailureTag(TABLE_ROW_DEADLETTER_OUT)
-                .build());
+            new JsonStringToTableRow(persistKafkaKey(), TABLE_ROW_OUT, TABLE_ROW_DEADLETTER_OUT));
 
     PCollection<FailsafeElement<KafkaRecord<String, String>, String>> badRecords =
         tableRowOut.get(TABLE_ROW_DEADLETTER_OUT).setCoder(FAILSAFE_CODER);
@@ -174,6 +175,58 @@ public abstract class StringMessageToTableRow
       KafkaRecord<String, String> message = context.element();
       assert message != null;
       context.output(FailsafeElement.of(message, message.getKV().getValue()));
+    }
+  }
+
+  static class JsonStringToTableRow
+      extends PTransform<
+          PCollection<FailsafeElement<KafkaRecord<String, String>, String>>, PCollectionTuple> {
+
+    private final Boolean persistKafkaKey;
+
+    private final TupleTag<TableRow> successTag;
+
+    private final TupleTag<FailsafeElement<KafkaRecord<String, String>, String>> failureTag;
+
+    JsonStringToTableRow(
+        Boolean persistKafkaKey,
+        TupleTag<TableRow> successTag,
+        TupleTag<FailsafeElement<KafkaRecord<String, String>, String>> failureTag) {
+      this.persistKafkaKey = persistKafkaKey;
+      this.successTag = successTag;
+      this.failureTag = failureTag;
+    }
+
+    @Override
+    public PCollectionTuple expand(
+        PCollection<FailsafeElement<KafkaRecord<String, String>, String>> failsafeElements) {
+      return failsafeElements.apply(
+          "JsonStringToTableRow",
+          ParDo.of(
+                  new DoFn<FailsafeElement<KafkaRecord<String, String>, String>, TableRow>() {
+                    @ProcessElement
+                    public void processElement(ProcessContext context) {
+                      FailsafeElement<KafkaRecord<String, String>, String> element =
+                          context.element();
+                      String json = element.getPayload();
+
+                      try {
+                        TableRow row = convertJsonToTableRow(json);
+                        if (persistKafkaKey) {
+                          String key = element.getOriginalPayload().getKV().getKey();
+                          row.set(BigQueryConstants.KAFKA_KEY_FIELD, key);
+                        }
+                        context.output(row);
+                      } catch (Exception e) {
+                        context.output(
+                            failureTag,
+                            FailsafeElement.of(element)
+                                .setErrorMessage(e.getMessage())
+                                .setStacktrace(Throwables.getStackTraceAsString(e)));
+                      }
+                    }
+                  })
+              .withOutputTags(successTag, TupleTagList.of(failureTag)));
     }
   }
 }
