@@ -55,7 +55,6 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private CloudMySQLResourceManager mySQLResourceManager;
   private SpannerResourceManager spannerResourceManager;
   private PipelineLauncher.LaunchInfo jobInfo;
-  private static final String WORKER_MACHINE_TYPE = "n2-standard-16";
 
   private static final int NUM_TABLES = 2500;
   private static final int BATCH_SIZE = 1000; // Number of tables per batch
