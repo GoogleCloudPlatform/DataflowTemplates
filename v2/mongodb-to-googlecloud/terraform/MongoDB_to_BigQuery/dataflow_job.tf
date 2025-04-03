@@ -63,6 +63,14 @@ variable "KMSEncryptionKey" {
   default     = null
 }
 
+variable "filter" {
+  type        = string
+  description = <<EOT
+Bson filter in json format. (Example: { "val": { $gt: 0, $lt: 9 }})
+EOT
+  default     = null
+}
+
 variable "useStorageWriteApi" {
   type        = bool
   description = "If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false."
@@ -225,6 +233,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     collection                              = var.collection
     userOption                              = var.userOption
     KMSEncryptionKey                        = var.KMSEncryptionKey
+    filter                                  = var.filter
     useStorageWriteApi                      = tostring(var.useStorageWriteApi)
     useStorageWriteApiAtLeastOnce           = tostring(var.useStorageWriteApiAtLeastOnce)
     outputTableSpec                         = var.outputTableSpec
