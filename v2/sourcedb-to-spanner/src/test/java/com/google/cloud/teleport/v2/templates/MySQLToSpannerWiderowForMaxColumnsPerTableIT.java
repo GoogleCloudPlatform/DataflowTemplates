@@ -178,7 +178,11 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
       Assert.fail(
           "Expected exception due to exceeding maximum columns, but no exception was thrown.");
     } catch (Exception e) {
-      // Assert that the exception message contains the expected text indicating failure.
+
+      /*  Original error message is "Table WiderowTable has too many columns; the limit is 1024."
+       * executeDdlStatement throws "Failed to execute statement".
+       */
+
       Assert.assertTrue(
           "Exception should mention column limitation",
           e.getMessage().contains("Failed to execute statement"));
