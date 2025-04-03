@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHa
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -44,6 +45,7 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -1216,15 +1218,6 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testCastToExpectedTypeForNull() {
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          CassandraTypeHandler.castToExpectedType("text", null);
-        });
-  }
-
-  @Test
   public void testCastToExpectedTypeForDate_String() {
     String dateString = "2025-01-09"; // Format: yyyy-MM-dd
     Object result = CassandraTypeHandler.castToExpectedType("date", dateString);
@@ -1309,5 +1302,53 @@ public class CassandraTypeHandlerTest {
               CassandraTypeHandler.castToExpectedType("varint", unsupportedType);
             });
     assertEquals("Error converting value for cassandraType: varint", exception.getMessage());
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullDate() {
+    Object result = CassandraTypeHandler.castToExpectedType("date", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullList() {
+    Object result = CassandraTypeHandler.castToExpectedType("list<text>", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullSet() {
+    Object result = CassandraTypeHandler.castToExpectedType("set<text>", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullMap() {
+    Object result = CassandraTypeHandler.castToExpectedType("map<text, frozen<list<text>>>", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForEmptyList() {
+    Object result = CassandraTypeHandler.castToExpectedType("list<text>", "[]");
+    assertNotNull(result);
+    assertTrue(result instanceof List);
+    assertEquals(Collections.emptyList(), result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForEmptySet() {
+    Object result = CassandraTypeHandler.castToExpectedType("set<text>", "[]");
+    assertNotNull(result);
+    assertTrue(result instanceof Set);
+    assertEquals(Collections.emptySet(), result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForEmptyMap() {
+    Object result = CassandraTypeHandler.castToExpectedType("map<text, frozen<list<text>>>", "{}");
+    assertNotNull(result);
+    assertTrue(result instanceof Map);
+    assertEquals(Collections.emptyMap(), result);
   }
 }
