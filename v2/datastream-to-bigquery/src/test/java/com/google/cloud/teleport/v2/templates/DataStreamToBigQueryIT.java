@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -66,8 +67,11 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
+import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
@@ -81,6 +85,8 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
     ORACLE
   }
 
+  // TODO: Decrease timeout. Currently need to wait for long to make sure results are propagated.
+  @Rule public Timeout timeout = new Timeout(40, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "ROW_ID";
@@ -145,6 +151,7 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToBigQuery() throws IOException {
     // Run a simple IT
     simpleJdbcToBigQueryTest(
@@ -157,6 +164,7 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamMySqlToBigQueryJson() throws IOException {
     // Run a simple IT
     simpleJdbcToBigQueryTest(

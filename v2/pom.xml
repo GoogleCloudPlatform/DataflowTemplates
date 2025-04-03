@@ -701,7 +701,7 @@
         <module>googlecloud-to-splunk</module>
         <module>google-ads-to-googlecloud</module>
         <module>jdbc-common</module>
-        <module>jdbc-to-googlecloud</module>
+        <module>jdbc-and-googlecloud</module>
         <module>jms-to-pubsub</module>
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>

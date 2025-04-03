@@ -41,6 +41,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.lang3.BooleanUtils;
@@ -335,6 +336,9 @@ public class CassandraTypeHandler {
    */
   private static PreparedStatementValueObject<?> parseAndCastToCassandraType(
       String columnType, Object colValue) {
+    if (colValue == null) {
+      return null;
+    }
 
     if (columnType.startsWith("frozen<")) {
       return parseAndCastToCassandraType(extractInnerType(columnType), colValue);
@@ -530,7 +534,7 @@ public class CassandraTypeHandler {
    * @return a {@link List} containing parsed values, or an empty list if {@code colValue} is null
    */
   private static List<?> parseCassandraList(String columnType, JSONArray colValue) {
-    if (colValue == null || colValue.isEmpty()) {
+    if (colValue.isEmpty()) {
       return Collections.emptyList();
     }
     String innerType = extractInnerType(columnType);
@@ -548,7 +552,7 @@ public class CassandraTypeHandler {
    * @param columnType the Cassandra column type
    * @return the extracted inner type as a {@link String}
    */
-  public static String extractInnerType(String columnType) {
+  private static String extractInnerType(String columnType) {
     return columnType.substring(columnType.indexOf('<') + 1, columnType.lastIndexOf('>'));
   }
 
@@ -585,7 +589,7 @@ public class CassandraTypeHandler {
    * @return a {@link Set} containing parsed values, or an empty set if {@code colValue} is null
    */
   private static Set<?> parseCassandraSet(String columnType, JSONArray colValue) {
-    if (colValue == null || colValue.isEmpty()) {
+    if (colValue.isEmpty()) {
       return Collections.emptySet();
     }
     String innerType = extractInnerType(columnType);
@@ -606,7 +610,7 @@ public class CassandraTypeHandler {
    *     null
    */
   private static Map<?, ?> parseCassandraMap(String columnType, JSONObject colValue) {
-    if (colValue == null || colValue.isEmpty()) {
+    if (colValue.isEmpty()) {
       return Collections.emptyMap();
     }
     String[] keyValueTypes = extractKeyValueTypes(columnType);
@@ -650,12 +654,8 @@ public class CassandraTypeHandler {
 
     Object columnValue = handleSpannerColumnType(spannerType, columnName, valuesJson);
 
-    if (columnValue == null) {
-      LOG.info("Column value is null for column: {}, type: {}", columnName, spannerType);
-      return PreparedStatementValueObject.create(cassandraType, NullClass.INSTANCE);
-    }
-    LOG.info("Column value is {} for column: {}, type: {}", columnValue, columnName, spannerType);
-    return PreparedStatementValueObject.create(cassandraType, columnValue);
+    return PreparedStatementValueObject.create(
+        cassandraType, Objects.requireNonNullElse(columnValue, NullClass.INSTANCE));
   }
 
   /**
@@ -673,7 +673,9 @@ public class CassandraTypeHandler {
    */
   public static Object castToExpectedType(String cassandraType, Object columnValue) {
     try {
-      return parseAndCastToCassandraType(cassandraType, columnValue).value();
+      PreparedStatementValueObject<?> valueObject =
+          parseAndCastToCassandraType(cassandraType, columnValue);
+      return valueObject != null ? valueObject.value() : null;
     } catch (IllegalArgumentException e) {
       LOG.error("Error converting value for column: {}, type: {}", cassandraType, e.getMessage());
       throw new IllegalArgumentException(

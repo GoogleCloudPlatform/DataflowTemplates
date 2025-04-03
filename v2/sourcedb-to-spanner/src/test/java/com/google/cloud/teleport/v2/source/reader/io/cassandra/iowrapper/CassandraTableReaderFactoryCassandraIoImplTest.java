@@ -52,6 +52,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.time.Duration;
 import org.apache.beam.sdk.io.localcassandra.CassandraIO;
+import org.apache.beam.sdk.io.localcassandra.CassandraIO.Read;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Count;
@@ -208,5 +209,31 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
         .isEqualTo(DEFAULT_READ_TIMEOUT_MILLIS);
     assertThat(CassandraTableReaderFactoryCassandraIoImpl.getConsistencyLevel(profileWithDefaults))
         .isEqualTo(DEFAULT_CONSISTENCY);
+  }
+
+  @Test
+  public void testSetNumPartitions() {
+
+    Integer testNumberOfSplits = 42;
+    CassandraIO.Read<SourceRow> mockCassandraIORead = mock(CassandraIO.Read.class);
+    when(mockCassandraIORead.withMinNumberOfSplits(testNumberOfSplits))
+        .thenReturn(mockCassandraIORead);
+
+    CassandraDataSource cassandraDataSource =
+        CassandraDataSource.builder()
+            .setClusterName("testCluster")
+            .setOptionsMap(OptionsMap.driverDefaults())
+            .build();
+    Read<SourceRow> retWithoutPartitions =
+        CassandraTableReaderFactoryCassandraIoImpl.setNumPartitions(
+            mockCassandraIORead, cassandraDataSource, "testTable");
+    assertThat(retWithoutPartitions).isEqualTo(mockCassandraIORead);
+    Read<SourceRow> retWithPartitions =
+        CassandraTableReaderFactoryCassandraIoImpl.setNumPartitions(
+            mockCassandraIORead,
+            cassandraDataSource.toBuilder().setNumPartitions(testNumberOfSplits).build(),
+            "testTable");
+    assertThat(retWithPartitions).isEqualTo(mockCassandraIORead);
+    verify(mockCassandraIORead, times(1)).withMinNumberOfSplits(testNumberOfSplits);
   }
 }
