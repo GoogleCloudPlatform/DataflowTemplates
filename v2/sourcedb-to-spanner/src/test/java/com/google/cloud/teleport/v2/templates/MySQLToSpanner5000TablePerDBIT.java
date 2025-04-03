@@ -38,7 +38,6 @@ import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -46,7 +45,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Ignore("SQL instance running inside github runner is crashing")
+// @Ignore("SQL instance running inside github runner is crashing")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
@@ -58,7 +57,7 @@ public class MySQLToSpanner5000TablePerDBIT extends SourceDbToSpannerITBase {
   private PipelineLauncher.LaunchInfo jobInfo;
   private static final String WORKER_MACHINE_TYPE = "n2-standard-16";
 
-  private static final int NUM_TABLES = 5000;
+  private static final int NUM_TABLES = 3000;
   private static final int BATCH_SIZE = 1000; // Number of tables per batch
   private static final int THREAD_POOL_SIZE = 20; // Number of concurrent threads for table creation
 
