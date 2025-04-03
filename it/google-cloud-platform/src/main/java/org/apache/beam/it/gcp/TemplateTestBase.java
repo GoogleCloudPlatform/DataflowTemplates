@@ -423,7 +423,7 @@ public abstract class TemplateTestBase {
 
   public GcsResourceManager setUpSpannerITGcsResourceManager() {
     GcsResourceManager spannerTestsGcsClient;
-    if (TestProperties.project().equals("apache-beam-testing")) {
+    if (TestProperties.project().equals("cloud-teleport-testing")) {
       List<String> bucketList = TestConstants.SPANNER_TEST_BUCKETS;
       Random random = new Random();
       int randomIndex = random.nextInt(bucketList.size());

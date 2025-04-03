@@ -139,7 +139,7 @@ jobs:
           --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
           --it-project="apache-beam-testing" \
-          --it-artifact-bucket="beam-github-actions-tests" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1"
       - name: Upload Smoke Tests Report
         uses: actions/upload-artifact@v4
@@ -169,7 +169,7 @@ jobs:
           --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
           --it-project="apache-beam-testing" \
-          --it-artifact-bucket="beam-github-actions-tests" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@v4
@@ -199,7 +199,7 @@ jobs:
         ./cicd/run-load-tests \
         --it-region="us-central1" \
         --it-project="apache-beam-testing" \
-        --it-artifact-bucket="beam-github-actions-tests" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
