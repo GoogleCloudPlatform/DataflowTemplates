@@ -19,7 +19,9 @@ import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constant
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertThat;
 
+import autovalue.shaded.com.google.common.collect.ImmutableList;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.data.CqlDuration;
@@ -37,6 +39,7 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -540,6 +543,13 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
     insertMaxBoundaryValuesIntoSpanner();
     insertMinBoundaryValuesIntoSpanner();
     assertCassandraBoundaryData();
+    // Update records and validate
+    updateBoundaryValuesInSpanner();
+    assertCassandraAfterUpdate();
+
+    // Delete records and validate
+    deleteBoundaryValuesInSpanner();
+    assertCassandraAfterDelete();
   }
 
   /**
@@ -715,10 +725,23 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to("123456789")
             .set("inet_column")
             .to("192.168.1.10")
+            .set("timeuuid_column")
+            .to("550e8400-e29b-41d4-a716-446655440000") // Assume this is a valid time-based UUID
+            .set("duration_column")
+            .to("P1DT2H3M4S") // ISO-8601 duration format (1 day, 2 hours, 3 minutes, 4 seconds)
+            .set("uuid_column")
+            .to("123e4567-e89b-12d3-a456-426614174000") // Assume this is a valid UUID
+            .set("ascii_column")
+            .to("SimpleASCIIText")
+            .set("list_text_column_from_array")
+            .to(Value.stringArray(ImmutableList.of("apple", "banana", "cherry")))
+            .set("set_text_column_from_array")
+            .to(Value.stringArray(ImmutableList.of("orange", "grape", "pear")))
             .build();
 
     spannerResourceManager.write(mutation);
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
     Mutation mutationAllNull =
         Mutation.newInsertOrUpdateBuilder(ALL_DATA_TYPES_TABLE)
             .set("varchar_column")
@@ -805,6 +828,18 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to(Value.string(null))
             .set("inet_column")
             .to(Value.string(null))
+            .set("timeuuid_column")
+            .to(Value.string(null))
+            .set("duration_column")
+            .to(Value.string(null))
+            .set("uuid_column")
+            .to(Value.string(null))
+            .set("ascii_column")
+            .to(Value.string(null))
+            .set("list_text_column_from_array")
+            .to(Value.stringArray((java.util.List) null))
+            .set("set_text_column_from_array")
+            .to(Value.stringArray((java.util.List) null))
             .build();
 
     spannerResourceManager.write(mutationAllNull);
@@ -992,7 +1027,24 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                     .isEqualTo(java.math.BigInteger.valueOf(123456789L)),
             () ->
                 assertThat(row.getBytesUnsafe("bytes_column"))
-                    .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())));
+                    .isEqualTo(ByteBuffer.wrap(ByteArray.copyFrom("Hello world").toByteArray())),
+            () -> assertThat(row.getString("inet_column")).isEqualTo("192.168.1.10"),
+            () ->
+                assertThat(row.getCqlDuration("duration_column"))
+                    .isEqualTo(CqlDuration.from("P1DT2H3M4S")),
+            () ->
+                assertThat(row.getUuid("timeuuid_column"))
+                    .isEqualTo(UUID.fromString("550e8400-e29b-41d4-a716-446655440000")),
+            () ->
+                assertThat(row.getUuid("uuid_column"))
+                    .isEqualTo(UUID.fromString("123e4567-e89b-12d3-a456-426614174000")),
+            () -> assertThat(row.getString("ascii_column")).isEqualTo("SimpleASCIIText"),
+            () ->
+                assertThat(row.getList("list_text_column_from_array", String.class))
+                    .isEqualTo(Arrays.asList("apple", "banana", "cherry")),
+            () ->
+                assertThat(row.getSet("set_text_column_from_array", String.class))
+                    .isEqualTo(new HashSet<>(Arrays.asList("orange", "grape", "pear"))));
       } else if (Objects.equals(varcharColumn, "PKey")
           || Objects.equals(varcharColumn, "ForNull")) {
         assertAll(
@@ -1036,7 +1088,13 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             () -> assertThat(row.isNull("frozen_set_of_maps_column")).isTrue(),
             () -> assertThat(row.isNull("frozen_list_of_sets_column")).isTrue(),
             () -> assertThat(row.isNull("varint_column")).isTrue(),
-            () -> assertThat(row.isNull("inet_column")).isTrue());
+            () -> assertThat(row.isNull("inet_column")).isTrue(),
+            () -> assertThat(row.isNull("timeuuid_column")).isTrue(),
+            () -> assertThat(row.isNull("duration_column")).isTrue(),
+            () -> assertThat(row.isNull("uuid_column")).isTrue(),
+            () -> assertThat(row.isNull("ascii_column")).isTrue(),
+            () -> assertThat(row.isNull("list_text_column_from_array")).isTrue(),
+            () -> assertThat(row.isNull("set_text_column_from_array")).isTrue());
       } else {
         throw new AssertionError("Unexpected row found: " + varcharColumn);
       }
@@ -1129,6 +1187,18 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
             .set("varint_column")
             .to("123456789")
+            .set("inet_column")
+            .to("192.168.1.100") // Example IPv4 address
+            .set("timeuuid_column")
+            .to("550e8400-e29b-41d4-a716-446655440000") // Example UUID
+            .set("duration_column")
+            .to("P2D") // Example ISO-8601 duration
+            .set("uuid_column")
+            .to("123e4567-e89b-12d3-a456-426614174000") // Example UUID
+            .set("ascii_column")
+            .to("SampleASCII")
+            .set("bytes_column")
+            .to(Base64.getEncoder().encodeToString("sampleBytes".getBytes(StandardCharsets.UTF_8)))
             .build();
 
     spannerResourceManager.write(m);
@@ -1217,6 +1287,20 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
             .set("varint_column")
             .to("123456789")
+            .set("inet_column")
+            .to("192.168.1.101") // Different example IPv4 address
+            .set("timeuuid_column")
+            .to("f47ac10b-58cc-4372-a567-0e02b2c3d479") // Another Example UUID
+            .set("duration_column")
+            .to("PT5H10M") // Another example ISO-8601 duration
+            .set("uuid_column")
+            .to("0e3f2a1c-dc40-4e73-9e0d-2d7d0ef7be7f") // Another Example UUID
+            .set("ascii_column")
+            .to("SampleASCII2")
+            .set("bytes_column")
+            .to(
+                Base64.getEncoder()
+                    .encodeToString("anotherSampleBytes".getBytes(StandardCharsets.UTF_8)))
             .build();
 
     spannerResourceManager.write(m);
@@ -1305,6 +1389,20 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             .to(Value.json("[[\"apple\", \"banana\"], [\"carrot\", \"spinach\"]]"))
             .set("varint_column")
             .to("123456789")
+            .set("inet_column")
+            .to("10.0.0.1") // Updated example IPv4 address
+            .set("timeuuid_column")
+            .to("ff33811b-0a59-4c9a-885c-d865fc31b3a4") // Updated Example UUID
+            .set("duration_column")
+            .to("P4DT12H30M5S") // Updated example ISO-8601 duration
+            .set("uuid_column")
+            .to("f03e2a1c-dc40-4e73-9e0d-2d7d0ef7ae7e") // Updated Example UUID
+            .set("ascii_column")
+            .to("UpdatedSampleASCII")
+            .set("bytes_column")
+            .to(
+                Base64.getEncoder()
+                    .encodeToString("updatedSampleBytes".getBytes(StandardCharsets.UTF_8)))
             .build();
 
     spannerResourceManager.write(m);
@@ -1454,7 +1552,23 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 .isEqualTo(java.time.Instant.parse("2025-01-27T10:30:00.123Z")),
         () ->
             assertThat(row.getBigInteger("varint_column"))
-                .isEqualTo(java.math.BigInteger.valueOf(123456789L)));
+                .isEqualTo(java.math.BigInteger.valueOf(123456789L)),
+        () -> assertThat(row.getString("inet_column")).isEqualTo("192.168.1.101"),
+        () ->
+            assertThat(row.getCqlDuration("duration_column"))
+                .isEqualTo(CqlDuration.from("PT5H10M")),
+        () ->
+            assertThat(row.getUuid("timeuuid_column"))
+                .isEqualTo(UUID.fromString("f47ac10b-58cc-4372-a567-0e02b2c3d479")),
+        () ->
+            assertThat(row.getUuid("uuid_column"))
+                .isEqualTo(UUID.fromString("0e3f2a1c-dc40-4e73-9e0d-2d7d0ef7be7f")),
+        () -> assertThat(row.getString("ascii_column")).isEqualTo("SampleASCII2"),
+        () -> {
+          byte[] expectedBytes = Base64.getDecoder().decode("anotherSampleBytes");
+          ByteBuffer actualBytes = row.getBytesUnsafe("bytes_column");
+          assertThat(actualBytes).isEqualTo(ByteBuffer.wrap(expectedBytes));
+        });
   }
 
   private void insertMaxBoundaryValuesIntoSpanner() {
@@ -2000,6 +2114,173 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
             });
       }
     }
+  }
+
+  private void updateBoundaryValuesInSpanner() {
+    // Update max boundary record to null (use mutation strategy that doesn't affect primary key)
+    Mutation updateMaxToNull =
+        Mutation.newUpdateBuilder(BOUNDARY_CONVERSION_TABLE)
+            .set("varchar_column")
+            .to("MaxBoundaryVarchar")
+            .set("tinyint_column")
+            .to((Byte) null)
+            .set("smallint_column")
+            .to((Short) null)
+            .set("int_column")
+            .to((Integer) null)
+            .set("bigint_column")
+            .to((Long) null)
+            .set("float_column")
+            .to((Float) null)
+            .set("double_column")
+            .to((Double) null)
+            .set("decimal_column")
+            .to((BigDecimal) null)
+            .set("bool_column")
+            .to((Boolean) null)
+            .set("ascii_column")
+            .to((String) null)
+            .set("text_column")
+            .to((String) null)
+            .set("bytes_column")
+            .to((ByteBuffer) null)
+            .set("date_column")
+            .to((Date) null)
+            .set("time_column")
+            .to((String) null)
+            .set("timestamp_column")
+            .to((Timestamp) null)
+            .set("duration_column")
+            .to((String) null)
+            .set("uuid_column")
+            .to((String) null)
+            .set("timeuuid_column")
+            .to((String) null)
+            .set("inet_column")
+            .to((String) null)
+            .set("map_bool_column")
+            .to((String) null)
+            .set("map_float_column")
+            .to((String) null)
+            .set("map_double_column")
+            .to((String) null)
+            .set("map_tinyint_column")
+            .to((String) null)
+            .set("map_smallint_column")
+            .to((String) null)
+            .set("map_int_column")
+            .to((String) null)
+            .set("map_bigint_column")
+            .to((String) null)
+            .set("map_varint_column")
+            .to((String) null)
+            .set("map_decimal_column")
+            .to((String) null)
+            .set("map_ascii_column")
+            .to((String) null)
+            .set("map_varchar_column")
+            .to((String) null)
+            .set("map_blob_column")
+            .to((String) null)
+            .set("map_date_column")
+            .to((String) null)
+            .set("map_time_column")
+            .to((String) null)
+            .set("map_timestamp_column")
+            .to((String) null)
+            .set("map_duration_column")
+            .to((String) null)
+            .set("map_uuid_column")
+            .to((String) null)
+            .set("map_timeuuid_column")
+            .to((String) null)
+            .set("map_inet_column")
+            .to((String) null)
+            .build();
+    spannerResourceManager.write(updateMaxToNull);
+  }
+
+  private void assertCassandraAfterUpdate() throws InterruptedException, MultipleFailureException {
+    try {
+      rows = cassandraResourceManager.readTable(BOUNDARY_CONVERSION_TABLE);
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Failed to read from Cassandra table: " + BOUNDARY_CONVERSION_TABLE, e);
+    }
+    assertThat(rows).hasSize(2);
+    for (Row row : rows) {
+      String varcharColumn = row.getString("varchar_column");
+      if (Objects.equals(varcharColumn, "MaxBoundaryVarchar")) {
+        assertAll(
+            () -> assertThat(row.getByte("tinyint_column")).isNull(),
+            () -> assertThat(row.getShort("smallint_column")).isNull(),
+            () -> assertThat(row.getInt("int_column")).isNull(),
+            () -> assertThat(row.getLong("bigint_column")).isNull(),
+            () -> assertThat(row.getFloat("float_column")).isNull(),
+            () -> assertThat(row.getDouble("double_column")).isNull(),
+            () -> assertThat(row.getBigDecimal("decimal_column")).isNull(),
+            () -> assertThat(row.getBoolean("bool_column")).isNull(),
+            () -> assertThat(row.getString("ascii_column")).isNull(),
+            () -> assertThat(row.getString("text_column")).isNull(),
+            () -> assertThat(row.getBytesUnsafe("bytes_column")).isNull(),
+            () -> assertThat(row.getLocalDate("date_column")).isNull(),
+            () -> assertThat(row.getLocalTime("time_column")).isNull(),
+            () -> assertThat(row.getInstant("timestamp_column")).isNull(),
+            // Maps
+            () -> assertThat(row.getMap("map_bool_column", Boolean.class, Boolean.class)).isNull(),
+            () -> assertThat(row.getMap("map_float_column", Float.class, Float.class)).isNull(),
+            () -> assertThat(row.getMap("map_double_column", Double.class, Double.class)).isNull(),
+            () -> assertThat(row.getMap("map_tinyint_column", Byte.class, Byte.class)).isNull(),
+            () -> assertThat(row.getMap("map_smallint_column", Short.class, Short.class)).isNull(),
+            () -> assertThat(row.getMap("map_int_column", Integer.class, Integer.class)).isNull(),
+            () -> assertThat(row.getMap("map_bigint_column", Long.class, Long.class)).isNull(),
+            () ->
+                assertThat(row.getMap("map_varint_column", BigInteger.class, BigInteger.class))
+                    .isNull(),
+            () ->
+                assertThat(row.getMap("map_decimal_column", BigDecimal.class, BigDecimal.class))
+                    .isNull(),
+            () -> assertThat(row.getMap("map_ascii_column", String.class, String.class)).isNull(),
+            () -> assertThat(row.getMap("map_varchar_column", String.class, String.class)).isNull(),
+            () ->
+                assertThat(row.getMap("map_blob_column", ByteBuffer.class, ByteBuffer.class))
+                    .isNull(),
+            () ->
+                assertThat(row.getMap("map_date_column", LocalDate.class, LocalDate.class))
+                    .isNull(),
+            () ->
+                assertThat(row.getMap("map_time_column", LocalTime.class, LocalTime.class))
+                    .isNull(),
+            () ->
+                assertThat(row.getMap("map_timestamp_column", Instant.class, Instant.class))
+                    .isNull(),
+            () ->
+                assertThat(row.getMap("map_duration_column", String.class, CqlDuration.class))
+                    .isNull(),
+            () -> assertThat(row.getMap("map_uuid_column", UUID.class, UUID.class)).isNull(),
+            () -> assertThat(row.getMap("map_timeuuid_column", UUID.class, UUID.class)).isNull(),
+            () ->
+                assertThat(row.getMap("map_inet_column", InetAddress.class, InetAddress.class))
+                    .isNull());
+      }
+    }
+  }
+
+  private void deleteBoundaryValuesInSpanner() {
+    // Delete inserted rows by primary key
+    Mutation deleteMaxMutation =
+        Mutation.delete(BOUNDARY_CONVERSION_TABLE, Key.of("MaxBoundaryVarchar"));
+    spannerResourceManager.write(deleteMaxMutation);
+
+    Mutation deleteMinMutation =
+        Mutation.delete(BOUNDARY_CONVERSION_TABLE, Key.of("MinBoundaryVarchar"));
+    spannerResourceManager.write(deleteMinMutation);
+  }
+
+  private void assertCassandraAfterDelete() throws InterruptedException, MultipleFailureException {
+    // Assert that no rows exist after deletion
+    Iterable<Row> rows = cassandraResourceManager.readTable(BOUNDARY_CONVERSION_TABLE);
+    assertThat(rows).isEmpty(); // Expect no data after deletion
   }
 
   // Helper function to compare two ByteBuffers byte-by-byte
