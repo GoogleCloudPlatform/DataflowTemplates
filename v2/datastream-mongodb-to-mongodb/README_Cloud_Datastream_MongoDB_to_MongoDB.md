@@ -57,6 +57,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **useShadowTablesForBackfill**: When false, backfill events are processed without shadow tables. Default: false.
 * **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 * **directoryWatchDurationInMinutes**: The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
+* **streamName**: The name or template for the stream to poll for schema information and source type.
 * **dlqGcsPubSubSubscription**: The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored.
 
 
@@ -155,6 +156,7 @@ export PROCESS_BACKFILL_FIRST=true
 export USE_SHADOW_TABLES_FOR_BACKFILL=false
 export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
+export STREAM_NAME=<streamName>
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
 
 gcloud dataflow flex-template run "cloud-datastream-mongodb-to-mongodb-job" \
@@ -178,6 +180,7 @@ gcloud dataflow flex-template run "cloud-datastream-mongodb-to-mongodb-job" \
   --parameters "useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL" \
   --parameters "runMode=$RUN_MODE" \
   --parameters "directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES" \
+  --parameters "streamName=$STREAM_NAME" \
   --parameters "dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION"
 ```
 
@@ -216,6 +219,7 @@ export PROCESS_BACKFILL_FIRST=true
 export USE_SHADOW_TABLES_FOR_BACKFILL=false
 export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
+export STREAM_NAME=<streamName>
 export DLQ_GCS_PUB_SUB_SUBSCRIPTION=<dlqGcsPubSubSubscription>
 
 mvn clean package -PtemplatesRun \
@@ -225,7 +229,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-mongodb-to-mongodb-job" \
 -DtemplateName="Cloud_Datastream_MongoDB_to_MongoDB" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,connectionUri=$CONNECTION_URI,databaseName=$DATABASE_NAME,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,databaseCollection=$DATABASE_COLLECTION,shadowCollectionPrefix=$SHADOW_COLLECTION_PREFIX,batchSize=$BATCH_SIZE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,processBackfillFirst=$PROCESS_BACKFILL_FIRST,useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL,runMode=$RUN_MODE,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,connectionUri=$CONNECTION_URI,databaseName=$DATABASE_NAME,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,databaseCollection=$DATABASE_COLLECTION,shadowCollectionPrefix=$SHADOW_COLLECTION_PREFIX,batchSize=$BATCH_SIZE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,processBackfillFirst=$PROCESS_BACKFILL_FIRST,useShadowTablesForBackfill=$USE_SHADOW_TABLES_FOR_BACKFILL,runMode=$RUN_MODE,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,streamName=$STREAM_NAME,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION" \
 -f v2/datastream-mongodb-to-mongodb
 ```
 
@@ -287,6 +291,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_mongodb_to_mongod
     # useShadowTablesForBackfill = "false"
     # runMode = "regular"
     # directoryWatchDurationInMinutes = "10"
+    # streamName = "<streamName>"
     # dlqGcsPubSubSubscription = "<dlqGcsPubSubSubscription>"
   }
 }

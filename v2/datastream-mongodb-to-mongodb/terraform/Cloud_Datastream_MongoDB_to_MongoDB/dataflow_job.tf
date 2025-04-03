@@ -135,6 +135,12 @@ variable "directoryWatchDurationInMinutes" {
   default     = null
 }
 
+variable "streamName" {
+  type        = string
+  description = "The name or template for the stream to poll for schema information and source type."
+  default     = null
+}
+
 variable "dlqGcsPubSubSubscription" {
   type        = string
   description = "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored."
@@ -283,6 +289,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     useShadowTablesForBackfill      = tostring(var.useShadowTablesForBackfill)
     runMode                         = var.runMode
     directoryWatchDurationInMinutes = tostring(var.directoryWatchDurationInMinutes)
+    streamName                      = var.streamName
     dlqGcsPubSubSubscription        = var.dlqGcsPubSubSubscription
   }
 

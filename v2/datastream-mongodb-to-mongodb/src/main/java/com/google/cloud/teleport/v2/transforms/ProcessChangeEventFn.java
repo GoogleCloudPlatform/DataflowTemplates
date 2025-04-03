@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.mongodb.client.model.Filters.eq;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -35,8 +36,9 @@ public class ProcessChangeEventFn
     extends DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext> {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcessChangeEventFn.class);
-  private final String connectionString;
-  private final String targetDatabaseName;
+  private String connectionString = "";
+  private String targetDatabaseName = "";
+  private MongoClient client = null;
 
   public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
       new TupleTag<>("successfulWrite");
@@ -47,26 +49,24 @@ public class ProcessChangeEventFn
     this.targetDatabaseName = databaseName;
   }
 
+  @VisibleForTesting
+  public ProcessChangeEventFn(MongoClient mongoClient, String databaseName) {
+    this.client = mongoClient;
+    this.targetDatabaseName = databaseName;
+  }
+
   @ProcessElement
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     MongoDbChangeEventContext element = context.element();
-
-    // Log the projectId before creating the client
-    LOG.info(
-        "Creating MongoDB client in ProcessChangeEventFn with connection string: {}",
-        connectionString);
-
-    MongoClient client = null;
     ClientSession session = null;
 
     try {
-      client = MongoClients.create(connectionString);
-      MongoDatabase database = client.getDatabase(targetDatabaseName);
       session = client.startSession();
 
       session.startTransaction();
       LOG.info("Started transaction for document ID: {}", element.getDocumentId());
 
+      MongoDatabase database = client.getDatabase(targetDatabaseName);
       MongoCollection<Document> dataCollection =
           database.getCollection(element.getDataCollection());
       MongoCollection<Document> shadowCollection =
@@ -138,9 +138,25 @@ public class ProcessChangeEventFn
       if (session != null) {
         session.close();
       }
-      if (client != null) {
-        client.close();
-      }
+    }
+  }
+
+  @Setup
+  public void setup() {
+    if (client == null) {
+      // Log the projectId before creating the client
+      LOG.info(
+          "Creating MongoDB client in ProcessChangeEventFn with connection string: {}",
+          connectionString);
+      client = MongoClients.create(connectionString);
+    }
+  }
+
+  @Teardown
+  public void teardown() {
+    // Close the MongoClient when the pipeline finishes
+    if (client != null) {
+      client.close();
     }
   }
 }

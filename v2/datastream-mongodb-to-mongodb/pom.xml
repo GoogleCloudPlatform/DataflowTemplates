@@ -52,7 +52,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- remove this dependency once finish local testing -->
+        <!-- For local testing with direct runner -->
         <dependency>
             <groupId>org.apache.beam</groupId>
             <artifactId>beam-runners-direct-java</artifactId>

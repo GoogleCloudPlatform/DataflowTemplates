@@ -156,7 +156,12 @@ public class MongoDbChangeEventContext implements Serializable {
     }
     JsonNode jsonNode = this.getChangeEvent();
     String jsonString = OBJECT_MAPPER.writeValueAsString(jsonNode);
-    Document rawDoc = Document.parse(Document.parse(jsonString).get(DATA_COL).toString());
+    Document rawDoc;
+    try {
+      rawDoc = Document.parse(Document.parse(jsonString).get(DATA_COL).toString());
+    } catch (Exception ex) {
+      rawDoc = (Document) Document.parse(jsonString).get(DATA_COL);
+    }
     rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
     return rawDoc;
   }

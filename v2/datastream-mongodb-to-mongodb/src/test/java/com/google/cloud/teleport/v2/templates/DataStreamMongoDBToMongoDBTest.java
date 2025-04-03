@@ -24,7 +24,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
-public final class DatastreamMongoDBToMongoDBTest {
+public final class DataStreamMongoDBToMongoDBTest {
 
   @Test
   public void inputArgs_inputFilePattern() {
