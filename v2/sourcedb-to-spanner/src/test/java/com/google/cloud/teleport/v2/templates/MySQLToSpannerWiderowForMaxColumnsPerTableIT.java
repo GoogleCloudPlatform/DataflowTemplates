@@ -32,13 +32,14 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for testing MySQL to Spanner migration with wide tables (1016 columns). */
-// @Ignore("test is completed")
+@Ignore("test is completed")
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
