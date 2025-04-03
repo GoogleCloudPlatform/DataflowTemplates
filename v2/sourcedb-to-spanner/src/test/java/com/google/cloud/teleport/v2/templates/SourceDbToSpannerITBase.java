@@ -40,6 +40,7 @@ import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
@@ -57,6 +58,10 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
+  }
+
+  public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {
+    return CloudMySQLResourceManager.builder(testName).build();
   }
 
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
