@@ -441,20 +441,11 @@ public class DataStreamMongoDBToMongoDB {
       PipelineResult result;
       if (options.getProcessBackfillFirst()) {
         LOG.info("Using backfill-first processing mode");
-        result = runWithBackfillFirst(options, connectionString);
+        runWithBackfillFirst(options, connectionString);
       } else {
         LOG.info("Using unified processing mode");
-        result = runAllEventsTogether(options, connectionString);
+        runAllEventsTogether(options, connectionString);
       }
-      result.waitUntilFinish();
-      LOG.info("Pipeline execution completed");
-
-      // Cleanup - remove the shadow collections after the migration
-      LOG.info(
-          "Starting cleanup of shadow collections with prefix: {}",
-          options.getShadowCollectionPrefix());
-      cleanupShadowCollections(mongoClient, options.getShadowCollectionPrefix());
-      LOG.info("Shadow collections cleanup completed");
 
       mongoClient.close();
       LOG.info("MongoDB client closed");
@@ -1132,37 +1123,6 @@ public class DataStreamMongoDBToMongoDB {
         LOG.info("Closing MongoDB client for backfill processing");
         client.close();
         client = null;
-      }
-    }
-  }
-
-  private static void cleanupShadowCollections(
-      MongoClient mongoClient, String shadowCollectionPrefix) {
-    LOG.info("Starting cleanup of shadow collections with prefix: {}", shadowCollectionPrefix);
-
-    // Get a list of all database names
-    List<String> databaseNames = mongoClient.listDatabaseNames().into(new ArrayList<>());
-    LOG.info("Found {} databases to check for shadow collections", databaseNames.size());
-
-    for (String databaseName : databaseNames) {
-      if (databaseName.equals("admin")
-          || databaseName.equals("local")
-          || databaseName.equals("config")) {
-        // Skip system databases
-        continue;
-      }
-      MongoDatabase database = mongoClient.getDatabase(databaseName);
-
-      // Get a list of all collection names in the database
-      List<String> collectionNames = database.listCollectionNames().into(new ArrayList<>());
-      database.listCollectionNames().into(collectionNames);
-
-      // Iterate through each collection and drop those with the prefix
-      for (String collectionName : collectionNames) {
-        if (collectionName.startsWith(shadowCollectionPrefix)) {
-          database.getCollection(collectionName).drop();
-          LOG.info("Dropped collection {} in database {}", collectionName, databaseName);
-        }
       }
     }
   }
