@@ -247,6 +247,11 @@ public class BigQueryToParquet {
       builder.addAllSelectedFields(Arrays.asList(options.getFields().split(",\\s*")));
     }
 
+    // Add row restrictions/filter if any.
+    if (!Strings.isNullOrEmpty(options.getRowRestriction())) {
+      builder.setRowRestriction(options.getRowRestriction());
+    }
+
     TableReadOptions tableReadOptions = builder.build();
     BigQueryStorageClient client = BigQueryStorageClientFactory.create();
     ReadSession session =
