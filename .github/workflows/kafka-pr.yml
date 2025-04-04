@@ -22,6 +22,7 @@ on:
     - 'main'
     paths:
       # Template wide common modules
+      - 'pom.xml'
       - 'v2/common/**'
       - 'v2/datastream-common/**'
       - 'it/google-cloud-platform/**'

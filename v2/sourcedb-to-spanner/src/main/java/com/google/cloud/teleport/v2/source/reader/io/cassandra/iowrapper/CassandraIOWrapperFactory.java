@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.IoWrapperFactory;
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
 import com.google.common.base.Preconditions;
 import java.util.List;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.commons.lang3.StringUtils;
 
@@ -30,8 +31,16 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
   /** GCS Path for Cassandra Driver Config. */
   public abstract String gcsConfigPath();
 
-  private static CassandraIOWrapperFactory create(String gcsConfigPath) {
-    return new AutoValue_CassandraIOWrapperFactory(gcsConfigPath);
+  /**
+   * Number of partitions to read from. Defaults to Null.
+   *
+   * @see CassandraDataSource#numPartitions()
+   */
+  @Nullable
+  public abstract Integer numPartitions();
+
+  private static CassandraIOWrapperFactory create(String gcsConfigPath, Integer numPartions) {
+    return new AutoValue_CassandraIOWrapperFactory(gcsConfigPath, numPartions);
   }
 
   public static CassandraIOWrapperFactory fromPipelineOptions(SourceDbToSpannerOptions options) {
@@ -43,13 +52,14 @@ public abstract class CassandraIOWrapperFactory implements IoWrapperFactory {
     Preconditions.checkArgument(
         StringUtils.startsWith(gcsPath, "gs://"),
         "GCS path Expected in place of `" + gcsPath + "`.");
-    return CassandraIOWrapperFactory.create(options.getSourceConfigURL());
+    return CassandraIOWrapperFactory.create(
+        options.getSourceConfigURL(), options.getNumPartitions());
   }
 
   /** Create an {@link IoWrapper} instance for a list of SourceTables. */
   @Override
   public IoWrapper getIOWrapper(List<String> sourceTables, OnSignal<?> waitOnSignal) {
     /** TODO(vardhanvthigle@) incorporate waitOnSignal */
-    return new CassandraIoWrapper(gcsConfigPath(), sourceTables);
+    return new CassandraIoWrapper(gcsConfigPath(), sourceTables, numPartitions());
   }
 }

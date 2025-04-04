@@ -23,7 +23,6 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
-import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.Strings;
 import com.google.pubsub.v1.SubscriptionName;
@@ -60,6 +59,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -67,7 +67,7 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSQL.class)
 @RunWith(JUnit4.class)
 public class DataStreamToSQLIT extends TemplateTestBase {
@@ -78,7 +78,7 @@ public class DataStreamToSQLIT extends TemplateTestBase {
     POSTGRES
   }
 
-  @Rule public Timeout timeout = new Timeout(10, TimeUnit.MINUTES);
+  @Rule public Timeout timeout = new Timeout(30, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "row_id";
@@ -137,12 +137,14 @@ public class DataStreamToSQLIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToPostgresJson() throws IOException {
     // Run a simple IT
     simpleOracleToJdbcTest(JDBCType.POSTGRES, Function.identity());
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToMySqlJsonGCSNotifications() throws IOException {
     // Set up pubsub notifications
     SubscriptionName subscriptionName = createGcsNotifications();

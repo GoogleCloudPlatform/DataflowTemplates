@@ -30,6 +30,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashSet;
+import java.util.Objects;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -202,6 +203,8 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
       assertThat(row.getString("full_name")).isEqualTo("Jone Woe");
       assertThat(row.getString("first_name")).isEqualTo("Jone");
       assertThat(row.getString("last_name")).isEqualTo("Woe");
+      assertThat(Objects.requireNonNull(row.getString("empty_string")).isEmpty()).isTrue();
+      assertThat(row.isNull("null_key")).isTrue();
       assertThat(row.getInt("id")).isEqualTo(1);
     }
   }
