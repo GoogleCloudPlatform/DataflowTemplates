@@ -99,6 +99,7 @@ CREATE TABLE AllDatatypeColumns (
     frozen_map_text_to_set_column map<text, frozen<set<text>>>,
     frozen_set_of_maps_column set<frozen<map<text, int>>>,
     frozen_list_of_sets_column list<frozen<set<text>>>,
+    varint_column varint,
     inet_column INET,
     timeuuid_column timeuuid,
     duration_column duration,
