@@ -119,6 +119,7 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();

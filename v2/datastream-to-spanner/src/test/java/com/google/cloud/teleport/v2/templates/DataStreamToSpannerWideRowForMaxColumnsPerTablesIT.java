@@ -90,6 +90,7 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends SpannerT
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();

@@ -96,6 +96,7 @@ public class DataStreamToSpannerWideRowFor1600MBColumnsPerTablesIT extends Spann
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
