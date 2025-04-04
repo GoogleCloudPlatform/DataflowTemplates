@@ -31,7 +31,6 @@ public class Shard implements Serializable {
   private String namespace;
   private String secretManagerUri;
   private String connectionProperties;
-  private Boolean isShardedMigration;
 
   private Map<String, String> dbNameToLogicalShardIdMap = new HashMap<>();
 
@@ -44,8 +43,7 @@ public class Shard implements Serializable {
       String dbName,
       String namespace,
       String secretManagerUri,
-      String connectionProperties,
-      Boolean isShardedMigration) {
+      String connectionProperties) {
     this.logicalShardId = logicalShardId;
     this.host = host;
     this.port = port;
@@ -55,7 +53,6 @@ public class Shard implements Serializable {
     this.namespace = namespace;
     this.secretManagerUri = secretManagerUri;
     this.connectionProperties = connectionProperties;
-    this.isShardedMigration = isShardedMigration;
   }
 
   public Shard() {}
@@ -136,14 +133,6 @@ public class Shard implements Serializable {
     return dbNameToLogicalShardIdMap;
   }
 
-  public Boolean getIsShardedMigration() {
-    return isShardedMigration;
-  }
-
-  public void setIsShardedMigration(Boolean isShardedMigration) {
-    this.isShardedMigration = isShardedMigration;
-  }
-
   @Override
   public String toString() {
     return "Shard{"
@@ -168,9 +157,6 @@ public class Shard implements Serializable {
         + ", connectionProperties='"
         + connectionProperties
         + '\''
-        + ", isShardedMigration="
-        + isShardedMigration
-        + '\''
         + ", dbNameToLogicalShardIdMap="
         + dbNameToLogicalShardIdMap
         + '}';
@@ -194,8 +180,7 @@ public class Shard implements Serializable {
         && Objects.equals(namespace, shard.namespace)
         && Objects.equals(connectionProperties, shard.connectionProperties)
         && Objects.equals(secretManagerUri, shard.secretManagerUri)
-        && Objects.equals(dbNameToLogicalShardIdMap, shard.dbNameToLogicalShardIdMap)
-        && Objects.equals(isShardedMigration, shard.isShardedMigration);
+        && Objects.equals(dbNameToLogicalShardIdMap, shard.dbNameToLogicalShardIdMap);
   }
 
   @Override
@@ -210,7 +195,6 @@ public class Shard implements Serializable {
         namespace,
         connectionProperties,
         secretManagerUri,
-        dbNameToLogicalShardIdMap,
-        isShardedMigration);
+        dbNameToLogicalShardIdMap);
   }
 }

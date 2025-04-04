@@ -41,6 +41,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFile
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader.ShardConfig;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -526,19 +527,22 @@ public class SpannerToSourceDb {
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     List<Shard> shards;
+    ShardConfig shardConfig;
     String shardingMode;
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
       ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-      shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+      shardConfig = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
+      shards = shardConfig.getShards();
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
 
     } else {
       CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
       shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
+      shardConfig = new ShardConfig(shards, false);
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
-    if (shards.size() == 1 && !shards.get(0).getIsShardedMigration()) {
+    if (shards.size() == 1 && !shardConfig.isShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
       if (shard.getLogicalShardId() == null) {

@@ -15,11 +15,16 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -53,25 +58,79 @@ public class ShardFileReader {
     this.secretManagerAccessor = secretManagerAccessor;
   }
 
-  public List<Shard> getOrderedShardDetails(String sourceShardsFilePath) {
+  public static class ShardConfig {
 
-    try (InputStream stream =
-        Channels.newInputStream(
-            FileSystems.open(FileSystems.matchNewResource(sourceShardsFilePath, false)))) {
+    @JsonProperty("shards")
+    private List<Shard> shards;
 
-      String result = IOUtils.toString(stream, StandardCharsets.UTF_8);
-      Type listOfShardObject = new TypeToken<ArrayList<Shard>>() {}.getType();
-      List<Shard> shardList =
-          new GsonBuilder()
-              .setFieldNamingPolicy(FieldNamingPolicy.IDENTITY)
-              .create()
-              .fromJson(result, listOfShardObject);
+    @JsonProperty("isShardedMigration")
+    private boolean shardedMigration;
 
-      for (Shard shard : shardList) {
-        LOG.info(" The shard is: {} ", shard);
-        if (shard.getIsShardedMigration() == null) {
-          shard.setIsShardedMigration(false);
+    public ShardConfig() {}
+
+    public ShardConfig(List<Shard> shards, boolean isShardedMigration) {
+      this.shards = shards;
+      this.shardedMigration = isShardedMigration;
+    }
+
+    public List<Shard> getShards() {
+      return shards;
+    }
+
+    public void setShards(List<Shard> shards) {
+      this.shards = shards;
+    }
+
+    public boolean isShardedMigration() {
+      return shardedMigration;
+    }
+
+    public void setShardedMigration(boolean shardedMigration) {
+      this.shardedMigration = shardedMigration;
+    }
+  }
+
+  public ShardConfig loadShardConfig(String filePath) throws IOException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    File jsonFile = new File(filePath);
+
+    try {
+      JsonNode rootNode = objectMapper.readTree(jsonFile);
+      // Read json file as json object
+      if (rootNode.isObject()) {
+        try {
+          ShardConfig config = objectMapper.treeToValue(rootNode, ShardConfig.class);
+          if (config == null) {
+            throw new IOException();
+          }
+          return config;
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+          throw new IOException(e);
         }
+
+      }
+      // Read json file as array of shards
+      else if (rootNode.isArray()) {
+        List<Shard> shardsList = objectMapper.convertValue(rootNode, new TypeReference<>() {});
+
+        ShardConfig config = new ShardConfig();
+        config.setShards(shardsList);
+        config.setShardedMigration(false);
+        return config;
+
+      } else {
+        throw new IOException();
+      }
+    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+      throw new IOException(e);
+    }
+  }
+
+  public ShardConfig getOrderedShardDetails(String sourceShardsFilePath) {
+    try {
+      ShardConfig shardConfigFromFile = loadShardConfig(sourceShardsFilePath);
+      for (Shard shard : shardConfigFromFile.shards) {
+        LOG.info(" The shard is: {} ", shard);
         String password =
             resolvePassword(
                 sourceShardsFilePath,
@@ -87,17 +146,14 @@ public class ShardFileReader {
         }
         shard.setPassword(password);
       }
-
       Collections.sort(
-          shardList,
+          shardConfigFromFile.shards,
           new Comparator<Shard>() {
             public int compare(Shard s1, Shard s2) {
               return s1.getLogicalShardId().compareTo(s2.getLogicalShardId());
             }
           });
-
-      return shardList;
-
+      return shardConfigFromFile;
     } catch (IOException e) {
       LOG.error(
           "Failed to read shard input file. Make sure it is ASCII or UTF-8 encoded and contains a"
@@ -235,8 +291,7 @@ public class ShardFileReader {
               "",
               namespace,
               (String) (dataShard.get("secretManagerUri")),
-              dataShard.getOrDefault("connectionProperties", "").toString(),
-              false);
+              dataShard.getOrDefault("connectionProperties", "").toString());
 
       for (Map database : databases) {
         shard

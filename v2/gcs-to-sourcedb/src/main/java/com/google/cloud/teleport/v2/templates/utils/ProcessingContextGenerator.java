@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader.ShardConfig;
 import com.google.cloud.teleport.v2.templates.common.ProcessingContext;
 import com.google.cloud.teleport.v2.templates.common.ShardProgress;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -66,7 +67,8 @@ public class ProcessingContextGenerator {
 
     Schema schema = SessionFileReader.read(sessionFilePath);
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    List<Shard> shards = shardFileReader.getOrderedShardDetails(sourceShardsFilePath);
+    ShardConfig shardConfig = shardFileReader.getOrderedShardDetails(sourceShardsFilePath);
+    List<Shard> shards = shardConfig.getShards();
 
     ShardProgressTracker shardProgressTracker =
         new ShardProgressTracker(
