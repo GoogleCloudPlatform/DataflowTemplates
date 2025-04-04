@@ -55,7 +55,13 @@ CREATE TABLE IF NOT EXISTS alldatatypetransformation (
     frozen_map_text_to_set_column JSON,
     frozen_set_of_maps_column JSON,
     frozen_list_of_sets_column JSON,
-    varint_column STRING(MAX)
+    varint_column STRING(MAX),
+    inet_column STRING(MAX),
+    timeuuid_column STRING(MAX),
+    duration_column STRING(MAX),
+    uuid_column STRING(MAX),
+    ascii_column STRING(MAX),
+    bytes_column STRING(MAX)
 ) PRIMARY KEY(varchar_column);
 
 DROP TABLE IF EXISTS alldatatypecolumns;
@@ -102,8 +108,16 @@ CREATE TABLE IF NOT EXISTS alldatatypecolumns (
     frozen_set_of_maps_column JSON,
     frozen_list_of_sets_column JSON,
     varint_column STRING(MAX),
-    inet_column STRING(MAX)
+    inet_column STRING(MAX),
+    timeuuid_column STRING(MAX),
+    duration_column STRING(MAX),
+    uuid_column STRING(MAX),
+    ascii_column STRING(MAX),
+    list_text_column_from_array ARRAY<STRING(MAX)>,
+    set_text_column_from_array ARRAY<STRING(MAX)>
 ) PRIMARY KEY(varchar_column);
+
+DROP TABLE IF EXISTS boundaryconversiontesttable;
 
 CREATE TABLE IF NOT EXISTS boundaryconversiontesttable (
     varchar_column STRING(20) NOT NULL,
