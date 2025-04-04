@@ -52,9 +52,7 @@ public class CreateMongoDbChangeEventContextFn
       LOG.info("Parsing JSON payload");
       JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
 
-      LOG.info(
-          "Creating MongoDbChangeEventContext with shadow collection prefix: {}",
-          shadowCollectionPrefix);
+      LOG.info("Creating MongoDbChangeEventContext with payload: {}", jsonNode);
       MongoDbChangeEventContext changeEventContext =
           new MongoDbChangeEventContext(jsonNode, shadowCollectionPrefix);
 
