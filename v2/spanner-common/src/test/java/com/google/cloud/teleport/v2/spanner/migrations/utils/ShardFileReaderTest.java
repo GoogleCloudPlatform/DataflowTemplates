@@ -22,6 +22,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader.ShardConfig;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +42,9 @@ public final class ShardFileReaderTest {
   @Test
   public void shardFileReading() {
     ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
-    List<Shard> shards = shardFileReader.getOrderedShardDetails("src/test/resources/shard.json");
+    ShardConfig shardConfig =
+        shardFileReader.getOrderedShardDetails("src/test/resources/shard.json");
+    List<Shard> shards = shardConfig.getShards();
     List<Shard> expectedShards =
         Arrays.asList(
             new Shard(
@@ -66,6 +69,33 @@ public final class ShardFileReaderTest {
                 "jdbcCompliantTruncation=true"));
 
     assertEquals(shards, expectedShards);
+    boolean isShardedMigration = shardConfig.isShardedMigration();
+    assertEquals(isShardedMigration, false);
+  }
+
+  @Test
+  public void shardFileWithSingleShard() {
+    ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
+    ShardConfig shardConfig =
+        shardFileReader.getOrderedShardDetails(
+            "src/test/resources/single-shard-with-sharding.json");
+    List<Shard> shards = shardConfig.getShards();
+    List<Shard> expectedShards =
+        Arrays.asList(
+            new Shard(
+                "shardA",
+                "hostShardA",
+                "3306",
+                "test",
+                "test",
+                "test",
+                "namespaceA",
+                null,
+                "jdbcCompliantTruncation=true"));
+
+    assertEquals(shards, expectedShards);
+    boolean isShardedMigration = shardConfig.isShardedMigration();
+    assertEquals(isShardedMigration, true);
   }
 
   @Test
@@ -90,8 +120,9 @@ public final class ShardFileReaderTest {
         .thenReturn("secretC");
 
     ShardFileReader shardFileReader = new ShardFileReader(secretManagerAccessorMockImpl);
-    List<Shard> shards =
+    ShardConfig shardConfig =
         shardFileReader.getOrderedShardDetails("src/test/resources/shard-with-secret.json");
+    List<Shard> shards = shardConfig.getShards();
     List<Shard> expectedShards =
         Arrays.asList(
             new Shard(
