@@ -716,6 +716,61 @@ public class AvroSchemaToDdlConverterTest {
   }
 
   @Test
+  public void udfSimple() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace("CREATE FUNCTION `Foo`() AS (SELECT 1)"));
+  }
+
+  @Test
+  public void udfAllOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfSecurity\" : \"INVOKER\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo`(`arg0` STRING, `arg1` STRING DEFAULT \"bar\")"
+                + " RETURNS STRING SQL SECURITY INVOKER AS (SELECT 1)"));
+  }
+
+  @Test
   public void invokerRightsView() {
     String avroString =
         "{"
