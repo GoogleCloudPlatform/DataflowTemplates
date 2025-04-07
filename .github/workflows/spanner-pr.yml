@@ -189,18 +189,8 @@ jobs:
       run: make build
     - name: Store Path to File
       run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
-    - name: Checkout Code
-      uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-    - name: Dump Environment Before Test
-      run: |
-        echo "--- PATH ---"
-        echo "$PATH"
-        echo "--- SHELL ---"
-        echo "$SHELL"
-        echo "--- Which bash ---"
-        which bash || echo "bash not found"
-        echo "--- Env Vars ---"
-        env | sort
+    - name: List files in cicd directory
+      run: ls -R cicd
     - name: Path
       run: pwd; ls;
     - name: Run Integration Tests
