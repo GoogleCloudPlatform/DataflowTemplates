@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,11 +25,11 @@ import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Type;
 import java.nio.channels.Channels;
+import java.nio.channels.ReadableByteChannel;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +40,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import org.apache.beam.sdk.io.FileSystems;
+import org.apache.beam.sdk.io.fs.ResourceId;
 import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,37 +94,83 @@ public class ShardFileReader {
 
   public ShardConfig loadShardConfig(String filePath) throws IOException {
     ObjectMapper objectMapper = new ObjectMapper();
-    File jsonFile = new File(filePath);
+    ResourceId resourceId;
 
-    try {
-      JsonNode rootNode = objectMapper.readTree(jsonFile);
-      // Read json file as json object
+    resourceId = FileSystems.matchNewResource(filePath, false);
+
+    try (ReadableByteChannel channel = FileSystems.open(resourceId);
+        InputStream inputStream = Channels.newInputStream(channel)) {
+
+      JsonNode rootNode = objectMapper.readTree(inputStream);
+
+      // Case 1: JSON file contains a single ShardConfig object
       if (rootNode.isObject()) {
+        LOG.debug("Parsing file content as a ShardConfig object.");
         try {
           ShardConfig config = objectMapper.treeToValue(rootNode, ShardConfig.class);
           if (config == null) {
-            throw new IOException();
+            // Should not happen with valid JSON object unless config class is problematic
+            throw new IOException("Parsed ShardConfig object is null for file: " + filePath);
           }
+          LOG.info("Successfully parsed ShardConfig object from {}", filePath);
           return config;
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-          throw new IOException(e);
+        } catch (JsonProcessingException e) {
+          LOG.error("Error processing JSON object in file: {}", filePath, e);
+          throw new IOException("Error processing JSON object in file: " + filePath, e);
         }
 
-      }
-      // Read json file as array of shards
-      else if (rootNode.isArray()) {
-        List<Shard> shardsList = objectMapper.convertValue(rootNode, new TypeReference<>() {});
+        // Case 2: JSON file contains an array of Shard objects
+      } else if (rootNode.isArray()) {
+        LOG.debug("Parsing file content as an array of Shard objects.");
+        try {
+          List<Shard> shardsList =
+              objectMapper.convertValue(rootNode, new TypeReference<List<Shard>>() {});
 
-        ShardConfig config = new ShardConfig();
-        config.setShards(shardsList);
-        config.setShardedMigration(false);
-        return config;
+          if (shardsList == null) {
+            throw new IOException("Parsed shard list is null for file: " + filePath);
+          }
 
+          ShardConfig config = new ShardConfig();
+          config.setShards(shardsList);
+          config.setShardedMigration(false);
+          LOG.info(
+              "Successfully parsed Shard array (size={}) from {}", shardsList.size(), filePath);
+          return config;
+
+        } catch (IllegalArgumentException e) {
+          LOG.error("Error converting JSON array to Shard list in file: {}", filePath, e);
+          throw new IOException(
+              "Error converting JSON array to Shard list in file: " + filePath, e);
+        }
+
+        // Case 3: Invalid JSON structure (not an object or array)
       } else {
-        throw new IOException();
+        LOG.error(
+            "Invalid JSON structure in file: {}. Expected object or array, found {}",
+            filePath,
+            rootNode.getNodeType());
+        throw new IOException(
+            "Invalid JSON structure in file: "
+                + filePath
+                + ". Expected object or array, found "
+                + rootNode.getNodeType());
       }
-    } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-      throw new IOException(e);
+    } catch (JsonProcessingException e) {
+      LOG.error("Error reading or parsing JSON from file: {}", filePath, e);
+      throw new IOException("Error reading or parsing JSON from file: " + filePath, e);
+    } catch (IOException e) {
+      LOG.error("Error accessing or reading file: {}", filePath, e);
+      if (e.getMessage() != null
+          && (e.getMessage().startsWith("Error processing JSON object")
+              || e.getMessage().startsWith("Parsed ShardConfig object is null")
+              || e.getMessage().startsWith("Error converting JSON array")
+              || e.getMessage().startsWith("Parsed shard list is null")
+              || e.getMessage().startsWith("Invalid JSON structure")
+              || e.getMessage().startsWith("Error reading or parsing JSON"))) {
+        throw e;
+      } else {
+        throw new IOException("Error accessing or reading file: " + filePath, e);
+      }
     }
   }
 
