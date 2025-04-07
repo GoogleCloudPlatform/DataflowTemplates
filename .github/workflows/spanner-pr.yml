@@ -170,7 +170,7 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         path: spanner-migration-tool
         fetch-depth: 0
-    - name: Install Angular CLI
+    - name: Path
       run: pwd; ls;
     - name: Setup Environment
       id: setup-env
@@ -181,6 +181,9 @@ jobs:
         node-version: 18
     - name: Install Angular CLI
       run: npm install -g @angular/cli
+    - name: Install UI Dependencies
+      working-directory: ${{ github.workspace }}/spanner-migration-tool/ui
+      run: npm install
     - name: Prepare Go Modules
       working-directory: ${{ github.workspace }}/spanner-migration-tool
       run: make build
@@ -188,7 +191,7 @@ jobs:
       run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
-    - name: Install Angular CLI
+    - name: Path
       run: pwd; ls;
     - name: Run Integration Tests
       working-directory: ${{ github.workspace }}/main-repo
