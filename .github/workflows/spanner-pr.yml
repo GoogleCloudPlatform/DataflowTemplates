@@ -164,7 +164,7 @@ jobs:
     runs-on: [self-hosted, spanner-poc]
     steps:
     - name: Checkout SMT Code
-      uses: actions/checkout@v4
+      uses: actions/checkout@ee0669bd1cc5
       with:
         repository: GoogleCloudPlatform/spanner-migration-tool
         token: ${{ secrets.GITHUB_TOKEN }}
@@ -193,6 +193,16 @@ jobs:
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
     - name: Path
       run: pwd; ls;
+    - name: Dump Environment Before Test
+      run: |
+        echo "--- PATH ---"
+        echo "$PATH"
+        echo "--- SHELL ---"
+        echo "$SHELL"
+        echo "--- Which bash ---"
+        which bash || echo "bash not found"
+        echo "--- Env Vars ---"
+        env | sort
     - name: Run Integration Tests
       working-directory: ${{ github.workspace }}
       run: |
