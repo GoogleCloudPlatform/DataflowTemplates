@@ -194,14 +194,14 @@ jobs:
     - name: Path
       run: pwd; ls;
     - name: Run Integration Tests
-      working-directory: ${{ github.workspace }}/main-repo
+      working-directory: ${{ github.workspace }}
       run: |
-        ./cicd/run-it-tests \
-        --modules-to-build="SPANNER" \
-        --it-region="us-central1" \
-        --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+          ./cicd/run-it-tests \
+          --modules-to-build="SPANNER" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
