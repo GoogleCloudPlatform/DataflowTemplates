@@ -52,7 +52,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
-import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -122,7 +121,7 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT extends Spa
   }
 
   @Test
-  public void testDataStreamMySqlToSpannerFor5000TablesPerDatabase() throws IOException {
+  public void testDataStreamMySqlToSpannerForMax16KeyTablesPerDatabase() throws IOException {
     simpleMaxMySqlTablesPerDatabaseToSpannerTest(
         DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
         Dialect.GOOGLE_STANDARD_SQL,
@@ -264,7 +263,7 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT extends Spa
             .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
 
     // Assert
-    checkSpannerTables(tableNames, cdcEvents);
+    checkSpannerTables(spannerResourceManager, tableNames, cdcEvents, COLUMNS);
     assertThatResult(result).meetsConditions();
   }
 
@@ -288,90 +287,46 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT extends Spa
     return gson.toJson(sessionTemplate);
   }
 
-  public static Map<String, Object> createSessionTemplate() {
+  /** Creates column definitions based on column IDs. */
+  private static List<Map<String, Object>> createColumnDefinitions(List<String> colIds) {
     final int stringLength = 20;
-    Map<String, Object> sessionTemplate = new LinkedHashMap<>();
-    sessionTemplate.put("SessionName", "NewSession");
-    sessionTemplate.put("EditorName", "");
-    sessionTemplate.put("DatabaseType", "mysql");
-    sessionTemplate.put("DatabaseName", "SP_DATABASE");
-    sessionTemplate.put("Dialect", "google_standard_sql");
-    sessionTemplate.put("Notes", null);
-    sessionTemplate.put("Tags", null);
-    sessionTemplate.put("SpSchema", new LinkedHashMap<>());
-    sessionTemplate.put("SyntheticPKeys", new LinkedHashMap<>());
-    sessionTemplate.put("SrcSchema", new LinkedHashMap<>());
-    sessionTemplate.put("SchemaIssues", new LinkedHashMap<>());
-    sessionTemplate.put("Location", new LinkedHashMap<>());
-    sessionTemplate.put("TimezoneOffset", "+00:00");
-    sessionTemplate.put("SpDialect", "google_standard_sql");
-    sessionTemplate.put("UniquePKey", new LinkedHashMap<>());
-    sessionTemplate.put("Rules", new ArrayList<>());
-    sessionTemplate.put("IsSharded", false);
-    sessionTemplate.put("SpRegion", "");
-    sessionTemplate.put("ResourceValidation", false);
-    sessionTemplate.put("UI", false);
-
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      String tableName = "TABLE" + i;
-      List<String> colIds = new ArrayList<>();
-
-      Map<String, Object> colDefs = new LinkedHashMap<>();
-      for (int j = 1; j <= NUM_COLUMNS; j++) {
-        String colId = "c" + j;
-        colIds.add(colId);
-        Map<String, Object> colType = new LinkedHashMap<>();
-        colType.put("Name", "STRING");
-        colType.put("Len", stringLength);
-        colType.put("IsArray", false);
-
-        Map<String, Object> column = new LinkedHashMap<>();
-        column.put("Name", COLUMNS.get(j - 1));
-        column.put("T", colType);
-        column.put("NotNull", true); // Making all columns NOT NULL as they are part of PK
-        column.put("Comment", "From: column_" + j + " " + colType.get("Name"));
-        column.put("Id", colId);
-
-        colDefs.put(colId, column);
-      }
-
-      // Create Composite Primary Key with all 16 columns
-      List<Map<String, Object>> primaryKeys = new ArrayList<>();
-      for (String colId : colIds) {
-        Map<String, Object> primaryKey = new LinkedHashMap<>();
-        primaryKey.put("ColId", colId);
-        primaryKey.put("Desc", false);
-        primaryKey.put("Order", colIds.indexOf(colId) + 1);
-        primaryKeys.add(primaryKey);
-      }
-
-      // Spanner Schema Entry
-      Map<String, Object> spSchemaEntry = new LinkedHashMap<>();
-      spSchemaEntry.put("Name", tableName);
-      spSchemaEntry.put("ColIds", colIds);
-      spSchemaEntry.put("ShardIdColumn", "");
-      spSchemaEntry.put("ColDefs", colDefs);
-      spSchemaEntry.put("PrimaryKeys", primaryKeys);
-      spSchemaEntry.put("ForeignKeys", null);
-      spSchemaEntry.put("Indexes", null);
-      spSchemaEntry.put("ParentId", "");
-      spSchemaEntry.put("Comment", "Spanner schema for source table " + tableName);
-      spSchemaEntry.put("Id", "t" + i);
-
-      ((Map<String, Object>) sessionTemplate.get("SpSchema")).put("t" + i, spSchemaEntry);
-
-      // Source Schema Entry
-      Map<String, Object> srcSchemaEntry = new LinkedHashMap<>(spSchemaEntry);
-      srcSchemaEntry.put("Schema", "SRC_DATABASE");
-      ((Map<String, Object>) sessionTemplate.get("SrcSchema")).put("t" + i, srcSchemaEntry);
-
-      // Schema Issues Entry
-      Map<String, Object> schemaIssuesEntry = new LinkedHashMap<>();
-      schemaIssuesEntry.put("ColumnLevelIssues", new LinkedHashMap<>());
-      schemaIssuesEntry.put("TableLevelIssues", null);
-      ((Map<String, Object>) sessionTemplate.get("SchemaIssues")).put("t" + i, schemaIssuesEntry);
+    List<Map<String, Object>> colTypeConfigs = new ArrayList<>();
+    for (int j = 1; j <= colIds.size(); j++) {
+      Map<String, Object> colType = new LinkedHashMap<>();
+      colType.put("Type", "STRING");
+      colType.put("Len", stringLength);
+      colType.put("IsArray", false);
+      colType.put("Name", COLUMNS.get(j - 1));
+      colType.put("NotNull", (j == 1));
+      colType.put("Comment", "From: " + COLUMNS.get(j - 1) + colType.get("Type"));
+      colTypeConfigs.add(colType);
     }
-    return sessionTemplate;
+    return colTypeConfigs;
+  }
+
+  /** Creates a list of primary key definitions. */
+  private static List<Map<String, Object>> createPrimaryKeys(List<String> colIds) {
+    List<Map<String, Object>> primaryKeys = new ArrayList<>();
+
+    for (int j = 0; j < colIds.size(); j++) {
+      Map<String, Object> primaryKey = new LinkedHashMap<>();
+      primaryKey.put("ColId", colIds.get(j));
+      primaryKey.put("Desc", false);
+      primaryKey.put("Order", j + 1);
+      primaryKeys.add(primaryKey);
+    }
+
+    return primaryKeys;
+  }
+
+  public static Map<String, Object> createSessionTemplate() {
+
+    List<String> colIds = new ArrayList<>();
+    for (int ci = 1; ci <= NUM_COLUMNS; ci++) {
+      colIds.add("c" + ci);
+    }
+    return createSessionTemplate(
+        NUM_TABLES, createColumnDefinitions(colIds), createPrimaryKeys(colIds));
   }
 
   private String getJDBCSchema(String tableName) {
@@ -460,23 +415,13 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT extends Spa
 
         // Next, make sure in-place mutations were applied.
         try {
-          checkSpannerTables(tableNames, cdcEvents);
+          checkSpannerTables(spannerResourceManager, tableNames, cdcEvents, COLUMNS);
           return new CheckResult(true, "Spanner tables contain expected rows.");
         } catch (AssertionError error) {
           return new CheckResult(false, "Spanner tables do not contain expected rows.");
         }
       }
     };
-  }
-
-  /** Helper function for checking the rows of the destination Spanner tables. */
-  private void checkSpannerTables(
-      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
-    tableNames.forEach(
-        tableName ->
-            SpannerAsserts.assertThatStructs(
-                    spannerResourceManager.readTableRecords(tableName, COLUMNS))
-                .hasRecordsUnorderedCaseInsensitiveColumns(cdcEvents.get(tableName)));
   }
 
   /**

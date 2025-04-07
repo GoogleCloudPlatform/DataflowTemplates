@@ -65,7 +65,6 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
-import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
@@ -183,7 +182,6 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
   }
 
   private void createTables(List<String> tableNames) {
-    System.out.println("Running Create Tables: >>>>> " + tableNames.size());
     List<CompletableFuture<Void>> futures = new LinkedList<>();
     for (int i = 0; i < tableNames.size(); i += BATCH_SIZE) {
       int endIndex = Math.min(i + BATCH_SIZE, tableNames.size());
@@ -195,7 +193,6 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(30, TimeUnit.MINUTES);
     } catch (Exception e) {
-      System.out.printf("Timeout or error while creating tables %s", e);
       throw new RuntimeException("Failed to create tables", e);
     }
   }
@@ -212,7 +209,6 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
   }
 
   private void createCloudSqlTables(List<String> tableNames) {
-    System.out.println("Running createCloudSqlTables for table size: " + tableNames.size());
     List<CompletableFuture<Void>> futures =
         tableNames.stream()
             .map(
@@ -224,26 +220,19 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(30, TimeUnit.MINUTES);
     } catch (Exception e) {
-      System.err.printf("Timeout or error while creating Cloud SQL tables: %s%n", e);
       throw new RuntimeException("Failed to create Cloud SQL tables", e);
     }
   }
 
   private void createCloudSqlTableWithRetries(String tableName) {
-    System.out.println("Processing table: " + tableName);
     int retries = 0;
     while (retries < MAX_RETRIES) {
       try {
-        System.out.printf("Creating Cloud SQL table: %s%n", tableName);
         execute(getJDBCSchema(tableName));
-        System.out.printf("Successfully created Cloud SQL table: %s%n", tableName);
         return;
       } catch (Exception e) {
         retries++;
         if (retries == MAX_RETRIES) {
-          System.err.printf(
-              "Failed to create Cloud SQL table after %d retries: %s :: %s%n",
-              MAX_RETRIES, tableName, e);
           throw new RuntimeException("Failed to create Cloud SQL table: " + tableName, e);
         }
         try {
@@ -268,15 +257,10 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
                         while (retries < MAX_RETRIES) {
                           try {
                             cloudSqlResourceManager.write(key, batchedInserts.get(key));
-                            System.out.println("Successfully inserted data into Cloud SQL tables.");
                             break;
                           } catch (Exception e) {
-                            System.out.println("Error on Creation " + e.getMessage());
                             retries++;
                             if (retries == MAX_RETRIES) {
-                              System.out.printf(
-                                  "Failed to insert data into Cloud SQL tables after %s retries: %s",
-                                  MAX_RETRIES, e);
                               throw new RuntimeException(
                                   "Failed to insert data into Cloud SQL tables", e);
                             }
@@ -293,44 +277,28 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(30, TimeUnit.MINUTES);
     } catch (Exception e) {
-      System.out.printf(
-          "Timeout or error while inserting data into Cloud SQL tables %s", e.getMessage());
       return false;
     }
     return true;
   }
 
   private void createSpannerTables(List<String> tableNames, List<CompletableFuture<Void>> futures) {
-    System.out.println(
-        "Running createSpannerTables Tables: >>>>> for the size " + tableNames.size());
     List<String> ddlStatements = new ArrayList<>();
     for (String tableName : tableNames) {
       ddlStatements.add(generateSpannerDDL(tableName));
     }
-    System.out.println(
-        "Generated ddlStatements for createSpannerTables Tables: >>>>> for the size "
-            + ddlStatements.size());
     futures.add(
         CompletableFuture.runAsync(
             () -> {
-              System.out.println("Running createSpannerTables runAsync");
               int retries = 0;
               while (retries < MAX_RETRIES) {
                 try {
-                  System.out.println(
-                      "Going to executes ddlStatements for createSpannerTables Tables: >>>>> for the size "
-                          + ddlStatements.size());
                   spannerResourceManager.executeDdlStatements(ddlStatements);
-                  System.out.println("Successfully created Spanner tableNames: " + tableNames);
                   break;
                 } catch (Exception e) {
-                  System.out.println("Error on Creation " + e.getMessage());
                   log.error("e: ", e);
                   retries++;
                   if (retries == MAX_RETRIES) {
-                    System.out.printf(
-                        "Failed to create Spanner table after %s retries: %s :: %s",
-                        MAX_RETRIES, "tableNames", e);
                     throw new RuntimeException("Failed to create Spanner table: " + tableNames, e);
                   }
                   try {
@@ -345,7 +313,6 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(30, TimeUnit.MINUTES);
     } catch (Exception e) {
-      System.out.printf("Timeout or error while creating tables %s", e);
       throw new RuntimeException("Failed to create tables", e);
     }
   }
@@ -358,18 +325,12 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
 
     // Create JDBC Resource manager
     cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    System.out.println(cloudSqlResourceManager.getHost());
-    System.out.println(cloudSqlResourceManager.getUsername());
-    System.out.println(cloudSqlResourceManager.getDatabaseName());
-    System.out.println(cloudSqlResourceManager.getPort());
-    System.out.println(cloudSqlResourceManager.getPassword());
     // Create Spanner Resource Manager
     SpannerResourceManager.Builder spannerResourceManagerBuilder =
         SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)
             .maybeUseStaticInstance();
     spannerResourceManager = spannerResourceManagerBuilder.build();
 
-    // Generate 5000 table names
     List<String> tableNames = new ArrayList<>();
     for (int i = 1; i <= NUM_TABLES; i++) {
       tableNames.add("DataStreamToSpanner_" + i + "_" + RandomStringUtils.randomAlphanumeric(5));
@@ -458,7 +419,7 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
             .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
 
     // Assert
-    checkSpannerTables(tableNames, cdcEvents);
+    checkSpannerTables(spannerResourceManager, tableNames, cdcEvents, COLUMNS);
     assertThatResult(result).meetsConditions();
   }
 
@@ -482,81 +443,24 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
   }
 
   public static Map<String, Object> createSessionTemplate() {
-    Map<String, Object> sessionTemplate = new LinkedHashMap<>();
-    sessionTemplate.put("SessionName", "NewSession");
-    sessionTemplate.put("EditorName", "");
-    sessionTemplate.put("DatabaseType", "mysql");
-    sessionTemplate.put("DatabaseName", "SP_DATABASE");
-    sessionTemplate.put("Dialect", "google_standard_sql");
-    sessionTemplate.put("Notes", null);
-    sessionTemplate.put("Tags", null);
-    sessionTemplate.put("SpSchema", new LinkedHashMap<>());
-    sessionTemplate.put("SyntheticPKeys", new LinkedHashMap<>());
-    sessionTemplate.put("SrcSchema", new LinkedHashMap<>());
-    sessionTemplate.put("SchemaIssues", new LinkedHashMap<>());
-    sessionTemplate.put("Location", new LinkedHashMap<>());
-    sessionTemplate.put("TimezoneOffset", "+00:00");
-    sessionTemplate.put("SpDialect", "google_standard_sql");
-    sessionTemplate.put("UniquePKey", new LinkedHashMap<>());
-    sessionTemplate.put("Rules", new ArrayList<>());
-    sessionTemplate.put("IsSharded", false);
-    sessionTemplate.put("SpRegion", "");
-    sessionTemplate.put("ResourceValidation", false);
-    sessionTemplate.put("UI", false);
-
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      String tableName = "TABLE" + i;
-      List<String> colIds = Arrays.asList("c1", "c2", "c3", "c4", "c5");
-
-      Map<String, Object> colDefs = new LinkedHashMap<>();
-      for (int j = 1; j <= colIds.size(); j++) {
-        Map<String, Object> colType = new LinkedHashMap<>();
-        colType.put("Name", (j % 2 == 0) ? "STRING" : "NUMERIC");
-        colType.put("Len", (j % 2 == 0) ? 200 : 0);
-        colType.put("IsArray", false);
-
-        Map<String, Object> column = new LinkedHashMap<>();
-        column.put("Name", "column_" + j);
-        column.put("T", colType);
-        column.put("NotNull", (j == 1));
-        column.put(
-            "Comment", "From: column_" + j + ((j % 2 == 0) ? " varchar(200)" : " decimal(10)"));
-        column.put("Id", colIds.get(j - 1));
-
-        colDefs.put(colIds.get(j - 1), column);
-      }
-
-      List<Map<String, Object>> primaryKeys = new ArrayList<>();
-      Map<String, Object> primaryKey = new LinkedHashMap<>();
-      primaryKey.put("ColId", "c1");
-      primaryKey.put("Desc", false);
-      primaryKey.put("Order", 1);
-      primaryKeys.add(primaryKey);
-
-      Map<String, Object> spSchemaEntry = new LinkedHashMap<>();
-      spSchemaEntry.put("Name", tableName);
-      spSchemaEntry.put("ColIds", colIds);
-      spSchemaEntry.put("ShardIdColumn", "");
-      spSchemaEntry.put("ColDefs", colDefs);
-      spSchemaEntry.put("PrimaryKeys", primaryKeys);
-      spSchemaEntry.put("ForeignKeys", null);
-      spSchemaEntry.put("Indexes", null);
-      spSchemaEntry.put("ParentId", "");
-      spSchemaEntry.put("Comment", "Spanner schema for source table " + tableName);
-      spSchemaEntry.put("Id", "t" + i);
-      ((Map<String, Object>) sessionTemplate.get("SpSchema")).put("t" + i, spSchemaEntry);
-
-      Map<String, Object> srcSchemaEntry = new LinkedHashMap<>(spSchemaEntry);
-      srcSchemaEntry.put("Schema", "SRC_DATABASE");
-      ((Map<String, Object>) sessionTemplate.get("SrcSchema")).put("t" + i, srcSchemaEntry);
-
-      Map<String, Object> schemaIssuesEntry = new LinkedHashMap<>();
-      schemaIssuesEntry.put("ColumnLevelIssues", new LinkedHashMap<>());
-      schemaIssuesEntry.put("TableLevelIssues", null);
-      ((Map<String, Object>) sessionTemplate.get("SchemaIssues")).put("t" + i, schemaIssuesEntry);
+    List<String> colIds = Arrays.asList("c1", "c2", "c3", "c4", "c5");
+    List<Map<String, Object>> colTypeConfigs = new ArrayList<>();
+    for (int j = 1; j <= colIds.size(); j++) {
+      Map<String, Object> colType = new LinkedHashMap<>();
+      colType.put("Type", (j % 2 == 0) ? "STRING" : "NUMERIC");
+      colType.put("Name", colIds.get(j - 1));
+      colType.put("Len", (j % 2 == 0) ? 200 : 0);
+      colType.put("IsArray", false);
+      colType.put("NotNull", (j == 1));
+      colType.put(
+          "Comment", "From: column_" + j + ((j % 2 == 0) ? " varchar(200)" : " decimal(10)"));
+      colTypeConfigs.add(colType);
     }
 
-    return sessionTemplate;
+    List<Map<String, Object>> primaryKeys =
+        List.of(Map.of("ColId", colIds.get(0), "Desc", false, "Order", 1));
+
+    return createSessionTemplate(NUM_TABLES, colTypeConfigs, primaryKeys);
   }
 
   private String getJDBCSchema(String tableName) {
@@ -646,31 +550,13 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
 
         // Next, make sure in-place mutations were applied.
         try {
-          checkSpannerTables(tableNames, cdcEvents);
+          checkSpannerTables(spannerResourceManager, tableNames, cdcEvents, COLUMNS);
           return new CheckResult(true, "Spanner tables contain expected rows.");
         } catch (AssertionError error) {
           return new CheckResult(false, "Spanner tables do not contain expected rows.");
         }
       }
     };
-  }
-
-  /** Helper function for checking the rows of the destination Spanner tables. */
-  private void checkSpannerTables(
-      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
-    List<CompletableFuture<Void>> futures =
-        tableNames.stream()
-            .map(
-                tableName ->
-                    CompletableFuture.runAsync(
-                        () -> {
-                          SpannerAsserts.assertThatStructs(
-                                  spannerResourceManager.readTableRecords(tableName, COLUMNS))
-                              .hasRecordsUnorderedCaseInsensitiveColumns(cdcEvents.get(tableName));
-                        },
-                        EXECUTOR_SERVICE))
-            .toList();
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
   }
 
   /**
