@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.endtoend;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
@@ -43,6 +44,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
@@ -158,6 +160,81 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     String shardFileContents = ja.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  public PipelineLauncher.LaunchInfo launchBulkDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      PubsubResourceManager pubsubResourceManager,
+      String identifierSuffix,
+      String shardingCustomJarPath,
+      String shardingCustomClassName,
+      String sourceDbTimezoneOffset,
+      CustomTransformation customTransformation,
+      String sourceType)
+      throws IOException {
+
+    String bulkSubscriptionName =
+        createPubsubResources(
+            getClass().getSimpleName(),
+            pubsubResourceManager,
+            getGcsPath("dlq", gcsResourceManager)
+                .replace("gs://" + gcsResourceManager.getBucket(), ""),
+            gcsResourceManager,
+            "bulk").toString();
+
+    Map<String, String> params =
+        new HashMap<>() {
+          {
+            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+            put("instanceId", spannerResourceManager.getInstanceId());
+            put("databaseId", spannerResourceManager.getDatabaseId());
+            put("spannerProjectId", PROJECT);
+            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
+            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
+            put(
+                "sourceShardsFilePath",
+                getGcsPath(
+                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                        ? "input/cassandra-config.conf"
+                        : "input/shard.json",
+                    gcsResourceManager));
+            put("changeStreamName", "allstream");
+            put("dlqGcsPubSubSubscription", subscriptionName);
+            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
+            put("maxShardConnections", "5");
+            put("maxNumWorkers", "1");
+            put("numWorkers", "1");
+            put("sourceType", sourceType);
+          }
+        };
+
+    if (shardingCustomClassName != null) {
+      params.put("shardingCustomClassName", shardingCustomClassName);
+    }
+
+    if (sourceDbTimezoneOffset != null) {
+      params.put("sourceDbTimezoneOffset", sourceDbTimezoneOffset);
+    }
+
+    if (customTransformation != null) {
+      params.put(
+          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
+      params.put("transformationClassName", customTransformation.classPath());
+    }
+
+    // Construct template
+    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
+    // /-DunifiedWorker=true when using runner v2
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath);
+    options.setParameters(params);
+    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
   }
 
   public PipelineLauncher.LaunchInfo launchDataflowJob(
