@@ -1,0 +1,9 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.RabbitMqToPubSub",
+  "classPath": "/template/rabbitmq-to-pubsub/*:/template/rabbitmq-to-pubsub/libs/*:/template/rabbitmq-to-pubsub/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"rabbitmq-to-pubsub\"}",
+    "autoscalingAlgorithm": "THROUGHPUT_BASED",
+    "maxNumWorkers": "10"
+  }
+}
