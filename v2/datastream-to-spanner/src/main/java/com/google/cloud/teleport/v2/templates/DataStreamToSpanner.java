@@ -667,6 +667,8 @@ public class DataStreamToSpanner {
                     .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
+    // TODO: spannerConfig = SpannerServiceFactoryImpl.createSpannerService(spannerConfig,
+    // <failureinjectionparameter>);
     SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database

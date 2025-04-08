@@ -27,7 +27,6 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
-import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -75,7 +74,7 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToBigQuery.class)
 @RunWith(JUnit4.class)
 public class DataStreamToBigQueryIT extends TemplateTestBase {
