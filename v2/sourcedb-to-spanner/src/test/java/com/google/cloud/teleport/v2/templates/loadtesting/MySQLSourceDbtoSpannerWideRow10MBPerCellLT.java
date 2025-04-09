@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
 
-  private static final String FETCH_SIZE = "10";
+  private static final String FETCH_SIZE = "100";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCell100GBTest() throws Exception {
@@ -43,7 +43,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     String password =
         accessSecret(
             "projects/209835939752/secrets/sourcedb-mysql-to-spanner-cloudsql-password/versions/1");
-    String database = "10MiBPerCell";
+    String database = "8MiBPerCell";
     String host =
         accessSecret(
             "projects/209835939752/secrets/sourcedb-mysql-to-spanner-cloudsql-ip-address/versions/1");
@@ -55,7 +55,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 1700);
+            put("WideRowTable", 2000);
           }
         };
 
