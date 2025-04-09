@@ -22,21 +22,20 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.Tuple;
+import com.google.cloud.bigquery.Field;
 import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
+import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TimePartitioning;
-import com.google.cloud.bigquery.Field;
-import com.google.cloud.bigquery.StandardSQLTypeName;
-import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -144,11 +143,14 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
 
     // Assign timestamps from the list
     List<RowToInsert> bigQueryRows = new ArrayList<>();
-    for (int i = 0; i < generatedTable.y().size(); i++) {
-      Map<String, Object> content = new HashMap<>(generatedTable.y().get(i).getContent());
+    List<RowToInsert> generatedBigQueryRows = generatedTable.y();
+
+    for (int i = 0; i < generatedBigQueryRows.size(); i++) {
+      RowToInsert generatedRow = generatedBigQueryRows.get(i);
+      Map<String, Object> content = new HashMap<>(generatedRow.getContent());
       content.put(
           PARTITION_FIELD, timestamps.get(i % timestamps.size())); // Cycle through timestamps
-      bigQueryRows.add(RowToInsert.of(generatedTable.y().get(i).getInsertId(), content));
+      bigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
     }
 
     // Set up partition test table
@@ -163,13 +165,15 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     Pattern expectedFilePattern = Pattern.compile(".*");
 
     List<RowToInsert> expectedPartitionRows =
-        bigQueryRows.stream().filter(
-            row -> {
-              String timeStr = row.getContent().get(PARTITION_FIELD).toString();
-              Instant timestamp = Instant.parse(timeStr);
-              Instant truncatedTimestamp = timestamp.truncatedTo(ChronoUnit.HOURS);
-              return truncatedTimestamp.equals(Instant.parse("2025-03-06T15:00:00Z"));
-            }).collect(Collectors.toList());
+        bigQueryRows.stream()
+            .filter(
+                row -> {
+                  String timeStr = row.getContent().get(PARTITION_FIELD).toString();
+                  Instant timestamp = Instant.parse(timeStr);
+                  Instant truncatedTimestamp = timestamp.truncatedTo(ChronoUnit.HOURS);
+                  return truncatedTimestamp.equals(Instant.parse("2025-03-06T15:00:00Z"));
+                })
+            .collect(Collectors.toList());
 
     // Configure pipeline launch
     LaunchConfig.Builder options =
