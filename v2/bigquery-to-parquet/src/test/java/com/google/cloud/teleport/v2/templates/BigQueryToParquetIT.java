@@ -55,7 +55,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link BigQueryToParquet}. */
-// SkipDirectRunnerTest: BigQueryIO fails mutation check https://github.com/apache/beam/issues/25319
 @Category({TemplateIntegrationTest.class})
 @TemplateIntegrationTest(BigQueryToParquet.class)
 @RunWith(JUnit4.class)
