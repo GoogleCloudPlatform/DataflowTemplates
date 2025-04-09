@@ -73,6 +73,7 @@ import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTableCollection;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerToBigQueryUtils;
 import com.google.common.collect.ImmutableList;
@@ -106,24 +107,24 @@ public class SchemaUtilsTest {
         .thenReturn(mockReadContext);
     spannerColumnsOfAllTypes =
         ImmutableList.of(
-            TrackedSpannerColumn.create(BOOLEAN_COL, Type.bool(), 1, 1),
-            TrackedSpannerColumn.create(BYTES_COL, Type.bytes(), 2, 2),
-            TrackedSpannerColumn.create(DATE_COL, Type.date(), 3, 3),
-            TrackedSpannerColumn.create(FLOAT64_COL, Type.float64(), 4, 4),
-            TrackedSpannerColumn.create(INT64_COL, Type.int64(), 5, 5),
-            TrackedSpannerColumn.create(JSON_COL, Type.json(), 6, -1),
-            TrackedSpannerColumn.create(NUMERIC_COL, Type.numeric(), 7, 6),
-            TrackedSpannerColumn.create(STRING_COL, Type.string(), 8, 7),
-            TrackedSpannerColumn.create(TIMESTAMP_COL, Type.timestamp(), 9, 8),
-            TrackedSpannerColumn.create(BOOLEAN_ARRAY_COL, Type.array(Type.bool()), 10, -1),
-            TrackedSpannerColumn.create(BYTES_ARRAY_COL, Type.array(Type.bytes()), 11, -1),
-            TrackedSpannerColumn.create(DATE_ARRAY_COL, Type.array(Type.date()), 12, -1),
-            TrackedSpannerColumn.create(FLOAT64_ARRAY_COL, Type.array(Type.float64()), 13, -1),
-            TrackedSpannerColumn.create(INT64_ARRAY_COL, Type.array(Type.int64()), 14, -1),
-            TrackedSpannerColumn.create(JSON_ARRAY_COL, Type.array(Type.json()), 15, -1),
-            TrackedSpannerColumn.create(NUMERIC_ARRAY_COL, Type.array(Type.numeric()), 16, -1),
-            TrackedSpannerColumn.create(STRING_ARRAY_COL, Type.array(Type.string()), 17, -1),
-            TrackedSpannerColumn.create(TIMESTAMP_ARRAY_COL, Type.array(Type.timestamp()), 18, -1));
+            TrackedSpannerColumn.create(null, BOOLEAN_COL, Type.bool(), 1, 1),
+            TrackedSpannerColumn.create(null, BYTES_COL, Type.bytes(), 2, 2),
+            TrackedSpannerColumn.create(null, DATE_COL, Type.date(), 3, 3),
+            TrackedSpannerColumn.create(null, FLOAT64_COL, Type.float64(), 4, 4),
+            TrackedSpannerColumn.create(null, INT64_COL, Type.int64(), 5, 5),
+            TrackedSpannerColumn.create(null, JSON_COL, Type.json(), 6, -1),
+            TrackedSpannerColumn.create(null, NUMERIC_COL, Type.numeric(), 7, 6),
+            TrackedSpannerColumn.create(null, STRING_COL, Type.string(), 8, 7),
+            TrackedSpannerColumn.create(null, TIMESTAMP_COL, Type.timestamp(), 9, 8),
+            TrackedSpannerColumn.create(null, BOOLEAN_ARRAY_COL, Type.array(Type.bool()), 10, -1),
+            TrackedSpannerColumn.create(null, BYTES_ARRAY_COL, Type.array(Type.bytes()), 11, -1),
+            TrackedSpannerColumn.create(null, DATE_ARRAY_COL, Type.array(Type.date()), 12, -1),
+            TrackedSpannerColumn.create(null, FLOAT64_ARRAY_COL, Type.array(Type.float64()), 13, -1),
+            TrackedSpannerColumn.create(null, INT64_ARRAY_COL, Type.array(Type.int64()), 14, -1),
+            TrackedSpannerColumn.create(null, JSON_ARRAY_COL, Type.array(Type.json()), 15, -1),
+            TrackedSpannerColumn.create(null, NUMERIC_ARRAY_COL, Type.array(Type.numeric()), 16, -1),
+            TrackedSpannerColumn.create(null, STRING_ARRAY_COL, Type.array(Type.string()), 17, -1),
+            TrackedSpannerColumn.create(null, TIMESTAMP_ARRAY_COL, Type.array(Type.timestamp()), 18, -1));
   }
 
   @Test
@@ -133,7 +134,7 @@ public class SchemaUtilsTest {
     mockInformationSchemaColumnsQuery();
     mockInformationSchemaKeyColumnUsageQuery();
     String sql =
-        "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+        "SELECT TABLE_NAME, TABLE_SCHEMA, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
     when(mockReadContext.executeQuery(
             Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
@@ -144,20 +145,20 @@ public class SchemaUtilsTest {
                     Type.StructField.of("COLUMN_NAME", Type.string())),
                 Collections.emptyList()));
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
                 mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, now)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+        ImmutableList.of(TrackedSpannerColumn.create(null, "SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+            TrackedSpannerColumn.create(null, "FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create(null, "LastName", Type.string(), 3, -1));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 
@@ -179,19 +180,19 @@ public class SchemaUtilsTest {
                     Type.StructField.of("column_name", Type.string())),
                 Collections.emptyList()));
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, now)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+        ImmutableList.of(TrackedSpannerColumn.create(null, "SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+            TrackedSpannerColumn.create(null, "FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create(null, "LastName", Type.string(), 3, -1));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 
@@ -213,20 +214,20 @@ public class SchemaUtilsTest {
                     Type.StructField.of("COLUMN_NAME", Type.string())),
                 Collections.emptyList()));
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
                 mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+        ImmutableList.of(TrackedSpannerColumn.create(null,"SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+            TrackedSpannerColumn.create(null, "FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create(null, "LastName", Type.string(), 3, -1));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 
@@ -248,19 +249,19 @@ public class SchemaUtilsTest {
                     Type.StructField.of("COLUMN_NAME", Type.string())),
                 Collections.emptyList()));
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
-        ImmutableList.of(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
+        ImmutableList.of(TrackedSpannerColumn.create(null, "SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         ImmutableList.of(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+            TrackedSpannerColumn.create(null, "FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create(null, "LastName", Type.string(), 3, -1));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 
@@ -367,19 +368,19 @@ public class SchemaUtilsTest {
                     Type.StructField.of("COLUMN_NAME", Type.string())),
                 Collections.emptyList()));
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
                 mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, now)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
         ImmutableList.of(
             TrackedSpannerColumn.create("SingerId2", Type.int64(), 2, 1),
             TrackedSpannerColumn.create("SingerId1", Type.int64(), 1, 2));
     List<TrackedSpannerColumn> singersNonPkColumns = Collections.emptyList();
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 
@@ -415,18 +416,18 @@ public class SchemaUtilsTest {
                         .build())));
     // spotless:on
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
                 mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
         Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         Collections.singletonList(TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 
@@ -462,17 +463,17 @@ public class SchemaUtilsTest {
                         .build())));
     // spotless:on
 
-    Map<String, TrackedSpannerTable> actualSpannerTableByName =
+    TrackedSpannerTableCollection actualSpannerTableByName =
         new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
-            .getSpannerTableByName();
+            .getSpannerTables();
 
     List<TrackedSpannerColumn> singersPkColumns =
         Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), 1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         Collections.singletonList(TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1));
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
     assertThat(actualSpannerTableByName).isEqualTo(expectedSpannerTableByName);
   }
 

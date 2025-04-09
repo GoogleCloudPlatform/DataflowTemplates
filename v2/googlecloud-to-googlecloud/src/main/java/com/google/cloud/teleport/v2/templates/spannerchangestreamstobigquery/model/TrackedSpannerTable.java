@@ -60,6 +60,13 @@ public final class TrackedSpannerTable implements Serializable {
   }
 
   public TrackedSpannerTable(
+      String tableName,
+      List<TrackedSpannerColumn> pkColumns,
+      List<TrackedSpannerColumn> nonPkColumns) {
+    this(null, tableName, pkColumns, nonPkColumns);
+  }
+
+  public TrackedSpannerTable(
       String tableSchema,
       String tableName,
       List<TrackedSpannerColumn> pkColumns,

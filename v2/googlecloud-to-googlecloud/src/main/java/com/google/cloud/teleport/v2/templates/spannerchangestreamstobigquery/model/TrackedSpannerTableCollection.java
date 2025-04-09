@@ -129,4 +129,21 @@ public class TrackedSpannerTableCollection implements Collection<TrackedSpannerT
     public String toString() {
         return "TrackedSpannerTableCollection{size=" + size() + ", tables=" + tables + "}";
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        TrackedSpannerTableCollection that = (TrackedSpannerTableCollection) o;
+        return tables.equals(that.tables);
+    }
+
+    @Override
+    public int hashCode() {
+        return tables.hashCode();
+    }
 }

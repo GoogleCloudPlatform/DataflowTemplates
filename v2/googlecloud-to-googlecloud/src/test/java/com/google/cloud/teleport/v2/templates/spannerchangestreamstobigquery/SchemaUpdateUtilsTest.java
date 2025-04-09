@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.mod
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTableCollection;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SchemaUpdateUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
 import java.util.ArrayList;
@@ -62,15 +63,17 @@ public final class SchemaUpdateUtilsTest {
     when(mockSpannerAccessor.getDatabaseClient()).thenReturn(mockDatabaseClient);
   }
 
-  public Map<String, TrackedSpannerTable> createSpannerTableByName() {
+  public TrackedSpannerTableCollection createSpannerTableCollection() {
     List<TrackedSpannerColumn> singersPkColumns =
-        Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), -1, 1));
+        Collections.singletonList(TrackedSpannerColumn.create(null, "SingerId", Type.int64(), -1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
-        Collections.singletonList(TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1));
-    Map<String, TrackedSpannerTable> spannerTableByName = new HashMap<>();
-    spannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
-    return spannerTableByName;
+        Collections.singletonList(TrackedSpannerColumn.create(null, "FirstName", Type.string(), 2, -1));
+    TrackedSpannerTableCollection collection = new TrackedSpannerTableCollection();
+    collection.add(
+        new TrackedSpannerTable(null, "Singers", singersPkColumns, singersNonPkColumns)
+    );
+
+    return collection;
   }
 
   @Test
@@ -96,8 +99,7 @@ public final class SchemaUpdateUtilsTest {
             ValueCaptureType.OLD_AND_NEW_VALUES,
             1L,
             1L);
-    Map<String, TrackedSpannerTable> spannerTableByName = createSpannerTableByName();
-    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)).isEqualTo(false);
+    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, createSpannerTableCollection())).isEqualTo(false);
   }
 
   @Test
@@ -125,8 +127,7 @@ public final class SchemaUpdateUtilsTest {
             ValueCaptureType.OLD_AND_NEW_VALUES,
             1L,
             1L);
-    Map<String, TrackedSpannerTable> spannerTableByName = createSpannerTableByName();
-    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)).isEqualTo(true);
+    assertThat(SchemaUpdateUtils.detectDiffColumnInMod(mod, createSpannerTableCollection())).isEqualTo(true);
   }
 
   @Test
@@ -154,23 +155,23 @@ public final class SchemaUpdateUtilsTest {
             ValueCaptureType.NEW_ROW,
             1L,
             1L);
-    Map<String, TrackedSpannerTable> spannerTableByName = createSpannerTableByName();
+    TrackedSpannerTableCollection spannerTables = createSpannerTableCollection();
     SchemaUpdateUtils.updateStoredSchemaNewRow(
-        mod, spannerTableByName, Dialect.GOOGLE_STANDARD_SQL);
-    assertThat(spannerTableByName.get("Singers").getNonPkColumns().size()).isEqualTo(2);
+        mod, spannerTables, Dialect.GOOGLE_STANDARD_SQL);
+    assertThat(spannerTables.getTableByFullyQualifiedName("Singers").get().getNonPkColumns().size()).isEqualTo(2);
   }
 
   public void testUpdateStoredSchemaInNeeded(ValueCaptureType valueCaptureType, Dialect dialect) {
     // Construct expectedSpannerTableByName got from INFORMATION_SCHEMA
-    Map<String, TrackedSpannerTable> expectedSpannerTableByName = new HashMap<>();
+    TrackedSpannerTableCollection expectedSpannerTableByName = new TrackedSpannerTableCollection();
     List<TrackedSpannerColumn> singersPkColumns =
-        Collections.singletonList(TrackedSpannerColumn.create("SingerId", Type.int64(), -1, 1));
+        Collections.singletonList(TrackedSpannerColumn.create(null, "SingerId", Type.int64(), -1, 1));
     List<TrackedSpannerColumn> singersNonPkColumns =
         Arrays.asList(
-            TrackedSpannerColumn.create("FirstName", Type.string(), 2, -1),
-            TrackedSpannerColumn.create("LastName", Type.string(), 3, -1));
-    expectedSpannerTableByName.put(
-        "Singers", new TrackedSpannerTable("Singers", singersPkColumns, singersNonPkColumns));
+            TrackedSpannerColumn.create(null, "FirstName", Type.string(), 2, -1),
+            TrackedSpannerColumn.create(null, "LastName", Type.string(), 3, -1));
+    expectedSpannerTableByName.add(
+        new TrackedSpannerTable(null, "Singers", singersPkColumns, singersNonPkColumns));
     // Construct the current mod.
     ObjectNode pkColJsonNode = new ObjectNode(JsonNodeFactory.instance);
     pkColJsonNode.put("SingerId", 1);
@@ -200,16 +201,16 @@ public final class SchemaUpdateUtilsTest {
         Mockito.mockConstruction(
             SpannerChangeStreamsUtils.class,
             (mock, context) -> {
-              when(mock.getSpannerTableByName()).thenReturn(expectedSpannerTableByName);
+              when(mock.getSpannerTables()).thenReturn(expectedSpannerTableByName);
             })) {
       // The current stored schema information.
-      Map<String, TrackedSpannerTable> currSpannerTableByName = createSpannerTableByName();
-      currSpannerTableByName =
+      TrackedSpannerTableCollection spannerTables = createSpannerTableCollection();
+      spannerTables =
           SchemaUpdateUtils.updateStoredSchemaIfNeeded(
-              mockSpannerAccessor, changeStreamName, dialect, mod, currSpannerTableByName);
+              mockSpannerAccessor, changeStreamName, dialect, mod, spannerTables);
       // Ensure the stored schema is updated with the schema from INFORMATION_SCHEMA.
-      assertThat(expectedSpannerTableByName.get("Singers").getNonPkColumns().size()).isEqualTo(2);
-      assertThat(currSpannerTableByName.get("Singers").getNonPkColumns().size()).isEqualTo(2);
+      assertThat(expectedSpannerTableByName.getTableByFullyQualifiedName("Singers").get().getNonPkColumns().size()).isEqualTo(2);
+      assertThat(spannerTables.getTableByFullyQualifiedName("Singers").get().getNonPkColumns().size()).isEqualTo(2);
     }
   }
 

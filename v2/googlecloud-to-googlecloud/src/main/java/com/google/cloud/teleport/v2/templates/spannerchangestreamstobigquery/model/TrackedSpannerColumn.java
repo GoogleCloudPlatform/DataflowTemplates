@@ -31,6 +31,11 @@ public abstract class TrackedSpannerColumn implements Serializable {
     return new AutoValue_TrackedSpannerColumn(tableSchema, name, type, ordinalPosition, pkOrdinalPosition);
   }
 
+  public static TrackedSpannerColumn create(
+      String name, Type type, int ordinalPosition, int pkOrdinalPosition) {
+    return TrackedSpannerColumn.create(null, name, type, ordinalPosition, pkOrdinalPosition);
+  }
+
   public abstract String getTableSchema();
 
   public abstract String getName();
