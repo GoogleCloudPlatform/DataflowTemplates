@@ -31,7 +31,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String FETCH_SIZE = "500";
+  private static final String FETCH_SIZE = "100";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCell100GBTest() throws Exception {
