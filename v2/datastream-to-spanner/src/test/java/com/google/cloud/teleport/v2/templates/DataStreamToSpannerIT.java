@@ -214,11 +214,6 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
             ? CloudMySQLResourceManager.builder(testName).build()
             : CloudOracleResourceManager.builder(testName).build();
 
-    System.out.println("#######");
-    System.out.println(cloudSqlResourceManager.getHost());
-    System.out.println(cloudSqlResourceManager.getUsername());
-    System.out.println(cloudSqlResourceManager.getPassword());
-
     // Create Spanner Resource Manager
     SpannerResourceManager.Builder spannerResourceManagerBuilder =
         SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)

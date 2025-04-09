@@ -23,7 +23,6 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -46,7 +45,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
-import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -160,92 +158,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  public PipelineLauncher.LaunchInfo launchDataflowJob(
-      GcsResourceManager gcsResourceManager,
-      SpannerResourceManager spannerResourceManager,
-      SpannerResourceManager spannerMetadataResourceManager,
-      String subscriptionName,
-      String identifierSuffix,
-      String shardingCustomJarPath,
-      String shardingCustomClassName,
-      String sourceDbTimezoneOffset,
-      CustomTransformation customTransformation,
-      String sourceType)
-      throws IOException {
-
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
-            put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
-            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "5");
-            put("maxNumWorkers", "1");
-            put("numWorkers", "1");
-            put("sourceType", sourceType);
-          }
-        };
-
-    if (shardingCustomJarPath != null) {
-      params.put(
-          "shardingCustomJarPath",
-          getGcsFullPath(gcsResourceManager, shardingCustomJarPath, identifierSuffix));
-    }
-    if (shardingCustomClassName != null) {
-      params.put("shardingCustomClassName", shardingCustomClassName);
-    }
-
-    if (sourceDbTimezoneOffset != null) {
-      params.put("sourceDbTimezoneOffset", sourceDbTimezoneOffset);
-    }
-
-    if (customTransformation != null) {
-      params.put(
-          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
-      params.put("transformationClassName", customTransformation.classPath());
-    }
-
-    // Construct template
-    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
-    // /-DunifiedWorker=true when using runner v2
-    PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
-    // Run
-    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
-    assertThatPipeline(jobInfo).isRunning();
-    return jobInfo;
-  }
-
   public String getGcsFullPath(
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
         artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
-  }
-
-  protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
-      throws IOException, InterruptedException {
-    String[] shellCommand = {"/bin/bash", "-c", "cd ../spanner-custom-shard"};
-
-    Process exec = Runtime.getRuntime().exec(shellCommand);
-
-    IORedirectUtil.redirectLinesLog(exec.getInputStream(), LOG);
-    IORedirectUtil.redirectLinesLog(exec.getErrorStream(), LOG);
-
-    if (exec.waitFor() != 0) {
-      throw new RuntimeException("Error staging template, check Maven logs.");
-    }
-    gcsResourceManager.uploadArtifact(
-        "input/customShard.jar",
-        "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
   }
 
   public PipelineLauncher.LaunchInfo launchRRDataflowJob(
@@ -253,9 +169,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
       PubsubResourceManager pubsubResourceManager,
-      String sourceType,
-      String network,
-      String subnetwork)
+      String sourceType)
       throws IOException {
     String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
 
@@ -288,8 +202,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            // .addParameter("network", network)
-            // .addParameter("subnetwork", subnetwork)
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
