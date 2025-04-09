@@ -37,6 +37,7 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTableCollection;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.BigQueryUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SchemaUpdateUtils;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils.SpannerChangeStreamsUtils;
@@ -51,6 +52,7 @@ import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -126,7 +128,8 @@ public final class FailsafeModJsonToTableRowTransformer {
       private transient SpannerAccessor spannerAccessor;
       private final SpannerConfig spannerConfig;
       private final String spannerChangeStream;
-      private Map<String, TrackedSpannerTable> spannerTableByName;
+      /** The tables that are part of the change stream */
+      private TrackedSpannerTableCollection spannerTables;
       private final ImmutableSet<String> ignoreFields;
       public TupleTag<TableRow> transformOut;
       public TupleTag<FailsafeElement<String, String>> transformDeadLetterOut;
@@ -173,10 +176,10 @@ public final class FailsafeModJsonToTableRowTransformer {
         seenException = false;
         try {
           spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
-          spannerTableByName =
+          spannerTables =
               new SpannerChangeStreamsUtils(
                       spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
-                  .getSpannerTableByName();
+                  .getSpannerTables();
         } catch (RuntimeException e) {
           LOG.error(
               String.format(
@@ -259,18 +262,17 @@ public final class FailsafeModJsonToTableRowTransformer {
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
 
         // Detect schema updates (newly added tables/columns) from mod and propagate changes into
-        // spannerTableByName which stores schema information by table name.
+        // spannerTables which stores schema information
         // Not able to get schema update from DELETE mods as they have empty newValuesJson.
         if (mod.getModType() != ModType.DELETE) {
-          spannerTableByName =
+          spannerTables =
               SchemaUpdateUtils.updateStoredSchemaIfNeeded(
-                  spannerAccessor, spannerChangeStream, dialect, mod, spannerTableByName);
+                  spannerAccessor, spannerChangeStream, dialect, mod, spannerTables);
         }
 
         try {
-          spannerTable = checkStateNotNull(spannerTableByName.get(spannerTableName));
-
-        } catch (IllegalStateException e) {
+          spannerTable = spannerTables.getTableByFullyQualifiedName(spannerTableName).get();
+        } catch (NoSuchElementException e) {
           String errorMessage =
               String.format(
                   "Can not find spanner table %s in spannerTableByName", spannerTableName);

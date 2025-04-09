@@ -18,11 +18,15 @@ package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sc
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TableIdentifier;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTableCollection;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ValueCaptureType;
@@ -36,8 +40,13 @@ public class SchemaUpdateUtils {
 
   // Detect if there's a table/column difference between the mod and the stored map.
   public static boolean detectDiffColumnInMod(
-      Mod mod, Map<String, TrackedSpannerTable> spannerTableByName) {
-    TrackedSpannerTable spannerTable = spannerTableByName.get(mod.getTableName());
+      Mod mod, TrackedSpannerTableCollection spannerTableByName
+  ) {
+    Optional<TrackedSpannerTable> maybeSpannerTable = spannerTableByName.getTableByFullyQualifiedName(mod.getTableName());
+    if (!maybeSpannerTable.isPresent()) {
+      return false;
+    }
+    TrackedSpannerTable spannerTable = maybeSpannerTable.get();
     Set<String> keySetOfNewValuesJsonObject =
         mod.getNewValuesJson() == ""
             ? new JSONObject("{}").keySet()
@@ -51,49 +60,51 @@ public class SchemaUpdateUtils {
     return !nonPkColumnsNamesSet.containsAll(keySetOfNewValuesJsonObject);
   }
 
-  // Update the stored schema information (spannerTableByName) by fetching from the mod.
+  // Update the stored schema information by fetching from the mod.
   public static void updateStoredSchemaNewRow(
-      Mod mod, Map<String, TrackedSpannerTable> spannerTableByName, Dialect dialect) {
+      Mod mod, TrackedSpannerTableCollection spannerTables, Dialect dialect) {
     JSONObject keysJsonObject = new JSONObject(mod.getKeysJson());
     JSONObject newValuesJsonObject =
         mod.getNewValuesJson() == ""
             ? new JSONObject("{}")
             : new JSONObject(mod.getNewValuesJson());
+
     String spannerTableName = mod.getTableName();
+    TableIdentifier tableIdentifier = TableIdentifier.create(spannerTableName, dialect);
+    
     Map<String, ModColumnType> modColumnTypeMap = mod.getRowTypeAsMap();
+    TrackedSpannerTable spannerTable = spannerTables.getTableByFullyQualifiedName(spannerTableName).orElse(null);
     // Create a new table for spannerTableName if it's not in spannerTableByName.
-    if (!spannerTableByName.containsKey(spannerTableName)) {
+    if (spannerTable == null) {
       // Create an empty list of pk columns for the new table.
       List<TrackedSpannerColumn> pkColumns = new ArrayList<>();
       // Create an empty list of non-pk columns for the new table.
       List<TrackedSpannerColumn> nonPkColumns = new ArrayList<>();
       // Introduce the new table into spannerTableByName.
-      TrackedSpannerTable spannerTableObj =
-          new TrackedSpannerTable(spannerTableName, pkColumns, nonPkColumns);
-      spannerTableByName.put(spannerTableName, spannerTableObj);
+      spannerTable = new TrackedSpannerTable(tableIdentifier.getTableSchema(), spannerTableName, pkColumns, nonPkColumns);
+      spannerTables.add(spannerTable);
       // Populate pk columns from Mod to TrackedSpannerTable.
       for (String pkColumnName : keysJsonObject.keySet()) {
         ModColumnType spannerColumn = modColumnTypeMap.get(pkColumnName);
         String typeStr =
             TypesUtils.extractTypeFromTypeCode(new JSONObject(spannerColumn.getType().getCode()));
-        spannerTableByName
-            .get(spannerTableName)
-            .addTrackedSpannerColumn(
+        spannerTable.addTrackedSpannerColumn(
+          tableIdentifier.getTableSchema(),
                 pkColumnName, typeStr, -1, (int) spannerColumn.getOrdinalPosition(), dialect);
       }
+      spannerTables.add(spannerTable);
     }
 
     // Populate nonPkColumns from Mod to TrackedSpannerTable.
-    Set<String> nonPkColumnsSet =
-        spannerTableByName.get(spannerTableName).getNonPkColumnsNamesSet();
+    Set<String> nonPkColumnsSet = spannerTable.getNonPkColumnsNamesSet();
     for (String nonPkColumnName : newValuesJsonObject.keySet()) {
       if (!nonPkColumnsSet.contains(nonPkColumnName)) {
         ModColumnType spannerColumn = modColumnTypeMap.get(nonPkColumnName);
         String typeStr =
             TypesUtils.extractTypeFromTypeCode(new JSONObject(spannerColumn.getType().getCode()));
-        spannerTableByName
-            .get(spannerTableName)
+        spannerTable
             .addTrackedSpannerColumn(
+                tableIdentifier.getTableSchema(),
                 spannerColumn.getName(),
                 typeStr,
                 (int) spannerColumn.getOrdinalPosition(),
@@ -106,30 +117,35 @@ public class SchemaUpdateUtils {
   // For NEW_VALUES and OLD_AND_NEW_VALUES, update the stored schema information by looking up
   // INFORMATION_SCHEMA at the mod's commit timestamp.
   // For NEW_ROW, update the stored schema information by fetching from the mod.
-  public static Map<String, TrackedSpannerTable> updateStoredSchemaIfNeeded(
+  public static TrackedSpannerTableCollection updateStoredSchemaIfNeeded(
       SpannerAccessor spannerAccessor,
       String spannerChangeStream,
       Dialect dialect,
       Mod mod,
-      Map<String, TrackedSpannerTable> spannerTableByName) {
-    if (!spannerTableByName.containsKey(mod.getTableName())
-        || SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)) {
-      if (mod.getValueCaptureType() != ValueCaptureType.NEW_ROW) {
+      TrackedSpannerTableCollection spannerTables
+  ) {
+    TrackedSpannerTable spannerTable = spannerTables.getTableByFullyQualifiedName(mod.getTableName()).orElse(null);
+
+    if (spannerTable == null || !SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTables)) {
+      return spannerTables;
+    }
+
+    // the mod is a column diff mod
+    if (mod.getValueCaptureType() != ValueCaptureType.NEW_ROW) {
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
         // TODO:b/322630434 Consider updating the schema only for one table at a time.
-        spannerTableByName =
-            new SpannerChangeStreamsUtils(
-                    spannerAccessor.getDatabaseClient(),
-                    spannerChangeStream,
-                    dialect,
-                    spannerCommitTimestamp)
-                .getSpannerTableByName();
-      } else {
-        updateStoredSchemaNewRow(mod, spannerTableByName, dialect);
-      }
-    }
-    return spannerTableByName;
+        return new SpannerChangeStreamsUtils(
+                spannerAccessor.getDatabaseClient(),
+                spannerChangeStream,
+                dialect,
+                spannerCommitTimestamp)
+            .getSpannerTables();
+   } else {
+        updateStoredSchemaNewRow(mod, spannerTables, dialect);
+   }
+
+   return spannerTables;
   }
 }

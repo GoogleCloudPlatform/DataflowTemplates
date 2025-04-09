@@ -27,9 +27,11 @@ import java.io.Serializable;
 public abstract class TrackedSpannerColumn implements Serializable {
 
   public static TrackedSpannerColumn create(
-      String name, Type type, int ordinalPosition, int pkOrdinalPosition) {
-    return new AutoValue_TrackedSpannerColumn(name, type, ordinalPosition, pkOrdinalPosition);
+      String tableSchema, String name, Type type, int ordinalPosition, int pkOrdinalPosition) {
+    return new AutoValue_TrackedSpannerColumn(tableSchema, name, type, ordinalPosition, pkOrdinalPosition);
   }
+
+  public abstract String getTableSchema();
 
   public abstract String getName();
 

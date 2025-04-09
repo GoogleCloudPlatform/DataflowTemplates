@@ -26,8 +26,11 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TableIdentifier;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTable;
+import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerTableCollection;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,6 +64,8 @@ public class SpannerChangeStreamsUtils {
   private static final String INFORMATION_SCHEMA_POSTGRES_CONSTRAINT_NAME = "constraint_name";
   private static final String INFORMATION_SCHEMA_ALL = "ALL";
   private static final String INFORMATION_SCHEMA_POSTGRES_ALL = "all";
+  private static final String INFORMATION_SCHEMA_TABLE_SCHEMA = "TABLE_SCHEMA";
+  private static final String INFORMATION_SCHEMA_POSTGRES_TABLE_SCHEMA = "table_schema";
 
   private DatabaseClient databaseClient;
   private String changeStreamName;
@@ -85,45 +90,50 @@ public class SpannerChangeStreamsUtils {
    *     {@link TrackedSpannerTable} object of the table name. This function should be called once
    *     in the initialization of the DoFn.
    */
-  public Map<String, TrackedSpannerTable> getSpannerTableByName() {
-    Set<String> spannerTableNames = getSpannerTableNamesTrackedByChangeStreams();
+  public TrackedSpannerTableCollection getSpannerTables() {
+    Set<TableIdentifier> spannerTableIdentifiers = getSpannerTablesTrackedByChangeStreams();
 
-    Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName =
+    Map<TableIdentifier, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName =
         getSpannerColumnNamesExplicitlyTrackedByChangeStreamsByTableName();
 
     return getSpannerTableByName(
-        spannerTableNames, spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
+        spannerTableIdentifiers, spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
   }
 
   /**
    * @return a map where the key is the table name tracked by the change stream and the value is the
    *     {@link TrackedSpannerTable} object of the table name.
    */
-  private Map<String, TrackedSpannerTable> getSpannerTableByName(
-      Set<String> spannerTableNames,
-      Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName) {
-    Map<String, Map<String, Integer>> keyColumnNameToOrdinalPositionByTableName =
-        getKeyColumnNameToOrdinalPositionByTableName(spannerTableNames);
-    Map<String, List<TrackedSpannerColumn>> spannerColumnsByTableName =
-        getSpannerColumnsByTableName(
-            spannerTableNames,
-            keyColumnNameToOrdinalPositionByTableName,
+  private TrackedSpannerTableCollection getSpannerTableByName(
+      Set<TableIdentifier> spannerTableIdentifiers,
+      Map<TableIdentifier, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName
+  ) {
+    Map<TableIdentifier, Map<String, Integer>> keyColumnNameToOrdinalPositionByTableIdentifier =
+        getKeyColumnNameToOrdinalPositionByTableName(spannerTableIdentifiers);
+
+    Map<TableIdentifier, List<TrackedSpannerColumn>> spannerColumnsByTableIdentifier =
+        getSpannerColumnsByTableIdentifier(
+            spannerTableIdentifiers,
+            keyColumnNameToOrdinalPositionByTableIdentifier,
             spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName);
 
-    Map<String, TrackedSpannerTable> result = new HashMap<>();
-    for (String tableName : spannerColumnsByTableName.keySet()) {
+    TrackedSpannerTableCollection result = new TrackedSpannerTableCollection();
+
+    for (TableIdentifier tableIdentifier : spannerColumnsByTableIdentifier.keySet()) {
       List<TrackedSpannerColumn> pkColumns = new ArrayList<>();
       List<TrackedSpannerColumn> nonPkColumns = new ArrayList<>();
       Map<String, Integer> keyColumnNameToOrdinalPosition =
-          keyColumnNameToOrdinalPositionByTableName.get(tableName);
-      for (TrackedSpannerColumn spannerColumn : spannerColumnsByTableName.get(tableName)) {
+          keyColumnNameToOrdinalPositionByTableIdentifier.get(tableIdentifier);
+      for (TrackedSpannerColumn spannerColumn : spannerColumnsByTableIdentifier.get(tableIdentifier)) {
         if (keyColumnNameToOrdinalPosition.containsKey(spannerColumn.getName())) {
           pkColumns.add(spannerColumn);
         } else {
           nonPkColumns.add(spannerColumn);
         }
       }
-      result.put(tableName, new TrackedSpannerTable(tableName, pkColumns, nonPkColumns));
+      result.add(
+        new TrackedSpannerTable(tableIdentifier.getTableSchema(), tableIdentifier.getTableName(), pkColumns, nonPkColumns)
+      );
     }
 
     return result;
@@ -133,33 +143,36 @@ public class SpannerChangeStreamsUtils {
    * Query INFORMATION_SCHEMA.COLUMNS to construct {@link SpannerColumn} for each Spanner column
    * tracked by change stream.
    */
-  private Map<String, List<TrackedSpannerColumn>> getSpannerColumnsByTableName(
-      Set<String> spannerTableNames,
-      Map<String, Map<String, Integer>> keyColumnNameToOrdinalPositionByTableName,
-      Map<String, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName) {
-    Map<String, List<TrackedSpannerColumn>> result = new HashMap<>();
+  private Map<TableIdentifier, List<TrackedSpannerColumn>> getSpannerColumnsByTableIdentifier(
+      Set<TableIdentifier> spannerTableIdentifiers,
+      Map<TableIdentifier, Map<String, Integer>> keyColumnNameToOrdinalPositionByTableIdentifier,
+      Map<TableIdentifier, Set<String>> spannerColumnNamesExplicitlyTrackedByChangeStreamByTableIdentifier
+  ) {
+    Map<TableIdentifier, List<TrackedSpannerColumn>> result = new HashMap<>();
     Statement.Builder statementBuilder;
     StringBuilder sqlStringBuilder =
         new StringBuilder(
-            "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, SPANNER_TYPE "
+            "SELECT TABLE_NAME, TABLE_SCHEMA, COLUMN_NAME, ORDINAL_POSITION, SPANNER_TYPE "
                 + "FROM INFORMATION_SCHEMA.COLUMNS");
     if (this.isPostgres()) {
       // Skip the columns of the tables that are not tracked by change stream.
-      if (!spannerTableNames.isEmpty()) {
+      if (!spannerTableIdentifiers.isEmpty()) {
         sqlStringBuilder.append(" WHERE TABLE_NAME = ANY (Array[");
         sqlStringBuilder.append(
-            spannerTableNames.stream().map(s -> "'" + s + "'").collect(Collectors.joining(",")));
+            spannerTableIdentifiers.stream().map(s -> "'" + s + "'").collect(Collectors.joining(",")));
         sqlStringBuilder.append("])");
       }
       statementBuilder = Statement.newBuilder(sqlStringBuilder.toString());
     } else {
       // Skip the columns of the tables that are not tracked by change stream.
-      if (!spannerTableNames.isEmpty()) {
+      if (!spannerTableIdentifiers.isEmpty()) {
         sqlStringBuilder.append(" WHERE TABLE_NAME IN UNNEST (@tableNames)");
       }
 
       statementBuilder = Statement.newBuilder(sqlStringBuilder.toString());
-      if (!spannerTableNames.isEmpty()) {
+      if (!spannerTableIdentifiers.isEmpty()) {
+        List<String> spannerTableNames =
+            spannerTableIdentifiers.stream().map(i -> i.getTableName()).toList();
         statementBuilder
             .bind("tableNames")
             .to(Value.stringArray(new ArrayList<>(spannerTableNames)));
@@ -175,41 +188,44 @@ public class SpannerChangeStreamsUtils {
       while (columnsResultSet.next()) {
         String tableName = columnsResultSet.getString(informationSchemaTableName());
         String columnName = columnsResultSet.getString(informationSchemaColumnName());
+        String tableSchema = columnsResultSet.getString(informationSchemaTableSchema());
+        TableIdentifier tableIdentifier = new TableIdentifier(tableSchema, tableName);
         // Skip if the columns of the table is tracked explicitly, and the specified column is not
         // tracked. Primary key columns are always tracked.
-        if (spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName.containsKey(tableName)
-            && !spannerColumnNamesExplicitlyTrackedByChangeStreamByTableName
-                .get(tableName)
+        if (spannerColumnNamesExplicitlyTrackedByChangeStreamByTableIdentifier.containsKey(tableIdentifier)
+            && !spannerColumnNamesExplicitlyTrackedByChangeStreamByTableIdentifier
+                .get(tableIdentifier)
                 .contains(columnName)
-            && (!keyColumnNameToOrdinalPositionByTableName.containsKey(tableName)
-                || !keyColumnNameToOrdinalPositionByTableName
-                    .get(tableName)
+            && (!keyColumnNameToOrdinalPositionByTableIdentifier.containsKey(tableIdentifier)
+                || !keyColumnNameToOrdinalPositionByTableIdentifier
+                    .get(tableIdentifier)
                     .containsKey(columnName))) {
           continue;
         }
 
         int ordinalPosition = (int) columnsResultSet.getLong(informationSchemaOrdinalPosition());
         String spannerType = columnsResultSet.getString(informationSchemaSpannerType());
-        result.putIfAbsent(tableName, new ArrayList<>());
+        result.putIfAbsent(tableIdentifier, new ArrayList<>());
         // Set primary key ordinal position for primary key column.
         int pkOrdinalPosition = -1;
-        if (!keyColumnNameToOrdinalPositionByTableName.containsKey(tableName)) {
+        if (!keyColumnNameToOrdinalPositionByTableIdentifier.containsKey(tableIdentifier)) {
           throw new IllegalArgumentException(
               String.format(
                   "Cannot find key column for change stream %s and table %s",
                   changeStreamName, tableName));
         }
-        if (keyColumnNameToOrdinalPositionByTableName.get(tableName).containsKey(columnName)) {
+        if (keyColumnNameToOrdinalPositionByTableIdentifier.get(tableIdentifier).containsKey(columnName)) {
           pkOrdinalPosition =
-              keyColumnNameToOrdinalPositionByTableName.get(tableName).get(columnName);
+              keyColumnNameToOrdinalPositionByTableIdentifier.get(tableIdentifier).get(columnName);
         }
         TrackedSpannerColumn spannerColumn =
             TrackedSpannerColumn.create(
+                tableSchema,
                 columnName,
                 informationSchemaTypeToSpannerType(spannerType),
                 ordinalPosition,
                 pkOrdinalPosition);
-        result.get(tableName).add(spannerColumn);
+        result.get(tableIdentifier).add(spannerColumn);
       }
     } catch (Exception e) {
       String errorMessage =
@@ -231,21 +247,22 @@ public class SpannerChangeStreamsUtils {
    * information from {@link Mod} whenever we process it, but it's less efficient, since that will
    * require to parse the types and sort them based on the ordinal positions for each {@link Mod}.
    */
-  private Map<String, Map<String, Integer>> getKeyColumnNameToOrdinalPositionByTableName(
-      Set<String> spannerTableNames) {
-    Map<String, Map<String, Integer>> result = new HashMap<>();
+  private Map<TableIdentifier, Map<String, Integer>> getKeyColumnNameToOrdinalPositionByTableName(
+      Set<TableIdentifier> spannerTableIdentifiers
+  ) {
+    Map<TableIdentifier, Map<String, Integer>> result = new HashMap<>();
     Statement.Builder statementBuilder;
     if (this.isPostgres()) {
       StringBuilder sqlStringBuilder =
           new StringBuilder(
-              "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
+              "SELECT TABLE_NAME, TABLE_SCHEMA, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
                   + " INFORMATION_SCHEMA.KEY_COLUMN_USAGE");
 
       // Skip the tables that are not tracked by change stream.
-      if (!spannerTableNames.isEmpty()) {
+      if (!spannerTableIdentifiers.isEmpty()) {
         sqlStringBuilder.append(" WHERE TABLE_NAME = ANY (Array[");
         sqlStringBuilder.append(
-            spannerTableNames.stream().map(s -> "'" + s + "'").collect(Collectors.joining(",")));
+            spannerTableIdentifiers.stream().map(s -> "'" + s + "'").collect(Collectors.joining(",")));
         sqlStringBuilder.append("])");
       }
 
@@ -253,19 +270,20 @@ public class SpannerChangeStreamsUtils {
     } else {
       StringBuilder sqlStringBuilder =
           new StringBuilder(
-              "SELECT TABLE_NAME, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
+              "SELECT TABLE_NAME, TABLE_SCHEMA, COLUMN_NAME, ORDINAL_POSITION, CONSTRAINT_NAME FROM"
                   + " INFORMATION_SCHEMA.KEY_COLUMN_USAGE");
 
       // Skip the tables that are not tracked by change stream.
-      if (!spannerTableNames.isEmpty()) {
+      if (!spannerTableIdentifiers.isEmpty()) {
         sqlStringBuilder.append(" WHERE TABLE_NAME IN UNNEST (@tableNames)");
       }
 
       statementBuilder = Statement.newBuilder(sqlStringBuilder.toString());
-      if (!spannerTableNames.isEmpty()) {
+      if (!spannerTableIdentifiers.isEmpty()) {
+        List<String> tableNames = spannerTableIdentifiers.stream().map(i -> i.getTableName()).toList();
         statementBuilder
             .bind("tableNames")
-            .to(Value.stringArray(new ArrayList<>(spannerTableNames)));
+            .to(Value.stringArray(tableNames));
       }
     }
 
@@ -278,14 +296,16 @@ public class SpannerChangeStreamsUtils {
       while (keyColumnsResultSet.next()) {
         String tableName = keyColumnsResultSet.getString(informationSchemaTableName());
         String columnName = keyColumnsResultSet.getString(informationSchemaColumnName());
+        String tableSchema = keyColumnsResultSet.getString(informationSchemaTableSchema());
         // Note The ordinal position of primary key in INFORMATION_SCHEMA.KEY_COLUMN_USAGE table
         // is different from the ordinal position from INFORMATION_SCHEMA.COLUMNS table.
         int ordinalPosition = (int) keyColumnsResultSet.getLong(informationSchemaOrdinalPosition());
         String constraintName = keyColumnsResultSet.getString(informationSchemaConstraintName());
         // We are only interested in primary key constraint.
         if (isPrimaryKey(constraintName)) {
-          result.putIfAbsent(tableName, new HashMap<>());
-          result.get(tableName).put(columnName, ordinalPosition);
+          TableIdentifier tableIdentifier = new TableIdentifier(tableSchema, tableName);
+          result.putIfAbsent(tableIdentifier, new HashMap<>());
+          result.get(tableIdentifier).put(columnName, ordinalPosition);
         }
       }
     } catch (Exception e) {
@@ -306,21 +326,21 @@ public class SpannerChangeStreamsUtils {
   }
 
   /**
-   * @return the Spanner table names that are tracked by the change stream.
+   * @return the Spanner table identifiers that are tracked by the change stream.
    */
-  private Set<String> getSpannerTableNamesTrackedByChangeStreams() {
+  private Set<TableIdentifier> getSpannerTablesTrackedByChangeStreams() {
     boolean isChangeStreamForAll = isChangeStreamForAll();
 
     Statement.Builder statementBuilder;
     String sql;
     if (this.isPostgres()) {
       sql =
-          "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_TABLES "
+          "SELECT TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.CHANGE_STREAM_TABLES "
               + "WHERE CHANGE_STREAM_NAME = $1";
       statementBuilder = Statement.newBuilder(sql).bind("p1").to(changeStreamName);
     } else {
       sql =
-          "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_TABLES "
+          "SELECT TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.CHANGE_STREAM_TABLES "
               + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
       statementBuilder = Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName);
     }
@@ -329,14 +349,14 @@ public class SpannerChangeStreamsUtils {
       // If the change stream is tracking all tables, we have to look up the table names in
       // INFORMATION_SCHEMA.TABLES.
       if (this.isPostgres()) {
-        sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'public'";
+        sql = "SELECT TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES";
       } else {
-        sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = \"\"";
+        sql = "SELECT TABLE_NAME, TABLE_SCHEMA FROM INFORMATION_SCHEMA.TABLES";
       }
       statementBuilder = Statement.newBuilder(sql);
     }
 
-    Set<String> result = new HashSet<>();
+    Set<TableIdentifier> result = new HashSet<>();
     try (ResultSet resultSet =
         bound != null
             ? databaseClient
@@ -345,7 +365,11 @@ public class SpannerChangeStreamsUtils {
             : databaseClient.singleUse().executeQuery(statementBuilder.build())) {
 
       while (resultSet.next()) {
-        result.add(resultSet.getString(informationSchemaTableName()));
+        TableIdentifier tableIdentifier = new TableIdentifier(
+            resultSet.getString(informationSchemaTableSchema()),
+            resultSet.getString(informationSchemaTableName())
+        );
+        result.add(tableIdentifier);
       }
     } catch (Exception e) {
       String errorMessage =
@@ -421,18 +445,18 @@ public class SpannerChangeStreamsUtils {
    *     returned if we have change stream "CREATE CHANGE STREAM SingerStream FOR Singers(SingerId,
    *     FirstName)"
    */
-  private Map<String, Set<String>>
+  private Map<TableIdentifier, Set<String>>
       getSpannerColumnNamesExplicitlyTrackedByChangeStreamsByTableName() {
-    Map<String, Set<String>> result = new HashMap<>();
+    Map<TableIdentifier, Set<String>> result = new HashMap<>();
     Statement.Builder statementBuilder;
     if (this.isPostgres()) {
       String sql =
-          "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+          "SELECT TABLE_NAME, TABLE_SCHEMA, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
               + "WHERE CHANGE_STREAM_NAME = $1";
       statementBuilder = Statement.newBuilder(sql).bind("p1").to(changeStreamName);
     } else {
       String sql =
-          "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
+          "SELECT TABLE_NAME, TABLE_SCHEMA, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
               + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
       statementBuilder = Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName);
     }
@@ -447,8 +471,10 @@ public class SpannerChangeStreamsUtils {
       while (resultSet.next()) {
         String tableName = resultSet.getString(informationSchemaTableName());
         String columnName = resultSet.getString(informationSchemaColumnName());
-        result.putIfAbsent(tableName, new HashSet<>());
-        result.get(tableName).add(columnName);
+        String tableSchema = resultSet.getString(informationSchemaTableSchema());
+        TableIdentifier tableIdentifier = new TableIdentifier(tableName, tableSchema);
+        result.putIfAbsent(tableIdentifier, new HashSet<>());
+        result.get(tableIdentifier).add(columnName);
       }
     } catch (Exception e) {
       String errorMessage =
@@ -542,5 +568,12 @@ public class SpannerChangeStreamsUtils {
       return INFORMATION_SCHEMA_POSTGRES_ALL;
     }
     return INFORMATION_SCHEMA_ALL;
+  }
+
+  private String informationSchemaTableSchema() {
+    if (this.isPostgres()) {
+      return INFORMATION_SCHEMA_POSTGRES_TABLE_SCHEMA;
+    }
+    return INFORMATION_SCHEMA_TABLE_SCHEMA;
   }
 }
