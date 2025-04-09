@@ -20,22 +20,21 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-@Ignore("This test successfully runs but is ignored in the test suite")
+// @Ignore("This test successfully runs but is ignored in the test suite")
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
-  private static final String FETCH_SIZE = "4000"; // "8000";
+  private static final String FETCH_SIZE = "500";
 
   @Test
-  public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
+  public void mySQLToSpannerWideRow10MBPerCell100GBTest() throws Exception {
     //    ToDo: Replace with the Google's secrets values
     String username =
         accessSecret(
@@ -43,7 +42,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     String password =
         accessSecret(
             "projects/209835939752/secrets/sourcedb-mysql-to-spanner-cloudsql-password/versions/1");
-    String database = "10MBStringCell";
+    String database = "10MiBPerCell";
     String host =
         accessSecret(
             "projects/209835939752/secrets/sourcedb-mysql-to-spanner-cloudsql-ip-address/versions/1");
@@ -55,7 +54,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 20000);
+            put("WideRowTable", 1700);
           }
         };
 
