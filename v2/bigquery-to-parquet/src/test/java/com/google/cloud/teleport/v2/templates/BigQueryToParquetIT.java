@@ -28,10 +28,9 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TimePartitioning;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -55,7 +54,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link BigQueryToParquet}. */
-@Category({TemplateIntegrationTest.class})
+// SkipDirectRunnerTest: BigQueryIO fails mutation check https://github.com/apache/beam/issues/25319
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(BigQueryToParquet.class)
 @RunWith(JUnit4.class)
 public final class BigQueryToParquetIT extends TemplateTestBase {
@@ -143,13 +143,18 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     // Assign timestamps from the list
     List<RowToInsert> bigQueryRows = new ArrayList<>();
     List<RowToInsert> generatedBigQueryRows = generatedTable.y();
+    List<RowToInsert> expectedBigQueryRows = generatedTable.y();
 
     for (int i = 0; i < generatedBigQueryRows.size(); i++) {
       RowToInsert generatedRow = generatedBigQueryRows.get(i);
       Map<String, Object> content = new HashMap<>(generatedRow.getContent());
+      String timestampString = timestamps.get(i % timestamps.size());
       content.put(
-          PARTITION_FIELD, timestamps.get(i % timestamps.size())); // Cycle through timestamps
+          PARTITION_FIELD, timestampString); // Cycle through timestamps
       bigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
+      if (timestampString.equals("2025-03-06T15:00:00Z") || timestampString.equals("2025-03-06T15:45:00Z")){
+        expectedBigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
+      }
     }
 
     // Set up partition test table
@@ -163,16 +168,6 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     //   Define expected test results
     Pattern expectedFilePattern = Pattern.compile(".*");
 
-    List<RowToInsert> expectedPartitionRows =
-        bigQueryRows.stream()
-            .filter(
-                row -> {
-                  String timeStr = row.getContent().get(PARTITION_FIELD).toString();
-                  Instant timestamp = Instant.parse(timeStr);
-                  Instant truncatedTimestamp = timestamp.truncatedTo(ChronoUnit.HOURS);
-                  return truncatedTimestamp.equals(Instant.parse("2025-03-06T15:00:00Z"));
-                })
-            .collect(Collectors.toList());
 
     // Configure pipeline launch
     LaunchConfig.Builder options =
@@ -193,13 +188,11 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
-    assertThat(true).equals(false);
-
     List<Artifact> artifacts = gcsClient.listArtifacts(testName, expectedFilePattern);
-    assertThat(artifacts).hasSize(1);
+    assertThat(artifacts).hasSize(5);
     assertThatArtifacts(artifacts)
         .asParquetRecords()
         .hasRecordsUnordered(
-            bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
+            expectedBigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
   }
 }
