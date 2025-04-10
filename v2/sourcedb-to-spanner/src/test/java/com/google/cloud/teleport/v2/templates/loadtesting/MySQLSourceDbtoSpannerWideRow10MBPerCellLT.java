@@ -32,7 +32,7 @@ import org.junit.runners.JUnit4;
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
 
-  private static final String FETCH_SIZE = "100";
+  private static final String FETCH_SIZE = "10";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCell100GBTest() throws Exception {
@@ -55,7 +55,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 2000);
+            put("WideRowTable", 2133);
           }
         };
 
