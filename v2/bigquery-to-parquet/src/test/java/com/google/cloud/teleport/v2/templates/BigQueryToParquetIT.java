@@ -140,20 +140,26 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     fields.add(Field.of(PARTITION_FIELD, StandardSQLTypeName.TIMESTAMP));
     Schema bigQuerySchema = Schema.of(fields);
 
-    // Assign timestamps from the list
+    // Final data to insert to test table
     List<RowToInsert> bigQueryRows = new ArrayList<>();
+    // Auto-generated test data
     List<RowToInsert> generatedBigQueryRows = generatedTable.y();
-    List<RowToInsert> expectedBigQueryRows = generatedTable.y();
+    // Expected test data
+    List<RowToInsert> expectedBigQueryRows = new ArrayList<>();
 
     for (int i = 0; i < generatedBigQueryRows.size(); i++) {
       RowToInsert generatedRow = generatedBigQueryRows.get(i);
       Map<String, Object> content = new HashMap<>(generatedRow.getContent());
+      String rowId = String.valueOf(i);
+
       String timestampString = timestamps.get(i % timestamps.size());
-      content.put(PARTITION_FIELD, timestampString); // Cycle through timestamps
-      bigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
+      content.put(PARTITION_FIELD, timestampString);
+
+      RowToInsert rowToInsert = RowToInsert.of(rowId, content);
+      bigQueryRows.add(rowToInsert);
       if (timestampString.equals("2025-03-06T15:00:00Z")
           || timestampString.equals("2025-03-06T15:45:00Z")) {
-        expectedBigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
+        expectedBigQueryRows.add(rowToInsert);
       }
     }
 
@@ -192,8 +198,6 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     assertThatArtifacts(artifacts)
         .asParquetRecords()
         .hasRecordsUnordered(
-            expectedBigQueryRows.stream()
-                .map(RowToInsert::getContent)
-                .collect(Collectors.toList()));
+            bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
   }
 }
