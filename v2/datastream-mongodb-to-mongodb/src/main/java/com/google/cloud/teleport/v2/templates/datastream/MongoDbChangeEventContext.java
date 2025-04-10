@@ -69,9 +69,12 @@ public class MongoDbChangeEventContext implements Serializable {
     return DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
   }
 
-  public MongoDbChangeEventContext(JsonNode changeEvent, String shadowCollectionPrefix)
+  public MongoDbChangeEventContext(JsonNode payload, String shadowCollectionPrefix)
       throws JsonProcessingException {
-    this.changeEvent = changeEvent;
+    this.changeEvent =
+        payload.has(DatastreamConstants.CHANGE_EVENT)
+            ? payload.get(DatastreamConstants.CHANGE_EVENT)
+            : payload;
 
     // Extract collection name from the event
     if (changeEvent.has(DatastreamConstants.EVENT_SOURCE_METADATA)) {

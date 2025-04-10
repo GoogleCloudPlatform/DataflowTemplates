@@ -23,6 +23,7 @@ public class DatastreamConstants {
   public static final String EVENT_CHANGE_TYPE_KEY = "_metadata_change_type";
   public static final String TIMESTAMP_SECONDS = "_metadata_timestamp_seconds";
   public static final String TIMESTAMP_NANOS = "_metadata_timestamp_nanos";
+  public static final String CHANGE_EVENT = "changeEvent";
 
   // MongoDB specific fields
   public static final String MONGODB_DOCUMENT_ID = "_id";

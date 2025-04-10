@@ -432,6 +432,9 @@ public class DataStreamMongoDBToMongoDB {
             connectionString);
         throw new IllegalArgumentException("Invalid connectionUri: " + connectionString);
       }
+      if (connectionString.contains("MONGODB-OIDC")) {
+        connectionString += ",TOKEN_RESOURCE:FIRESTORE";
+      }
       LOG.info("Creating MongoDB client with connection string: {}", connectionString);
       MongoClient mongoClient = MongoClients.create(connectionString);
       LOG.info("MongoDB client created successfully");
