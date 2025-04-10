@@ -424,6 +424,8 @@ public class SpannerToSourceDb {
     @Default.String("filteredEvents")
     String getFilterEventsDirectoryName();
 
+    void setFilterEventsDirectoryName(String value);
+
     @TemplateParameter.Boolean(
         order = 29,
         optional = true,
