@@ -216,28 +216,29 @@ mvn clean package -PtemplatesRun \
 
 ## Cassandra to Spanner Bulk Migration
 ### Prerequisites
-For Bulk data migration from Cassandra to spanner here are a few prerequisites you will need:
+For bulk data migration from Cassandra to spanner, here are a few prerequisites you will need:
 
 #### Prerequisite-1: Network Connectivity
-1. Choose a VPC in the project where you would like to run the dataflow job (default is the vpc named `default` in the project).
+1. Choose a VPC in the project where you would like to run the dataflow job (default is the VPC named `default` in the project).
 2. Ensure that the VPC has network connectivity to nodes in your Cassandra Cluster. Depending on where your Cassandra Cluster is hosted, you might need one or more of the following steps:
 
-       * Configure Firewalls in your GCP project and the place where Cassandra Cluster is hosted to allow egress access from the dataflow VPC to Cassandra nodes. The usual port used by Cassandra for Client/Server communication is 9042.
+       * Configure Firewalls in your GCP project and the place where the Cassandra Cluster is hosted to allow egress access from the Dataflow VPC to Cassandra nodes. The usual port used by Cassandra for Client/Server communication is 9042.
        * Network Peering between the VPCs where Cassandra is hosted and the dataflow VPC.
 #### Prerequisite-2: Configuration File
 You will need to upload the Cassandra driver configuration file to GCS.
 You might already be using one for your production application, but in case you need to create one, you could refer to the [reference.conf](https://github.com/apache/cassandra-java-driver/blob/4.x/core/src/main/resources/reference.conf).
-This configuration file would be referred by the dataflow job to infer various client side parameters need to connect to Cassandra cluster.
+This configuration file would be referred by the Dataflow job to infer various client side parameters need to connect to Cassandra cluster.
 For the smooth execution of the migration, ensure that these basic parameters are correct:
-1. basic.contact-points: `basic.contact-points` must point to the ip addresses and port number of the nodes of the Cassandra cluster which are discoverable from the VPC where you would run the dataflow job.
-2. basic.session-keyspace: `basic.session-keyspace` much point to the keyspace which you would like to migrate to spanner as a part of this run. Note that a single run of a dataflow job can migration one or more tables within a single Cassandra keyspace.
-3. Optionally, you would also need to ensure that these parameters are updated correctly:
+1. basic.contact-points: `basic.contact-points` must point to the ip addresses and port number of the nodes of the Cassandra cluster which are discoverable from the VPC where you will run the Dataflow job.
+2. basic.session-keyspace: `basic.session-keyspace` much point to the keyspace which you would like to migrate to spanner as a part of this run. Note that a single run of a Dataflow job can migration one or more tables within a single Cassandra keyspace.
+3. basic.load-balancing-policy.local-datacenter: `basic.load-balancing-policy.local-datacenter` must point to to the appropriate Cassandra datacenter.
+4. Optionally, you would also need to ensure that these parameters are updated correctly:
 
        * `advanced.auth-provider`: with username/password credentials.
        * `basic.request.timeout`: keep this large enough for reading ring rages. If unset, defaults to 3600_000 milliseconds.
        * `connection.connect-timeout`: timeout for socket connection. If unset, defaults to 10_000 milliseconds.
 #### Prerequisite-3: Cassandra Cluster Health
-Please ensure that the Cassandra Cluster you are migrating from is healthy and the tables you are migrating don't need any repairs for best performance.
+Please ensure the Cassandra Cluster you are migrating from is healthy and the tables you are migrating don't need any repairs for best performance.
 #### Prerequisite-4: Spanner
 You will need to provision a spanner database where you would like to migrate the data. The database would need to have tables with a schema that maps to the schema on the source.
 The tables which are present both on Spanner and Cassandra would be the ones that are migrated.
@@ -261,7 +262,7 @@ export PROJECT=<your-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
-### The number of works controls the fanout of dataflow job to read from Cassandra.
+### The number of works controls the fanout of Dataflow job to read from Cassandra.
 ### While you might need to finetune this for best performance, a number close to number of nodes on Cassandra Cluster might be good place to start.
 export MAX_WORKERS="<MAX_NUMBER_OF_DATAFLOW_WORKERS_TO_READ_FROM_CASSANDRA>"
 export NUM_WORKERS="<INITIAL_NUMBER_OF_DATAFLOW_WORKERS_TO_READ_FROM_CASSANDRA>"
@@ -288,11 +289,11 @@ export DEFAULT_LOG_LEVEL=INFO
 #### Setting this mode to false causes the bulk template to overwrite existing rows in spanner.
 #### false is the default if unset.
 export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS="true"
-#### Region for dataflow workers (Required ony if you want to configure network and subnetwork.
+#### Region for Dataflow workers (Required ony if you want to configure network and subnetwork.
 expoert WORKER_REGION="${REGION}"
-#### Network where you would like to run dataflow. Defaults to default. This VPC must have access to Cassandra nodes you would like to migrate from.
+#### Network where you would like to run Dataflow. Defaults to default. This VPC must have access to Cassandra nodes you would like to migrate from.
 export NETWORK="<VPC_NAME>"
-#### Subnet where you would like to run dataflow. Defaults to default. This subnet must have access to Cassandra nodes you would like to migrate from.
+#### Subnet where you would like to run Dataflow. Defaults to default. This subnet must have access to Cassandra nodes you would like to migrate from.
 export SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
 
 
@@ -328,6 +329,7 @@ In case your job fails due to many exceptions like the above, here are a few ste
 1. Increase the timeouts in the driver configuration file which are described in the [configuration-file](#prerequisite-2--configuration-file) section above.
 2. Increase read_request_timeout and range_request_timeout on the server side.
 3. In case the iops, or, data throughput of the dataflow job is close to the max throughput supported by your cassandra cluster, consider reducing  `maxWorkers` to limit the fanout of the dataflow job.
+4. By default, Apache Beam sets `numPartitions` same as the number of Cassandra hosts. Increasing this by setting `numPartitions` can make each read smaller thereby avoiding the timeout.
 #### Throughput on Spanner raises and falls in sharp bursts
 It's possible that the default configuration could lead to spanner throughput raise and fall in sharp bursts. In case this is observed, you can disable spanner batch writes by setting `batchSizeForSpannerMutations` as 0.
 
