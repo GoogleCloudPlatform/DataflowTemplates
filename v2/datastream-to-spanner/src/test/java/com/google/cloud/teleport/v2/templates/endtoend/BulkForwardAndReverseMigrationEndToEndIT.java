@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -105,13 +106,16 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
         jdbcResourceManagerShardA = MySQLResourceManager.builder(testName + "shardA").build();
 
-        createMySQLSchema(
-            jdbcResourceManagerShardA, BulkForwardAndReverseMigrationEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
-
-        jdbcResourceManagerShardB = MySQLResourceManager.builder(testName + "shardB").build();
-
-        createMySQLSchema(
-            jdbcResourceManagerShardB, BulkForwardAndReverseMigrationEndToEndIT.MYSQL_SCHEMA_FILE_RESOURCE);
+        JDBCSource jdbcSourceShardA = createMySqlDatabase(cloudSqlResourceManager, new HashMap<>() {
+          {
+            put(TABLE, AUTHOR_TABLE_COLUMNS);
+          }
+        });
+        JDBCSource jdbcSourceShardB = createMySqlDatabase(cloudSqlResourceManager, new HashMap<>() {
+          {
+            put(TABLE, AUTHOR_TABLE_COLUMNS);
+          }
+        });
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
@@ -128,8 +132,8 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                 spannerMetadataResourceManager,
                 pubsubResourceManager,
                 getClass().getSimpleName(),
-                "input/customShard.jar",
-                "com.custom.CustomShardIdFetcherForIT",
+                "",
+                "",
                 null,
                 null,
                 MYSQL_SOURCE_TYPE);
