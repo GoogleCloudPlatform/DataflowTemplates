@@ -177,8 +177,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     return switch (modType) {
       case "INSERT", "UPDATE" -> getUpsertStatementCQL(
           sourceTable.getName(), timestamp, allColumnNamesAndValues);
-      case "DELETE" -> getDeleteStatementCQL(
-          sourceTable.getName(), timestamp, allColumnNamesAndValues);
+      case "DELETE" -> getDeleteStatementCQL(sourceTable.getName(), timestamp, pkColumnNameValues);
       default -> {
         LOG.error("Unsupported modType: {} for table {}", modType, spannerTable.getName());
         yield new DMLGeneratorResponse("");
