@@ -88,6 +88,6 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     // Verify the data in Spanner
     ImmutableList<Struct> wideRowData =
         spannerResourceManager.readTableRecords(TABLE, "id", "max_string_col");
-    SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
+    SpannerAsserts.assertThatStructs(wideRowData).hasRows(2);
   }
 }
