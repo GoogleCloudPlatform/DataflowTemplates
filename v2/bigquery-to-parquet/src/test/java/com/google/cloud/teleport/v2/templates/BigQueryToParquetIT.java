@@ -149,10 +149,10 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
       RowToInsert generatedRow = generatedBigQueryRows.get(i);
       Map<String, Object> content = new HashMap<>(generatedRow.getContent());
       String timestampString = timestamps.get(i % timestamps.size());
-      content.put(
-          PARTITION_FIELD, timestampString); // Cycle through timestamps
+      content.put(PARTITION_FIELD, timestampString); // Cycle through timestamps
       bigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
-      if (timestampString.equals("2025-03-06T15:00:00Z") || timestampString.equals("2025-03-06T15:45:00Z")){
+      if (timestampString.equals("2025-03-06T15:00:00Z")
+          || timestampString.equals("2025-03-06T15:45:00Z")) {
         expectedBigQueryRows.add(RowToInsert.of(generatedRow.getId(), content));
       }
     }
@@ -167,7 +167,6 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
 
     //   Define expected test results
     Pattern expectedFilePattern = Pattern.compile(".*");
-
 
     // Configure pipeline launch
     LaunchConfig.Builder options =
@@ -193,6 +192,8 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     assertThatArtifacts(artifacts)
         .asParquetRecords()
         .hasRecordsUnordered(
-            expectedBigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
+            expectedBigQueryRows.stream()
+                .map(RowToInsert::getContent)
+                .collect(Collectors.toList()));
   }
 }
