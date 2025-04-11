@@ -47,6 +47,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -63,6 +64,8 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +75,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
+
+  class DataShard
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -142,7 +147,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return subscription;
   }
 
-  protected void createAndUploadShardConfigToGcs(
+  protected void createAndUploadRRShardConfigToGcs(
       GcsResourceManager gcsResourceManager,
       CloudSqlResourceManager cloudSqlResourceManager,
       String privateHost) {
@@ -162,142 +167,92 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  public PipelineLauncher.LaunchInfo launchBulkDataflowJob(
-      GcsResourceManager gcsResourceManager,
-      SpannerResourceManager spannerResourceManager,
-      SpannerResourceManager spannerMetadataResourceManager,
-      PubsubResourceManager pubsubResourceManager,
-      String identifierSuffix,
-      String shardingCustomJarPath,
-      String shardingCustomClassName,
-      String sourceDbTimezoneOffset,
-      CustomTransformation customTransformation,
-      String sourceType)
-      throws IOException {
+  protected void createAndUploadBulkShardConfigToGcs(GcsResourceManager gcsResourceManager) {
+    JSONObject bulkConfig = new JSONObject();
+    bulkConfig.put("configType", "dataflow");
 
-    String bulkSubscriptionName =
-        createPubsubResources(
-            getClass().getSimpleName(),
-            pubsubResourceManager,
-            getGcsPath("dlq", gcsResourceManager)
-                .replace("gs://" + gcsResourceManager.getBucket(), ""),
-            gcsResourceManager,
-            "bulk").toString();
+    // "shardConfigurationBulk" object
+    JSONObject shardConfigBulk = new JSONObject();
+    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
 
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put(
-                "sourceShardsFilePath",
-                getGcsPath(
-                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
-                        ? "input/cassandra-config.conf"
-                        : "input/shard.json",
-                    gcsResourceManager));
-            put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
-            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "5");
-            put("maxNumWorkers", "1");
-            put("numWorkers", "1");
-            put("sourceType", sourceType);
+    // "schemaSource" object
+    JSONObject schemaSourceJson = new JSONObject();
+      schemaSourceJson.put("dataShardId", "");
+      schemaSourceJson.put("host", "");
+      schemaSourceJson.put("user", "");
+      schemaSourceJson.put("password", "");
+      schemaSourceJson.put("port", "");
+      schemaSourceJson.put("dbName", "");
+    shardConfigBulk.put("schemaSource", schemaSourceJson);
+
+    // "dataShards" array
+    JSONArray dataShardsArray = new JSONArray();
+    if (dataShardsList != null) {
+      for (Map<String, Object> shardData : dataShardsList) {
+        JSONObject shardJson = new JSONObject();
+
+        // Populate shard properties (assuming they are strings)
+        shardJson.put("dataShardId", shardData.getOrDefault("dataShardId", ""));
+        shardJson.put("host", shardData.getOrDefault("host", ""));
+        shardJson.put("user", shardData.getOrDefault("user", ""));
+        shardJson.put("password", shardData.getOrDefault("password", ""));
+        shardJson.put("port", shardData.getOrDefault("port", ""));
+        shardJson.put("dbName", shardData.getOrDefault("dbName", "")); // dbName at shard level
+        shardJson.put("namespace", shardData.getOrDefault("namespace", ""));
+        shardJson.put("connectionProperties", shardData.getOrDefault("connectionProperties", ""));
+
+        // Nested "databases" array
+        JSONArray databasesArray = new JSONArray();
+        Object databasesObj = shardData.get("databases");
+
+        // Check if 'databases' exists and is a List
+        if (databasesObj instanceof List) {
+          @SuppressWarnings("unchecked") // We've checked the type with instanceof
+          List<Map<String, String>> databasesList = (List<Map<String, String>>) databasesObj;
+
+          for (Map<String, String> dbData : databasesList) {
+            JSONObject dbJson = new JSONObject();
+            dbJson.put("dbName", dbData.getOrDefault("dbName", ""));
+            dbJson.put("databaseId", dbData.getOrDefault("databaseId", ""));
+            dbJson.put("refDataShardId", dbData.getOrDefault("refDataShardId", ""));
+            databasesArray.put(dbJson);
           }
-        };
-
-    if (shardingCustomClassName != null) {
-      params.put("shardingCustomClassName", shardingCustomClassName);
+        }
+        shardJson.put("databases", databasesArray);
+        dataShardsArray.put(shardJson);
+      }
     }
+    shardConfigBulk.put("dataShards", dataShardsArray);
 
-    if (sourceDbTimezoneOffset != null) {
-      params.put("sourceDbTimezoneOffset", sourceDbTimezoneOffset);
-    }
-
-    if (customTransformation != null) {
-      params.put(
-          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
-      params.put("transformationClassName", customTransformation.classPath());
-    }
-
-    // Construct template
-    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
-    // /-DunifiedWorker=true when using runner v2
-    PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
-    // Run
-    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
-    assertThatPipeline(jobInfo).isRunning();
-    return jobInfo;
+    // Return the JSON as a string with specified indentation
+    String shardFileContents = root.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  public PipelineLauncher.LaunchInfo launchDataflowJob(
-      GcsResourceManager gcsResourceManager,
+  protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
       SpannerResourceManager spannerResourceManager,
-      SpannerResourceManager spannerMetadataResourceManager,
-      String subscriptionName,
-      String identifierSuffix,
-      String shardingCustomJarPath,
-      String shardingCustomClassName,
-      String sourceDbTimezoneOffset,
-      CustomTransformation customTransformation,
-      String sourceType)
+      GcsResourceManager gcsResourceManager)
       throws IOException {
 
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
-            put("instanceId", spannerResourceManager.getInstanceId());
-            put("databaseId", spannerResourceManager.getDatabaseId());
-            put("spannerProjectId", PROJECT);
-            put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
-            put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
-            put("changeStreamName", "allstream");
-            put("dlqGcsPubSubSubscription", subscriptionName);
-            put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
-            put("maxShardConnections", "5");
-            put("maxNumWorkers", "1");
-            put("numWorkers", "1");
-            put("sourceType", sourceType);
-          }
-        };
+    String jobName = PipelineUtils.createJobName("bulk-" + getClass().getSimpleName());
+    // launch dataflow template
+    flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
+            .withTemplateName("Sourcedb_to_Spanner_Flex")
+            .withTemplateModulePath("v2/sourcedb-to-spanner")
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", PROJECT)
+            .addParameter("out.addParameterDirectory", "gs://" + artifactBucketName)
+            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            .addParameter("sourceDbURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+            .build();
 
-    if (shardingCustomJarPath != null) {
-      params.put(
-          "shardingCustomJarPath",
-          getGcsFullPath(gcsResourceManager, shardingCustomJarPath, identifierSuffix));
-    }
-    if (shardingCustomClassName != null) {
-      params.put("shardingCustomClassName", shardingCustomClassName);
-    }
-
-    if (sourceDbTimezoneOffset != null) {
-      params.put("sourceDbTimezoneOffset", sourceDbTimezoneOffset);
-    }
-
-    if (customTransformation != null) {
-      params.put(
-          "transformationJarPath", getGcsPath(customTransformation.jarPath(), gcsResourceManager));
-      params.put("transformationClassName", customTransformation.classPath());
-    }
-
-    // Construct template
-    String jobName = PipelineUtils.createJobName("rrev-it" + testName);
-    // /-DunifiedWorker=true when using runner v2
-    PipelineLauncher.LaunchConfig.Builder options =
-        PipelineLauncher.LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
-    options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     // Run
-    PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }

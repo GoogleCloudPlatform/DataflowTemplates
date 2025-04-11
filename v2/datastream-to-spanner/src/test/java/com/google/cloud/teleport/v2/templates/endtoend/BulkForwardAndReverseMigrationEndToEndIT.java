@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -104,8 +105,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         spannerResourceManager =
             createSpannerDatabase(BulkForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        jdbcResourceManagerShardA = MySQLResourceManager.builder(testName + "shardA").build();
-
+        cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
         JDBCSource jdbcSourceShardA = createMySqlDatabase(cloudSqlResourceManager, new HashMap<>() {
           {
             put(TABLE, AUTHOR_TABLE_COLUMNS);
@@ -120,23 +120,15 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
 
-        createAndUploadShardConfigToGcs();
+        createAndUploadBulkShardConfigToGcs(gcsResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
         bulkJobInfo =
             launchBulkDataflowJob(
-                gcsResourceManager,
                 spannerResourceManager,
-                spannerMetadataResourceManager,
-                pubsubResourceManager,
-                getClass().getSimpleName(),
-                "",
-                "",
-                null,
-                null,
-                MYSQL_SOURCE_TYPE);
+                gcsResourceManager);
       }
     }
   }
