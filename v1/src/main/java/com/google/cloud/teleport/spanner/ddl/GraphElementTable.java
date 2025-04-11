@@ -133,6 +133,7 @@ public abstract class GraphElementTable implements Serializable {
       sb.append("KEY(");
       sb.append(edgeKeyColumns.stream().collect(Collectors.joining(", ")));
       sb.append(") REFERENCES ").append(nodeTableName);
+      sb.append("(").append(nodeKeyColumns.stream().collect(Collectors.joining(","))).append(")");
       return sb.toString();
     }
   }
