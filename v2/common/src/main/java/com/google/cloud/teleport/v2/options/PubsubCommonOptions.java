@@ -35,7 +35,7 @@ public final class PubsubCommonOptions {
         groupName = "Source",
         description = "Pub/Sub input subscription",
         helpText = "The Pub/Sub input subscription to read from.",
-        example = "projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>")
+        example = "projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>")
     @Required
     String getInputSubscription();
 
