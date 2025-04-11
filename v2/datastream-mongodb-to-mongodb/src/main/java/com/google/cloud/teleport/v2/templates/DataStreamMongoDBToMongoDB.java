@@ -337,7 +337,10 @@ public class DataStreamMongoDBToMongoDB {
         groupName = "Target",
         order = 7,
         description = "Connection URI for the target project",
-        helpText = "URI to connect to the target project")
+        helpText =
+            "URI to connect to the target project. It should start with either "
+                + "'mongodb://' or 'mongodb+srv://'. If OIDC authentication mechanism is used and "
+                + "no TOKEN_RESOURCE is provided, it will automatically use FIRESTORE.")
     String getConnectionUri();
 
     void setConnectionUri(String value);
@@ -432,7 +435,8 @@ public class DataStreamMongoDBToMongoDB {
             connectionString);
         throw new IllegalArgumentException("Invalid connectionUri: " + connectionString);
       }
-      if (connectionString.contains("MONGODB-OIDC")) {
+      if (connectionString.contains("MONGODB-OIDC")
+          && !connectionString.contains("TOKEN_RESOURCE")) {
         connectionString += ",TOKEN_RESOURCE:FIRESTORE";
       }
       LOG.info("Creating MongoDB client with connection string: {}", connectionString);

@@ -39,7 +39,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **inputFilePattern**: Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.avro`.
 * **inputFileFormat**: The file format of the desired input files. Can be avro or json. Defaults to: avro.
-* **connectionUri**: URI to connect to the target project.
+* **connectionUri**: URI to connect to the target project. It should start with either 'mongodb://' or 'mongodb+srv://'. If OIDC authentication mechanism is used and no TOKEN_RESOURCE is provided, it will automatically use FIRESTORE.
 * **databaseName**: The database to write to. For example, `(default)`.
 
 ### Optional parameters

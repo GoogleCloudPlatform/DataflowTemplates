@@ -59,7 +59,7 @@ variable "fileReadConcurrency" {
 
 variable "connectionUri" {
   type        = string
-  description = "URI to connect to the target project"
+  description = "URI to connect to the target project. It should start with either 'mongodb://' or 'mongodb+srv://'. If OIDC authentication mechanism is used and no TOKEN_RESOURCE is provided, it will automatically use FIRESTORE."
 
 }
 
