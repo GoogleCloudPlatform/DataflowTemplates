@@ -148,7 +148,9 @@ public class InformationSchemaScanner {
       String interleaveType = resultSet.isNull(3) ? null : resultSet.getString(3);
 
       // Error out when the parent table or on delete action are set incorrectly.
-      if (Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
+      if (interleaveType != null
+          && interleaveType.equalsIgnoreCase("IN PARENT")
+          && Strings.isNullOrEmpty(parentTableName) != Strings.isNullOrEmpty(onDeleteAction)) {
         throw new IllegalStateException(
             String.format(
                 "Invalid combination of parentTableName %s and onDeleteAction %s",
