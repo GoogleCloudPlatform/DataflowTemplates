@@ -87,7 +87,9 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
-    String statement =
+    List<String> statements = new ArrayList<>();
+    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add(
         "CREATE TABLE Singers (\n"
             + "  SingerId      INT64 NOT NULL,\n"
             + "  FirstName     STRING(1024),\n"
@@ -97,8 +99,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
-            + ") PRIMARY KEY (SingerId)";
-    googleSqlResourceManager.executeDdlStatement(statement);
+            + ") PRIMARY KEY (SingerId)");
+    googleSqlResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
         "{\n"
@@ -182,7 +184,9 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "input/singers1.csv",
         "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
 
-    String statement =
+    List<String> statements = new ArrayList<>();
+    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add(
         "CREATE TABLE Singers (\n"
             + "  SingerId      INT64 NOT NULL,\n"
             + "  FirstName     STRING(1024),\n"
@@ -192,8 +196,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
-            + ") PRIMARY KEY (SingerId)";
-    googleSqlResourceManager.executeDdlStatement(statement);
+            + ") PRIMARY KEY (SingerId)");
+    googleSqlResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
         "{\n"
@@ -281,7 +285,9 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
-    String statement =
+    List<String> statements = new ArrayList<>();
+    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add(
         "CREATE TABLE \"Singers\" (\n"
             + "  \"SingerId\"      bigint NOT NULL,\n"
             + "  \"FirstName\"     character varying(256),\n"
@@ -291,8 +297,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  \"Score\"         double precision,\n"
             + "  \"BirthDate\"     date,\n"
             + "  \"LastModified\"  timestamp with time zone,\n"
-            + " PRIMARY KEY (\"SingerId\"))";
-    postgresResourceManager.executeDdlStatement(statement);
+            + " PRIMARY KEY (\"SingerId\"))");
+    postgresResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
         "{\n"
@@ -388,13 +394,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
             + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
 
-    String statement =
+    List<String> statements = new ArrayList<>();
+    statements.add("DROP TABLE IF EXISTS UuidTable");
+    statements.add(
         "CREATE TABLE UuidTable (\n"
             + "  Key      UUID NOT NULL,\n"
             + "  Val1     UUID,\n"
             + "  Val2     INT64,\n"
-            + ") PRIMARY KEY (Key)";
-    googleSqlResourceManager.executeDdlStatement(statement);
+            + ") PRIMARY KEY (Key)");
+    googleSqlResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
         "{\n"
@@ -461,13 +469,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
             + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
 
-    String statement =
+    List<String> statements = new ArrayList<>();
+    statements.add("DROP TABLE IF EXISTS UuidTable");
+    statements.add(
         "CREATE TABLE \"UuidTable\" (\n"
             + "  \"Key\"      uuid NOT NULL,\n"
             + "  \"Val1\"     uuid,\n"
             + "  \"Val2\"     INT,\n"
-            + ") PRIMARY KEY (\"Key\")";
-    postgresResourceManager.executeDdlStatement(statement);
+            + ") PRIMARY KEY (\"Key\")");
+    postgresResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
         "{\n"
