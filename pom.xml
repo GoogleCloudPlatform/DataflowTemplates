@@ -64,13 +64,13 @@
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <failsafe.version>3.3.0</failsafe.version>
-    <grpc.gen.version>1.13.1</grpc.gen.version>
+    <grpc.gen.version>1.70.0</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.1</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
-    <log4j-2.version>2.20.0</log4j-2.version>
+    <log4j-2.version>2.24.3</log4j-2.version>
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20231013</json.version>
