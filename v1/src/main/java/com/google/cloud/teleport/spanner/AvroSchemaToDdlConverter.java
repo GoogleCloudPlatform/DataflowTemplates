@@ -47,6 +47,12 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -71,6 +77,8 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph.PropertyDeclaration;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -101,6 +109,8 @@ public class AvroSchemaToDdlConverter {
     for (Schema schema : avroSchemas) {
       if (schema.getProp(SPANNER_VIEW_QUERY) != null) {
         builder.addView(toView(null, schema));
+      } else if (SPANNER_UDF.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addUdf(toUdf(null, schema));
       } else if (SPANNER_ENTITY_MODEL.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addModel(toModel(null, schema));
       } else if (schema.getProp(SPANNER_CHANGE_STREAM_FOR_CLAUSE) != null) {
@@ -139,6 +149,31 @@ public class AvroSchemaToDdlConverter {
         View.builder(dialect).name(viewName).query(schema.getProp(SPANNER_VIEW_QUERY));
     if (schema.getProp(SPANNER_VIEW_SECURITY) != null) {
       builder.security(View.SqlSecurity.valueOf(schema.getProp(SPANNER_VIEW_SECURITY)));
+    }
+    return builder.build();
+  }
+
+  public Udf toUdf(String functionSpecificName, Schema schema) {
+    if (functionSpecificName == null) {
+      functionSpecificName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl functionSpecificName {}", functionSpecificName);
+
+    Udf.Builder builder =
+        Udf.builder(dialect)
+            .specificName(functionSpecificName)
+            .name(schema.getProp(SPANNER_UDF_NAME))
+            .type(schema.getProp(SPANNER_UDF_TYPE))
+            .definition(schema.getProp(SPANNER_UDF_DEFINITION));
+    if (schema.getProp(SPANNER_UDF_SECURITY) != null) {
+      builder.security(Udf.SqlSecurity.valueOf(schema.getProp(SPANNER_UDF_SECURITY)));
+    }
+    for (int i = 0; ; i++) {
+      String parameter = schema.getProp(SPANNER_UDF_PARAMETER + i);
+      if (parameter == null) {
+        break;
+      }
+      builder.addParameter(UdfParameter.parse(parameter, functionSpecificName, dialect));
     }
     return builder.build();
   }
