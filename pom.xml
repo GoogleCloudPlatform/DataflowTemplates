@@ -48,8 +48,8 @@
     <jacoco.version>0.8.8</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.63.0</beam.version>
-    <beam-python.version>2.63.0</beam-python.version>
+    <beam.version>2.64.0</beam.version>
+    <beam-python.version>2.64.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
@@ -64,27 +64,25 @@
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <failsafe.version>3.3.0</failsafe.version>
-    <grpc.gen.version>1.13.1</grpc.gen.version>
+    <grpc.gen.version>1.70.0</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.1</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
-    <log4j-2.version>2.20.0</log4j-2.version>
+    <log4j-2.version>2.24.3</log4j-2.version>
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20231013</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
-    <slf4j.version>1.7.36</slf4j.version>
+    <slf4j.version>2.0.16</slf4j.version>
     <snakeyaml.version>2.2</snakeyaml.version>
     <snappy.version>1.1.10.4</snappy.version>
     <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.1.5</truth.version>
-
-    <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.57.0</gax.version>
+    <gax.version>2.62.0</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -146,6 +144,12 @@
         <groupId>org.apache.avro</groupId>
         <artifactId>avro</artifactId>
         <version>${avro.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
 
       <!-- If any module uses log4j 2.x, enforce patched versions -->
