@@ -1,6 +1,6 @@
-CREATE TABLE testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK (
+CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk (
     id STRING(100) NOT NULL,
-    col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3 STRING(100)
+    col_qcbf69rmxtre3b_03tpcovf16ed STRING(100)
 ) PRIMARY KEY (id);
 
 CREATE CHANGE STREAM allstream

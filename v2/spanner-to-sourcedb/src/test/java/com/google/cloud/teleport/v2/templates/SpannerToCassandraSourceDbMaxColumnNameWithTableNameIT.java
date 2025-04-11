@@ -62,7 +62,7 @@ public class SpannerToCassandraSourceDbMaxColumnNameWithTableNameIT
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToCassandraSourceDbWideRowMaxColumnNameWithMaxTableNameIT/cassandra-config-template.conf";
 
-  private static final String TEST_TABLE = "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK";
+  private static final String TEST_TABLE = "testtable_03tpcovf16ed0klxm3v808ch3btgq0uk";
   private static final HashSet<SpannerToCassandraSourceDbMaxColumnNameWithTableNameIT>
       testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -159,7 +159,7 @@ public class SpannerToCassandraSourceDbMaxColumnNameWithTableNameIT
     List<Mutation> mutations = new ArrayList<>();
     Mutation.WriteBuilder mutationBuilder =
         Mutation.newInsertOrUpdateBuilder(TEST_TABLE).set("id").to("SampleTest");
-    mutationBuilder.set("col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3").to("SampleTestValue");
+    mutationBuilder.set("col_qcbf69rmxtre3b_03tpcovf16ed").to("SampleTestValue");
 
     mutations.add(mutationBuilder.build());
     spannerResourceManager.write(mutations);

@@ -1,4 +1,4 @@
-CREATE TABLE testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK (
+CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk (
     id TEXT PRIMARY KEY,
-    col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3 TEXT
+    col_qcbf69rmxtre3b_03tpcovf16ed TEXT
 );
