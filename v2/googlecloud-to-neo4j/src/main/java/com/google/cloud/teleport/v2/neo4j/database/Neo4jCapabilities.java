@@ -36,7 +36,7 @@ public final class Neo4jCapabilities implements Serializable {
   }
 
   public boolean hasVectorIndexes() {
-    return edition != Neo4jEdition.COMMUNITY && version.compareTo(Neo4jVersion.V5_13_0) >= 0;
+    return version.compareTo(Neo4jVersion.V5_13_0) >= 0;
   }
 
   public boolean hasNodeTypeConstraints() {
