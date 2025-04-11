@@ -349,7 +349,7 @@ public class CassandraDMLGeneratorTest {
                 .setCommitTimestamp(Timestamp.now())
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
