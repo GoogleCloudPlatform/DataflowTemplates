@@ -8,99 +8,6 @@
   "Tags": null,
   "SpSchema": {
     "t1": {
-      "Name": "Users",
-      "ColIds": [
-        "c5",
-        "c6",
-        "c7"
-      ],
-      "ShardIdColumn": "",
-      "ColDefs": {
-        "c5": {
-          "Name": "id",
-          "T": {
-            "Name": "INT64",
-            "Len": 0,
-            "IsArray": false
-          },
-          "NotNull": true,
-          "Comment": "From: id int(10)",
-          "Id": "c5",
-          "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
-          },
-          "DefaultValue": {
-            "IsPresent": false,
-            "Value": {
-              "ExpressionId": "",
-              "Statement": ""
-            }
-          }
-        },
-        "c6": {
-          "Name": "name",
-          "T": {
-            "Name": "STRING",
-            "Len": 25,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: name varchar(25)",
-          "Id": "c6",
-          "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
-          },
-          "DefaultValue": {
-            "IsPresent": false,
-            "Value": {
-              "ExpressionId": "",
-              "Statement": ""
-            }
-          }
-        },
-        "c7": {
-          "Name": "from",
-          "T": {
-            "Name": "STRING",
-            "Len": 25,
-            "IsArray": false
-          },
-          "NotNull": false,
-          "Comment": "From: from varchar(25)",
-          "Id": "c7",
-          "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
-          },
-          "DefaultValue": {
-            "IsPresent": false,
-            "Value": {
-              "ExpressionId": "",
-              "Statement": ""
-            }
-          }
-        }
-      },
-      "PrimaryKeys": [
-        {
-          "ColId": "c5",
-          "Desc": false,
-          "Order": 1
-        }
-      ],
-      "ForeignKeys": null,
-      "Indexes": null,
-      "ParentTable": {
-        "Id": "",
-        "OnDelete": ""
-      },
-      "CheckConstraints": null,
-      "Comment": "Spanner schema for source table Users",
-      "Id": "t1"
-    },
-    "t2": {
       "Name": "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
       "ColIds": [
         "c3",
@@ -168,12 +75,188 @@
       },
       "CheckConstraints": null,
       "Comment": "Spanner schema for source table testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Users",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c5": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c6": {
+          "Name": "full_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 25,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(25)",
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c7": {
+          "Name": "from",
+          "T": {
+            "Name": "STRING",
+            "Len": 25,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: from varchar(25)",
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c5",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Users",
       "Id": "t2"
     }
   },
   "SyntheticPKeys": {},
   "SrcSchema": {
     "t1": {
+      "Name": "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
+      "Schema": "test_limits",
+      "ColIds": [
+        "c3",
+        "c4"
+      ],
+      "ColDefs": {
+        "c3": {
+          "Name": "id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c4": {
+          "Name": "col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              20
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t1"
+    },
+    "t2": {
       "Name": "Users",
       "Schema": "test_limits",
       "ColIds": [
@@ -286,103 +369,22 @@
       "ForeignKeys": null,
       "CheckConstraints": null,
       "Indexes": null,
-      "Id": "t1"
-    },
-    "t2": {
-      "Name": "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO",
-      "Schema": "test_limits",
-      "ColIds": [
-        "c3",
-        "c4"
-      ],
-      "ColDefs": {
-        "c3": {
-          "Name": "id",
-          "Type": {
-            "Name": "varchar",
-            "Mods": [
-              20
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": true,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c3",
-          "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
-          },
-          "DefaultValue": {
-            "IsPresent": false,
-            "Value": {
-              "ExpressionId": "",
-              "Statement": ""
-            }
-          }
-        },
-        "c4": {
-          "Name": "col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY",
-          "Type": {
-            "Name": "varchar",
-            "Mods": [
-              20
-            ],
-            "ArrayBounds": null
-          },
-          "NotNull": false,
-          "Ignored": {
-            "Check": false,
-            "Identity": false,
-            "Default": false,
-            "Exclusion": false,
-            "ForeignKey": false,
-            "AutoIncrement": false
-          },
-          "Id": "c4",
-          "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
-          },
-          "DefaultValue": {
-            "IsPresent": false,
-            "Value": {
-              "ExpressionId": "",
-              "Statement": ""
-            }
-          }
-        }
-      },
-      "PrimaryKeys": [
-        {
-          "ColId": "c3",
-          "Desc": false,
-          "Order": 1
-        }
-      ],
-      "ForeignKeys": null,
-      "CheckConstraints": null,
-      "Indexes": null,
       "Id": "t2"
     }
   },
   "SchemaIssues": {
     "t1": {
-      "ColumnLevelIssues": {
-        "c5": [
-          14
-        ]
-      },
+      "ColumnLevelIssues": {},
       "TableLevelIssues": null
     },
     "t2": {
-      "ColumnLevelIssues": {},
+      "ColumnLevelIssues": {
+        "c5": [
+          14
+        ],
+        "c6": [],
+        "c7": []
+      },
       "TableLevelIssues": null
     }
   },
