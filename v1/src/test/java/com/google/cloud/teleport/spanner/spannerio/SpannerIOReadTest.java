@@ -68,7 +68,6 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableMap;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.Before;
@@ -89,6 +88,16 @@ public class SpannerIOReadTest implements Serializable {
   public static final String INSTANCE_CONFIG_ID = "5678";
   public static final String INSTANCE_ID = "123";
   public static final String DATABASE_ID = "aaa";
+  public static final String FQ_NAME =
+      "spanner:"
+          + PROJECT_ID
+          + "."
+          + INSTANCE_CONFIG_ID
+          + "."
+          + INSTANCE_ID
+          + "."
+          + DATABASE_ID
+          + ".users";
   public static final String TABLE_ID = "users";
   public static final String QUERY_NAME = "My-query";
   public static final String QUERY_STATEMENT = "SELECT * FROM users";
@@ -119,6 +128,16 @@ public class SpannerIOReadTest implements Serializable {
 
   private static final String DEFAULT_PROJECT =
       Lineage.wrapSegment(SpannerOptions.getDefaultProjectId());
+  public static final String DEFAULT_FQ_NAME =
+      "spanner:"
+          + DEFAULT_PROJECT
+          + "."
+          + INSTANCE_CONFIG_ID
+          + "."
+          + INSTANCE_ID
+          + "."
+          + DATABASE_ID
+          + ".users";
 
   @Before
   public void setUp() throws Exception {
@@ -157,13 +176,7 @@ public class SpannerIOReadTest implements Serializable {
                 .withQuery(QUERY_STATEMENT)
                 .withQueryName(QUERY_NAME)
                 .withTimestampBound(TIMESTAMP_BOUND));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SOURCE),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    PROJECT_ID, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SOURCE), hasItem(FQ_NAME));
   }
 
   @Test
@@ -196,13 +209,7 @@ public class SpannerIOReadTest implements Serializable {
                 .withQuery(QUERY_STATEMENT)
                 .withQueryName(QUERY_NAME)
                 .withTimestampBound(TIMESTAMP_BOUND));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SOURCE),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SOURCE), hasItem(DEFAULT_FQ_NAME));
   }
 
   @Test
@@ -220,13 +227,7 @@ public class SpannerIOReadTest implements Serializable {
                 .withQueryName(QUERY_NAME)
                 .withTimestampBound(TIMESTAMP_BOUND));
 
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SOURCE),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SOURCE), hasItem(DEFAULT_FQ_NAME));
   }
 
   @Test
@@ -313,13 +314,7 @@ public class SpannerIOReadTest implements Serializable {
                 .withQuery(QUERY_STATEMENT)
                 .withQueryName(QUERY_NAME)
                 .withTimestampBound(TIMESTAMP_BOUND));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SOURCE),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    PROJECT_ID, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SOURCE), hasItem(FQ_NAME));
   }
 
   @Test
@@ -336,13 +331,7 @@ public class SpannerIOReadTest implements Serializable {
                 .withQuery(QUERY_STATEMENT)
                 .withQueryName(QUERY_NAME)
                 .withTimestampBound(TIMESTAMP_BOUND));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SOURCE),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SOURCE), hasItem(DEFAULT_FQ_NAME));
   }
 
   @Test
@@ -359,13 +348,7 @@ public class SpannerIOReadTest implements Serializable {
                 .withQuery(QUERY_STATEMENT)
                 .withQueryName(QUERY_NAME)
                 .withTimestampBound(TIMESTAMP_BOUND));
-    assertThat(
-        Lineage.query(result.metrics(), Lineage.Type.SOURCE),
-        hasItem(
-            Lineage.getFqName(
-                "spanner",
-                ImmutableList.of(
-                    DEFAULT_PROJECT, INSTANCE_CONFIG_ID, INSTANCE_ID, DATABASE_ID, "users"))));
+    assertThat(Lineage.query(result.metrics(), Lineage.Type.SOURCE), hasItem(DEFAULT_FQ_NAME));
   }
 
   @Test
