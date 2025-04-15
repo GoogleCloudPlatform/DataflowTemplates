@@ -48,7 +48,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
             .maybeUseStaticInstance()
             .build();
 
-    List<String> createTableQueries = getTablesCreatedDdlQueryStrings(5000);
+    List<String> createTableQueries = getTablesCreateDdlQueryString(5000);
 
     for (int i = 0; i < createTableQueries.size(); i += 100) {
       int end = Math.min(i + 100, createTableQueries.size());
@@ -64,7 +64,7 @@ public class SpannerToSourceDbWideRowBasicIT extends SpannerToSourceDbITBase {
     ResourceManagerUtils.cleanResources(spannerResourceManagerForTables);
   }
 
-  private static @NotNull List<String> getTablesCreatedDdlQueryStrings(int size) {
+  private static @NotNull List<String> getTablesCreateDdlQueryString(int size) {
     List<String> createTableQueries = new ArrayList<>();
     for (int tableNum = 1; tableNum <= size; tableNum++) {
       String tableName = "Table_" + tableNum;
