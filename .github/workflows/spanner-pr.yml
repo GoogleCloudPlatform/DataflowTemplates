@@ -18,6 +18,7 @@ name: Spanner PR
 
 on:
   pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
     branches:
     - 'main'
     paths:
