@@ -34,6 +34,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
@@ -98,7 +99,8 @@ public class Ddl implements Serializable {
       throw new IllegalStateException(
           "attempting to fetch table which does not exist in spanner:" + tableName);
     }
-    if (table.interleaveInParent() != null) {
+    if (table.interleaveInParent() != null
+        && !Objects.equals(table.interleaveType(), new String("IN"))) {
       tablesReferenced.add(table.interleaveInParent());
     }
     Set<String> fkReferencedTables =
