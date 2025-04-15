@@ -56,11 +56,11 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
 
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToMySqlSourceDbWideRowMaxColumnsIT.class);
-  private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSourceDbWideRowIT/spanner-max-col-schema.sql";
   private static final String SESSION_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/max-col-session.json";
   private static final String TABLE1 = "testtable";
+  private static final int NUM_NON_KEY_COLS = 100;
+  private static final String COLUMN_SIZE = "100";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/mysql-max-col-schema.sql";
 
@@ -76,23 +76,21 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
    *
-   * @throws IOException
+   * @throws Exception
    */
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (SpannerToMySqlSourceDbWideRowMaxColumnsIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         spannerResourceManager =
-            createSpannerDatabase(SpannerToMySqlSourceDbWideRowMaxColumnsIT.SPANNER_DDL_RESOURCE);
+            createSpannerDBAndTableWithNColumns(TABLE1, NUM_NON_KEY_COLS, COLUMN_SIZE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-        createMySQLSchema(
-            jdbcResourceManager,
-            SpannerToMySqlSourceDbWideRowMaxColumnsIT.MYSQL_SCHEMA_FILE_RESOURCE);
+        createMySQLTableWithNColumns(jdbcResourceManager, TABLE1, NUM_NON_KEY_COLS, COLUMN_SIZE);
 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)

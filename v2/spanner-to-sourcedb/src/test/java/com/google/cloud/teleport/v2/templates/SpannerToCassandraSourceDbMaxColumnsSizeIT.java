@@ -65,14 +65,13 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
   private static final String PRIMARY_KEY = "id";
   private static final String SECONDARY_KEY_PREFIX = "col_";
 
-  private static final String SPANNER_DDL_RESOURCE =
-      "SpannerToSourceDbWideRowIT/spanner-max-col-size-schema.sql";
   private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/cassandra-max-col-size-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/cassandra-config-template.conf";
 
-  private static final String TEST_TABLE = "TestTable";
+  private static final String TEST_TABLE = "testtable";
+  private static final String COLUMN_SIZE = "MAX";
   private static final HashSet<SpannerToCassandraSourceDbMaxColumnsSizeIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -90,7 +89,8 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
     synchronized (SpannerToCassandraSourceDbMaxColumnsSizeIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
-        spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
+        spannerResourceManager =
+            createSpannerDBAndTableWithNColumns(TEST_TABLE, NUM_COLS, COLUMN_SIZE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         cassandraResourceManager = generateKeyspaceAndBuildCassandraResource();
@@ -99,7 +99,7 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
                 .build();
         createAndUploadCassandraConfigToGcs(
             gcsResourceManager, cassandraResourceManager, CASSANDRA_CONFIG_FILE_RESOURCE);
-        createCassandraSchema(cassandraResourceManager, CASSANDRA_SCHEMA_FILE_RESOURCE);
+        createCassandraTableWithNColumns(cassandraResourceManager, TEST_TABLE, NUM_COLS);
         pubsubResourceManager = setUpPubSubResourceManager();
         subscriptionName =
             createPubsubResources(
@@ -220,6 +220,6 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(30)), () -> getRowCount(TEST_TABLE) == 1);
     assertThatResult(result).meetsConditions();
-    LOG.info("Successfully validated 1,024 columns in Cassandra");
+    LOG.info("Successfully validated 159 columns in Cassandra");
   }
 }
