@@ -579,22 +579,46 @@ public final class BigtableChangeStreamsToPubSub {
       this.sourceInfo = source;
     }
 
+    private boolean ignoreFamily(String family) {
+      return this.sourceInfo.getColumnFamiliesToIgnore().contains(family);
+    }
+
+    private static String toJsonString(Mod mod, ChangeStreamMutation inputMutation) {
+      try {
+        return mod.toJson();
+      } catch (IOException e) {
+        // Ignore exception and print bad format.
+        return String.format("\"%s\"", inputMutation);
+      }
+    }
+
     @ProcessElement
     public void process(@Element ChangeStreamMutation input, OutputReceiver<String> receiver)
         throws Exception {
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
 
-        Mod mod = null;
         switch (modType) {
           case SET_CELL:
-            mod = new Mod(sourceInfo, input, (SetCell) entry);
+            SetCell setCell = (SetCell) entry;
+            if (!ignoreFamily(setCell.getFamilyName())) {
+              Mod mod = new Mod(sourceInfo, input, setCell);
+              receiver.output(toJsonString(mod, input));
+            }
             break;
           case DELETE_CELLS:
-            mod = new Mod(sourceInfo, input, (DeleteCells) entry);
+            DeleteCells deleteCells = (DeleteCells) entry;
+            if (!ignoreFamily(deleteCells.getFamilyName())) {
+              Mod mod = new Mod(sourceInfo, input, deleteCells);
+              receiver.output(toJsonString(mod, input));
+            }
             break;
           case DELETE_FAMILY:
-            mod = new Mod(sourceInfo, input, (DeleteFamily) entry);
+            DeleteFamily deleteFamily = (DeleteFamily) entry;
+            if (!ignoreFamily(deleteFamily.getFamilyName())) {
+              Mod mod = new Mod(sourceInfo, input, deleteFamily);
+              receiver.output(toJsonString(mod, input));
+            }
             break;
           default:
           case UNKNOWN:
@@ -604,16 +628,6 @@ public final class BigtableChangeStreamsToPubSub {
                     + " is not supported. The entry was put into a DLQ directory. "
                     + "Please update your Dataflow template with the latest template version");
         }
-
-        String modJsonString;
-
-        try {
-          modJsonString = mod.toJson();
-        } catch (IOException e) {
-          // Ignore exception and print bad format.
-          modJsonString = String.format("\"%s\"", input);
-        }
-        receiver.output(modJsonString);
       }
     }
 
