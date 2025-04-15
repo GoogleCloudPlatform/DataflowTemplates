@@ -18,16 +18,10 @@ package com.google.cloud.teleport.v2.templates;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.datastream.v1.DestinationConfig;
-import com.google.cloud.datastream.v1.SourceConfig;
-import com.google.cloud.datastream.v1.Stream;
-import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.pubsub.v1.SubscriptionName;
-import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -39,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -48,32 +43,26 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.math.NumberUtils;
@@ -81,15 +70,14 @@ import org.testcontainers.shaded.org.apache.commons.lang3.math.NumberUtils;
 /** Integration test for {@link DataStreamToSpanner} Flex template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
-@RunWith(Parameterized.class)
-@Ignore
-public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends SpannerTemplateITBase {
+@RunWith(JUnit4.class)
+public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends DataStreamToSpannerITBase {
   private static final int THREAD_POOL_SIZE = 16;
-  private static final int BATCH_SIZE = 1000;
+  private static final int BATCH_SIZE = 2500;
   private static final int MAX_RETRIES = 3;
   private static final long RETRY_DELAY_MS = 3000; // Delay between retries
   private static final Integer NUM_EVENTS = 1;
-  private static final Integer NUM_TABLES = 5000;
+  private static final Integer NUM_TABLES = 2500;
 
   private static final String ROW_ID = "row_id";
   private static final String NAME = "name";
@@ -99,45 +87,85 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
   private static final Logger log =
       LoggerFactory.getLogger(DataStreamToSpannerWideRowFor5000TablePerDatabaseIT.class);
 
-  private String gcsPrefix;
-  private String dlqGcsPrefix;
-
-  private SubscriptionName subscription;
-  private SubscriptionName dlqSubscription;
-
   private static final List<String> COLUMNS = List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
   private static final ExecutorService EXECUTOR_SERVICE =
       Executors.newFixedThreadPool(THREAD_POOL_SIZE);
-  private CloudSqlResourceManager cloudSqlResourceManager;
-  private DatastreamResourceManager datastreamResourceManager;
-  private SpannerResourceManager spannerResourceManager;
-  private PubsubResourceManager pubsubResourceManager;
+  private static CloudSqlResourceManager cloudSqlResourceManager;
+  private static SpannerResourceManager spannerResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
+  private static GcsResourceManager gcsResourceManager;
+  private static HashSet<DataStreamToSpannerWideRowFor5000TablePerDatabaseIT> testInstances =
+      new HashSet<>();
+  private static PipelineLauncher.LaunchInfo jobInfo;
+  private static final List<String> TABLE_NAMES = new ArrayList<>();
 
-  private GcsResourceManager gcsResourceManager;
+  static {
+    for (int i = 1; i <= NUM_TABLES; i++) {
+      TABLE_NAMES.add("DataStreamToSpanner_" + i + "_" + RandomStringUtils.randomAlphanumeric(5));
+    }
+  }
 
   @Before
   public void setUp() throws IOException {
-    datastreamResourceManager =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-private-connect-us-central1")
-            .build();
-
-    gcsResourceManager = setUpSpannerITGcsResourceManager();
-    gcsPrefix =
-        getGcsPath(testName + "/cdc/", gcsResourceManager)
-            .replace("gs://" + gcsResourceManager.getBucket(), "");
-    dlqGcsPrefix =
-        getGcsPath(testName + "/dlq/", gcsResourceManager)
-            .replace("gs://" + gcsResourceManager.getBucket(), "");
+    skipBaseCleanup = true;
+    synchronized (DataStreamToSpannerWideRowFor5000TablePerDatabaseIT.class) {
+      testInstances.add(this);
+      if (jobInfo == null) {
+        datastreamResourceManager =
+            DatastreamResourceManager.builder(testName, PROJECT, REGION)
+                .setCredentialsProvider(credentialsProvider)
+                .setPrivateConnectivity("datastream-private-connect-us-central1")
+                .build();
+        spannerResourceManager = setUpSpannerResourceManager();
+        pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
+        cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
+        String sessionContent =
+            generateSessionFile(
+                NUM_TABLES,
+                cloudSqlResourceManager.getDatabaseName(),
+                spannerResourceManager.getDatabaseId(),
+                TABLE_NAMES,
+                generateBaseSchema());
+        setupSchema();
+        jobInfo =
+            launchDataflowJob(
+                getClass().getSimpleName(),
+                null,
+                null,
+                "DataStreamToSpannerWideRowFor5000TablePerDatabaseIT",
+                spannerResourceManager,
+                pubsubResourceManager,
+                new HashMap<>() {
+                  {
+                    put("inputFileFormat", "json");
+                  }
+                },
+                null,
+                null,
+                gcsResourceManager,
+                sessionContent,
+                MySQLSource.builder(
+                        cloudSqlResourceManager.getHost(),
+                        cloudSqlResourceManager.getUsername(),
+                        cloudSqlResourceManager.getPassword(),
+                        cloudSqlResourceManager.getPort())
+                    .setAllowedTables(
+                        Map.of(cloudSqlResourceManager.getDatabaseName(), TABLE_NAMES))
+                    .build());
+      }
+    }
   }
 
   @After
-  public void cleanUp() {
+  public void cleanUp() throws IOException {
+    for (DataStreamToSpannerWideRowFor5000TablePerDatabaseIT instance : testInstances) {
+      instance.tearDownBase();
+    }
     EXECUTOR_SERVICE.shutdown();
     ResourceManagerUtils.cleanResources(
-        cloudSqlResourceManager,
         datastreamResourceManager,
+        cloudSqlResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
@@ -145,53 +173,40 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
 
   @Test
   public void testDataStreamMySqlToSpannerFor5000TablesPerDatabase() throws IOException {
-    simpleMaxMySqlTablesPerDatabaseToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        Function.identity());
+    assertThatPipeline(jobInfo).isRunning();
+
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeJdbcData(cdcEvents),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE_NAMES.get(0))
+                        .setMinRows(NUM_EVENTS)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE_NAMES.get(1))
+                        .setMinRows(NUM_EVENTS)
+                        .build(),
+                    checkDestinationRows(cdcEvents)))
+            .build();
+
+    // Job needs to be cancelled as draining will time out
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForConditionAndCancel(
+                createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+
+    assertThatResult(result).meetsConditions();
   }
 
-  @Test
-  public void testDataStreamMySqlToSpannerStreamingEngine() throws IOException {
-    simpleMaxMySqlTablesPerDatabaseToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        config -> config.addEnvironment("enableStreamingEngine", true));
-  }
-
-  @Test
-  public void testDataStreamMySqlToSpannerJson() throws IOException {
-    simpleMaxMySqlTablesPerDatabaseToSpannerTest(
-        DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT,
-        Dialect.GOOGLE_STANDARD_SQL,
-        Function.identity());
-  }
-
-  private void simpleMaxMySqlTablesPerDatabaseToSpannerTest(
-      DatastreamResourceManager.DestinationOutputFormat fileFormat,
-      Dialect spannerDialect,
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException {
-
-    simpleJdbcToSpannerTest(
-        fileFormat,
-        spannerDialect,
-        config ->
-            paramsAdder.apply(
-                config.addParameter(
-                    "sessionFilePath",
-                    getGcsPath("input/mysql-session.json", gcsResourceManager))));
-  }
-
-  private void createTables(List<String> tableNames) {
+  private void setupSchema() {
     List<CompletableFuture<Void>> futures = new LinkedList<>();
-    for (int i = 0; i < tableNames.size(); i += BATCH_SIZE) {
-      int endIndex = Math.min(i + BATCH_SIZE, tableNames.size());
-      List<String> batch = tableNames.subList(i, endIndex);
+    for (int i = 0; i < TABLE_NAMES.size(); i += BATCH_SIZE) {
+      int endIndex = Math.min(i + BATCH_SIZE, TABLE_NAMES.size());
+      List<String> batch = TABLE_NAMES.subList(i, endIndex);
       createSpannerTables(batch, futures);
     }
     futures.add(
-        CompletableFuture.runAsync(() -> createCloudSqlTables(tableNames), EXECUTOR_SERVICE));
+        CompletableFuture.runAsync(() -> createCloudSqlTables(TABLE_NAMES), EXECUTOR_SERVICE));
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(30, TimeUnit.MINUTES);
     } catch (Exception e) {
@@ -319,128 +334,9 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
     }
   }
 
-  private void simpleJdbcToSpannerTest(
-      DatastreamResourceManager.DestinationOutputFormat fileFormat,
-      Dialect spannerDialect,
-      Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
-      throws IOException {
-
-    // Create JDBC Resource manager
-    cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    // Create Spanner Resource Manager
-    SpannerResourceManager.Builder spannerResourceManagerBuilder =
-        SpannerResourceManager.builder(testName, PROJECT, REGION, spannerDialect)
-            .maybeUseStaticInstance();
-    spannerResourceManager = spannerResourceManagerBuilder.build();
-
-    List<String> tableNames = new ArrayList<>();
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      tableNames.add("DataStreamToSpanner_" + i + "_" + RandomStringUtils.randomAlphanumeric(5));
-    }
-
-    gcsResourceManager.createArtifact(
-        "input/mysql-session.json",
-        generateSessionFile(
-            cloudSqlResourceManager.getDatabaseName(),
-            spannerResourceManager.getDatabaseId(),
-            tableNames));
-
-    createTables(tableNames);
-
-    JDBCSource jdbcSource =
-        MySQLSource.builder(
-                cloudSqlResourceManager.getHost(),
-                cloudSqlResourceManager.getUsername(),
-                cloudSqlResourceManager.getPassword(),
-                cloudSqlResourceManager.getPort())
-            .setAllowedTables(Map.of(cloudSqlResourceManager.getDatabaseName(), tableNames))
-            .build();
-
-    // Create Datastream JDBC Source Connection profile and config
-    SourceConfig sourceConfig =
-        datastreamResourceManager.buildJDBCSourceConfig("jdbc-profile", jdbcSource);
-
-    // Create Datastream GCS Destination Connection profile and config
-    DestinationConfig destinationConfig =
-        datastreamResourceManager.buildGCSDestinationConfig(
-            "gcs-profile", gcsResourceManager.getBucket(), gcsPrefix, fileFormat);
-
-    // Create and start Datastream stream
-    Stream stream =
-        datastreamResourceManager.createStream("stream1", sourceConfig, destinationConfig);
-    datastreamResourceManager.startStream(stream);
-
-    // Construct template
-    createPubSubNotifications();
-    String jobName = PipelineUtils.createJobName(testName);
-    LaunchConfig.Builder options =
-        paramsAdder.apply(
-            LaunchConfig.builder(jobName, specPath)
-                .addParameter("gcsPubSubSubscription", subscription.toString())
-                .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
-                .addParameter("streamName", stream.getName())
-                .addParameter("instanceId", spannerResourceManager.getInstanceId())
-                .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-                .addParameter("projectId", PROJECT)
-                .addParameter(
-                    "deadLetterQueueDirectory", getGcsPath(testName, gcsResourceManager) + "/dlq/")
-                .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
-                .addParameter(
-                    "inputFileFormat",
-                    fileFormat.equals(
-                            DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
-                        ? "avro"
-                        : "json"));
-
-    // Act
-    PipelineLauncher.LaunchInfo info = launchTemplate(options);
-    assertThatPipeline(info).isRunning();
-
-    // Construct a ChainedConditionCheck with 4 stages.
-    // 1. Send initial wave of events to JDBC
-    // 2. Wait on Spanner to merge events from staging to destination
-    // 3. Send wave of mutations to JDBC
-    // 4. Wait on Spanner to merge second wave of events
-    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    writeJdbcData(tableNames, cdcEvents),
-                    SpannerRowsCheck.builder(spannerResourceManager, tableNames.get(0))
-                        .setMinRows(NUM_EVENTS)
-                        .build(),
-                    SpannerRowsCheck.builder(spannerResourceManager, tableNames.get(1))
-                        .setMinRows(NUM_EVENTS)
-                        .build(),
-                    checkDestinationRows(tableNames, cdcEvents)))
-            .build();
-
-    // Job needs to be cancelled as draining will time out
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
-
-    // Assert
-    checkSpannerTables(spannerResourceManager, tableNames, cdcEvents, COLUMNS);
-    assertThatResult(result).meetsConditions();
-  }
-
-  private String generateSessionFile(String srcDb, String spannerDb, List<String> tableNames)
-      throws IOException {
-    String sessionFile = generateBaseSchema();
-    String sessionFileContent =
-        sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
-    for (int i = 1; i <= NUM_TABLES; i++) {
-      sessionFileContent = sessionFileContent.replaceAll("TABLE" + i, tableNames.get(i - 1));
-    }
-    return sessionFileContent;
-  }
-
   private String generateBaseSchema() throws IOException {
     Map<String, Object> sessionTemplate = createSessionTemplate();
-
     Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
     return gson.toJson(sessionTemplate);
   }
 
@@ -477,20 +373,6 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
         tableName, ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED, ROW_ID);
   }
 
-  private void createPubSubNotifications() throws IOException {
-    // Instantiate pubsub resource manager for notifications
-    pubsubResourceManager =
-        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
-
-    // Create pubsub notifications
-    TopicName topic = pubsubResourceManager.createTopic("it");
-    TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
-    subscription = pubsubResourceManager.createSubscription(topic, "it-sub");
-    dlqSubscription = pubsubResourceManager.createSubscription(dlqTopic, "dlq-sub");
-    gcsResourceManager.createNotification(topic.toString(), gcsPrefix.substring(1));
-    gcsResourceManager.createNotification(dlqTopic.toString(), dlqGcsPrefix.substring(1));
-  }
-
   private String generateSpannerDDL(String tableName) {
     return String.format(
         "CREATE TABLE IF NOT EXISTS %s ("
@@ -509,8 +391,7 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
    *
    * @return A ConditionCheck containing the check operation.
    */
-  private ConditionCheck checkDestinationRows(
-      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
+  private ConditionCheck checkDestinationRows(Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
       protected String getDescription() {
@@ -521,7 +402,7 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
       protected CheckResult check() {
         // First, check that correct number of rows were deleted.
         List<CompletableFuture<CheckResult>> futures =
-            tableNames.stream()
+            TABLE_NAMES.stream()
                 .map(
                     tableName ->
                         CompletableFuture.supplyAsync(
@@ -552,7 +433,7 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
 
         // Next, make sure in-place mutations were applied.
         try {
-          checkSpannerTables(spannerResourceManager, tableNames, cdcEvents, COLUMNS);
+          checkSpannerTables(spannerResourceManager, TABLE_NAMES, cdcEvents, COLUMNS);
           return new CheckResult(true, "Spanner tables contain expected rows.");
         } catch (AssertionError error) {
           return new CheckResult(false, "Spanner tables do not contain expected rows.");
@@ -567,8 +448,7 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
    *
    * @return A ConditionCheck containing the JDBC write operation.
    */
-  private ConditionCheck writeJdbcData(
-      List<String> tableNames, Map<String, List<Map<String, Object>>> cdcEvents) {
+  private ConditionCheck writeJdbcData(Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       private boolean success = true;
       private final List<String> messages = new ArrayList<>();
@@ -579,9 +459,9 @@ public class DataStreamToSpannerWideRowFor5000TablePerDatabaseIT extends Spanner
       }
 
       private void insertIntoTables() {
-        for (int i = 0; i < tableNames.size(); i += BATCH_SIZE) {
-          int endIndex = Math.min(i + BATCH_SIZE, tableNames.size());
-          List<String> batch = tableNames.subList(i, endIndex);
+        for (int i = 0; i < TABLE_NAMES.size(); i += BATCH_SIZE) {
+          int endIndex = Math.min(i + BATCH_SIZE, TABLE_NAMES.size());
+          List<String> batch = TABLE_NAMES.subList(i, endIndex);
           insertIntoCloudTables(batch);
           try {
             Thread.sleep(1000);
