@@ -66,15 +66,26 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
   private static final int BIGQUERY_NUM_ROWS =
-      Integer.parseInt(getProperty("numRows", "10", TestProperties.Type.PROPERTY));
+      Integer.parseInt(getProperty("numRows", "100", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_NUM_FIELDS =
-      Integer.parseInt(getProperty("numFields", "1", TestProperties.Type.PROPERTY));
+      Integer.parseInt(getProperty("numFields", "50", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_MAX_ENTRY_LENGTH =
       Integer.min(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
+
+  // Parameters specific to testing time partitioned tables
   private static final String PARTITION_FIELD = "timePartitionCol";
   private static final String ROW_RESTRICTION =
       "TIMESTAMP_TRUNC(timePartitionCol, HOUR) = TIMESTAMP(\"2025-03-06T15:00:00\")";
+  private static final List<String> timestamps =
+      List.of(
+          "2025-03-06T14:30:00Z", // Hour 14 (should NOT appear in results)
+          "2025-03-06T15:00:00Z", // Hour 15 (expected in query results)
+          "2025-03-06T15:45:00Z", // Hour 15 (expected in query results)
+          "2025-03-06T16:00:00Z" // Hour 16 (should NOT appear in results)
+          );
+  private static final List<String> expectedTimestamps =
+      List.of("2025-03-06T15:00:00Z", "2025-03-06T15:45:00Z");
 
   @Before
   public void setup() {
@@ -124,21 +135,12 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
 
   @Test
   public void testTimePartitionedBigQueryTableToParquet() throws IOException {
-    // Predefined timestamps for test data
-    List<String> timestamps =
-        List.of(
-            "2025-03-06T14:30:00Z", // Hour 14 (should NOT appear in results)
-            "2025-03-06T15:00:00Z", // Hour 15 (expected in query results)
-            "2025-03-06T15:45:00Z", // Hour 15 (expected in query results)
-            "2025-03-06T16:00:00Z" // Hour 16 (should NOT appear in results)
-            );
-
     // Arrange
     Tuple<Schema, List<RowToInsert>> generatedTable =
         BigQueryTestUtil.generateBigQueryTable(
             BIGQUERY_ID_COL, BIGQUERY_NUM_ROWS, BIGQUERY_NUM_FIELDS, BIGQUERY_MAX_ENTRY_LENGTH);
 
-    // Ensure the partition column is present in the schema
+    // Ensure the partitioned column is present in the schema
     List<Field> fields = new ArrayList<>(generatedTable.x().getFields());
     fields.add(Field.of(PARTITION_FIELD, StandardSQLTypeName.TIMESTAMP));
     Schema bigQuerySchema = Schema.of(fields);
@@ -150,6 +152,7 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     // Expected test data
     List<RowToInsert> expectedBigQueryRows = new ArrayList<>();
 
+    // Insert test data to the partitioned column
     for (int i = 0; i < generatedBigQueryRows.size(); i++) {
       RowToInsert generatedRow = generatedBigQueryRows.get(i);
       Map<String, Object> content = new HashMap<>(generatedRow.getContent());
@@ -159,9 +162,9 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
 
       bigQueryRows.add(RowToInsert.of(content));
 
-      if (timestampString.equals("2025-03-06T15:00:00Z")
-          || timestampString.equals("2025-03-06T15:45:00Z")) {
-        // Convert to Epoch since Parquet timestamps are in Epoch
+      // prep expected dataset used for assertion, we expect timestamps that satisfy ROW_RESTRICTION
+      if (expectedTimestamps.contains(timestampString)) {
+        // Convert to Epoch since timestamps stored in Parquet files are in Epoch
         Instant instant = Instant.parse(timestampString);
         long epochMillis = instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
         Map<String, Object> expectedContent = new HashMap<>(generatedRow.getContent());
@@ -170,7 +173,7 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
       }
     }
 
-    // Set up partition test table
+    // Set up time-partitioned test table
     TimePartitioning timePartitioning =
         TimePartitioning.newBuilder(TimePartitioning.Type.HOUR).setField(PARTITION_FIELD).build();
     TableId table =
@@ -178,7 +181,6 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
             testName, bigQuerySchema, timePartitioning);
     bigQueryResourceManager.write(testName, bigQueryRows);
 
-    //   Define expected test results
     Pattern expectedFilePattern = Pattern.compile(".*");
 
     // Configure pipeline launch
