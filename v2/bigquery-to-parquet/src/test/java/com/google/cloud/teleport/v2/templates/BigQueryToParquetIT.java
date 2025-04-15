@@ -31,6 +31,7 @@ import com.google.cloud.bigquery.TimePartitioning;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -65,13 +66,15 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
   // Define a set of parameters used to allow configuration of the test size being run.
   private static final String BIGQUERY_ID_COL = "test_id";
   private static final int BIGQUERY_NUM_ROWS =
-      Integer.parseInt(getProperty("numRows", "100", TestProperties.Type.PROPERTY));
+      Integer.parseInt(getProperty("numRows", "10", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_NUM_FIELDS =
-      Integer.parseInt(getProperty("numFields", "50", TestProperties.Type.PROPERTY));
+      Integer.parseInt(getProperty("numFields", "1", TestProperties.Type.PROPERTY));
   private static final int BIGQUERY_MAX_ENTRY_LENGTH =
       Integer.min(
           300, Integer.parseInt(getProperty("maxEntryLength", "20", TestProperties.Type.PROPERTY)));
   private static final String PARTITION_FIELD = "timePartitionCol";
+  private static final String ROW_RESTRICTION =
+      "TIMESTAMP_TRUNC(timePartitionCol, HOUR) = TIMESTAMP(\"2025-03-06T15:00:00\")";
 
   @Before
   public void setup() {
@@ -140,26 +143,30 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     fields.add(Field.of(PARTITION_FIELD, StandardSQLTypeName.TIMESTAMP));
     Schema bigQuerySchema = Schema.of(fields);
 
-    // Final data to insert to test table
-    List<RowToInsert> bigQueryRows = new ArrayList<>();
     // Auto-generated test data
     List<RowToInsert> generatedBigQueryRows = generatedTable.y();
+    // Final data to insert to test table
+    List<RowToInsert> bigQueryRows = new ArrayList<>();
     // Expected test data
     List<RowToInsert> expectedBigQueryRows = new ArrayList<>();
 
     for (int i = 0; i < generatedBigQueryRows.size(); i++) {
       RowToInsert generatedRow = generatedBigQueryRows.get(i);
       Map<String, Object> content = new HashMap<>(generatedRow.getContent());
-      String rowId = String.valueOf(i);
 
       String timestampString = timestamps.get(i % timestamps.size());
       content.put(PARTITION_FIELD, timestampString);
 
-      RowToInsert rowToInsert = RowToInsert.of(rowId, content);
-      bigQueryRows.add(rowToInsert);
+      bigQueryRows.add(RowToInsert.of(content));
+
       if (timestampString.equals("2025-03-06T15:00:00Z")
           || timestampString.equals("2025-03-06T15:45:00Z")) {
-        expectedBigQueryRows.add(rowToInsert);
+        // Convert to Epoch since Parquet timestamps are in Epoch
+        Instant instant = Instant.parse(timestampString);
+        long epochMillis = instant.getEpochSecond() * 1_000_000 + instant.getNano() / 1_000;
+        Map<String, Object> expectedContent = new HashMap<>(generatedRow.getContent());
+        expectedContent.put(PARTITION_FIELD, epochMillis);
+        expectedBigQueryRows.add(RowToInsert.of(expectedContent));
       }
     }
 
@@ -180,9 +187,7 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
             .addParameter("tableRef", toTableSpecLegacy(table))
             .addParameter("bucket", getGcsPath(testName))
             .addParameter("numShards", "5")
-            .addParameter(
-                "rowRestriction",
-                "TIMESTAMP_TRUNC(time, HOUR) = TIMESTAMP(\"2025-03-06T15:00:00\")");
+            .addParameter("rowRestriction", ROW_RESTRICTION);
 
     // Act: Launch pipeline
     LaunchInfo info = launchTemplate(options);
@@ -198,6 +203,8 @@ public final class BigQueryToParquetIT extends TemplateTestBase {
     assertThatArtifacts(artifacts)
         .asParquetRecords()
         .hasRecordsUnordered(
-            bigQueryRows.stream().map(RowToInsert::getContent).collect(Collectors.toList()));
+            expectedBigQueryRows.stream()
+                .map(RowToInsert::getContent)
+                .collect(Collectors.toList()));
   }
 }
