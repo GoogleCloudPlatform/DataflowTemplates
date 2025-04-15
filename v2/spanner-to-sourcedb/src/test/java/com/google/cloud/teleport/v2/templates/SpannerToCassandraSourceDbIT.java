@@ -176,7 +176,7 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
   private void writeRowWithMaxColumnsNameAndTableInSpanner() {
     List<Mutation> mutations = new ArrayList<>();
     Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(BOUNDARY_SIZE_TABLE).set("id").to("SampleTest");
+        Mutation.newInsertOrUpdateBuilder(BOUNDARY_SIZE_TABLE).set("id").to(1);
     mutationBuilder.set("col_qcbf69rmxtre3b_03tpcovf16ed").to("SampleTestValue");
 
     mutations.add(mutationBuilder.build());

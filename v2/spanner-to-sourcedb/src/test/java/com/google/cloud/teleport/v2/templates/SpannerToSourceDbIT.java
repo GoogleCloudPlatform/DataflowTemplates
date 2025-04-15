@@ -223,7 +223,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private void writeMaxColRowsInSpanner() {
     List<Mutation> mutations = new ArrayList<>();
     Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(BOUNDARY_CHECK_TABLE).set("id").to("SampleTest");
+        Mutation.newInsertOrUpdateBuilder(BOUNDARY_CHECK_TABLE).set("id").to(1);
     mutationBuilder
         .set("col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY")
         .to("SampleTestValue");
