@@ -33,7 +33,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
+/** Integration test for {@link SpannerToSourceDb} Flex template for basic wide row limits. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)

@@ -48,7 +48,7 @@ import org.junit.runners.model.MultipleFailureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Integration test for {@link SpannerToSourceDb} Flex template for all data types. */
+/** Integration test for {@link SpannerToSourceDb} Flex template for max number of columns. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
