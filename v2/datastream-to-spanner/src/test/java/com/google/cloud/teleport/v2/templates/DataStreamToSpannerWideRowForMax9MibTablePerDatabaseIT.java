@@ -94,7 +94,7 @@ public class DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerWideRowFor5000TablePerDatabaseIT.class) {
+    synchronized (DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         datastreamResourceManager =
@@ -119,7 +119,7 @@ public class DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
                 getClass().getSimpleName(),
                 null,
                 null,
-                "DataStreamToSpannerWideRowFor5000TablePerDatabaseIT",
+                "DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT",
                 spannerResourceManager,
                 pubsubResourceManager,
                 new HashMap<>() {
