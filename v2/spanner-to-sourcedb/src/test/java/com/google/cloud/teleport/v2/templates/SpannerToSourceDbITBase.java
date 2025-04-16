@@ -332,13 +332,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     StringBuilder ddlBuilder = new StringBuilder();
     ddlBuilder.append("CREATE TABLE ").append(tableName).append(" (\n");
-    ddlBuilder.append("    Id INT64 NOT NULL,\n");
+    ddlBuilder.append("    id STRING(100) NOT NULL,\n");
     for (int i = 1; i <= n; i++) {
-      ddlBuilder.append("    Col_").append(i).append(" STRING(").append(stringSize).append("),\n");
+      ddlBuilder.append("    col_").append(i).append(" STRING(").append(stringSize).append("),\n");
     }
 
     ddlBuilder.setLength(ddlBuilder.length() - 2);
-    ddlBuilder.append("\n) PRIMARY KEY (Id)");
+    ddlBuilder.append("\n) PRIMARY KEY (id)");
 
     String ddl = ddlBuilder.toString().trim();
     if (ddl.isBlank()) {
@@ -371,7 +371,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         .append(".")
         .append(tableName)
         .append(" (\n");
-    ddlBuilder.append("    id UUID PRIMARY KEY,\n");
+    ddlBuilder.append("    id TEXT PRIMARY KEY,\n");
     for (int i = 1; i <= n; i++) {
       ddlBuilder.append("    col_").append(i).append(" TEXT,\n");
     }
@@ -409,7 +409,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     StringBuilder ddlBuilder = new StringBuilder();
     ddlBuilder.append("CREATE TABLE ").append(tableName).append(" (\n");
-    ddlBuilder.append("    id INT PRIMARY KEY AUTO_INCREMENT,\n");
+    ddlBuilder.append("    id VARCHAR(20) NOT NULL PRIMARY KEY,\n");
 
     for (int i = 1; i <= n; i++) {
       ddlBuilder.append("    col_").append(i).append(" VARCHAR(").append(stringSize).append("),\n");
