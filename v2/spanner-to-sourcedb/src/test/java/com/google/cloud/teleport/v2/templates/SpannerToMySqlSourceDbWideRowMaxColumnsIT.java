@@ -61,8 +61,6 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
   private static final String TABLE1 = "testtable";
   private static final int NUM_NON_KEY_COLS = 100;
   private static final String COLUMN_SIZE = "100";
-  private static final String MYSQL_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/mysql-max-col-schema.sql";
 
   private static HashSet<SpannerToMySqlSourceDbWideRowMaxColumnsIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;

@@ -65,8 +65,6 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
   private static final String PRIMARY_KEY = "id";
   private static final String SECONDARY_KEY_PREFIX = "col_";
 
-  private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/cassandra-max-col-size-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/cassandra-config-template.conf";
 
@@ -84,7 +82,7 @@ public class SpannerToCassandraSourceDbMaxColumnsSizeIT extends SpannerToSourceD
   private final List<Throwable> assertionErrors = new ArrayList<>();
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() throws Exception {
     skipBaseCleanup = true;
     synchronized (SpannerToCassandraSourceDbMaxColumnsSizeIT.class) {
       testInstances.add(this);

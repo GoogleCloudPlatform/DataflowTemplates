@@ -61,9 +61,6 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
   private static final int NUM_NON_KEY_COLS = 1023;
   private static final String PRIMARY_KEY = "id";
   private static final String SECONDARY_KEY_PREFIX = "col_";
-
-  private static final String CASSANDRA_SCHEMA_FILE_RESOURCE =
-      "SpannerToSourceDbWideRowIT/cassandra-max-col-schema.sql";
   private static final String CASSANDRA_CONFIG_FILE_RESOURCE =
       "SpannerToSourceDbWideRowIT/cassandra-config-template.conf";
 
