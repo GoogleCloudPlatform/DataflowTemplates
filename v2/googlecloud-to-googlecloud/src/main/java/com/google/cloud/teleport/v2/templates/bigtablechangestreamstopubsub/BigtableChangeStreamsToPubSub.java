@@ -641,16 +641,16 @@ public final class BigtableChangeStreamsToPubSub {
             break;
           case DELETE_CELLS:
             DeleteCells deleteCells = (DeleteCells) entry;
-            if (!ignoreFamily(setCell.getFamilyName())
-                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString())) {
+            if (!ignoreFamily(deleteCells.getFamilyName())
+                && !ignoreColumn(
+                    deleteCells.getFamilyName(), deleteCells.getQualifier().toString())) {
               Mod mod = new Mod(sourceInfo, input, deleteCells);
               receiver.output(toJsonString(mod, input));
             }
             break;
           case DELETE_FAMILY:
             DeleteFamily deleteFamily = (DeleteFamily) entry;
-            if (!ignoreFamily(setCell.getFamilyName())
-                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString())) {
+            if (!ignoreFamily(deleteFamily.getFamilyName())) {
               Mod mod = new Mod(sourceInfo, input, deleteFamily);
               receiver.output(toJsonString(mod, input));
             }
