@@ -54,6 +54,9 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  private static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  private static final String VPC_REGION = "us-central1";
+  private static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -257,7 +260,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // /-DunifiedWorker=true when using runner v2
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
-    options.setParameters(params);
+    options.addParameter("network", VPC_NAME);
+    options.addParameter("subnetwork", SUBNET_NAME);
+    options.addParameter("region", VPC_REGION);
+
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
