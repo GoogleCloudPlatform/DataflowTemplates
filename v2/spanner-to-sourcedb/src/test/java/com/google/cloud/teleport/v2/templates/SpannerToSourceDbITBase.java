@@ -54,9 +54,9 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
-  private static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
-  private static final String VPC_REGION = "us-central1";
-  private static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  protected static final String VPC_REGION = "us-central1";
+  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -209,6 +209,33 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       CustomTransformation customTransformation,
       String sourceType)
       throws IOException {
+    return launchDataflowJob(
+        gcsResourceManager,
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        subscriptionName,
+        identifierSuffix,
+        shardingCustomJarPath,
+        shardingCustomClassName,
+        sourceDbTimezoneOffset,
+        customTransformation,
+        sourceType,
+        null);
+  }
+
+  public PipelineLauncher.LaunchInfo launchDataflowJob(
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      String subscriptionName,
+      String identifierSuffix,
+      String shardingCustomJarPath,
+      String shardingCustomClassName,
+      String sourceDbTimezoneOffset,
+      CustomTransformation customTransformation,
+      String sourceType,
+      Map<String, String> parameters)
+      throws IOException {
 
     Map<String, String> params =
         new HashMap<>() {
@@ -232,12 +259,12 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
-            put("sourceType", sourceType);
-            put("network", VPC_NAME);
-            put("subnetwork", SUBNET_NAME);
-            put("region", VPC_REGION);
           }
         };
+
+    if (parameters != null) {
+      params.putAll(parameters);
+    }
 
     if (shardingCustomJarPath != null) {
       params.put(
