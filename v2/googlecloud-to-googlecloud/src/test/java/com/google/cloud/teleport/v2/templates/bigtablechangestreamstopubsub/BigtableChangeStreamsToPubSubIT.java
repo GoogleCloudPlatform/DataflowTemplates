@@ -86,7 +86,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link BigtableChangeStreamsToPubSub}. */
-@Category({ TemplateIntegrationTest.class, SkipDirectRunnerTest.class })
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(BigtableChangeStreamsToPubSub.class)
 @RunWith(JUnit4.class)
 public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
@@ -108,48 +108,51 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testJsonNoSchemaCharsetsAndBase64Values() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Values", "true")
-            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-            .addParameter("pubSubTopic", this.topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] { (byte) 0xc2 };
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom(columnBytes),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom(columnBytes),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
 
-    ChangelogEntryText expected = ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-        .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(rowkey)
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
-        .build();
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
+            .build();
 
     bigtableResourceManager.write(rowMutation);
 
@@ -161,55 +164,59 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testIgnoreColumnFamilies() throws IOException {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Values", "true")
-            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-            .addParameter("bigtableChangeStreamIgnoreColumnFamilies", IGNORED_COLUMN_FAMILY)
-            .addParameter("pubSubTopic", this.topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("bigtableChangeStreamIgnoreColumnFamilies", IGNORED_COLUMN_FAMILY)
+                .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] { (byte) 0xc2 };
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom(columnBytes),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
-    RowMutation rowMutationIgnored = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            IGNORED_COLUMN_FAMILY,
-            ByteString.copyFrom(columnBytes),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom(columnBytes),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                IGNORED_COLUMN_FAMILY,
+                ByteString.copyFrom(columnBytes),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
 
-    ChangelogEntryText expected = ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-        .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(rowkey)
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
-        .build();
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
+            .build();
 
     bigtableResourceManager.write(rowMutationIgnored);
     bigtableResourceManager.write(rowMutation);
@@ -226,67 +233,73 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testIgnoreColumns() throws IOException {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Values", "true")
-            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-            .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3")
-            .addParameter("pubSubTopic", this.topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3")
+                .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] { (byte) 0xc2 };
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom(columnBytes),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
-    RowMutation rowMutationIgnored1 = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom("col1"),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
-    RowMutation rowMutationIgnored2 = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom("col2"),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
-    RowMutation rowMutationIgnored3 = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom("col3"),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom(columnBytes),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored1 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom("col1"),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored2 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom("col2"),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored3 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom("col3"),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
 
-    ChangelogEntryText expected = ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-        .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(rowkey)
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
-        .build();
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
+            .build();
 
     bigtableResourceManager.write(rowMutationIgnored1);
     bigtableResourceManager.write(rowMutationIgnored2);
@@ -305,17 +318,18 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Test
   public void testDeadLetterQueueDelivery() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("dlqDirectory", getGcsPath("dlq"))
-            .addParameter("dlqMaxRetries", "1")
-            .addParameter("dlqRetryMinutes", "1")
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("dlqDirectory", getGcsPath("dlq"))
+                .addParameter("dlqMaxRetries", "1")
+                .addParameter("dlqRetryMinutes", "1")
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -324,32 +338,36 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     String goodValue = UUID.randomUUID().toString();
     // Making some 15MB value
-    String tooBigValue = StringUtils.repeat(UUID.randomUUID().toString(), 15 * 1024 * 1024 / goodValue.length());
+    String tooBigValue =
+        StringUtils.repeat(UUID.randomUUID().toString(), 15 * 1024 * 1024 / goodValue.length());
 
     long timestamp = 12000L;
 
-    RowMutation tooLargeMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, tooBigValue);
+    RowMutation tooLargeMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, tooBigValue);
     bigtableResourceManager.write(tooLargeMutation);
 
-    RowMutation smallMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, goodValue);
+    RowMutation smallMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, goodValue);
     bigtableResourceManager.write(smallMutation);
 
-    ChangelogEntryText expected = ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-        .setColumn(column)
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(rowkey)
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .setValue(goodValue)
-        .build();
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(column)
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(goodValue)
+            .build();
 
     List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
     for (ReceivedMessage message : receivedMessages) {
@@ -358,32 +376,33 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     LOG.info("Looking for files in DLQ");
 
-    Result result = pipelineOperator()
-        .waitForConditionAndFinish(
-            createConfig(launchInfo),
-            () -> {
-              List<Artifact> artifacts = gcsClient.listArtifacts("dlq", Pattern.compile(".*"));
-              RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
-              ObjectMapper om = new ObjectMapper();
-              for (Artifact artifact : artifacts) {
-                try {
-                  JsonNode severeError = om.readTree(artifact.contents());
-                  assertNotNull(severeError);
-                  JsonNode errorMessageNode = severeError.get("error_message");
-                  assertNotNull(errorMessageNode);
-                  assertTrue(errorMessageNode instanceof TextNode);
-                  String messageText = errorMessageNode.asText();
-                  assertTrue(
-                      "Unexpected message text: " + messageText,
-                      StringUtils.contains(
-                          messageText, "Request payload size exceeds the limit"));
-                  return true;
-                } catch (Exception e) {
-                  throw new RuntimeException(e);
-                }
-              }
-              return false;
-            });
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(launchInfo),
+                () -> {
+                  List<Artifact> artifacts = gcsClient.listArtifacts("dlq", Pattern.compile(".*"));
+                  RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
+                  ObjectMapper om = new ObjectMapper();
+                  for (Artifact artifact : artifacts) {
+                    try {
+                      JsonNode severeError = om.readTree(artifact.contents());
+                      assertNotNull(severeError);
+                      JsonNode errorMessageNode = severeError.get("error_message");
+                      assertNotNull(errorMessageNode);
+                      assertTrue(errorMessageNode instanceof TextNode);
+                      String messageText = errorMessageNode.asText();
+                      assertTrue(
+                          "Unexpected message text: " + messageText,
+                          StringUtils.contains(
+                              messageText, "Request payload size exceeds the limit"));
+                      return true;
+                    } catch (Exception e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                  return false;
+                });
 
     assertThatResult(result).meetsConditions();
   }
@@ -391,18 +410,19 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Test
   @Ignore("Move test scenario to unit test")
   public void testJsonNoSchemaB64RkAndColNoVal() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Rowkeys", "true")
-            .addParameter("useBase64ColumnQualifiers", "true")
-            .addParameter("stripValues", "true")
-            .addParameter("disableDlqRetries", "true")
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Rowkeys", "true")
+                .addParameter("useBase64ColumnQualifiers", "true")
+                .addParameter("stripValues", "true")
+                .addParameter("disableDlqRetries", "true")
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -411,22 +431,24 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
 
-    ChangelogEntryText expected = ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-        .setColumn(Base64.getEncoder().encodeToString(column.getBytes()))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(Base64.getEncoder().encodeToString(rowkey.getBytes()))
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTimestamp(timestamp)
-        .setTieBreaker(1)
-        .setSourceTable(srcTable)
-        .build();
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(Base64.getEncoder().encodeToString(column.getBytes()))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(Base64.getEncoder().encodeToString(rowkey.getBytes()))
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTimestamp(timestamp)
+            .setTieBreaker(1)
+            .setSourceTable(srcTable)
+            .build();
 
     bigtableResourceManager.write(rowMutation);
 
@@ -439,9 +461,10 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   private List<ReceivedMessage> getAtLeastOneMessage(LaunchInfo launchInfo) {
     LOG.info("Pulling 1 message from PubSub");
-    PubsubMessagesCheck pubsubCheck = PubsubMessagesCheck.builder(pubsubResourceManager, subscriptionName)
-        .setMinMessages(1)
-        .build();
+    PubsubMessagesCheck pubsubCheck =
+        PubsubMessagesCheck.builder(pubsubResourceManager, subscriptionName)
+            .setMinMessages(1)
+            .build();
 
     Result result = pipelineOperator().waitForCondition(createConfig(launchInfo), pubsubCheck);
     assertThatResult(result).meetsConditions();
@@ -486,48 +509,51 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         Encoding.JSON,
         topicName);
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "JSON")
-            .addParameter("messageEncoding", "JSON")
-            .addParameter("useBase64Values", "true")
-            .addParameter("bigtableChangeStreamCharset", "KOI8-R")
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
 
     // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] { (byte) 0xc2 };
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(
-            SOURCE_COLUMN_FAMILY,
-            ByteString.copyFrom(columnBytes),
-            timestamp,
-            ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom(columnBytes),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
 
-    ChangelogEntryText expected = ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-        .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(rowkey)
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
-        .build();
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
+            .build();
 
     bigtableResourceManager.write(rowMutation);
 
@@ -573,12 +599,13 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         Encoding.BINARY,
         topicName);
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -587,23 +614,25 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
 
-    ChangelogEntryProto expected = ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
-        .setColumn(ByteString.copyFrom(column, Charset.defaultCharset()))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ChangelogEntryProto.ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(ByteString.copyFrom(rowkey, Charset.defaultCharset()))
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .setValue(ByteString.copyFrom(value, Charset.defaultCharset()))
-        .build();
+    ChangelogEntryProto expected =
+        ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
+            .setColumn(ByteString.copyFrom(column, Charset.defaultCharset()))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ChangelogEntryProto.ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(ByteString.copyFrom(rowkey, Charset.defaultCharset()))
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(ByteString.copyFrom(value, Charset.defaultCharset()))
+            .build();
 
     bigtableResourceManager.write(rowMutation);
 
@@ -617,15 +646,16 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Test
   @Ignore("Move test scenario to unit test")
   public void testProtoNoSchemaNoVal() throws Exception {
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "PROTOCOL_BUFFERS")
-            .addParameter("messageEncoding", "BINARY")
-            .addParameter("stripValues", "true")
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "PROTOCOL_BUFFERS")
+                .addParameter("messageEncoding", "BINARY")
+                .addParameter("stripValues", "true")
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -634,22 +664,24 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
 
-    ChangelogEntryProto expected = ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
-        .setColumn(ByteString.copyFrom(column, Charset.defaultCharset()))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(ChangelogEntryProto.ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(ByteString.copyFrom(rowkey, Charset.defaultCharset()))
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setSourceTable(srcTable)
-        .build();
+    ChangelogEntryProto expected =
+        ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
+            .setColumn(ByteString.copyFrom(column, Charset.defaultCharset()))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ChangelogEntryProto.ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(ByteString.copyFrom(rowkey, Charset.defaultCharset()))
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .build();
 
     bigtableResourceManager.write(rowMutation);
 
@@ -694,12 +726,13 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         Encoding.BINARY,
         topicName);
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
@@ -708,25 +741,27 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
 
-    ChangelogEntryMessage expected = ChangelogEntryMessage.newBuilder()
-        .setColumn(ByteBuffer.wrap(column.getBytes(Charset.defaultCharset())))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(com.google.cloud.teleport.bigtable.ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(ByteBuffer.wrap(rowkey.getBytes(Charset.defaultCharset())))
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setTimestampFrom(null)
-        .setTimestampTo(null)
-        .setSourceTable(srcTable)
-        .setValue(ByteBuffer.wrap(value.getBytes(Charset.defaultCharset())))
-        .build();
+    ChangelogEntryMessage expected =
+        ChangelogEntryMessage.newBuilder()
+            .setColumn(ByteBuffer.wrap(column.getBytes(Charset.defaultCharset())))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(com.google.cloud.teleport.bigtable.ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(ByteBuffer.wrap(rowkey.getBytes(Charset.defaultCharset())))
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setTimestampFrom(null)
+            .setTimestampTo(null)
+            .setSourceTable(srcTable)
+            .setValue(ByteBuffer.wrap(value.getBytes(Charset.defaultCharset())))
+            .build();
 
     bigtableResourceManager.write(rowMutation);
 
@@ -745,37 +780,40 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
-    ChangelogEntryMessage expected = ChangelogEntryMessage.newBuilder()
-        .setColumn(ByteBuffer.wrap(column.getBytes(Charset.defaultCharset())))
-        .setColumnFamily(SOURCE_COLUMN_FAMILY)
-        .setIsGC(false)
-        .setModType(com.google.cloud.teleport.bigtable.ModType.SET_CELL)
-        .setCommitTimestamp(System.currentTimeMillis() * 1000)
-        .setRowKey(ByteBuffer.wrap(rowkey.getBytes(Charset.defaultCharset())))
-        .setSourceInstance(bigtableResourceManager.getInstanceId())
-        .setSourceCluster(clusterName)
-        .setTieBreaker(1)
-        .setTimestamp(timestamp)
-        .setTimestampFrom(null)
-        .setTimestampTo(null)
-        .setSourceTable(srcTable)
-        .setValue(null)
-        .build();
+    ChangelogEntryMessage expected =
+        ChangelogEntryMessage.newBuilder()
+            .setColumn(ByteBuffer.wrap(column.getBytes(Charset.defaultCharset())))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(com.google.cloud.teleport.bigtable.ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(ByteBuffer.wrap(rowkey.getBytes(Charset.defaultCharset())))
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setTimestampFrom(null)
+            .setTimestampTo(null)
+            .setSourceTable(srcTable)
+            .setValue(null)
+            .build();
 
-    LaunchInfo launchInfo = launchTemplate(
-        LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
-            .addParameter("bigtableReadTableId", srcTable)
-            .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
-            .addParameter("bigtableChangeStreamAppProfile", appProfileId)
-            .addParameter("messageFormat", "AVRO")
-            .addParameter("messageEncoding", "BINARY")
-            .addParameter("stripValues", "true")
-            .addParameter("pubSubTopic", topicName.getTopic()));
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "AVRO")
+                .addParameter("messageEncoding", "BINARY")
+                .addParameter("stripValues", "true")
+                .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
-    RowMutation rowMutation = RowMutation.create(srcTable, rowkey)
-        .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, value);
 
     bigtableResourceManager.write(rowMutation);
 
@@ -791,8 +829,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     ByteArrayInputStream input = new ByteArrayInputStream(message.getData().toByteArray());
     Decoder decoder = DecoderFactory.get().directBinaryDecoder(input, /* reuse= */ null);
 
-    SpecificDatumReader<ChangelogEntryMessage> reader = new SpecificDatumReader<>(
-        ChangelogEntryMessage.getClassSchema());
+    SpecificDatumReader<ChangelogEntryMessage> reader =
+        new SpecificDatumReader<>(ChangelogEntryMessage.getClassSchema());
     ChangelogEntryMessage received = reader.read(null, decoder);
 
     assertEquals(expected.getRowKey(), received.getRowKey());
@@ -847,7 +885,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     assertEquals(expected.getIsGC(), jsonTree.get("isGC").asBoolean());
     assertTrue(jsonTree.get("tieBreaker").asLong() >= 0);
     assertTrue(
-        expected.getCommitTimestamp() - 10000000L <= Long.parseLong(jsonTree.get("commitTimestamp").asText()));
+        expected.getCommitTimestamp() - 10000000L
+            <= Long.parseLong(jsonTree.get("commitTimestamp").asText()));
     assertEquals(expected.getColumnFamily(), jsonTree.get("columnFamily").asText());
     assertEquals(expected.getColumn(), jsonTree.get("column").asText());
     assertEquals(expected.getTimestamp(), Long.parseLong(jsonTree.get("timestamp").asText()));
@@ -869,11 +908,13 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   @Before
   public void setup() throws IOException {
-    pubsubResourceManager = PubsubResourceManager.builder(
-        removeUnsafeCharacters(testName), PROJECT, credentialsProvider)
-        .build();
-    BigtableResourceManager.Builder rmBuilder = BigtableResourceManager.builder(
-        removeUnsafeCharacters(testName), PROJECT, credentialsProvider);
+    pubsubResourceManager =
+        PubsubResourceManager.builder(
+                removeUnsafeCharacters(testName), PROJECT, credentialsProvider)
+            .build();
+    BigtableResourceManager.Builder rmBuilder =
+        BigtableResourceManager.builder(
+            removeUnsafeCharacters(testName), PROJECT, credentialsProvider);
 
     bigtableResourceManager = rmBuilder.maybeUseStaticInstance().build();
 
@@ -898,7 +939,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     bigtableResourceManager.createTable(srcTable, cdcTableSpec);
 
     topicName = pubsubResourceManager.createTopic(topicNameToCreate);
-    subscriptionName = pubsubResourceManager.createSubscription(topicName, subscriptionNameToCreate);
+    subscriptionName =
+        pubsubResourceManager.createSubscription(topicName, subscriptionNameToCreate);
   }
 
   private String removeUnsafeCharacters(String testName) {
@@ -916,9 +958,10 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     // For DirectRunner tests, reduce the max time and the interval, as there is no
     // worker required
     if (System.getProperty("directRunnerTest") != null) {
-      builder = builder
-          .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
-          .setCheckAfter(Duration.ofSeconds(5));
+      builder =
+          builder
+              .setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME.minus(Duration.ofMinutes(3)))
+              .setCheckAfter(Duration.ofSeconds(5));
     } else {
       builder = builder.setTimeoutAfter(EXPECTED_REPLICATION_MAX_WAIT_TIME);
     }
