@@ -135,7 +135,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -233,7 +234,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
-            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"));
+            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"))
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -334,7 +336,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", postgresResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -432,7 +435,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -508,7 +512,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", postgresResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
