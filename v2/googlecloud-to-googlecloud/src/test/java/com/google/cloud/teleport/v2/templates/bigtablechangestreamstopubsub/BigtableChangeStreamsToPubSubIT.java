@@ -267,21 +267,21 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         RowMutation.create(srcTable, rowkey)
             .setCell(
                 SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("col1"),
+                ByteString.copyFrom("col1".getBytes()),
                 timestamp,
                 ByteString.copyFrom(value, Charset.defaultCharset()));
     RowMutation rowMutationIgnored2 =
         RowMutation.create(srcTable, rowkey)
             .setCell(
                 SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("col2"),
+                ByteString.copyFrom("col2".getBytes()),
                 timestamp,
                 ByteString.copyFrom(value, Charset.defaultCharset()));
     RowMutation rowMutationIgnored3 =
         RowMutation.create(srcTable, rowkey)
             .setCell(
                 SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("col3"),
+                ByteString.copyFrom("col3".getBytes()),
                 timestamp,
                 ByteString.copyFrom(value, Charset.defaultCharset()));
 
