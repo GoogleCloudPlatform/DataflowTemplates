@@ -479,7 +479,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "CREATE TABLE \"UuidTable\" (\n"
             + "  \"Key\"      uuid NOT NULL,\n"
             + "  \"Val1\"     uuid,\n"
-            + "  \"Val2\"     INT64,\n"
+            + "  \"Val2\"     bigint,\n"
             + "PRIMARY KEY (\"Key\"))");
     postgresResourceManager.executeDdlStatements(statements);
 
@@ -496,7 +496,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "      \"columns\": [\n"
             + "        {\"column_name\": \"Key\", \"type_name\": \"uuid\"},\n"
             + "        {\"column_name\": \"Val1\", \"type_name\": \"uuid\"},\n"
-            + "        {\"column_name\": \"Val2\", \"type_name\": \"INT64\"}\n"
+            + "        {\"column_name\": \"Val2\", \"type_name\": \"bigint\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ],\n"
