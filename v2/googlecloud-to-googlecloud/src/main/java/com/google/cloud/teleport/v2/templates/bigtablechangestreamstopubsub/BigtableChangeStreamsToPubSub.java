@@ -572,15 +572,43 @@ public final class BigtableChangeStreamsToPubSub {
    * format.
    */
   static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
+    public static final String ANY_COLUMN_FAMILY = "*";
 
     private final BigtableSource sourceInfo;
+    private final Map<String, Set<String>> ignoredColumnsMap;
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {
       this.sourceInfo = source;
+
+      ignoredColumnsMap = new HashMap<>();
+      for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
+        int indexOfColon = columnFamilyAndColumn.indexOf(':');
+        String columnFamily = ANY_COLUMN_FAMILY;
+        String columnName = columnFamilyAndColumn;
+        if (indexOfColon > 0) {
+          columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
+          if (StringUtils.isBlank(columnFamily)) {
+            columnFamily = ANY_COLUMN_FAMILY;
+          }
+          columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
+        }
+
+        Set<String> appliedToColumnFamilies =
+            ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
+        appliedToColumnFamilies.add(columnFamily);
+      }
     }
 
     private boolean ignoreFamily(String family) {
       return this.sourceInfo.getColumnFamiliesToIgnore().contains(family);
+    }
+
+    private boolean ignoreColumn(String columnFamily, String column) {
+      Set<String> columnFamilies = ignoredColumnsMap.get(column);
+      if (columnFamilies == null) {
+        return false;
+      }
+      return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
     }
 
     private static String toJsonString(Mod mod, ChangeStreamMutation inputMutation) {
@@ -601,21 +629,24 @@ public final class BigtableChangeStreamsToPubSub {
         switch (modType) {
           case SET_CELL:
             SetCell setCell = (SetCell) entry;
-            if (!ignoreFamily(setCell.getFamilyName())) {
+            if (!ignoreFamily(setCell.getFamilyName())
+                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString())) {
               Mod mod = new Mod(sourceInfo, input, setCell);
               receiver.output(toJsonString(mod, input));
             }
             break;
           case DELETE_CELLS:
             DeleteCells deleteCells = (DeleteCells) entry;
-            if (!ignoreFamily(deleteCells.getFamilyName())) {
+            if (!ignoreFamily(setCell.getFamilyName())
+                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString())) {
               Mod mod = new Mod(sourceInfo, input, deleteCells);
               receiver.output(toJsonString(mod, input));
             }
             break;
           case DELETE_FAMILY:
             DeleteFamily deleteFamily = (DeleteFamily) entry;
-            if (!ignoreFamily(deleteFamily.getFamilyName())) {
+            if (!ignoreFamily(setCell.getFamilyName())
+                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString())) {
               Mod mod = new Mod(sourceInfo, input, deleteFamily);
               receiver.output(toJsonString(mod, input));
             }
