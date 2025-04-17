@@ -288,7 +288,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
     List<String> statements = new ArrayList<>();
-    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add("DROP TABLE IF EXISTS \"Singers\"");
     statements.add(
         "CREATE TABLE \"Singers\" (\n"
             + "  \"SingerId\"      bigint NOT NULL,\n"
@@ -391,11 +391,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/uuid1.csv",
         "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
-            + "11111111-1111-1111-1111-111111111111,,1\n");
+            + "11111111-1111-1111-1111-111111111111,11111111-1111-1111-1111-111111111111,1\n");
     gcsClient.createArtifact(
         "input/uuid2.csv",
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
-            + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
+            + "ffffffff-ffff-ffff-ffff-ffffffffffff,ffffffff-ffff-ffff-ffff-ffffffffffff,3\n");
 
     List<String> statements = new ArrayList<>();
     statements.add("DROP TABLE IF EXISTS UuidTable");
@@ -467,20 +467,20 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/uuid1.csv",
         "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
-            + "11111111-1111-1111-1111-111111111111,,1\n");
+            + "11111111-1111-1111-1111-111111111111,11111111-1111-1111-1111-111111111111,1\n");
     gcsClient.createArtifact(
         "input/uuid2.csv",
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
-            + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
+            + "ffffffff-ffff-ffff-ffff-ffffffffffff,ffffffff-ffff-ffff-ffff-ffffffffffff,3\n");
 
     List<String> statements = new ArrayList<>();
-    statements.add("DROP TABLE IF EXISTS UuidTable");
+    statements.add("DROP TABLE IF EXISTS \"UuidTable\"");
     statements.add(
         "CREATE TABLE \"UuidTable\" (\n"
             + "  \"Key\"      uuid NOT NULL,\n"
             + "  \"Val1\"     uuid,\n"
             + "  \"Val2\"     INT,\n"
-            + ") PRIMARY KEY (\"Key\")");
+            + "PRIMARY KEY (\"Key\"))");
     postgresResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
@@ -526,8 +526,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
     List<Struct> uuidRecords =
         postgresResourceManager.runQuery(
-            "SELECT CAST(Key as TEXT) as Key, CAST(Val1 as TEXT) AS Val1, Val2 FROM"
-                + " UuidTable");
+            "SELECT CAST(\"Key\" as TEXT) as Key, CAST(\"Val1\" as TEXT) AS Val1, \"Val2\" FROM"
+                + " \"UuidTable\"");
     assertThat(uuidRecords).hasSize(4);
     assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
   }
@@ -546,7 +546,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         new HashMap<>() {
           {
             put("Key", "11111111-1111-1111-1111-111111111111");
-            put("Val1", null);
+            put("Val1", "11111111-1111-1111-1111-111111111111");
             put("Val2", 1);
           }
         });
@@ -562,7 +562,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         new HashMap<>() {
           {
             put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
-            put("Val1", null);
+            put("Val1", "ffffffff-ffff-ffff-ffff-ffffffffffff");
             put("Val2", 3);
           }
         });
