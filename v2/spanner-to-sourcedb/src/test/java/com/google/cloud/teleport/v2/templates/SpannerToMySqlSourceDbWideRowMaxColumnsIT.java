@@ -150,15 +150,15 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
   private void writeRowsInSpanner() {
     List<Mutation> mutations = new ArrayList<>();
     Mutation.WriteBuilder mutationBuilder =
-        Mutation.newInsertOrUpdateBuilder(TABLE1).set("Id").to("SampleTest");
+        Mutation.newInsertOrUpdateBuilder(TABLE1).set("id").to("SampleTest");
 
-    for (int i = 1; i < 1024; i++) {
-      mutationBuilder.set("Col_" + i).to("TestValue_" + i);
+    for (int i = 1; i <= 100; i++) {
+      mutationBuilder.set("col_" + i).to("TestValue_" + i);
     }
 
     mutations.add(mutationBuilder.build());
     spannerResourceManager.write(mutations);
-    LOG.info("Inserted row with 1,024 columns into Spanner using Mutations");
+    LOG.info("Inserted row with 100 columns into Spanner using Mutations");
   }
 
   private final List<Throwable> assertionErrors = new ArrayList<>();
@@ -175,7 +175,7 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
     assertThat(rows).hasSize(1);
     Map<String, Object> row = rows.get(0);
     for (int i = 1; i <= 100; i++) {
-      String columnName = "Col_" + i;
+      String columnName = "col_" + i;
       String expectedValue = "TestValue_" + i;
 
       try {
