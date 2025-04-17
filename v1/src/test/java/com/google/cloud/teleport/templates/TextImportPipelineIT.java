@@ -526,7 +526,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
     List<Struct> uuidRecords =
         postgresResourceManager.runQuery(
-            "SELECT CAST(\"Key\" as TEXT) as Key, CAST(\"Val1\" as TEXT) AS Val1, \"Val2\" FROM"
+            "SELECT CAST(\"Key\" as TEXT) as \"Key\", CAST(\"Val1\" as TEXT) AS \"Val1\", \"Val2\" FROM"
                 + " \"UuidTable\"");
     assertThat(uuidRecords).hasSize(4);
     assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
