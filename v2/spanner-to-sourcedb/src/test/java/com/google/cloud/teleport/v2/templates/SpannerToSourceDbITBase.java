@@ -233,6 +233,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
+            put("network", VPC_NAME);
+            put("subnetwork", SUBNET_NAME);
+            put("region", VPC_REGION);
           }
         };
 
@@ -260,10 +263,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     // /-DunifiedWorker=true when using runner v2
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
-    options.addParameter("network", VPC_NAME);
-    options.addParameter("subnetwork", SUBNET_NAME);
-    options.addParameter("region", VPC_REGION);
-
+    options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
