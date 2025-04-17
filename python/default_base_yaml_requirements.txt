@@ -1,2 +1,3 @@
-apache-beam[dataframe,gcp,test,yaml]==2.64.0
+apache-beam[dataframe,gcp,test,yaml]
 setuptools
+virtualenv-clone # TODO: remove after upgrading to Beam 2.65.0
