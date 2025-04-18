@@ -55,12 +55,11 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
-    extends DataStreamToSpannerITBase {
+public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStreamToSpannerITBase {
 
   private static final Integer NUM_EVENTS = 1;
   private static final Integer NUM_TABLES = 1;
-  private static final Integer NUM_COLUMNS = 2;
+  private static final Integer NUM_COLUMNS = 1017;
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
   private static SpannerResourceManager spannerResourceManager;
@@ -68,8 +67,9 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   private static GcsResourceManager gcsResourceManager;
 
   private static final List<String> COLUMNS = new ArrayList<>();
-  private static HashSet<DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT>
-      testInstances = new HashSet<>();
+
+  private static HashSet<DataStreamToSpannerWideRowForMaxColumnsPerTablesIT> testInstances =
+      new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final List<String> TABLE_NAMES = new ArrayList<>();
 
@@ -80,14 +80,12 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
     for (int i = 1; i <= NUM_COLUMNS; i++) {
       COLUMNS.add("col_" + i);
     }
-    COLUMNS.add(
-        NUM_COLUMNS - 1, "col_" + (NUM_COLUMNS - 1) + RandomStringUtils.randomAlphanumeric(30));
   }
 
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT.class) {
+    synchronized (DataStreamToSpannerWideRowForMaxColumnsPerTablesIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         datastreamResourceManager =
@@ -138,15 +136,15 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
 
   @After
   public void cleanUp() throws IOException {
-    for (DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT instance : testInstances) {
+    for (DataStreamToSpannerWideRowForMaxColumnsPerTablesIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
+        datastreamResourceManager,
         cloudSqlResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager);
+        gcsResourceManager);
   }
 
   private void setupSchema() {
@@ -156,7 +154,7 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   }
 
   @Test
-  public void testDataStreamMySqlToSpannerForMaxTableNameWithMaxColumnNames() throws IOException {
+  public void testDataStreamMySqlToSpannerForMaxColumnsPerTables() throws IOException {
     assertThatPipeline(jobInfo).isRunning();
 
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();

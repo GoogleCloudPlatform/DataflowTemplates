@@ -44,6 +44,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,21 +56,20 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
+public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
     extends DataStreamToSpannerITBase {
 
   private static final Integer NUM_EVENTS = 1;
   private static final Integer NUM_TABLES = 1;
-  private static final Integer NUM_COLUMNS = 2;
 
+  private static final int NUM_COLUMNS = 16;
+  private static final List<String> COLUMNS = new ArrayList<>();
   private static CloudSqlResourceManager cloudSqlResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static GcsResourceManager gcsResourceManager;
-
-  private static final List<String> COLUMNS = new ArrayList<>();
-  private static HashSet<DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT>
-      testInstances = new HashSet<>();
+  private static HashSet<DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT> testInstances =
+      new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final List<String> TABLE_NAMES = new ArrayList<>();
 
@@ -80,14 +80,12 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
     for (int i = 1; i <= NUM_COLUMNS; i++) {
       COLUMNS.add("col_" + i);
     }
-    COLUMNS.add(
-        NUM_COLUMNS - 1, "col_" + (NUM_COLUMNS - 1) + RandomStringUtils.randomAlphanumeric(30));
   }
 
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT.class) {
+    synchronized (DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         datastreamResourceManager =
@@ -138,15 +136,15 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
 
   @After
   public void cleanUp() throws IOException {
-    for (DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT instance : testInstances) {
+    for (DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
+        datastreamResourceManager,
         cloudSqlResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
-        gcsResourceManager,
-        datastreamResourceManager);
+        gcsResourceManager);
   }
 
   private void setupSchema() {
@@ -156,7 +154,7 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   }
 
   @Test
-  public void testDataStreamMySqlToSpannerForMaxTableNameWithMaxColumnNames() throws IOException {
+  public void testDataStreamMySqlToSpannerForMax16KeyTablesPerDatabase() throws IOException {
     assertThatPipeline(jobInfo).isRunning();
 
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
@@ -182,32 +180,22 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
 
   private String generateBaseSchema() throws IOException {
     Map<String, Object> sessionTemplate = createSessionTemplate();
-
     Gson gson = new GsonBuilder().setPrettyPrinting().create();
-
     return gson.toJson(sessionTemplate);
-  }
-
-  public static Map<String, Object> createSessionTemplate() {
-    List<String> colIds = new ArrayList<>();
-    for (int ci = 1; ci <= NUM_COLUMNS; ci++) {
-      colIds.add("c" + ci);
-    }
-    return createSessionTemplate(
-        NUM_TABLES, createColumnDefinitions(colIds), createPrimaryKeys(colIds));
   }
 
   /** Creates column definitions based on column IDs. */
   private static List<Map<String, Object>> createColumnDefinitions(List<String> colIds) {
+    final int stringLength = 20;
     List<Map<String, Object>> colTypeConfigs = new ArrayList<>();
     for (int j = 1; j <= colIds.size(); j++) {
       Map<String, Object> colType = new LinkedHashMap<>();
-      colType.put("Type", "NUMERIC");
-      colType.put("Len", 0);
+      colType.put("Type", "STRING");
+      colType.put("Len", stringLength);
       colType.put("IsArray", false);
       colType.put("Name", COLUMNS.get(j - 1));
       colType.put("NotNull", (j == 1));
-      colType.put("Comment", "From: " + COLUMNS.get(j - 1) + " MEDIUMTEXT");
+      colType.put("Comment", "From: " + COLUMNS.get(j - 1) + colType.get("Type"));
       colTypeConfigs.add(colType);
     }
     return colTypeConfigs;
@@ -228,35 +216,58 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
     return primaryKeys;
   }
 
+  public static Map<String, Object> createSessionTemplate() {
+
+    List<String> colIds = new ArrayList<>();
+    for (int ci = 1; ci <= NUM_COLUMNS; ci++) {
+      colIds.add("c" + ci);
+    }
+    return createSessionTemplate(
+        NUM_TABLES, createColumnDefinitions(colIds), createPrimaryKeys(colIds));
+  }
+
   private String getJDBCSchema(String tableName) {
     StringBuilder sb = new StringBuilder();
     sb.append("CREATE TABLE IF NOT EXISTS ").append(tableName).append(" (");
-    for (int i = 1; i <= NUM_COLUMNS; i++) {
-      sb.append(COLUMNS.get(i - 1)).append(" NUMERIC NOT NULL");
-      if (i != NUM_COLUMNS) {
+
+    for (int i = 0; i < NUM_COLUMNS; i++) {
+      sb.append(COLUMNS.get(i)).append(" VARCHAR(20) NOT NULL");
+
+      if (i != NUM_COLUMNS - 1) {
         sb.append(", ");
       }
     }
-    sb.append(", PRIMARY KEY (").append(COLUMNS.get(0)).append("))");
+
+    sb.append(", PRIMARY KEY (").append(String.join(", ", COLUMNS)).append("))");
+
     return sb.toString();
   }
 
+  /** Creates Spanner tables dynamically with 16 columns as a composite primary key. */
   private void createSpannerTables() {
-    for (String tableName : TABLE_NAMES) {
-      List<String> columns = new ArrayList<>();
-      columns.add(COLUMNS.get(0) + " INT64 NOT NULL");
+    TABLE_NAMES.forEach(
+        tableName -> {
+          StringBuilder sb = new StringBuilder();
+          sb.append("CREATE TABLE IF NOT EXISTS ").append(tableName).append(" (");
 
-      for (int i = 2; i <= NUM_COLUMNS; i++) {
-        columns.add(COLUMNS.get(i - 1) + " INT64");
-      }
+          for (int i = 1; i <= NUM_COLUMNS; i++) {
+            sb.append(COLUMNS.get(i - 1)).append(" STRING(20) NOT NULL ");
+            if (i != NUM_COLUMNS) {
+              sb.append(",");
+            }
+          }
+          sb.append(")");
+          sb.append("PRIMARY KEY (");
+          for (int i = 1; i <= NUM_COLUMNS; i++) {
+            sb.append(COLUMNS.get(i - 1));
+            if (i != NUM_COLUMNS) {
+              sb.append(", ");
+            }
+          }
+          sb.append(")");
 
-      String ddlStatement =
-          String.format(
-              "CREATE TABLE %s (%s) PRIMARY KEY (%s)",
-              tableName, String.join(", ", columns), COLUMNS.get(0));
-
-      spannerResourceManager.executeDdlStatement(ddlStatement);
-    }
+          spannerResourceManager.executeDdlStatement(sb.toString());
+        });
   }
 
   /**
@@ -268,12 +279,12 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   private ConditionCheck checkDestinationRows(Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
-      protected String getDescription() {
+      protected @NotNull String getDescription() {
         return "Check Spanner rows.";
       }
 
       @Override
-      protected CheckResult check() {
+      protected @NotNull CheckResult check() {
         // First, check that correct number of rows were deleted.
         for (String tableName : TABLE_NAMES) {
           long totalRows = spannerResourceManager.getRowCount(tableName);
@@ -304,24 +315,26 @@ public class DataStreamToSpannerWideRowForMaxTableNameWithMaxColumnNameIT
   private ConditionCheck writeJdbcData(Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
-      protected String getDescription() {
+      protected @NotNull String getDescription() {
         return "Send initial JDBC events.";
       }
 
       @Override
-      protected CheckResult check() {
+      protected @NotNull CheckResult check() {
         boolean success = true;
         List<String> messages = new ArrayList<>();
-        for (String tableName : TABLE_NAMES) {
 
+        for (String tableName : TABLE_NAMES) {
           List<Map<String, Object>> rows = new ArrayList<>();
+
           for (int i = 0; i < NUM_EVENTS; i++) {
             Map<String, Object> values = new HashMap<>();
-            for (int ci = 1; ci <= NUM_COLUMNS; ci++) {
-              values.put(COLUMNS.get(ci - 1), ci);
+            for (int j = 1; j <= NUM_COLUMNS; j++) {
+              values.put(COLUMNS.get(j - 1), RandomStringUtils.randomAlphabetic(10));
             }
             rows.add(values);
           }
+
           cdcEvents.put(tableName, rows);
           success &= cloudSqlResourceManager.write(tableName, rows);
           messages.add(String.format("%d rows to %s", rows.size(), tableName));
