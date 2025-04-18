@@ -232,6 +232,91 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   }
 
   @Test
+  public void testIgnoreColumns() throws IOException {
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3")
+                .addParameter("pubSubTopic", this.topicName.getTopic()));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    String rowkey = UUID.randomUUID().toString();
+
+    // Russian letter B in KOI8-R
+    byte[] columnBytes = new byte[] {(byte) 0xc2};
+
+    String value = UUID.randomUUID().toString();
+    long timestamp = 12000L;
+
+    RowMutation rowMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom(columnBytes),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored1 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom("col1".getBytes()),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored2 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom("col2".getBytes()),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+    RowMutation rowMutationIgnored3 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(
+                SOURCE_COLUMN_FAMILY,
+                ByteString.copyFrom("col3".getBytes()),
+                timestamp,
+                ByteString.copyFrom(value, Charset.defaultCharset()));
+
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(Base64.getEncoder().encodeToString(value.getBytes()))
+            .build();
+
+    bigtableResourceManager.write(rowMutationIgnored1);
+    bigtableResourceManager.write(rowMutationIgnored2);
+    bigtableResourceManager.write(rowMutationIgnored3);
+    bigtableResourceManager.write(rowMutation);
+
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
+    int count = 0;
+    for (ReceivedMessage message : receivedMessages) {
+      count++;
+      // Ignored message would be the first ones we pulled
+      validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
+    }
+    assertEquals(count, 1);
+  }
+
+  @Test
   public void testDeadLetterQueueDelivery() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
@@ -870,7 +955,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Override
   protected Config.Builder wrapConfiguration(Config.Builder builder) {
 
-    // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
+    // For DirectRunner tests, reduce the max time and the interval, as there is no
+    // worker required
     if (System.getProperty("directRunnerTest") != null) {
       builder =
           builder
