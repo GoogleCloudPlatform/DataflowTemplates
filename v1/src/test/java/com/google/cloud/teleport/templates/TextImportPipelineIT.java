@@ -27,6 +27,7 @@ import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -590,5 +592,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         birthDate,
         "LastModified",
         lastModified);
+  }
+
+  @Override
+  protected Set<String> stagingEnabledTests() {
+    // TODO(#2325): re-enable staging tests when there are fixed
+    return ImmutableSet.of();
   }
 }

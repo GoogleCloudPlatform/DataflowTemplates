@@ -1,13 +1,18 @@
 package org.apache.beam.it.gcp.spanner;
 
+import static org.junit.Assume.assumeTrue;
+
+import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -30,6 +35,20 @@ public abstract class SpannerTemplateITBase extends TemplateTestBase {
 
   @Parameterized.Parameter(1)
   public String spannerHostName;
+
+  protected Set<String> stagingEnabledTests() {
+    // staging endpoint test disabled in base class. To enable it for certain test,
+    // override this in derived test class.
+    return ImmutableSet.of();
+  }
+
+  @Before
+  public void setupSpannerBase() {
+    if ("Staging".equals(spannerHostName)) {
+      // Only executes allow-listed staging test
+      assumeTrue(stagingEnabledTests().contains(testName));
+    }
+  }
 
   // Because of parameterization, the test names will have subscripts. For example:
   // testSpannerToGCSAvroBase[Staging]
