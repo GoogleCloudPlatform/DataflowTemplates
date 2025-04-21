@@ -1,161 +1,236 @@
 {
-  "SpSchema": {
-   "t1": {
-    "Name": "Singers",
-    "ColIds": [
-     "c3",
-     "c4",
-     "c36"
-    ],
-    "ShardIdColumn": "c36",
-    "ColDefs": {
-     "c3": {
-      "Name": "SingerId",
-      "T": {
-       "Name": "INT64",
-       "Len": 0,
-       "IsArray": false
-      },
-      "NotNull": true,
-      "Comment": "From: SingerId bigint(19)",
-      "Id": "c3"
+ "SessionName": "NewSession",
+ "EditorName": "",
+ "DatabaseType": "mysql",
+ "DatabaseName": "author",
+ "Dialect": "google_standard_sql",
+ "Notes": null,
+ "Tags": null,
+ "SpSchema": {
+  "t1": {
+   "Name": "Authors",
+   "ColIds": [
+    "c2",
+    "c3",
+    "c4"
+   ],
+   "ShardIdColumn": "c4",
+   "ColDefs": {
+    "c2": {
+     "Name": "id",
+     "T": {
+      "Name": "INT64",
+      "Len": 0,
+      "IsArray": false
      },
-     "c36": {
-      "Name": "migration_shard_id",
-      "T": {
-       "Name": "STRING",
-       "Len": 50,
-       "IsArray": false
-      },
-      "NotNull": false,
-      "Comment": "",
-      "Id": "c36"
+     "NotNull": true,
+     "Comment": "From: id int(10)",
+     "Id": "c2",
+     "AutoGen": {
+      "Name": "",
+      "GenerationType": ""
      },
-     "c4": {
-      "Name": "FirstName",
-      "T": {
-       "Name": "STRING",
-       "Len": 9223372036854775807,
-       "IsArray": false
-      },
-      "NotNull": false,
-      "Comment": "From: FirstName text(65535)",
-      "Id": "c4"
+     "DefaultValue": {
+      "IsPresent": false,
+      "Value": {
+       "ExpressionId": "",
+       "Statement": ""
+      }
      }
     },
-    "PrimaryKeys": [
-     {
-      "ColId": "c3",
-      "Desc": false,
-      "Order": 2
+    "c3": {
+     "Name": "name",
+     "T": {
+      "Name": "STRING",
+      "Len": 200,
+      "IsArray": false
      },
-     {
-      "ColId": "c36",
-      "Desc": false,
-      "Order": 1
-     }
-    ],
-    "ForeignKeys": null,
-    "Indexes": null,
-    "ParentId": "",
-    "Comment": "Spanner schema for source table Singers",
-    "Id": "t1"
-   }
-  },
-  "SyntheticPKeys": {},
-  "SrcSchema": {
-   "t1": {
-    "Name": "Singers",
-    "Schema": "alltypes",
-    "ColIds": [
-     "c3",
-     "c4"
-    ],
-    "ColDefs": {
-     "c3": {
-      "Name": "SingerId",
-      "Type": {
-       "Name": "bigint",
-       "Mods": [
-        19
-       ],
-       "ArrayBounds": null
-      },
-      "NotNull": true,
-      "Ignored": {
-       "Check": false,
-       "Identity": false,
-       "Default": false,
-       "Exclusion": false,
-       "ForeignKey": false,
-       "AutoIncrement": false
-      },
-      "Id": "c3"
+     "NotNull": false,
+     "Comment": "From: name varchar(200)",
+     "Id": "c3",
+     "AutoGen": {
+      "Name": "",
+      "GenerationType": ""
      },
-     "c4": {
-      "Name": "FirstName",
-      "Type": {
-       "Name": "text",
-       "Mods": [
-        65535
-       ],
-       "ArrayBounds": null
-      },
-      "NotNull": false,
-      "Ignored": {
-       "Check": false,
-       "Identity": false,
-       "Default": false,
-       "Exclusion": false,
-       "ForeignKey": false,
-       "AutoIncrement": false
-      },
-      "Id": "c4"
+     "DefaultValue": {
+      "IsPresent": false,
+      "Value": {
+       "ExpressionId": "",
+       "Statement": ""
+      }
      }
     },
-    "PrimaryKeys": [
-     {
-      "ColId": "c3",
-      "Desc": false,
-      "Order": 1
+    "c4": {
+     "Name": "migration_shard_id",
+     "T": {
+      "Name": "STRING",
+      "Len": 50,
+      "IsArray": false
+     },
+     "NotNull": false,
+     "Comment": "",
+     "Id": "c4",
+     "AutoGen": {
+      "Name": "",
+      "GenerationType": ""
+     },
+     "DefaultValue": {
+      "IsPresent": false,
+      "Value": {
+       "ExpressionId": "",
+       "Statement": ""
+      }
      }
-    ],
-    "ForeignKeys": null,
-    "Indexes": null,
-    "Id": "t1"
-   }
-  },
-  "SchemaIssues": {
-   "t1": {
-    "ColumnLevelIssues": {
-     "c3": [],
-     "c36": [
-      28
-     ],
-     "c4": []
-    },
-    "TableLevelIssues": null
-   }
-  },
-  "Location": {},
-  "TimezoneOffset": "+00:00",
-  "SpDialect": "google_standard_sql",
-  "UniquePKey": {},
-  "Rules": [
-   {
-    "Id": "r38",
-    "Name": "r38",
-    "Type": "add_shard_id_primary_key",
-    "ObjectType": "",
-    "AssociatedObjects": "All Tables",
-    "Enabled": true,
-    "Data": {
-     "AddedAtTheStart": true
-    },
-    "AddedOn": {
-     "TimeOffset": null
     }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c2",
+     "Desc": false,
+     "Order": 2
+    },
+    {
+     "ColId": "c4",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "ForeignKeys": null,
+   "Indexes": null,
+   "ParentTable": {
+    "Id": "",
+    "OnDelete": ""
+   },
+   "CheckConstraints": null,
+   "Comment": "Spanner schema for source table Authors",
+   "Id": "t1"
+  }
+ },
+ "SyntheticPKeys": {},
+ "SrcSchema": {
+  "t1": {
+   "Name": "Authors",
+   "Schema": "author",
+   "ColIds": [
+    "c2",
+    "c3"
+   ],
+   "ColDefs": {
+    "c2": {
+     "Name": "id",
+     "Type": {
+      "Name": "int",
+      "Mods": [
+       10
+      ],
+      "ArrayBounds": null
+     },
+     "NotNull": true,
+     "Ignored": {
+      "Check": false,
+      "Identity": false,
+      "Default": false,
+      "Exclusion": false,
+      "ForeignKey": false,
+      "AutoIncrement": false
+     },
+     "Id": "c2",
+     "AutoGen": {
+      "Name": "",
+      "GenerationType": ""
+     },
+     "DefaultValue": {
+      "IsPresent": false,
+      "Value": {
+       "ExpressionId": "",
+       "Statement": ""
+      }
+     }
+    },
+    "c3": {
+     "Name": "name",
+     "Type": {
+      "Name": "varchar",
+      "Mods": [
+       200
+      ],
+      "ArrayBounds": null
+     },
+     "NotNull": false,
+     "Ignored": {
+      "Check": false,
+      "Identity": false,
+      "Default": false,
+      "Exclusion": false,
+      "ForeignKey": false,
+      "AutoIncrement": false
+     },
+     "Id": "c3",
+     "AutoGen": {
+      "Name": "",
+      "GenerationType": ""
+     },
+     "DefaultValue": {
+      "IsPresent": false,
+      "Value": {
+       "ExpressionId": "",
+       "Statement": ""
+      }
+     }
+    }
+   },
+   "PrimaryKeys": [
+    {
+     "ColId": "c2",
+     "Desc": false,
+     "Order": 1
+    }
+   ],
+   "ForeignKeys": null,
+   "CheckConstraints": null,
+   "Indexes": null,
+   "Id": "t1"
+  }
+ },
+ "SchemaIssues": {
+  "t1": {
+   "ColumnLevelIssues": {
+    "c2": [
+     14
+    ],
+    "c4": [
+     29
+    ]
+   },
+   "TableLevelIssues": null
+  }
+ },
+ "InvalidCheckExp": null,
+ "Location": {},
+ "TimezoneOffset": "+00:00",
+ "SpDialect": "google_standard_sql",
+ "UniquePKey": {},
+ "Rules": [
+  {
+   "Id": "r5",
+   "Name": "r5",
+   "Type": "add_shard_id_primary_key",
+   "ObjectType": "",
+   "AssociatedObjects": "All Tables",
+   "Enabled": true,
+   "Data": {
+    "AddedAtTheStart": true
+   },
+   "AddedOn": {
+    "TimeOffset": null
    }
-  ],
-  "IsSharded": true
- }
+  }
+ ],
+ "IsSharded": true,
+ "SpRegion": "",
+ "ResourceValidation": false,
+ "UI": false,
+ "SpSequences": {},
+ "SrcSequences": {},
+ "Source": "mysql"
+}

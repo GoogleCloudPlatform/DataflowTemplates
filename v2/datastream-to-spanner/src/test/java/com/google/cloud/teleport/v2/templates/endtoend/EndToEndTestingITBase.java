@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.endtoend;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
@@ -24,7 +23,6 @@ import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
-import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
@@ -44,10 +42,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -86,9 +82,17 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     String namespace;
     String connectionProperties;
     ArrayList<Database> databases;
-    public DataShard(String dataShardId, String host, String user, String password,
-        String port, String dbName, String namespace,
-        String connectionProperties, ArrayList<Database> databases) {
+
+    public DataShard(
+        String dataShardId,
+        String host,
+        String user,
+        String password,
+        String port,
+        String dbName,
+        String namespace,
+        String connectionProperties,
+        ArrayList<Database> databases) {
 
       this.dataShardId = dataShardId;
       this.host = host;
@@ -101,10 +105,12 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       this.databases = databases;
     }
   }
-  protected class Database{
+
+  protected class Database {
     String dbName;
     String databaseId;
     String refDataShardId;
+
     public Database(String dbName, String databaseId, String refDataShardId) {
       this.dbName = dbName;
       this.databaseId = databaseId;
@@ -201,7 +207,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  protected void createAndUploadBulkShardConfigToGcs(ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
+  protected void createAndUploadBulkShardConfigToGcs(
+      ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
     JSONObject bulkConfig = new JSONObject();
     bulkConfig.put("configType", "dataflow");
 
@@ -230,9 +237,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         shardJson.put("namespace", shardData.namespace);
         shardJson.put("connectionProperties", shardData.connectionProperties);
 
-        // Nested "databases" array
         JSONArray databasesArray = new JSONArray();
-        Object databasesObj = shardData.databases;
 
         for (Database dbData : shardData.databases) {
           JSONObject dbJson = new JSONObject();
@@ -254,8 +259,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
-      SpannerResourceManager spannerResourceManager,
-      GcsResourceManager gcsResourceManager)
+      SpannerResourceManager spannerResourceManager, GcsResourceManager gcsResourceManager)
       throws IOException {
 
     String jobName = PipelineUtils.createJobName("bulk-" + getClass().getSimpleName());
@@ -464,7 +468,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         boolean success = true;
         List<String> messages = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (int i = startValue; i < numRows+startValue; i++) {
+        for (int i = startValue; i < numRows + startValue; i++) {
           Map<String, Object> values = new HashMap<>();
           values.put("id", i);
           values.putAll(columns);
