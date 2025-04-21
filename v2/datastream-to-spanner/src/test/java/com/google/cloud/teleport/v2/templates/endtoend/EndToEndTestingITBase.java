@@ -271,7 +271,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("out.putDirectory", "gs://" + artifactBucketName)
+            .addParameter("outputDirectory", "gs://" + artifactBucketName)
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addParameter("sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addEnvironmentVariable(
