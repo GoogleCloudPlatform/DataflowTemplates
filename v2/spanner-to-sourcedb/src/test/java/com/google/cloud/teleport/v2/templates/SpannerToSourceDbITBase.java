@@ -57,6 +57,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
   protected static final String VPC_REGION = "us-central1";
   protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -209,33 +210,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       CustomTransformation customTransformation,
       String sourceType)
       throws IOException {
-    return launchDataflowJob(
-        gcsResourceManager,
-        spannerResourceManager,
-        spannerMetadataResourceManager,
-        subscriptionName,
-        identifierSuffix,
-        shardingCustomJarPath,
-        shardingCustomClassName,
-        sourceDbTimezoneOffset,
-        customTransformation,
-        sourceType,
-        null);
-  }
-
-  public PipelineLauncher.LaunchInfo launchDataflowJob(
-      GcsResourceManager gcsResourceManager,
-      SpannerResourceManager spannerResourceManager,
-      SpannerResourceManager spannerMetadataResourceManager,
-      String subscriptionName,
-      String identifierSuffix,
-      String shardingCustomJarPath,
-      String shardingCustomClassName,
-      String sourceDbTimezoneOffset,
-      CustomTransformation customTransformation,
-      String sourceType,
-      Map<String, String> parameters)
-      throws IOException {
 
     Map<String, String> params =
         new HashMap<>() {
@@ -259,12 +233,11 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
+            put("sourceType", sourceType);
           }
         };
 
-    if (parameters != null) {
-      params.putAll(parameters);
-    }
+    params.putAll(ADDITIONAL_JOB_PARAMS);
 
     if (shardingCustomJarPath != null) {
       params.put(

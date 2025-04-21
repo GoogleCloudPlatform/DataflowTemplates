@@ -109,6 +109,14 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 getGcsPath("dlq", gcsResourceManager)
                     .replace("gs://" + gcsResourceManager.getBucket(), ""),
                 gcsResourceManager);
+        ADDITIONAL_JOB_PARAMS.putAll(
+            new HashMap<>() {
+              {
+                put("network", VPC_NAME);
+                put("subnetwork", SUBNET_NAME);
+                put("workerRegion", VPC_REGION);
+              }
+            });
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -120,14 +128,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                MYSQL_SOURCE_TYPE,
-                new HashMap<>() {
-                  {
-                    put("network", VPC_NAME);
-                    put("subnetwork", SUBNET_NAME);
-                    put("workerRegion", VPC_REGION);
-                  }
-                });
+                MYSQL_SOURCE_TYPE);
       }
     }
   }
