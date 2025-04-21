@@ -116,6 +116,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
+  // createPubsubResources generates pubsub topic, subscription and notification for migration.
+  // It can be run in different modes based on type of migration.
   public SubscriptionName createPubsubResources(
       String identifierSuffix,
       PubsubResourceManager pubsubResourceManager,
@@ -131,6 +133,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
+    // create retry directory for reverse migration
     if (mode == "rr") {
       prefix += "/retry/";
     }
@@ -138,7 +141,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return subscription;
   }
 
-  protected void createAndUploadShardConfigToGcs(
+  protected void createAndUploadReverseShardConfigToGcs(
       GcsResourceManager gcsResourceManager,
       CloudSqlResourceManager cloudSqlResourceManager,
       String privateHost) {

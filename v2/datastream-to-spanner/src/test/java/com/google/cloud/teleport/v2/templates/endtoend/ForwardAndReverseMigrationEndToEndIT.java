@@ -122,7 +122,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        createAndUploadShardConfigToGcs(
+        createAndUploadReverseShardConfigToGcs(
             gcsResourceManager, cloudSqlResourceManager, cloudSqlResourceManager.getHost());
         gcsResourceManager.createArtifact(
             "input/session.json",
