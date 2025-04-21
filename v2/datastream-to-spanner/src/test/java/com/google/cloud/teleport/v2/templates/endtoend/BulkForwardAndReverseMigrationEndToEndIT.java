@@ -129,7 +129,6 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                 });
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
-        createAndUploadJarToGcs(gcsResourceManager);
         Database databaseA =
             new Database(
                 cloudSqlResourceManagerShardA.getDatabaseName(),

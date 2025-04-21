@@ -273,7 +273,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("projectId", PROJECT)
             .addParameter("out.putDirectory", "gs://" + artifactBucketName)
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addParameter("sourceDbURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
+            .addParameter("sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
@@ -411,11 +411,9 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
-            .addParameter("gcsPubSubSubscription", subscription.toString())
-            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
+            .addParameter("outputDirectory", "gs://" + artifactBucketName)
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
