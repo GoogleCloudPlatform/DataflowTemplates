@@ -76,7 +76,41 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   public DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
 
-  class DataShard
+  protected class DataShard {
+    String dataShardId;
+    String host;
+    String user;
+    String password;
+    String port;
+    String dbName;
+    String namespace;
+    String connectionProperties;
+    ArrayList<Database> databases;
+    public DataShard(String dataShardId, String host, String user, String password,
+        String port, String dbName, String namespace,
+        String connectionProperties, ArrayList<Database> databases) {
+
+      this.dataShardId = dataShardId;
+      this.host = host;
+      this.user = user;
+      this.password = password;
+      this.port = port;
+      this.dbName = dbName;
+      this.namespace = namespace;
+      this.connectionProperties = connectionProperties;
+      this.databases = databases;
+    }
+  }
+  protected class Database{
+    String dbName;
+    String databaseId;
+    String refDataShardId;
+    public Database(String dbName, String databaseId, String refDataShardId) {
+      this.dbName = dbName;
+      this.databaseId = databaseId;
+      this.refDataShardId = refDataShardId;
+    }
+  }
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -167,56 +201,45 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
-  protected void createAndUploadBulkShardConfigToGcs(GcsResourceManager gcsResourceManager) {
+  protected void createAndUploadBulkShardConfigToGcs(ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
     JSONObject bulkConfig = new JSONObject();
     bulkConfig.put("configType", "dataflow");
 
-    // "shardConfigurationBulk" object
     JSONObject shardConfigBulk = new JSONObject();
-    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
 
-    // "schemaSource" object
     JSONObject schemaSourceJson = new JSONObject();
-      schemaSourceJson.put("dataShardId", "");
-      schemaSourceJson.put("host", "");
-      schemaSourceJson.put("user", "");
-      schemaSourceJson.put("password", "");
-      schemaSourceJson.put("port", "");
-      schemaSourceJson.put("dbName", "");
+    schemaSourceJson.put("dataShardId", "");
+    schemaSourceJson.put("host", "");
+    schemaSourceJson.put("user", "");
+    schemaSourceJson.put("password", "");
+    schemaSourceJson.put("port", "");
+    schemaSourceJson.put("dbName", "");
     shardConfigBulk.put("schemaSource", schemaSourceJson);
 
-    // "dataShards" array
     JSONArray dataShardsArray = new JSONArray();
     if (dataShardsList != null) {
-      for (Map<String, Object> shardData : dataShardsList) {
+      for (DataShard shardData : dataShardsList) {
         JSONObject shardJson = new JSONObject();
 
-        // Populate shard properties (assuming they are strings)
-        shardJson.put("dataShardId", shardData.getOrDefault("dataShardId", ""));
-        shardJson.put("host", shardData.getOrDefault("host", ""));
-        shardJson.put("user", shardData.getOrDefault("user", ""));
-        shardJson.put("password", shardData.getOrDefault("password", ""));
-        shardJson.put("port", shardData.getOrDefault("port", ""));
-        shardJson.put("dbName", shardData.getOrDefault("dbName", "")); // dbName at shard level
-        shardJson.put("namespace", shardData.getOrDefault("namespace", ""));
-        shardJson.put("connectionProperties", shardData.getOrDefault("connectionProperties", ""));
+        shardJson.put("dataShardId", shardData.dataShardId);
+        shardJson.put("host", shardData.host);
+        shardJson.put("user", shardData.user);
+        shardJson.put("password", shardData.password);
+        shardJson.put("port", shardData.port);
+        shardJson.put("dbName", shardData.dbName);
+        shardJson.put("namespace", shardData.namespace);
+        shardJson.put("connectionProperties", shardData.connectionProperties);
 
         // Nested "databases" array
         JSONArray databasesArray = new JSONArray();
-        Object databasesObj = shardData.get("databases");
+        Object databasesObj = shardData.databases;
 
-        // Check if 'databases' exists and is a List
-        if (databasesObj instanceof List) {
-          @SuppressWarnings("unchecked") // We've checked the type with instanceof
-          List<Map<String, String>> databasesList = (List<Map<String, String>>) databasesObj;
-
-          for (Map<String, String> dbData : databasesList) {
-            JSONObject dbJson = new JSONObject();
-            dbJson.put("dbName", dbData.getOrDefault("dbName", ""));
-            dbJson.put("databaseId", dbData.getOrDefault("databaseId", ""));
-            dbJson.put("refDataShardId", dbData.getOrDefault("refDataShardId", ""));
-            databasesArray.put(dbJson);
-          }
+        for (Database dbData : shardData.databases) {
+          JSONObject dbJson = new JSONObject();
+          dbJson.put("dbName", dbData.dbName);
+          dbJson.put("databaseId", dbData.databaseId);
+          dbJson.put("refDataShardId", dbData.refDataShardId);
+          databasesArray.put(dbJson);
         }
         shardJson.put("databases", databasesArray);
         dataShardsArray.put(shardJson);
@@ -224,10 +247,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     }
     shardConfigBulk.put("dataShards", dataShardsArray);
 
-    // Return the JSON as a string with specified indentation
-    String shardFileContents = root.toString();
+    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
+    String shardFileContents = shardConfigBulk.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
-    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
@@ -244,7 +267,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("out.addParameterDirectory", "gs://" + artifactBucketName)
+            .addParameter("out.putDirectory", "gs://" + artifactBucketName)
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addParameter("sourceDbURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addEnvironmentVariable(
@@ -428,6 +451,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       Integer numRows,
       Map<String, Object> columns,
       Map<String, List<Map<String, Object>>> cdcEvents,
+      Integer startValue,
       CloudSqlResourceManager cloudSqlResourceManager) {
     return new ConditionCheck() {
       @Override
@@ -440,7 +464,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         boolean success = true;
         List<String> messages = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (int i = 0; i < numRows; i++) {
+        for (int i = startValue; i < numRows+startValue; i++) {
           Map<String, Object> values = new HashMap<>();
           values.put("id", i);
           values.putAll(columns);

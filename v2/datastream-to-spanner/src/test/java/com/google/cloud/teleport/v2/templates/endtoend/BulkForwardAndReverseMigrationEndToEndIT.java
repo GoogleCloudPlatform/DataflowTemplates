@@ -23,8 +23,10 @@ import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
@@ -79,8 +81,8 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
   private static PipelineLauncher.LaunchInfo rrJobInfo;
   private static PipelineLauncher.LaunchInfo fwdJobInfo;
   protected SecretManagerResourceManager secretClient;
-
-  private static CloudSqlResourceManager cloudSqlResourceManager;
+  private static CloudSqlResourceManager cloudSqlResourceManagerShardA;
+  private static CloudSqlResourceManager cloudSqlResourceManagerShardB;
 
   private static final Map<String, Object> COLUMNS =
       new HashMap<>() {
@@ -105,13 +107,14 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         spannerResourceManager =
             createSpannerDatabase(BulkForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
-        cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-        JDBCSource jdbcSourceShardA = createMySqlDatabase(cloudSqlResourceManager, new HashMap<>() {
+        cloudSqlResourceManagerShardA = CloudMySQLResourceManager.builder(testName+"ShardA").build();
+        cloudSqlResourceManagerShardB = CloudMySQLResourceManager.builder(testName+"ShardB").build();
+        JDBCSource jdbcSourceShardA = createMySqlDatabase(cloudSqlResourceManagerShardA, new HashMap<>() {
           {
             put(TABLE, AUTHOR_TABLE_COLUMNS);
           }
         });
-        JDBCSource jdbcSourceShardB = createMySqlDatabase(cloudSqlResourceManager, new HashMap<>() {
+        JDBCSource jdbcSourceShardB = createMySqlDatabase(cloudSqlResourceManagerShardB, new HashMap<>() {
           {
             put(TABLE, AUTHOR_TABLE_COLUMNS);
           }
@@ -119,12 +122,17 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
 
         gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
-
-        createAndUploadBulkShardConfigToGcs(gcsResourceManager);
+        Database databaseA = new Database(cloudSqlResourceManagerShardA.getDatabaseName(),cloudSqlResourceManagerShardA.getDatabaseName(),"ref1");
+        Database databaseB = new Database(cloudSqlResourceManagerShardB.getDatabaseName(),cloudSqlResourceManagerShardB.getDatabaseName(),"ref1");
+        ArrayList<Database> databases = new ArrayList<>(List.of(databaseA, databaseB));
+        DataShard dataShard = new DataShard("1",jdbcSourceShardA.hostname(),jdbcSourceShardA.username(),jdbcSourceShardA.password(),String.valueOf(jdbcSourceShardA.port()),"","","", databases);
+        createAndUploadBulkShardConfigToGcs(new ArrayList<>(List.of(dataShard)), gcsResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE).getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
+        writeJdbcData(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
+        writeJdbcData(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
         bulkJobInfo =
             launchBulkDataflowJob(
                 spannerResourceManager,

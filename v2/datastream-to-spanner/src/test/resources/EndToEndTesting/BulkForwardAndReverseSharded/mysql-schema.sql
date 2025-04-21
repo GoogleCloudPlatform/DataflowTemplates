@@ -1,5 +1,5 @@
-CREATE TABLE Singers (
-  SingerId INT NOT NULL,
-  FirstName VARCHAR(50), 
-  PRIMARY KEY(SingerId)
-) ;
+CREATE TABLE `Authors` (
+    `id` int NOT NULL,
+    `name` varchar(200),
+    PRIMARY KEY (`id`)
+);
