@@ -72,6 +72,7 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final List<String> TABLE_NAMES = new ArrayList<>();
+  private static DatastreamResourceManager datastreamResourceManager;
 
   static {
     for (int i = 1; i <= NUM_TABLES; i++) {
@@ -121,6 +122,7 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
                 null,
                 null,
                 gcsResourceManager,
+                datastreamResourceManager,
                 sessionContent,
                 MySQLSource.builder(
                         cloudSqlResourceManager.getHost(),
@@ -140,8 +142,8 @@ public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        datastreamResourceManager,
         cloudSqlResourceManager,
+        datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);

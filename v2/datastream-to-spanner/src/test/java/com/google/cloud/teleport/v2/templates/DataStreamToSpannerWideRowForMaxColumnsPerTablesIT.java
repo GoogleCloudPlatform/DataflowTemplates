@@ -44,6 +44,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -65,6 +66,7 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStre
   private static SpannerResourceManager spannerResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
   private static GcsResourceManager gcsResourceManager;
+  private static DatastreamResourceManager datastreamResourceManager;
 
   private static final List<String> COLUMNS = new ArrayList<>();
 
@@ -121,6 +123,7 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStre
                 null,
                 null,
                 gcsResourceManager,
+                datastreamResourceManager,
                 sessionContent,
                 MySQLSource.builder(
                         cloudSqlResourceManager.getHost(),
@@ -140,8 +143,8 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStre
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        datastreamResourceManager,
         cloudSqlResourceManager,
+        datastreamResourceManager,
         spannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
@@ -266,12 +269,12 @@ public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStre
   private ConditionCheck checkDestinationRows(Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
-      protected String getDescription() {
+      protected @NotNull String getDescription() {
         return "Check Spanner rows.";
       }
 
       @Override
-      protected CheckResult check() {
+      protected @NotNull CheckResult check() {
         // First, check that correct number of rows were deleted.
         for (String tableName : TABLE_NAMES) {
           long totalRows = spannerResourceManager.getRowCount(tableName);

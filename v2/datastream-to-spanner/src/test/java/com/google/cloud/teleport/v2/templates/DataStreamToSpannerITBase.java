@@ -59,7 +59,6 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
   public static final int CUTOVER_MILLIS = 30 * 1000;
-  public static DatastreamResourceManager datastreamResourceManager;
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
@@ -239,6 +238,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
         shardingContextFileResourceName,
         gcsResourceManager,
         null,
+        null,
         null);
   }
 
@@ -253,6 +253,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       CustomTransformation customTransformation,
       String shardingContextFileResourceName,
       GcsResourceManager gcsResourceManager,
+      DatastreamResourceManager datastreamResourceManager,
       String sessionResourceContent,
       JDBCSource jdbcSource)
       throws IOException {
@@ -315,6 +316,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       params.put(
           "streamName",
           createDataStream(
+                  datastreamResourceManager,
                   gcsResourceManager,
                   gcsPrefix,
                   jdbcSource,
@@ -482,6 +484,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   }
 
   protected Stream createDataStream(
+      DatastreamResourceManager datastreamResourceManager,
       GcsResourceManager gcsResourceManager,
       String gcsPrefix,
       JDBCSource jdbcSource,
