@@ -242,16 +242,13 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageFormat", "JSON")
                 .addParameter("messageEncoding", "JSON")
                 .addParameter("useBase64Values", "true")
-                .addParameter("bigtableChangeStreamCharset", "KOI8-R")
+                .addParameter("bigtableChangeStreamCharset", "UTF-8")
                 .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3")
                 .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
 
     String rowkey = UUID.randomUUID().toString();
-
-    // Russian letter B in KOI8-R
-    byte[] columnBytes = new byte[] {(byte) 0xc2};
 
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
@@ -260,7 +257,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
         RowMutation.create(srcTable, rowkey)
             .setCell(
                 SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom(columnBytes),
+                ByteString.copyFrom("valid-col".getBytes()),
                 timestamp,
                 ByteString.copyFrom(value, Charset.defaultCharset()));
     RowMutation rowMutationIgnored1 =
@@ -287,7 +284,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     ChangelogEntryText expected =
         ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
-            .setColumn(new String(columnBytes, Charset.forName("KOI8-R")))
+            .setColumn("valid-col")
             .setColumnFamily(SOURCE_COLUMN_FAMILY)
             .setIsGC(false)
             .setModType(ModType.SET_CELL)

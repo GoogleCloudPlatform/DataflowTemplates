@@ -33,7 +33,6 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.FailsafePublisher.PublishModJsonToTopic;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
@@ -42,6 +41,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mode
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.TestChangeStreamMutation;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.Encoding;
@@ -589,7 +589,7 @@ public final class BigtableChangeStreamsToPubSub {
         int indexOfColon = columnFamilyAndColumn.indexOf(':');
         String columnFamily = ANY_COLUMN_FAMILY;
         String columnName = columnFamilyAndColumn;
-        if (indexOfColon > 0) {
+        if (indexOfColon >= 0) {
           columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
           if (StringUtils.isBlank(columnFamily)) {
             columnFamily = ANY_COLUMN_FAMILY;
