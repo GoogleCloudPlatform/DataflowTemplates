@@ -37,4 +37,4 @@ CREATE TABLE "%PREFIX%_Singers" (
 DROP SEARCH INDEX IF EXISTS "%PREFIX%_SearchIndex";
 CREATE SEARCH INDEX "%PREFIX%_SearchIndex"
   ON "%PREFIX%_Singers"("NameTokens") ORDER BY "Id" WHERE "Id" IS NOT NULL
-  WITH (sort_order_sharding=TRUE, disable_automatic_uid_column=TRUE);
+  WITH (sort_order_sharding=TRUE);
