@@ -64,7 +64,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =
       new HashMap<>() {
         {
-          put("id", "INT NOT NULL");
+          put("author_id", "INT NOT NULL");
           put("name", "VARCHAR(200)");
         }
       };
@@ -96,7 +96,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
 
     // create MySql Resources
     cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    cloudSqlResourceManager.createTable(AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "id"));
+    cloudSqlResourceManager.createTable(AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "author_id"));
     cloudSqlResourceManager.createTable(BOOKS_TABLE, new JDBCSchema(BOOK_TABLE_COLUMNS, "book_id"));
     sourceConnectionProfile =
         createMySQLSourceConnectionProfile(
@@ -182,7 +182,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     // Insert Authors
     for (int i = startId; i <= endId; i++) {
       Map<String, Object> values = new HashMap<>();
-      values.put("id", i);
+      values.put("author_id", i);
       values.put("name", "author_name_" + i);
       rows.add(values);
     }

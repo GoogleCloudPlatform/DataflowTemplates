@@ -1,8 +1,8 @@
 DROP TABLE IF EXISTS `Authors`;
 CREATE TABLE `Authors` (
-                         `id`    INT64 NOT NULL,
+                         `author_id`    INT64 NOT NULL,
                          `name`  STRING(200)
-) PRIMARY KEY (`id`);
+) PRIMARY KEY (`author_id`);
 
 DROP TABLE IF EXISTS `Books`;
 CREATE TABLE `Books` (
