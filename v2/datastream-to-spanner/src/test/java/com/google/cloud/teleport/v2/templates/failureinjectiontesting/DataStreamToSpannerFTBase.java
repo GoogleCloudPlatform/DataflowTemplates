@@ -55,8 +55,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerFTBase.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerFTBase.class);
   public DatastreamResourceManager datastreamResourceManager;
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)

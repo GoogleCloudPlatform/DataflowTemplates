@@ -50,17 +50,13 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * DataStreamToSpannerSpannerFailureInjectionTest.
- */
+/** DataStreamToSpannerSpannerFailureInjectionTest. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerSpannerFT
-    extends DataStreamToSpannerFTBase {
+public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
   private static final String SPANNER_DDL_RESOURCE = "FailureInjectionTesting/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "FailureInjectionTesting/session.json";
 
