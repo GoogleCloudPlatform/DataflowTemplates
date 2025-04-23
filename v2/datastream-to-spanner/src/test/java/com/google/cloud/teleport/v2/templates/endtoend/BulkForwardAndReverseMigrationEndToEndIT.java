@@ -128,7 +128,9 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                   }
                 });
 
-        gcsResourceManager = setUpSpannerITGcsResourceManager();
+        gcsResourceManager =
+            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
+                .build();
         Database databaseA =
             new Database(
                 cloudSqlResourceManagerShardA.getDatabaseName(),
