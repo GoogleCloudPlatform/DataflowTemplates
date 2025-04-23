@@ -448,10 +448,12 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     LOG.info("Pulling 1 message from PubSub");
     PubsubMessagesCheck pubsubCheck =
         PubsubMessagesCheck.builder(pubsubResourceManager, subscriptionName)
-            .setMinMessages(1)
+            .setMinMessages(5)
             .build();
 
-    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo), pubsubCheck);
+    Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(launchInfo, Duration.ofSeconds(30)), pubsubCheck);
     assertThatResult(result).meetsConditions();
 
     List<ReceivedMessage> receivedMessages = pubsubCheck.getReceivedMessageList();
