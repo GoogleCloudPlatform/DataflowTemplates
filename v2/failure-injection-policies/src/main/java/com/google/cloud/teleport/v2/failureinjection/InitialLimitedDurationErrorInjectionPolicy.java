@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.failureinjection;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.io.Serializable;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -38,10 +39,14 @@ public class InitialLimitedDurationErrorInjectionPolicy
   private Instant startTime;
   private final Duration injectionDuration;
   private final String effectiveDurationParameter;
+  private Clock clock;
 
-  // Constants for configuration
   private static final String DEFAULT_DURATION = "PT10M";
   private static final String DURATION_FIELD_IN_OBJECT = "duration";
+
+  public InitialLimitedDurationErrorInjectionPolicy(JsonNode inputParameter) {
+    this(inputParameter, Clock.systemUTC());
+  }
 
   /**
    * Creates a new policy that injects errors for a limited initial duration, configured via a
@@ -52,10 +57,12 @@ public class InitialLimitedDurationErrorInjectionPolicy
    * types will result in using the default duration. ("PT10M").durationParameter
    *
    * @param inputParameter The JsonNode containing the configuration.
+   * @param clock The clock source to use for time operations.
    * @throws IllegalArgumentException if the resolved duration string is unparseable or results in a
    *     non-positive duration.
    */
-  public InitialLimitedDurationErrorInjectionPolicy(JsonNode inputParameter) {
+  public InitialLimitedDurationErrorInjectionPolicy(JsonNode inputParameter, Clock clock) {
+    this.clock = clock;
     String durationString = DEFAULT_DURATION;
 
     if (inputParameter != null && !inputParameter.isMissingNode() && !inputParameter.isNull()) {
@@ -101,15 +108,18 @@ public class InitialLimitedDurationErrorInjectionPolicy
   @Override
   public boolean shouldInjectionError() {
     if (this.startTime == null) {
-      // Record the start time upon first invocation
-      this.startTime = Instant.now();
-      LOG.info(
-          "Errors will be injected for {} starting from {}.",
-          this.injectionDuration,
-          this.startTime);
+      synchronized (this) {
+        if (this.startTime == null) {
+          this.startTime = Instant.now(clock);
+          LOG.info(
+              "First call detected. Errors will be injected for {} starting from {}.",
+              this.injectionDuration,
+              this.startTime);
+        }
+      }
     }
 
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Duration elapsed = Duration.between(startTime, now);
 
     // Compare elapsed time with the configured duration.
@@ -117,18 +127,34 @@ public class InitialLimitedDurationErrorInjectionPolicy
     boolean shouldInject = elapsed.compareTo(injectionDuration) < 0;
 
     if (shouldInject) {
-      LOG.debug(
+      LOG.trace(
           "Injecting error: Elapsed time {} is within the allowed duration {}.",
           elapsed,
           injectionDuration);
     } else {
-      LOG.debug(
+      LOG.trace(
           "Stopping error injection: Elapsed time {} has exceeded the allowed duration {}.",
           elapsed,
           injectionDuration);
     }
 
     return shouldInject;
+  }
+
+  public Duration getInjectionDuration() {
+    return injectionDuration;
+  }
+
+  public String getEffectiveDurationParameter() {
+    return effectiveDurationParameter;
+  }
+
+  public Instant getStartTime() {
+    return startTime;
+  }
+
+  void setClockForTesting(Clock clock) {
+    this.clock = clock;
   }
 
   @Override

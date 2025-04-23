@@ -57,7 +57,8 @@ import org.slf4j.LoggerFactory;
 public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
-  private static final String SPANNER_DDL_RESOURCE = "SpannerFailureInjectionTesting/spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE =
+      "SpannerFailureInjectionTesting/spanner-schema.sql";
 
   private static final String AUTHORS_TABLE = "Authors";
   private static final String BOOKS_TABLE = "Books";
@@ -96,7 +97,8 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
 
     // create MySql Resources
     cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    cloudSqlResourceManager.createTable(AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "author_id"));
+    cloudSqlResourceManager.createTable(
+        AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "author_id"));
     cloudSqlResourceManager.createTable(BOOKS_TABLE, new JDBCSchema(BOOK_TABLE_COLUMNS, "book_id"));
     sourceConnectionProfile =
         createMySQLSourceConnectionProfile(

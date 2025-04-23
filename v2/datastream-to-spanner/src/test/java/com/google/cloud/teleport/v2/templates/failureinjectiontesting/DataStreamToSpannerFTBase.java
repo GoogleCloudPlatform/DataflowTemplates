@@ -80,9 +80,8 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
       throw new IllegalStateException("DDL file is empty: " + spannerSchemaFile);
     }
 
-    List<String> ddls = stream(ddl.trim().split(";")).filter(
-        s->!s.isBlank()
-    ).collect(Collectors.toList());
+    List<String> ddls =
+        stream(ddl.trim().split(";")).filter(s -> !s.isBlank()).collect(Collectors.toList());
     spannerResourceManager.executeDdlStatements(ddls);
     return spannerResourceManager;
   }
@@ -174,7 +173,8 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            // .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            // .addParameter("sessionFilePath", getGcsPath("input/session.json",
+            // gcsResourceManager))
             // .addEnvironmentVariable(
             //     "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
