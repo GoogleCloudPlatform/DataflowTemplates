@@ -243,7 +243,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageEncoding", "JSON")
                 .addParameter("useBase64Values", "true")
                 .addParameter("bigtableChangeStreamCharset", "UTF-8")
-                .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3")
+                .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3,col4")
                 .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -255,32 +255,19 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     RowMutation rowMutation =
         RowMutation.create(srcTable, rowkey)
-            .setCell(
-                SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("valid-col".getBytes()),
-                timestamp,
-                ByteString.copyFrom(value, Charset.defaultCharset()));
+            .setCell(SOURCE_COLUMN_FAMILY, "valid-col", timestamp, value);
     RowMutation rowMutationIgnored1 =
         RowMutation.create(srcTable, rowkey)
-            .setCell(
-                SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("col1".getBytes()),
-                timestamp,
-                ByteString.copyFrom(value, Charset.defaultCharset()));
+            .setCell(SOURCE_COLUMN_FAMILY, "col1", timestamp, value);
     RowMutation rowMutationIgnored2 =
         RowMutation.create(srcTable, rowkey)
-            .setCell(
-                SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("col2".getBytes()),
-                timestamp,
-                ByteString.copyFrom(value, Charset.defaultCharset()));
+            .setCell(SOURCE_COLUMN_FAMILY, "col2", timestamp, value);
     RowMutation rowMutationIgnored3 =
         RowMutation.create(srcTable, rowkey)
-            .setCell(
-                SOURCE_COLUMN_FAMILY,
-                ByteString.copyFrom("col3".getBytes()),
-                timestamp,
-                ByteString.copyFrom(value, Charset.defaultCharset()));
+            .setCell(SOURCE_COLUMN_FAMILY, "col3", timestamp, value);
+    RowMutation rowMutationIgnored4 =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, "col4", timestamp, value);
 
     ChangelogEntryText expected =
         ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
@@ -301,6 +288,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     bigtableResourceManager.write(rowMutationIgnored1);
     bigtableResourceManager.write(rowMutationIgnored2);
     bigtableResourceManager.write(rowMutationIgnored3);
+    bigtableResourceManager.write(rowMutationIgnored4);
     bigtableResourceManager.write(rowMutation);
 
     List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
