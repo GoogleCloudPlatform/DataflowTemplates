@@ -81,6 +81,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
   private static PipelineLauncher.LaunchInfo rrJobInfo;
   private static PipelineLauncher.LaunchInfo fwdJobInfo;
   protected SecretManagerResourceManager secretClient;
+  private static CloudSqlResourceManager cloudSqlResourceManager;
   private static CloudSqlResourceManager cloudSqlResourceManagerShardA;
   private static CloudSqlResourceManager cloudSqlResourceManagerShardB;
 
