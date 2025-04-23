@@ -153,7 +153,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                 databases);
         createAndUploadBulkShardConfigToGcs(
             new ArrayList<>(List.of(dataShard)), gcsResourceManager);
-        gcsResourceManager.uploadArtifact(
+        gcsResourceManager.createArtifact(
             "input/session.json",
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
                 .getPath());
