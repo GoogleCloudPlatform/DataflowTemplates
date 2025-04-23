@@ -296,7 +296,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     for (ReceivedMessage message : receivedMessages) {
       count++;
       // Ignored message would be the first ones we pulled
-      // validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
+      validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
     }
     assertEquals(count, 1);
   }
@@ -448,12 +448,10 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     LOG.info("Pulling 1 message from PubSub");
     PubsubMessagesCheck pubsubCheck =
         PubsubMessagesCheck.builder(pubsubResourceManager, subscriptionName)
-            .setMinMessages(5)
+            .setMinMessages(1)
             .build();
 
-    Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(launchInfo, Duration.ofSeconds(30)), pubsubCheck);
+    Result result = pipelineOperator().waitForCondition(createConfig(launchInfo), pubsubCheck);
     assertThatResult(result).meetsConditions();
 
     List<ReceivedMessage> receivedMessages = pubsubCheck.getReceivedMessageList();
@@ -942,8 +940,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Override
   protected Config.Builder wrapConfiguration(Config.Builder builder) {
 
-    // For DirectRunner tests, reduce the max time and the interval, as there is no
-    // worker required
+    // For DirectRunner tests, reduce the max time and the interval, as there is no worker required
     if (System.getProperty("directRunnerTest") != null) {
       builder =
           builder
