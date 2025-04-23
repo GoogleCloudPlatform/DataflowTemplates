@@ -54,10 +54,6 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
-  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
-  protected static final String VPC_REGION = "us-central1";
-  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
-  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -236,8 +232,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("sourceType", sourceType);
           }
         };
-
-    params.putAll(ADDITIONAL_JOB_PARAMS);
 
     if (shardingCustomJarPath != null) {
       params.put(
