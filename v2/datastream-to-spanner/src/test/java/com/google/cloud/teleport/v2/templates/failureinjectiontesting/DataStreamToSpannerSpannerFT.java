@@ -57,7 +57,7 @@ import org.slf4j.LoggerFactory;
 public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
-  private static final String SPANNER_DDL_RESOURCE = "FailureInjectionTesting/spanner-schema.sql";
+  private static final String SPANNER_DDL_RESOURCE = "SpannerFailureInjectionTesting/spanner-schema.sql";
 
   private static final String AUTHORS_TABLE = "Authors";
   private static final String BOOKS_TABLE = "Books";
