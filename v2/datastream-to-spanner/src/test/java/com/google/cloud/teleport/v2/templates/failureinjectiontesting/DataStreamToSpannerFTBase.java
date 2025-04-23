@@ -61,7 +61,7 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
     SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder("e2e-main-" + testName, PROJECT, REGION)
+        SpannerResourceManager.builder("ft-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
 
@@ -81,13 +81,10 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
       throw new IllegalStateException("DDL file is empty: " + spannerSchemaFile);
     }
 
-    String[] ddls = ddl.trim().split(";");
-    for (String d : ddls) {
-      d = d.trim();
-      if (!d.isEmpty()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
+    List<String> ddls = stream(ddl.trim().split(";")).filter(
+        s->!s.isBlank()
+    ).collect(Collectors.toList());
+    spannerResourceManager.executeDdlStatements(ddls);
     return spannerResourceManager;
   }
 
@@ -100,8 +97,8 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
       PubsubResourceManager pubsubResourceManager,
       String gcsPrefix,
       GcsResourceManager gcsResourceManager) {
-    String topicNameSuffix = "FIT-" + identifierSuffix;
-    String subscriptionNameSuffix = "FIT" + identifierSuffix;
+    String topicNameSuffix = "FT-" + identifierSuffix;
+    String subscriptionNameSuffix = "FT" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
@@ -178,9 +175,9 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
+            // .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            // .addEnvironmentVariable(
+            //     "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
 
     // Run

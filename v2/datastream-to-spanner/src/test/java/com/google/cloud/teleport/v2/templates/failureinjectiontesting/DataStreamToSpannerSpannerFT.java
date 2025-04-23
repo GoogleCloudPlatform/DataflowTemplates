@@ -58,7 +58,6 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
   private static final String SPANNER_DDL_RESOURCE = "FailureInjectionTesting/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "FailureInjectionTesting/session.json";
 
   private static final String AUTHORS_TABLE = "Authors";
   private static final String BOOKS_TABLE = "Books";
@@ -107,12 +106,12 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
-    gcsResourceManager.createArtifact(
-        "input/session.json",
-        generateSessionFile(
-            cloudSqlResourceManager.getDatabaseName(),
-            spannerResourceManager.getDatabaseId(),
-            SESSION_FILE_RESOURCE));
+    // gcsResourceManager.createArtifact(
+    //     "input/session.json",
+    //     generateSessionFile(
+    //         cloudSqlResourceManager.getDatabaseName(),
+    //         spannerResourceManager.getDatabaseId(),
+    //         SESSION_FILE_RESOURCE));
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
