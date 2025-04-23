@@ -253,7 +253,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     shardConfigBulk.put("dataShards", dataShardsArray);
 
     bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
-    String shardFileContents = shardConfigBulk.toString();
+    String shardFileContents = bulkConfig.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
   }
