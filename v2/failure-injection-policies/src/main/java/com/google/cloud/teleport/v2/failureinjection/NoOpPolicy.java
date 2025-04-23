@@ -15,15 +15,19 @@
  */
 package com.google.cloud.teleport.v2.failureinjection;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.io.Serializable;
 
-public class AlwaysFailPolicy implements ErrorInjectionPolicy, Serializable {
-
-  public AlwaysFailPolicy(JsonNode parameter) {}
+/** Policy that never injects errors. */
+public class NoOpPolicy implements ErrorInjectionPolicy, Serializable {
+  public NoOpPolicy() {}
 
   @Override
   public boolean shouldInjectionError() {
-    return true;
+    return false;
+  }
+
+  @Override
+  public String toString() {
+    return "NoOpPolicy";
   }
 }

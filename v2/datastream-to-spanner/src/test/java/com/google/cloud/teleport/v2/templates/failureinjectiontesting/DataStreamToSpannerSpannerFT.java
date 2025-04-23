@@ -34,6 +34,8 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
+import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
+import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -49,15 +51,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO
+ * DataStreamToSpannerSpannerFailureInjectionTest.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamToSpanner_SpannerFailureInjectionTestBase {
+public class DataStreamToSpannerSpannerFT
+    extends DataStreamToSpannerFTBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(
-      DataStreamToSpanner_SpannerFailureInjectionTest.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
   private static final String SPANNER_DDL_RESOURCE = "FailureInjectionTesting/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "FailureInjectionTesting/session.json";
 
@@ -84,6 +87,7 @@ public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamT
   private static PubsubResourceManager pubsubResourceManager;
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
+  private JDBCSource sourceConnectionProfile;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -93,8 +97,7 @@ public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamT
   @Before
   public void setUp() throws IOException, InterruptedException {
     // create Spanner Resources
-    spannerResourceManager =
-        createSpannerDatabase(SPANNER_DDL_RESOURCE);
+    spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
 
     // create MySql Resources
     cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
@@ -102,8 +105,7 @@ public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamT
     cloudSqlResourceManager.createTable(BOOKS_TABLE, new JDBCSchema(BOOK_TABLE_COLUMNS, "book_id"));
     sourceConnectionProfile =
         createMySQLSourceConnectionProfile(
-            cloudSqlResourceManager,
-            Arrays.asList(AUTHORS_TABLE, BOOKS_TABLE));
+            cloudSqlResourceManager, Arrays.asList(AUTHORS_TABLE, BOOKS_TABLE));
 
     // create and upload GCS Resources
     gcsResourceManager =
@@ -119,9 +121,21 @@ public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamT
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
 
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(testName)
+            .withAdditionalMavenProfile("failureInjectionTest")
+            .addParameter(
+                "failureInjectionParameter",
+                "{\"policyType\":\"InitialLimitedDurationErrorInjectionPolicy\"}");
+
     // launch forward migration template
     jobInfo =
-        launchFwdDataflowJob(spannerResourceManager, gcsResourceManager, pubsubResourceManager);
+        launchFwdDataflowJob(
+            spannerResourceManager,
+            gcsResourceManager,
+            pubsubResourceManager,
+            flexTemplateBuilder,
+            sourceConnectionProfile);
   }
 
   /**
@@ -132,10 +146,7 @@ public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamT
   @After
   public void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        cloudSqlResourceManager);
+        spannerResourceManager, gcsResourceManager, pubsubResourceManager, cloudSqlResourceManager);
   }
 
   @Test
@@ -169,9 +180,7 @@ public class DataStreamToSpanner_SpannerFailureInjectionTest extends DataStreamT
   }
 
   protected boolean writeRowsInMySql(
-      Integer startId,
-      Integer endId,
-      CloudSqlResourceManager cloudSqlResourceManager) {
+      Integer startId, Integer endId, CloudSqlResourceManager cloudSqlResourceManager) {
 
     boolean success = true;
     List<Map<String, Object>> rows = new ArrayList<>();
