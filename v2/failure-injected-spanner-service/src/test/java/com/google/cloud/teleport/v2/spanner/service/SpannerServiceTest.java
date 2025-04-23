@@ -78,7 +78,7 @@ public class SpannerServiceTest {
     Channel mockChannel = mock(Channel.class);
     ClientCall mockClientCall = mock(ClientCall.class);
     when(mockChannel.newCall(any(), any())).thenReturn(mockClientCall);
-    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy("");
+    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy(null);
 
     GrpcErrorInjector errorInjector = new GrpcErrorInjector(alwaysFailPolicy);
 
@@ -93,7 +93,7 @@ public class SpannerServiceTest {
     Channel mockChannel = mock(Channel.class);
     ClientCall mockClientCall = mock(ClientCall.class);
     when(mockChannel.newCall(any(), any())).thenReturn(mockClientCall);
-    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy("");
+    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy(null);
 
     GrpcErrorInjector errorInjector = new GrpcErrorInjector(alwaysFailPolicy);
 

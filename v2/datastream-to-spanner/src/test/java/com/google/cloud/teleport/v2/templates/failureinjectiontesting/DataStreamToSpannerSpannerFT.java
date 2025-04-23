@@ -189,6 +189,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     success &= cloudSqlResourceManager.write(AUTHORS_TABLE, rows);
     LOG.info(String.format("Wrote %d rows to table %s", rows.size(), AUTHORS_TABLE));
 
+    rows = new ArrayList<>();
     if (success) {
       // Insert Books
       for (int i = startId; i <= endId; i++) {
