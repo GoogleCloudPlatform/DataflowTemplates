@@ -1,7 +1,8 @@
 CREATE TABLE Authors (
      id INT64 NOT NULL ,
      name STRING(200),
-) PRIMARY KEY (id);
+     migration_shard_id STRING(50),
+) PRIMARY KEY (migration_shard_id, id);
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
