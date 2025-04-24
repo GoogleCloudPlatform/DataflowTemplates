@@ -161,11 +161,13 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
                 .getPath());
         pubsubResourceManager = setUpPubSubResourceManager();
-        writeRows(
-            TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
-        writeRows(
-            TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
-        System.out.println("### Database: "+ cloudSqlResourceManagerShardB.getDatabaseName()+" "+cloudSqlResourceManagerShardA.getDatabaseName());
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
+        System.out.println(
+            "### Database: "
+                + cloudSqlResourceManagerShardB.getDatabaseName()
+                + " "
+                + cloudSqlResourceManagerShardA.getDatabaseName());
         bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
       }
     }

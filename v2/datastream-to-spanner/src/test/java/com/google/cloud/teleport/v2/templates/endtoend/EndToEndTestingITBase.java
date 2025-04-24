@@ -273,7 +273,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("projectId", PROJECT)
             .addParameter("outputDirectory", "gs://" + artifactBucketName)
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addParameter("sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
+            .addParameter(
+                "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addParameter("network", "test")
             .addParameter("subnetwork", "regions/us-central1/subnetworks/test")
             .addEnvironmentVariable(
@@ -467,7 +468,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       protected CheckResult check() {
         boolean success = true;
         List<String> messages = new ArrayList<>();
-        success &= writeRows(tableName, numRows, columns, cdcEvents, startValue, cloudSqlResourceManager);
+        success &=
+            writeRows(tableName, numRows, columns, cdcEvents, startValue, cloudSqlResourceManager);
         messages.add(String.format("rows insertion success in table %s: %s", tableName, success));
 
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
@@ -475,12 +477,13 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     };
   }
 
-  protected boolean writeRows(String tableName,
+  protected boolean writeRows(
+      String tableName,
       Integer numRows,
       Map<String, Object> columns,
       Map<String, List<Map<String, Object>>> cdcEvents,
       Integer startValue,
-      CloudSqlResourceManager cloudSqlResourceManager){
+      CloudSqlResourceManager cloudSqlResourceManager) {
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = startValue; i < numRows + startValue; i++) {
       Map<String, Object> values = new HashMap<>();
