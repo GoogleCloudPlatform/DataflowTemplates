@@ -154,12 +154,13 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     // Wave of inserts
     writeRowsInMySql(1, 20000, cloudSqlResourceManager);
 
-    // Failure injection phase: check that retryable errors are there
-
-    // Recovery phase: Wait for all events to appear in Spanner
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
+                    // Failure injection phase: check that retryable errors are there
+                    new RetryableErrorsCheck(pipelineLauncher, jobInfo, 10000),
+
+                    // Recovery phase: Wait for all events to appear in Spanner
                     SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
                         .setMinRows(20000)
                         .setMaxRows(20000)

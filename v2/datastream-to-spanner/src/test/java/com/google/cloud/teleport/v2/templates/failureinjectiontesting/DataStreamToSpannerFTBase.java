@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERRORS_COUNTER_NAME;
 import static java.util.Arrays.stream;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
@@ -38,6 +39,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
@@ -224,5 +226,47 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             cloudSqlResourceManager.getPort())
         .setAllowedTables(Map.of(cloudSqlResourceManager.getDatabaseName(), tables))
         .build();
+  }
+
+  public static class RetryableErrorsCheck extends ConditionCheck {
+
+    private Integer minErrors;
+
+    private PipelineLauncher.LaunchInfo jobInfo;
+
+    private PipelineLauncher pipelineLauncher;
+
+    @Override
+    public String getDescription() {
+      return String.format("Retryable errors check if %d errors are present", minErrors);
+    }
+
+    @Override
+    public CheckResult check() {
+      Double retryableErrors = null;
+      try {
+        retryableErrors =
+            pipelineLauncher.getMetric(
+                PROJECT, REGION, jobInfo.jobId(), RETRYABLE_ERRORS_COUNTER_NAME);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      if (retryableErrors < minErrors) {
+        return new CheckResult(
+            false,
+            String.format(
+                "Expected at least %d errors but has only %d", minErrors, retryableErrors));
+      }
+      return new CheckResult(
+          true,
+          String.format("Expected at least %d errors and found %d", minErrors, retryableErrors));
+    }
+
+    public RetryableErrorsCheck(
+        PipelineLauncher pipelineLauncher, PipelineLauncher.LaunchInfo jobInfo, int minErrors) {
+      this.pipelineLauncher = pipelineLauncher;
+      this.jobInfo = jobInfo;
+      this.minErrors = minErrors;
+    }
   }
 }

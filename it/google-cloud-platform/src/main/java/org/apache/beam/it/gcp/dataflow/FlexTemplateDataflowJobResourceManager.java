@@ -28,6 +28,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
+import org.apache.beam.it.gcp.TemplateTestBase.CancelJobShutdownHook;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +81,10 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, launchConfig);
     LOG.info("Dataflow job started");
     this.jobInfo = launchInfo;
+    if (launchInfo.jobId() != null && !launchInfo.jobId().isEmpty()) {
+      Runtime.getRuntime()
+          .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
+    }
     return launchInfo;
   }
 
