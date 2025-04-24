@@ -243,7 +243,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("messageEncoding", "JSON")
                 .addParameter("useBase64Values", "true")
                 .addParameter("bigtableChangeStreamCharset", "UTF-8")
-                .addParameter("bigtableChangeStreamIgnoreColumns", "*:col1,cf:col2,:col3,col4")
+                .addParameter(
+                    "bigtableChangeStreamIgnoreColumns", "*:col1,ignore_cf:valid-col,:col3,col4")
                 .addParameter("pubSubTopic", this.topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -256,15 +257,19 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     RowMutation rowMutation =
         RowMutation.create(srcTable, rowkey)
             .setCell(SOURCE_COLUMN_FAMILY, "valid-col", timestamp, value);
+    // Ignored because family is *.
     RowMutation rowMutationIgnored1 =
         RowMutation.create(srcTable, rowkey)
             .setCell(SOURCE_COLUMN_FAMILY, "col1", timestamp, value);
+    // Ignored because column is ignored explicitly.
     RowMutation rowMutationIgnored2 =
         RowMutation.create(srcTable, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, "col2", timestamp, value);
+            .setCell(IGNORED_COLUMN_FAMILY, "valid-col", timestamp, value);
+    // Ignored because family is empty.
     RowMutation rowMutationIgnored3 =
         RowMutation.create(srcTable, rowkey)
             .setCell(SOURCE_COLUMN_FAMILY, "col3", timestamp, value);
+    // Ignored because colon is missing.
     RowMutation rowMutationIgnored4 =
         RowMutation.create(srcTable, rowkey)
             .setCell(SOURCE_COLUMN_FAMILY, "col4", timestamp, value);
@@ -286,19 +291,17 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .build();
 
     bigtableResourceManager.write(rowMutationIgnored1);
-    // bigtableResourceManager.write(rowMutationIgnored2);
+    bigtableResourceManager.write(rowMutationIgnored2);
     bigtableResourceManager.write(rowMutationIgnored3);
     bigtableResourceManager.write(rowMutationIgnored4);
     bigtableResourceManager.write(rowMutation);
 
     List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
-    int count = 0;
     for (ReceivedMessage message : receivedMessages) {
-      count++;
       // Ignored message would be the first ones we pulled
       validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
     }
-    assertEquals(count, 1);
+    assertEquals(receivedMessages.size(), 1);
   }
 
   @Test

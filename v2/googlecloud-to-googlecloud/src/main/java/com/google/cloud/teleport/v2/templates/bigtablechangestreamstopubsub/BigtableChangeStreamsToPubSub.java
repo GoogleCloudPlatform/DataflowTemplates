@@ -589,15 +589,15 @@ public final class BigtableChangeStreamsToPubSub {
 
       ignoredColumnsMap = new HashMap<>();
       for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
-        int indexOfColon = columnFamilyAndColumn.indexOf(':');
+        String[] parts = columnFamilyAndColumn.split(":", 2);
         String columnFamily = ANY_COLUMN_FAMILY;
         String columnName = columnFamilyAndColumn;
-        if (indexOfColon >= 0) {
-          columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
+        if (parts.length == 2) {
+          columnFamily = parts[0];
           if (StringUtils.isBlank(columnFamily)) {
             columnFamily = ANY_COLUMN_FAMILY;
           }
-          columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
+          columnName = parts[1];
         }
 
         Set<String> appliedToColumnFamilies =
@@ -637,7 +637,7 @@ public final class BigtableChangeStreamsToPubSub {
           case SET_CELL:
             SetCell setCell = (SetCell) entry;
             if (!ignoreFamily(setCell.getFamilyName())
-                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString())) {
+                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, setCell);
               receiver.output(toJsonString(mod, input));
             }
@@ -646,7 +646,7 @@ public final class BigtableChangeStreamsToPubSub {
             DeleteCells deleteCells = (DeleteCells) entry;
             if (!ignoreFamily(deleteCells.getFamilyName())
                 && !ignoreColumn(
-                    deleteCells.getFamilyName(), deleteCells.getQualifier().toString())) {
+                    deleteCells.getFamilyName(), deleteCells.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, deleteCells);
               receiver.output(toJsonString(mod, input));
             }
