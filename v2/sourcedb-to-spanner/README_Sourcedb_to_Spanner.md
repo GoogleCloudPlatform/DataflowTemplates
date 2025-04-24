@@ -148,6 +148,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --additional-experiments="[\"disable_runner_v2\"]" \
   --parameters "jdbcDriverJars=$JDBC_DRIVER_JARS" \
   --parameters "jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME" \
   --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
@@ -295,17 +296,27 @@ expoert WORKER_REGION="${REGION}"
 export NETWORK="<VPC_NAME>"
 #### Subnet where you would like to run Dataflow. Defaults to default. This subnet must have access to Cassandra nodes you would like to migrate from.
 export SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
-
+#### Number of partitions for parallel read.
+##### By default Apache Beam's CassandraIO sets NUM_PARTITIONS equals to number
+##### of nodes on the Cassandra Cluster. This default does not give good performance
+##### larger workloads as it limits the parallelization.
+##### While specifcs would depend on many factors like number of Cassandra nodes, distribution
+##### of partitions of the table across the nodes,
+##### In general a partition of average size of 150 MB gives good throughput and might be a good place to start the fine-tuning.
+NUM_PARTITIONS="<NUM_PARTITIONS>"
+#### Disable Spanner Batch Writes.
+BATCH_SIZE_FOR_SPANNER_MUTATIONS=1
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
   --region "$REGION" \
-  --network "$NETWORK"
-  --max-workers "$MAX_WORKERS"
-  --num-workers "$NUM_WORKERS"
-  --worker-machine-type "$MACHINE_TYPE"
-  --subnetwork "$SUBNETWORK"
+  --network "$NETWORK" \
+  --max-workers "$MAX_WORKERS" \
+  --num-workers "$NUM_WORKERS" \
+  --worker-machine-type "$MACHINE_TYPE" \
+  --subnetwork "$SUBNETWORK" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --additional-experiments="[\"disable_runner_v2\"]" \
   --parameters "sourceDbDialect=CASSANDRA" \
   --parameters "insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS" \
   --parameters "sourceConfigURL=$SOURCE_CONFIG_URL" \
@@ -316,7 +327,9 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
-  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL"
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+  --parameters "numPartitions=${NUM_PARTITIONS}" \
+  --parameters "batchSizeForSpannerMutations=${BATCH_SIZE_FOR_SPANNER_MUTATIONS}"
 ```
 
 For more information about the command, please check:
