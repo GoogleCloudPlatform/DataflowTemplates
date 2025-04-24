@@ -637,7 +637,9 @@ public final class BigtableChangeStreamsToPubSub {
           case SET_CELL:
             SetCell setCell = (SetCell) entry;
             if (!ignoreFamily(setCell.getFamilyName())
-                && !ignoreColumn(setCell.getFamilyName(), setCell.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
+                && !ignoreColumn(
+                    setCell.getFamilyName(),
+                    setCell.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, setCell);
               receiver.output(toJsonString(mod, input));
             }
@@ -646,7 +648,10 @@ public final class BigtableChangeStreamsToPubSub {
             DeleteCells deleteCells = (DeleteCells) entry;
             if (!ignoreFamily(deleteCells.getFamilyName())
                 && !ignoreColumn(
-                    deleteCells.getFamilyName(), deleteCells.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
+                    deleteCells.getFamilyName(),
+                    deleteCells
+                        .getQualifier()
+                        .toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, deleteCells);
               receiver.output(toJsonString(mod, input));
             }
