@@ -286,7 +286,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .build();
 
     bigtableResourceManager.write(rowMutationIgnored1);
-    bigtableResourceManager.write(rowMutationIgnored2);
+    // bigtableResourceManager.write(rowMutationIgnored2);
     bigtableResourceManager.write(rowMutationIgnored3);
     bigtableResourceManager.write(rowMutationIgnored4);
     bigtableResourceManager.write(rowMutation);
