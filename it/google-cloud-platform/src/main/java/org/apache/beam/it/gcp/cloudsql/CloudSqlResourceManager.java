@@ -179,7 +179,16 @@ public abstract class CloudSqlResourceManager
     }
 
     protected void configureHost() {
-        this.setHost("10.94.208.4");
+      if (System.getProperty("cloudProxyHost") != null) {
+        this.setHost(System.getProperty("cloudProxyHost"));
+      } else {
+        LOG.warn("Missing -DcloudProxyHost.");
+      }
+      if (System.getProperty("cloudProxyPort") != null) {
+        this.setPort(Integer.parseInt(System.getProperty("cloudProxyPort")));
+      } else {
+        LOG.warn("Missing -DcloudProxyPort.");
+      }
     }
 
     protected abstract void configurePort();
