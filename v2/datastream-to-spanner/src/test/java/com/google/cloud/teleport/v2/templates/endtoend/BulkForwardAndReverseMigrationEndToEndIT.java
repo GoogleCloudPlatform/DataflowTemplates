@@ -146,7 +146,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         DataShard dataShard =
             new DataShard(
                 "1",
-                jdbcSourceShardA.hostname(),
+                "10.94.208.4",
                 jdbcSourceShardA.username(),
                 jdbcSourceShardA.password(),
                 String.valueOf(jdbcSourceShardA.port()),
