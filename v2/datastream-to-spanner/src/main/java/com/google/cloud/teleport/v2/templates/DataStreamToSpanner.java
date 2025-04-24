@@ -678,9 +678,6 @@ public class DataStreamToSpanner {
                     .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
-    spannerConfig =
-        SpannerServiceFactoryImpl.createSpannerService(
-            spannerConfig, options.getFailureInjectionParameter());
     SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
@@ -827,6 +824,9 @@ public class DataStreamToSpanner {
             "Write Filtered Events To GCS",
             TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
 
+    spannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            spannerConfig, options.getFailureInjectionParameter());
     /*
      * Stage 4: Write transformed records to Cloud Spanner
      */
