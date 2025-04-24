@@ -225,6 +225,8 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
 
     if (additionalMavenProfile == null) {
       additionalMavenProfile = "";
+    } else if (!additionalMavenProfile.isBlank()) {
+      additionalMavenProfile = "," + additionalMavenProfile;
     }
 
     return new String[] {
