@@ -178,7 +178,6 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
     InitialLimitedDurationErrorInjectionPolicy policy =
         new InitialLimitedDurationErrorInjectionPolicy(input, initialClock);
 
-    // Verify state before first call
     assertNull("Start time should be null before first call", policy.getStartTime());
 
     // First call

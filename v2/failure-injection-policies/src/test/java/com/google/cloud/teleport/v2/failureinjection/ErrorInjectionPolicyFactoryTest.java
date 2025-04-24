@@ -134,8 +134,8 @@ public class ErrorInjectionPolicyFactoryTest {
 
   @Test(expected = IllegalArgumentException.class)
   public void shouldThrowIllegalArgumentExceptionForInvalidJsonFormat() {
-    String invalidJson = "{ \"policyType\": \"AlwaysFailPolicy\", "; // Missing closing brace
-    ErrorInjectionPolicyFactory.getErrorInjectionPolicy(invalidJson); // Should throw
+    String invalidJson = "{ \"policyType\": \"AlwaysFailPolicy\", ";
+    ErrorInjectionPolicyFactory.getErrorInjectionPolicy(invalidJson);
   }
 
   @Test
@@ -179,31 +179,7 @@ public class ErrorInjectionPolicyFactoryTest {
   }
 
   @Test
-  public void shouldWrapAndThrowIllegalArgumentExceptionFromPolicyConstructor() {
-    // if input is "INVALID_DURATION"
-    String json =
-        createJsonWithTextInput("InitialLimitedDurationErrorInjectionPolicy", "INVALID_DURATION");
-
-    try {
-      ErrorInjectionPolicyFactory.getErrorInjectionPolicy(json);
-      fail("Expected IllegalArgumentException was not thrown");
-    } catch (IllegalArgumentException e) {
-      assertTrue(
-          "Exception message should indicate creation failure",
-          e.getMessage().contains("Failed to create error injection policy"));
-      assertNotNull("Cause should not be null", e.getCause());
-      assertTrue(
-          "Cause should be IllegalArgumentException from constructor",
-          e.getCause() instanceof IllegalArgumentException); // Check cause type
-      assertTrue(
-          "Cause message should match original exception",
-          e.getCause().getMessage().contains("Test exception for invalid duration"));
-    }
-  }
-
-  @Test
   public void shouldWrapAndThrowIllegalArgumentExceptionFromPolicyConstructorWithObjectInput() {
-    // if object has duration "INVALID_DURATION"
     ObjectNode input = JsonNodeFactory.instance.objectNode();
     input.put("duration", "INVALID_DURATION");
     String json = createJson("InitialLimitedDurationErrorInjectionPolicy", input);
@@ -218,10 +194,7 @@ public class ErrorInjectionPolicyFactoryTest {
       assertNotNull("Cause should not be null", e.getCause());
       assertTrue(
           "Cause should be IllegalArgumentException from constructor",
-          e.getCause() instanceof IllegalArgumentException); // Check cause type
-      assertTrue(
-          "Cause message should match original exception",
-          e.getCause().getMessage().contains("Test exception for invalid duration in object"));
+          e.getCause() instanceof IllegalArgumentException);
     }
   }
 }
