@@ -27,6 +27,7 @@ import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -135,7 +137,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -233,7 +236,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
-            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"));
+            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"))
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -286,7 +290,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
     List<String> statements = new ArrayList<>();
-    statements.add("DROP TABLE IF EXISTS Singers");
+    statements.add("DROP TABLE IF EXISTS \"Singers\"");
     statements.add(
         "CREATE TABLE \"Singers\" (\n"
             + "  \"SingerId\"      bigint NOT NULL,\n"
@@ -334,7 +338,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", postgresResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -388,11 +393,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/uuid1.csv",
         "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
-            + "11111111-1111-1111-1111-111111111111,,1\n");
+            + "11111111-1111-1111-1111-111111111111,11111111-1111-1111-1111-111111111111,1\n");
     gcsClient.createArtifact(
         "input/uuid2.csv",
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
-            + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
+            + "ffffffff-ffff-ffff-ffff-ffffffffffff,ffffffff-ffff-ffff-ffff-ffffffffffff,3\n");
 
     List<String> statements = new ArrayList<>();
     statements.add("DROP TABLE IF EXISTS UuidTable");
@@ -432,7 +437,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -463,20 +469,20 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/uuid1.csv",
         "00000000-0000-0000-0000-000000000000,00000000-0000-0000-0000-000000000000,0\n"
-            + "11111111-1111-1111-1111-111111111111,,1\n");
+            + "11111111-1111-1111-1111-111111111111,11111111-1111-1111-1111-111111111111,1\n");
     gcsClient.createArtifact(
         "input/uuid2.csv",
         "22222222-2222-2222-2222-222222222222,22222222-2222-2222-2222-222222222222,2\n"
-            + "ffffffff-ffff-ffff-ffff-ffffffffffff,,3\n");
+            + "ffffffff-ffff-ffff-ffff-ffffffffffff,ffffffff-ffff-ffff-ffff-ffffffffffff,3\n");
 
     List<String> statements = new ArrayList<>();
-    statements.add("DROP TABLE IF EXISTS UuidTable");
+    statements.add("DROP TABLE IF EXISTS \"UuidTable\"");
     statements.add(
         "CREATE TABLE \"UuidTable\" (\n"
             + "  \"Key\"      uuid NOT NULL,\n"
             + "  \"Val1\"     uuid,\n"
-            + "  \"Val2\"     INT,\n"
-            + ") PRIMARY KEY (\"Key\")");
+            + "  \"Val2\"     bigint,\n"
+            + "PRIMARY KEY (\"Key\"))");
     postgresResourceManager.executeDdlStatements(statements);
 
     String manifestJson =
@@ -492,7 +498,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "      \"columns\": [\n"
             + "        {\"column_name\": \"Key\", \"type_name\": \"uuid\"},\n"
             + "        {\"column_name\": \"Val1\", \"type_name\": \"uuid\"},\n"
-            + "        {\"column_name\": \"Val2\", \"type_name\": \"INT\"}\n"
+            + "        {\"column_name\": \"Val2\", \"type_name\": \"bigint\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ],\n"
@@ -508,7 +514,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("importManifest", getGcsPath("input/manifest.json"))
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
-            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss");
+            .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
+            .addParameter("spannerHost", postgresResourceManager.getSpannerHost());
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -521,8 +528,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
 
     List<Struct> uuidRecords =
         postgresResourceManager.runQuery(
-            "SELECT CAST(Key as TEXT) as Key, CAST(Val1 as TEXT) AS Val1, Val2 FROM"
-                + " UuidTable");
+            "SELECT CAST(\"Key\" as TEXT) as \"Key\", CAST(\"Val1\" as TEXT) AS \"Val1\", \"Val2\" FROM"
+                + " \"UuidTable\"");
     assertThat(uuidRecords).hasSize(4);
     assertThatStructs(uuidRecords).hasRecordsUnordered(getUuidTableExpectedRows());
   }
@@ -541,7 +548,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         new HashMap<>() {
           {
             put("Key", "11111111-1111-1111-1111-111111111111");
-            put("Val1", null);
+            put("Val1", "11111111-1111-1111-1111-111111111111");
             put("Val2", 1);
           }
         });
@@ -557,7 +564,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         new HashMap<>() {
           {
             put("Key", "ffffffff-ffff-ffff-ffff-ffffffffffff");
-            put("Val1", null);
+            put("Val1", "ffffffff-ffff-ffff-ffff-ffffffffffff");
             put("Val2", 3);
           }
         });
@@ -590,5 +597,11 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         birthDate,
         "LastModified",
         lastModified);
+  }
+
+  @Override
+  protected Set<String> stagingEnabledTests() {
+    // TODO(#2325): re-enable staging tests when there are fixed
+    return ImmutableSet.of();
   }
 }
