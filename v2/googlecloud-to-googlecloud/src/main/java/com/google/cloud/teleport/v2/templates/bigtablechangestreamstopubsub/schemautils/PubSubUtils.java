@@ -301,14 +301,18 @@ public class PubSubUtils implements Serializable {
       changelogEntryTextBuilder.setColumn(columnString);
     }
     if (!destination.getStripValues()) {
+      String value;
       if (destination.getUseBase64Values()) {
-        changelogEntryTextBuilder.setValue(
+        value =
             (String)
-                FORMATTERS.get(PubSubFields.VALUE_STRING_BASE64).format(this, changeJsonParsed));
+                FORMATTERS.get(PubSubFields.VALUE_STRING_BASE64).format(this, changeJsonParsed);
       } else {
-        changelogEntryTextBuilder.setValue(
-            (String) FORMATTERS.get(PubSubFields.VALUE_STRING).format(this, changeJsonParsed));
+        value = (String) FORMATTERS.get(PubSubFields.VALUE_STRING).format(this, changeJsonParsed);
       }
+      if (value == null) {
+        // somehow go to DLQ
+      }
+      changelogEntryTextBuilder.setValue(value);
     }
 
     Long timestamp = (Long) FORMATTERS.get(PubSubFields.TIMESTAMP).format(this, changeJsonParsed);
