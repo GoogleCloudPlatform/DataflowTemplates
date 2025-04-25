@@ -58,6 +58,10 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   // Format of avro file path in GCS - {table}/2023/12/20/06/57/{fileName}
   public static final String DATA_STREAM_EVENT_FILES_PATH_FORMAT_IN_GCS = "%s/2023/12/20/06/57/%s";
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerITBase.class);
+  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  protected static final String VPC_REGION = "us-central1";
+  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
   public static final int CUTOVER_MILLIS = 30 * 1000;
 
   public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
@@ -311,6 +315,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
             put("inputFileFormat", "avro");
           }
         };
+    params.putAll(ADDITIONAL_JOB_PARAMS);
 
     if (jdbcSource != null) {
       params.put(
