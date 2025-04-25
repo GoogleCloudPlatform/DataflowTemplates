@@ -319,7 +319,7 @@ public final class BigtableChangeStreamsToPubSub {
         new PublishModJsonToTopic(
             pubSub, failsafeModJsonToPubsubOptions, VALID_MODS_TAG, INVALID_MODS_TAG);
 
-    PCollection<FailsafeElement<String, String>> failedToPublish =
+    PCollectionTuple failedToPublish =
         failsafeModJson.apply("Publish Mod JSON To Pubsub", publishModJsonToTopic);
 
     PCollection<String> transformDlqJson =
