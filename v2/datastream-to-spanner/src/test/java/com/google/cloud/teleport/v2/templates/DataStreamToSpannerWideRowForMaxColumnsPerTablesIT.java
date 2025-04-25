@@ -56,11 +56,11 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpannerITBase {
+public class DataStreamToSpannerWideRowForMaxColumnsPerTablesIT extends DataStreamToSpannerITBase {
 
   private static final Integer NUM_EVENTS = 1;
   private static final Integer NUM_TABLES = 1;
-  private static final Integer NUM_COLUMNS = 2;
+  private static final Integer NUM_COLUMNS = 1017;
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
   private static SpannerResourceManager spannerResourceManager;
@@ -70,14 +70,14 @@ public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpa
 
   private static final List<String> COLUMNS = new ArrayList<>();
 
-  private static HashSet<DataStreamToSpannerWideRowForMaxTableNameIT> testInstances =
+  private static HashSet<DataStreamToSpannerWideRowForMaxColumnsPerTablesIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static final List<String> TABLE_NAMES = new ArrayList<>();
 
   static {
     for (int i = 1; i <= NUM_TABLES; i++) {
-      TABLE_NAMES.add("DataStreamToSpanner_" + i + "_" + RandomStringUtils.randomAlphanumeric(40));
+      TABLE_NAMES.add("DataStreamToSpanner_" + i + "_" + RandomStringUtils.randomAlphanumeric(5));
     }
     for (int i = 1; i <= NUM_COLUMNS; i++) {
       COLUMNS.add("col_" + i);
@@ -87,7 +87,7 @@ public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpa
   @Before
   public void setUp() throws IOException {
     skipBaseCleanup = true;
-    synchronized (DataStreamToSpannerWideRowForMaxTableNameIT.class) {
+    synchronized (DataStreamToSpannerWideRowForMaxColumnsPerTablesIT.class) {
       testInstances.add(this);
       if (jobInfo == null) {
         datastreamResourceManager =
@@ -139,7 +139,7 @@ public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpa
 
   @After
   public void cleanUp() throws IOException {
-    for (DataStreamToSpannerWideRowForMaxTableNameIT instance : testInstances) {
+    for (DataStreamToSpannerWideRowForMaxColumnsPerTablesIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -157,7 +157,7 @@ public class DataStreamToSpannerWideRowForMaxTableNameIT extends DataStreamToSpa
   }
 
   @Test
-  public void testDataStreamMySqlToSpannerForMaxTableName() throws IOException {
+  public void testDataStreamMySqlToSpannerForMaxColumnsPerTables() throws IOException {
     assertThatPipeline(jobInfo).isRunning();
 
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();

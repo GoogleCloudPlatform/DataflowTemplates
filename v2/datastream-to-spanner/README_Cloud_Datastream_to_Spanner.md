@@ -47,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **inputFilePattern**: The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled.
+* **inputFilePattern**: The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled. Please use this feature only for retrying entries that land in severe DLQ.
 * **inputFileFormat**: The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`.
 * **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **projectId**: The Spanner project ID.
