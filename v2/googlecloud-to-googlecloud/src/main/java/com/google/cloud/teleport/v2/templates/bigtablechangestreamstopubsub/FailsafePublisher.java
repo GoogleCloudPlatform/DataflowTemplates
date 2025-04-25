@@ -112,11 +112,15 @@ public final class FailsafePublisher {
       }
 
       @ProcessElement
-      public void processElement(ProcessContext context) {
+      public void processElement(ProcessContext context, OutputReceiver<String> dlq) {
         FailsafeElement<String, String> failsafeModJsonString = context.element();
 
         try {
-          PubsubMessage pubSubMessage = newPubsubMessage(failsafeModJsonString.getPayload());
+          PubsubMessage pubSubMessage = newPubsubMessage(failsafeModJsonString.getPayload(), dlq);
+          if (pubSubMessage == null) {
+            return;
+          }
+
           throttled.success(LOG, publisher.publish(pubSubMessage).get());
         } catch (Exception e) {
           throttled.failure(LOG, e);
@@ -128,7 +132,8 @@ public final class FailsafePublisher {
       }
 
       /* Schema Details:  */
-      private PubsubMessage newPubsubMessage(String modJsonString) throws Exception {
+      private PubsubMessage newPubsubMessage(String modJsonString, OutputReceiver<String> dlq)
+          throws Exception {
         String changeJsonString = Mod.fromJson(modJsonString).getChangeJson();
         MessageFormat messageFormat = pubSubUtils.getDestination().getMessageFormat();
 
@@ -138,7 +143,7 @@ public final class FailsafePublisher {
           case PROTOCOL_BUFFERS:
             return pubSubUtils.mapChangeJsonStringToPubSubMessageAsProto(changeJsonString);
           case JSON:
-            return pubSubUtils.mapChangeJsonStringToPubSubMessageAsJson(changeJsonString);
+            return pubSubUtils.mapChangeJsonStringToPubSubMessageAsJson(changeJsonString, dlq);
           default:
             final String errorMessage =
                 "Invalid message format:"

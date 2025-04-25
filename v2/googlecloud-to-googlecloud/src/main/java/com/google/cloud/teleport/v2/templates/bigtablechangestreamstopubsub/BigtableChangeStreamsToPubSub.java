@@ -560,7 +560,7 @@ public final class BigtableChangeStreamsToPubSub {
       case PROTOCOL_BUFFERS:
         return pubSub.mapChangeJsonStringToPubSubMessageAsProto(mod.getChangeJson());
       case JSON:
-        return pubSub.mapChangeJsonStringToPubSubMessageAsJson(mod.getChangeJson());
+        return pubSub.mapChangeJsonStringToPubSubMessageAsJson(mod.getChangeJson(), null);
       default:
         throw new IllegalArgumentException(
             "Unexpected message format: " + pubSub.getDestination().getMessageFormat());
