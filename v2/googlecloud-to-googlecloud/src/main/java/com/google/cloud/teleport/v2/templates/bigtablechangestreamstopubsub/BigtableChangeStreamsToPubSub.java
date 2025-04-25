@@ -341,7 +341,7 @@ public final class BigtableChangeStreamsToPubSub {
 
     PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
         PCollectionList.of(dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS))
-            .and(failedToPublis.get(INVALID_MODS_TAG))
+            .and(failedToPublish.get(INVALID_MODS_TAG))
             .setCoder(FAILSAFE_ELEMENT_CODER);
     LOG.info(
         "DLQ manager severe DLQ directory with date time: {}",
