@@ -22,6 +22,7 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -120,6 +121,15 @@ public class MySQLToSpannerWiderowForMaxColumnsPerTableIT extends SourceDbToSpan
     loadSQLToJdbcResourceManager(mySQLResourceManager, getMySQLInsertStatement(maxColumns));
 
     spannerResourceManager.executeDdlStatement(getSpannerDDL(maxColumns));
+
+    ADDITIONAL_JOB_PARAMS.putAll(
+        new HashMap<>() {
+          {
+            put("network", VPC_NAME);
+            put("subnetwork", SUBNET_NAME);
+            put("workerRegion", VPC_REGION);
+          }
+        });
 
     jobInfo =
         launchDataflowJob(
