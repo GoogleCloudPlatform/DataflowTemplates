@@ -73,6 +73,7 @@ import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -116,6 +117,9 @@ public final class BigtableChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToPubSub.class);
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
+
+  private static final TupleTag<String> INVALID_MODS_TAG = new TupleTag<String>("invalidMods") {};
+  private static final TupleTag<String> VALID_MODS_TAG = new TupleTag<String>("validMods") {};
 
   /**
    * Main entry point for executing the pipeline.
@@ -312,15 +316,18 @@ public final class BigtableChangeStreamsToPubSub {
             .build();
 
     PublishModJsonToTopic publishModJsonToTopic =
-        new PublishModJsonToTopic(pubSub, failsafeModJsonToPubsubOptions);
+        new PublishModJsonToTopic(
+            pubSub, failsafeModJsonToPubsubOptions, VALID_MODS_TAG, INVALID_MODS_TAG);
 
     PCollection<FailsafeElement<String, String>> failedToPublish =
         failsafeModJson.apply("Publish Mod JSON To Pubsub", publishModJsonToTopic);
 
     PCollection<String> transformDlqJson =
-        failedToPublish.apply(
-            "Failed Mod JSON During Table Row Transformation",
-            MapElements.via(new StringDeadLetterQueueSanitizer()));
+        failedToPublish
+            .get(VALID_MODS_TAG)
+            .apply(
+                "Failed Mod JSON During Table Row Transformation",
+                MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollectionList.of(transformDlqJson)
         .apply("Merge Failed Mod JSON From Transform And PubSub", Flatten.pCollections())
@@ -333,7 +340,9 @@ public final class BigtableChangeStreamsToPubSub {
                 .build());
 
     PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
-        dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
+        PCollectionList.of(dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS))
+            .and(failedToPublis.get(INVALID_MODS_TAG))
+            .setCoder(FAILSAFE_ELEMENT_CODER);
     LOG.info(
         "DLQ manager severe DLQ directory with date time: {}",
         dlqManager.getSevereDlqDirectoryWithDateTime());
@@ -560,7 +569,7 @@ public final class BigtableChangeStreamsToPubSub {
       case PROTOCOL_BUFFERS:
         return pubSub.mapChangeJsonStringToPubSubMessageAsProto(mod.getChangeJson());
       case JSON:
-        return pubSub.mapChangeJsonStringToPubSubMessageAsJson(mod.getChangeJson(), null);
+        return pubSub.mapChangeJsonStringToPubSubMessageAsJson(mod.getChangeJson());
       default:
         throw new IllegalArgumentException(
             "Unexpected message format: " + pubSub.getDestination().getMessageFormat());

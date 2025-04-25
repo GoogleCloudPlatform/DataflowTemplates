@@ -37,7 +37,6 @@ import java.util.EnumMap;
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
-import org.apache.beam.sdk.transforms.DoFn.OutputReceiver;
 import org.apache.commons.lang3.Validate;
 import org.json.JSONObject;
 
@@ -257,8 +256,8 @@ public class PubSubUtils implements Serializable {
     return PubsubMessage.newBuilder().setData(data).build();
   }
 
-  public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(
-      String changeJsonSting, OutputReceiver<String> dlq) throws Exception {
+  public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonSting)
+      throws Exception {
     JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
 
     var changelogEntryTextBuilder =
@@ -311,10 +310,7 @@ public class PubSubUtils implements Serializable {
         value = (String) FORMATTERS.get(PubSubFields.VALUE_STRING).format(this, changeJsonParsed);
       }
       if (value == null) {
-        if (dlq != null) {
-          dlq.output(changeJsonSting);
-          return null;
-        }
+        return null;
       }
       changelogEntryTextBuilder.setValue(value);
     }
