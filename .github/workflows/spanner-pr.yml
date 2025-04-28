@@ -189,6 +189,15 @@ jobs:
       run: make build
     - name: Store Path to File
       run: echo "spanner_migration_tool_path=${{ github.workspace }}/spanner-migration-tool" >> $GITHUB_ENV
+    - name: Verify spanner_migration_tool_path
+      run: |
+        echo "The value of spanner_migration_tool_path is: '$spanner_migration_tool_path'"
+        if [ -z "$spanner_migration_tool_path" ]; then
+          echo "Error: spanner_migration_tool_path is not set or is empty!"
+          # exit 1 # Optionally fail the workflow if it's not set
+        else
+          echo "Success: spanner_migration_tool_path is set."
+        fi
     - name: List files in cicd directory
       run: ls -R cicd
     - name: Path
