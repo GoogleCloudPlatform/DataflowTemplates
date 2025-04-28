@@ -39,8 +39,7 @@ public class FlexTemplateDataflowJobResourceManagerTest {
 
     FlexTemplateDataflowJobResourceManager manager =
         mock(FlexTemplateDataflowJobResourceManager.class);
-    when(manager.buildMavenStageCommand(any(), any(), any(), any(), any()))
-        .thenCallRealMethod();
+    when(manager.buildMavenStageCommand(any(), any(), any(), any(), any())).thenCallRealMethod();
 
     String[] actual =
         manager.buildMavenStageCommand(

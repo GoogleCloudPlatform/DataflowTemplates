@@ -21,14 +21,17 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.Spanner;
 import com.google.cloud.spanner.SpannerOptions;
+import com.google.cloud.teleport.v2.failureinjection.ErrorInjectionPolicy;
 import com.google.cloud.teleport.v2.spanner.service.SpannerService.GrpcErrorInjector;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -38,12 +41,9 @@ import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.MethodDescriptor.Marshaller;
 import io.grpc.MethodDescriptor.MethodType;
-import org.junit.Test;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.cloud.teleport.v2.failureinjection.ErrorInjectionPolicy;
 import io.grpc.Status;
 import org.junit.Before;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
@@ -106,9 +106,12 @@ public class SpannerServiceTest {
 
     assertFalse(
         localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/BatchCreateSessions"));
-    assertFalse(localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/CreateSession"));
+    assertFalse(
+        localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/CreateSession"));
     assertFalse(localErrorInjector.isCloudSpannerDataAPI("google.storage.v2.Storage/GetObject"));
-    assertFalse(localErrorInjector.isCloudSpannerDataAPI("google.spanner.admin.database.v1.DatabaseAdmin/ListDatabases"));
+    assertFalse(
+        localErrorInjector.isCloudSpannerDataAPI(
+            "google.spanner.admin.database.v1.DatabaseAdmin/ListDatabases"));
   }
 
   @Test
@@ -136,7 +139,9 @@ public class SpannerServiceTest {
         "Should return a ForwardingClientCall for Spanner methods",
         returnedCall instanceof ForwardingClientCall.SimpleForwardingClientCall<?, ?>);
     assertNotEquals(
-        "Returned call should not be the original ClientCall", mockOriginalClientCall, returnedCall);
+        "Returned call should not be the original ClientCall",
+        mockOriginalClientCall,
+        returnedCall);
   }
 
   @Test
@@ -172,12 +177,12 @@ public class SpannerServiceTest {
     // Simulate onClose being called on the wrapped listener after error injection
     ArgumentCaptor<Status> statusCaptor = ArgumentCaptor.forClass(Status.class);
     Metadata trailers = new Metadata();
-    wrappedListener.onClose(Status.OK, trailers); // Original status doesn't matter here as it's overridden
+    wrappedListener.onClose(
+        Status.OK, trailers); // Original status doesn't matter here as it's overridden
 
     verify(mockOriginalResponseListener).onClose(statusCaptor.capture(), eq(trailers));
     assertEquals(Status.Code.DEADLINE_EXCEEDED, statusCaptor.getValue().getCode());
-    assertTrue(
-        statusCaptor.getValue().getDescription().contains("INJECTED BY TEST"));
+    assertTrue(statusCaptor.getValue().getDescription().contains("INJECTED BY TEST"));
   }
 
   @Test
@@ -212,12 +217,11 @@ public class SpannerServiceTest {
     verify(mockOriginalResponseListener).onClose(eq(originalStatus), eq(trailers));
   }
 
-
   @Test
   public void testInterceptCall_SpannerCall_onClose_usesOriginalStatusIfNoErrorInjected() {
     // This covers the case where onMessage was not called or errorInjectionPolicy was false
     // and errorInjected boolean remains false.
-x    when(mockErrorInjectionPolicy.shouldInjectionError()).thenReturn(false); // Ensure no injection
+    when(mockErrorInjectionPolicy.shouldInjectionError()).thenReturn(false); // Ensure no injection
     errorInjector = new GrpcErrorInjector(mockErrorInjectionPolicy);
 
     ClientCall<Object, Object> forwardingCall =
@@ -237,7 +241,6 @@ x    when(mockErrorInjectionPolicy.shouldInjectionError()).thenReturn(false); //
     verify(mockOriginalResponseListener).onClose(eq(originalStatus), eq(trailers));
     verify(mockOriginalClientCall, never()).cancel(any(), any());
   }
-
 
   // Helper to create mock MethodDescriptor
   @SuppressWarnings({"unchecked", "rawtypes"}) // For generic mock marshallers
