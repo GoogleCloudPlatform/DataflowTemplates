@@ -255,11 +255,11 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
         return new CheckResult(
             false,
             String.format(
-                "Expected at least %d errors but has only %d", minErrors, retryableErrors));
+                "Expected at least %d errors but has only %.1f", minErrors, retryableErrors));
       }
       return new CheckResult(
           true,
-          String.format("Expected at least %d errors and found %d", minErrors, retryableErrors));
+          String.format("Expected at least %d errors and found %.1f", minErrors, retryableErrors));
     }
 
     public RetryableErrorsCheck(
