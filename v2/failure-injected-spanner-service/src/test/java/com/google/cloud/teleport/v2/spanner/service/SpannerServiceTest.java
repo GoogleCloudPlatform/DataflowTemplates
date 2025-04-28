@@ -89,20 +89,15 @@ public class SpannerServiceTest {
     SpannerOptions options = SpannerOptions.newBuilder().build();
     Spanner spanner = spannerService.create(options);
     assertNotNull(spanner);
-    // As above, verifying the *actual* policy used by the interceptor inside Spanner
-    // is hard here. This test primarily ensures SpannerService construction with a non-empty
-    // parameter works and passes it to the factory.
   }
 
   @Test
   public void testIsCloudSpannerDataAPI() {
-    // GrpcErrorInjector constructor needs an ErrorInjectionPolicy, can be null for this test
     GrpcErrorInjector localErrorInjector = new GrpcErrorInjector(null);
 
     assertTrue(localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/StreamingRead"));
     assertTrue(localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/BatchWrite"));
     assertTrue(localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/Commit"));
-    // Add more from the original list if desired, these cover the logic.
 
     assertFalse(
         localErrorInjector.isCloudSpannerDataAPI("google.spanner.v1.Spanner/BatchCreateSessions"));
@@ -193,8 +188,7 @@ public class SpannerServiceTest {
     ClientCall<Object, Object> forwardingCall =
         errorInjector.interceptCall(spannerMethodDescriptor, CallOptions.DEFAULT, mockChannel);
 
-    verify(mockOriginalClientCall, never())
-        .cancel(any(String.class), any(Throwable.class)); // Pre-condition
+    verify(mockOriginalClientCall, never()).cancel(any(String.class), any(Throwable.class));
 
     ArgumentCaptor<ClientCall.Listener<Object>> listenerCaptor =
         ArgumentCaptor.forClass(ClientCall.Listener.class);
@@ -205,8 +199,7 @@ public class SpannerServiceTest {
     Object fakeMessage = new Object();
     wrappedListener.onMessage(fakeMessage);
 
-    verify(mockOriginalClientCall, never())
-        .cancel(any(String.class), any(Throwable.class)); // Still should not be cancelled
+    verify(mockOriginalClientCall, never()).cancel(any(String.class), any(Throwable.class));
     verify(mockOriginalResponseListener).onMessage(fakeMessage);
 
     // Simulate onClose with an original status
@@ -221,7 +214,6 @@ public class SpannerServiceTest {
   public void testInterceptCall_SpannerCall_onClose_usesOriginalStatusIfNoErrorInjected() {
     // This covers the case where onMessage was not called or errorInjectionPolicy was false
     // and errorInjected boolean remains false.
-    when(mockErrorInjectionPolicy.shouldInjectionError()).thenReturn(false); // Ensure no injection
     errorInjector = new GrpcErrorInjector(mockErrorInjectionPolicy);
 
     ClientCall<Object, Object> forwardingCall =
@@ -238,12 +230,12 @@ public class SpannerServiceTest {
     Metadata trailers = new Metadata();
     wrappedListener.onClose(originalStatus, trailers);
 
+    verify(mockErrorInjectionPolicy, never()).shouldInjectionError();
     verify(mockOriginalResponseListener).onClose(eq(originalStatus), eq(trailers));
     verify(mockOriginalClientCall, never()).cancel(any(), any());
   }
 
-  // Helper to create mock MethodDescriptor
-  @SuppressWarnings({"unchecked", "rawtypes"}) // For generic mock marshallers
+  @SuppressWarnings({"unchecked", "rawtypes"})
   private MethodDescriptor<Object, Object> getMockMethodDescriptor(String methodName) {
     return MethodDescriptor.newBuilder()
         .setType(MethodType.UNARY) // Type doesn't strictly matter for the filter logic
