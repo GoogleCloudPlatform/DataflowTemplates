@@ -312,14 +312,8 @@ public final class BigtableChangeStreamsToPubSub {
             .and(retryableDlqFailsafeModJson)
             .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
 
-    FailsafePublisher.FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubOptions =
-        FailsafePublisher.FailsafeModJsonToPubsubMessageOptions.builder()
-            .setCoder(FAILSAFE_ELEMENT_CODER)
-            .build();
-
     PublishModJsonToTopic publishModJsonToTopic =
-        new PublishModJsonToTopic(
-            pubSub, failsafeModJsonToPubsubOptions, VALID_MODS_TAG, INVALID_MODS_TAG);
+        new PublishModJsonToTopic(pubSub, VALID_MODS_TAG, INVALID_MODS_TAG);
 
     PCollectionTuple failedToPublish =
         failsafeModJson.apply("Publish Mod JSON To Pubsub", publishModJsonToTopic);

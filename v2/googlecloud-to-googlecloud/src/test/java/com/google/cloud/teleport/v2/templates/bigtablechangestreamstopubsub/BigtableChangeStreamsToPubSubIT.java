@@ -398,8 +398,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                       String messageText = errorMessageNode.asText();
                       assertTrue(
                           "Unexpected message text: " + messageText,
-                          StringUtils.contains(
-                              messageText, "Invalid mod"));
+                          StringUtils.contains(messageText, "Invalid mod"));
                       return true;
                     } catch (Exception e) {
                       throw new RuntimeException(e);

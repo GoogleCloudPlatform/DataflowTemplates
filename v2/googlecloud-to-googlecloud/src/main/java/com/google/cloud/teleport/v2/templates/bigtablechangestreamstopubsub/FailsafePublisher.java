@@ -15,9 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
-import com.google.auto.value.AutoValue;
 import com.google.cloud.pubsub.v1.Publisher;
-import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
@@ -57,15 +55,11 @@ public final class FailsafePublisher {
 
     private static final Logger LOG = LoggerFactory.getLogger(PublishModJsonToTopic.class);
 
-    private final FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubMessageOptions;
-
     public PublishModJsonToTopic(
         PubSubUtils pubSubUtils,
-        FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubMessageOptions,
         TupleTag<FailsafeElement<String, String>> validModsTag,
         TupleTag<FailsafeElement<String, String>> invalidModsTag) {
       this.pubSubUtils = pubSubUtils;
-      this.failsafeModJsonToPubsubMessageOptions = failsafeModJsonToPubsubMessageOptions;
       this.invalidModsTag = invalidModsTag;
       this.validModsTag = validModsTag;
     }
@@ -74,7 +68,6 @@ public final class FailsafePublisher {
 
       return input.apply(
           ParDo.of(new PublishModJsonToTopicFn(pubSubUtils, validModsTag, invalidModsTag))
-              // .setCoder(failsafeModJsonToPubsubMessageOptions.getCoder())
               .withOutputTags(validModsTag, TupleTagList.of(invalidModsTag)));
     }
 
@@ -168,28 +161,6 @@ public final class FailsafePublisher {
             throw new IllegalArgumentException(errorMessage);
         }
       }
-    }
-  }
-
-  /**
-   * {@link FailsafeModJsonToPubsubMessageOptions} provides options to initialize {@link
-   * FailsafePublisher}.
-   */
-  @AutoValue
-  public abstract static class FailsafeModJsonToPubsubMessageOptions implements Serializable {
-
-    public abstract FailsafeElementCoder<String, String> getCoder();
-
-    static Builder builder() {
-      return new AutoValue_FailsafePublisher_FailsafeModJsonToPubsubMessageOptions.Builder();
-    }
-
-    @AutoValue.Builder
-    abstract static class Builder {
-
-      abstract Builder setCoder(FailsafeElementCoder<String, String> coder);
-
-      abstract FailsafeModJsonToPubsubMessageOptions build();
     }
   }
 
