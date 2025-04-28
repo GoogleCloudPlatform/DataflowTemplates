@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.InvalidModException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
@@ -125,12 +126,11 @@ public final class FailsafePublisher {
 
         try {
           PubsubMessage pubSubMessage = newPubsubMessage(failsafeModJsonString.getPayload());
-          if (pubSubMessage == null) {
-            context.output(invalidModsTag, failsafeModJsonString);
-            return;
-          }
           context.output(validModsTag, failsafeModJsonString);
           throttled.success(LOG, publisher.publish(pubSubMessage).get());
+        } catch (InvalidModException e) {
+          throttled.failure(LOG, e);
+          context.output(invalidModsTag, failsafeModJsonString);
         } catch (Exception e) {
           throttled.failure(LOG, e);
           context.output(

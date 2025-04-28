@@ -20,6 +20,7 @@ import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageText;
 import com.google.cloud.teleport.bigtable.ModType;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.InvalidModException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubFields;
@@ -190,11 +191,11 @@ public class PubSubUtils implements Serializable {
     return Base64.getDecoder().decode(base64String);
   }
 
-  public PubsubMessage mapChangeJsonStringToPubSubMessageAsAvro(String changeJsonSting)
+  public PubsubMessage mapChangeJsonStringToPubSubMessageAsAvro(String changeJsonString)
       throws Exception {
     MessageEncoding messageEncoding = this.getDestination().getMessageEncoding();
     ChangelogEntryMessage changelogEntryMessage = new ChangelogEntryMessage();
-    JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
+    JSONObject changeJsonParsed = new JSONObject(changeJsonString);
 
     changelogEntryMessage.setRowKey(
         ByteBuffer.wrap(
@@ -256,9 +257,9 @@ public class PubSubUtils implements Serializable {
     return PubsubMessage.newBuilder().setData(data).build();
   }
 
-  public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonSting)
+  public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonString)
       throws Exception {
-    JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
+    JSONObject changeJsonParsed = new JSONObject(changeJsonString);
 
     var changelogEntryTextBuilder =
         ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
@@ -310,7 +311,7 @@ public class PubSubUtils implements Serializable {
         value = (String) FORMATTERS.get(PubSubFields.VALUE_STRING).format(this, changeJsonParsed);
       }
       if (value == null) {
-        return null;
+        throw new InvalidModException(changeJsonString);
       }
       changelogEntryTextBuilder.setValue(value);
     }
@@ -340,10 +341,10 @@ public class PubSubUtils implements Serializable {
     return message.build();
   }
 
-  public PubsubMessage mapChangeJsonStringToPubSubMessageAsProto(String changeJsonSting)
+  public PubsubMessage mapChangeJsonStringToPubSubMessageAsProto(String changeJsonString)
       throws Exception {
     MessageEncoding messageEncoding = this.getDestination().getMessageEncoding();
-    JSONObject changeJsonParsed = new JSONObject(changeJsonSting);
+    JSONObject changeJsonParsed = new JSONObject(changeJsonString);
 
     var changelogEntryProtoBuilder =
         ChangelogEntryMessageProto.ChangelogEntryProto.newBuilder()
