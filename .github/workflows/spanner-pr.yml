@@ -195,6 +195,8 @@ jobs:
       run: pwd; ls;
     - name: Run Integration Tests
       working-directory: ${{ github.workspace }}
+      env:
+        SPANNER_MIGRATION_TOOL_PATH: ${{ env.spanner_migration_tool_path }}
       run: |
           ./cicd/run-it-tests \
           --modules-to-build="SPANNER" \
