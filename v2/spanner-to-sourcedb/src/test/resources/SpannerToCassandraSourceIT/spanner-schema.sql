@@ -228,6 +228,11 @@ CREATE TABLE IF NOT EXISTS emptystringjsontable (
     frozen_ascii_set_col JSON
 ) PRIMARY KEY(varchar_column);
 
+CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk (
+    id STRING(100) NOT NULL,
+    col_qcbf69rmxtre3b_03tpcovf16ed STRING(100)
+) PRIMARY KEY (id);
+
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (

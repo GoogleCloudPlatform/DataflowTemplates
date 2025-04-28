@@ -65,6 +65,15 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
           }
         };
 
+    ADDITIONAL_JOB_PARAMS.putAll(
+        new HashMap<>() {
+          {
+            put("network", VPC_NAME);
+            put("subnetwork", SUBNET_NAME);
+            put("workerRegion", VPC_REGION);
+          }
+        });
+
     Map<String, String> env = new HashMap<>() {};
 
     runLoadTest(expectedCountPerTable, params, env);

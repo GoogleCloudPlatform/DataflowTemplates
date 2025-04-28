@@ -28,6 +28,7 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +104,14 @@ public class SpannerToMySqlSourceDbWideRowMaxColumnsIT extends SpannerToSourceDb
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
                 gcsResourceManager);
+        ADDITIONAL_JOB_PARAMS.putAll(
+            new HashMap<>() {
+              {
+                put("network", VPC_NAME);
+                put("subnetwork", SUBNET_NAME);
+                put("workerRegion", VPC_REGION);
+              }
+            });
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
