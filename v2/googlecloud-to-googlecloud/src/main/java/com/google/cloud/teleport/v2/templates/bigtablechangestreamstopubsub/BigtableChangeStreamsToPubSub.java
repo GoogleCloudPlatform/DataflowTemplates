@@ -118,8 +118,10 @@ public final class BigtableChangeStreamsToPubSub {
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
 
-  private static final TupleTag<String> INVALID_MODS_TAG = new TupleTag<String>("invalidMods") {};
-  private static final TupleTag<String> VALID_MODS_TAG = new TupleTag<String>("validMods") {};
+  private static final TupleTag<FailsafeElement<String, String>> INVALID_MODS_TAG =
+      new TupleTag<FailsafeElement<String, String>>("invalidMods") {};
+  private static final TupleTag<FailsafeElement<String, String>> VALID_MODS_TAG =
+      new TupleTag<FailsafeElement<String, String>>("validMods") {};
 
   /**
    * Main entry point for executing the pipeline.
@@ -325,6 +327,7 @@ public final class BigtableChangeStreamsToPubSub {
     PCollection<String> transformDlqJson =
         failedToPublish
             .get(VALID_MODS_TAG)
+            .setCoder(FAILSAFE_ELEMENT_CODER)
             .apply(
                 "Failed Mod JSON During Table Row Transformation",
                 MapElements.via(new StringDeadLetterQueueSanitizer()));
@@ -339,10 +342,12 @@ public final class BigtableChangeStreamsToPubSub {
                 .setIncludePaneInfo(true)
                 .build());
 
-    PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
-        PCollectionList.of(dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS))
-            .and(failedToPublish.get(INVALID_MODS_TAG))
-            .setCoder(FAILSAFE_ELEMENT_CODER);
+    PCollectionList<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
+        PCollectionList.of(
+                dlqModJson
+                    .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+                    .setCoder(FAILSAFE_ELEMENT_CODER))
+            .and(failedToPublish.get(INVALID_MODS_TAG).setCoder(FAILSAFE_ELEMENT_CODER));
     LOG.info(
         "DLQ manager severe DLQ directory with date time: {}",
         dlqManager.getSevereDlqDirectoryWithDateTime());

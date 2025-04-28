@@ -32,7 +32,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,13 +49,11 @@ public final class FailsafePublisher {
    * PubsubMessage}.
    */
   public static class PublishModJsonToTopic
-      extends PTransform<
-          PCollection<FailsafeElement<String, String>>,
-          PCollection<FailsafeElement<String, String>>> {
+      extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
     private final PubSubUtils pubSubUtils;
-    private final TupleTag<String> invalidModsTag;
-    private final TupleTag<String> validModsTag;
+    private final TupleTag<FailsafeElement<String, String>> invalidModsTag;
+    private final TupleTag<FailsafeElement<String, String>> validModsTag;
 
     private static final Logger LOG = LoggerFactory.getLogger(PublishModJsonToTopic.class);
 
@@ -62,20 +62,20 @@ public final class FailsafePublisher {
     public PublishModJsonToTopic(
         PubSubUtils pubSubUtils,
         FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubMessageOptions,
-        TupleTag<String> validModsTag,
-        TupleTag<String> invalidModsTag) {
+        TupleTag<FailsafeElement<String, String>> validModsTag,
+        TupleTag<FailsafeElement<String, String>> invalidModsTag) {
       this.pubSubUtils = pubSubUtils;
       this.failsafeModJsonToPubsubMessageOptions = failsafeModJsonToPubsubMessageOptions;
       this.invalidModsTag = invalidModsTag;
       this.validModsTag = validModsTag;
     }
 
-    public PCollection<FailsafeElement<String, String>> expand(
-        PCollection<FailsafeElement<String, String>> input) {
+    public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
 
-      return input
-          .apply(ParDo.of(new PublishModJsonToTopicFn(pubSubUtils, validModsTag, invalidModsTag)))
-          .setCoder(failsafeModJsonToPubsubMessageOptions.getCoder());
+      return input.apply(
+          ParDo.of(new PublishModJsonToTopicFn(pubSubUtils, validModsTag, invalidModsTag))
+              // .setCoder(failsafeModJsonToPubsubMessageOptions.getCoder())
+              .withOutputTags(validModsTag, TupleTagList.of(invalidModsTag)));
     }
 
     /**
@@ -86,13 +86,15 @@ public final class FailsafePublisher {
         extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
       private final PubSubUtils pubSubUtils;
       private final ThrottledLogger throttled;
-      private final TupleTag<String> invalidModsTag;
-      private final TupleTag<String> validModsTag;
+      private final TupleTag<FailsafeElement<String, String>> invalidModsTag;
+      private final TupleTag<FailsafeElement<String, String>> validModsTag;
 
       private transient Publisher publisher;
 
       public PublishModJsonToTopicFn(
-          PubSubUtils pubSubUtils, TupleTag<String> validModsTag, TupleTag<String> invalidModsTag) {
+          PubSubUtils pubSubUtils,
+          TupleTag<FailsafeElement<String, String>> validModsTag,
+          TupleTag<FailsafeElement<String, String>> invalidModsTag) {
         this.pubSubUtils = pubSubUtils;
         this.invalidModsTag = invalidModsTag;
         this.validModsTag = validModsTag;
@@ -131,10 +133,10 @@ public final class FailsafePublisher {
         try {
           PubsubMessage pubSubMessage = newPubsubMessage(failsafeModJsonString.getPayload());
           if (pubSubMessage == null) {
-            context.output(invalidModsTag, failsafeModJsonString.getPayload());
+            context.output(invalidModsTag, failsafeModJsonString);
             return;
           }
-          context.output(validModsTag, failsafeModJsonString.getPayload());
+          context.output(validModsTag, failsafeModJsonString);
           throttled.success(LOG, publisher.publish(pubSubMessage).get());
         } catch (Exception e) {
           throttled.failure(LOG, e);
@@ -145,7 +147,7 @@ public final class FailsafePublisher {
         }
       }
 
-      /* Schema Details:  */
+      /* Schema Details: */
       private PubsubMessage newPubsubMessage(String modJsonString) throws Exception {
         String changeJsonString = Mod.fromJson(modJsonString).getChangeJson();
         MessageFormat messageFormat = pubSubUtils.getDestination().getMessageFormat();
