@@ -95,6 +95,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   public static final String IGNORED_COLUMN_FAMILY = "ignore_cf";
+  public static final String SUM_COLUMN_FAMILY = "sum";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
@@ -311,6 +312,94 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                           "Unexpected message text: " + messageText,
                           StringUtils.contains(
                               messageText, "Request payload size exceeds the limit"));
+                      return true;
+                    } catch (Exception e) {
+                      throw new RuntimeException(e);
+                    }
+                  }
+                  return false;
+                });
+
+    assertThatResult(result).meetsConditions();
+  }
+
+  @Test
+  public void testContinueOnInvalidMod() throws Exception {
+    LaunchInfo launchInfo =
+        launchTemplate(
+            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+                .addParameter("bigtableReadTableId", srcTable)
+                .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("bigtableChangeStreamAppProfile", appProfileId)
+                .addParameter("messageFormat", "JSON")
+                .addParameter("messageEncoding", "JSON")
+                .addParameter("useBase64Values", "true")
+                .addParameter("dlqDirectory", getGcsPath("dlq"))
+                .addParameter("dlqMaxRetries", "1")
+                .addParameter("dlqRetryMinutes", "1")
+                .addParameter("pubSubTopic", topicName.getTopic()));
+
+    assertThatPipeline(launchInfo).isRunning();
+
+    String rowkey = UUID.randomUUID().toString();
+    String column = "test_column";
+
+    String goodValue = UUID.randomUUID().toString();
+
+    long timestamp = 12000L;
+
+    RowMutation invalidModMutation =
+        RowMutation.create(srcTable, rowkey).addToCell(SUM_COLUMN_FAMILY, column, timestamp, 1);
+    bigtableResourceManager.write(invalidModMutation);
+
+    RowMutation smallMutation =
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, goodValue);
+    bigtableResourceManager.write(smallMutation);
+
+    ChangelogEntryText expected =
+        ChangelogEntryMessageText.ChangelogEntryText.newBuilder()
+            .setColumn(column)
+            .setColumnFamily(SOURCE_COLUMN_FAMILY)
+            .setIsGC(false)
+            .setModType(ModType.SET_CELL)
+            .setCommitTimestamp(System.currentTimeMillis() * 1000)
+            .setRowKey(rowkey)
+            .setSourceInstance(bigtableResourceManager.getInstanceId())
+            .setSourceCluster(clusterName)
+            .setTieBreaker(1)
+            .setTimestamp(timestamp)
+            .setSourceTable(srcTable)
+            .setValue(goodValue)
+            .build();
+
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
+    for (ReceivedMessage message : receivedMessages) {
+      validateJsonMessageData(expected, message.getMessage().getData().toString("UTF-8"));
+    }
+
+    LOG.info("Looking for files in DLQ");
+
+    Result result =
+        pipelineOperator()
+            .waitForConditionAndFinish(
+                createConfig(launchInfo),
+                () -> {
+                  List<Artifact> artifacts = gcsClient.listArtifacts("dlq", Pattern.compile(".*"));
+                  RowJsonUtils.increaseDefaultStreamReadConstraints(100 * 1024 * 1024);
+                  ObjectMapper om = new ObjectMapper();
+                  for (Artifact artifact : artifacts) {
+                    try {
+                      JsonNode severeError = om.readTree(artifact.contents());
+                      assertNotNull(severeError);
+                      JsonNode errorMessageNode = severeError.get("error_message");
+                      assertNotNull(errorMessageNode);
+                      assertTrue(errorMessageNode instanceof TextNode);
+                      String messageText = errorMessageNode.asText();
+                      assertTrue(
+                          "Unexpected message text: " + messageText,
+                          StringUtils.contains(
+                              messageText, "Invalid mod"));
                       return true;
                     } catch (Exception e) {
                       throw new RuntimeException(e);
@@ -851,6 +940,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Arrays.asList(SOURCE_COLUMN_FAMILY, IGNORED_COLUMN_FAMILY));
+    cdcTableSpec.setAggregateColumnFamilies(Arrays.asList(SUM_COLUMN_FAMILY));
     bigtableResourceManager.createTable(srcTable, cdcTableSpec);
 
     topicName = pubsubResourceManager.createTopic(topicNameToCreate);
