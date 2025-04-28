@@ -40,7 +40,6 @@ import com.google.cloud.bigtable.admin.v2.models.CreateTableRequest;
 import com.google.cloud.bigtable.admin.v2.models.GCRules;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.admin.v2.models.Table;
-import com.google.cloud.bigtable.admin.v2.models.Type;
 import com.google.cloud.bigtable.admin.v2.models.UpdateTableRequest;
 import com.google.cloud.bigtable.data.v2.BigtableDataClient;
 import com.google.cloud.bigtable.data.v2.BigtableDataSettings;
@@ -358,10 +357,6 @@ public class BigtableResourceManager implements ResourceManager {
         for (String columnFamily : bigtableTableSpec.getColumnFamilies()) {
           createTableRequest.addFamily(
               columnFamily, GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()));
-        }
-        for (String columnFamily : bigtableTableSpec.getAggregateColumnFamilies()) {
-          createTableRequest.addFamily(
-              columnFamily, GCRules.GCRULES.maxAge(bigtableTableSpec.getMaxAge()), Type.int64Sum());
         }
         if (bigtableTableSpec.getCdcEnabled()) {
           createTableRequest.addChangeStreamRetention(Duration.ofDays(7));

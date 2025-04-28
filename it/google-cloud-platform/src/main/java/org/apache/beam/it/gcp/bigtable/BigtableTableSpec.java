@@ -26,12 +26,10 @@ public class BigtableTableSpec {
   private Set<String> columnFamilies;
   private Duration maxAge;
   private boolean cdcEnabled;
-  private Set<String> aggregateColumnFamilies;
 
   public BigtableTableSpec() {
     this.maxAge = Duration.ofHours(1);
     this.columnFamilies = new HashSet<>();
-    this.aggregateColumnFamilies = new HashSet<>();
     this.cdcEnabled = false;
   }
 
@@ -46,19 +44,6 @@ public class BigtableTableSpec {
   public void setColumnFamilies(Iterable<String> columnFamilies) {
     this.columnFamilies = new HashSet<>();
     columnFamilies.forEach(this.columnFamilies::add);
-  }
-
-  public Set<String> getAggregateColumnFamilies() {
-    return Collections.unmodifiableSet(aggregateColumnFamilies);
-  }
-
-  public void setAggregateColumnFamilies(Set<String> columnFamilies) {
-    this.aggregateColumnFamilies = new HashSet<>(aggregateColumnFamilies);
-  }
-
-  public void setAggregateColumnFamilies(Iterable<String> aggregateColumnFamilies) {
-    this.aggregateColumnFamilies = new HashSet<>();
-    aggregateColumnFamilies.forEach(this.aggregateColumnFamilies::add);
   }
 
   public Duration getMaxAge() {

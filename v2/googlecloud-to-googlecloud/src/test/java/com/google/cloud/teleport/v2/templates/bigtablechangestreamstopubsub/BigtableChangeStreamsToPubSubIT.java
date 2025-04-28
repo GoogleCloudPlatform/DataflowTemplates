@@ -95,7 +95,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
   public static final String SOURCE_COLUMN_FAMILY = "cf";
   public static final String IGNORED_COLUMN_FAMILY = "ignore_cf";
-  public static final String SUM_COLUMN_FAMILY = "sum";
   private static final Duration EXPECTED_REPLICATION_MAX_WAIT_TIME = Duration.ofMinutes(10);
   private static final String TEST_ZONE = "us-central1-b";
   private BigtableResourceManager bigtableResourceManager;
@@ -333,10 +332,11 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
                 .addParameter("messageFormat", "JSON")
                 .addParameter("messageEncoding", "JSON")
-                .addParameter("useBase64Values", "true")
+                .addParameter("useBase64Values", "false")
                 .addParameter("dlqDirectory", getGcsPath("dlq"))
                 .addParameter("dlqMaxRetries", "1")
                 .addParameter("dlqRetryMinutes", "1")
+                .addParameter("bigtableChangeStreamCharset", "ASCII")
                 .addParameter("pubSubTopic", topicName.getTopic()));
 
     assertThatPipeline(launchInfo).isRunning();
@@ -349,8 +349,8 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     long timestamp = 12000L;
 
     RowMutation invalidModMutation =
-        RowMutation.create(srcTable, rowkey + "_2")
-            .addToCell(SUM_COLUMN_FAMILY, column, timestamp, 1);
+        RowMutation.create(srcTable, rowkey)
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, "טבלה גדולה");
     bigtableResourceManager.write(invalidModMutation);
 
     RowMutation smallMutation =
@@ -940,7 +940,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     BigtableTableSpec cdcTableSpec = new BigtableTableSpec();
     cdcTableSpec.setCdcEnabled(true);
     cdcTableSpec.setColumnFamilies(Arrays.asList(SOURCE_COLUMN_FAMILY, IGNORED_COLUMN_FAMILY));
-    cdcTableSpec.setAggregateColumnFamilies(Arrays.asList(SUM_COLUMN_FAMILY));
     bigtableResourceManager.createTable(srcTable, cdcTableSpec);
 
     topicName = pubsubResourceManager.createTopic(topicNameToCreate);
