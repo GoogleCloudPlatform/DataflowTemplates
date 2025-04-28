@@ -126,7 +126,6 @@ public final class FailsafePublisher {
 
         try {
           PubsubMessage pubSubMessage = newPubsubMessage(failsafeModJsonString.getPayload());
-          context.output(validModsTag, failsafeModJsonString);
           throttled.success(LOG, publisher.publish(pubSubMessage).get());
         } catch (InvalidModException e) {
           throttled.failure(LOG, e);
@@ -134,6 +133,7 @@ public final class FailsafePublisher {
         } catch (Exception e) {
           throttled.failure(LOG, e);
           context.output(
+              validModsTag,
               FailsafeElement.of(failsafeModJsonString)
                   .setErrorMessage(e.getMessage())
                   .setStacktrace(Throwables.getStackTraceAsString(e)));
