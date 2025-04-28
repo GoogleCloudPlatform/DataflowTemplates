@@ -104,7 +104,7 @@ public class InformationSchemaScannerTest {
                 + " FROM information_schema.indexes AS t "
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
-                + " AND (t.index_type='INDEX' OR t.index_type='SEARCH') AND t.spanner_is_managed = 'NO' "
+                + " AND (t.index_type='INDEX' OR t.index_type='SEARCH' OR t.index_type='ScaNN') AND t.spanner_is_managed = 'NO' "
                 + " ORDER BY t.table_name, t.index_name"));
   }
 

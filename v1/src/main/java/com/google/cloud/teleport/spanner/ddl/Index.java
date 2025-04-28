@@ -96,6 +96,10 @@ public abstract class Index implements Serializable {
         .append(" ON ")
         .append(quoteIdentifier(table(), dialect()));
 
+    if (type() != null && "ScaNN".equals(type())) {
+        appendable.append(" USING ScaNN ");
+    }
+
     String indexColumnsString =
         indexColumns().stream()
             .filter(c -> c.order() != IndexColumn.Order.STORING)
@@ -139,15 +143,15 @@ public abstract class Index implements Serializable {
       appendable.append(" INTERLEAVE IN ").append(quoteIdentifier(interleaveIn(), dialect()));
     }
 
-    if (filter() != null && !filter().isEmpty()) {
-      appendable.append(" WHERE ").append(filter());
-    }
-
     if (options() != null) {
       String optionsString = String.join(",", options());
       if (!optionsString.isEmpty()) {
         appendable.append(" WITH (").append(optionsString).append(")");
       }
+    }
+
+    if (filter() != null && !filter().isEmpty()) {
+      appendable.append(" WHERE ").append(filter());
     }
   }
 
