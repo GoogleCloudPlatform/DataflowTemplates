@@ -78,7 +78,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
 
-  protected String spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
+  protected static String spannerMigrationToolPath;
   protected JDBCSource jdbcSource;
 
   protected class DataShard {
@@ -540,6 +540,18 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   protected String generateSessionFile(JDBCSource jdbcSourceShard, CloudSqlResourceManager cloudSqlResourceManager, SpannerResourceManager spannerResourceManager)
       throws IOException, InterruptedException {
+    System.out.println("########");
+    Map<String, String> envVariables = System.getenv();
+
+    System.out.println("--- All Environment Variables ---");
+
+    // Iterate over the map and print each variable
+    for (Map.Entry<String, String> entry : envVariables.entrySet()) {
+      String variableName = entry.getKey();
+      String variableValue = entry.getValue();
+      System.out.println(variableName + " = " + variableValue);
+    }
+    String spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
     System.out.println(spannerMigrationToolPath);
     if (StringUtils.isBlank(spannerMigrationToolPath)) {
       throw new RuntimeException(
