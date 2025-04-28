@@ -258,7 +258,7 @@ public class PubSubUtils implements Serializable {
   }
 
   public PubsubMessage mapChangeJsonStringToPubSubMessageAsJson(String changeJsonString)
-      throws Exception {
+      throws InvalidModException, Exception {
     JSONObject changeJsonParsed = new JSONObject(changeJsonString);
 
     var changelogEntryTextBuilder =
