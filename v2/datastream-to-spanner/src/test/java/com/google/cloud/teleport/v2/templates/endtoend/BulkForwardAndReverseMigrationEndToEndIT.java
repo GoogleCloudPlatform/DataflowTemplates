@@ -45,6 +45,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
+import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
 
 /**
  * Integration test for end-to-end Testing of all Spanner migration Flex templates for basic run
@@ -56,8 +57,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/BulkForwardAndReverseSharded/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE =
-      "EndToEndTesting/BulkForwardAndReverseSharded/session.json";
+  private static String SESSION_FILE_RESOURCE;
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "EndToEndTesting/BulkForwardAndReverseSharded/mysql-schema.sql";
 
@@ -106,7 +106,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
       testInstances.add(this);
       if (bulkJobInfo == null) {
         spannerResourceManager =
-            createSpannerDatabase(BulkForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
+            createEmptySpannerDatabase();
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
         cloudSqlResourceManagerShardA =
             CloudMySQLResourceManager.builder(testName + "ShardA").build();
@@ -156,19 +156,14 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                 databases);
         createAndUploadBulkShardConfigToGcs(
             new ArrayList<>(List.of(dataShard)), gcsResourceManager);
+        SESSION_FILE_RESOURCE=generateSessionFile(jdbcSourceShardA, cloudSqlResourceManager, spannerResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
                 .getPath());
-        pubsubResourceManager = setUpPubSubResourceManager();
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
-        System.out.println(
-            "### Database: "
-                + cloudSqlResourceManagerShardB.getDatabaseName()
-                + " "
-                + cloudSqlResourceManagerShardA.getDatabaseName());
-        bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
+        //bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
       }
     }
   }

@@ -42,6 +42,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
@@ -64,12 +70,15 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
 
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
   private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
+
+  protected String spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
   protected JDBCSource jdbcSource;
 
   protected class DataShard {
@@ -148,6 +157,15 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         spannerResourceManager.executeDdlStatement(d);
       }
     }
+    return spannerResourceManager;
+  }
+
+  protected SpannerResourceManager createEmptySpannerDatabase(){
+    SpannerResourceManager spannerResourceManager =
+        SpannerResourceManager.builder("e2e-main-" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
+
     return spannerResourceManager;
   }
 
@@ -518,5 +536,101 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         .setAllowedTables(
             Map.of(cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList()))
         .build();
+  }
+
+  protected String generateSessionFile(JDBCSource jdbcSourceShard, CloudSqlResourceManager cloudSqlResourceManager, SpannerResourceManager spannerResourceManager)
+      throws IOException, InterruptedException {
+    System.out.println(spannerMigrationToolPath);
+    if (StringUtils.isBlank(spannerMigrationToolPath)) {
+      throw new RuntimeException(
+          "Error: spanner_migration_tool_path environment variable is not set or is empty.");
+    }
+    List<String> command = new ArrayList<>();
+    command.add(spannerMigrationToolPath);
+    command.add("schema");
+    command.add("--source=MySQL");
+    String sourceProfile = String.format(
+        "host=10.94.208.4,port=%s,user=%s,password=%s,dbName=%s",
+        jdbcSourceShard.port(), jdbcSource.username(), jdbcSourceShard.password(),
+        cloudSqlResourceManager.getDatabaseName());
+    command.add("--source-profile=" + sourceProfile);
+    String targetProfile = String.format("project=%s,instance=%s", PROJECT, spannerResourceManager.getInstanceId());
+    command.add("--target-profile=" + targetProfile);
+    command.add("--project=span-cloud-testing");
+
+    ProcessBuilder processBuilder = new ProcessBuilder(command);
+    Process process = processBuilder.start();
+    // Regex to capture the session filename
+    Pattern sessionFilePattern = Pattern.compile("^Wrote session to file '([^']+\\.session\\.json)'\\.?$");
+
+    final List<String> capturedOutputLines = new ArrayList<>();
+    final List<String> capturedErrorLines = new ArrayList<>();
+    String[] tempCapturedSessionFileName = new String[1]; // Effectively final for lambda
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    // Read stdout
+    Future<?> stdoutFuture = executor.submit(() -> {
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          System.out.println("TOOL_STDOUT: " + line); // Log all output
+          capturedOutputLines.add(line);
+          Matcher matcher = sessionFilePattern.matcher(line);
+          if (matcher.find()) {
+            tempCapturedSessionFileName[0] = matcher.group(1);
+            System.out.println(">>>> Captured session filename: " + tempCapturedSessionFileName[0]);
+          }
+        }
+      } catch (IOException e) {
+        System.err.println("Error reading tool stdout: " + e.getMessage());
+      }
+    });
+
+    // Read stderr
+    Future<?> stderrFuture = executor.submit(() -> {
+      try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+        String line;
+        while ((line = reader.readLine()) != null) {
+          System.err.println("TOOL_STDERR: " + line); // Log all error output
+          capturedErrorLines.add(line);
+        }
+      } catch (IOException e) {
+        System.err.println("Error reading tool stderr: " + e.getMessage());
+      }
+    });
+
+    boolean exited = process.waitFor(5, TimeUnit.MINUTES); // Adjust timeout
+
+    // Wait for stream readers to finish
+    try {
+      stdoutFuture.get(1, TimeUnit.MINUTES); // Timeout for stdout reader
+      stderrFuture.get(1, TimeUnit.MINUTES); // Timeout for stderr reader
+    } catch (Exception e) {
+      System.err.println("Timeout or error waiting for stream readers to finish: " + e.getMessage());
+    }
+    executor.shutdownNow(); // Terminate threads if they are still running
+
+
+    if (exited) {
+      if (process.exitValue() != 0) {
+        throw new RuntimeException(
+            "Spanner Migration Tool failed with exit code: " + process.exitValue() +
+                "\nSTDOUT:\n" + String.join("\n", capturedOutputLines) +
+                "\nSTDERR:\n" + String.join("\n", capturedErrorLines));
+      }
+      System.out.println("Spanner Migration Tool executed successfully.");
+      if (tempCapturedSessionFileName[0] != null) {
+        return tempCapturedSessionFileName[0];
+      } else {
+        System.out.println("Warning: Session filename was not found in the tool output.");
+        return "";
+      }
+    } else {
+      process.destroyForcibly();
+      throw new RuntimeException("Spanner Migration Tool timed out." +
+          "\nPartial STDOUT:\n" + String.join("\n", capturedOutputLines) +
+          "\nPartial STDERR:\n" + String.join("\n", capturedErrorLines));
+    }
   }
 }
