@@ -342,12 +342,13 @@ public final class BigtableChangeStreamsToPubSub {
                 .setIncludePaneInfo(true)
                 .build());
 
-    PCollectionList<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
+    PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
         PCollectionList.of(
                 dlqModJson
                     .get(DeadLetterQueueManager.PERMANENT_ERRORS)
                     .setCoder(FAILSAFE_ELEMENT_CODER))
-            .and(failedToPublish.get(INVALID_MODS_TAG).setCoder(FAILSAFE_ELEMENT_CODER));
+            .and(failedToPublish.get(INVALID_MODS_TAG).setCoder(FAILSAFE_ELEMENT_CODER))
+            .apply("Merge Reconsume And Invalid Mods", Flatten.pCollections());
     LOG.info(
         "DLQ manager severe DLQ directory with date time: {}",
         dlqManager.getSevereDlqDirectoryWithDateTime());
