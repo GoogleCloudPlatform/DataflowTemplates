@@ -12,7 +12,15 @@ CREATE TABLE IF NOT EXISTS Books (
                        author_id INT64 NOT NULL,
                        titleLowerStored STRING(MAX) AS (LOWER(title)) STORED,
 ) PRIMARY KEY(author_id, id),
-  INTERLEAVE IN Authors;
+  INTERLEAVE IN PARENTS Authors;
+
+CREATE TABLE IF NOT EXISTS Series (
+                                     id INT64 NOT NULL,
+                                     title STRING(200) NOT NULL,
+    author_id INT64 NOT NULL,
+    seriesTitleLowerStored STRING(MAX) AS (LOWER(title)) STORED,
+    ) PRIMARY KEY(author_id, id),
+    INTERLEAVE IN Authors;
 
 CREATE TABLE IF NOT EXISTS ForeignKeyParent (
                                   id INT64,

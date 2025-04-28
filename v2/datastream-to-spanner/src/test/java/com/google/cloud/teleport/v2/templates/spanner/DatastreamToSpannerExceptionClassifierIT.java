@@ -76,6 +76,58 @@ public class DatastreamToSpannerExceptionClassifierIT {
   }
 
   @Test
+  public void testInterleaveInParentInsertChildBeforeParent() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation =
+        Mutation.newInsertBuilder("Books")
+            .set("id")
+            .to(4)
+            .set("author_id")
+            .to(100)
+            .set("title")
+            .to("Child")
+            .build();
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = DatastreamToSpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(
+        exception.getMessage(),
+        "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Parent row for row [100,4] in table Books is missing. Row cannot be written.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+  }
+
+  @Test
+  public void testInterleaveInInsertChildBeforeParent() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation =
+        Mutation.newInsertBuilder("Series")
+            .set("id")
+            .to(4)
+            .set("author_id")
+            .to(100)
+            .set("title")
+            .to("Child")
+            .build();
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = DatastreamToSpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(
+        exception.getMessage(),
+        "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Parent row for row [100,4] in table Books is missing. Row cannot be written.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+  }
+
+  @Test
   public void testFKInsertChildBeforeParent() {
     ErrorTag actualTag = null;
     SpannerException exception = null;
@@ -97,6 +149,30 @@ public class DatastreamToSpannerExceptionClassifierIT {
         exception.getMessage(),
         "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Foreign key constraint `fk_constraint1` is violated on table `ForeignKeyChild`. Cannot find referenced values in ForeignKeyParent(id).");
     assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+  }
+
+  @Test
+  public void testUniqueIndexError() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation =
+        Mutation.newInsertBuilder("Authors")
+            .set("author_id")
+            .to(10)
+            .set("name")
+            .to("J.R.R. Tolkien") // author already exists
+            .build();
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = DatastreamToSpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(
+        exception.getMessage(),
+        "ALREADY_EXISTS: io.grpc.StatusRuntimeException: ALREADY_EXISTS: Unique index violation on index idx_authors_name at index key [J.R.R. Tolkien,1]. It conflicts with row [1] in table Authors.");
+    assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
   @Test
@@ -176,6 +252,24 @@ public class DatastreamToSpannerExceptionClassifierIT {
             + "resource_type: \"spanner.googleapis.com/Column\"\n"
             + "resource_name: \"FakeColumn\"\n");
     assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
+  }
+
+  @Test
+  public void testInterleavingInParentDeleteParentWhenChildExists() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation = Mutation.delete("Authors", Key.of(1));
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+      actualTag = DatastreamToSpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
+    }
+    Assert.assertNotNull(exception);
+    Assert.assertEquals(
+        exception.getMessage(),
+        "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Integrity constraint violation during DELETE/REPLACE. Found child row [1,1] in table Books.");
+    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
   }
 
   @Test
