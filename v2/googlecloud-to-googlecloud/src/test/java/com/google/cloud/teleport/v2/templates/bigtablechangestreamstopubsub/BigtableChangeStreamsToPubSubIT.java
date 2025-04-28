@@ -371,7 +371,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .setTieBreaker(1)
             .setTimestamp(timestamp)
             .setSourceTable(srcTable)
-            .setValue(new String(goodValue, Charset.forName("ASCII")))
+            .setValue(ByteString.copyFrom(goodValue, Charset.forName("ASCII")))
             .build();
 
     List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
