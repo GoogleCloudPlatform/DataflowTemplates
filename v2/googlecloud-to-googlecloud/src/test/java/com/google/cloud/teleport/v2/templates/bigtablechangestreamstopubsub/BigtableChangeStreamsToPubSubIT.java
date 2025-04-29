@@ -350,8 +350,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     long timestamp = 12000L;
 
     RowMutation invalidModMutation =
-        RowMutation.create(srcTable, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, null);
+        RowMutation.create(srcTable, rowkey).setCell(SOURCE_COLUMN_FAMILY, column, timestamp, null);
     bigtableResourceManager.write(invalidModMutation);
 
     RowMutation smallMutation =
