@@ -95,7 +95,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     // create Spanner Resources
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
 
-    // create MySql Resources
+    // create Source MySql Resources
     cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
     cloudSqlResourceManager.createTable(
         AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "author_id"));
@@ -108,12 +108,6 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
-    // gcsResourceManager.createArtifact(
-    //     "input/session.json",
-    //     generateSessionFile(
-    //         cloudSqlResourceManager.getDatabaseName(),
-    //         spannerResourceManager.getDatabaseId(),
-    //         SESSION_FILE_RESOURCE));
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
