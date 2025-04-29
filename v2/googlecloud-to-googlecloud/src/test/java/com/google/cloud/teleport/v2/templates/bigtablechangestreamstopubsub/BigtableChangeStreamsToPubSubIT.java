@@ -371,13 +371,13 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
             .setTieBreaker(1)
             .setTimestamp(timestamp)
             .setSourceTable(srcTable)
-            .setValue("")
+            .setValue(goodValue)
             .build();
 
-    // List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
-    // for (ReceivedMessage message : receivedMessages) {
-    //  validateJsonMessageData(expected, message.getMessage().getData().toString("ASCII"));
-    // }
+    List<ReceivedMessage> receivedMessages = getAtLeastOneMessage(launchInfo);
+    for (ReceivedMessage message : receivedMessages) {
+      validateJsonMessageData(expected, message.getMessage().getData().toString("ASCII"));
+    }
 
     LOG.info("Looking for files in DLQ");
 
