@@ -117,7 +117,6 @@ public class InformationSchemaScanner {
       listPropertyGraphEdgeTables(builder);
     }
     Map<String, NavigableMap<String, Index.Builder>> indexes = Maps.newHashMap();
-    System.out.println("Listing indexes");
     listIndexes(indexes);
     listIndexColumns(builder, indexes);
     listIndexOptions(builder, indexes);
@@ -463,19 +462,15 @@ public class InformationSchemaScanner {
 
   private void listIndexes(Map<String, NavigableMap<String, Index.Builder>> indexes) {
     Statement statement = listIndexesSQL();
-    System.out.println("dbg: Got sql");
 
     ResultSet resultSet = context.executeQuery(statement);
-    System.out.println("dbg: executed query");
     while (resultSet.next()) {
-      System.out.println("dbg: processing first result");
       String tableName = getQualifiedName(resultSet.getString(0), resultSet.getString(1));
       // For PostgreSQL, the syntax does not support fully qualified name.
       String indexName =
           dialect == Dialect.POSTGRESQL
               ? resultSet.getString(2)
               : getQualifiedName(resultSet.getString(0), resultSet.getString(2));
-      System.out.println("dbg: index name: " + indexName);
       String parent =
           Strings.isNullOrEmpty(resultSet.getString(3))
               ? null
@@ -491,7 +486,6 @@ public class InformationSchemaScanner {
       String filter = resultSet.isNull(6) ? null : resultSet.getString(6);
 
       String type = !resultSet.isNull(7) ? resultSet.getString(7) : null;
-      System.out.println("dbg: Index type is " + type);
 
       ImmutableList<String> searchPartitionBy =
           !resultSet.isNull(8)
@@ -596,7 +590,9 @@ public class InformationSchemaScanner {
             indexBuilder.columns().create().name(columnName);
         // Tokenlist columns do not have ordering.
         if (spannerType != null
-            && (spannerType.equals(tokenlistType) || spannerType.startsWith("ARRAY") || spannerType.contains("vector length"))) {
+            && (spannerType.equals(tokenlistType)
+                || spannerType.startsWith("ARRAY")
+                || spannerType.contains("vector length"))) {
           indexColumnsBuilder.none();
         } else if (ordering == null) {
           indexColumnsBuilder.storing();
@@ -664,8 +660,10 @@ public class InformationSchemaScanner {
           allOptions.computeIfAbsent(kv, k -> ImmutableList.builder());
 
       if (optionType.equalsIgnoreCase("STRING")) {
-        String quoteChar = dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
-        options.add(optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
+        String quoteChar =
+            dialect == Dialect.POSTGRESQL ? POSTGRESQL_LITERAL_QUOTE : GSQL_LITERAL_QUOTE;
+        options.add(
+            optionName + "=" + quoteChar + OPTION_STRING_ESCAPER.escape(optionValue) + quoteChar);
       } else if (optionType.equalsIgnoreCase("character varying")) {
         options.add(optionName + "='" + OPTION_STRING_ESCAPER.escape(optionValue) + "'");
       } else {

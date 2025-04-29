@@ -97,7 +97,7 @@ public abstract class Index implements Serializable {
         .append(quoteIdentifier(table(), dialect()));
 
     if (type() != null && "ScaNN".equals(type())) {
-        appendable.append(" USING ScaNN ");
+      appendable.append(" USING ScaNN ");
     }
 
     String indexColumnsString =

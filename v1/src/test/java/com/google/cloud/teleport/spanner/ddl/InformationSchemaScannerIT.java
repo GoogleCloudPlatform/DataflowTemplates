@@ -785,9 +785,9 @@ public class InformationSchemaScannerIT {
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
-// CREATE INDEX vector_index ON Base USING ScaNN (embedding_column) 
-// INCLUDE (v1, v2) WITH (distance_type = 'COSINE', tree_depth = 3) 
-// WHERE (embedding_column IS NOT NULL);
+  // CREATE INDEX vector_index ON Base USING ScaNN (embedding_column)
+  // INCLUDE (v1, v2) WITH (distance_type = 'COSINE', tree_depth = 3)
+  // WHERE (embedding_column IS NOT NULL);
   @Test
   public void pgVectorIndexes() throws Exception {
     List<String> statements =
@@ -798,7 +798,7 @@ public class InformationSchemaScannerIT {
                 + " \"Embeddings\"                            double precision[] vector length 128,"
                 + " PRIMARY KEY (\"K\")"
                 + " )",
-                " CREATE INDEX \"VI\" ON \"Base\" USING ScaNN (\"Embeddings\" )"
+            " CREATE INDEX \"VI\" ON \"Base\" USING ScaNN (\"Embeddings\" )"
                 + " WITH (distance_type='COSINE') WHERE \"Embeddings\" IS NOT NULL");
 
     SPANNER_SERVER.createPgDatabase(dbId, statements);
