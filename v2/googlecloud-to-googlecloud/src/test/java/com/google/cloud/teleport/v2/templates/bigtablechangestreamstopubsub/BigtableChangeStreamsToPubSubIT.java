@@ -913,12 +913,9 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(
-                testName, PROJECT, credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     BigtableResourceManager.Builder rmBuilder =
-        BigtableResourceManager.builder(
-            testName, PROJECT, credentialsProvider);
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider);
 
     bigtableResourceManager = rmBuilder.maybeUseStaticInstance().build();
 
