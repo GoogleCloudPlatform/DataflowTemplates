@@ -151,7 +151,7 @@ public class FormatDatastreamRecordToJson
       // Mongodb Specific Metadata
       outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
       outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
-    } else if (sourceType.equals("oracle")) {
+    } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
       outputObject.put("_metadata_scn", getOracleScn(record));
