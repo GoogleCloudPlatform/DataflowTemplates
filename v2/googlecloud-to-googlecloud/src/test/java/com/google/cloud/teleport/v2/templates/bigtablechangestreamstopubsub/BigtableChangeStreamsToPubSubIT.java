@@ -332,6 +332,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
                 .addParameter("messageFormat", "JSON")
                 .addParameter("messageEncoding", "JSON")
+                .addParameter("stripValues", "false")
                 .addParameter("useBase64Values", "false")
                 .addParameter("dlqDirectory", getGcsPath("dlq"))
                 .addParameter("dlqMaxRetries", "1")
@@ -350,7 +351,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     RowMutation invalidModMutation =
         RowMutation.create(srcTable, rowkey)
-            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, "טבלה גדולה");
+            .setCell(SOURCE_COLUMN_FAMILY, column, timestamp, null);
     bigtableResourceManager.write(invalidModMutation);
 
     RowMutation smallMutation =
