@@ -197,6 +197,8 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
     InitialLimitedDurationErrorInjectionPolicy policy =
         new InitialLimitedDurationErrorInjectionPolicy(input, clock);
 
+    System.out.println(policy);
+
     // Simulate calls at different times by changing the clock
 
     // t=0s (First call)

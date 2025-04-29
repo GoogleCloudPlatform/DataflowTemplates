@@ -447,7 +447,6 @@
               </systemProperties>
               <includes>
                 <include>**/*IT.java</include>
-                <include>**/*FT.java</include> <!-- TODO: Added temporarily for testing. -->
               </includes>
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>

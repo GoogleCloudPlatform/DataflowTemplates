@@ -238,10 +238,10 @@ public class SpannerServiceTest {
   @SuppressWarnings({"unchecked", "rawtypes"})
   private MethodDescriptor<Object, Object> getMockMethodDescriptor(String methodName) {
     return MethodDescriptor.newBuilder()
-        .setType(MethodType.UNARY) // Type doesn't strictly matter for the filter logic
+        .setType(MethodType.UNARY)
         .setFullMethodName(methodName)
-        .setRequestMarshaller(mock(Marshaller.class)) // Mock marshaller for Object type
-        .setResponseMarshaller(mock(Marshaller.class)) // Mock marshaller for Object type
+        .setRequestMarshaller(mock(Marshaller.class))
+        .setResponseMarshaller(mock(Marshaller.class))
         .build();
   }
 }

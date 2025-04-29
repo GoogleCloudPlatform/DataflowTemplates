@@ -35,7 +35,6 @@ public class ErrorInjectionPolicyFactory {
   private static final String POLICY_TYPE_FIELD = "policyType";
   private static final String POLICY_INPUT_FIELD = "policyInput";
 
-  // Define constants for known policy type names
   private static final String TYPE_ALWAYS_FAIL = "AlwaysFailPolicy";
   private static final String TYPE_INITIAL_LIMITED_DURATION =
       "InitialLimitedDurationErrorInjectionPolicy";

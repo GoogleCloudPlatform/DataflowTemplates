@@ -175,10 +175,6 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            // .addParameter("sessionFilePath", getGcsPath("input/session.json",
-            // gcsResourceManager))
-            // .addEnvironmentVariable(
-            //     "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
 
     // Run

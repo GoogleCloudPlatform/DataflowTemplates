@@ -54,9 +54,10 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
+public class DataStreamToSpannerMySQLSrcSpannerFT extends DataStreamToSpannerFTBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(DataStreamToSpannerSpannerFT.class);
+  private static final Logger LOG =
+      LoggerFactory.getLogger(DataStreamToSpannerMySQLSrcSpannerFT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerFailureInjectionTesting/spanner-schema.sql";
 
@@ -82,7 +83,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
 
-  private static CloudSqlResourceManager cloudSqlResourceManager;
+  private static CloudSqlResourceManager sourceDBResourceManager;
   private JDBCSource sourceConnectionProfile;
 
   /**
@@ -95,14 +96,11 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     // create Spanner Resources
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
 
-    // create Source MySql Resources
-    cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    cloudSqlResourceManager.createTable(
-        AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "author_id"));
-    cloudSqlResourceManager.createTable(BOOKS_TABLE, new JDBCSchema(BOOK_TABLE_COLUMNS, "book_id"));
+    // create Source Resources
+    sourceDBResourceManager = createSourceResourceManager();
     sourceConnectionProfile =
         createMySQLSourceConnectionProfile(
-            cloudSqlResourceManager, Arrays.asList(AUTHORS_TABLE, BOOKS_TABLE));
+            sourceDBResourceManager, Arrays.asList(AUTHORS_TABLE, BOOKS_TABLE));
 
     // create and upload GCS Resources
     gcsResourceManager =
@@ -129,6 +127,15 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
             sourceConnectionProfile);
   }
 
+  private CloudSqlResourceManager createSourceResourceManager() {
+    CloudSqlResourceManager cloudSqlResourceManager =
+        CloudMySQLResourceManager.builder(testName).build();
+    cloudSqlResourceManager.createTable(
+        AUTHORS_TABLE, new JDBCSchema(AUTHOR_TABLE_COLUMNS, "author_id"));
+    cloudSqlResourceManager.createTable(BOOKS_TABLE, new JDBCSchema(BOOK_TABLE_COLUMNS, "book_id"));
+    return cloudSqlResourceManager;
+  }
+
   /**
    * Cleanup all the resources and resource managers.
    *
@@ -137,7 +144,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
   @After
   public void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, gcsResourceManager, pubsubResourceManager, cloudSqlResourceManager);
+        spannerResourceManager, gcsResourceManager, pubsubResourceManager, sourceDBResourceManager);
   }
 
   @Test
@@ -146,7 +153,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     assertThatPipeline(jobInfo).isRunning();
 
     // Wave of inserts
-    writeRowsInMySql(1, 20000, cloudSqlResourceManager);
+    writeRowsInSourceDB(1, 20000, sourceDBResourceManager);
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -171,8 +178,8 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
     assertThatResult(result).meetsConditions();
   }
 
-  protected boolean writeRowsInMySql(
-      Integer startId, Integer endId, CloudSqlResourceManager cloudSqlResourceManager) {
+  protected boolean writeRowsInSourceDB(
+      Integer startId, Integer endId, CloudSqlResourceManager sourceDBSqlResourceManager) {
 
     boolean success = true;
     List<Map<String, Object>> rows = new ArrayList<>();
@@ -183,7 +190,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
       values.put("name", "author_name_" + i);
       rows.add(values);
     }
-    success &= cloudSqlResourceManager.write(AUTHORS_TABLE, rows);
+    success &= sourceDBSqlResourceManager.write(AUTHORS_TABLE, rows);
     LOG.info(String.format("Wrote %d rows to table %s", rows.size(), AUTHORS_TABLE));
 
     rows = new ArrayList<>();
@@ -196,7 +203,7 @@ public class DataStreamToSpannerSpannerFT extends DataStreamToSpannerFTBase {
         values.put("name", "book_name_" + i);
         rows.add(values);
       }
-      success &= cloudSqlResourceManager.write(BOOKS_TABLE, rows);
+      success &= sourceDBSqlResourceManager.write(BOOKS_TABLE, rows);
       LOG.info(String.format("Wrote %d rows to table %s", rows.size(), BOOKS_TABLE));
     }
 
