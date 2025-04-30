@@ -647,7 +647,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   public void processElement(ProcessContext c) {
                     String udfName = c.element();
                     LOG.info("Exporting user-defined function: " + udfName);
-                    // This file will contain the schema definition for the placement.
+                    // This file will contain the schema definition for the UDF.
                     c.output(
                         KV.of(udfName, Collections.singleton(udfName + ".avro-00000-of-00001")));
                   }
@@ -1008,7 +1008,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
         } else if (ddl.placement(obj.getName()) != null) {
           exportManifest.addPlacements(obj);
         } else if (ddl.udf(obj.getName()) != null) {
-          exportManifest.addFunctions(obj);
+          exportManifest.addUdfs(obj);
         } else {
           exportManifest.addTables(obj);
         }

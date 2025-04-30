@@ -257,11 +257,10 @@ public class ExportTransformTest {
                       manifestProto.getSequences(0).getManifestFile(),
                       is("sequence-manifest.json"));
 
-                  assertThat(manifestProto.getFunctionsCount(), is(1));
-                  assertThat(manifestProto.getFunctions(0).getName(), is("function"));
+                  assertThat(manifestProto.getUdfsCount(), is(1));
+                  assertThat(manifestProto.getUdfs(0).getName(), is("function"));
                   assertThat(
-                      manifestProto.getFunctions(0).getManifestFile(),
-                      is("function-manifest.json"));
+                      manifestProto.getUdfs(0).getManifestFile(), is("function-manifest.json"));
                   return null;
                 });
 

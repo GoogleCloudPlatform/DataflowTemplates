@@ -491,7 +491,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           List<KV<String, Schema>> missingSequences = new ArrayList<>();
-                          List<KV<String, Schema>> missingFunctions = new ArrayList<>();
+                          List<KV<String, Schema>> missingUdfs = new ArrayList<>();
                           List<KV<String, Schema>> missingPlacements = new ArrayList<>();
                           List<KV<String, Schema>> missingPropertyGraphs = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
@@ -516,7 +516,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                   || schema.getProp(AvroUtil.SPANNER_SEQUENCE_KIND) != null) {
                                 missingSequences.add(KV.of(kv.getKey(), schema));
                               } else if ("spannerUdf".equals(schema.getProp("spannerEntity"))) {
-                                missingFunctions.add(KV.of(kv.getKey(), schema));
+                                missingUdfs.add(KV.of(kv.getKey(), schema));
                               } else if ("spannerNamedSchema"
                                   .equals(schema.getProp("spannerEntity"))) {
                                 missingNamedSchemas.add(KV.of(kv.getKey(), schema));
@@ -591,9 +591,9 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           // This will need to be revisited when UDFs are more generally supported
                           // since UDFs with select statements that reference objects like tables
                           // and views will need to be added later.
-                          if (!missingFunctions.isEmpty()) {
+                          if (!missingUdfs.isEmpty()) {
                             Ddl.Builder builder = Ddl.builder(dialect);
-                            for (KV<String, Schema> kv : missingFunctions) {
+                            for (KV<String, Schema> kv : missingUdfs) {
                               Udf udf = converter.toUdf(kv.getKey(), kv.getValue());
                               builder.addUdf(udf);
                               mergedDdl.addUdf(udf);
@@ -817,7 +817,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(sequence.getName(), fullPath));
                         }
                       }
-                      for (Export.Table udf : proto.getFunctionsList()) {
+                      for (Export.Table udf : proto.getUdfsList()) {
                         for (String f : udf.getDataFilesList()) {
                           String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
                           c.output(KV.of(udf.getName(), fullPath));
@@ -856,7 +856,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(sequence.getName(), sequence.getManifestFile()));
                         }
                       }
-                      for (Export.Table udf : proto.getFunctionsList()) {
+                      for (Export.Table udf : proto.getUdfsList()) {
                         if (!Strings.isNullOrEmpty(udf.getManifestFile())) {
                           c.output(KV.of(udf.getName(), udf.getManifestFile()));
                         }

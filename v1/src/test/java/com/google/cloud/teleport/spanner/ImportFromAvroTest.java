@@ -1688,7 +1688,7 @@ public class ImportFromAvroTest {
     for (Entry<String, Schema> entry : avroFiles.entrySet()) {
       String fileName = entry.getKey();
       Schema schema = entry.getValue();
-      exportProtoBuilder.addFunctions(
+      exportProtoBuilder.addUdfs(
           ExportProtos.Export.Table.newBuilder()
               .setName(schema.getName())
               .addDataFiles(fileName)

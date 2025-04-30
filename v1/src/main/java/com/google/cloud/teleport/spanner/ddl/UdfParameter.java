@@ -50,6 +50,12 @@ public abstract class UdfParameter implements Serializable {
 
   public static UdfParameter parse(String parameter, String functionSpecificName, Dialect dialect) {
     String[] paramParts = parameter.split(" ");
+    if (paramParts.length < 2) {
+      throw new IllegalArgumentException(
+          "UDF input parameters are expected to be in the format 'name type [DEFAULT expr]'."
+              + " Parameter: "
+              + parameter);
+    }
     UdfParameter.Builder udfParameter =
         UdfParameter.builder(dialect)
             .functionSpecificName(functionSpecificName)
@@ -58,7 +64,7 @@ public abstract class UdfParameter implements Serializable {
     if (paramParts.length > 2) {
       if (paramParts[2].equalsIgnoreCase("default")) {
         if (paramParts.length == 3) {
-          throw new RuntimeException(
+          throw new IllegalArgumentException(
               "Missing default parameter expression in " + functionSpecificName);
         }
         String defaultExpression = "";
@@ -70,7 +76,7 @@ public abstract class UdfParameter implements Serializable {
         }
         udfParameter.defaultExpression(defaultExpression);
       } else {
-        throw new RuntimeException(
+        throw new IllegalArgumentException(
             "Unexpected parameter keyword \"" + paramParts[2] + "\" in " + functionSpecificName);
       }
     }

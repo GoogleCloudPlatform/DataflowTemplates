@@ -85,9 +85,9 @@ public class InformationSchemaScanner {
     listSchemas(builder);
     listTables(builder);
     listViews(builder);
-    if (isFunctionSupported()) {
-      listFunctions(builder);
-      listFunctionParameters(builder);
+    if (isUdfSupported()) {
+      listUdfs(builder);
+      listUdfParameters(builder);
     }
     listColumns(builder);
     listColumnOptions(builder);
@@ -1008,9 +1008,8 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listFunctions(Ddl.Builder builder) {
+  private void listUdfs(Ddl.Builder builder) {
     Statement queryStatement;
-    Statement preconditionStatement;
 
     switch (dialect) {
       case GOOGLE_STANDARD_SQL:
@@ -1023,26 +1022,10 @@ public class InformationSchemaScanner {
                     + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
                     + " AND r.routine_type = 'FUNCTION'"
                     + " AND r.routine_body = 'SQL'");
-        preconditionStatement =
-            Statement.of(
-                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c"
-                    + " WHERE c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'PARAMETERS'"
-                    + " AND c.COLUMN_NAME = 'PARAMETER_DEFAULT'");
         break;
       default:
         throw new IllegalArgumentException(
             "User-defined functions are not supported in dialect: " + dialect);
-    }
-    try (ResultSet resultSet = context.executeQuery(preconditionStatement)) {
-      // Returns a single row with a 1 if the information schema can export all function properties
-      // and a 0 if not.
-      resultSet.next();
-      if (resultSet.getLong(0) == 0) {
-        LOG.info(
-            "INFORMATION_SCHEMA.PARAMETERS.PARAMETER_DEFAULT is not present. Cannot export"
-                + " user-defined functions.");
-        return;
-      }
     }
 
     ResultSet resultSet = context.executeQuery(queryStatement);
@@ -1068,7 +1051,7 @@ public class InformationSchemaScanner {
     }
   }
 
-  private void listFunctionParameters(Ddl.Builder builder) {
+  private void listUdfParameters(Ddl.Builder builder) {
     Statement statement = listFunctionParametersSQL();
 
     ResultSet resultSet = context.executeQuery(statement);
@@ -1110,8 +1093,31 @@ public class InformationSchemaScanner {
   }
 
   // TODO: b/398890992 - Add support for UDFs in POSTGRESQL.
-  private boolean isFunctionSupported() {
-    return dialect == Dialect.GOOGLE_STANDARD_SQL;
+  private boolean isUdfSupported() {
+    Statement preconditionStatement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        preconditionStatement =
+            Statement.of(
+                "SELECT COUNT(1) FROM INFORMATION_SCHEMA.COLUMNS c"
+                    + " WHERE c.TABLE_SCHEMA = 'INFORMATION_SCHEMA' AND c.TABLE_NAME = 'PARAMETERS'"
+                    + " AND c.COLUMN_NAME = 'PARAMETER_DEFAULT'");
+        break;
+      default:
+        return false;
+    }
+    try (ResultSet resultSet = context.executeQuery(preconditionStatement)) {
+      // Returns a single row with a 1 if the information schema can export all function properties
+      // and a 0 if not.
+      resultSet.next();
+      if (resultSet.getLong(0) == 0) {
+        LOG.info(
+            "INFORMATION_SCHEMA.PARAMETERS.PARAMETER_DEFAULT is not present. Cannot export"
+                + " user-defined functions.");
+        return false;
+      }
+    }
+    return true;
   }
 
   // TODO: Remove after models are supported in POSTGRESQL.
