@@ -553,7 +553,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     command.add("--source=MySQL");
     String sourceProfile = String.format(
         "host=10.94.208.4,port=%s,user=%s,password=%s,dbName=%s",
-        jdbcSourceShard.port(), jdbcSource.username(), jdbcSourceShard.password(),
+        jdbcSourceShard.port(), jdbcSourceShard.username(), jdbcSourceShard.password(),
         cloudSqlResourceManager.getDatabaseName());
     command.add("--source-profile=" + sourceProfile);
     String targetProfile = String.format("project=%s,instance=%s", PROJECT, spannerResourceManager.getInstanceId());
