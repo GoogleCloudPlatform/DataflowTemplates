@@ -48,7 +48,12 @@ public class UdfTest {
             .build();
 
     assertThat(
-        udf.prettyPrint(),
+        udf.toString(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `foo`(`p1` int32) RETURNS string SQL SECURITY INVOKER AS ((SELECT 1))"));
+
+    assertThat(
+        udf.toBuilder().build().toString(),
         equalToCompressingWhiteSpace(
             "CREATE FUNCTION `foo`(`p1` int32) RETURNS string SQL SECURITY INVOKER AS ((SELECT 1))"));
   }
