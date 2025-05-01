@@ -127,4 +127,16 @@ public class UtilsTest {
 
     assertFalse(Utils.isNewerTimestamp(ts1, ts2));
   }
+
+  @Test
+  public void testJsonToDocument() {
+    String jsonString =
+        "{\"_id\":\"{\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"}\",\"data\":\"{\\\"_id\\\": {\\\"$oid\\\": \\\"6811235eaf8583310cb9d2e9\\\"},\\\"arrayField\\\": [\\\"hello\\\",10],\\\"dateField\\\": {\\\"$date\\\": 1565546054692},\\\"dateBefore1970\\\": {\\\"$date\\\": -1577923200000},\\\"decimal128Field\\\": {\\\"$numberDecimal\\\": \\\"10.99\\\"},\\\"documentField\\\": {\\\"a\\\": \\\"hello\\\"},\\\"doubleField\\\": 10.5,\\\"infiniteNumber\\\": Infinity,\\\"int32field\\\": 10,\\\"int64Field\\\": {\\\"$numberLong\\\": \\\"50\\\"},\\\"minKeyField\\\": {\\\"$minKey\\\": 1},\\\"maxKeyField\\\": {\\\"$maxKey\\\": 1},\\\"regexField\\\": {\\\"$regex\\\": \\\"^H\\\",\\\"$options\\\": \\\"i\\\"},\\\"timestampField\\\": {\\\"$timestamp\\\": {\\\"t\\\": 1565545664,\\\"i\\\": 1}},\\\"uuid\\\": {\\\"$binary\\\": \\\"OyQRAeK7QlWMr0E2xWapYg==\\\",\\\"$type\\\": \\\"04\\\"}}\",\"_metadata_stream\":\"extended-types-test\",\"_metadata_timestamp\":1745957556,\"_metadata_read_timestamp\":1745957556,\"_metadata_dataflow_timestamp\":1745963670,\"_metadata_read_method\":\"backfill\",\"_metadata_source_type\":\"backfill\",\"_metadata_deleted\":false,\"_metadata_table\":null,\"_metadata_change_type\":\"READ\",\"_metadata_primary_keys\":null,\"_metadata_uuid\":\"2a9cf8eb-4f35-433c-899a-39921d4c8587\",\"_metadata_timestamp_seconds\":\"1745957556\",\"_metadata_timestamp_nanos\":\"184498000\",\"_metadata_source\":{\"database\":\"extended_types\",\"collection\":\"mycol\",\"change_type\":\"READ\",\"is_deleted\":false,\"primary_key\":[\"_id\"]},\"_metadata_error\":null,\"_metadata_retry_count\":116}";
+    Document result = Utils.jsonToDocument(jsonString, 1L);
+    assertTrue(
+        result
+            .toJson()
+            .equals(
+                "{\"_id\": 1, \"arrayField\": [\"hello\", 10], \"dateField\": {\"$date\": \"2019-08-11T17:54:14.692Z\"}, \"dateBefore1970\": {\"$date\": {\"$numberLong\": \"-1577923200000\"}}, \"decimal128Field\": {\"$numberDecimal\": \"10.99\"}, \"documentField\": {\"a\": \"hello\"}, \"doubleField\": 10.5, \"infiniteNumber\": {\"$numberDouble\": \"Infinity\"}, \"int32field\": 10, \"int64Field\": 50, \"minKeyField\": {\"$minKey\": 1}, \"maxKeyField\": {\"$maxKey\": 1}, \"regexField\": {\"$regularExpression\": {\"pattern\": \"^H\", \"options\": \"i\"}}, \"timestampField\": {\"$timestamp\": {\"t\": 1565545664, \"i\": 1}}, \"uuid\": {\"$binary\": {\"base64\": \"OyQRAeK7QlWMr0E2xWapYg==\", \"subType\": \"04\"}}}"));
+  }
 }

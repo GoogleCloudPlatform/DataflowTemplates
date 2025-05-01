@@ -92,7 +92,9 @@ public class ProcessChangeEventFnTest {
     mockShadowDocNewer =
         new Document(MongoDbChangeEventContext.TIMESTAMP_COL, mockTimestampDocNewer);
     mockDataDoc =
-        new Document(MongoDbChangeEventContext.DOC_ID_COL, DOC_ID).append("field", "value");
+        new Document(
+            "data",
+            new Document(MongoDbChangeEventContext.DOC_ID_COL, DOC_ID).append("field", "value"));
     mockShadowDocElement =
         new Document(MongoDbChangeEventContext.SHADOW_DOC_ID_COL, DOC_ID)
             .append(MongoDbChangeEventContext.TIMESTAMP_COL, mockTimestampDocNewer);
@@ -114,7 +116,7 @@ public class ProcessChangeEventFnTest {
     when(mockElement.getShadowCollection()).thenReturn(SHADOW_COLLECTION);
     when(mockElement.getDocumentId()).thenReturn(DOC_ID);
     when(mockElement.getTimestampDoc()).thenReturn(mockTimestampDocNewer);
-    when(mockElement.getDataDocument()).thenReturn(mockDataDoc);
+    when(mockElement.getDataAsJsonString()).thenReturn(mockDataDoc.toJson());
     when(mockElement.getShadowDocument()).thenReturn(mockShadowDocElement);
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenReturn(mockFindIterable);
 

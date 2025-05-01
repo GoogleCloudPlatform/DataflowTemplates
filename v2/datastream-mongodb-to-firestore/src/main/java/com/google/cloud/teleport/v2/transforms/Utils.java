@@ -15,12 +15,18 @@
  */
 package com.google.cloud.teleport.v2.transforms;
 
+import static com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext.DATA_COL;
+
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import java.util.Set;
 import org.bson.Document;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Utils used by the Datastream-mongodb-to-mongodb pipeline. */
 public final class Utils {
+  private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+
   public static void removeTableRowFields(Document doc, Set<String> ignoreFields) {
     for (String ignoreField : ignoreFields) {
       doc.remove(ignoreField);
@@ -34,5 +40,18 @@ public final class Utils {
     long s2 = ts2.getLong(MongoDbChangeEventContext.TIMESTAMP_SECONDS_COL);
     int n2 = ts2.getInteger(MongoDbChangeEventContext.TIMESTAMP_NANOS_COL);
     return s1 > s2 || (s1 == s2 && n1 > n2);
+  }
+
+  public static Document jsonToDocument(String jsonString, Object documentId) {
+    Document rawDoc;
+    try {
+      rawDoc = Document.parse(Document.parse(jsonString).get(DATA_COL).toString());
+    } catch (Exception ex) {
+      LOG.info(
+          "Document parsing for {} failed due to {}, try casting.", jsonString, ex.getMessage());
+      rawDoc = (Document) Document.parse(jsonString).get(DATA_COL);
+    }
+    rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
+    return rawDoc;
   }
 }

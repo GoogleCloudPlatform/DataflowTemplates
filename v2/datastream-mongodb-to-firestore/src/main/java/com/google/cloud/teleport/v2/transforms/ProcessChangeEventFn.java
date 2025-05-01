@@ -19,6 +19,7 @@ import static com.mongodb.client.model.Filters.eq;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.common.annotations.VisibleForTesting;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -28,6 +29,7 @@ import com.mongodb.client.model.ReplaceOptions;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,9 +100,13 @@ public class ProcessChangeEventFn
           LOG.info("Updated shadow document for delete event, document ID: {}", docId);
         } else {
           // Regular insert or update.
-          LOG.info("Updating document with ID {} with data {}", docId, element.getDataDocument());
+          LOG.info(
+              "Updating document with ID {} with data {}", docId, element.getDataAsJsonString());
           dataCollection.replaceOne(
-              session, lookupById, element.getDataDocument(), new ReplaceOptions().upsert(true));
+              session,
+              lookupById,
+              Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId()),
+              new ReplaceOptions().upsert(true));
           shadowCollection.replaceOne(
               session, lookupById, element.getShadowDocument(), new ReplaceOptions().upsert(true));
           LOG.info("Updated document and shadow document, document ID: {}", docId);
@@ -135,7 +141,12 @@ public class ProcessChangeEventFn
       LOG.info(
           "Creating MongoDB client in ProcessChangeEventFn with connection string: {}",
           connectionString);
-      client = MongoClients.create(connectionString);
+      MongoClientSettings settings =
+          MongoClientSettings.builder()
+              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+              .uuidRepresentation(UuidRepresentation.STANDARD)
+              .build();
+      client = MongoClients.create(settings);
     }
   }
 

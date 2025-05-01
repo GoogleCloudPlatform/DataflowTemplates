@@ -35,8 +35,10 @@ import com.google.cloud.teleport.v2.transforms.CreateMongoDbChangeEventContextFn
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.MongoDbEventDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.transforms.ProcessChangeEventFn;
+import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
+import com.mongodb.MongoClientSettings;
 import com.mongodb.bulk.BulkWriteResult;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -76,6 +78,7 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
+import org.bson.UuidRepresentation;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -435,7 +438,12 @@ public class DataStreamMongoDBToFirestore {
         connectionString += ",TOKEN_RESOURCE:FIRESTORE";
       }
       LOG.info("Creating MongoDB client with connection string: {}", connectionString);
-      MongoClient mongoClient = MongoClients.create(connectionString);
+      MongoClientSettings settings =
+          MongoClientSettings.builder()
+              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+              .uuidRepresentation(UuidRepresentation.STANDARD)
+              .build();
+      MongoClient mongoClient = MongoClients.create(settings);
       LOG.info("MongoDB client created successfully");
 
       // Choose processing mode based on options
@@ -947,7 +955,12 @@ public class DataStreamMongoDBToFirestore {
     @Setup
     public void setup() {
       LOG.info("Setting up MongoDB client for backfill processing with batch size: {}", batchSize);
-      client = MongoClients.create(connectionString);
+      MongoClientSettings settings =
+          MongoClientSettings.builder()
+              .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+              .uuidRepresentation(UuidRepresentation.STANDARD)
+              .build();
+      client = MongoClients.create(settings);
       bufferedEvents = new HashMap<>();
       collectionMap = new HashMap<>();
     }
@@ -1026,7 +1039,7 @@ public class DataStreamMongoDBToFirestore {
             bulkOperations.add(
                 new ReplaceOneModel<>(
                     eq(MongoDbChangeEventContext.DOC_ID_COL, docId),
-                    event.getDataDocument(),
+                    Utils.jsonToDocument(event.getDataAsJsonString(), event.getDocumentId()),
                     new ReplaceOptions().upsert(true)));
           }
         }
@@ -1085,7 +1098,7 @@ public class DataStreamMongoDBToFirestore {
             bulkOperations.add(
                 new ReplaceOneModel<>(
                     eq(MongoDbChangeEventContext.DOC_ID_COL, docId),
-                    event.getDataDocument(),
+                    Utils.jsonToDocument(event.getDataAsJsonString(), event.getDocumentId()),
                     new ReplaceOptions().upsert(true)));
           }
         }

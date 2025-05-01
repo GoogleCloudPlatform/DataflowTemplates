@@ -54,7 +54,7 @@ public class MongoDbChangeEventContext implements Serializable {
   private final String shadowCollection;
   private final Object documentId;
   private final Document shadowDocument;
-  private final Document dataDocument;
+  private final String jsonStringData;
   private final boolean isDeleteEvent;
   private final Document timestampDoc;
 
@@ -134,7 +134,7 @@ public class MongoDbChangeEventContext implements Serializable {
     // Determine event types
     this.isDeleteEvent = isDeleteEvent(changeEvent);
 
-    this.dataDocument = generateDataDocument();
+    this.jsonStringData = dataAsJsonString();
     this.shadowDocument = generateShadowDocument();
   }
 
@@ -159,20 +159,12 @@ public class MongoDbChangeEventContext implements Serializable {
     return shadowDoc;
   }
 
-  public Document generateDataDocument() throws JsonProcessingException {
+  public String dataAsJsonString() throws JsonProcessingException {
     if (isDeleteEvent) {
       return null;
     }
     JsonNode jsonNode = this.getChangeEvent();
-    String jsonString = OBJECT_MAPPER.writeValueAsString(jsonNode);
-    Document rawDoc;
-    try {
-      rawDoc = Document.parse(Document.parse(jsonString).get(DATA_COL).toString());
-    } catch (Exception ex) {
-      rawDoc = (Document) Document.parse(jsonString).get(DATA_COL);
-    }
-    rawDoc.put(MongoDbChangeEventContext.DOC_ID_COL, documentId);
-    return rawDoc;
+    return OBJECT_MAPPER.writeValueAsString(jsonNode);
   }
 
   public JsonNode getChangeEvent() {
@@ -199,8 +191,8 @@ public class MongoDbChangeEventContext implements Serializable {
     return shadowDocument;
   }
 
-  public Document getDataDocument() {
-    return dataDocument;
+  public String getDataAsJsonString() {
+    return jsonStringData;
   }
 
   public Document getTimestampDoc() {

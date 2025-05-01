@@ -29,6 +29,7 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.transforms.Utils;
 import com.google.common.collect.ImmutableMap;
 import org.bson.Document;
 import org.bson.types.ObjectId;
@@ -147,14 +148,16 @@ public class MongoDbChangeEventContextTest {
     assertNotNull(context.getDocumentId());
     assertFalse(context.isDeleteEvent());
     assertNotNull(context.getTimestampDoc());
-    assertNotNull(context.getDataDocument());
+    assertNotNull(context.getDataAsJsonString());
     assertNotNull(context.getShadowDocument());
 
     Document expectedTimestamp =
         new Document(
             ImmutableMap.of(TIMESTAMP_SECONDS_COL, 1683782270L, TIMESTAMP_NANOS_COL, 123456789));
     assertEquals(expectedTimestamp, context.getTimestampDoc());
-    assertTrue(context.getDataDocument().containsKey(DOC_ID_COL));
+    assertTrue(
+        Utils.jsonToDocument(context.getDataAsJsonString(), context.getDocumentId())
+            .containsKey(DOC_ID_COL));
   }
 
   @Test
@@ -165,7 +168,7 @@ public class MongoDbChangeEventContextTest {
     assertNotNull(context.getDocumentId());
     assertTrue(context.isDeleteEvent());
     assertNotNull(context.getTimestampDoc());
-    assertNull(context.getDataDocument());
+    assertNull(context.getDataAsJsonString());
     assertNotNull(context.getShadowDocument());
 
     Document expectedTimestamp =
@@ -182,14 +185,16 @@ public class MongoDbChangeEventContextTest {
     assertNotNull(context.getDocumentId());
     assertFalse(context.isDeleteEvent());
     assertNotNull(context.getTimestampDoc());
-    assertNotNull(context.getDataDocument());
+    assertNotNull(context.getDataAsJsonString());
     assertNotNull(context.getShadowDocument());
 
     Document expectedTimestamp =
         new Document(
             ImmutableMap.of(TIMESTAMP_SECONDS_COL, 1683782270L, TIMESTAMP_NANOS_COL, 123456789));
     assertEquals(expectedTimestamp, context.getTimestampDoc());
-    assertTrue(context.getDataDocument().containsKey(DOC_ID_COL));
+    assertTrue(
+        Utils.jsonToDocument(context.getDataAsJsonString(), context.getDocumentId())
+            .containsKey(DOC_ID_COL));
   }
 
   @Test(expected = IllegalStateException.class)
@@ -303,7 +308,8 @@ public class MongoDbChangeEventContextTest {
   @Test
   public void testGenerateDataDocumentInsert() throws JsonProcessingException {
     MongoDbChangeEventContext context = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
-    Document dataDocument = context.generateDataDocument();
+    String dataString = context.dataAsJsonString();
+    Document dataDocument = Utils.jsonToDocument(dataString, context.getDocumentId());
     assertNotNull(dataDocument);
     assertTrue(dataDocument.containsKey(DOC_ID_COL));
     assertTrue(dataDocument.containsKey("field1"));
@@ -313,8 +319,8 @@ public class MongoDbChangeEventContextTest {
   @Test
   public void testGenerateDataDocumentDelete() throws JsonProcessingException {
     MongoDbChangeEventContext context = new MongoDbChangeEventContext(deleteEvent, SHADOW_PREFIX);
-    Document dataDocument = context.generateDataDocument();
-    assertNull(dataDocument);
+    String dataString = context.dataAsJsonString();
+    assertNull(dataString);
   }
 
   @Test
@@ -361,13 +367,13 @@ public class MongoDbChangeEventContextTest {
   @Test
   public void testGetDataDocumentInsertEvent() throws JsonProcessingException {
     MongoDbChangeEventContext context = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
-    assertNotNull(context.getDataDocument());
+    assertNotNull(context.getDataAsJsonString());
   }
 
   @Test
   public void testGetDataDocumentDeleteEvent() throws JsonProcessingException {
     MongoDbChangeEventContext context = new MongoDbChangeEventContext(deleteEvent, SHADOW_PREFIX);
-    assertNull(context.getDataDocument());
+    assertNull(context.getDataAsJsonString());
   }
 
   @Test
