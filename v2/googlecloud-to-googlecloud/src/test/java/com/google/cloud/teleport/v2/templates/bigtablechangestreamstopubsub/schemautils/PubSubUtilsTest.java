@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2023 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,15 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils;
 
-import com.google.cloud.teleport.bigtable.ChangelogEntry;
+import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationType;
+import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
-import com.google.cloud.teleport.v2.utils.BigtableSource;
-import java.nio.ByteBuffer;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.TestChangeStreamMutation;
+import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.PubsubMessage;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import org.joda.time.Instant;
-import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -43,27 +47,28 @@ public class PubSubUtilsTest {
   public void testGetValidEntriesAllEntriesAreValid() {
     PubSubUtils utils = initPubSubUtils();
 
-    List<ChangelogEntry> actualEntries = utils.mapChangeJsonStringToPubSubMessageAsJson("test");
+    SetCell setCell =
+        SetCell.create(
+            "test_column_family",
+            ByteString.copyFrom("test_column", CHARSET),
+            1000L, // timestamp
+            ByteString.copyFrom("test_value", CHARSET));
 
-    Assert.assertEquals(2, actualEntries.size());
+    TestChangeStreamMutation mutation =
+        new TestChangeStreamMutation(
+            "test_rowkey",
+            MutationType.USER,
+            "source_cluster",
+            java.time.Instant.now(), // commit timestamp
+            1, // tiebreaker
+            "token",
+            java.time.Instant.now(), // low watermark
+            setCell);
 
-    ChangelogEntry logEntry1 = actualEntries.get(0);
-    ChangelogEntry logEntry2 = actualEntries.get(1);
-    Assert.assertEquals(
-        "rowkey", Charset.defaultCharset().decode(logEntry1.getRowKey()).toString());
-    Assert.assertEquals("family1", logEntry1.getColumnFamily());
-    Assert.assertEquals(
-        "column1", Charset.defaultCharset().decode(logEntry1.getColumn()).toString());
+    Mod mod = new Mod(utils.getSource(), mutation, setCell);
+    String json = mod.toJson();
 
-    Assert.assertEquals(
-        "rowkey", Charset.defaultCharset().decode(logEntry2.getRowKey()).toString());
-    Assert.assertEquals("family2", logEntry2.getColumnFamily());
-    Assert.assertEquals(
-        "column2", Charset.defaultCharset().decode(logEntry2.getColumn()).toString());
-  }
-
-  private static ByteBuffer getByteBufferFromString(String s, Charset charset) {
-    return ByteBuffer.wrap(s.getBytes(charset));
+    PubsubMessage actualEntries = utils.mapChangeJsonStringToPubSubMessageAsJson(json);
   }
 
   private PubSubUtils initPubSubUtils() {
@@ -75,9 +80,9 @@ public class PubSubUtilsTest {
         new PubSubDestination(
             FAKE_PROJECT_ID,
             FAKE_TOPIC,
-            FAKE_TOPIC,
-            "JSON",
-            CHARSET.toString(),
+            null,
+            MessageFormat.JSON,
+            MessageEncoding.JSON,
             false,
             false,
             false,
