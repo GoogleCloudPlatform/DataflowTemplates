@@ -56,10 +56,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -582,28 +579,9 @@ public final class BigtableChangeStreamsToPubSub {
     public static final String ANY_COLUMN_FAMILY = "*";
 
     private final BigtableSource sourceInfo;
-    private final Map<String, Set<String>> ignoredColumnsMap;
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {
       this.sourceInfo = source;
-
-      ignoredColumnsMap = new HashMap<>();
-      for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
-        String[] parts = columnFamilyAndColumn.split(":", 2);
-        String columnFamily = ANY_COLUMN_FAMILY;
-        String columnName = columnFamilyAndColumn;
-        if (parts.length == 2) {
-          columnFamily = parts[0];
-          if (StringUtils.isBlank(columnFamily)) {
-            columnFamily = ANY_COLUMN_FAMILY;
-          }
-          columnName = parts[1];
-        }
-
-        Set<String> appliedToColumnFamilies =
-            ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
-        appliedToColumnFamilies.add(columnFamily);
-      }
     }
 
     private boolean ignoreFamily(String family) {
@@ -611,7 +589,7 @@ public final class BigtableChangeStreamsToPubSub {
     }
 
     private boolean ignoreColumn(String columnFamily, String column) {
-      Set<String> columnFamilies = ignoredColumnsMap.get(column);
+      Set<String> columnFamilies = this.sourceInfo.getIgnoredColumnsMap().get(column);
       if (columnFamilies == null) {
         return false;
       }

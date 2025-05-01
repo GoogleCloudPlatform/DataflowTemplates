@@ -18,6 +18,9 @@ package com.google.cloud.teleport.v2.utils;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -25,12 +28,14 @@ import org.joda.time.Instant;
 
 /** Descriptor of the Cloud Bigtable source table where changes are captured from. */
 public class BigtableSource implements Serializable {
+  public static final String ANY_COLUMN_FAMILY = "*";
 
   private final String instanceId;
   private final String tableId;
   private final String charset;
   private final Set<String> columnFamiliesToIgnore;
   private final Set<String> columnsToIgnore;
+  private final Map<String, Set<String>> ignoredColumnsMap;
 
   private final Instant startTimestamp;
 
@@ -60,6 +65,24 @@ public class BigtableSource implements Serializable {
       this.columnsToIgnore =
           Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
     }
+
+    ignoredColumnsMap = new HashMap<>();
+    for (String columnFamilyAndColumn : columnsToIgnore) {
+      int indexOfColon = columnFamilyAndColumn.indexOf(':');
+      String columnFamily = ANY_COLUMN_FAMILY;
+      String columnName = columnFamilyAndColumn;
+      if (indexOfColon > 0) {
+        columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
+        if (StringUtils.isBlank(columnFamily)) {
+          columnFamily = ANY_COLUMN_FAMILY;
+        }
+        columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
+      }
+
+      Set<String> appliedToColumnFamilies =
+          ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
+      appliedToColumnFamilies.add(columnFamily);
+    }
   }
 
   public String getInstanceId() {
@@ -84,5 +107,9 @@ public class BigtableSource implements Serializable {
 
   public Instant getStartTimestamp() {
     return startTimestamp;
+  }
+
+  public Map<String, Set<String>> getIgnoredColumnsMap() {
+    return ignoredColumnsMap;
   }
 }

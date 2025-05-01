@@ -32,10 +32,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -51,30 +48,11 @@ public class BigtableUtils implements Serializable {
   public String bigtableRowKeyDelimiter = "#";
   private final BigtableSource source;
   private transient Charset charsetObj;
-  private final Map<String, Set<String>> ignoredColumnsMap;
   private static final Long DEFAULT_TIMESTAMP = 0L;
 
   public BigtableUtils(BigtableSource sourceInfo) {
     this.source = sourceInfo;
     this.charsetObj = Charset.forName(sourceInfo.getCharset());
-
-    ignoredColumnsMap = new HashMap<>();
-    for (String columnFamilyAndColumn : sourceInfo.getColumnsToIgnore()) {
-      int indexOfColon = columnFamilyAndColumn.indexOf(':');
-      String columnFamily = ANY_COLUMN_FAMILY;
-      String columnName = columnFamilyAndColumn;
-      if (indexOfColon > 0) {
-        columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
-        if (StringUtils.isBlank(columnFamily)) {
-          columnFamily = ANY_COLUMN_FAMILY;
-        }
-        columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
-      }
-
-      Set<String> appliedToColumnFamilies =
-          ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
-      appliedToColumnFamilies.add(columnFamily);
-    }
   }
 
   private boolean hasIgnoredColumnFamilies() {
@@ -90,7 +68,7 @@ public class BigtableUtils implements Serializable {
   }
 
   private boolean isIgnoredColumn(String columnFamily, String column) {
-    Set<String> columnFamilies = ignoredColumnsMap.get(column);
+    Set<String> columnFamilies = this.source.getIgnoredColumnsMap().get(column);
     if (columnFamilies == null) {
       return false;
     }
