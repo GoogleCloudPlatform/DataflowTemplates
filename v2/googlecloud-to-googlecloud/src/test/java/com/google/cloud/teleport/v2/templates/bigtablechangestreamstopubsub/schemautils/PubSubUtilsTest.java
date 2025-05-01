@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
+package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils;
 
 import com.google.cloud.teleport.bigtable.ChangelogEntry;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
