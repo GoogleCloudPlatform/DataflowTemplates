@@ -33,7 +33,6 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.FailsafePublisher.PublishModJsonToTopic;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
@@ -42,6 +41,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mode
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.TestChangeStreamMutation;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.Encoding;
@@ -220,9 +220,12 @@ public final class BigtableChangeStreamsToPubSub {
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo);
 
     /*
-     * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
-     * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
-     * letter queue. 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
+     * Stages:
+     * 1) Read {@link ChangeStreamMutation} from change stream.
+     * 2) Create {@link FailsafeElement} of {@link Mod} JSON and merge from:
+     *    - {@link ChangeStreamMutation}.
+     *    - GCS Dead letter queue.
+     * 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
      * 4) Write Failures from 2) and 3) to GCS dead letter queue.
      */
     // Step 1
@@ -572,15 +575,10 @@ public final class BigtableChangeStreamsToPubSub {
    * format.
    */
   static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
-
     private final BigtableSource sourceInfo;
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {
       this.sourceInfo = source;
-    }
-
-    private boolean ignoreFamily(String family) {
-      return this.sourceInfo.getColumnFamiliesToIgnore().contains(family);
     }
 
     private static String toJsonString(Mod mod, ChangeStreamMutation inputMutation) {
@@ -601,21 +599,29 @@ public final class BigtableChangeStreamsToPubSub {
         switch (modType) {
           case SET_CELL:
             SetCell setCell = (SetCell) entry;
-            if (!ignoreFamily(setCell.getFamilyName())) {
+            if (!sourceInfo.isIgnoredColumnFamily(setCell.getFamilyName())
+                && !sourceInfo.isIgnoredColumn(
+                    setCell.getFamilyName(),
+                    setCell.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, setCell);
               receiver.output(toJsonString(mod, input));
             }
             break;
           case DELETE_CELLS:
             DeleteCells deleteCells = (DeleteCells) entry;
-            if (!ignoreFamily(deleteCells.getFamilyName())) {
+            if (!sourceInfo.isIgnoredColumnFamily(deleteCells.getFamilyName())
+                && !sourceInfo.isIgnoredColumn(
+                    deleteCells.getFamilyName(),
+                    deleteCells
+                        .getQualifier()
+                        .toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, deleteCells);
               receiver.output(toJsonString(mod, input));
             }
             break;
           case DELETE_FAMILY:
             DeleteFamily deleteFamily = (DeleteFamily) entry;
-            if (!ignoreFamily(deleteFamily.getFamilyName())) {
+            if (!sourceInfo.isIgnoredColumnFamily(deleteFamily.getFamilyName())) {
               Mod mod = new Mod(sourceInfo, input, deleteFamily);
               receiver.output(toJsonString(mod, input));
             }
