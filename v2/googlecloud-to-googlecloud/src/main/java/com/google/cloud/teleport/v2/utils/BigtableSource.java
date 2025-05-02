@@ -68,15 +68,15 @@ public class BigtableSource implements Serializable {
 
     ignoredColumnsMap = new HashMap<>();
     for (String columnFamilyAndColumn : columnsToIgnore) {
-      int indexOfColon = columnFamilyAndColumn.indexOf(':');
+      String[] parts = columnFamilyAndColumn.split(":", 2);
       String columnFamily = ANY_COLUMN_FAMILY;
       String columnName = columnFamilyAndColumn;
-      if (indexOfColon > 0) {
-        columnFamily = columnFamilyAndColumn.substring(0, indexOfColon);
+      if (parts.length == 2) {
+        columnFamily = parts[0];
         if (StringUtils.isBlank(columnFamily)) {
           columnFamily = ANY_COLUMN_FAMILY;
         }
-        columnName = columnFamilyAndColumn.substring(indexOfColon + 1);
+        columnName = parts[1];
       }
 
       Set<String> appliedToColumnFamilies =
