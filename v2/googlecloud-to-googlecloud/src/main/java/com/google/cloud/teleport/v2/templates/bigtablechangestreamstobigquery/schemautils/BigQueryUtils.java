@@ -190,8 +190,16 @@ public class BigQueryUtils implements Serializable {
     return this.source.getColumnFamiliesToIgnore().size() > 0;
   }
 
+  public boolean isIgnoredColumnFamily(String columnFamily) {
+    return this.source.isIgnoredColumnFamily(columnFamily);
+  }
+
   public boolean hasIgnoredColumns() {
     return this.source.getColumnsToIgnore().size() > 0;
+  }
+
+  public boolean isIgnoredColumn(String columnFamily, String column) {
+    return this.source.isIgnoredColumn(columnFamily, column);
   }
 
   /**
