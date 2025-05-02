@@ -109,7 +109,15 @@ public class BigtableSource implements Serializable {
     return startTimestamp;
   }
 
-  public Map<String, Set<String>> getIgnoredColumnsMap() {
-    return ignoredColumnsMap;
+  public Boolean isIgnoredColumnFamily(String columnFamily) {
+    return columnFamiliesToIgnore.contains(columnFamily);
+  }
+
+  public Boolean isIgnoredColumn(String columnFamily, String column) {
+    Set<String> columnFamilies = ignoredColumnsMap.get(column);
+    if (columnFamilies == null) {
+      return false;
+    }
+    return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
   }
 }

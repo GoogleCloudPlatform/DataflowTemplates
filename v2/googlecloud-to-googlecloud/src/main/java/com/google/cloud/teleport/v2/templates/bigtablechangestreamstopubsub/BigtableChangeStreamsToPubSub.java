@@ -57,7 +57,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
@@ -576,24 +575,10 @@ public final class BigtableChangeStreamsToPubSub {
    * format.
    */
   static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
-    public static final String ANY_COLUMN_FAMILY = "*";
-
     private final BigtableSource sourceInfo;
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {
       this.sourceInfo = source;
-    }
-
-    private boolean ignoreFamily(String family) {
-      return this.sourceInfo.getColumnFamiliesToIgnore().contains(family);
-    }
-
-    private boolean ignoreColumn(String columnFamily, String column) {
-      Set<String> columnFamilies = this.sourceInfo.getIgnoredColumnsMap().get(column);
-      if (columnFamilies == null) {
-        return false;
-      }
-      return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
     }
 
     private static String toJsonString(Mod mod, ChangeStreamMutation inputMutation) {
@@ -614,8 +599,8 @@ public final class BigtableChangeStreamsToPubSub {
         switch (modType) {
           case SET_CELL:
             SetCell setCell = (SetCell) entry;
-            if (!ignoreFamily(setCell.getFamilyName())
-                && !ignoreColumn(
+            if (!sourceInfo.isIgnoredColumnFamily(setCell.getFamilyName())
+                && !sourceInfo.isIgnoredColumn(
                     setCell.getFamilyName(),
                     setCell.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
               Mod mod = new Mod(sourceInfo, input, setCell);
@@ -624,8 +609,8 @@ public final class BigtableChangeStreamsToPubSub {
             break;
           case DELETE_CELLS:
             DeleteCells deleteCells = (DeleteCells) entry;
-            if (!ignoreFamily(deleteCells.getFamilyName())
-                && !ignoreColumn(
+            if (!sourceInfo.isIgnoredColumnFamily(deleteCells.getFamilyName())
+                && !sourceInfo.isIgnoredColumn(
                     deleteCells.getFamilyName(),
                     deleteCells
                         .getQualifier()
@@ -636,7 +621,7 @@ public final class BigtableChangeStreamsToPubSub {
             break;
           case DELETE_FAMILY:
             DeleteFamily deleteFamily = (DeleteFamily) entry;
-            if (!ignoreFamily(deleteFamily.getFamilyName())) {
+            if (!sourceInfo.isIgnoredColumnFamily(deleteFamily.getFamilyName())) {
               Mod mod = new Mod(sourceInfo, input, deleteFamily);
               receiver.output(toJsonString(mod, input));
             }
