@@ -106,13 +106,14 @@ public class PubSubUtilsTest {
     Mod mod = new Mod(utils.getSource(), mutation, setCell);
     String json = mod.getChangeJson();
 
+    // Removing the VALUE_BYTES from the json makes it invalid. It should fail appropriately.
     String base64Value = Base64.getEncoder().encodeToString("test_value".getBytes());
     String invalidJson = json.replace(",\"VALUE_BYTES\":\"" + base64Value + "\"", "");
 
     assertThrows(
         InvalidModException.class,
         () -> {
-          PubsubMessage message = utils.mapChangeJsonStringToPubSubMessageAsJson(invalidJson);
+          utils.mapChangeJsonStringToPubSubMessageAsJson(invalidJson);
         });
   }
 
