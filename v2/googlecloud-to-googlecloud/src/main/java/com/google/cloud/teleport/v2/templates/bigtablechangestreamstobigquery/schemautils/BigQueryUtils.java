@@ -211,7 +211,7 @@ public class BigQueryUtils implements Serializable {
     String columnFamily = null;
     if (hasIgnoredColumnFamilies() && changeJsonParsed.has(ChangelogColumn.COLUMN_FAMILY.name())) {
       columnFamily = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN_FAMILY.name()));
-      if (source.isIgnoredColumnFamily(columnFamily)) {
+      if (isIgnoredColumnFamily(columnFamily)) {
         return false;
       }
     }
@@ -220,7 +220,7 @@ public class BigQueryUtils implements Serializable {
       String columnEncoded = Objects.toString(changeJsonParsed.get(ChangelogColumn.COLUMN.name()));
       if (!StringUtils.isBlank(columnEncoded)) {
         String column = convertBase64ToString(columnEncoded);
-        if (source.isIgnoredColumn(columnFamily, column)) {
+        if (isIgnoredColumn(columnFamily, column)) {
           return false;
         }
       }
