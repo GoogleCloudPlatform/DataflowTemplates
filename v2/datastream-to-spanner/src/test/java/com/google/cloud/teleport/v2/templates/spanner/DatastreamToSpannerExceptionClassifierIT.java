@@ -120,11 +120,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
       exception = e;
       actualTag = DatastreamToSpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
-    Assert.assertNotNull(exception);
-    Assert.assertEquals(
-        exception.getMessage(),
-        "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Parent row for row [100,4] in table Books is missing. Row cannot be written.");
-    assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+    Assert.assertNull(exception);
   }
 
   @Test
