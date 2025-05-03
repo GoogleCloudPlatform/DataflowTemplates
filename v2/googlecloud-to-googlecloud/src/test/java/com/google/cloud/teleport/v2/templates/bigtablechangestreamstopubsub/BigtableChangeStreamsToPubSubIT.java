@@ -235,7 +235,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testIgnoreColumns() throws IOException {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
