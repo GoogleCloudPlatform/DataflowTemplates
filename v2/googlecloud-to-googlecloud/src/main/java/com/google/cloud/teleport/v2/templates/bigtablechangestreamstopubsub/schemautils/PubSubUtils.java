@@ -19,11 +19,11 @@ import com.google.cloud.teleport.bigtable.ChangelogEntryMessage;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageProto;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageText;
 import com.google.cloud.teleport.bigtable.ModType;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.InvalidModException;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.InvalidModException:
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubFields;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.util.JsonFormat;
 import com.google.pubsub.v1.PubsubMessage;
