@@ -74,8 +74,8 @@ public final class FailsafePublisher {
 
     /**
      * The {@link PublishModJsonToTopicFn} converts a JSON string wrapped in {@link FailsafeElement}
-     * to a {@link PubsubMessage} and publishes it to the topic.
-     * Invalid mods are sent to invalidModsTag output stream, so they are not retried.
+     * to a {@link PubsubMessage} and publishes it to the topic. Invalid mods are sent to
+     * invalidModsTag output stream, so they are not retried.
      */
     public static class PublishModJsonToTopicFn
         extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
