@@ -20,13 +20,13 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation.MutationType;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.InvalidModException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.PubSubDestination;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.TestChangeStreamMutation;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.PubsubMessage;
 import java.nio.charset.Charset;
