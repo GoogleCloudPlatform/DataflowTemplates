@@ -270,8 +270,8 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     assertThat(rows3.get(0).get("child_id")).isEqualTo(22);
 
     List<Map<String, Object>> rows4 = jdbcResourceManagerShardB.readTable("child31");
-    assertThat(rows3).hasSize(1);
-    assertThat(rows3.get(0).get("child_id")).isEqualTo(33);
+    assertThat(rows4).hasSize(1);
+    assertThat(rows4.get(0).get("child_id")).isEqualTo(33);
   }
 
   private void doUpdatesInSpanner() {
