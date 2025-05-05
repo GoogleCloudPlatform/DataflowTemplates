@@ -15,10 +15,13 @@
  */
 package com.google.cloud.teleport.bigtable;
 
+import static com.google.cloud.bigtable.data.v2.models.Filters.FILTERS;
+
 import com.google.bigtable.v2.Cell;
 import com.google.bigtable.v2.Column;
 import com.google.bigtable.v2.Family;
 import com.google.bigtable.v2.Row;
+import com.google.bigtable.v2.RowFilter;
 import com.google.cloud.teleport.bigtable.BigtableToAvro.Options;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -46,10 +49,12 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 
 /**
- * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS. Currently,
- * filtering on Cloud Bigtable table is not supported.
+ * Dataflow pipeline that exports data from a Cloud Bigtable table to Avro files in GCS.
+ *
  *
  * <p>Check out <a
  * href="https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/v1/README_Cloud_Bigtable_to_GCS_Avro.md">README</a>
@@ -142,6 +147,31 @@ public class BigtableToAvro {
 
     @SuppressWarnings("unused")
     void setBigtableAppProfileId(ValueProvider<String> appProfileId);
+    @TemplateParameter.Text(
+        order = 7,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
+        description = "Start Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ) for exporting",
+        helpText = "The start timestamp (inclusive) for exporting data. Data with timestamps greater than or equal to this timestamp will be exported. Example UTC timestamp: 2024-10-27T10:15:10.00Z"
+    )
+    ValueProvider<String> getStartTimestamp();
+
+    @SuppressWarnings("unused")
+    void setStartTimestamp(ValueProvider<String> startTimestamp);
+
+    @TemplateParameter.Text(
+        order = 8,
+        groupName = "Source",
+        optional = true,
+        regexes = {"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z"},
+        description = "End Timestamp in UTC Format (YYYY-MM-DDTHH:MM:SSZ)",
+        helpText = "The end timestamp (inclusive) for exporting data. Data with timestamps less than or equal to this timestamp will be exported. Example UTC timestamp 2024-10-27T10:15:30.00Z"
+    )
+    ValueProvider<String> getEndTimestamp();
+
+    @SuppressWarnings("unused")
+    void setEndTimestamp(ValueProvider<String> endTimestamp);
   }
 
   /**
@@ -163,12 +193,29 @@ public class BigtableToAvro {
   public static PipelineResult run(Options options) {
     Pipeline pipeline = Pipeline.create(PipelineUtils.tweakPipelineOptions(options));
 
+    // Create a function to build the RowFilter based on the timestamps
+    SerializableFunction<String, Long> timestampConverter = utcTimestamp -> {
+      if (utcTimestamp == null || utcTimestamp.isEmpty()) {
+        return null;
+      }
+      DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
+      return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
+    };
+
+
+    ValueProvider<RowFilter> filterProvider = createRowFilterProvider(options);
+
     BigtableIO.Read read =
         BigtableIO.read()
             .withProjectId(options.getBigtableProjectId())
             .withInstanceId(options.getBigtableInstanceId())
             .withAppProfileId(options.getBigtableAppProfileId())
             .withTableId(options.getBigtableTableId());
+
+
+    //If start and end timestamps are provided. Rows will be filtered  based on cell timestamp.
+    // IF none of the timestamps are provided, the filter will remain empty.
+    read = read.withRowFilter(filterProvider);
 
     // Do not validate input fields if it is running as a template.
     if (options.as(DataflowPipelineOptions.class).getTemplateLocation() != null) {
@@ -197,6 +244,62 @@ public class BigtableToAvro {
 
     return pipeline.run();
   }
+
+  /**
+   * Creates a ValueProvider for RowFilter based on the provided Options.
+   *
+   * @param options The pipeline options containing start and end timestamps.
+   * @return A ValueProvider for RowFilter.
+   */
+  public static ValueProvider<RowFilter> createRowFilterProvider(Options options) {
+    SerializableFunction<String, Long> timestampConverter = utcTimestamp -> {
+      if (utcTimestamp == null || utcTimestamp.isEmpty()) {
+        return null;
+      }
+      DateTimeFormatter parser = ISODateTimeFormat.dateTimeParser();
+      return parser.parseDateTime(utcTimestamp).getMillis() * 1000;
+    };
+
+    return new DualInputNestedValueProvider<>(
+            options.getStartTimestamp(),
+            options.getEndTimestamp(),
+            (TranslatorInput<String, String> input) -> {
+              String startTimestamp = input.getX();
+              String endTimestamp = input.getY();
+
+              boolean hasStart = startTimestamp != null && !startTimestamp.isEmpty();
+              boolean hasEnd = endTimestamp != null && !endTimestamp.isEmpty();
+
+              // Check if exactly one timestamp is provided (which is invalid)
+              if ((hasStart && !hasEnd) || (!hasStart && hasEnd)) {
+                throw new IllegalArgumentException(
+                        "Both startTimestamp and endTimestamp must be provided together, or neither should be provided.");
+              }
+
+              // If neither timestamp is provided, return null (no filter)
+              if (!hasStart && !hasEnd) {
+                return null;
+              }
+
+              // Convert timestamps to microseconds
+              Long startMicros = timestampConverter.apply(startTimestamp);
+              Long endMicros = timestampConverter.apply(endTimestamp);
+
+              // Build the timestamp filter
+              com.google.cloud.bigtable.data.v2.models.Filters.TimestampRangeFilter filterBuilder =
+                      FILTERS.timestamp().range();
+
+              if (startMicros != null) {
+                filterBuilder.startClosed(startMicros);
+              }
+              if (endMicros != null) {
+                filterBuilder.endOpen(endMicros);
+              }
+
+              return filterBuilder.toProto();
+            });
+  }
+
 
   /** Translates Bigtable {@link Row} to Avro {@link BigtableRow}. */
   static class BigtableToAvroFn extends SimpleFunction<Row, BigtableRow> {

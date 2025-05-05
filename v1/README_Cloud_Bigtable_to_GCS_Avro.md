@@ -152,6 +152,8 @@ export FILENAME_PREFIX=part
 
 ### Optional
 export BIGTABLE_APP_PROFILE_ID=default
+export START_TIMESTAMP=<start-timestamp-utc>
+export END_TIMESTAMP=<end-timestamp-utc>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -160,7 +162,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-bigtable-to-gcs-avro-job" \
 -DtemplateName="Cloud_Bigtable_to_GCS_Avro" \
--Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID" \
+-Dparameters="bigtableProjectId=$BIGTABLE_PROJECT_ID,bigtableInstanceId=$BIGTABLE_INSTANCE_ID,bigtableTableId=$BIGTABLE_TABLE_ID,outputDirectory=$OUTPUT_DIRECTORY,filenamePrefix=$FILENAME_PREFIX,bigtableAppProfileId=$BIGTABLE_APP_PROFILE_ID,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP" \
 -f v1
 ```
 
