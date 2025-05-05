@@ -30,7 +30,7 @@ public class UdfParameterTest {
     UdfParameter udfParameter =
         UdfParameter.builder().functionSpecificName("s1.foo").name("p1").type("string").autoBuild();
 
-    assertThat(udfParameter.prettyPrint(), equalToCompressingWhiteSpace("`p1` string"));
+    assertThat(udfParameter.toString(), equalToCompressingWhiteSpace("`p1` string"));
   }
 
   @Test
