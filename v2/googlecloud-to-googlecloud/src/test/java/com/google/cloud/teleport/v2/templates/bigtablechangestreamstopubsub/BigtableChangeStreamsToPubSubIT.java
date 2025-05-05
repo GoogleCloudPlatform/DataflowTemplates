@@ -110,7 +110,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testJsonNoSchemaCharsetsAndBase64Values() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -166,7 +166,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testIgnoreColumnFamilies() throws IOException {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -235,7 +235,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testIgnoreColumns() throws IOException {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -308,7 +308,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testDeadLetterQueueDelivery() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -400,7 +400,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testJsonNoSchemaB64RkAndColNoVal() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -499,7 +499,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -589,7 +589,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -636,7 +636,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   public void testProtoNoSchemaNoVal() throws Exception {
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -716,7 +716,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -788,7 +788,7 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
 
     LaunchInfo launchInfo =
         launchTemplate(
-            LaunchConfig.builder(removeUnsafeCharacters(testName), specPath)
+            LaunchConfig.builder(testName, specPath)
                 .addParameter("bigtableReadTableId", srcTable)
                 .addParameter("bigtableReadInstanceId", bigtableResourceManager.getInstanceId())
                 .addParameter("bigtableChangeStreamAppProfile", appProfileId)
@@ -897,12 +897,9 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
   @Before
   public void setup() throws IOException {
     pubsubResourceManager =
-        PubsubResourceManager.builder(
-                removeUnsafeCharacters(testName), PROJECT, credentialsProvider)
-            .build();
+        PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
     BigtableResourceManager.Builder rmBuilder =
-        BigtableResourceManager.builder(
-            removeUnsafeCharacters(testName), PROJECT, credentialsProvider);
+        BigtableResourceManager.builder(testName, PROJECT, credentialsProvider);
 
     bigtableResourceManager = rmBuilder.maybeUseStaticInstance().build();
 
@@ -929,10 +926,6 @@ public final class BigtableChangeStreamsToPubSubIT extends TemplateTestBase {
     topicName = pubsubResourceManager.createTopic(topicNameToCreate);
     subscriptionName =
         pubsubResourceManager.createSubscription(topicName, subscriptionNameToCreate);
-  }
-
-  private String removeUnsafeCharacters(String testName) {
-    return testName.replaceAll("[\\[\\]]", "-");
   }
 
   @After
