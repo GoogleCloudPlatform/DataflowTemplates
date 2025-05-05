@@ -47,4 +47,4 @@ CREATE TABLE IF NOT EXISTS BookSeries (
 ) PRIMARY KEY (author_id, id),
 INTERLEAVE IN PARENT Authors ON DELETE CASCADE;
 
-CREATE INDEX author_id ON BookSeries (author_id);
+CREATE INDEX author_id2 ON BookSeries (author_id);
