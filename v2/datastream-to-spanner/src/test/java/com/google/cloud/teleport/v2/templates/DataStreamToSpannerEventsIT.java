@@ -218,12 +218,6 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
-                        "BookSeries",
-                        "mysql_bookseries.avro",
-                        "DataStreamToSpannerEventsIT/mysql-BookSeries.avro",
-                        gcsResourceManager),
-                    uploadDataStreamFile(
-                        jobInfo,
                         "Authors",
                         "mysql_authors.avro",
                         "DataStreamToSpannerEventsIT/mysql-Authors.avro",
@@ -233,6 +227,12 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         "Books",
                         "mysql_books.avro",
                         "DataStreamToSpannerEventsIT/mysql-Books.avro",
+                        gcsResourceManager),
+                    uploadDataStreamFile(
+                        jobInfo,
+                        "BookSeries",
+                        "mysql_bookseries.avro",
+                        "DataStreamToSpannerEventsIT/mysql-BookSeries.avro",
                         gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, "Articles")
                         .setMinRows(4)
@@ -264,6 +264,7 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
     assertAuthorsTable();
     assertBooksTable();
     assertArticlesTable();
+    assertBookSeriesTable();
   }
 
   private void assertUsersTableContents() {
