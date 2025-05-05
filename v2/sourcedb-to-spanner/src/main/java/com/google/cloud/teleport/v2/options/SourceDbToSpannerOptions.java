@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.spanner.Options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 
@@ -252,4 +253,21 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getNamespace();
 
   void setNamespace(String value);
+
+  @TemplateParameter.Enum(
+      order = 21,
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("LOW"),
+        @TemplateParameter.TemplateEnumOption("MEDIUM"),
+        @TemplateParameter.TemplateEnumOption("HIGH")
+      },
+      optional = true,
+      description = "Priority for Spanner RPC invocations",
+      helpText =
+          "The request priority for Cloud Spanner calls. The value must be one of:"
+              + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `MEDIUM`.")
+  @Default.Enum("MEDIUM")
+  Options.RpcPriority getSpannerPriority();
+
+  void setSpannerPriority(Options.RpcPriority value);
 }

@@ -134,6 +134,7 @@ public class SourceDbToSpanner {
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
   }
 }
