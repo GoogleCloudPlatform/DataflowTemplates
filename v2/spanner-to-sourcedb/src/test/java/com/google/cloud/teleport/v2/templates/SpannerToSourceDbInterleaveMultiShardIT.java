@@ -251,7 +251,7 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(30)),
                 () -> jdbcResourceManagerShardB.getRowCount("child31") == 1);
-    assertThatResult(result).meetsConditions();
+    assertThatResult(result2).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("parent1");
     assertThat(rows).hasSize(1);
