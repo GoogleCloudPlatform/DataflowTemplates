@@ -43,10 +43,11 @@ public class TemplateSpecsGenerator {
    * Scan the classloader for all Template classes, and then builds spec + saves the metadata for
    * every Template.
    */
-  public void generateSpecs(ClassLoader classLoader, File baseDirectory, File targetDirectory) {
+  public void generateSpecs(
+      ClassLoader classLoader, File outputDirectory, File baseDirectory, File targetDirectory) {
 
     List<TemplateDefinitions> templateDefinitions =
-        TemplateDefinitionsParser.scanDefinitions(classLoader);
+        TemplateDefinitionsParser.scanDefinitions(classLoader, outputDirectory);
     for (TemplateDefinitions definition : templateDefinitions) {
       LOG.info("Generating template " + definition.getTemplateAnnotation().name() + "...");
       // Skip generating docs for template annotations that are stage-only

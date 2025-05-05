@@ -19,6 +19,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -53,7 +54,7 @@ import org.testcontainers.utility.DockerImageName;
 
 /** Integration test for {@link JmsToPubsub}. */
 @TemplateIntegrationTest(JmsToPubsub.class)
-@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class, SkipRunnerV2Test.class})
 @RunWith(JUnit4.class)
 public final class JmsToPubsubIT extends TemplateTestBase {
 

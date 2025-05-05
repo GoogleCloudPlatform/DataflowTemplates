@@ -1,9 +1,9 @@
-CREATE TABLE Authors (
+CREATE TABLE IF NOT EXISTS Authors (
     author_id INT64 NOT NULL ,
     full_name STRING(25),
 ) PRIMARY KEY (author_id);
 
-CREATE TABLE Books (
+CREATE TABLE IF NOT EXISTS Books (
     id INT64 NOT NULL ,
     title STRING(200),
     author_id INT64,

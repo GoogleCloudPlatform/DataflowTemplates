@@ -16,6 +16,10 @@
     "manifestFile": "ModelStruct-manifest.json"
   }],
   "databaseOptions": [{
+    "optionName": "default_time_zone",
+    "optionType": "STRING",
+    "optionValue": "UTC"
+  }, {
     "optionName": "default_sequence_kind",
     "optionType": "STRING",
     "optionValue": "bit_reversed_positive"

@@ -20,10 +20,12 @@ import static com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraTypeHa
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 
+import com.datastax.oss.driver.api.core.data.CqlDuration;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
@@ -35,7 +37,6 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -43,6 +44,8 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -220,11 +223,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
-    String columnValue = binaryString.toString();
+    String columnValue = Base64.getEncoder().encodeToString(expectedBytes);
     String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
@@ -317,11 +316,7 @@ public class CassandraTypeHandlerTest {
     SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
-    String columnValue = binaryString.toString();
+    String columnValue = Base64.getEncoder().encodeToString(expectedBytes);
     String sourceDbTimezoneOffset = null;
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
@@ -367,7 +362,7 @@ public class CassandraTypeHandlerTest {
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
-    assertEquals(Duration.parse("P4DT1H"), castResult);
+    assertEquals(CqlDuration.from("P4DT1H"), castResult);
   }
 
   @Test
@@ -1091,12 +1086,8 @@ public class CassandraTypeHandlerTest {
     String columnName = "test_column";
 
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, binaryString.toString());
+    valuesJson.put(columnName, Base64.getEncoder().encodeToString(expectedBytes));
 
     SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
     SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
@@ -1106,7 +1097,7 @@ public class CassandraTypeHandlerTest {
     assertTrue(result instanceof PreparedStatementValueObject);
 
     Object actualValue = ((PreparedStatementValueObject<?>) result).value();
-    assertArrayEquals(expectedBytes, (byte[]) actualValue);
+    assertEquals(ByteBuffer.wrap(expectedBytes), actualValue);
   }
 
   @Test
@@ -1133,7 +1124,7 @@ public class CassandraTypeHandlerTest {
     Object localTime1 = castToExpectedType("time", "14:30:45");
     assertTrue(localTime1 instanceof LocalTime);
     assertEquals(
-        Duration.ofHours(5), castToExpectedType("duration", Duration.ofHours(5).toString()));
+        CqlDuration.from("5h"), castToExpectedType("duration", CqlDuration.from("5h").toString()));
   }
 
   @Test
@@ -1227,15 +1218,6 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testCastToExpectedTypeForNull() {
-    assertThrows(
-        NullPointerException.class,
-        () -> {
-          CassandraTypeHandler.castToExpectedType("text", null);
-        });
-  }
-
-  @Test
   public void testCastToExpectedTypeForDate_String() {
     String dateString = "2025-01-09"; // Format: yyyy-MM-dd
     Object result = CassandraTypeHandler.castToExpectedType("date", dateString);
@@ -1320,5 +1302,53 @@ public class CassandraTypeHandlerTest {
               CassandraTypeHandler.castToExpectedType("varint", unsupportedType);
             });
     assertEquals("Error converting value for cassandraType: varint", exception.getMessage());
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullDate() {
+    Object result = CassandraTypeHandler.castToExpectedType("date", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullList() {
+    Object result = CassandraTypeHandler.castToExpectedType("list<text>", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullSet() {
+    Object result = CassandraTypeHandler.castToExpectedType("set<text>", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForNullMap() {
+    Object result = CassandraTypeHandler.castToExpectedType("map<text, frozen<list<text>>>", null);
+    assertNull(result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForEmptyList() {
+    Object result = CassandraTypeHandler.castToExpectedType("list<text>", "[]");
+    assertNotNull(result);
+    assertTrue(result instanceof List);
+    assertEquals(Collections.emptyList(), result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForEmptySet() {
+    Object result = CassandraTypeHandler.castToExpectedType("set<text>", "[]");
+    assertNotNull(result);
+    assertTrue(result instanceof Set);
+    assertEquals(Collections.emptySet(), result);
+  }
+
+  @Test
+  public void testCastToExpectedTypeForEmptyMap() {
+    Object result = CassandraTypeHandler.castToExpectedType("map<text, frozen<list<text>>>", "{}");
+    assertNotNull(result);
+    assertTrue(result instanceof Map);
+    assertEquals(Collections.emptyMap(), result);
   }
 }

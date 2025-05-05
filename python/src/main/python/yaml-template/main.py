@@ -22,6 +22,8 @@ from apache_beam.yaml import main
 def run(argv=None):
   parser = argparse.ArgumentParser()
   _, args = parser.parse_known_args(argv)
+  # TODO(https://github.com/apache/beam/pull/34569): Remove after moved to Beam 2.65.0
+  args += ['--extra_packages=/root/.apache_beam/cache/runtime-py-packages/virtualenv_clone-0.5.7-py3-none-any.whl']
   main.run(args)
 
 

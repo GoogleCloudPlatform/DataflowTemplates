@@ -43,7 +43,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **bigtableChangeStreamCharset**: The Bigtable change streams charset name. Defaults to: UTF-8.
 * **bigtableChangeStreamStartTimestamp**: The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time.
 * **bigtableChangeStreamIgnoreColumnFamilies**: A comma-separated list of column family name changes to ignore. Defaults to empty.
-* **bigtableChangeStreamIgnoreColumns**: A comma-separated list of column name changes to ignore. Defaults to empty.
+* **bigtableChangeStreamIgnoreColumns**: A comma-separated list of column name changes to ignore. Example: "cf1:col1,cf2:col2". Defaults to empty.
 * **bigtableChangeStreamName**: A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used.
 * **bigtableChangeStreamResume**: When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`.
 * **bigtableReadProjectId**: The Bigtable project ID. The default is the project for the Dataflow job.
@@ -54,7 +54,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:

@@ -254,8 +254,30 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setNamespace(String value);
 
-  @TemplateParameter.Enum(
+  @TemplateParameter.Text(
       order = 21,
+      optional = true,
+      description = "Use Inserts instead of Upserts for spanner mutations.",
+      helpText =
+          "By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.")
+  @Default.Boolean(false)
+  Boolean getInsertOnlyModeForSpannerMutations();
+
+  void setInsertOnlyModeForSpannerMutations(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 22,
+      optional = true,
+      description = "BatchSize for Spanner Mutation.",
+      helpText =
+          "BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.")
+  @Default.Long(-1)
+  Long getBatchSizeForSpannerMutations();
+
+  void setBatchSizeForSpannerMutations(Long value);
+
+  @TemplateParameter.Enum(
+      order = 23,
       enumOptions = {
         @TemplateParameter.TemplateEnumOption("LOW"),
         @TemplateParameter.TemplateEnumOption("MEDIUM"),

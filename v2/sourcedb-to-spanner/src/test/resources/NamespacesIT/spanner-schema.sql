@@ -1,9 +1,9 @@
-CREATE TABLE singers (
+CREATE TABLE IF NOT EXISTS singers (
   singer_id INT64 NOT NULL,
   first_name STRING(1024)
 ) PRIMARY KEY (singer_id);
 
-CREATE TABLE albums (
+CREATE TABLE IF NOT EXISTS albums (
   singer_id INT64 NOT NULL,
   album_id INT64 NOT NULL,
   album_serial_number INT64,

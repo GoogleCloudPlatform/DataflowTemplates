@@ -35,7 +35,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **sourceDbDialect**: Possible values are `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL.
+* **sourceDbDialect**: Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL.
 * **jdbcDriverJars**: The comma-separated list of driver JAR files. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`. Defaults to empty.
 * **jdbcDriverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
 * **username**: The username to be used for the JDBC connection. Defaults to empty.
@@ -59,7 +59,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:

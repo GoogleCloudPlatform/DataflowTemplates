@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Sets;
@@ -319,9 +320,14 @@ public abstract class RandomDdlGenerator {
     String name = generateIdentifier(getMaxIdLength());
     Table.Builder tableBuilder = builder.createTable(name);
 
+    Random rnd = getRandom();
     int pkSize = 0;
     if (parent != null) {
       tableBuilder.interleaveInParent(parent.name());
+      tableBuilder.interleaveType(
+          getDialect() == Dialect.GOOGLE_STANDARD_SQL && rnd.nextBoolean()
+              ? InterleaveType.IN
+              : InterleaveType.IN_PARENT);
       for (IndexColumn pk : parent.primaryKeys()) {
         Column pkColumn = parent.column(pk.name());
         tableBuilder.addColumn(pkColumn);
@@ -330,7 +336,6 @@ public abstract class RandomDdlGenerator {
       }
     }
 
-    Random rnd = getRandom();
     int numPks = Math.min(1 + rnd.nextInt(getMaxPkComponents()), MAX_PKS - pkSize);
     for (int i = 0; i < numPks; i++) {
       Column pkColumn =

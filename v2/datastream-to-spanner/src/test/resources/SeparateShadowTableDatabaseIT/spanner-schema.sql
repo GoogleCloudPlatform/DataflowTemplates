@@ -1,11 +1,11 @@
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
   my_table ( id INT64 NOT NULL,
     val INT64,
     )
 PRIMARY KEY
   (id);
 
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
   alltypes ( bool_field BOOL NOT NULL,
     int64_field INT64 NOT NULL,
     float64_field FLOAT64 NOT NULL,

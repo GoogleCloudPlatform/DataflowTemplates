@@ -24,6 +24,7 @@ import com.google.auth.Credentials;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.MultiTemplateIntegrationTest;
+import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.Template.TemplateType;
 import com.google.cloud.teleport.metadata.TemplateCreationParameter;
@@ -41,6 +42,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
@@ -134,6 +136,7 @@ public abstract class TemplateTestBase {
   protected GcsResourceManager artifactClient;
 
   private boolean usingDirectRunner;
+  private boolean skipRunnerV2;
   protected PipelineLauncher pipelineLauncher;
   protected boolean skipBaseCleanup;
 
@@ -153,6 +156,7 @@ public abstract class TemplateTestBase {
       if (category != null) {
         usingDirectRunner =
             Arrays.asList(category.value()).contains(DirectRunnerTest.class) || usingDirectRunner;
+        skipRunnerV2 = Arrays.asList(category.value()).contains(SkipRunnerV2Test.class);
       }
     } catch (NoSuchMethodException e) {
       // ignore error
@@ -417,6 +421,23 @@ public abstract class TemplateTestBase {
     };
   }
 
+  public GcsResourceManager setUpSpannerITGcsResourceManager() {
+    GcsResourceManager spannerTestsGcsClient;
+    if (TestProperties.project().equals("cloud-teleport-testing")) {
+      List<String> bucketList = TestConstants.SPANNER_TEST_BUCKETS;
+      Random random = new Random();
+      int randomIndex = random.nextInt(bucketList.size());
+      String randomBucketName = bucketList.get(randomIndex);
+      spannerTestsGcsClient =
+          GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
+              .build();
+
+    } else {
+      spannerTestsGcsClient = gcsClient;
+    }
+    return spannerTestsGcsClient;
+  }
+
   private List<String> getModulesBuild(String pomPath) {
     List<String> modules = new ArrayList<>();
     modules.add("metadata");
@@ -492,9 +513,10 @@ public abstract class TemplateTestBase {
     // Property allows testing with Runner v2 / Unified Worker
     String unifiedWorkerHarnessContainerImage =
         System.getProperty("unifiedWorkerHarnessContainerImage");
-    if (System.getProperty("unifiedWorker") != null || unifiedWorkerHarnessContainerImage != null) {
+    if (!skipRunnerV2
+        && (System.getProperty("unifiedWorker") != null
+            || unifiedWorkerHarnessContainerImage != null)) {
       appendExperiment(options, "use_runner_v2");
-
       if (System.getProperty("sdkContainerImage") != null) {
         options.addParameter("sdkContainerImage", System.getProperty("sdkContainerImage"));
       }
@@ -562,8 +584,18 @@ public abstract class TemplateTestBase {
       Runtime.getRuntime()
           .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
     }
+    printJobLink(testName, launchInfo);
 
     return launchInfo;
+  }
+
+  public void printJobLink(String testName, LaunchInfo launchInfo) {
+    LOG.info(
+        "Dataflow Console link for {}: https://console.cloud.google.com/dataflow/jobs/{}/{}?project={}",
+        testName,
+        launchInfo.region(),
+        launchInfo.jobId(),
+        launchInfo.projectId());
   }
 
   /** Get the Cloud Storage base path for this test suite. */
@@ -585,7 +617,10 @@ public abstract class TemplateTestBase {
 
   protected String getGcsPath(String artifactId, GcsResourceManager gcsResourceManager) {
     return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, getClass().getSimpleName(), gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(),
+        getClass().getSimpleName(),
+        gcsResourceManager.runId(),
+        artifactId);
   }
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */

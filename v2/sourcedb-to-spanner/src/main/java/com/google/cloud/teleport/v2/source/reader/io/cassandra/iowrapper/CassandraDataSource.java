@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
-import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
@@ -41,6 +40,15 @@ public abstract class CassandraDataSource implements Serializable {
 
   @Nullable
   public abstract String clusterName();
+
+  /**
+   * Number of Partitions to read from Cassandra.
+   *
+   * <p>Defaults to Null, which causes CassandraIO to default the number of partitions to number of
+   * hosts. TODO(vardhanvthigle): Auto infer Number of partitions based on size estimates table.
+   */
+  @Nullable
+  public abstract Integer numPartitions();
 
   public DriverConfigLoader driverConfigLoader() {
     return CassandraDriverConfigLoader.fromOptionsMap(optionsMap());
@@ -78,7 +86,7 @@ public abstract class CassandraDataSource implements Serializable {
   }
 
   public static Builder builder() {
-    return new AutoValue_CassandraDataSource.Builder();
+    return new AutoValue_CassandraDataSource.Builder().setNumPartitions(null);
   }
 
   public abstract Builder toBuilder();
@@ -89,6 +97,8 @@ public abstract class CassandraDataSource implements Serializable {
     public abstract Builder setOptionsMap(OptionsMap value);
 
     public abstract Builder setClusterName(@Nullable String value);
+
+    public abstract Builder setNumPartitions(@Nullable Integer value);
 
     abstract OptionsMap optionsMap();
 
@@ -131,9 +141,6 @@ public abstract class CassandraDataSource implements Serializable {
     abstract CassandraDataSource autoBuild();
 
     public CassandraDataSource build() {
-      /* Prefer to use quorum read until we encounter a strong use case to not do so. */
-      this.overrideOptionInOptionsMap(
-          TypedDriverOption.REQUEST_CONSISTENCY, ConsistencyLevel.QUORUM.toString());
       return autoBuild();
     }
   }

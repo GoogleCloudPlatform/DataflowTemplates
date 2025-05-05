@@ -91,11 +91,56 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(true);
 
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null, false));
 
     PAssert.that(mutations)
         .containsInAnyOrder(
             Mutation.newInsertOrUpdateBuilder("spannerTable")
+                .set("spFirstName")
+                .to("abc")
+                .set("spLastName")
+                .to("def")
+                .build());
+    pipeline.run();
+  }
+
+  @Test
+  public void testSourceRowToMutationDoFnWithInsertOnly() {
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    var schema = SchemaTestUtils.generateTestTableSchema(testTable);
+    SourceRow sourceRow =
+        SourceRow.builder(schemaRef, schema, null, 12412435345L)
+            .setField("firstName", "abc")
+            .setField("lastName", "def")
+            .build();
+    PCollection<SourceRow> sourceRows = pipeline.apply(Create.of(sourceRow));
+    ISchemaMapper mockIschemaMapper =
+        mock(ISchemaMapper.class, Mockito.withSettings().serializable());
+    when(mockIschemaMapper.getDialect()).thenReturn(Dialect.GOOGLE_STANDARD_SQL);
+    when(mockIschemaMapper.getSpannerTableName(anyString(), anyString()))
+        .thenReturn("spannerTable");
+    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("firstName")))
+        .thenReturn("spFirstName");
+    when(mockIschemaMapper.getSpannerColumnName(anyString(), anyString(), eq("lastName")))
+        .thenReturn("spLastName");
+    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spFirstName")))
+        .thenReturn("firstName");
+    when(mockIschemaMapper.getSourceColumnName(anyString(), anyString(), eq("spLastName")))
+        .thenReturn("lastName");
+    when(mockIschemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
+        .thenReturn(Type.string());
+    when(mockIschemaMapper.getSpannerColumns(anyString(), anyString()))
+        .thenReturn(List.of("spFirstName", "spLastName"));
+    when(mockIschemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
+        .thenReturn(true);
+
+    PCollection<Mutation> mutations =
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null, true));
+
+    PAssert.that(mutations)
+        .containsInAnyOrder(
+            Mutation.newInsertBuilder("spannerTable")
                 .set("spFirstName")
                 .to("abc")
                 .set("spLastName")
@@ -165,7 +210,7 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(mockOutputReceiverForTag); // Return the mock OutputReceiver
 
     SourceRowToMutationDoFn sourceRowToMutationDoFn =
-        SourceRowToMutationDoFn.create(mockIschemaMapper, null);
+        SourceRowToMutationDoFn.create(mockIschemaMapper, null, false);
     sourceRowToMutationDoFn.setSourceDbToSpannerTransformer(spannerMigrationTransformer);
     sourceRowToMutationDoFn.processElement(processContextMock, outputReceiverMock);
 
@@ -245,7 +290,7 @@ public class SourceRowToMutationDoFnTest {
         .thenReturn(mockOutputReceiverForTag); // Return the mock OutputReceiver
 
     SourceRowToMutationDoFn sourceRowToMutationDoFn =
-        SourceRowToMutationDoFn.create(mockIschemaMapper, null);
+        SourceRowToMutationDoFn.create(mockIschemaMapper, null, false);
     sourceRowToMutationDoFn.setSourceDbToSpannerTransformer(spannerMigrationTransformer);
     sourceRowToMutationDoFn.processElement(processContextMock, outputReceiverMock);
 
@@ -266,7 +311,7 @@ public class SourceRowToMutationDoFnTest {
     ISchemaMapper mockIschemaMapper =
         mock(ISchemaMapper.class, Mockito.withSettings().serializable());
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null, false));
 
     PAssert.that(mutations).empty();
     pipeline.run();
@@ -289,7 +334,7 @@ public class SourceRowToMutationDoFnTest {
         .thenThrow(NoSuchElementException.class);
 
     PCollection<Mutation> mutations =
-        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null));
+        transform(sourceRows, SourceRowToMutationDoFn.create(mockIschemaMapper, null, false));
 
     PAssert.that(mutations).empty();
     pipeline.run();

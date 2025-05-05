@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -69,6 +70,7 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -92,6 +94,9 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
       if (pubsubResourceManager == null) {
         pubsubResourceManager = setUpPubSubResourceManager();
       }
+      if (gcsResourceManager == null) {
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
+      }
       if (jobInfo1 == null) {
         jobInfo1 =
             launchDataflowJob(
@@ -112,7 +117,8 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
                   }
                 },
                 null,
-                null);
+                null,
+                gcsResourceManager);
       }
       if (jobInfo2 == null) {
         jobInfo2 =
@@ -134,7 +140,8 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
                   }
                 },
                 null,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -151,7 +158,10 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -167,22 +177,26 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-backfill-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard2.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-cdc-logical-shard1.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard1.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo1,
                         TABLE,
                         "Users-cdc-logical-shard2.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro")))
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard2.avro",
+                        gcsResourceManager)))
             .build();
 
     // Wait for conditions
@@ -200,22 +214,26 @@ public class SeparateShadowTableDatabaseShardedMigrationWithoutMigrationShardIdC
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard3.avro"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard3.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-backfill-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-backfill-logical-shard4.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-cdc-logical-shard3.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro"),
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard3.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo2,
                         TABLE,
                         "Users-cdc-logical-shard4.avro",
-                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro")))
+                        "DataStreamToSpannerShardedMigrationWithoutMigrationShardIdColumnIT/Users-cdc-logical-shard4.avro",
+                        gcsResourceManager)))
             .build();
 
     result =

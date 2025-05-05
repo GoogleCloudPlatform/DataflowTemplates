@@ -35,6 +35,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -73,6 +74,7 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
   public static PubsubResourceManager pubsubResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager shadowSpannerResourceManager;
+  public static GcsResourceManager gcsResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -89,8 +91,9 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
         spannerResourceManager = setUpSpannerResourceManager();
         shadowSpannerResourceManager = setUpShadowSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
-        createAndUploadJarToGcs("SeparateShadowTableDatabaseDDLIT");
+        createAndUploadJarToGcs("SeparateShadowTableDatabaseDDLIT", gcsResourceManager);
         CustomTransformation customTransformation =
             CustomTransformation.builder(
                     "customTransformation.jar", "com.custom.CustomTransformationWithShardForLiveIT")
@@ -114,7 +117,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                   }
                 },
                 customTransformation,
-                null);
+                null,
+                gcsResourceManager);
       }
     }
   }
@@ -130,7 +134,10 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pubsubResourceManager, shadowSpannerResourceManager);
+        spannerResourceManager,
+        pubsubResourceManager,
+        shadowSpannerResourceManager,
+        gcsResourceManager);
   }
 
   @Test
@@ -145,7 +152,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TABLE1,
                         "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -169,12 +177,14 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TABLE1,
                         "cdc1.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc1-AllDatatypeColumns.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc1-AllDatatypeColumns.avro",
+                        gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
                         TABLE1,
                         "cdc2.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc2-AllDatatypeColumns.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc2-AllDatatypeColumns.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE1)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -209,7 +219,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TABLE2,
                         "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns2.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeColumns2.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -233,7 +244,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TABLE2,
                         "cdc1.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeColumns2.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeColumns2.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE2)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -267,7 +279,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TRANSFORMATION_TABLE,
                         "backfill.avro",
-                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeTransformation.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-backfill-AllDatatypeTransformation.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -291,7 +304,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TRANSFORMATION_TABLE,
                         "cdc.avro",
-                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeTransformation.avro"),
+                        "DataStreamToSpannerDDLIT/mysql-cdc-AllDatatypeTransformation.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TRANSFORMATION_TABLE)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -325,7 +339,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TABLE3,
                         "datatypesizes-backfill.avro",
-                        "DataStreamToSpannerDDLIT/DatatypeColumnsWithSizes-backfill.avro"),
+                        "DataStreamToSpannerDDLIT/DatatypeColumnsWithSizes-backfill.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE3)
                         .setMinRows(2)
                         .setMaxRows(2)
@@ -354,7 +369,8 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
                         jobInfo,
                         TABLE4,
                         "datatypesizes-reduced-backfill.avro",
-                        "DataStreamToSpannerDDLIT/DatatypeColumnsReducedSizes-backfill.avro"),
+                        "DataStreamToSpannerDDLIT/DatatypeColumnsReducedSizes-backfill.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE4)
                         .setMinRows(1)
                         .setMaxRows(1)
@@ -380,7 +396,11 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo, TABLE5, "gencols.avro", "DataStreamToSpannerDDLIT/Users.avro"),
+                        jobInfo,
+                        TABLE5,
+                        "gencols.avro",
+                        "DataStreamToSpannerDDLIT/Users.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE5)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -406,7 +426,11 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo, TABLE7, "charsets.avro", "DataStreamToSpannerDDLIT/Authors.avro"),
+                        jobInfo,
+                        TABLE7,
+                        "charsets.avro",
+                        "DataStreamToSpannerDDLIT/Authors.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE7)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -432,7 +456,11 @@ public class SeparateShadowTableDatabaseDDLIT extends DataStreamToSpannerITBase 
         ChainedConditionCheck.builder(
                 List.of(
                     uploadDataStreamFile(
-                        jobInfo, TABLE8, "sequence.avro", "DataStreamToSpannerDDLIT/Singers.avro"),
+                        jobInfo,
+                        TABLE8,
+                        "sequence.avro",
+                        "DataStreamToSpannerDDLIT/Singers.avro",
+                        gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE8)
                         .setMinRows(2)
                         .setMaxRows(2)

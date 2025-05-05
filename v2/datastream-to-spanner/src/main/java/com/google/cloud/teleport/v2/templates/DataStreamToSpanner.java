@@ -157,7 +157,8 @@ public class DataStreamToSpanner {
             "File location for Datastream file output in Cloud Storage. Support for this feature has been disabled.",
         helpText =
             "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
-                + "this is the root path for a stream. Support for this feature has been disabled.")
+                + "this is the root path for a stream. Support for this feature has been disabled."
+                + " Please use this feature only for retrying entries that land in severe DLQ.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -667,6 +668,8 @@ public class DataStreamToSpanner {
                     .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
+    // TODO: spannerConfig = SpannerServiceFactoryImpl.createSpannerService(spannerConfig,
+    // <failureinjectionparameter>);
     SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database

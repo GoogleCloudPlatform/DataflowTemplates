@@ -3,3 +3,4 @@ torch
 transformers
 torchvision
 setuptools
+virtualenv-clone # TODO: remove after upgrading to Beam 2.65.0

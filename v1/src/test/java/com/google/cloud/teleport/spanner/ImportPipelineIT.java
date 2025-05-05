@@ -31,7 +31,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerTemplateITBase;
 import org.junit.After;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -187,26 +190,18 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
       throws IOException {
     // Arrange
     uploadImportPipelineArtifacts("googlesql");
-    String createEmptyTableStatement =
-        "CREATE TABLE EmptyTable (\n" + "  id INT64 NOT NULL,\n" + ") PRIMARY KEY(id)";
-    spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
+    String setDefaultTimeZoneStatement =
+        "ALTER DATABASE db SET OPTIONS (default_time_zone = 'UTC')";
+    spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
 
-    String createSingersTableStatement =
-        "CREATE TABLE Singers (\n"
-            + "  Id INT64,\n"
-            + "  FirstName STRING(MAX),\n"
-            + "  LastName STRING(MAX),\n"
-            + "  Review STRING(MAX),\n"
-            + "  MyTokens TOKENLIST AS (TOKENIZE_FULLTEXT(Review)) HIDDEN,\n"
-            + ") PRIMARY KEY(Id)";
-    spannerResourceManager.executeDdlStatement(createSingersTableStatement);
-
-    String createFloat32TableStatement =
-        "CREATE TABLE Float32Table (\n"
-            + "  Key STRING(MAX) NOT NULL,\n"
-            + "  Float32Value FLOAT32,\n"
-            + ") PRIMARY KEY(Key)";
-    spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
+    String resourceFileName = "ImportPipelineIT/googlesql/spanner-gsql-ddl.sql";
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(Resources.getResource(resourceFileName), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
+    spannerResourceManager.executeDdlStatements(ddls);
 
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -260,25 +255,17 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
       throws IOException {
     // Arrange
     uploadImportPipelineArtifacts("postgres");
-    String createEmptyTableStatement =
-        "CREATE TABLE \"EmptyTable\" (\n" + "  id bigint NOT NULL,\nPRIMARY KEY(id)\n" + ")";
-    spannerResourceManager.executeDdlStatement(createEmptyTableStatement);
+    String setDefaultTimeZoneStatement = "ALTER DATABASE db SET spanner.default_time_zone = 'UTC'";
+    spannerResourceManager.executeDdlStatement(setDefaultTimeZoneStatement);
 
-    String createSingersTableStatement =
-        "CREATE TABLE \"Singers\" (\n"
-            + "  \"Id\" bigint,\n"
-            + "  \"FirstName\" character varying(256),\n"
-            + "  \"LastName\" character varying(256),\n"
-            + "  \"NameTokens\" spanner.tokenlist generated always as (spanner.tokenize_fulltext(\"FirstName\")) stored hidden,\n"
-            + "PRIMARY KEY(\"Id\"))";
-    spannerResourceManager.executeDdlStatement(createSingersTableStatement);
-
-    String createFloat32TableStatement =
-        "CREATE TABLE \"Float32Table\" (\n"
-            + "  \"Key\" character varying NOT NULL,\n"
-            + "  \"Float32Value\" real,\n"
-            + "PRIMARY KEY(\"Key\"))";
-    spannerResourceManager.executeDdlStatement(createFloat32TableStatement);
+    String resourceFileName = "ImportPipelineIT/postgres/spanner-pg-ddl.sql";
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(Resources.getResource(resourceFileName), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
+    spannerResourceManager.executeDdlStatements(ddls);
 
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
@@ -316,6 +303,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
+  @Ignore("Update Beam SpannerIO to support UUID")
   public void testGoogleSqlImportPipeline_UUID() throws IOException {
     // Run only on staging environment
     if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
@@ -328,14 +316,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             .useCustomHost(spannerHost)
             .build();
     uploadImportPipelineArtifactsUuid("googlesql");
-    String createUuidTableStatement =
-        "CREATE TABLE UuidTable (\n"
-            + "  Key UUID,\n"
-            + "  Val1 UUID,\n"
-            + "  Val2 INT64,\n"
-            + "  Val3 ARRAY<UUID>,\n"
-            + ") PRIMARY KEY(Key)";
-    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+
+    String resourceFileName = "ImportPipelineIT/googlesql/spanner-gsql-uuid-ddl.sql";
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(Resources.getResource(resourceFileName), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
+    spannerResourceManager.executeDdlStatements(ddls);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -367,6 +356,7 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
   @Test
+  @Ignore("Update Beam SpannerIO to support UUID")
   public void testPostgresImportPipeline_UUID() throws IOException {
     // Run only on staging environment
     if (!SpannerResourceManager.STAGING_SPANNER_HOST.equals(spannerHost)) {
@@ -379,14 +369,15 @@ public class ImportPipelineIT extends SpannerTemplateITBase {
             .useCustomHost(spannerHost)
             .build();
     uploadImportPipelineArtifactsUuid("postgres");
-    String createUuidTableStatement =
-        "CREATE TABLE UuidTable (\n"
-            + "  Key uuid PRIMARY KEY,\n"
-            + "  Val1 uuid,\n"
-            + "  Val2 INT,\n"
-            + "  Val3 uuid[]\n"
-            + ")";
-    spannerResourceManager.executeDdlStatement(createUuidTableStatement);
+
+    String resourceFileName = "ImportPipelineIT/postgres/spanner-pg-uuid-ddl.sql";
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(Resources.getResource(resourceFileName), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    List<String> ddls = Arrays.stream(ddl.split(";")).filter(d -> !d.isBlank()).toList();
+    spannerResourceManager.executeDdlStatements(ddls);
 
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(testName, specPath)
