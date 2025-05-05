@@ -57,6 +57,12 @@ CREATE TABLE t1 (
     CONSTRAINT fk_t1_t2 FOREIGN KEY (id) REFERENCES t2 (id)
 );
 
+CREATE TABLE t11 (
+    id BIGINT NOT NULL,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_t11_t2 FOREIGN KEY (id) REFERENCES t2 (id)
+);
+
 INSERT INTO t10 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 INSERT INTO t9 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 INSERT INTO t8 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
@@ -67,3 +73,4 @@ INSERT INTO t4 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 INSERT INTO t3 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 INSERT INTO t2 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
 INSERT INTO t1 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);
+INSERT INTO t11 (id) VALUES (1), (2), (3), (4), (5), (6), (7), (8), (9), (10);

@@ -218,6 +218,12 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         gcsResourceManager),
                     uploadDataStreamFile(
                         jobInfo,
+                        "BookSeries",
+                        "mysql_bookseries.avro",
+                        "DataStreamToSpannerEventsIT/mysql-BookSeries.avro",
+                        gcsResourceManager),
+                    uploadDataStreamFile(
+                        jobInfo,
                         "Authors",
                         "mysql_authors.avro",
                         "DataStreamToSpannerEventsIT/mysql-Authors.avro",
@@ -229,6 +235,10 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
                         "DataStreamToSpannerEventsIT/mysql-Books.avro",
                         gcsResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, "Articles")
+                        .setMinRows(4)
+                        .setMaxRows(4)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, "BookSeries")
                         .setMinRows(4)
                         .setMaxRows(4)
                         .build(),
@@ -411,6 +421,42 @@ public class DataStreamToSpannerEventsIT extends DataStreamToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery("select * from Articles@{FORCE_INDEX=author_id}"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertBookSeriesTable() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("name", "BookSeries001");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 1);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("name", "BookSeries002");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 1);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("name", "BookSeries004");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 4);
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 4);
+    row.put("name", "BookSeries005");
+    row.put("published_date", Date.parseDate("2024-01-01"));
+    row.put("author_id", 3);
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(
+            spannerResourceManager.runQuery("select * from BookSeries@{FORCE_INDEX=author_id}"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }

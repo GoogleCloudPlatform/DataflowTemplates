@@ -85,7 +85,7 @@ public class MySQLForeignKeyDependencyIT extends SourceDbToSpannerITBase {
     assertThatResult(result).isLaunchFinished();
 
     for (String tableName :
-        Arrays.asList("t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10")) {
+        Arrays.asList("t1", "t2", "t3", "t4", "t5", "t6", "t7", "t8", "t9", "t10, t11")) {
       assertEquals(
           "Asserting count for " + tableName,
           10L,

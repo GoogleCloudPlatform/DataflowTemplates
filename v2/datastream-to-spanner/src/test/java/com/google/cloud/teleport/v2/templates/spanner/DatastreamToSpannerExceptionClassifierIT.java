@@ -118,7 +118,6 @@ public class DatastreamToSpannerExceptionClassifierIT {
       spannerResourceManager.writeInTransaction(List.of(mutation));
     } catch (SpannerException e) {
       exception = e;
-      actualTag = DatastreamToSpannerExceptionClassifier.classify(SpannerExceptionParser.parse(e));
     }
     Assert.assertNull(exception);
   }

@@ -13,3 +13,4 @@ Insert into Movie values(1, 'movie1', 12345.09876, '2023-01-01 12:12:12'); Inser
 Insert into Authors values(1, 'a1'); Insert into Authors values(2, 'a2'); Insert into Authors values(3, 'a3'); insert into Authors values(4, 'a4');
 Insert into Articles values(1, 'Article001', '2024-01-01', 1); Insert into Articles values(2, 'Article002', '2024-01-01', 1); Insert into Articles values(3, 'Article004', '2024-01-01', 4); Insert into Articles values(4, 'Article005', '2024-01-01', 3);
 Insert into Books values(1, 'Book005', 3); Insert into Books values(2, 'Book002', 3); Insert into Books values(3, 'Book004', 4); Insert into Books values(4, 'Book005', 2);
+Insert into BookSeries values(1, 'BookSeries001', '2024-01-01', 1); Insert into BookSeries values(2, 'BookSeries002', '2024-01-01', 1); Insert into BookSeries values(3, 'BookSeries004', '2024-01-01', 4); Insert into BookSeries values(4, 'BookSeries005', '2024-01-01', 3);
