@@ -99,9 +99,9 @@ public class Ddl implements Serializable {
       throw new IllegalStateException(
           "attempting to fetch table which does not exist in spanner:" + tableName);
     }
-    if (table.interleaveInParent() != null
+    if (table.interleavingParent() != null
         && !Objects.equals(table.interleaveType(), new String("IN"))) {
-      tablesReferenced.add(table.interleaveInParent());
+      tablesReferenced.add(table.interleavingParent());
     }
     Set<String> fkReferencedTables =
         table.foreignKeys().stream().map(f -> f.referencedTable()).collect(Collectors.toSet());
@@ -312,7 +312,7 @@ public class Ddl implements Serializable {
       String name = table.name().toLowerCase();
       tables.put(name, table);
       String parent =
-          table.interleaveInParent() == null ? ROOT : table.interleaveInParent().toLowerCase();
+          table.interleavingParent() == null ? ROOT : table.interleavingParent().toLowerCase();
       parents.put(parent, name);
     }
 

@@ -202,8 +202,18 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
             .set("migration_shard_id")
             .to("shardB")
             .build();
+    Mutation c3 =
+        Mutation.newInsertOrUpdateBuilder("child31")
+            .set("child_id")
+            .to(33)
+            .set("id")
+            .to(2)
+            .set("migration_shard_id")
+            .to("shardB")
+            .build();
     mutations.add(c1);
     mutations.add(c2);
+    mutations.add(c3);
     spannerResourceManager.write(mutations);
   }
 
@@ -236,6 +246,13 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
                 () -> jdbcResourceManagerShardB.getRowCount("child21") == 1);
     assertThatResult(result).meetsConditions();
 
+    PipelineOperator.Result result2 =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(30)),
+                () -> jdbcResourceManagerShardB.getRowCount("child31") == 1);
+    assertThatResult(result).meetsConditions();
+
     List<Map<String, Object>> rows = jdbcResourceManagerShardA.readTable("parent1");
     assertThat(rows).hasSize(1);
     assertThat(rows.get(0).get("id")).isEqualTo(1);
@@ -251,6 +268,10 @@ public class SpannerToSourceDbInterleaveMultiShardIT extends SpannerToSourceDbIT
     List<Map<String, Object>> rows3 = jdbcResourceManagerShardB.readTable("child21");
     assertThat(rows3).hasSize(1);
     assertThat(rows3.get(0).get("child_id")).isEqualTo(22);
+
+    List<Map<String, Object>> rows4 = jdbcResourceManagerShardB.readTable("child31");
+    assertThat(rows3).hasSize(1);
+    assertThat(rows3.get(0).get("child_id")).isEqualTo(33);
   }
 
   private void doUpdatesInSpanner() {

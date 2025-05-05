@@ -36,7 +36,7 @@ public abstract class Table implements Serializable {
   public abstract String name();
 
   @Nullable
-  public abstract String interleaveInParent();
+  public abstract String interleavingParent();
 
   @Nullable
   public abstract String interleaveType();
@@ -121,18 +121,18 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n\tPRIMARY KEY (", ")")));
     }
     appendable.append("\n)");
-    if (interleaveInParent() != null && Objects.equals(interleaveType(), "IN PARENT")) {
+    if (interleavingParent() != null && Objects.equals(interleaveType(), "IN PARENT")) {
       appendable
           .append(" \nINTERLEAVE IN PARENT " + identifierQuote)
-          .append(interleaveInParent())
+          .append(interleavingParent())
           .append(identifierQuote);
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
-    } else if (interleaveInParent() != null && Objects.equals(interleaveType(), "IN")) {
+    } else if (interleavingParent() != null && Objects.equals(interleaveType(), "IN")) {
       appendable
           .append(" \nINTERLEAVE IN " + identifierQuote)
-          .append(interleaveInParent())
+          .append(interleavingParent())
           .append(identifierQuote);
     }
     if (includeIndexes) {
@@ -172,18 +172,18 @@ public abstract class Table implements Serializable {
               .collect(Collectors.joining(", ", "\n) PRIMARY KEY (", "")));
     }
     appendable.append(")");
-    if (interleaveInParent() != null && Objects.equals(interleaveType(), "IN PARENT")) {
+    if (interleavingParent() != null && Objects.equals(interleaveType(), "IN PARENT")) {
       appendable
           .append(",\nINTERLEAVE IN PARENT " + identifierQuote)
-          .append(interleaveInParent())
+          .append(interleavingParent())
           .append(identifierQuote);
       if (onDeleteCascade()) {
         appendable.append(" ON DELETE CASCADE");
       }
-    } else if (interleaveInParent() != null && Objects.equals(interleaveType(), "IN")) {
+    } else if (interleavingParent() != null && Objects.equals(interleaveType(), "IN")) {
       appendable
           .append(",\nINTERLEAVE IN " + identifierQuote)
-          .append(interleaveInParent())
+          .append(interleavingParent())
           .append(identifierQuote);
     }
     if (includeIndexes) {
@@ -230,7 +230,7 @@ public abstract class Table implements Serializable {
 
     public abstract String name();
 
-    public abstract Builder interleaveInParent(String parent);
+    public abstract Builder interleavingParent(String parent);
 
     public abstract Builder interleaveType(String interleave);
 

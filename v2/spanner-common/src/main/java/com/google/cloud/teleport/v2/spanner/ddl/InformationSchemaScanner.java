@@ -170,7 +170,7 @@ public class InformationSchemaScanner {
           "Schema Table {} Parent {} OnDelete {} {}", tableName, parentTableName, onDeleteCascade);
       builder
           .createTable(tableName)
-          .interleaveInParent(parentTableName)
+          .interleavingParent(parentTableName)
           .interleaveType(interleaveType)
           .onDeleteCascade(onDeleteCascade)
           .endTable();
