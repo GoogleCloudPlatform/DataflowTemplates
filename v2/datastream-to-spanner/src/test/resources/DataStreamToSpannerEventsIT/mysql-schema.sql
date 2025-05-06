@@ -34,18 +34,6 @@ ALTER TABLE `Articles` add FOREIGN KEY (`author_id`) references Authors(`author_
 
 CREATE INDEX author_id ON Articles (author_id);  -- To: Index retained in Spanner
 
-CREATE TABLE `BookSeries` (
-    `id` int NOT NULL,
-    `name` varchar(200),
-    `published_date` date,
-    `author_id` int,          -- To: author_id INT64
-    PRIMARY KEY (`id`)        -- To: Changed PK to PRIMARY_KEY(author_id, id) in Spanner and Interleaved in Authors
-);
-
-ALTER TABLE `BookSeries` add FOREIGN KEY (`author_id`) references Authors(`author_id`);  -- To: Foreign key converted to Interleaved in Spanner
-
-CREATE INDEX author_id ON BookSeries (author_id);  -- To: Index retained in Spanner
-
 CREATE TABLE `Books` (
     `id` int NOT NULL,
     `title` varchar(200),

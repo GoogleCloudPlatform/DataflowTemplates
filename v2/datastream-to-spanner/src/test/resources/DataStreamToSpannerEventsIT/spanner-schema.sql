@@ -35,16 +35,6 @@ CREATE TABLE IF NOT EXISTS Articles (
     published_date DATE,
     author_id INT64 NOT NULL,
 ) PRIMARY KEY (author_id, id),
-INTERLEAVE IN Authors;
+INTERLEAVE IN PARENT Authors;
 
 CREATE INDEX author_id ON Articles (author_id);
-
-CREATE TABLE IF NOT EXISTS BookSeries (
-    id INT64 NOT NULL,
-    name STRING(200),
-    published_date DATE,
-    author_id INT64 NOT NULL,
-) PRIMARY KEY (author_id, id),
-INTERLEAVE IN PARENT Authors ON DELETE CASCADE;
-
-CREATE INDEX author_id2 ON BookSeries (author_id);
