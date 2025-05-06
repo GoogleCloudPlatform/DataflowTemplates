@@ -71,7 +71,7 @@ public class IdentityMapperTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
             .onDeleteCascade()
             .endTable()
             .build();
