@@ -20,12 +20,14 @@ import static com.mongodb.client.model.Filters.eq;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.bson.Document;
@@ -42,6 +44,8 @@ public class ProcessChangeEventFn
   private String connectionString = "";
   private String targetDatabaseName = "";
   private MongoClient client = null;
+  private final int maxRetries = 3; // Maximum number of retry attempts
+  private final long retryDelayMs = 1000; // Initial delay in milliseconds
 
   public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
       new TupleTag<>("successfulWrite");
@@ -61,76 +65,128 @@ public class ProcessChangeEventFn
   @ProcessElement
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     MongoDbChangeEventContext element = context.element();
-    ClientSession session = null;
+    int retryCount = 0;
+    Exception lastException = null;
+    while (retryCount <= maxRetries) {
+      ClientSession session = null;
+      try {
+        MongoDatabase database = client.getDatabase(targetDatabaseName);
+        MongoCollection<Document> dataCollection =
+            database.getCollection(element.getDataCollection());
+        MongoCollection<Document> shadowCollection =
+            database.getCollection(element.getShadowCollection());
 
-    try {
-      MongoDatabase database = client.getDatabase(targetDatabaseName);
-      MongoCollection<Document> dataCollection =
-          database.getCollection(element.getDataCollection());
-      MongoCollection<Document> shadowCollection =
-          database.getCollection(element.getShadowCollection());
+        LOG.info(
+            "Accessing collections - data: {}, shadow: {}",
+            element.getDataCollection(),
+            element.getShadowCollection());
 
-      LOG.info(
-          "Accessing collections - data: {}, shadow: {}",
-          element.getDataCollection(),
-          element.getShadowCollection());
+        // Step 1: Query the shadow collection to see if there is any existing record of this id
+        Object docId = element.getDocumentId();
+        Bson lookupById = eq("_id", docId);
 
-      // Step 1: Query the shadow collection to see if there is any existing record of this id
-      Object docId = element.getDocumentId();
-      Bson lookupById = eq("_id", docId);
+        session = client.startSession();
+        session.startTransaction();
+        LOG.info("Started transaction for document ID: {}", element.getDocumentId());
 
-      session = client.startSession();
-      session.startTransaction();
-      LOG.info("Started transaction for document ID: {}", element.getDocumentId());
+        LOG.info("Querying shadow collection for document ID: {}", docId);
+        Document shadowDoc = shadowCollection.find(session, lookupById).first();
+        LOG.info("Shadow document found: {}", shadowDoc != null ? "yes" : "no");
 
-      LOG.info("Querying shadow collection for document ID: {}", docId);
-      Document shadowDoc = shadowCollection.find(session, lookupById).first();
-      LOG.info("Shadow document found: {}", shadowDoc != null ? "yes" : "no");
+        if (isEventNewerThanShadowDoc(element, shadowDoc)) {
+          LOG.info("Processing newer event for document ID: {}", docId);
 
-      if (isEventNewerThanShadowDoc(element, shadowDoc)) {
-        LOG.info("Processing newer event for document ID: {}", docId);
-
-        if (element.isDeleteEvent()) {
-          // This is a delete event - delete the document from data collection
-          LOG.info("Deleting document with ID: {}", docId);
-          dataCollection.deleteOne(session, lookupById);
-          // Update the shadow document to record this deletion event
-          shadowCollection.replaceOne(
-              session, lookupById, element.getShadowDocument(), new ReplaceOptions().upsert(true));
-          LOG.info("Updated shadow document for delete event, document ID: {}", docId);
+          if (element.isDeleteEvent()) {
+            // This is a delete event - delete the document from data collection
+            LOG.info("Deleting document with ID: {}", docId);
+            dataCollection.deleteOne(session, lookupById);
+            // Update the shadow document to record this deletion event
+            shadowCollection.replaceOne(
+                session,
+                lookupById,
+                element.getShadowDocument(),
+                new ReplaceOptions().upsert(true));
+            LOG.info("Updated shadow document for delete event, document ID: {}", docId);
+          } else {
+            // Regular insert or update.
+            LOG.info(
+                "Updating document with ID {} with data {}", docId, element.getDataAsJsonString());
+            dataCollection.replaceOne(
+                session,
+                lookupById,
+                Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId()),
+                new ReplaceOptions().upsert(true));
+            shadowCollection.replaceOne(
+                session,
+                lookupById,
+                element.getShadowDocument(),
+                new ReplaceOptions().upsert(true));
+            LOG.info("Updated document and shadow document, document ID: {}", docId);
+          }
         } else {
-          // Regular insert or update.
-          LOG.info(
-              "Updating document with ID {} with data {}", docId, element.getDataAsJsonString());
-          dataCollection.replaceOne(
-              session,
-              lookupById,
-              Utils.jsonToDocument(element.getDataAsJsonString(), element.getDocumentId()),
-              new ReplaceOptions().upsert(true));
-          shadowCollection.replaceOne(
-              session, lookupById, element.getShadowDocument(), new ReplaceOptions().upsert(true));
-          LOG.info("Updated document and shadow document, document ID: {}", docId);
+          // Existing document has a later timestamp, skip this event
+          LOG.info("Skipping event for document ID: {} as a newer version exists", docId);
         }
-      } else {
-        // Existing document has a later timestamp, skip this event
-        LOG.info("Skipping event for document ID: {} as a newer version exists", docId);
+        session.commitTransaction();
+        LOG.info("Transaction committed for document ID: {}", docId);
+        out.get(successfulWriteTag).output(element);
+        LOG.info("Successfully processed document ID: {}", element.getDocumentId());
+        break; // Exit the retry loop on success
+      } catch (Exception e) {
+        lastException = e;
+        if (session != null) {
+          try {
+            session.abortTransaction();
+            LOG.warn(
+                "Transaction aborted for document ID: {}, attempt: {}",
+                element.getDocumentId(),
+                retryCount + 1);
+          } catch (MongoException abortException) {
+            LOG.error(
+                "Error aborting transaction for document ID: {}: {}",
+                element.getDocumentId(),
+                abortException.getMessage(),
+                abortException);
+          }
+        }
+        if (isTransientTransactionError(e) && retryCount < maxRetries) {
+          LOG.warn(
+              "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
+              element.getDocumentId(),
+              retryCount + 1,
+              retryDelayMs * (retryCount + 1),
+              e);
+          try {
+            TimeUnit.MILLISECONDS.sleep(retryDelayMs * (retryCount + 1));
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            LOG.error("Retry sleep interrupted for document ID: {}", element.getDocumentId(), ie);
+            break; // Exit the retry loop if interrupted
+          }
+          retryCount++;
+        } else {
+          LOG.error(
+              "Transaction failed after {} attempts for document ID: {}: {}",
+              retryCount + 1,
+              element.getDocumentId(),
+              e.getMessage(),
+              e);
+          out.get(failedWriteTag).output(element);
+          break; // Exit the retry loop on non-transient error or max retries
+        }
+      } finally {
+        if (session != null) {
+          session.close();
+        }
       }
-      session.commitTransaction();
-      LOG.info("Transaction committed for document ID: {}", docId);
-      out.get(successfulWriteTag).output(element);
-      LOG.info("Successfully processed document ID: {}", element.getDocumentId());
-    } catch (Exception e) {
+    }
+    if (lastException != null && retryCount > maxRetries) {
       LOG.error(
-          "Transaction failed for document ID: {}: {}", element.getDocumentId(), e.getMessage(), e);
-      if (session != null) {
-        session.abortTransaction();
-        LOG.info("Transaction aborted for document ID: {}", element.getDocumentId());
-      }
-      out.get(failedWriteTag).output(element);
-    } finally {
-      if (session != null) {
-        session.close();
-      }
+          "Transaction failed after max retries ({}) for document ID: {}: {}",
+          maxRetries,
+          element.getDocumentId(),
+          lastException.getMessage(),
+          lastException);
     }
   }
 
@@ -164,5 +220,10 @@ public class ProcessChangeEventFn
         || Utils.isNewerTimestamp(
             event.getTimestampDoc(),
             (Document) shadowDoc.get(MongoDbChangeEventContext.TIMESTAMP_COL));
+  }
+
+  public static boolean isTransientTransactionError(Exception e) {
+    return e instanceof MongoException
+        && ((MongoException) e).getErrorLabels().contains("TransientTransactionError");
   }
 }
