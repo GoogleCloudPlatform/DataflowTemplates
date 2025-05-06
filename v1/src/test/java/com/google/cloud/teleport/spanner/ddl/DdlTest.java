@@ -1138,7 +1138,7 @@ public class DdlTest {
 
   @Test
   public void udfs() {
-    Ddl ddl =
+    Ddl.Builder ddlBuilder =
         Ddl.builder()
             .createUdf("spanner.Foo1")
             .dialect(Dialect.GOOGLE_STANDARD_SQL)
@@ -1156,14 +1156,16 @@ public class DdlTest {
             .addParameter(
                 UdfParameter.parse(
                     "arg1 STRING DEFAULT 'bar'", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
-            .endUdf()
-            .build();
-    assertThat(
-        ddl.prettyPrint(),
-        equalToCompressingWhiteSpace(
-            "\nCREATE FUNCTION `Foo1`() AS ((SELECT 'bar'))\n"
-                + "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
-                + " RETURNS STRING SQL SECURITY INVOKER AS ((SELECT 'bar'))"));
+            .endUdf();
+    assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
+    assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
+    Ddl ddl = ddlBuilder.build();
+
+    String expectedDdlString =
+        "\nCREATE FUNCTION `Foo1`() AS ((SELECT 'bar'))\n"
+            + "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
+            + " RETURNS STRING SQL SECURITY INVOKER AS ((SELECT 'bar'))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
 
     List<String> statements = ddl.statements();
     assertEquals(2, statements.size());
@@ -1176,6 +1178,9 @@ public class DdlTest {
             "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
                 + " RETURNS STRING SQL SECURITY INVOKER AS ((SELECT 'bar'))"));
     assertNotNull(ddl.hashCode());
+
+    assertThat(
+        ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
   }
 
   @Test
