@@ -245,11 +245,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.unifiedWorker = unifiedWorker;
     this.internalMaven = false;
     this.generateSBOM = generateSBOM;
-    String maybeMavenRepo = project.getProperties().getProperty("beam-maven-repo");
-    if (!Strings.isNullOrEmpty(maybeMavenRepo)) {
-      maybeMavenRepo = maybeMavenRepo.replaceAll("/$", "");
-    }
-    this.mavenRepo = maybeMavenRepo;
   }
 
   public void execute() throws MojoExecutionException {
@@ -429,6 +424,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         && !Strings.isNullOrEmpty(airlockJavaRepo)) {
       internalMaven = true;
     }
+
+    String maybeMavenRepo = project.getProperties().getProperty("beam-maven-repo");
+    if (!Strings.isNullOrEmpty(maybeMavenRepo)) {
+      maybeMavenRepo = maybeMavenRepo.replaceAll("/$", "");
+    }
+    this.mavenRepo = maybeMavenRepo;
 
     // Override some image spec attributes available only during staging/release:
     String version = TemplateDefinitionsParser.parseVersion(stagePrefix);
