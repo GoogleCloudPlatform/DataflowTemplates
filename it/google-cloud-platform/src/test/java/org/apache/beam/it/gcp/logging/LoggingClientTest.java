@@ -41,7 +41,8 @@ public class LoggingClientTest {
 
   @Test
   public void testpubsub() throws IOException, InterruptedException {
-    PubsubResourceManager pubsubResourceManager = PubsubResourceManager.builder("testName", "cloud-teleport-testing", null).build();
+    PubsubResourceManager pubsubResourceManager =
+        PubsubResourceManager.builder("testName", "cloud-teleport-testing", null).build();
     TopicName topic = pubsubResourceManager.createTopic("topicNameSuffix");
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "subscriptionNameSuffix");

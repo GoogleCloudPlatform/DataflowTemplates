@@ -179,13 +179,15 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
     String gcsPrefix =
         String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "cdc"});
     TopicName topic = createPubsubTopic(testRootDir + testName, pubsubResourceManager);
-    SubscriptionName subscription = createPubsubSubscription(testRootDir + testName, pubsubResourceManager, topic);
+    SubscriptionName subscription =
+        createPubsubSubscription(testRootDir + testName, pubsubResourceManager, topic);
     createGcsPubsubNotification(topic, gcsPrefix, gcsResourceManager);
 
     String dlqGcsPrefix =
         String.join("/", new String[] {testRootDir, gcsResourceManager.runId(), testName, "dlq"});
     TopicName dlqTopic = createPubsubTopic(testRootDir + testName + "dlq", pubsubResourceManager);
-    SubscriptionName dlqSubscription = createPubsubSubscription(testRootDir + testName + "dlq", pubsubResourceManager, dlqTopic);
+    SubscriptionName dlqSubscription =
+        createPubsubSubscription(testRootDir + testName + "dlq", pubsubResourceManager, dlqTopic);
     createGcsPubsubNotification(dlqTopic, dlqGcsPrefix, gcsResourceManager);
     String artifactBucket = TestProperties.artifactBucket();
 
@@ -222,8 +224,10 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
       }
       Thread.sleep(2000);
     }
-    pubsubResourceManager.publish(topic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
-    pubsubResourceManager.publish(topic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+    pubsubResourceManager.publish(
+        topic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+    pubsubResourceManager.publish(
+        topic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
 
     while (true) {
       pullResponse = pubsubResourceManager.pull(dlqSubscription, 2);
@@ -232,8 +236,10 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
       }
       Thread.sleep(2000);
     }
-    pubsubResourceManager.publish(dlqTopic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
-    pubsubResourceManager.publish(dlqTopic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+    pubsubResourceManager.publish(
+        dlqTopic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+    pubsubResourceManager.publish(
+        dlqTopic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(

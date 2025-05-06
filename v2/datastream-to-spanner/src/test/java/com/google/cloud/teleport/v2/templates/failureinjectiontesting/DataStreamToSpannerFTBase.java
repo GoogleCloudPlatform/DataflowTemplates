@@ -51,7 +51,6 @@ import org.apache.beam.it.gcp.datastream.MySQLSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.sdk.transforms.Top;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,17 +112,14 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
   }
 
   public TopicName createPubsubTopic(
-      String identifierSuffix,
-      PubsubResourceManager pubsubResourceManager) {
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager) {
     String topicNameSuffix = "FT-" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
     return topic;
   }
 
   public SubscriptionName createPubsubSubscription(
-      String identifierSuffix,
-      PubsubResourceManager pubsubResourceManager,
-      TopicName topic) {
+      String identifierSuffix, PubsubResourceManager pubsubResourceManager, TopicName topic) {
     String subscriptionNameSuffix = "FT" + identifierSuffix;
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
@@ -131,9 +127,7 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
   }
 
   public void createGcsPubsubNotification(
-      TopicName topic,
-      String gcsPrefix,
-      GcsResourceManager gcsResourceManager) {
+      TopicName topic, String gcsPrefix, GcsResourceManager gcsResourceManager) {
     String prefix = gcsPrefix;
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
