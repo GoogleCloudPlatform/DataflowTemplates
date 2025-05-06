@@ -26,7 +26,7 @@
     <artifactId>it-google-cloud-platform</artifactId>
 
     <properties>
-        <parquet-avro.version>1.13.1</parquet-avro.version>
+        <parquet-avro.version>1.15.2</parquet-avro.version>
     </properties>
     <dependencies>
         <dependency>
