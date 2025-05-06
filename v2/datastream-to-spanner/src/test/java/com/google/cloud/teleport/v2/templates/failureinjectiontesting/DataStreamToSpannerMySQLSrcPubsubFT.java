@@ -37,6 +37,7 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -225,9 +226,9 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
       Thread.sleep(2000);
     }
     pubsubResourceManager.publish(
-        topic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+        topic, new HashMap<>(), pullResponse.getReceivedMessages(0).getMessage().getData());
     pubsubResourceManager.publish(
-        topic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+        topic, new HashMap<>(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
     while (true) {
       pullResponse = pubsubResourceManager.pull(dlqSubscription, 2);
@@ -237,9 +238,9 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
       Thread.sleep(2000);
     }
     pubsubResourceManager.publish(
-        dlqTopic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+        dlqTopic, new HashMap<>(), pullResponse.getReceivedMessages(0).getMessage().getData());
     pubsubResourceManager.publish(
-        dlqTopic, null, pullResponse.getReceivedMessages(0).getMessage().getData());
+        dlqTopic, new HashMap<>(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
