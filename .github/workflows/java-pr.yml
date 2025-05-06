@@ -38,6 +38,7 @@ on:
       - '!v2/spanner-migrations-sdk/**'
       - '!v2/spanner-custom-shard/**'
       - '!v2/sourcedb-to-spanner/**'
+      - '!v2/spanner-to-sourcedb/**'
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:
