@@ -30,6 +30,7 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider;
+import com.google.common.collect.ImmutableMap;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -225,13 +226,9 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
       Thread.sleep(2000);
     }
     pubsubResourceManager.publish(
-        topic,
-        pullResponse.getReceivedMessages(0).getMessage().getAttributesMap(),
-        pullResponse.getReceivedMessages(0).getMessage().getData());
+        topic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
     pubsubResourceManager.publish(
-        topic,
-        pullResponse.getReceivedMessages(0).getMessage().getAttributesMap(),
-        pullResponse.getReceivedMessages(0).getMessage().getData());
+        topic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
     while (true) {
       pullResponse = pubsubResourceManager.pull(dlqSubscription, 2);
@@ -241,13 +238,9 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
       Thread.sleep(2000);
     }
     pubsubResourceManager.publish(
-        dlqTopic,
-        pullResponse.getReceivedMessages(0).getMessage().getAttributesMap(),
-        pullResponse.getReceivedMessages(0).getMessage().getData());
+        dlqTopic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
     pubsubResourceManager.publish(
-        dlqTopic,
-        pullResponse.getReceivedMessages(0).getMessage().getAttributesMap(),
-        pullResponse.getReceivedMessages(0).getMessage().getData());
+        dlqTopic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
