@@ -99,6 +99,7 @@ public class DataStreamToSQL {
   public interface Options extends PipelineOptions, StreamingOptions {
     @TemplateParameter.GcsReadFile(
         order = 1,
+        optional = true,
         groupName = "Source",
         description = "File location for Datastream file input in Cloud Storage.",
         helpText =
