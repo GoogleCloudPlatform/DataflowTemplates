@@ -99,7 +99,7 @@ public class ProcessInformationSchemaIntegrationTest {
         .asc("ID")
         .asc("ID2")
         .end()
-        .interleaveInParent("Table")
+        .interleavingParent("Table")
         .endTable();
   }
 
