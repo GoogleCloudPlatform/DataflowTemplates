@@ -191,6 +191,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
   private boolean internalMaven;
 
+  private String mavenRepo;
+
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -243,6 +245,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     this.unifiedWorker = unifiedWorker;
     this.internalMaven = false;
     this.generateSBOM = generateSBOM;
+    String maybeMavenRepo = project.getProperties().getProperty("beam-maven-repo");
+    if (!Strings.isNullOrEmpty(maybeMavenRepo)) {
+      maybeMavenRepo = maybeMavenRepo.replaceAll("/$", "");
+    }
+    this.mavenRepo = maybeMavenRepo;
   }
 
   public void execute() throws MojoExecutionException {
@@ -715,6 +722,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               .setServiceAccountSecretName(saSecretName)
               .setAirlockPythonRepo(airlockPythonRepo);
         }
+        if (!Strings.isNullOrEmpty(mavenRepo)) {
+          dockerfileBuilder.setMavenRepo(mavenRepo);
+        }
 
         dockerfileBuilder.build().generate();
       }
@@ -826,6 +836,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             .setAirlockPythonRepo(airlockPythonRepo)
             .setAirlockJavaRepo(airlockJavaRepo);
       }
+      if (!Strings.isNullOrEmpty(mavenRepo)) {
+        dockerfileBuilder.setMavenRepo(mavenRepo);
+      }
       dockerfileBuilder.build().generate();
     }
 
@@ -922,7 +935,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             .setServiceAccountSecretName(saSecretName)
             .setAirlockPythonRepo(airlockPythonRepo);
       }
-
+      if (!Strings.isNullOrEmpty(mavenRepo)) {
+        dockerfileBuilder.setMavenRepo(mavenRepo);
+      }
       dockerfileBuilder.build().generate();
     }
 
