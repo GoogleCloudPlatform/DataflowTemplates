@@ -64,6 +64,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -560,6 +561,16 @@ public class DataStreamToSpanner {
     String getShadowTableSpannerDatabaseId();
 
     void setShadowTableSpannerDatabaseId(String value);
+
+    @TemplateParameter.Text(
+        order = 34,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -668,8 +679,6 @@ public class DataStreamToSpanner {
                     .setMaxRpcTimeout(org.threeten.bp.Duration.ofMinutes(4))
                     .setMaxAttempts(1)
                     .build());
-    // TODO: spannerConfig = SpannerServiceFactoryImpl.createSpannerService(spannerConfig,
-    // <failureinjectionparameter>);
     SpannerConfig shadowTableSpannerConfig = getShadowTableSpannerConfig(options);
     /* Process information schema
      * 1) Read information schema from destination Cloud Spanner database
@@ -816,6 +825,9 @@ public class DataStreamToSpanner {
             "Write Filtered Events To GCS",
             TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
 
+    spannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            spannerConfig, options.getFailureInjectionParameter());
     /*
      * Stage 4: Write transformed records to Cloud Spanner
      */
