@@ -4,7 +4,6 @@ import com.google.cloud.logging.Payload;
 import com.google.cloud.logging.Severity;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;
-import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.List;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -58,7 +57,8 @@ public class LoggingClientTest {
     // TopicName topic = pubsubResourceManager.createTopic("topicNameSuffix");
     // SubscriptionName subscription =
     //     pubsubResourceManager.createSubscription(topic, "subscriptionNameSuffix");
-    SubscriptionName subscription = SubscriptionName.of("span-cloud-testing", "smt-sub-temp113-data_0e66-350c");
+    SubscriptionName subscription =
+        SubscriptionName.of("span-cloud-testing", "smt-sub-temp113-data_0e66-350c");
     PullResponse pulledMsgs;
     while (true) {
       pulledMsgs = pubsubResourceManager.pull(subscription, 2);
