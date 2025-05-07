@@ -50,11 +50,9 @@ runs:
         KEY: ${{ inputs.cache-key }}
       run: |
         if [[ "$KEY" == "" || "$KEY" == "''" ]]; then
-          echo "TODAY=$(date -u +%Y%m%d)" >> $GITHUB_ENV
-          echo "YESTERDAY=$(date -u --date='1 day ago' +%Y%m%d)" >> $GITHUB_ENV
+          echo "HASHKEY=$(md5sum pom.xml | head -c8)" >> $GITHUB_ENV
         else
-          echo "TODAY=$KEY" >> $GITHUB_ENV
-          echo "YESTERDAY=$KEY" >> $GITHUB_ENV
+          echo "HASHKEY=$KEY" >> $GITHUB_ENV
         fi
     - name: Setup Cache
       uses: actions/cache@v4
@@ -62,7 +60,4 @@ runs:
       with:
         path: |
           ~/.m2
-        key: java-maven-cache-${{ env.TODAY }}
-        restore-keys: |
-          java-maven-cache-${{ env.YESTERDAY }}
-          java-maven-cache
+        key: java-maven-cache-${{ env.HASHKEY }}
