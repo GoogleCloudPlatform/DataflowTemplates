@@ -30,7 +30,7 @@ message Export {
   // change stream or sequence name. Both `data_files` and `manifest_file` can
   // be used to locate the corresponding data files.
   message Table {
-    // The name of the table, view, change stream or sequence.
+    // The name of the table, view, change stream, sequence, or UDF.
     string name = 1;
     // Set of Avro file globs.
     // Use `data_files` when table manifest files with checksums are not
@@ -59,6 +59,8 @@ message Export {
   repeated Table sequences = 5;
   // The set of placements that were exported.
   repeated Table placements = 8;
+  // The set of user-defined functions that were exported.
+  repeated Table udfs = 9;
 
   // Contains a protobuf-serialized google.protobuf.FileDescriptorSet for
   // proto_descriptors (from spanner_database_admin.proto)

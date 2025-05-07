@@ -1661,6 +1661,88 @@ public class ImportFromAvroTest {
   }
 
   @Test
+  public void udfs() throws Exception {
+    Map<String, Schema> avroFiles = new HashMap<>();
+    avroFiles.put(
+        "Function1.avro",
+        SchemaBuilder.record("s1.Function1")
+            .prop("spannerEntity", "spannerUdf")
+            .prop("spannerUdfName", "s1.Function1")
+            .prop("spannerUdfDefinition", "(SELECT 'foo')")
+            .fields()
+            .endRecord());
+    avroFiles.put(
+        "Function2.avro",
+        SchemaBuilder.record("s1.Function2")
+            .prop("spannerEntity", "spannerUdf")
+            .prop("spannerUdfName", "s1.Function2")
+            .prop("spannerUdfDefinition", "(SELECT 'foo')")
+            .prop("spannerUdfType", "STRING")
+            .prop("spannerUdfSecurity", "INVOKER")
+            .prop("spannerUdfParameter_0", "arg0 STRING")
+            .prop("spannerUdfParameter_1", "arg1 STRING DEFAULT 'bar'")
+            .fields()
+            .endRecord());
+
+    ExportProtos.Export.Builder exportProtoBuilder = ExportProtos.Export.newBuilder();
+    for (Entry<String, Schema> entry : avroFiles.entrySet()) {
+      String fileName = entry.getKey();
+      Schema schema = entry.getValue();
+      exportProtoBuilder.addUdfs(
+          ExportProtos.Export.Table.newBuilder()
+              .setName(schema.getName())
+              .addDataFiles(fileName)
+              .build());
+      // Create the Avro files to be imported.
+      File avroFile = tmpDir.newFile(fileName);
+      try (DataFileWriter<GenericRecord> fileWriter =
+          new DataFileWriter<>(new GenericDatumWriter<>(schema))) {
+        fileWriter.create(schema, avroFile);
+      }
+    }
+
+    // Create the database manifest file.
+    ExportProtos.Export exportProto = exportProtoBuilder.build();
+    File manifestFile = tmpDir.newFile("spanner-export.json");
+    String manifestFileLocation = manifestFile.getParent();
+    Files.write(
+        manifestFile.toPath(),
+        JsonFormat.printer().print(exportProto).getBytes(StandardCharsets.UTF_8));
+
+    String schemaDef = "CREATE SCHEMA `s1`";
+    SPANNER_SERVER.createDatabase(dbName, Arrays.asList(schemaDef));
+
+    // Run the import pipeline.
+    importPipeline.apply(
+        "Import",
+        new ImportTransform(
+            SPANNER_SERVER.getSpannerConfig(dbName),
+            ValueProvider.StaticValueProvider.of(manifestFileLocation),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(true),
+            ValueProvider.StaticValueProvider.of(30)));
+    PipelineResult importResult = importPipeline.run();
+    importResult.waitUntilFinish();
+
+    Ddl ddl;
+    try (ReadOnlyTransaction ctx = SPANNER_SERVER.getDbClient(dbName).readOnlyTransaction()) {
+      ddl = new InformationSchemaScanner(ctx).scan();
+    }
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "\nCREATE SCHEMA `s1`\n"
+                + "CREATE FUNCTION `s1`.`Function1`() RETURNS STRING SQL SECURITY INVOKER"
+                + " AS ((SELECT 'foo'))\n"
+                + "CREATE FUNCTION `s1`.`Function2`("
+                + "`arg0` STRING, `arg1` STRING DEFAULT 'bar') RETURNS STRING"
+                + " SQL SECURITY INVOKER AS ((SELECT 'foo'))"));
+  }
+
+  @Test
   public void sequences() throws Exception {
     Map<String, Schema> avroFiles = new HashMap<>();
     avroFiles.put(
