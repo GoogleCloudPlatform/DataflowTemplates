@@ -50,7 +50,7 @@
     <!-- Beam and linked versions -->
     <beam.version>2.65.0</beam.version>
     <beam-python.version>2.65.0rc1</beam-python.version>
-    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1403</beam-maven-repo>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1404</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
