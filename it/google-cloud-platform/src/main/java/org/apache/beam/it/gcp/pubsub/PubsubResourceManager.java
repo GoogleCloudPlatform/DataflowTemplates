@@ -105,15 +105,15 @@ public final class PubsubResourceManager implements ResourceManager {
         new PubsubPublisherFactory(builder.credentialsProvider),
         TopicAdminClient.create(
             TopicAdminSettings.newBuilder()
-                // .setCredentialsProvider(builder.credentialsProvider)
+                .setCredentialsProvider(builder.credentialsProvider)
                 .build()),
         SubscriptionAdminClient.create(
             SubscriptionAdminSettings.newBuilder()
-                // .setCredentialsProvider(builder.credentialsProvider)
+                .setCredentialsProvider(builder.credentialsProvider)
                 .build()),
         SchemaServiceClient.create(
             SchemaServiceSettings.newBuilder()
-                // .setCredentialsProvider(builder.credentialsProvider)
+                .setCredentialsProvider(builder.credentialsProvider)
                 .build()),
         builder.monitoringClient);
   }
@@ -482,10 +482,10 @@ public final class PubsubResourceManager implements ResourceManager {
     }
 
     public PubsubResourceManager build() throws IOException {
-      // if (credentialsProvider == null) {
-      //   throw new IllegalArgumentException(
-      //       "Unable to find credentials. Please provide credentials to authenticate to GCP");
-      // }
+      if (credentialsProvider == null) {
+        throw new IllegalArgumentException(
+            "Unable to find credentials. Please provide credentials to authenticate to GCP");
+      }
       return new PubsubResourceManager(this);
     }
   }
