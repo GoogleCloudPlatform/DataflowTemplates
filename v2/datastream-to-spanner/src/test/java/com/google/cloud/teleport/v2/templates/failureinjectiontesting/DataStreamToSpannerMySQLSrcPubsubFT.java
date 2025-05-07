@@ -217,7 +217,7 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
     MySQLSrcDataProvider.writeRowsInSourceDB(1, 100, sourceDBResourceManager);
 
     // Wait for messages in pubsub for 5 minutes and consume them
-    PullResponse pullResponse;
+    PullResponse pullResponse = null;
     for (int i = 0; i < 300; ++i) {
       pullResponse = pubsubResourceManager.pull(subscription, 2);
       if (pullResponse.getReceivedMessagesCount() > 0) {
