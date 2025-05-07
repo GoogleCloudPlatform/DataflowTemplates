@@ -63,6 +63,7 @@ import org.apache.http.ssl.SSLContextBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+
 /**
  * {@link HttpEventPublisher} is a utility class that helps write {@link SplunkEvent}s to a Splunk
  * Event Collector (HEC) endpoint.
@@ -190,12 +191,24 @@ public abstract class HttpEventPublisher {
   }
 
   /** Utility method to get payload string from a list of {@link SplunkEvent}s. */
-  @VisibleForTesting
-  String getStringPayload(List<SplunkEvent> events) {
-    StringBuilder sb = new StringBuilder();
-    events.forEach(event -> sb.append(GSON.toJson(event)));
-    return sb.toString();
+/** Utility method to get payload string from a list of {@link SplunkEvent}s. */
+@VisibleForTesting
+String getStringPayload(List<SplunkEvent> events) {
+  StringBuilder sb = new StringBuilder();
+  for (SplunkEvent event : events) {
+    sb.append('{')
+      .append("\"time\":").append(event.time()).append(',')             // 1. time (no quotes)
+      .append("\"host\":").append(GSON.toJson(event.host())).append(',')           // 2. host
+      .append("\"source\":").append(GSON.toJson(event.source())).append(',')       // 3. source
+      .append("\"sourcetype\":").append(GSON.toJson(event.sourceType())).append(',') // 4. sourcetype
+      .append("\"index\":").append(GSON.toJson(event.index())).append(',')         // 5. index
+      .append("\"event\":").append(GSON.toJson(event.event()))                   // 6. event
+      .append('}');
   }
+  return sb.toString();
+}
+
+
 
   @AutoValue.Builder
   abstract static class Builder {
