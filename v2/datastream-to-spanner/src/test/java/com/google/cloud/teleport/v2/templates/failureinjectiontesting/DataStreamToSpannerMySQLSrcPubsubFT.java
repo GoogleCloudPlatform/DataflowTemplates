@@ -230,17 +230,17 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
     pubsubResourceManager.publish(
         topic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
-    while (true) {
-      pullResponse = pubsubResourceManager.pull(dlqSubscription, 2);
-      if (pullResponse.getReceivedMessagesCount() > 0) {
-        break;
-      }
-      Thread.sleep(2000);
-    }
-    pubsubResourceManager.publish(
-        dlqTopic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
-    pubsubResourceManager.publish(
-        dlqTopic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
+    // while (true) {
+    //   pullResponse = pubsubResourceManager.pull(dlqSubscription, 2);
+    //   if (pullResponse.getReceivedMessagesCount() > 0) {
+    //     break;
+    //   }
+    //   Thread.sleep(2000);
+    // }
+    // pubsubResourceManager.publish(
+    //     dlqTopic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
+    // pubsubResourceManager.publish(
+    //     dlqTopic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(

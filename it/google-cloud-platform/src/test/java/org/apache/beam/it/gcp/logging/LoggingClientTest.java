@@ -55,9 +55,10 @@ public class LoggingClientTest {
 
   @Test
   public void testpubsub() throws IOException, InterruptedException {
-    TopicName topic = pubsubResourceManager.createTopic("topicNameSuffix");
-    SubscriptionName subscription =
-        pubsubResourceManager.createSubscription(topic, "subscriptionNameSuffix");
+    // TopicName topic = pubsubResourceManager.createTopic("topicNameSuffix");
+    // SubscriptionName subscription =
+    //     pubsubResourceManager.createSubscription(topic, "subscriptionNameSuffix");
+    SubscriptionName subscription = SubscriptionName.of("span-cloud-testing", "smt-sub-temp113-data_0e66-350c");
     PullResponse pulledMsgs;
     while (true) {
       pulledMsgs = pubsubResourceManager.pull(subscription, 2);
@@ -67,10 +68,10 @@ public class LoggingClientTest {
       Thread.sleep(2000);
     }
     System.out.println(pulledMsgs);
-    pubsubResourceManager.publish(
-        topic,
-        pulledMsgs.getReceivedMessages(0).getMessage().getAttributesMap(),
-        pulledMsgs.getReceivedMessages(0).getMessage().getData());
-    System.out.println(subscription);
+    // pubsubResourceManager.publish(
+    //     topic,
+    //     pulledMsgs.getReceivedMessages(0).getMessage().getAttributesMap(),
+    //     pulledMsgs.getReceivedMessages(0).getMessage().getData());
+    // System.out.println(subscription);
   }
 }
