@@ -319,7 +319,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     # transformationClassName = ""
     # transformationCustomParameters = ""
     # filterEventsDirectoryName = "filteredEvents"
-    # isShardedMigration = false
+    # isShardedMigration = "false"
   }
 }
 ```
