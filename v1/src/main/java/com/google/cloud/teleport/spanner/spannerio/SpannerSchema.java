@@ -21,6 +21,8 @@ import com.google.cloud.spanner.Type;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableListMultimap;
@@ -153,6 +155,9 @@ public abstract class SpannerSchema implements Serializable {
   @AutoValue
   public abstract static class Column implements Serializable {
 
+    private static final Pattern PG_EMBEDDING_VECTOR_PATTERN =
+        Pattern.compile("^(\\D+)\\[\\]\\svector\\slength\\s\\d+$", Pattern.CASE_INSENSITIVE);
+
     static Column create(String name, Type type) {
       return new AutoValue_SpannerSchema_Column(name, type);
     }
@@ -229,6 +234,14 @@ public abstract class SpannerSchema implements Serializable {
           }
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         case POSTGRESQL:
+          // Handle vector_length annotation
+          Matcher m = PG_EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
+          if (m.find()) {
+            // Substring "xxx[] vector length yyy"
+            String arrayElementType = m.group(1);
+            Type itemType = parseSpannerType(arrayElementType, dialect);
+            return Type.array(itemType);
+          }
           if (spannerType.endsWith("[]")) {
             // Substring "xxx[]"
             // Must check array type first
