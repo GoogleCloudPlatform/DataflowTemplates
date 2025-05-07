@@ -736,6 +736,22 @@ public class DdlTest {
   }
 
   @Test
+  public void testpgVectorIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("VectorIndex")
+            .type("ScaNN")
+            .table("Base")
+            .options(ImmutableList.of("distance_type='COSINE'"));
+    builder.columns().create().name("Embeddings").none().endIndexColumn().end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"VectorIndex\" ON \"Base\" USING ScaNN (\"Embeddings\" ) WITH (distance_type='COSINE')"));
+  }
+
+  @Test
   public void pgTestIndex() {
     Index.Builder builder =
         Index.builder(Dialect.POSTGRESQL)
