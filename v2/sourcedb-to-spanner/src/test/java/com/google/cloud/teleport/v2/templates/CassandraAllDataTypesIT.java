@@ -20,6 +20,10 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.Type;
+import com.google.cloud.storage.BlobInfo;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.Storage.BlobListOption;
+import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.time.Duration;
@@ -27,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -70,12 +75,14 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
   public void setUp() {
     cassandraResourceManager = setupCassandraResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
+    skipBaseCleanup = true;
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, cassandraResourceManager);
+    // ResourceManagerUtils.cleanResources(spannerResourceManager, cassandraResourceManager);
+    ResourceManagerUtils.cleanResources(cassandraResourceManager);
   }
 
   @Test
@@ -94,6 +101,20 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(35L)));
     assertThatResult(result).isLaunchFinished();
+    LOG.info("Listing DLQ Entries from {} ", jobInfo.parameters().get("outputDirectory"));
+    Storage storage =
+        StorageOptions.newBuilder().setProjectId(jobInfo.projectId()).build().getService();
+    String dlqGcsPath = jobInfo.parameters().get("outputDirectory").replaceAll("/$", "") + "/dlq/";
+    List<String> dlqFiles =
+        storage
+            .list(
+                "smt-df-templates-test",
+                BlobListOption.prefix(dlqGcsPath.replaceFirst("^gs://[^/]+/?", "") + "dlq/"))
+            .streamAll()
+            .map(BlobInfo::getName)
+            .collect(Collectors.toList());
+    LOG.info("DLQ Entries from {} are {}", dlqFiles, dlqFiles);
+    assertThat(dlqFiles).isNotEmpty();
 
     // Validate supported data types.
     Map<String, List<Map<String, String>>> expectedData = getExpectedData();
