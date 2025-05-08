@@ -1937,9 +1937,9 @@ tqdm==4.66.5 \
     # via
     #   huggingface-hub
     #   transformers
-transformers==4.44.2 \
-    --hash=sha256:1c02c65e7bfa5e52a634aff3da52138b583fc6f263c1f28d547dc144ba3d412d \
-    --hash=sha256:36aa17cc92ee154058e426d951684a2dab48751b35b49437896f898931270826
+transformers==4.50.0 \
+    --hash=sha256:d4b0f587ec88825981103fee0a1e80230d956ecc8a7f3feeaafbe49a233c88b8 \
+    --hash=sha256:d75465d523a28bcfef0028c671f682edee29418ab9a5a15cf8a05171e7c54cb7
     # via -r ./python/../python/src/main/python/streaming-llm/base_requirements.txt
 triton==2.2.0 \
     --hash=sha256:0af58716e721460a61886668b205963dc4d1e4ac20508cc3f623aef0d70283d5 \
