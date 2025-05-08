@@ -79,6 +79,7 @@ import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.bson.Document;
 import org.bson.UuidRepresentation;
+import org.bson.conversions.Bson;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -1029,16 +1030,16 @@ public class DataStreamMongoDBToFirestore {
         // Add operations to bulk
         for (MongoDbChangeEventContext event : events) {
           Object docId = event.getDocumentId();
+          Bson lookupById = eq("_id", docId);
 
           if (event.isDeleteEvent()) {
             // Add delete operation
-            bulkOperations.add(
-                new DeleteOneModel<>(eq(MongoDbChangeEventContext.DOC_ID_COL, docId)));
+            bulkOperations.add(new DeleteOneModel<>(lookupById));
           } else {
             // Add upsert operation
             bulkOperations.add(
                 new ReplaceOneModel<>(
-                    eq(MongoDbChangeEventContext.DOC_ID_COL, docId),
+                    lookupById,
                     Utils.jsonToDocument(event.getDataAsJsonString(), event.getDocumentId()),
                     new ReplaceOptions().upsert(true)));
           }
@@ -1088,16 +1089,16 @@ public class DataStreamMongoDBToFirestore {
         // Add operations to bulk
         for (MongoDbChangeEventContext event : events) {
           Object docId = event.getDocumentId();
+          Bson lookupById = eq("_id", docId);
 
           if (event.isDeleteEvent()) {
             // Add delete operation
-            bulkOperations.add(
-                new DeleteOneModel<>(eq(MongoDbChangeEventContext.DOC_ID_COL, docId)));
+            bulkOperations.add(new DeleteOneModel<>(lookupById));
           } else {
             // Add upsert operation
             bulkOperations.add(
                 new ReplaceOneModel<>(
-                    eq(MongoDbChangeEventContext.DOC_ID_COL, docId),
+                    lookupById,
                     Utils.jsonToDocument(event.getDataAsJsonString(), event.getDocumentId()),
                     new ReplaceOptions().upsert(true)));
           }

@@ -76,11 +76,6 @@ public class ProcessChangeEventFn
         MongoCollection<Document> shadowCollection =
             database.getCollection(element.getShadowCollection());
 
-        LOG.info(
-            "Accessing collections - data: {}, shadow: {}",
-            element.getDataCollection(),
-            element.getShadowCollection());
-
         // Step 1: Query the shadow collection to see if there is any existing record of this id
         Object docId = element.getDocumentId();
         Bson lookupById = eq("_id", docId);
@@ -89,7 +84,6 @@ public class ProcessChangeEventFn
         session.startTransaction();
         LOG.info("Started transaction for document ID: {}", element.getDocumentId());
 
-        LOG.info("Querying shadow collection for document ID: {}", docId);
         Document shadowDoc = shadowCollection.find(session, lookupById).first();
         LOG.info("Shadow document found: {}", shadowDoc != null ? "yes" : "no");
 
@@ -109,8 +103,7 @@ public class ProcessChangeEventFn
             LOG.info("Updated shadow document for delete event, document ID: {}", docId);
           } else {
             // Regular insert or update.
-            LOG.info(
-                "Updating document with ID {} with data {}", docId, element.getDataAsJsonString());
+            LOG.info("Updating document with ID {}", docId);
             dataCollection.replaceOne(
                 session,
                 lookupById,

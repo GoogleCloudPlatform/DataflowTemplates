@@ -46,23 +46,17 @@ public class CreateMongoDbChangeEventContextFn
   @ProcessElement
   public void processElement(ProcessContext context, MultiOutputReceiver out) {
     FailsafeElement<String, String> element = context.element();
-    LOG.info("Creating MongoDbChangeEventContext from FailsafeElement");
-
     try {
-      LOG.info("Parsing JSON payload");
       JsonNode jsonNode = OBJECT_MAPPER.readTree(element.getOriginalPayload());
-
-      LOG.info("Creating MongoDbChangeEventContext with payload: {}", jsonNode);
       MongoDbChangeEventContext changeEventContext =
           new MongoDbChangeEventContext(jsonNode, shadowCollectionPrefix);
-
-      LOG.info(
-          "Successfully created MongoDbChangeEventContext for document ID: {}, collection: {}",
-          changeEventContext.getDocumentId(),
-          changeEventContext.getDataCollection());
       out.get(successfulCreationTag).output(changeEventContext);
     } catch (Exception e) {
-      LOG.error("Error creating MongoDbChangeEventContext: {}", e.getMessage(), e);
+      LOG.error(
+          "Error creating MongoDbChangeEventContext for element {}: {}",
+          element,
+          e.getMessage(),
+          e);
       LOG.info("Sending failed element to DLQ");
       out.get(failedCreationTag).output(element);
     }
