@@ -37,14 +37,14 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
 
     String username =
         accessSecret(
-            "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-username/versions/1");
+            "projects/269744978479/secrets/wide-row-table-username/versions/1");
     String password =
         accessSecret(
-            "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-password/versions/1");
+            "projects/269744978479/secrets/wide-row-table-password/versions/1");
     String database = "10MBStringCell";
     String host =
         accessSecret(
-            "projects/269744978479/secrets/nokill-sourcedb-mysql-to-spanner-cloudsql-ip-address/versions/1");
+            "projects/269744978479/secrets/wide-row-table-host/versions/1");
     int port = 3306;
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
@@ -53,7 +53,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     Map<String, Integer> expectedCountPerTable =
         new HashMap<>() {
           {
-            put("WideRowTable", 20000);
+            put("WideRowTable", 10000);
           }
         };
 
