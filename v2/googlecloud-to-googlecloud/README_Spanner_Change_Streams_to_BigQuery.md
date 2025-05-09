@@ -110,7 +110,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerProjectId**: The project to read change streams from. This value is also the project where the change streams connector metadata table is created. The default value for this parameter is the project where the Dataflow pipeline is running.
 * **spannerDatabaseRole**: The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
 * **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams connector metadata table is automatically created during the pipeline flow. You must provide this parameter when updating an existing pipeline. Otherwise, don't provide this parameter.
-* **autoscalingAlgorithm**: The autoscaling algorithm (https://cloud.google.com/dataflow/docs/guides/deploying-a-pipeline#horizontal-autoscaling) to use. Possible values are `THROUGHPUT_BASED` and `NONE` to disable. Defaults to `THROUGHPUT_BASED`.
+* **autoscalingAlgorithm**: The autoscaling algorithm (https://cloud.google.com/dataflow/docs/guides/deploying-a-pipeline#horizontal-autoscaling) to use. Possible values are `THROUGHPUT_BASED` or `NONE` to disable. Defaults to `THROUGHPUT_BASED`.
 * **rpcPriority**: The request priority for Spanner calls. The value must be one of the following values: `HIGH`, `MEDIUM`, or `LOW`. The default value is `HIGH`.
 * **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`.
 * **startTimestamp**: The starting DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
@@ -287,7 +287,7 @@ export BIG_QUERY_DATASET=<bigQueryDataset>
 export SPANNER_PROJECT_ID=""
 export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
-export AUTOSCALING_ALGORITHM=autoscalingAlgorithm
+export AUTOSCALING_ALGORITHM=<autoscalingAlgorithm>
 export RPC_PRIORITY=HIGH
 export SPANNER_HOST=<spannerHost>
 export START_TIMESTAMP=""
