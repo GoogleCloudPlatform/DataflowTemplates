@@ -110,6 +110,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerProjectId**: The project to read change streams from. This value is also the project where the change streams connector metadata table is created. The default value for this parameter is the project where the Dataflow pipeline is running.
 * **spannerDatabaseRole**: The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams).
 * **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams connector metadata table is automatically created during the pipeline flow. You must provide this parameter when updating an existing pipeline. Otherwise, don't provide this parameter.
+* **autoscalingAlgorithm**: The autoscaling algorithm (https://cloud.google.com/dataflow/docs/guides/deploying-a-pipeline#horizontal-autoscaling) to use. Possible values are `THROUGHPUT_BASED` and `NONE` to disable. Defaults to `THROUGHPUT_BASED`.
 * **rpcPriority**: The request priority for Spanner calls. The value must be one of the following values: `HIGH`, `MEDIUM`, or `LOW`. The default value is `HIGH`.
 * **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`.
 * **startTimestamp**: The starting DateTime (https://datatracker.ietf.org/doc/html/rfc3339), inclusive, to use for reading change streams. Ex-2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
@@ -213,6 +214,7 @@ export BIG_QUERY_DATASET=<bigQueryDataset>
 export SPANNER_PROJECT_ID=""
 export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
+export AUTOSCALING_ALGORITHM=<autoscalingAlgorithm>
 export RPC_PRIORITY=HIGH
 export SPANNER_HOST=<spannerHost>
 export START_TIMESTAMP=""
@@ -239,6 +241,7 @@ gcloud dataflow flex-template run "spanner-change-streams-to-bigquery-job" \
   --parameters "spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID" \
   --parameters "spannerMetadataDatabase=$SPANNER_METADATA_DATABASE" \
   --parameters "spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME" \
+  --parameters "autoscalingAlgorithm=$AUTOSCALING_ALGORITHM" \
   --parameters "spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME" \
   --parameters "rpcPriority=$RPC_PRIORITY" \
   --parameters "spannerHost=$SPANNER_HOST" \
@@ -284,6 +287,7 @@ export BIG_QUERY_DATASET=<bigQueryDataset>
 export SPANNER_PROJECT_ID=""
 export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
+export AUTOSCALING_ALGORITHM=autoscalingAlgorithm
 export RPC_PRIORITY=HIGH
 export SPANNER_HOST=<spannerHost>
 export START_TIMESTAMP=""
@@ -306,7 +310,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-change-streams-to-bigquery-job" \
 -DtemplateName="Spanner_Change_Streams_to_BigQuery" \
--Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,rpcPriority=$RPC_PRIORITY,spannerHost=$SPANNER_HOST,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,bigQueryDataset=$BIG_QUERY_DATASET,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableNameTemplate=$BIG_QUERY_CHANGELOG_TABLE_NAME_TEMPLATE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,ignoreFields=$IGNORE_FIELDS,disableDlqRetries=$DISABLE_DLQ_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="spannerProjectId=$SPANNER_PROJECT_ID,spannerInstanceId=$SPANNER_INSTANCE_ID,spannerDatabase=$SPANNER_DATABASE,spannerDatabaseRole=$SPANNER_DATABASE_ROLE,spannerMetadataInstanceId=$SPANNER_METADATA_INSTANCE_ID,spannerMetadataDatabase=$SPANNER_METADATA_DATABASE,spannerMetadataTableName=$SPANNER_METADATA_TABLE_NAME,autoscalingAlgorithm=$AUTOSCALING_ALGORITHM,spannerChangeStreamName=$SPANNER_CHANGE_STREAM_NAME,rpcPriority=$RPC_PRIORITY,spannerHost=$SPANNER_HOST,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,bigQueryDataset=$BIG_QUERY_DATASET,bigQueryProjectId=$BIG_QUERY_PROJECT_ID,bigQueryChangelogTableNameTemplate=$BIG_QUERY_CHANGELOG_TABLE_NAME_TEMPLATE,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,ignoreFields=$IGNORE_FIELDS,disableDlqRetries=$DISABLE_DLQ_RETRIES,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
 -f v2/googlecloud-to-googlecloud
 ```
 
@@ -360,6 +364,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_bigquery
     # spannerProjectId = ""
     # spannerDatabaseRole = "<spannerDatabaseRole>"
     # spannerMetadataTableName = "<spannerMetadataTableName>"
+    # autoscalingAlgorithm = "<autoscalingAlgorithm>"
     # rpcPriority = "HIGH"
     # spannerHost = "<spannerHost>"
     # startTimestamp = ""
