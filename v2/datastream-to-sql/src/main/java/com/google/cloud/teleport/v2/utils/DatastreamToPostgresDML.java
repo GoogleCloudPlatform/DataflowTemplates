@@ -40,6 +40,28 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   @Override
+  public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
+    String onUpdateSql = "";
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
+      String columnName = fieldNames.next();
+      if (!tableSchema.containsKey(columnName)) {
+        continue;
+      }
+
+      String quotedColumnName = quote(columnName);
+      String columnValue = getValueSql(rowObj, columnName, tableSchema);
+
+      if (onUpdateSql.equals("")) {
+        onUpdateSql = quotedColumnName + "=EXCLUDED." + quotedColumnName;
+      } else {
+        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=EXCLUDED." + columnValue;
+      }
+    }
+
+    return onUpdateSql;
+  }
+
+  @Override
   public String getDefaultQuoteCharacter() {
     return "\"";
   }
