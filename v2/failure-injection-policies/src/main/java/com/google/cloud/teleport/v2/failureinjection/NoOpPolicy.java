@@ -15,15 +15,19 @@
  */
 package com.google.cloud.teleport.v2.failureinjection;
 
-import static org.junit.Assert.assertTrue;
+import java.io.Serializable;
 
-import org.junit.Test;
+/** Policy that never injects errors. */
+public class NoOpPolicy implements ErrorInjectionPolicy, Serializable {
+  public NoOpPolicy() {}
 
-public class AlwaysFailPolicyTest {
+  @Override
+  public boolean shouldInjectionError() {
+    return false;
+  }
 
-  @Test
-  public void testShouldInjectError() {
-    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy(null);
-    assertTrue(alwaysFailPolicy.shouldInjectionError());
+  @Override
+  public String toString() {
+    return "NoOpPolicy";
   }
 }

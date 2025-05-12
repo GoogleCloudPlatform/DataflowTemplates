@@ -73,6 +73,7 @@ import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -116,6 +117,11 @@ public final class BigtableChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToPubSub.class);
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
+
+  private static final TupleTag<FailsafeElement<String, String>> INVALID_MODS_TAG =
+      new TupleTag<FailsafeElement<String, String>>("invalidMods") {};
+  private static final TupleTag<FailsafeElement<String, String>> VALID_MODS_TAG =
+      new TupleTag<FailsafeElement<String, String>>("validMods") {};
 
   /**
    * Main entry point for executing the pipeline.
@@ -309,21 +315,19 @@ public final class BigtableChangeStreamsToPubSub {
             .and(retryableDlqFailsafeModJson)
             .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
 
-    FailsafePublisher.FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubOptions =
-        FailsafePublisher.FailsafeModJsonToPubsubMessageOptions.builder()
-            .setCoder(FAILSAFE_ELEMENT_CODER)
-            .build();
-
     PublishModJsonToTopic publishModJsonToTopic =
-        new PublishModJsonToTopic(pubSub, failsafeModJsonToPubsubOptions);
+        new PublishModJsonToTopic(pubSub, VALID_MODS_TAG, INVALID_MODS_TAG);
 
-    PCollection<FailsafeElement<String, String>> failedToPublish =
+    PCollectionTuple failedToPublish =
         failsafeModJson.apply("Publish Mod JSON To Pubsub", publishModJsonToTopic);
 
     PCollection<String> transformDlqJson =
-        failedToPublish.apply(
-            "Failed Mod JSON During Table Row Transformation",
-            MapElements.via(new StringDeadLetterQueueSanitizer()));
+        failedToPublish
+            .get(VALID_MODS_TAG)
+            .setCoder(FAILSAFE_ELEMENT_CODER)
+            .apply(
+                "Failed Mod JSON During Table Row Transformation",
+                MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollectionList.of(transformDlqJson)
         .apply("Merge Failed Mod JSON From Transform And PubSub", Flatten.pCollections())
@@ -336,7 +340,12 @@ public final class BigtableChangeStreamsToPubSub {
                 .build());
 
     PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
-        dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
+        PCollectionList.of(
+                dlqModJson
+                    .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+                    .setCoder(FAILSAFE_ELEMENT_CODER))
+            .and(failedToPublish.get(INVALID_MODS_TAG).setCoder(FAILSAFE_ELEMENT_CODER))
+            .apply("Merge Reconsume And Invalid Mods", Flatten.pCollections());
     LOG.info(
         "DLQ manager severe DLQ directory with date time: {}",
         dlqManager.getSevereDlqDirectoryWithDateTime());

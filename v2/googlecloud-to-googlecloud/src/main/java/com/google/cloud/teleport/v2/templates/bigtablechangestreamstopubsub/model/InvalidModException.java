@@ -13,17 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.failureinjection;
+package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model;
 
-import static org.junit.Assert.assertTrue;
-
-import org.junit.Test;
-
-public class AlwaysFailPolicyTest {
-
-  @Test
-  public void testShouldInjectError() {
-    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy(null);
-    assertTrue(alwaysFailPolicy.shouldInjectionError());
+public class InvalidModException extends Exception {
+  public InvalidModException(String string) {
+    super("Invalid mod: " + string);
   }
 }
