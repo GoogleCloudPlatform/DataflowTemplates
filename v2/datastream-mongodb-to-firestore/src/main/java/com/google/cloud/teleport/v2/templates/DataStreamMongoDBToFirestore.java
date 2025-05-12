@@ -896,7 +896,7 @@ public class DataStreamMongoDBToFirestore {
     public void processElement(ProcessContext c, MultiOutputReceiver out) {
       MongoDbChangeEventContext event = c.element();
 
-      if (isBackfillEvent(event)) {
+      if (isNonDlqBackfillEvent(event)) {
         LOG.debug("Classified event as backfill for document ID: {}", event.getDocumentId());
         out.get(backfillTag).output(event);
       } else {
@@ -905,7 +905,10 @@ public class DataStreamMongoDBToFirestore {
       }
     }
 
-    private boolean isBackfillEvent(MongoDbChangeEventContext event) {
+    private boolean isNonDlqBackfillEvent(MongoDbChangeEventContext event) {
+      if (event.getIsDlqReconsumed()) {
+        return false;
+      }
       JsonNode jsonNode = event.getChangeEvent();
 
       // Check for CDC-specific fields
@@ -1066,6 +1069,7 @@ public class DataStreamMongoDBToFirestore {
 
         // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
+          event.setIsDlqReconsumed();
           out.get(failedWriteTag).output(event);
         }
       }
@@ -1125,6 +1129,7 @@ public class DataStreamMongoDBToFirestore {
 
         // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
+          event.setIsDlqReconsumed();
           context.output(failedWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
         }
       }

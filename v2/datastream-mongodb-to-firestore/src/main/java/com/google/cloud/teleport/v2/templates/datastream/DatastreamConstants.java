@@ -24,6 +24,8 @@ public class DatastreamConstants {
   public static final String TIMESTAMP_SECONDS = "_metadata_timestamp_seconds";
   public static final String TIMESTAMP_NANOS = "_metadata_timestamp_nanos";
   public static final String CHANGE_EVENT = "changeEvent";
+  // DLQ related event field
+  public static final String IS_DLQ_RECONSUMED = "isDlqReconsumed";
 
   // MongoDB specific fields
   public static final String MONGODB_DOCUMENT_ID = "_id";

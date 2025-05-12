@@ -395,7 +395,28 @@ public class MongoDbChangeEventContextTest {
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},"
             + "\"isDeleteEvent\":false,"
-            + "\"timestamp\":{\"seconds\":1683782270,\"nanos\":123456789}}";
+            + "\"timestamp\":{\"seconds\":1683782270,\"nanos\":123456789},"
+            + "\"isDlqReconsumed\":false}";
+
+    assertEquals(jsonString, expectedJson);
+  }
+
+  @Test
+  public void testIsDlqReconsumed() throws JsonProcessingException {
+    MongoDbChangeEventContext context = new MongoDbChangeEventContext(insertEvent, SHADOW_PREFIX);
+    assertFalse(context.getIsDlqReconsumed());
+    context.setIsDlqReconsumed();
+    assertTrue(context.getIsDlqReconsumed());
+    String jsonString = context.toString();
+
+    String expectedJson =
+        "{\"changeEvent\":{\"_metadata_source\":{\"collection\":\"test_collection\"},\"_id\":\"{\\\"$oid\\\": \\\"645c9a7e7b8b1a0e9c0f8b3a\\\"}\",\"data\":{\"field1\":\"value1\",\"field2\":123},\"_metadata_timestamp_seconds\":1683782270,\"_metadata_timestamp_nanos\":123456789,\"op\":\"i\"},"
+            + "\"dataCollection\":\"test_collection\","
+            + "\"shadowCollection\":\"shadow_test_collection\","
+            + "\"documentId\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},"
+            + "\"isDeleteEvent\":false,"
+            + "\"timestamp\":{\"seconds\":1683782270,\"nanos\":123456789},"
+            + "\"isDlqReconsumed\":true}";
 
     assertEquals(jsonString, expectedJson);
   }

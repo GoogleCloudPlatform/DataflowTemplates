@@ -164,6 +164,7 @@ public class ProcessChangeEventFn
               element.getDocumentId(),
               e.getMessage(),
               e);
+          element.setIsDlqReconsumed();
           out.get(failedWriteTag).output(element);
           break; // Exit the retry loop on non-transient error or max retries
         }

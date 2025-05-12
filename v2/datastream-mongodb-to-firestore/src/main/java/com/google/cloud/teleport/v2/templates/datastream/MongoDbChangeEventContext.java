@@ -57,6 +57,7 @@ public class MongoDbChangeEventContext implements Serializable {
   private final String jsonStringData;
   private final boolean isDeleteEvent;
   private final Document timestampDoc;
+  private boolean isDlqReconsumed;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -70,6 +71,17 @@ public class MongoDbChangeEventContext implements Serializable {
   private boolean isDeleteEvent(JsonNode changeEvent) {
     String changeType = getChangeType(changeEvent);
     return DatastreamConstants.DELETE_EVENT.equalsIgnoreCase(changeType);
+  }
+
+  /** Determines if the event is from dlq. */
+  private boolean isDlqReconsumed(JsonNode changeEvent) {
+    if (changeEvent.has(DatastreamConstants.IS_DLQ_RECONSUMED)) {
+      return changeEvent
+          .get(DatastreamConstants.IS_DLQ_RECONSUMED)
+          .asText()
+          .equalsIgnoreCase("true");
+    }
+    return false;
   }
 
   public MongoDbChangeEventContext(JsonNode payload, String shadowCollectionPrefix)
@@ -136,6 +148,7 @@ public class MongoDbChangeEventContext implements Serializable {
 
     this.jsonStringData = dataAsJsonString();
     this.shadowDocument = generateShadowDocument();
+    this.isDlqReconsumed = isDlqReconsumed(changeEvent);
   }
 
   /** Creates a shadow document for tracking event ordering. */
@@ -199,6 +212,10 @@ public class MongoDbChangeEventContext implements Serializable {
     return timestampDoc;
   }
 
+  public boolean getIsDlqReconsumed() {
+    return isDlqReconsumed;
+  }
+
   /**
    * Override toString() to provide a proper JSON representation of this object. This ensures that
    * when the object is serialized to a string, it produces valid JSON.
@@ -231,6 +248,8 @@ public class MongoDbChangeEventContext implements Serializable {
         jsonNode.set(TIMESTAMP_COL, timestampNode);
       }
 
+      jsonNode.put(DatastreamConstants.IS_DLQ_RECONSUMED, this.isDlqReconsumed);
+
       return OBJECT_MAPPER.writeValueAsString(jsonNode);
     } catch (JsonProcessingException e) {
       LOG.error("Error serializing MongoDbChangeEventContext to JSON: {}", e.getMessage(), e);
@@ -254,5 +273,9 @@ public class MongoDbChangeEventContext implements Serializable {
       return Objects.equals(this.toString(), other.toString());
     }
     return false;
+  }
+
+  public void setIsDlqReconsumed() {
+    this.isDlqReconsumed = true;
   }
 }
