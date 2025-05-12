@@ -36,15 +36,11 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
   public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
 
     String username =
-        accessSecret(
-            "projects/269744978479/secrets/wide-row-table-username/versions/1");
+        accessSecret("projects/269744978479/secrets/wide-row-table-username/versions/1");
     String password =
-        accessSecret(
-            "projects/269744978479/secrets/wide-row-table-password/versions/1");
+        accessSecret("projects/269744978479/secrets/wide-row-table-password/versions/1");
     String database = "10MBStringCell";
-    String host =
-        accessSecret(
-            "projects/269744978479/secrets/wide-row-table-host/versions/1");
+    String host = accessSecret("projects/269744978479/secrets/wide-row-table-host/versions/1");
     int port = 3306;
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
