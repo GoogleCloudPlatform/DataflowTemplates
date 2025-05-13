@@ -1,6 +1,5 @@
-apache-beam[gcp]
+apache-beam[gcp]==2.65.0
 torch
 transformers
 torchvision
 setuptools
-virtualenv-clone # TODO: remove after upgrading to Beam 2.65.0

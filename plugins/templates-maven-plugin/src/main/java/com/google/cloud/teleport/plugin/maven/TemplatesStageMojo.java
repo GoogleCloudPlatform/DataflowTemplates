@@ -191,6 +191,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
   private boolean internalMaven;
 
+  private String mavenRepo;
+
   public TemplatesStageMojo() {}
 
   public TemplatesStageMojo(
@@ -422,6 +424,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         && !Strings.isNullOrEmpty(airlockJavaRepo)) {
       internalMaven = true;
     }
+
+    String maybeMavenRepo = project.getProperties().getProperty("beam-maven-repo");
+    if (!Strings.isNullOrEmpty(maybeMavenRepo)) {
+      maybeMavenRepo = maybeMavenRepo.replaceAll("/$", "");
+    }
+    this.mavenRepo = maybeMavenRepo;
 
     // Override some image spec attributes available only during staging/release:
     String version = TemplateDefinitionsParser.parseVersion(stagePrefix);
@@ -715,6 +723,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               .setServiceAccountSecretName(saSecretName)
               .setAirlockPythonRepo(airlockPythonRepo);
         }
+        if (!Strings.isNullOrEmpty(mavenRepo)) {
+          dockerfileBuilder.setMavenRepo(mavenRepo);
+        }
 
         dockerfileBuilder.build().generate();
       }
@@ -826,6 +837,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             .setAirlockPythonRepo(airlockPythonRepo)
             .setAirlockJavaRepo(airlockJavaRepo);
       }
+      if (!Strings.isNullOrEmpty(mavenRepo)) {
+        dockerfileBuilder.setMavenRepo(mavenRepo);
+      }
       dockerfileBuilder.build().generate();
     }
 
@@ -922,7 +936,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             .setServiceAccountSecretName(saSecretName)
             .setAirlockPythonRepo(airlockPythonRepo);
       }
-
+      if (!Strings.isNullOrEmpty(mavenRepo)) {
+        dockerfileBuilder.setMavenRepo(mavenRepo);
+      }
       dockerfileBuilder.build().generate();
     }
 
