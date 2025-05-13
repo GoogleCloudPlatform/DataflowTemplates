@@ -741,7 +741,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <jdk>[1.)</jdk>
+        <activeByDefault>false</activeByDefault>
       </activation>
       <repositories>
         <repository>
