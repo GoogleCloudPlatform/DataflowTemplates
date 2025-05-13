@@ -106,7 +106,7 @@ public abstract class DatastreamToDML
 
       // Null rows suggest no DML is required.
       if (dmlInfo != null) {
-        LOG.debug("Output Data: {}", jsonString);
+        LOG.info("Output Data: {}", jsonString);
         context.output(KV.of(dmlInfo.getStateWindowKey(), dmlInfo));
       } else {
         LOG.debug("Skipping Null DmlInfo: {}", jsonString);
