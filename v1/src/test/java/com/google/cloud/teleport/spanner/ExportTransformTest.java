@@ -146,6 +146,8 @@ public class ExportTransformTest {
             "changeStream manifest",
             "sequence",
             "sequence manifest",
+            "function",
+            "function manifest",
             "placement",
             "placement manifest",
             "propertyGraph1",
@@ -181,6 +183,7 @@ public class ExportTransformTest {
     ddlBuilder.createModel("model1").remote(true).endModel();
     ddlBuilder.createChangeStream("changeStream").endChangeStream();
     ddlBuilder.createSequence("sequence").endSequence();
+    ddlBuilder.createUdf("function").endUdf();
     ddlBuilder.createPropertyGraph("propertyGraph1").endPropertyGraph();
     ddlBuilder
         .createPlacement("placement")
@@ -253,6 +256,11 @@ public class ExportTransformTest {
                   assertThat(
                       manifestProto.getSequences(0).getManifestFile(),
                       is("sequence-manifest.json"));
+
+                  assertThat(manifestProto.getUdfsCount(), is(1));
+                  assertThat(manifestProto.getUdfs(0).getName(), is("function"));
+                  assertThat(
+                      manifestProto.getUdfs(0).getManifestFile(), is("function-manifest.json"));
                   return null;
                 });
 
