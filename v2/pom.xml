@@ -40,7 +40,8 @@
         <kafka-clients.version>3.7.0</kafka-clients.version>
         <opencensus.version>0.31.0</opencensus.version>
         <protoc.version>4.29.4</protoc.version>
-
+        <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
+        <base-container-image.version>latest</base-container-image.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
 
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
@@ -195,7 +196,7 @@
                         <from>
                             <!--
                             The Dataflow Template base image to use. This
-                             should not need to change unless we want to use the JDK11
+                             should not need to change unless we want to overwrite image path
                              -->
                             <image>${base-container-image}:${base-container-image.version}</image>
                         </from>
