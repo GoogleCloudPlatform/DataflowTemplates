@@ -55,6 +55,7 @@ import com.google.cloud.teleport.v2.templates.utils.CassandraSourceSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -594,7 +595,7 @@ public class SpannerToSourceDb {
                 ? debugOptions.getNumberOfWorkerHarnessThreads()
                 : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
-    if (isRegularMode) {
+    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
               pipeline.apply(
