@@ -470,25 +470,34 @@ public class DataStreamMongoDBToFirestore {
    * Runs the pipeline with backfill events processed before CDC events.
    *
    * <p>This pipeline first processes all backfill events, then processes CDC events. This ensures
-   * that the initial state of the database is established before any changes are applied.
+   * that the initial state of the database is established before any changes are applied. Failures
+   * in backfill will be sent over to dlq and be processed with conflict resolving.
    *
    * @param options The execution parameters to the pipeline.
    * @return The result of the pipeline execution.
    */
   private static PipelineResult runWithBackfillFirst(Options options, String connectionString) {
+    /*
+     * Stages:
+     *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
+     *   2) Convert json strings to MongoDbChangeEventContext
+     *   3) Split the MongoDbChangeEventContext into backfill and cdc events
+     *   4) Process backfill events with bulk writes, failed backfill will be sent to dlq and later processed with transactions and conflict resolving.
+     *   5) Process the cdc events with transactions
+     */
     LOG.info("Creating pipeline with backfill-first processing");
     Pipeline pipeline = Pipeline.create(options);
 
     LOG.info("Building Dead Letter Queue manager");
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
-    // Ingest data from GCS
+    // Stage 1: Ingest data from GCS
     LOG.info("Ingesting data from GCS");
     PCollection<FailsafeElement<String, String>> jsonRecords =
         ingestAndNormalizeJson(options, dlqManager, pipeline)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    // Create MongoDbChangeEventContext objects
+    // Stage 2: Create MongoDbChangeEventContext objects
     LOG.info("Creating MongoDbChangeEventContext objects");
     PCollectionTuple changeEventContexts =
         jsonRecords.apply(
@@ -512,7 +521,7 @@ public class DataStreamMongoDBToFirestore {
         dlqManager,
         CreateMongoDbChangeEventContextFn.failedCreationTag);
 
-    // Split events into backfill and CDC streams
+    // Stage 3: Split events into backfill and CDC streams
     LOG.info("Splitting events into backfill and CDC streams");
     PCollectionTuple splitEvents =
         changeEventContexts
@@ -532,7 +541,7 @@ public class DataStreamMongoDBToFirestore {
         .get(SplitBackfillAndCdcEventsFn.cdcTag)
         .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
 
-    // Process backfill events
+    // Stage 4: Process backfill events
     LOG.info("Processing backfill events");
     PCollectionTuple backfillResult;
     if (options.getUseShadowTablesForBackfill()) {
@@ -584,7 +593,7 @@ public class DataStreamMongoDBToFirestore {
             ? ProcessChangeEventFn.failedWriteTag
             : ProcessBackfillEventFn.failedWriteTag);
 
-    // Process CDC events
+    // Stage 5: Process CDC events
     LOG.info("Processing CDC events");
     PCollectionTuple cdcResult =
         splitEvents
@@ -749,14 +758,15 @@ public class DataStreamMongoDBToFirestore {
     }
   }
 
+  /** Read from input path and dlq to collect objects to process. */
   private static PCollection<FailsafeElement<String, String>> ingestAndNormalizeJson(
       Options options, DeadLetterQueueManager dlqManager, Pipeline pipeline) {
     LOG.info("Starting ingestion and normalization of JSON data");
-    PCollection<FailsafeElement<String, String>> jsonRecords = null;
+    PCollection<FailsafeElement<String, String>> jsonRecords;
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
-    PCollectionTuple reconsumedElements = null;
+    PCollectionTuple reconsumedElements;
     boolean isRegularMode = "regular".equals(options.getRunMode());
 
     LOG.info("Setting up DLQ reconsumption, mode: {}", isRegularMode ? "regular" : "retry");

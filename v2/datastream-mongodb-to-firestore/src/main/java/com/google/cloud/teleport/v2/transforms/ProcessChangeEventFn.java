@@ -36,7 +36,7 @@ import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** */
+/** DoFn to process events with conflict resolving via transactions. */
 public class ProcessChangeEventFn
     extends DoFn<MongoDbChangeEventContext, MongoDbChangeEventContext> {
 
@@ -142,7 +142,8 @@ public class ProcessChangeEventFn
                 abortException);
           }
         }
-        if (isTransientTransactionError(e) && retryCount < maxRetries) {
+        if (retryCount < maxRetries) {
+          // Retry regardless of error types till maxRetries before thrown to dlq.
           LOG.warn(
               "Transient transaction error encountered for document ID: {}, attempt: {}. Retrying in {} ms...",
               element.getDocumentId(),
