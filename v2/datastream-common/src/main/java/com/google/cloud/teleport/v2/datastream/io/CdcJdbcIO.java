@@ -569,7 +569,6 @@ public class CdcJdbcIO {
 
         for (T record : records) {
           String formattedStatement = spec.getStatementFormatter().formatStatement(record);
-          LOG.info("FINDME SQL: {}", formattedStatement);
           statement.addBatch(formattedStatement);
         }
 
@@ -584,7 +583,6 @@ public class CdcJdbcIO {
 
         for (T record : records) {
           String formattedStatement = spec.getStatementFormatter().formatStatement(record);
-          LOG.info("FINDME SQL: {}", formattedStatement);
           try {
             statement.executeUpdate(formattedStatement);
             connection.commit();
