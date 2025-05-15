@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -37,6 +38,28 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
 
   public static DatastreamToPostgresDML of(DataSourceConfiguration config) {
     return new DatastreamToPostgresDML(config);
+  }
+
+  @Override
+  public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
+    String onUpdateSql = "";
+    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
+      String columnName = fieldNames.next();
+      if (!tableSchema.containsKey(columnName)) {
+        continue;
+      }
+
+      String quotedColumnName = quote(columnName);
+      String columnValue = getValueSql(rowObj, columnName, tableSchema);
+
+      if (onUpdateSql.equals("")) {
+        onUpdateSql = quotedColumnName + "=EXCLUDED." + quotedColumnName;
+      } else {
+        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=EXCLUDED." + quotedColumnName;
+      }
+    }
+
+    return onUpdateSql;
   }
 
   @Override
