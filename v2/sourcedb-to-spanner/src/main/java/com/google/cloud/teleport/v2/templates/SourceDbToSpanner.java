@@ -29,8 +29,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -70,8 +68,6 @@ import org.slf4j.LoggerFactory;
     })
 public class SourceDbToSpanner {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
-
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
    * blocking execution is required, use the {@link SourceDbToSpanner#run} method to start the
@@ -102,13 +98,29 @@ public class SourceDbToSpanner {
     SpannerConfig spannerConfig = createSpannerConfig(options);
 
     // Decide type and source of migration
+    // TODO(vardhanvthigle): Move this within pipelineController.
+    switch (options.getSourceDbDialect()) {
+      case SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT:
+        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
+      default:
+        /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
+        /* Making jdbc as default case which includes MYSQL and PG. */
+        return executeJdbcMigration(options, pipeline, spannerConfig);
+    }
+  }
+
+  // TODO(vardhanvthigle): Move this within pipelineController.
+  private static PipelineResult executeJdbcMigration(
+      SourceDbToSpannerOptions options, Pipeline pipeline, SpannerConfig spannerConfig) {
     if (options.getSourceConfigURL().startsWith("gs://")) {
       List<Shard> shards =
           new ShardFileReader(new SecretManagerAccessorImpl())
               .readForwardMigrationShardingConfig(options.getSourceConfigURL());
-      return PipelineController.executeShardedMigration(options, pipeline, shards, spannerConfig);
+      return PipelineController.executeJdbcShardedMigration(
+          options, pipeline, shards, spannerConfig);
     } else {
-      return PipelineController.executeSingleInstanceMigration(options, pipeline, spannerConfig);
+      return PipelineController.executeJdbcSingleInstanceMigration(
+          options, pipeline, spannerConfig);
     }
   }
 
@@ -118,6 +130,7 @@ public class SourceDbToSpanner {
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
   }
 }

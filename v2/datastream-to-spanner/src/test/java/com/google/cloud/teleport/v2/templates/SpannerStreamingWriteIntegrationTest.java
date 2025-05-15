@@ -41,6 +41,7 @@ import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.json.JSONObject;
 import org.junit.After;
@@ -113,7 +114,7 @@ public class SpannerStreamingWriteIntegrationTest {
             .asc("id")
             .desc("id2")
             .end()
-            .interleaveInParent("Table1")
+            .interleavingParent("Table1")
             .endTable()
             .build();
     spannerServer.createDatabase(testDb, ddl.statements());
@@ -141,16 +142,34 @@ public class SpannerStreamingWriteIntegrationTest {
   private void constructAndRunPipeline(PCollection<FailsafeElement<String, String>> jsonRecords) {
     String shadowTablePrefix = "shadow";
     SpannerConfig spannerConfig = spannerServer.getSpannerConfig(testDb);
-    PCollection<Ddl> ddl =
+
+    PCollectionTuple ddlTuple =
         testPipeline.apply(
             "Process Information Schema",
-            new ProcessInformationSchema(spannerConfig, true, shadowTablePrefix, "oracle"));
-    PCollectionView<Ddl> ddlView = ddl.apply("Cloud Spanner DDL as view", View.asSingleton());
+            new ProcessInformationSchema(
+                spannerConfig, spannerConfig, true, shadowTablePrefix, "oracle"));
+    PCollectionView<Ddl> ddlView =
+        ddlTuple
+            .get(ProcessInformationSchema.MAIN_DDL_TAG)
+            .apply("Cloud Spanner Main DDL as view", View.asSingleton());
+
+    PCollectionView<Ddl> shadowTableDdlView =
+        ddlTuple
+            .get(ProcessInformationSchema.SHADOW_TABLE_DDL_TAG)
+            .apply("Cloud Spanner shadow tables DDL as view", View.asSingleton());
+
     Schema schema = new Schema();
 
     jsonRecords.apply(
         "Write events to Cloud Spanner",
-        new SpannerTransactionWriter(spannerConfig, ddlView, shadowTablePrefix, "oracle", true));
+        new SpannerTransactionWriter(
+            spannerConfig,
+            spannerConfig,
+            ddlView,
+            shadowTableDdlView,
+            shadowTablePrefix,
+            "oracle",
+            true));
 
     PipelineResult testResult = testPipeline.run();
     testResult.waitUntilFinish();

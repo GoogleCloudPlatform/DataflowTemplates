@@ -1,4 +1,4 @@
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     company
 (
     company_id      INT64 NOT NULL,
@@ -6,7 +6,7 @@ CREATE TABLE
     created_on      DATE,
 ) PRIMARY KEY
   (company_id);
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     employee
 (
     employee_id         INT64 NOT NULL,
@@ -17,7 +17,7 @@ CREATE TABLE
 ) PRIMARY KEY
   (employee_id);
 
-CREATE TABLE
+CREATE TABLE IF NOT EXISTS
     employee_attribute
 (
     employee_id    INT64 NOT NULL,
@@ -29,7 +29,7 @@ CREATE TABLE
 
 CREATE SEQUENCE Sequence7 OPTIONS (sequence_kind = 'bit_reversed_positive');
 
-CREATE TABLE vendor (
+CREATE TABLE IF NOT EXISTS vendor (
     vendor_id INT64 NOT NULL DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE Sequence7)),
     first_name STRING(255) NOT NULL,
     last_name STRING(255) NOT NULL,

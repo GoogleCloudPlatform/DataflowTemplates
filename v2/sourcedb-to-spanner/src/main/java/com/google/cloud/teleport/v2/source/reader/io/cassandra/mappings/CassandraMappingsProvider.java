@@ -19,6 +19,7 @@ import com.datastax.driver.core.Duration;
 import com.datastax.driver.core.LocalDate;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
+import com.datastax.driver.core.utils.Bytes;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
@@ -26,8 +27,12 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.IntervalNano;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.UnifiedMappingProvider;
 import com.google.common.collect.ImmutableMap;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.util.Date;
+import java.util.UUID;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.codec.binary.Hex;
@@ -40,11 +45,15 @@ public class CassandraMappingsProvider {
   private static final CassandraRowValueMapper toString = (value, schema) -> value.toString();
 
   /** Pass the value as an integer to avro. */
-  private static final CassandraRowValueMapper<Number> toInt = (value, schema) -> value.intValue();
+  private static final CassandraRowValueMapper<Byte> byteToInt =
+      (value, schema) -> value.intValue();
+
+  private static final CassandraRowValueMapper<Short> shortToInt =
+      (value, schema) -> value.intValue();
 
   /** Map {@link ByteBuffer} to a Hex encoded String. */
   private static final CassandraRowValueMapper<ByteBuffer> ByteBufferToHexString =
-      (value, schema) -> new String(Hex.encodeHex(value.array()));
+      (value, schema) -> new String(Hex.encodeHex(Bytes.getArray(value)));
 
   /**
    * Map {@link LocalDate} to {@link LogicalTypes.Date}. Cassandra Date type encodes number of days
@@ -84,38 +93,116 @@ public class CassandraMappingsProvider {
 
   private static final CassandraMappings CASSANDRA_MAPPINGS =
       CassandraMappings.builder()
-          .put("ASCII", UnifiedMappingProvider.Type.STRING, Row::getString, valuePassThrough)
-          .put("BIGINT", UnifiedMappingProvider.Type.LONG, Row::getLong, valuePassThrough)
-          .put("BLOB", UnifiedMappingProvider.Type.STRING, Row::getBytes, ByteBufferToHexString)
-          .put("BOOLEAN", UnifiedMappingProvider.Type.BOOLEAN, Row::getBool, valuePassThrough)
-          .put("COUNTER", UnifiedMappingProvider.Type.LONG, Row::getLong, valuePassThrough)
-          .put("DATE", UnifiedMappingProvider.Type.DATE, Row::getDate, localDateToAvroLogicalDate)
+          .put(
+              "ASCII",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getString,
+              valuePassThrough,
+              String.class)
+          .put(
+              "BIGINT",
+              UnifiedMappingProvider.Type.LONG,
+              Row::getLong,
+              valuePassThrough,
+              Long.class)
+          .put(
+              "BLOB",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getBytes,
+              ByteBufferToHexString,
+              ByteBuffer.class)
+          .put(
+              "BOOLEAN",
+              UnifiedMappingProvider.Type.BOOLEAN,
+              Row::getBool,
+              valuePassThrough,
+              Boolean.class)
+          .put(
+              "COUNTER",
+              UnifiedMappingProvider.Type.LONG,
+              Row::getLong,
+              valuePassThrough,
+              Long.class)
+          .put(
+              "DATE",
+              UnifiedMappingProvider.Type.DATE,
+              Row::getDate,
+              localDateToAvroLogicalDate,
+              LocalDate.class)
           // The Cassandra decimal does not have precision and scale fixed in the
           // schema which would be needed if we want to map it to Avro Decimal.
-          .put("DECIMAL", UnifiedMappingProvider.Type.STRING, Row::getDecimal, toString)
-          .put("DOUBLE", UnifiedMappingProvider.Type.DOUBLE, Row::getDouble, valuePassThrough)
-          .put("DURATION", UnifiedMappingProvider.Type.INTERVAL_NANO, getDuration, durationToAvro)
-          .put("FLOAT", UnifiedMappingProvider.Type.FLOAT, Row::getFloat, valuePassThrough)
-          .put("INET", UnifiedMappingProvider.Type.STRING, Row::getInet, toString)
-          .put("INT", UnifiedMappingProvider.Type.INTEGER, Row::getInt, valuePassThrough)
-          .put("SMALLINT", UnifiedMappingProvider.Type.INTEGER, Row::getShort, toInt)
-          .put("TEXT", UnifiedMappingProvider.Type.STRING, Row::getString, valuePassThrough)
           .put(
-              "TIME",
+              "DECIMAL",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getDecimal,
+              toString,
+              BigDecimal.class)
+          .put(
+              "DOUBLE",
+              UnifiedMappingProvider.Type.DOUBLE,
+              Row::getDouble,
+              valuePassThrough,
+              Double.class)
+          .put(
+              "DURATION",
               UnifiedMappingProvider.Type.INTERVAL_NANO,
-              Row::getTime,
-              cassandraTimeToIntervalNano)
-          .put("TIMESTAMP", UnifiedMappingProvider.Type.TIMESTAMP, Row::getTimestamp, dateToAvro)
-          .put("TIMEUUID", UnifiedMappingProvider.Type.STRING, Row::getUUID, toString)
-          .put("TINYINT", UnifiedMappingProvider.Type.INTEGER, Row::getByte, toInt)
-          .put("UUID", UnifiedMappingProvider.Type.STRING, Row::getUUID, toString)
-          .put("VARCHAR", UnifiedMappingProvider.Type.STRING, Row::getString, valuePassThrough)
-          .put("VARINT", UnifiedMappingProvider.Type.NUMBER, Row::getVarint, toString)
+              getDuration,
+              durationToAvro,
+              Duration.class)
+          .put(
+              "FLOAT",
+              UnifiedMappingProvider.Type.FLOAT,
+              Row::getFloat,
+              valuePassThrough,
+              Float.class)
+          .put(
+              "INET", UnifiedMappingProvider.Type.STRING, Row::getInet, toString, InetAddress.class)
+          .put(
+              "INT",
+              UnifiedMappingProvider.Type.INTEGER,
+              Row::getInt,
+              valuePassThrough,
+              Integer.class)
+          .put(
+              "SMALLINT",
+              UnifiedMappingProvider.Type.INTEGER,
+              Row::getShort,
+              shortToInt,
+              Short.class)
+          .put(
+              "TEXT",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getString,
+              valuePassThrough,
+              String.class)
+          .put("TIME", UnifiedMappingProvider.Type.LONG, Row::getTime, valuePassThrough, Long.class)
+          .put(
+              "TIMESTAMP",
+              UnifiedMappingProvider.Type.TIMESTAMP,
+              Row::getTimestamp,
+              dateToAvro,
+              Date.class)
+          .put("TIMEUUID", UnifiedMappingProvider.Type.STRING, Row::getUUID, toString, UUID.class)
+          .put("TINYINT", UnifiedMappingProvider.Type.INTEGER, Row::getByte, byteToInt, Byte.class)
+          .put("UUID", UnifiedMappingProvider.Type.STRING, Row::getUUID, toString, UUID.class)
+          .put(
+              "VARCHAR",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getString,
+              valuePassThrough,
+              String.class)
+          .put(
+              "VARINT",
+              UnifiedMappingProvider.Type.NUMBER,
+              Row::getVarint,
+              toString,
+              BigInteger.class)
           .put(
               "UNSUPPORTED",
               UnifiedMappingProvider.Type.UNSUPPORTED,
               (row, name) -> null,
-              (value, schema) -> null)
+              (value, schema) -> null,
+              null)
           .build();
 
   private CassandraMappingsProvider() {}

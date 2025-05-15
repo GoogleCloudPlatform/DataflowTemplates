@@ -22,6 +22,7 @@ on:
     - 'main'
     paths:
       # Template wide common modules
+      - 'pom.xml'
       - 'v2/common/**'
       - 'v2/datastream-common/**'
       - 'it/google-cloud-platform/**'
@@ -42,7 +43,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -111,10 +112,10 @@ jobs:
         ./cicd/run-unit-tests \
         --modules-to-build="SPANNER"
     - name: Upload Unit Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-unit-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
     - name: Upload coverage reports to Codecov
@@ -148,10 +149,10 @@ jobs:
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Upload Smoke Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-smoke-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
     - name: Cleanup Java Environment
@@ -177,12 +178,12 @@ jobs:
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1"
     - name: Upload Integration Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
-        name: surefire-test-results
+        name: surefire-integration-test-results
         path: '**/surefire-reports/TEST-*.xml'
-        retention-days: 1
+        retention-days: 10
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:

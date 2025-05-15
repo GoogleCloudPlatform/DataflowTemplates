@@ -15,8 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.PERMANENT_ERROR_TAG;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RETRYABLE_ERROR_TAG;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -27,8 +30,10 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.ErrorCode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
@@ -52,14 +57,22 @@ import org.mockito.ArgumentCaptor;
 
 /** Unit tests for SpannerTransactionWriterDoFn class. */
 public class SpannerTransactionWriterDoFnTest {
+
   @Test
   public void testGetTxnTag() {
     String[] args = new String[] {"--jobId=123"};
     SpannerConfig spannerConfig = mock(SpannerConfig.class);
     DataflowWorkerHarnessOptions options =
         PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, null, "", "mysql", true);
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, null, null, "", "mysql", true);
     String result = spannerTransactionWriterDoFn.getTxnTag(options);
     assertEquals(result, "txBy=123");
   }
@@ -118,6 +131,8 @@ public class SpannerTransactionWriterDoFnTest {
     TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
     TransactionContext transactionContext = mock(TransactionContext.class);
     ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
 
     String[] args = new String[] {"--jobId=123"};
     DataflowWorkerHarnessOptions options =
@@ -140,6 +155,10 @@ public class SpannerTransactionWriterDoFnTest {
     when(schema.isEmpty()).thenReturn(true);
     when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
     when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
     when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
     when(transactionCallableMock.run(any()))
         .thenAnswer(
@@ -150,7 +169,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
     spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
@@ -202,6 +222,13 @@ public class SpannerTransactionWriterDoFnTest {
     Schema schema = mock(Schema.class);
     DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
 
+    String instanceId = "test-instance";
+    String databaseId = "test-database";
+    when(spannerConfig.getInstanceId())
+        .thenReturn(ValueProvider.StaticValueProvider.of(instanceId));
+    when(spannerConfig.getDatabaseId())
+        .thenReturn(ValueProvider.StaticValueProvider.of(databaseId));
+
     ObjectNode outputObject = mapper.createObjectNode();
     outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, "random");
     outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users1");
@@ -218,7 +245,8 @@ public class SpannerTransactionWriterDoFnTest {
     when(schema.isEmpty()).thenReturn(true);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
-        new SpannerTransactionWriterDoFn(spannerConfig, ddlView, "shadow", "mysql", true);
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
     spannerTransactionWriterDoFn.setMapper(mapper);
     spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
     spannerTransactionWriterDoFn.processElement(processContextMock);
@@ -229,5 +257,135 @@ public class SpannerTransactionWriterDoFnTest {
     assertEquals(
         "Change event with invalid source. Actual(random), Expected(mysql)",
         argument.getValue().getErrorMessage());
+  }
+
+  @Test
+  public void testProcessElementWithRetryableSpannerException() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    Schema schema = mock(Schema.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
+
+    String[] args = new String[] {"--jobId=123"};
+    DataflowWorkerHarnessOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Depp");
+    outputObject.put("age", 13);
+    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    Ddl ddl = getTestDdl();
+
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(processContextMock.sideInput(any())).thenReturn(ddl);
+    when(processContextMock.getPipelineOptions()).thenReturn(options);
+    when(schema.isEmpty()).thenReturn(true);
+    when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
+    when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.ABORTED, "Transaction Aborted");
+            });
+    when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+    ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
+    verify(transactionContext, times(0)).buffer(anyList());
+
+    verify(processContextMock, times(1))
+        .output(eq(RETRYABLE_ERROR_TAG), any(FailsafeElement.class));
+  }
+
+  @Test
+  public void testProcessElementWithNonRetryableSpannerException() {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    SpannerConfig spannerConfig = mock(SpannerConfig.class);
+    SpannerAccessor spannerAccessor = mock(SpannerAccessor.class);
+    PCollectionView<Ddl> ddlView = mock(PCollectionView.class);
+    Schema schema = mock(Schema.class);
+    DoFn.ProcessContext processContextMock = mock(DoFn.ProcessContext.class);
+    DatabaseClient databaseClientMock = mock(DatabaseClient.class);
+    TransactionRunner transactionCallableMock = mock(TransactionRunner.class);
+    TransactionContext transactionContext = mock(TransactionContext.class);
+    ValueProvider<Options.RpcPriority> rpcPriorityValueProviderMock = mock(ValueProvider.class);
+    ValueProvider<String> instanceId = mock(ValueProvider.class);
+    ValueProvider<String> databaseId = mock(ValueProvider.class);
+
+    String[] args = new String[] {"--jobId=123"};
+    DataflowWorkerHarnessOptions options =
+        PipelineOptionsFactory.fromArgs(args).as(DataflowWorkerHarnessOptions.class);
+
+    ObjectNode outputObject = mapper.createObjectNode();
+    outputObject.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, Constants.MYSQL_SOURCE_TYPE);
+    outputObject.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
+    outputObject.put("first_name", "Johnny");
+    outputObject.put("last_name", "Depp");
+    outputObject.put("age", 13);
+    outputObject.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, 12345);
+    FailsafeElement<String, String> failsafeElement =
+        FailsafeElement.of(outputObject.toString(), outputObject.toString());
+    Ddl ddl = getTestDdl();
+
+    when(processContextMock.element()).thenReturn(failsafeElement);
+    when(processContextMock.sideInput(any())).thenReturn(ddl);
+    when(processContextMock.getPipelineOptions()).thenReturn(options);
+    when(schema.isEmpty()).thenReturn(true);
+    when(rpcPriorityValueProviderMock.get()).thenReturn(Options.RpcPriority.LOW);
+    when(spannerConfig.getRpcPriority()).thenReturn(rpcPriorityValueProviderMock);
+    when(spannerConfig.getInstanceId()).thenReturn(instanceId);
+    when(spannerConfig.getDatabaseId()).thenReturn(databaseId);
+    when(instanceId.get()).thenReturn("test-instance");
+    when(databaseId.get()).thenReturn("test-database");
+    when(spannerAccessor.getDatabaseClient()).thenReturn(databaseClientMock);
+    when(transactionCallableMock.run(any()))
+        .thenAnswer(
+            invocation -> {
+              throw SpannerExceptionFactory.newSpannerException(
+                  ErrorCode.FAILED_PRECONDITION, "title must not be NULL in table Books");
+            });
+    when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
+
+    SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
+        new SpannerTransactionWriterDoFn(
+            spannerConfig, spannerConfig, ddlView, ddlView, "shadow", "mysql", true);
+    spannerTransactionWriterDoFn.setMapper(mapper);
+    spannerTransactionWriterDoFn.setSpannerAccessor(spannerAccessor);
+    spannerTransactionWriterDoFn.setIsInTransaction(new AtomicBoolean(false));
+    spannerTransactionWriterDoFn.setTransactionAttemptCount(new AtomicLong(0));
+    spannerTransactionWriterDoFn.processElement(processContextMock);
+    ArgumentCaptor<Iterable<Mutation>> argument = ArgumentCaptor.forClass(Iterable.class);
+    verify(transactionContext, times(0)).buffer(anyList());
+
+    verify(processContextMock, times(1))
+        .output(eq(PERMANENT_ERROR_TAG), any(FailsafeElement.class));
   }
 }

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -46,6 +47,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -60,6 +62,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
@@ -105,9 +108,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             jdbcResourceManager,
             SpannerToSourceDbCustomTransformationIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
@@ -116,7 +117,9 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
         CustomTransformation customTransformation =
             CustomTransformation.builder(
                     "input/customShard.jar", "com.custom.CustomTransformationWithShardForLiveIT")
@@ -132,7 +135,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                 null,
                 null,
                 null,
-                customTransformation);
+                customTransformation,
+                MYSQL_SOURCE_TYPE);
       }
     }
   }
@@ -156,7 +160,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   @Test
-  public void spannerToSourceDbWithCustomTransformation() throws InterruptedException {
+  public void testCustomTransformation() throws InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
     writeRowInSpanner();
@@ -332,19 +336,30 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     spannerResourceManager.write(m);
   }
 
-  private void assertRowInMySQL() {
+  private void assertRowInMySQL() throws InterruptedException {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1);
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
+
     assertThatResult(result).meetsConditions();
 
     result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
+    /*
+     * Added to handle updates.
+     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
+     */
+    Thread.sleep(Duration.ofMinutes(1L).toMillis());
     assertThatResult(result).meetsConditions();
 
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);

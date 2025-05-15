@@ -25,6 +25,7 @@ import static org.apache.avro.Schema.Type.STRING;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -70,6 +71,7 @@ public class AvroRecordConverterTest {
   private static final String TIMESTAMP_MILLIS_LOGICAL_TYPE = "timestamp-millis";
   private static final String TIMESTAMP_MICROS_LOGICAL_TYPE = "timestamp-micros";
   private static final String DATE_LOGICAL_TYPE = "date";
+  private static final String UUID = "uuid";
 
   @Test
   public void integerArray() {
@@ -584,6 +586,128 @@ public class AvroRecordConverterTest {
     final GenericRecord avroRecord1 =
         new GenericRecordBuilder(createAvroSchema(colName, INT)).set(colName, 1).build();
     assertThrows(IllegalArgumentException.class, () -> avroRecordConverter.apply(avroRecord1));
+  }
+
+  @Test
+  public void testParseUuidArray() {
+    String colName = "UuidArrayCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.uuid()))
+        .endColumn();
+    List<Utf8> uuidArray =
+        Arrays.asList(
+            new Utf8("9a31411b-caca-4ff1-86e9-39fbd2bc3f39"),
+            new Utf8("11111111-1111-1111-1111-111111111111"));
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, uuidArray)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertNotNull(mutation);
+    assertEquals(
+        new ArrayList<>(mutation.asMap().get(colName).getStringArray()),
+        uuidArray.stream().map(Utf8::toString).collect(Collectors.toList()));
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertNotNull(nullMutation);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
+  }
+
+  @Test
+  public void testParsePgUuidArray() {
+    String colName = "UuidArrayCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder
+        .name("record")
+        .column("id")
+        .type(Type.int64())
+        .endColumn()
+        .column(colName)
+        .type(Type.array(Type.pgUuid()))
+        .endColumn();
+    List<Utf8> uuidArray =
+        Arrays.asList(
+            new Utf8("9a31411b-caca-4ff1-86e9-39fbd2bc3f39"),
+            new Utf8("11111111-1111-1111-1111-111111111111"));
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, uuidArray)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertNotNull(mutation);
+    assertEquals(
+        new ArrayList<>(mutation.asMap().get(colName).getStringArray()),
+        uuidArray.stream().map(Utf8::toString).collect(Collectors.toList()));
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createArrayAvroSchema(colName, STRING, UUID))
+            .set("id", 0L)
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertNotNull(nullMutation);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
+  }
+
+  @Test
+  public void testParseUuid() {
+    String colName = "UuidCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.uuid()).endColumn();
+    Utf8 uuid = new Utf8("11111111-1111-1111-1111-111111111111");
+
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, uuid)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
+  }
+
+  @Test
+  public void testParsePgUuid() {
+    String colName = "UuidCol";
+    Table.Builder tableBuilder = Table.builder();
+    tableBuilder.name("record").column(colName).type(Type.pgUuid()).endColumn();
+    Utf8 uuid = new Utf8("11111111-1111-1111-1111-111111111111");
+
+    GenericRecord avroRecord =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, uuid)
+            .build();
+    final AvroRecordConverter avroRecordConverter = new AvroRecordConverter(tableBuilder.build());
+    Mutation mutation = avroRecordConverter.apply(avroRecord);
+    assertEquals(mutation.asMap().get(colName).getString(), uuid.toString());
+
+    GenericRecord avroRecordWithNullValue =
+        new GenericRecordBuilder(createAvroSchema(colName, STRING, UUID))
+            .set(colName, null)
+            .build();
+    Mutation nullMutation = avroRecordConverter.apply(avroRecordWithNullValue);
+    assertTrue(nullMutation.asMap().get(colName).isNull());
   }
 
   @Test

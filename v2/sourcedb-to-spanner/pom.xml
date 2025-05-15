@@ -29,7 +29,11 @@
   <artifactId>sourcedb-to-spanner</artifactId>
 
   <dependencies>
-
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>structured-logging</artifactId>
+      <version>${project.version}</version>
+    </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
       <artifactId>common</artifactId>
@@ -76,7 +80,28 @@
       <groupId>com.datastax.oss</groupId>
       <artifactId>java-driver-core</artifactId>
       <version>4.17.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
+
+    <!-- Needed for Beam CassandraIO -->
+    <!-- https://mvnrepository.com/artifact/com.codahale.metrics/metrics-core -->
+    <dependency>
+      <groupId>com.codahale.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+      <version>3.0.2</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+
 
     <!-- Test Dependencies -->
     <dependency>
@@ -88,6 +113,11 @@
     <dependency>
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-it-jdbc</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-it-cassandra</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -147,10 +177,53 @@
       <artifactId>beam-sdks-java-io-cassandra</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.microsoft.sqlserver</groupId>
+      <artifactId>mssql-jdbc</artifactId>
+      <version>${mssql-jdbc.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.beam/beam-sdks-java-io-common -->
+    <!-- test dependencies for localCassandraIO begin -->
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-io-common</artifactId>
+      <version>2.64.0</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/info.archinnov/achilles-embedded -->
+    <!-- https://mvnrepository.com/artifact/com.codahale.metrics/metrics-core -->
+    <dependency>
+      <groupId>com.codahale.metrics</groupId>
+      <artifactId>metrics-core</artifactId>
+      <version>3.0.2</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.slf4j</groupId>
+          <artifactId>slf4j-api</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- https://mvnrepository.com/artifact/com.github.stefanbirkner/system-rules -->
+    <dependency>
+      <groupId>com.github.stefanbirkner</groupId>
+      <artifactId>system-rules</artifactId>
+      <version>1.19.0</version>
+      <scope>test</scope>
+    </dependency>
+
+    <!-- test dependencies for localCassandraIO end -->
+
+    <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-collections4</artifactId>
       <version>4.1</version>
       <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcpkix-jdk15on</artifactId>
+      <version>1.60</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 </project>

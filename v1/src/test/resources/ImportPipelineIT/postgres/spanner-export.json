@@ -8,6 +8,25 @@
   }, {
     "name": "EmptyTable",
     "manifestFile": "EmptyTable-manifest.json"
+  }, {
+    "name": "Identity",
+    "manifestFile": "Identity-manifest.json"
   }],
-  "dialect": "POSTGRESQL"
+  "databaseOptions": [{
+    "optionName": "default_time_zone",
+    "optionType": "character varying",
+    "optionValue": "UTC"
+  }, {
+    "optionName": "default_sequence_kind",
+    "optionType": "character varying",
+    "optionValue": "bit_reversed_positive"
+  }],
+  "dialect": "POSTGRESQL",
+  "sequences": [{
+    "name": "Sequence1",
+    "manifestFile": "Sequence1-manifest.json"
+  }, {
+    "name": "Sequence2",
+    "manifestFile": "Sequence2-manifest.json"
+  }]
 }

@@ -42,6 +42,7 @@ import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -54,10 +55,13 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
+import org.apache.beam.it.gcp.TestConstants;
 import org.apache.beam.it.gcp.monitoring.MonitoringClient;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -309,9 +313,7 @@ public final class SpannerResourceManager implements ResourceManager {
    */
   public synchronized void executeDdlStatements(List<String> statements)
       throws IllegalStateException {
-    checkIsUsable();
-    maybeCreateInstance();
-    maybeCreateDatabase();
+    ensureUsableAndCreateResources();
 
     LOG.info("Executing DDL statements '{}' on database {}.", statements, databaseId);
     try {
@@ -327,6 +329,12 @@ public final class SpannerResourceManager implements ResourceManager {
     } catch (Exception e) {
       throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
+  }
+
+  public synchronized void ensureUsableAndCreateResources() {
+    checkIsUsable();
+    maybeCreateInstance();
+    maybeCreateDatabase();
   }
 
   /**
@@ -363,6 +371,64 @@ public final class SpannerResourceManager implements ResourceManager {
       LOG.info("Successfully sent mutations to {}.{}", instanceId, databaseId);
     } catch (SpannerException e) {
       throw new SpannerResourceManagerException("Failed to write mutations.", e);
+    }
+  }
+
+  /**
+   * Writes a collection of mutations into one or more tables inside a ReadWriteTransaction. This
+   * method requires {@link SpannerResourceManager#executeDdlStatement(String)} to be called
+   * beforehand.
+   *
+   * @param mutations A collection of mutation objects.
+   */
+  public void writeInTransaction(Iterable<Mutation> mutations) {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+
+    LOG.info("Sending {} mutations to {}.{}", Iterables.size(mutations), instanceId, databaseId);
+    DatabaseClient databaseClient =
+        spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
+    databaseClient
+        .readWriteTransaction()
+        .run(
+            (TransactionCallable<Void>)
+                transaction -> {
+                  transaction.buffer(mutations);
+                  return null;
+                });
+    LOG.info("Successfully sent mutations to {}.{}", instanceId, databaseId);
+  }
+
+  /**
+   * Executes a list of DML statements. This method requires {@link
+   * SpannerResourceManager#executeDdlStatement(String)} to be called beforehand.
+   *
+   * @param statements The DML statements.
+   * @throws IllegalStateException if method is called after resources have been cleaned up.
+   */
+  public synchronized void executeDMLStatements(List<String> statements)
+      throws IllegalStateException {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+
+    LOG.info("Executing DML statements on database {}.", statements, databaseId);
+    List<Statement> statementsList =
+        statements.stream().map(s -> Statement.of(s)).collect(Collectors.toList());
+    try {
+      DatabaseClient databaseClient =
+          spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
+      databaseClient
+          .readWriteTransaction()
+          .run(
+              (TransactionCallable<Void>)
+                  transaction -> {
+                    transaction.batchUpdate(statementsList);
+                    return null;
+                  });
+      LOG.debug(
+          "Successfully executed DML statements '{}' on database {}.", statements, databaseId);
+    } catch (Exception e) {
+      throw new SpannerResourceManagerException("Failed to execute statement.", e);
     }
   }
 
@@ -585,7 +651,15 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
-      if (System.getProperty("spannerInstanceId") != null) {
+      if (System.getProperty("spannerInstanceId") != null
+          && projectId == "cloud-teleport-testing") {
+        this.useStaticInstance = true;
+        List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
+        Random random = new Random();
+        int randomIndex = random.nextInt(instanceList.size());
+        String randomInstanceName = instanceList.get(randomIndex);
+        this.instanceId = randomInstanceName;
+      } else if (System.getProperty("spannerInstanceId") != null) {
         this.useStaticInstance = true;
         this.instanceId = System.getProperty("spannerInstanceId");
       }

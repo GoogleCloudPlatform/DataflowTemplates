@@ -19,6 +19,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.io.Serializable;
 import java.util.List;
@@ -88,6 +89,29 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
   @Override
   public Type getSpannerColumnType(String namespace, String spannerTable, String spannerColumn)
       throws NoSuchElementException {
+    Column col = getCol(namespace, spannerTable, spannerColumn);
+    return col.type();
+  }
+
+  /**
+   * Retrieves the Spanner column's Cassandra annotations given a spanner table and spanner column.
+   *
+   * @param namespace is currently not operational.
+   */
+  @Override
+  public CassandraAnnotations getSpannerColumnCassandraAnnotations(
+      String namespace, String spannerTable, String spannerColumn) throws NoSuchElementException {
+    Column col = getCol(namespace, spannerTable, spannerColumn);
+    return col.cassandraAnnotation();
+  }
+
+  /**
+   * private helper to extract spannerColumn form nameSpace spannerTable, and spannerColumn.
+   *
+   * @param namespace is currently not operational.
+   */
+  private Column getCol(String namespace, String spannerTable, String spannerColumn)
+      throws NoSuchElementException {
     Table spTable = ddl.table(spannerTable);
     if (spTable == null) {
       throw new NoSuchElementException(String.format("Spanner table '%s' not found", spannerTable));
@@ -97,7 +121,7 @@ public class IdentityMapper implements ISchemaMapper, Serializable {
       throw new NoSuchElementException(
           String.format("Spanner column '%s' not found", spannerColumn));
     }
-    return col.type();
+    return col;
   }
 
   @Override

@@ -31,6 +31,7 @@
         <commons-text.version>1.10.0</commons-text.version>
         <nashorn.version>15.4</nashorn.version>
         <truth-proto-extension.version>1.0.1</truth-proto-extension.version>
+        <skipShade>true</skipShade>
     </properties>
 
     <dependencies>
@@ -49,6 +50,10 @@
               <exclusion>
                 <groupId>org.xerial.snappy</groupId>
                 <artifactId>snappy-java</artifactId>
+              </exclusion>
+              <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
               </exclusion>
           </exclusions>
         </dependency>

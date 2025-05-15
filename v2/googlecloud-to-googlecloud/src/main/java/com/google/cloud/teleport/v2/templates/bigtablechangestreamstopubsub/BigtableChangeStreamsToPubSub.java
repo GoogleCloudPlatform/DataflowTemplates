@@ -33,7 +33,6 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.options.BigtableChangeStreamsToPubSubOptions;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.FailsafePublisher.PublishModJsonToTopic;
-import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageEncoding;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
@@ -42,6 +41,7 @@ import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.mode
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.TestChangeStreamMutation;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.Encoding;
@@ -73,6 +73,7 @@ import org.apache.beam.sdk.transforms.Values;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -116,6 +117,11 @@ public final class BigtableChangeStreamsToPubSub {
   private static final Logger LOG = LoggerFactory.getLogger(BigtableChangeStreamsToPubSub.class);
 
   private static final String USE_RUNNER_V2_EXPERIMENT = "use_runner_v2";
+
+  private static final TupleTag<FailsafeElement<String, String>> INVALID_MODS_TAG =
+      new TupleTag<FailsafeElement<String, String>>("invalidMods") {};
+  private static final TupleTag<FailsafeElement<String, String>> VALID_MODS_TAG =
+      new TupleTag<FailsafeElement<String, String>>("validMods") {};
 
   /**
    * Main entry point for executing the pipeline.
@@ -220,9 +226,12 @@ public final class BigtableChangeStreamsToPubSub {
     PubSubUtils pubSub = new PubSubUtils(sourceInfo, destinationInfo);
 
     /*
-     * Stages: 1) Read {@link ChangeStreamMutation} from change stream. 2) Create {@link
-     * FailsafeElement} of {@link Mod} JSON and merge from: - {@link ChangeStreamMutation}. - GCS Dead
-     * letter queue. 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
+     * Stages:
+     * 1) Read {@link ChangeStreamMutation} from change stream.
+     * 2) Create {@link FailsafeElement} of {@link Mod} JSON and merge from:
+     *    - {@link ChangeStreamMutation}.
+     *    - GCS Dead letter queue.
+     * 3) Convert {@link Mod} JSON into PubsubMessage and publish it to PubSub.
      * 4) Write Failures from 2) and 3) to GCS dead letter queue.
      */
     // Step 1
@@ -306,21 +315,19 @@ public final class BigtableChangeStreamsToPubSub {
             .and(retryableDlqFailsafeModJson)
             .apply("Merge Source And DLQ Mod JSON", Flatten.pCollections());
 
-    FailsafePublisher.FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubOptions =
-        FailsafePublisher.FailsafeModJsonToPubsubMessageOptions.builder()
-            .setCoder(FAILSAFE_ELEMENT_CODER)
-            .build();
-
     PublishModJsonToTopic publishModJsonToTopic =
-        new PublishModJsonToTopic(pubSub, failsafeModJsonToPubsubOptions);
+        new PublishModJsonToTopic(pubSub, VALID_MODS_TAG, INVALID_MODS_TAG);
 
-    PCollection<FailsafeElement<String, String>> failedToPublish =
+    PCollectionTuple failedToPublish =
         failsafeModJson.apply("Publish Mod JSON To Pubsub", publishModJsonToTopic);
 
     PCollection<String> transformDlqJson =
-        failedToPublish.apply(
-            "Failed Mod JSON During Table Row Transformation",
-            MapElements.via(new StringDeadLetterQueueSanitizer()));
+        failedToPublish
+            .get(VALID_MODS_TAG)
+            .setCoder(FAILSAFE_ELEMENT_CODER)
+            .apply(
+                "Failed Mod JSON During Table Row Transformation",
+                MapElements.via(new StringDeadLetterQueueSanitizer()));
 
     PCollectionList.of(transformDlqJson)
         .apply("Merge Failed Mod JSON From Transform And PubSub", Flatten.pCollections())
@@ -333,7 +340,12 @@ public final class BigtableChangeStreamsToPubSub {
                 .build());
 
     PCollection<FailsafeElement<String, String>> nonRetryableDlqModJsonFailsafe =
-        dlqModJson.get(DeadLetterQueueManager.PERMANENT_ERRORS).setCoder(FAILSAFE_ELEMENT_CODER);
+        PCollectionList.of(
+                dlqModJson
+                    .get(DeadLetterQueueManager.PERMANENT_ERRORS)
+                    .setCoder(FAILSAFE_ELEMENT_CODER))
+            .and(failedToPublish.get(INVALID_MODS_TAG).setCoder(FAILSAFE_ELEMENT_CODER))
+            .apply("Merge Reconsume And Invalid Mods", Flatten.pCollections());
     LOG.info(
         "DLQ manager severe DLQ directory with date time: {}",
         dlqManager.getSevereDlqDirectoryWithDateTime());
@@ -546,10 +558,10 @@ public final class BigtableChangeStreamsToPubSub {
             "test_rowkey",
             MutationType.USER,
             "source_cluster",
-            org.threeten.bp.Instant.now(), // commit timestamp
+            java.time.Instant.now(), // commit timestamp
             1, // tiebreaker
             "token",
-            org.threeten.bp.Instant.now(), // low watermark
+            java.time.Instant.now(), // low watermark
             setCell);
 
     Mod mod = new Mod(pubSub.getSource(), mutation, setCell);
@@ -572,11 +584,19 @@ public final class BigtableChangeStreamsToPubSub {
    * format.
    */
   static class ChangeStreamMutationToModJsonFn extends DoFn<ChangeStreamMutation, String> {
-
     private final BigtableSource sourceInfo;
 
     ChangeStreamMutationToModJsonFn(BigtableSource source) {
       this.sourceInfo = source;
+    }
+
+    private static String toJsonString(Mod mod, ChangeStreamMutation inputMutation) {
+      try {
+        return mod.toJson();
+      } catch (IOException e) {
+        // Ignore exception and print bad format.
+        return String.format("\"%s\"", inputMutation);
+      }
     }
 
     @ProcessElement
@@ -585,16 +605,35 @@ public final class BigtableChangeStreamsToPubSub {
       for (Entry entry : input.getEntries()) {
         ModType modType = getModType(entry);
 
-        Mod mod = null;
         switch (modType) {
           case SET_CELL:
-            mod = new Mod(sourceInfo, input, (SetCell) entry);
+            SetCell setCell = (SetCell) entry;
+            if (!sourceInfo.isIgnoredColumnFamily(setCell.getFamilyName())
+                && !sourceInfo.isIgnoredColumn(
+                    setCell.getFamilyName(),
+                    setCell.getQualifier().toString(Charset.forName(sourceInfo.getCharset())))) {
+              Mod mod = new Mod(sourceInfo, input, setCell);
+              receiver.output(toJsonString(mod, input));
+            }
             break;
           case DELETE_CELLS:
-            mod = new Mod(sourceInfo, input, (DeleteCells) entry);
+            DeleteCells deleteCells = (DeleteCells) entry;
+            if (!sourceInfo.isIgnoredColumnFamily(deleteCells.getFamilyName())
+                && !sourceInfo.isIgnoredColumn(
+                    deleteCells.getFamilyName(),
+                    deleteCells
+                        .getQualifier()
+                        .toString(Charset.forName(sourceInfo.getCharset())))) {
+              Mod mod = new Mod(sourceInfo, input, deleteCells);
+              receiver.output(toJsonString(mod, input));
+            }
             break;
           case DELETE_FAMILY:
-            mod = new Mod(sourceInfo, input, (DeleteFamily) entry);
+            DeleteFamily deleteFamily = (DeleteFamily) entry;
+            if (!sourceInfo.isIgnoredColumnFamily(deleteFamily.getFamilyName())) {
+              Mod mod = new Mod(sourceInfo, input, deleteFamily);
+              receiver.output(toJsonString(mod, input));
+            }
             break;
           default:
           case UNKNOWN:
@@ -604,16 +643,6 @@ public final class BigtableChangeStreamsToPubSub {
                     + " is not supported. The entry was put into a DLQ directory. "
                     + "Please update your Dataflow template with the latest template version");
         }
-
-        String modJsonString;
-
-        try {
-          modJsonString = mod.toJson();
-        } catch (IOException e) {
-          // Ignore exception and print bad format.
-          modJsonString = String.format("\"%s\"", input);
-        }
-        receiver.output(modJsonString);
       }
     }
 

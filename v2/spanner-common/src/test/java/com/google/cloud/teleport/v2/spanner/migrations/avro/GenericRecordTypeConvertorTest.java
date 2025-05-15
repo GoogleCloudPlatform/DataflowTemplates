@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
@@ -28,6 +29,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
@@ -36,23 +38,31 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.avro.LogicalType;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.collections.map.HashedMap;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.Mockito;
+import org.mockito.junit.MockitoJUnitRunner;
 
+@RunWith(MockitoJUnitRunner.class)
 public class GenericRecordTypeConvertorTest {
 
   public Schema getLogicalTypesSchema() {
@@ -115,6 +125,9 @@ public class GenericRecordTypeConvertorTest {
         .name("time_interval_col")
         .type(timeIntervalType)
         .noDefault()
+        .name("simple_array_col")
+        .type(SchemaBuilder.builder().array().items(SchemaBuilder.builder().stringType()))
+        .noDefault()
         .name("unsupported_col")
         .type(unsupportedType)
         .noDefault()
@@ -159,6 +172,9 @@ public class GenericRecordTypeConvertorTest {
         .name("date_col")
         .type(dateType)
         .noDefault()
+        .name("simple_array_col")
+        .type(unionNullType(SchemaBuilder.array().items(SchemaBuilder.builder().stringType())))
+        .noDefault()
         .endRecord();
   }
 
@@ -174,7 +190,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("time_millis_col", 48035000);
     genericRecord.put("timestamp_micros_col", 1602599400056483L);
     genericRecord.put("timestamp_millis_col", 1602599400056L);
-    genericRecord.put("json_col", "{\"k1\":\"v1\"}");
+    genericRecord.put("json_col", "{\"k1\":\"476F6F676C65\"}");
     genericRecord.put("number_col", "289452");
     genericRecord.put("varchar_col", "Hellogcds");
     genericRecord.put("time_interval_col", -3020398999999L);
@@ -183,68 +199,160 @@ public class GenericRecordTypeConvertorTest {
     String col = "date_col";
     String result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test date_col conversion: ", "3993-04-16", result);
 
     col = "decimal_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test decimal_col conversion: ", "12.34", result);
 
     col = "time_micros_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test time_micros_col conversion: ", "13:20:35", result);
 
     col = "time_millis_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test time_millis_col conversion: ", "13:20:35", result);
 
     col = "timestamp_micros_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test timestamp_micros_col conversion: ", "2020-10-13T14:30:00.056483Z", result);
 
     col = "timestamp_millis_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test timestamp_millis_col conversion: ", "2020-10-13T14:30:00.056Z", result);
 
     col = "json_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
-    assertEquals("Test json_col conversion: ", "{\"k1\":\"v1\"}", result);
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
+    assertEquals("Test json_col conversion: ", "{\"k1\":\"476F6F676C65\"}", result);
+
+    col = "json_col";
+    result =
+        GenericRecordTypeConvertor.handleLogicalFieldType(
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotation("cassandra_type='map<string,blob>'"));
+    assertEquals("Test json_col conversion with map annotation: ", "{\"k1\":\"R29vZ2xl\"}", result);
 
     col = "number_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test number_col conversion: ", "289452", result);
 
     col = "varchar_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test varchar_col conversion: ", "Hellogcds", result);
 
     col = "time_interval_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test time_interval_col conversion: ", "-838:59:58.999999", result);
 
     col = "unsupported_col";
     result =
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            col, genericRecord.get(col), genericRecord.getSchema().getField(col).schema());
+            col,
+            genericRecord.get(col),
+            genericRecord.getSchema().getField(col).schema(),
+            getTestCassandraAnnotationNone());
     assertEquals("Test unsupported_col conversion: ", null, result);
+  }
+
+  @Test
+  public void testGetObjectMapValueForArrayFieldValue() {
+    assertThat(
+            GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
+                null,
+                SchemaBuilder.array().items(SchemaBuilder.builder().booleanType()),
+                "testFiled",
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(null);
+
+    assertThat(
+            GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
+                new Boolean[] {true, false},
+                SchemaBuilder.array().items(SchemaBuilder.builder().booleanType()),
+                "testFiled",
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(new Boolean[] {true, false});
+
+    assertThat(
+            GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
+                new Long[] {1739976709018L},
+                SchemaBuilder.array()
+                    .items(
+                        LogicalTypes.timestampMillis()
+                            .addToSchema(Schema.create(Schema.Type.LONG))),
+                "testFiled",
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(new String[] {"2025-02-19T14:51:49.018Z"});
+
+    assertThat(
+            GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
+                ImmutableList.of(1739976709018L),
+                SchemaBuilder.array()
+                    .items(
+                        LogicalTypes.timestampMillis()
+                            .addToSchema(Schema.create(Schema.Type.LONG))),
+                "testFiled",
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(new String[] {"2025-02-19T14:51:49.018Z"});
+    assertThat(
+            GenericRecordTypeConvertor.getObjectMapValueForArrayFieldValue(
+                new GenericRecord[] {
+                  AvroTestingHelper.createTimestampTzRecord(1602599400056483L, 3600000), null
+                },
+                SchemaBuilder.array().items(AvroTestingHelper.TIMESTAMPTZ_SCHEMA),
+                "testFiled",
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(new String[] {"2020-10-13T14:30:00.056483Z", null});
   }
 
   @Test
@@ -267,7 +375,8 @@ public class GenericRecordTypeConvertorTest {
           GenericRecordTypeConvertor.handleLogicalFieldType(
               "timestamp_micros_col",
               entry.getKey(),
-              LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)));
+              LogicalTypes.timestampMicros().addToSchema(Schema.create(Schema.Type.LONG)),
+              getTestCassandraAnnotationNone());
       assertEquals("Test timestamp for epoch " + entry.getKey() + ": ", entry.getValue(), result);
     }
   }
@@ -276,13 +385,13 @@ public class GenericRecordTypeConvertorTest {
   public void testHandleLogicalFieldType_nullInput() {
     assertNull(
         GenericRecordTypeConvertor.handleLogicalFieldType(
-            "col", null, SchemaBuilder.builder().stringType()));
+            "col", null, SchemaBuilder.builder().stringType(), getTestCassandraAnnotationNone()));
   }
 
   @Test(expected = UnsupportedOperationException.class)
   public void testHandleLogicalFieldType_unsupportedLogicalType() {
     GenericRecordTypeConvertor.handleLogicalFieldType(
-        "col", "test", SchemaBuilder.builder().stringType());
+        "col", "test", SchemaBuilder.builder().stringType(), getTestCassandraAnnotationNone());
   }
 
   @Test
@@ -299,9 +408,9 @@ public class GenericRecordTypeConvertorTest {
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(
             "date_time_column",
-            AvroTestingHelper.createDatetimeRecord(738991, 48035000000L),
+            AvroTestingHelper.createDatetimeRecord(20091, 31703699206L),
             AvroTestingHelper.DATETIME_SCHEMA);
-    assertEquals("Test datetime conversion: ", "3993-04-16T13:20:35Z", result);
+    assertEquals("Test datetime conversion: ", "2025-01-03T08:48:23.699206Z", result);
 
     // Tests for interval type.
     result =
@@ -335,6 +444,180 @@ public class GenericRecordTypeConvertorTest {
                 "unsupported_type_column",
                 new GenericData.Record(AvroTestingHelper.UNSUPPORTED_SCHEMA),
                 AvroTestingHelper.UNSUPPORTED_SCHEMA));
+  }
+
+  /**
+   * Tests the handling of 1 primitive, 1 logical, 1 record and 1 array type in normal and
+   * transformation path.
+   */
+  @Test
+  public void testPrimitiveAndNonPrimitiveTypesHandling() throws InvalidTransformationException {
+    Ddl ddl =
+        Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
+            .createTable("few_types")
+            .column("booleanCol")
+            .bool()
+            .notNull()
+            .endColumn()
+            .column("intervalNanoCol")
+            .string()
+            .notNull()
+            .endColumn()
+            .column("timeStampCol")
+            .timestamp()
+            .endColumn()
+            .column("booleanArrayCol")
+            .type(Type.array(Type.bool()))
+            .endColumn()
+            .column("intervalNanoArrayCol")
+            .type(Type.array(Type.string()))
+            .notNull()
+            .endColumn()
+            .column("timeStampArrayCol")
+            .type(Type.array(Type.timestamp()))
+            .notNull()
+            .endColumn()
+            .endTable()
+            .build();
+    GenericRecordTypeConvertor genericRecordTypeConvertor =
+        new GenericRecordTypeConvertor(new IdentityMapper(ddl), "", null, null);
+    Schema payloadSchema =
+        SchemaBuilder.record("payload")
+            .fields()
+            .name("booleanCol")
+            .type(SchemaBuilder.builder().booleanType())
+            .noDefault()
+            .name("intervalNanoCol")
+            .type(AvroTestingHelper.INTERVAL_NANOS_SCHEMA)
+            .noDefault()
+            .name("timeStampCol")
+            .type(LogicalTypes.timestampMillis().addToSchema(Schema.create(Schema.Type.LONG)))
+            .noDefault()
+            .name("booleanArrayCol")
+            .type(SchemaBuilder.array().items(SchemaBuilder.builder().booleanType()))
+            .noDefault()
+            .name("intervalNanoArrayCol")
+            .type(SchemaBuilder.array().items(AvroTestingHelper.INTERVAL_NANOS_SCHEMA))
+            .noDefault()
+            .name("timeStampArrayCol")
+            .type(
+                SchemaBuilder.array()
+                    .items(
+                        LogicalTypes.timestampMillis()
+                            .addToSchema(Schema.create(Schema.Type.LONG))))
+            .noDefault()
+            .endRecord();
+
+    GenericRecord payload =
+        new GenericRecordBuilder(payloadSchema)
+            .set("booleanCol", true)
+            .set(
+                "intervalNanoCol",
+                AvroTestingHelper.createIntervalNanosRecord(
+                    1000L, 1000L, 3890L, 25L, 331L, 12L, 9L))
+            .set("timeStampCol", 1602599400056L)
+            .set("booleanArrayCol", new Boolean[] {true, false})
+            .set(
+                "intervalNanoArrayCol",
+                new GenericRecord[] {
+                  AvroTestingHelper.createIntervalNanosRecord(
+                      1000L, 1000L, 3890L, 25L, 331L, 12L, 9L),
+                  AvroTestingHelper.createIntervalNanosRecord(
+                      1000L, 1000L, 3890L, 25L, 331L, 12L, 9L),
+                  AvroTestingHelper.createIntervalNanosRecord(
+                      1000L, 1000L, 3890L, 25L, null, 12L, 9L),
+                })
+            .set(
+                "timeStampArrayCol",
+                Arrays.stream((new Long[] {1602599400056L, null})).collect(Collectors.toList()))
+            .build();
+    ArrayList<Timestamp> expectedTimeStampArray = new ArrayList<>();
+    expectedTimeStampArray.add(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z"));
+    expectedTimeStampArray.add(null);
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("booleanCol"),
+                payloadSchema.getField("booleanCol").schema(),
+                "booleanCol",
+                Type.bool(),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.bool(true));
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("intervalNanoCol"),
+                payloadSchema.getField("intervalNanoCol").schema(),
+                "intervalNanoCol",
+                Type.string(),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.string("P1000Y1000M3890DT30H31M12.000000009S"));
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("timeStampCol"),
+                payloadSchema.getField("timeStampCol").schema(),
+                "timeStampCol",
+                Type.timestamp(),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z")));
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("booleanArrayCol"),
+                payloadSchema.getField("booleanArrayCol").schema(),
+                "booleanArrayCol",
+                Type.array(Type.bool()),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.boolArray(ImmutableList.of(true, false)));
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("intervalNanoArrayCol"),
+                payloadSchema.getField("intervalNanoArrayCol").schema(),
+                "intervalNanoCol",
+                Type.array(Type.string()),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(
+            Value.stringArray(
+                ImmutableList.of(
+                    "P1000Y1000M3890DT30H31M12.000000009S",
+                    "P1000Y1000M3890DT30H31M12.000000009S",
+                    "P1000Y1000M3890DT25H12.000000009S")));
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("timeStampArrayCol"),
+                payloadSchema.getField("timeStampArrayCol").schema(),
+                "timeStampCol",
+                Type.array(Type.timestamp()),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.timestampArray(expectedTimeStampArray));
+
+    /* Pass through for non-array types */
+    assertThat(
+            genericRecordTypeConvertor.handleArrayAvroTypes(
+                42L,
+                SchemaBuilder.builder().longType(),
+                "primitive",
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(42L);
+
+    assertThat(genericRecordTypeConvertor.transformChangeEvent(payload, "few_types"))
+        .isEqualTo(
+            Map.of(
+                "booleanCol", Value.bool(true),
+                "intervalNanoCol", Value.string("P1000Y1000M3890DT30H31M12.000000009S"),
+                "timeStampCol",
+                    Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z")),
+                "booleanArrayCol", Value.boolArray(ImmutableList.of(true, false)),
+                "intervalNanoArrayCol",
+                    Value.stringArray(
+                        ImmutableList.of(
+                            "P1000Y1000M3890DT30H31M12.000000009S",
+                            "P1000Y1000M3890DT30H31M12.000000009S",
+                            "P1000Y1000M3890DT25H12.000000009S")),
+                "timeStampArrayCol", Value.timestampArray(expectedTimeStampArray)));
   }
 
   /*
@@ -472,6 +755,9 @@ public class GenericRecordTypeConvertorTest {
             .column("date_col")
             .date()
             .endColumn()
+            .column("simple_array_col")
+            .type(Type.array(Type.string()))
+            .endColumn()
             .primaryKey()
             .asc("int_col")
             .end()
@@ -492,6 +778,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("bytes_col", ByteBuffer.wrap(new byte[] {10, 20, 30}));
     genericRecord.put("timestamp_col", 1602599400056483L);
     genericRecord.put("date_col", 738991);
+    genericRecord.put("simple_array_col", ImmutableList.of("G", "O", "O", "G").toArray());
 
     GenericRecord genericRecordAllNulls = new GenericData.Record(getAllSpannerTypesSchema());
     getAllSpannerTypesSchema().getFields().stream()
@@ -511,7 +798,8 @@ public class GenericRecordTypeConvertorTest {
             "bytes_col", Value.bytes(ByteArray.copyFrom(new byte[] {10, 20, 30})),
             "timestamp_col",
                 Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056483Z")),
-            "date_col", Value.date(com.google.cloud.Date.parseDate("3993-04-16")));
+            "date_col", Value.date(com.google.cloud.Date.parseDate("3993-04-16")),
+            "simple_array_col", Value.stringArray(ImmutableList.of("G", "O", "O", "G")));
     // Implementation Detail, the transform returns Spanner values, and Value.Null is not equal to
     // java null,
     // So simple transform for expected map to have null values does not work for us.
@@ -532,7 +820,9 @@ public class GenericRecordTypeConvertorTest {
             "timestamp_col",
             Value.timestamp(null),
             "date_col",
-            Value.date(null));
+            Value.date(null),
+            "simple_array_col",
+            Value.stringArray(null));
     Map<String, Value> actualWithCustomTransform =
         new GenericRecordTypeConvertor(
                 new IdentityMapper(getIdentityDdl()),
@@ -591,6 +881,7 @@ public class GenericRecordTypeConvertorTest {
     genericRecord.put("bytes_col", null);
     genericRecord.put("timestamp_col", null);
     genericRecord.put("date_col", null);
+    genericRecord.put("simple_array_col", null);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
         new GenericRecordTypeConvertor(new IdentityMapper(getIdentityDdl()), "", null, null);
     Map<String, Value> actual =
@@ -612,7 +903,9 @@ public class GenericRecordTypeConvertorTest {
             "timestamp_col",
             Value.timestamp(null),
             "date_col",
-            Value.date(null));
+            Value.date(null),
+            "simple_array_col",
+            Value.stringArray(null));
     assertEquals(expected, actual);
   }
 
@@ -631,7 +924,9 @@ public class GenericRecordTypeConvertorTest {
             .endUnion();
     assertThrows(
         IllegalArgumentException.class,
-        () -> genericRecordTypeConvertor.getSpannerValue(null, schema, "union_col", Type.string()));
+        () ->
+            genericRecordTypeConvertor.getSpannerValue(
+                null, schema, "union_col", Type.string(), getTestCassandraAnnotationNone()));
   }
 
   @Test(expected = IllegalArgumentException.class)
@@ -646,7 +941,7 @@ public class GenericRecordTypeConvertorTest {
     when(mockSchemaMapper.getSourceColumnName(anyString(), anyString(), anyString()))
         .thenReturn("bool_col");
     when(mockSchemaMapper.getSpannerColumnType(anyString(), anyString(), anyString()))
-        .thenReturn(Type.array(Type.bool()));
+        .thenReturn(Type.array(Type.struct(ImmutableList.of())));
     when(mockSchemaMapper.colExistsAtSource(anyString(), anyString(), anyString()))
         .thenReturn(true);
 
@@ -1000,5 +1295,13 @@ public class GenericRecordTypeConvertorTest {
         throws InvalidTransformationException {
       return null;
     }
+  }
+
+  private CassandraAnnotations getTestCassandraAnnotation(String annotation) {
+    return CassandraAnnotations.fromColumnOptions(ImmutableList.of(annotation), "testCol");
+  }
+
+  private CassandraAnnotations getTestCassandraAnnotationNone() {
+    return getTestCassandraAnnotation("");
   }
 }

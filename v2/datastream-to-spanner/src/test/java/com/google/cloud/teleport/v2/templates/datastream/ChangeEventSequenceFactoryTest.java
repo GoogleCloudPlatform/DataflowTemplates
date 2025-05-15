@@ -197,7 +197,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertThat(changeEventSequence, instanceOf(MySqlChangeEventSequence.class));
     MySqlChangeEventSequence mysqlChangeEventSequence =
@@ -225,7 +225,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertThat(changeEventSequence, instanceOf(MySqlChangeEventSequence.class));
     MySqlChangeEventSequence mysqlChangeEventSequence =
@@ -249,7 +249,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence mysqlChangeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertNull(mysqlChangeEventSequence);
   }
@@ -321,7 +321,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
     OracleChangeEventSequence oracleChangeEventSequence =
@@ -347,7 +347,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertThat(changeEventSequence, instanceOf(OracleChangeEventSequence.class));
     OracleChangeEventSequence oracleChangeEventSequence =
@@ -370,7 +370,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence oracleChangeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertNull(oracleChangeEventSequence);
   }
@@ -446,7 +446,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
     PostgresChangeEventSequence postgresChangeEventSequence =
@@ -474,7 +474,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence changeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertThat(changeEventSequence, instanceOf(PostgresChangeEventSequence.class));
     PostgresChangeEventSequence postgresChangeEventSequence =
@@ -498,7 +498,7 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventSequence postgresChangeEventSequence =
         ChangeEventSequenceFactory.createChangeEventSequenceFromShadowTable(
-            mockTransaction, mockContext);
+            mockTransaction, mockContext, null, false);
 
     assertNull(postgresChangeEventSequence);
   }

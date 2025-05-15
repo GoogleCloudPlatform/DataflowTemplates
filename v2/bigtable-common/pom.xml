@@ -27,6 +27,7 @@
 
     <properties>
         <bigtable.version>2.11.0</bigtable.version>
+        <skipShade>true</skipShade>
     </properties>
 
     <dependencies>
@@ -40,6 +41,12 @@
             <artifactId>bigtable-hbase-beam</artifactId>
             <version>${bigtable.version}</version>
             <scope>compile</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.hbase</groupId>
@@ -66,6 +73,12 @@
             <artifactId>hbase-shaded-testing-util</artifactId>
             <version>${hbase.client.version}</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.truth</groupId>

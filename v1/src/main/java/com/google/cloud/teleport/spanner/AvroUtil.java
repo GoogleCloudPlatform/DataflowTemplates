@@ -43,6 +43,7 @@ public class AvroUtil {
   public static final String SPANNER_ON_DELETE_ACTION = "spannerOnDeleteAction";
   public static final String SPANNER_OPTION = "spannerOption_";
   public static final String SPANNER_PARENT = "spannerParent";
+  public static final String SPANNER_INTERLEAVE_TYPE = "spannerInterleaveType";
   public static final String SPANNER_PRIMARY_KEY = "spannerPrimaryKey";
   public static final String SPANNER_REMOTE = "spannerRemote";
   public static final String SPANNER_SEQUENCE_OPTION = "sequenceOption_";
@@ -50,6 +51,12 @@ public class AvroUtil {
   public static final String SPANNER_SEQUENCE_SKIP_RANGE_MIN = "skipRangeMin";
   public static final String SPANNER_SEQUENCE_SKIP_RANGE_MAX = "skipRangeMax";
   public static final String SPANNER_SEQUENCE_COUNTER_START = "counterStartValue";
+  public static final String SPANNER_UDF = "spannerUdf";
+  public static final String SPANNER_UDF_NAME = "spannerUdfName";
+  public static final String SPANNER_UDF_TYPE = "spannerUdfType";
+  public static final String SPANNER_UDF_DEFINITION = "spannerUdfDefinition";
+  public static final String SPANNER_UDF_SECURITY = "spannerUdfSecurity";
+  public static final String SPANNER_UDF_PARAMETER = "spannerUdfParameter_";
   public static final String SPANNER_VIEW_QUERY = "spannerViewQuery";
   public static final String SPANNER_VIEW_SECURITY = "spannerViewSecurity";
   public static final String SPANNER_NAMED_SCHEMA = "spannerNamedSchema";

@@ -28,6 +28,14 @@ RUN python -m venv /venv \
     && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
 
 # Cache provider environments for faster startup and expansion time
+RUN mkdir -p ~/.apache_beam/cache/jars
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-io-expansion-service/${beamMavenVersion}/beam-sdks-java-io-expansion-service-${beamMavenVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-extensions-schemaio-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-extensions-schemaio-expansion-service/${beamMavenVersion}/beam-sdks-java-extensions-schemaio-expansion-service-${beamMavenVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-google-cloud-platform-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-io-google-cloud-platform-expansion-service/${beamMavenVersion}/beam-sdks-java-io-google-cloud-platform-expansion-service-${beamMavenVersion}.jar
+RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-extensions-sql-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-extensions-sql-expansion-service/${beamMavenVersion}/beam-sdks-java-extensions-sql-expansion-service-${beamMavenVersion}.jar
+# TODO(https://github.com/apache/beam/pull/34569): remove this after Beam 2.65.0
+RUN mkdir -p ~/.apache_beam/cache/runtime-py-packages
+RUN wget -O ~/.apache_beam/cache/runtime-py-packages/virtualenv_clone-0.5.7-py3-none-any.whl https://files.pythonhosted.org/packages/21/ac/e07058dc5a6c1b97f751d24f20d4b0ec14d735d77f4a1f78c471d6d13a43/virtualenv_clone-0.5.7-py3-none-any.whl
 RUN python -m apache_beam.yaml.cache_provider_artifacts
 
 #============================================================#

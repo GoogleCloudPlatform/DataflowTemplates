@@ -43,7 +43,7 @@ import java.util.logging.Logger;
 public class DockerfileGenerator {
 
   public static final String BASE_CONTAINER_IMAGE =
-      "gcr.io/dataflow-templates-base/java11-template-launcher-base-distroless:latest";
+      "gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless:latest";
   // Keep in sync with python version used in
   // https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/python/generate_dependencies.sh
   public static final String BASE_PYTHON_CONTAINER_IMAGE =
@@ -192,7 +192,10 @@ public class DockerfileGenerator {
       this.parameters = new HashMap<>();
       this.parameters.put("workingDirectory", DEFAULT_WORKING_DIRECTORY);
       this.parameters.put("beamVersion", beamVersion);
-
+      // maven version does not have suffix
+      String beamMavenVersion = beamVersion.split("rc")[0];
+      this.parameters.put("beamMavenVersion", beamMavenVersion);
+      this.parameters.put("mavenRepo", "https://repo1.maven.org/maven2");
       this.parameters.put("basePythonContainerImage", BASE_PYTHON_CONTAINER_IMAGE);
       this.parameters.put("baseJavaContainerImage", BASE_CONTAINER_IMAGE);
       this.parameters.put("pythonVersion", PYTHON_VERSION);
@@ -385,6 +388,10 @@ public class DockerfileGenerator {
     public Builder setServiceAccountSecretName(String secretName) {
       this.parameters.put(SA_SECRET_NAME_KEY, secretName);
       return this;
+    }
+
+    public Builder setMavenRepo(String mavenRepo) {
+      return addStringParameter("mavenRepo", mavenRepo);
     }
 
     /**

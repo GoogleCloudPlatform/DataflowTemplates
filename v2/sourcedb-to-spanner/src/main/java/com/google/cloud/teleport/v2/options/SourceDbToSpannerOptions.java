@@ -15,20 +15,26 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.spanner.Options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 
 /** Interface used by the SourcedbToSpanner pipeline to accept user input. */
 public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
+  String CASSANDRA_SOURCE_DIALECT = "CASSANDRA";
+  String MYSQL_SOURCE_DIALECT = "MYSQL";
+  String PG_SOURCE_DIALECT = "POSTGRESQL";
+
   @TemplateParameter.Enum(
       order = 1,
       optional = true,
       enumOptions = {
-        @TemplateParameter.TemplateEnumOption("MYSQL"),
-        @TemplateParameter.TemplateEnumOption("POSTGRESQL")
+        @TemplateParameter.TemplateEnumOption(CASSANDRA_SOURCE_DIALECT),
+        @TemplateParameter.TemplateEnumOption(MYSQL_SOURCE_DIALECT),
+        @TemplateParameter.TemplateEnumOption(PG_SOURCE_DIALECT)
       },
-      description = "SQL Dialect of the source database",
-      helpText = "Possible values are `MYSQL` and `POSTGRESQL`.")
+      description = "Dialect of the source database",
+      helpText = "Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`.")
   @Default.String("MYSQL")
   String getSourceDbDialect();
 
@@ -247,4 +253,43 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getNamespace();
 
   void setNamespace(String value);
+
+  @TemplateParameter.Text(
+      order = 21,
+      optional = true,
+      description = "Use Inserts instead of Upserts for spanner mutations.",
+      helpText =
+          "By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.")
+  @Default.Boolean(false)
+  Boolean getInsertOnlyModeForSpannerMutations();
+
+  void setInsertOnlyModeForSpannerMutations(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 22,
+      optional = true,
+      description = "BatchSize for Spanner Mutation.",
+      helpText =
+          "BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.")
+  @Default.Long(-1)
+  Long getBatchSizeForSpannerMutations();
+
+  void setBatchSizeForSpannerMutations(Long value);
+
+  @TemplateParameter.Enum(
+      order = 23,
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("LOW"),
+        @TemplateParameter.TemplateEnumOption("MEDIUM"),
+        @TemplateParameter.TemplateEnumOption("HIGH")
+      },
+      optional = true,
+      description = "Priority for Spanner RPC invocations",
+      helpText =
+          "The request priority for Cloud Spanner calls. The value must be one of:"
+              + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `MEDIUM`.")
+  @Default.Enum("MEDIUM")
+  Options.RpcPriority getSpannerPriority();
+
+  void setSpannerPriority(Options.RpcPriority value);
 }

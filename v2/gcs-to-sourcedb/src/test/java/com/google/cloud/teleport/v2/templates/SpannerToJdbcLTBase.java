@@ -118,7 +118,7 @@ public class SpannerToJdbcLTBase extends TemplateLoadTestBase {
         SpannerResourceManager.builder("rr-meta-" + testName, project, region)
             .maybeUseStaticInstance()
             .build();
-    String dummy = "create table t1(id INT64 ) primary key(id)";
+    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     return spannerMetadataResourceManager;
   }

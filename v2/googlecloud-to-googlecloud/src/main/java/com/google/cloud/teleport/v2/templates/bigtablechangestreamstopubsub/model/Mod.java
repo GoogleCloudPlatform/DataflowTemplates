@@ -23,6 +23,7 @@ import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
 import com.google.cloud.bigtable.data.v2.models.Range.BoundType;
 import com.google.cloud.bigtable.data.v2.models.SetCell;
+import com.google.cloud.teleport.v2.utils.BigtableSource;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import java.io.IOException;

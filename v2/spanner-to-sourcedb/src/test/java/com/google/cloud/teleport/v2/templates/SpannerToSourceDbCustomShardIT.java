@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -98,9 +99,7 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
         createMySQLSchema(
             jdbcResourceManagerShardB, SpannerToSourceDbCustomShardIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadJarToGcs(gcsResourceManager);
 
         createAndUploadShardConfigToGcs();
@@ -112,7 +111,9 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -123,7 +124,8 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
                 "input/customShard.jar",
                 "com.custom.CustomShardIdFetcherForIT",
                 null,
-                null);
+                null,
+                MYSQL_SOURCE_TYPE);
       }
     }
   }
