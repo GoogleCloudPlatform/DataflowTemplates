@@ -47,12 +47,6 @@ import org.apache.beam.sdk.options.ValueProvider;
           + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
           + " the relational database. You can use this template to copy data from any relational"
           + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
-      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
-          + " Base64-encoded username, password, and connection string parameters encrypted with"
-          + " the Cloud KMS key. See the <a"
-          + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
-          + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
-          + " password, and connection string parameters."
     },
     optionsClass = SourceDbToSpannerOptions.class,
     flexContainerName = "source-db-to-spanner",
