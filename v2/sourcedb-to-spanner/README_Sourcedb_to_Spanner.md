@@ -6,13 +6,6 @@ relational database into an existing Spanner database. This pipeline uses JDBC t
 connect to the relational database. You can use this template to copy data from
 any relational database with available JDBC drivers into Spanner.
 
-For an extra layer of protection, you can also pass in a Cloud KMS key along with
-a Base64-encoded username, password, and connection string parameters encrypted
-with the Cloud KMS key. See the <a
-href="https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt">Cloud
-KMS API encryption endpoint</a> for additional details on encrypting your
-username, password, and connection string parameters.
-
 
 :memo: This is a Google-provided template! Please
 check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/sourcedb-to-spanner)
