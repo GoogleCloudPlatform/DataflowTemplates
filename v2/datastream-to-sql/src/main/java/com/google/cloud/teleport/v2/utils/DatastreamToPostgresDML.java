@@ -55,7 +55,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       if (onUpdateSql.equals("")) {
         onUpdateSql = quotedColumnName + "=EXCLUDED." + quotedColumnName;
       } else {
-        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=EXCLUDED." + columnValue;
+        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=EXCLUDED." + quotedColumnName;
       }
     }
 
