@@ -433,7 +433,7 @@ public class DdlToAvroSchemaConverterTest {
                     "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\")"
                         + " WITH (sort_order_sharding=TRUE)",
                     "CREATE INDEX \"VI\" ON \"Users\" USING ScaNN (\"Embeddings\")"
-                        + " WITH (distance_type='COSINE')"))
+                        + " WITH (distance_type='COSINE') WHERE \"Embeddings\" NOT NULL"))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
