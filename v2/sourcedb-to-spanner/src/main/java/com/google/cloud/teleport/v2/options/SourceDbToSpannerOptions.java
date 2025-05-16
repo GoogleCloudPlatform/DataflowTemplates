@@ -292,4 +292,48 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Options.RpcPriority getSpannerPriority();
 
   void setSpannerPriority(Options.RpcPriority value);
+
+  @TemplateParameter.Text(
+      order = 24,
+      optional = true,
+      description = "Table name overrides from source to spanner",
+      regexes =
+          "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+      example = "[{Singers, Vocalists}, {Albums, Records}]",
+      helpText =
+          "These are the table name overrides from source to spanner. They are written in the"
+              + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+              + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+  @Default.String("")
+  String getTableOverrides();
+
+  void setTableOverrides(String value);
+
+  @TemplateParameter.Text(
+      order = 25,
+      optional = true,
+      regexes =
+          "^\\[([[:space:]]*\\{[[:graph:]]+\\[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+      description = "Column name overrides from source to spanner",
+      example = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+      helpText =
+          "These are the column name overrides from source to spanner. They are written in the"
+              + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
+              + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
+              + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+  @Default.String("")
+  String getColumnOverrides();
+
+  void setColumnOverrides(String value);
+
+  @TemplateParameter.Text(
+      order = 26,
+      optional = true,
+      description = "File based overrides from source to spanner",
+      helpText =
+          "A file which specifies the table and the column name overrides from source to spanner.")
+  @Default.String("")
+  String getSchemaOverridesFilePath();
+
+  void setSchemaOverridesFilePath(String value);
 }
