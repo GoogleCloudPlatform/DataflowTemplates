@@ -205,7 +205,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
    * @param gcsPathPrefix Prefix directory name for this DF job. Data and DLQ directories will be
    *     created under this prefix.
    * @return dataflow jobInfo object
-   * @throws IOException
    */
   protected PipelineLauncher.LaunchInfo launchDataflowJob(
       String identifierSuffix,

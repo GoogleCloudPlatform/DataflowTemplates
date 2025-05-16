@@ -356,7 +356,8 @@ public class PipelineController {
           options.getMaxConnections(),
           options.getNumPartitions(),
           waitOnSignal,
-          options.getFetchSize());
+          options.getFetchSize(),
+          options.getUniformizationStageCountHint());
     }
 
     @Override
