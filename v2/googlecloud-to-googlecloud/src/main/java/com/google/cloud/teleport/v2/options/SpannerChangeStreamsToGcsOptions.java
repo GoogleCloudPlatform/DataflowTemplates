@@ -141,8 +141,8 @@ public interface SpannerChangeStreamsToGcsOptions
       optional = true,
       description = "Cloud Spanner Endpoint to call",
       helpText = "The Cloud Spanner endpoint to call in the template. Only used for testing.",
-      example = "https://spanner.googleapis.com")
-  @Default.String("https://spanner.googleapis.com")
+      example = "https://batch-spanner.googleapis.com")
+  @Default.String("https://batch-spanner.googleapis.com")
   String getSpannerHost();
 
   void setSpannerHost(String value);
