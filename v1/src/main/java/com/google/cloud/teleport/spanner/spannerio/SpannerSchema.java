@@ -246,8 +246,9 @@ public abstract class SpannerSchema implements Serializable {
           Matcher m = pattern.matcher(spannerType);
           if (m.find()) {
             // Substring "xxx[]" or "xxx[] vector length yyy"
-            String arrayElementType = m.group(1);
-            Type itemType = parseSpannerType(arrayElementType, dialect);
+            // Must check array type first
+            String spannerArrayType = m.group(1);
+            Type itemType = parseSpannerType(spannerArrayType, dialect);
             return Type.array(itemType);
           }
           type = POSTGRES_TYPE_MAP.get(spannerType);
