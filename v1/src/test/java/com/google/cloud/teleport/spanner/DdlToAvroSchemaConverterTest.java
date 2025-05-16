@@ -425,6 +425,10 @@ public class DdlToAvroSchemaConverterTest {
             .column("uuid_column")
             .pgUuid()
             .endColumn()
+            .column("Embeddings")
+            .type(Type.pgArray(Type.pgFloat4()))
+            .arrayLength(Integer.valueOf(128))
+            .endColumn()
             .primaryKey()
             .asc("id")
             .asc("gen_id")
@@ -434,7 +438,9 @@ public class DdlToAvroSchemaConverterTest {
                 ImmutableList.of(
                     "CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")",
                     "CREATE SEARCH INDEX \"SearchIndex\" ON \"Users\" (\"tokens\")"
-                        + " WITH (sort_order_sharding=TRUE)"))
+                        + " WITH (sort_order_sharding=TRUE)",
+                    "CREATE INDEX \"VI\" ON \"Users\" USING ScaNN (\"Embeddings\")"
+                        + " WITH (distance_type='COSINE') WHERE \"Embeddings\" NOT NULL"))
             .foreignKeys(
                 ImmutableList.of(
                     "ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
@@ -458,7 +464,7 @@ public class DdlToAvroSchemaConverterTest {
 
     List<Schema.Field> fields = avroSchema.getFields();
 
-    assertThat(fields, hasSize(10));
+    assertThat(fields, hasSize(11));
 
     assertThat(fields.get(0).name(), equalTo("id"));
     // Not null
@@ -548,6 +554,12 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(fields.get(9).getProp(GENERATION_EXPRESSION), equalTo(null));
     assertThat(fields.get(9).getProp(STORED), equalTo(null));
     assertThat(fields.get(9).getProp(DEFAULT_EXPRESSION), equalTo(null));
+
+    assertThat(fields.get(10).name(), equalTo("Embeddings"));
+    assertThat(fields.get(10).schema(), equalTo(nullableArray(Schema.Type.FLOAT)));
+    assertThat(fields.get(10).getProp(SQL_TYPE), equalTo("real[] vector length 128"));
+    assertThat(fields.get(10).getProp(NOT_NULL), equalTo(null));
+    assertThat(fields.get(10).getProp(STORED), equalTo(null));
 
     // spanner pk
     assertThat(avroSchema.getProp(SPANNER_PRIMARY_KEY + "_0"), equalTo("\"id\" ASC"));
