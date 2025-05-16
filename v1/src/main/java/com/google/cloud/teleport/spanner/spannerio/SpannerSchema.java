@@ -155,9 +155,6 @@ public abstract class SpannerSchema implements Serializable {
   @AutoValue
   public abstract static class Column implements Serializable {
 
-    private static final Pattern PG_EMBEDDING_VECTOR_PATTERN =
-        Pattern.compile("^(\\D+)\\[\\]\\svector\\slength\\s\\d+$", Pattern.CASE_INSENSITIVE);
-
     static Column create(String name, Type type) {
       return new AutoValue_SpannerSchema_Column(name, type);
     }
@@ -215,10 +212,20 @@ public abstract class SpannerSchema implements Serializable {
           }
           if (spannerType.startsWith("ARRAY")) {
             // Substring "ARRAY<xxx>"
-            String spannerArrayType =
-                originalSpannerType.substring(6, originalSpannerType.length() - 1);
-            Type itemType = parseSpannerType(spannerArrayType, dialect);
-            return Type.array(itemType);
+            // find 'xxx' in string ARRAY<xxxxx>
+            // Graph DBs may have suffixes, eg ARRAY<FLOAT32>(vector_length=>256)
+            //
+            Pattern pattern = Pattern.compile("ARRAY<([^>]+)>");
+            Matcher matcher = pattern.matcher(originalSpannerType);
+
+            if (matcher.find()) {
+              String spannerArrayType = matcher.group(1).trim();
+              Type itemType = parseSpannerType(spannerArrayType, dialect);
+              return Type.array(itemType);
+            } else {
+              // Handle the case where the regex doesn't match (invalid ARRAY type)
+              throw new IllegalArgumentException("Invalid ARRAY type: " + originalSpannerType);
+            }
           }
           if (spannerType.startsWith("PROTO")) {
             // Substring "PROTO<xxx>"
@@ -235,18 +242,12 @@ public abstract class SpannerSchema implements Serializable {
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         case POSTGRESQL:
           // Handle vector_length annotation
-          Matcher m = PG_EMBEDDING_VECTOR_PATTERN.matcher(spannerType);
+          Pattern pattern = Pattern.compile("([^\\[]+)\\[\\]");
+          Matcher m = pattern.matcher(spannerType);
           if (m.find()) {
-            // Substring "xxx[] vector length yyy"
+            // Substring "xxx[]" or "xxx[] vector length yyy"
             String arrayElementType = m.group(1);
             Type itemType = parseSpannerType(arrayElementType, dialect);
-            return Type.array(itemType);
-          }
-          if (spannerType.endsWith("[]")) {
-            // Substring "xxx[]"
-            // Must check array type first
-            String spannerArrayType = spannerType.substring(0, spannerType.length() - 2);
-            Type itemType = parseSpannerType(spannerArrayType, dialect);
             return Type.array(itemType);
           }
           type = POSTGRES_TYPE_MAP.get(spannerType);

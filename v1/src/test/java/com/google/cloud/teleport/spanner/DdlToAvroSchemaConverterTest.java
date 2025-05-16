@@ -583,8 +583,6 @@ public class DdlToAvroSchemaConverterTest {
     assertThat(
         avroSchema.getProp(SPANNER_CHECK_CONSTRAINT + "0"),
         equalTo("CONSTRAINT ck CHECK (\"first_name\" != \"last_name\")"));
-
-    System.out.println(avroSchema.toString(true));
   }
 
   @Test
