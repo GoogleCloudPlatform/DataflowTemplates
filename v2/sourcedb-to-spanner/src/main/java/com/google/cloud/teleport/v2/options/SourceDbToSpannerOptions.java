@@ -313,7 +313,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 25,
       optional = true,
       regexes =
-          "^\\[([[:space:]]*\\{[[:graph:]]+\\[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+          "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
       description = "Column name overrides from source to spanner",
       example = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
       helpText =
