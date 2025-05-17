@@ -82,17 +82,12 @@ public class ProcessChangeEventFn
 
         session = client.startSession();
         session.startTransaction();
-        LOG.info("Started transaction for document ID: {}", element.getDocumentId());
 
         Document shadowDoc = shadowCollection.find(session, lookupById).first();
-        LOG.info("Shadow document found: {}", shadowDoc != null ? "yes" : "no");
 
         if (isEventNewerThanShadowDoc(element, shadowDoc)) {
-          LOG.info("Processing newer event for document ID: {}", docId);
-
           if (element.isDeleteEvent()) {
             // This is a delete event - delete the document from data collection
-            LOG.info("Deleting document with ID: {}", docId);
             dataCollection.deleteOne(session, lookupById);
             // Update the shadow document to record this deletion event
             shadowCollection.replaceOne(
@@ -100,10 +95,8 @@ public class ProcessChangeEventFn
                 lookupById,
                 element.getShadowDocument(),
                 new ReplaceOptions().upsert(true));
-            LOG.info("Updated shadow document for delete event, document ID: {}", docId);
           } else {
             // Regular insert or update.
-            LOG.info("Updating document with ID {}", docId);
             dataCollection.replaceOne(
                 session,
                 lookupById,
@@ -114,16 +107,12 @@ public class ProcessChangeEventFn
                 lookupById,
                 element.getShadowDocument(),
                 new ReplaceOptions().upsert(true));
-            LOG.info("Updated document and shadow document, document ID: {}", docId);
           }
         } else {
           // Existing document has a later timestamp, skip this event
-          LOG.info("Skipping event for document ID: {} as a newer version exists", docId);
         }
         session.commitTransaction();
-        LOG.info("Transaction committed for document ID: {}", docId);
         out.get(successfulWriteTag).output(element);
-        LOG.info("Successfully processed document ID: {}", element.getDocumentId());
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;

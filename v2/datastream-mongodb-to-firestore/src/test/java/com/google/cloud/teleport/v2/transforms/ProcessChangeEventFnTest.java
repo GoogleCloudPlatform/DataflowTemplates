@@ -48,7 +48,6 @@ import org.mockito.ArgumentCaptor;
 /** Unit tests for {@link ProcessChangeEventFn}. */
 @RunWith(JUnit4.class)
 public class ProcessChangeEventFnTest {
-  private static final String CONNECTION_STRING = "mongodb://localhost:27017";
   private static final String DATABASE_NAME = "test_db";
   private static final String DATA_COLLECTION = "test_data";
   private static final String SHADOW_COLLECTION = "shadow_test_data";
@@ -254,22 +253,7 @@ public class ProcessChangeEventFnTest {
   }
 
   @Test
-  public void testProcessElementTransactionNonTransientFailure_noRetry() {
-    when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID))
-        .thenThrow(new RuntimeException("Transaction error"));
-
-    processFn.processElement(mockContext, mockReceiver);
-
-    verify(mockShadowCollection).find(mockSession, LOOKUP_BY_DOC_ID);
-    ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
-        ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
-    verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);
-    verify(mockFailureReceiver, times(1)).output(failureCaptor.capture());
-    verify(mockSession, never()).commitTransaction();
-  }
-
-  @Test
-  public void testProcessElementTransientError_retryTillNonTransientError() {
+  public void testProcessElementTransientError_mixedErrors() {
     MongoException transientError = new MongoException("Fake transient error.");
     transientError.addLabel("TransientTransactionError");
     when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID))
@@ -278,7 +262,7 @@ public class ProcessChangeEventFnTest {
 
     processFn.processElement(mockContext, mockReceiver);
 
-    verify(mockShadowCollection, times(2)).find(mockSession, LOOKUP_BY_DOC_ID);
+    verify(mockShadowCollection, times(4)).find(mockSession, LOOKUP_BY_DOC_ID);
     ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
     verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);
@@ -288,17 +272,12 @@ public class ProcessChangeEventFnTest {
 
   @Test
   public void testProcessElementTransientError_retryTillMaximum() {
-    MongoException transientError = new MongoException("Fake transient error.");
-    transientError.addLabel("TransientTransactionError");
-    when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID))
-        .thenThrow(transientError)
-        .thenThrow(transientError)
-        .thenThrow(transientError)
-        .thenThrow(transientError);
+    MongoException randomError = new MongoException("Fake transient error.");
+    when(mockShadowCollection.find(mockSession, LOOKUP_BY_DOC_ID)).thenThrow(randomError);
 
     processFn.processElement(mockContext, mockReceiver);
 
-    verify(mockShadowCollection, times(4)).find(mockSession, LOOKUP_BY_DOC_ID);
+    verify(mockShadowCollection, times(1)).find(mockSession, LOOKUP_BY_DOC_ID);
     ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
     verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);

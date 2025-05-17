@@ -207,7 +207,7 @@ public class DataStreamMongoDBToFirestore {
         description = "Cloud Storage Input File(s)",
         groupName = "Source",
         helpText = "Path of the file pattern glob to read from.",
-        example = "gs://your-bucket/path/*.avro")
+        example = "gs://your-bucket/path/")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -501,6 +501,7 @@ public class DataStreamMongoDBToFirestore {
     LOG.info("Creating MongoDbChangeEventContext objects");
     PCollectionTuple changeEventContexts =
         jsonRecords.apply(
+            "Create MongoDbChangeEventContext objects",
             ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
                 .withOutputTags(
                     CreateMongoDbChangeEventContextFn.successfulCreationTag,
@@ -662,6 +663,7 @@ public class DataStreamMongoDBToFirestore {
     LOG.info("Stage 2: Creating MongoDbChangeEventContext objects");
     PCollectionTuple changeEventContexts =
         jsonRecords.apply(
+            "Create MongoDbChangeEventContext objects",
             ParDo.of(new CreateMongoDbChangeEventContextFn(options.getShadowCollectionPrefix()))
                 .withOutputTags(
                     CreateMongoDbChangeEventContextFn.successfulCreationTag,
@@ -789,7 +791,9 @@ public class DataStreamMongoDBToFirestore {
           options.getDlqRetryMinutes());
       reconsumedElements =
           dlqManager.getReconsumerDataTransform(
-              pipeline.apply(dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
+              pipeline.apply(
+                  "Periodically polling from DLQ",
+                  dlqManager.dlqReconsumer(options.getDlqRetryMinutes())));
     }
 
     LOG.info("Processing retryable errors from DLQ");
@@ -807,6 +811,7 @@ public class DataStreamMongoDBToFirestore {
       LOG.info("Regular Datastream flow - reading from GCS: {}", options.getInputFilePattern());
       PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
           pipeline.apply(
+              "Read from GCS bucket",
               new DataStreamIO(
                       options.getStreamName(),
                       options.getInputFilePattern(),
@@ -827,19 +832,19 @@ public class DataStreamMongoDBToFirestore {
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
               .and(dlqJsonRecords)
-              .apply(Flatten.pCollections())
+              .apply("Flattern collections", Flatten.pCollections())
               .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
               .apply(
-                  "Reshuffle",
+                  "Reshuffle records",
                   Reshuffle.<FailsafeElement<String, String>>viaRandomKey()
                       .withNumBuckets(maxNumWorkers * DatastreamConstants.MAX_DOFN_PER_WORKER));
     } else {
       LOG.info("DLQ retry flow - processing only DLQ records");
       jsonRecords =
           PCollectionList.of(dlqJsonRecords)
-              .apply(Flatten.pCollections())
+              .apply("Flattern collections", Flatten.pCollections())
               .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
-              .apply("Reshuffle", Reshuffle.viaRandomKey());
+              .apply("Reshuffle records", Reshuffle.viaRandomKey());
     }
     LOG.info("Completed ingestion and normalization of JSON data");
     return jsonRecords;
@@ -856,11 +861,11 @@ public class DataStreamMongoDBToFirestore {
         .get(failedTag)
         .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
         .apply(
-            "DLQ: Write retryable Failures to GCS",
+            "DLQ: Write Retryable Json Failures to GCS",
             MapElements.via(new StringDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply(
-            "Write To DLQ",
+            "Write Failed Json To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry_json/")
@@ -880,11 +885,11 @@ public class DataStreamMongoDBToFirestore {
         .get(failedTag)
         .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class))
         .apply(
-            "DLQ: Write retryable Failures to GCS",
+            "DLQ: Write Retryable Events Failures to GCS",
             MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
         .setCoder(StringUtf8Coder.of())
         .apply(
-            "Write To DLQ",
+            "Write Events Failures To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
                 .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry_mongo_event/")
