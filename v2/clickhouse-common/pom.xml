@@ -10,7 +10,9 @@
     </parent>
 
     <artifactId>clickhouse-common</artifactId>
-
+    <properties>
+        <skipShade>true</skipShade>
+    </properties>
 
     <dependencies>
         <dependency>
