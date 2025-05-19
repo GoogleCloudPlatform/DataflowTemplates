@@ -120,7 +120,7 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
 
   public SubscriptionName createPubsubSubscription(
       String identifierSuffix, PubsubResourceManager pubsubResourceManager, TopicName topic) {
-    String subscriptionNameSuffix = "FT" + identifierSuffix;
+    String subscriptionNameSuffix = "FT-" + identifierSuffix;
     SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
     return subscription;
