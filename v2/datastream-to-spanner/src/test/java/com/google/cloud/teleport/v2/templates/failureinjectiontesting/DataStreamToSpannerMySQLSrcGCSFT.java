@@ -73,11 +73,12 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerFailureInjectionTesting/spanner-schema.sql";
 
-  private PipelineLauncher.LaunchInfo jobInfo;
-  public SpannerResourceManager spannerResourceManager;
-  private GcsResourceManager gcsResourceManager;
-  private PubsubResourceManager pubsubResourceManager;
-  private CloudSqlResourceManager sourceDBResourceManager;
+  private static PipelineLauncher.LaunchInfo jobInfo;
+  public static SpannerResourceManager spannerResourceManager;
+  private static GcsResourceManager gcsResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
+
+  private static CloudSqlResourceManager sourceDBResourceManager;
   private JDBCSource sourceConnectionProfile;
 
   /**
@@ -87,12 +88,21 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
    */
   @Before
   public void setUp() throws IOException, InterruptedException {
+    // create Spanner Resources
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
 
+    // create Source Resources
+    sourceDBResourceManager = MySQLSrcDataProvider.createSourceResourceManagerWithSchema(testName);
+    sourceConnectionProfile =
+        createMySQLSourceConnectionProfile(
+            sourceDBResourceManager, Arrays.asList(AUTHORS_TABLE, BOOKS_TABLE));
+
+    // create and upload GCS Resources
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
 
+    // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
   }
 
@@ -104,46 +114,52 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
   @After
   public void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, gcsResourceManager, pubsubResourceManager);
+        spannerResourceManager, gcsResourceManager, pubsubResourceManager, sourceDBResourceManager);
   }
 
   @Test
-  public void pubsubInvalidSubscriptionFITest() throws IOException, InterruptedException {
-    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(testName);
+  public void gcsNoPermissionFITest() throws IOException, InterruptedException {
 
-    String subscriptionName = "projects/project/subscriptions/IncorrectFormatPubSubSubscriptionID";
-    try {
-      jobInfo =
-          launchFwdDataflowJob(
-              spannerResourceManager,
-              "gcsPrefix",
-              "testStreamName",
-              "dlqGcsPrefix",
-              subscriptionName,
-              subscriptionName,
-              flexTemplateBuilder);
-      fail("Expected launch job to fail but it succeeded");
-    } catch (RuntimeException e) {
-      String jobId = extractJobIdFromError(e.getMessage());
-      assertNotNull(jobId);
-      LoggingClient loggingClient =
-          LoggingClient.builder(credentials).setProjectId(PROJECT).build();
-      String filter =
-          String.format(" \"NOT_FOUND: Unable to find subscription %s\" ", subscriptionName);
-      Instant startTime = Instant.now();
-      Instant endTime = startTime.plus(Duration.ofMinutes(15L));
-      Boolean errorLogFound = false;
-      while (!errorLogFound && Instant.now().isBefore(endTime)) {
-        List<Payload> logs = loggingClient.readJobLogs(jobId, filter, Severity.ERROR, 2);
-        if (logs.size() > 0) {
-          errorLogFound = true;
-        }
-        Thread.sleep(15 * 1000);
-      }
-      assertTrue(
-          "Could not find Expected dataflow job log: NOT_FOUND pubsub subscription", errorLogFound);
-    }
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(testName)
+            .addParameter("serviceAccount", "permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
+
+    // launch forward migration template
+    jobInfo =
+        launchFwdDataflowJob(
+            spannerResourceManager,
+            gcsResourceManager,
+            pubsubResourceManager,
+            flexTemplateBuilder,
+            sourceConnectionProfile);
+
+    // Wait for Forward migration job to be in running state
+    assertThatPipeline(jobInfo).isRunning();
+
+    // Wave of inserts
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 20000, sourceDBResourceManager);
+
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    // Failure injection phase: check that retryable errors are there
+                    new RetryableErrorsCheck(pipelineLauncher, jobInfo, 10000),
+
+                    // Recovery phase: Wait for all events to appear in Spanner
+                    SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
+                        .setMinRows(20000)
+                        .setMaxRows(20000)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
+                        .setMinRows(20000)
+                        .setMaxRows(20000)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+    assertThatResult(result).meetsConditions();
   }
 
   private String extractJobIdFromError(String message) {
