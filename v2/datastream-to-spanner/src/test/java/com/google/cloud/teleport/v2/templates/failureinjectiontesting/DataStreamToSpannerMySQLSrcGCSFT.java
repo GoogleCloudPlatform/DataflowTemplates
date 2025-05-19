@@ -104,9 +104,9 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
   public void gcsNoPermissionFITest() throws IOException, InterruptedException {
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(testName)
-            .addParameter(
-                "serviceAccount", "permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
+        FlexTemplateDataflowJobResourceManager.builder(testName);
+    // .addParameter(
+    //     "serviceAccount", "permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
 
     // launch forward migration template
     jobInfo =
