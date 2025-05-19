@@ -65,7 +65,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** DataStreamToSpannerPubsubFT. */
+/** DataStreamToSpannerMySQLSrcPubsubFT. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
@@ -110,7 +110,7 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
         spannerResourceManager, gcsResourceManager, pubsubResourceManager);
   }
 
-  // @Test
+  @Test
   public void pubsubInvalidSubscriptionFITest() throws IOException, InterruptedException {
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName);
