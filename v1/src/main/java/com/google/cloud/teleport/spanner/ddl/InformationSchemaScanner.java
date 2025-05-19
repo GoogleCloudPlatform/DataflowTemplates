@@ -1084,9 +1084,11 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
-                + " p.parameter_default  FROM information_schema.parameters AS p WHERE"
-                + " p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY"
-                + " p.specific_schema, p.specific_name, p.ordinal_position");
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position");
+
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
