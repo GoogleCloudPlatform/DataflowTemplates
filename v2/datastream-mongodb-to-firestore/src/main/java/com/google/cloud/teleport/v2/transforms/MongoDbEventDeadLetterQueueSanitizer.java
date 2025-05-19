@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueSanitizer;
+import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,6 +48,7 @@ public class MongoDbEventDeadLetterQueueSanitizer
       jsonNode.put("shadowCollection", input.getShadowCollection());
       jsonNode.putPOJO("documentId", input.getDocumentId());
       jsonNode.put("isDeleteEvent", input.isDeleteEvent());
+      jsonNode.put(DatastreamConstants.IS_DLQ_RECONSUMED, true);
 
       return OBJECT_MAPPER.writeValueAsString(jsonNode);
     } catch (JsonProcessingException e) {

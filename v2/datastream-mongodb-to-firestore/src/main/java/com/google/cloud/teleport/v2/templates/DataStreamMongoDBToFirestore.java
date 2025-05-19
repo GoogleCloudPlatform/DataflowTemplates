@@ -55,6 +55,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -442,6 +443,16 @@ public class DataStreamMongoDBToFirestore {
       MongoClientSettings settings =
           MongoClientSettings.builder()
               .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+              .applyToSocketSettings(
+                  builder -> {
+                    // How long the driver will wait to establish a connection
+                    builder.connectTimeout(60, TimeUnit.SECONDS);
+                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
+                  })
+              .applyToClusterSettings(
+                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
+              .retryWrites(true)
+              .retryReads(true)
               .uuidRepresentation(UuidRepresentation.STANDARD)
               .build();
       MongoClient mongoClient = MongoClients.create(settings);
@@ -977,6 +988,16 @@ public class DataStreamMongoDBToFirestore {
       MongoClientSettings settings =
           MongoClientSettings.builder()
               .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+              .applyToSocketSettings(
+                  builder -> {
+                    // How long the driver will wait to establish a connection
+                    builder.connectTimeout(60, TimeUnit.SECONDS);
+                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
+                  })
+              .applyToClusterSettings(
+                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
+              .retryWrites(true)
+              .retryReads(true)
               .uuidRepresentation(UuidRepresentation.STANDARD)
               .build();
       client = MongoClients.create(settings);
@@ -1084,7 +1105,6 @@ public class DataStreamMongoDBToFirestore {
 
         // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
-          event.setIsDlqReconsumed();
           out.get(failedWriteTag).output(event);
         }
       }
@@ -1144,7 +1164,6 @@ public class DataStreamMongoDBToFirestore {
 
         // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
-          event.setIsDlqReconsumed();
           context.output(failedWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
         }
       }

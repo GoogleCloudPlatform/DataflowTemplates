@@ -116,7 +116,7 @@ public class ProcessChangeEventFn
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;
-        if (session != null) {
+        if (session != null && !session.hasActiveTransaction()) {
           try {
             session.abortTransaction();
             LOG.warn(
@@ -144,6 +144,7 @@ public class ProcessChangeEventFn
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOG.error("Retry sleep interrupted for document ID: {}", element.getDocumentId(), ie);
+            out.get(failedWriteTag).output(element);
             break; // Exit the retry loop if interrupted
           }
           retryCount++;
@@ -154,7 +155,6 @@ public class ProcessChangeEventFn
               element.getDocumentId(),
               e.getMessage(),
               e);
-          element.setIsDlqReconsumed();
           out.get(failedWriteTag).output(element);
           break; // Exit the retry loop on non-transient error or max retries
         }
@@ -184,6 +184,16 @@ public class ProcessChangeEventFn
       MongoClientSettings settings =
           MongoClientSettings.builder()
               .applyConnectionString(new com.mongodb.ConnectionString(connectionString))
+              .applyToSocketSettings(
+                  builder -> {
+                    // How long the driver will wait to establish a connection
+                    builder.connectTimeout(60, TimeUnit.SECONDS);
+                    builder.readTimeout(60, TimeUnit.SECONDS); // Example: 60 seconds
+                  })
+              .applyToClusterSettings(
+                  builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
+              .retryWrites(true)
+              .retryReads(true)
               .uuidRepresentation(UuidRepresentation.STANDARD)
               .build();
       client = MongoClients.create(settings);

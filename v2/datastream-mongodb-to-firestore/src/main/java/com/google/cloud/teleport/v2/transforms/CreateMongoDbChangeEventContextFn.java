@@ -52,11 +52,7 @@ public class CreateMongoDbChangeEventContextFn
           new MongoDbChangeEventContext(jsonNode, shadowCollectionPrefix);
       out.get(successfulCreationTag).output(changeEventContext);
     } catch (Exception e) {
-      LOG.error(
-          "Error creating MongoDbChangeEventContext for element {}: {}",
-          element,
-          e.getMessage(),
-          e);
+      LOG.error("Error creating MongoDbChangeEventContext, exception: {}, element: {}", e, element);
       LOG.info("Sending failed element to DLQ");
       out.get(failedCreationTag).output(element);
     }

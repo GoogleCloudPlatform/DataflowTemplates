@@ -166,6 +166,7 @@ public class MongoDbChangeEventContext implements Serializable {
 
     // Add processed timestamp
     shadowDoc.put("processed_at", System.currentTimeMillis());
+    shadowDoc.put("is_from_dlq", isDlqReconsumed);
 
     Utils.removeTableRowFields(shadowDoc, MAPPER_IGNORE_FIELDS);
 
@@ -273,9 +274,5 @@ public class MongoDbChangeEventContext implements Serializable {
       return Objects.equals(this.toString(), other.toString());
     }
     return false;
-  }
-
-  public void setIsDlqReconsumed() {
-    this.isDlqReconsumed = true;
   }
 }
