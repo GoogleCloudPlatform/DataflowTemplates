@@ -29,6 +29,7 @@ import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Udf;
 import com.google.cloud.teleport.spanner.proto.ExportProtos;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
@@ -396,6 +397,21 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<String> allUdfNames =
+        ddl.apply(
+            "List all user-defined function names",
+            ParDo.of(
+                new DoFn<Ddl, String>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    Ddl ddl = c.element();
+                    for (Udf udf : ddl.udfs()) {
+                      c.output(udf.specificName());
+                    }
+                  }
+                }));
+
     // Generate a unique output directory name.
     final PCollectionView<String> outputDirectoryName =
         p.apply(Create.of(1))
@@ -621,6 +637,22 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
                   }
                 }));
 
+    PCollection<KV<String, Iterable<String>>> udfs =
+        allUdfNames.apply(
+            "Export user-defined functions",
+            ParDo.of(
+                new DoFn<String, KV<String, Iterable<String>>>() {
+
+                  @ProcessElement
+                  public void processElement(ProcessContext c) {
+                    String udfName = c.element();
+                    LOG.info("Exporting user-defined function: " + udfName);
+                    // This file will contain the schema definition for the UDF.
+                    c.output(
+                        KV.of(udfName, Collections.singleton(udfName + ".avro-00000-of-00001")));
+                  }
+                }));
+
     // Empty tables, views, models, change streams, sequences and named schema are handled together,
     // because we export them as empty Avro files that only contain the Avro schemas.
     PCollection<KV<String, Iterable<String>>> emptySchemaFiles =
@@ -630,6 +662,7 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
             .and(sequences)
             .and(namedSchemas)
             .and(placements)
+            .and(udfs)
             .and(propertyGraphs)
             .apply("Combine all empty schema files", Flatten.pCollections());
 
@@ -974,6 +1007,8 @@ public class ExportTransform extends PTransform<PBegin, WriteFilesResult<String>
           exportManifest.addSequences(obj);
         } else if (ddl.placement(obj.getName()) != null) {
           exportManifest.addPlacements(obj);
+        } else if (ddl.udf(obj.getName()) != null) {
+          exportManifest.addUdfs(obj);
         } else {
           exportManifest.addTables(obj);
         }

@@ -57,7 +57,7 @@ public class NameUtils {
   public static String quoteIdentifier(String name, Dialect dialect) {
     String quote = identifierQuote(dialect);
     return Arrays.stream(name.split("\\."))
-        .map(s -> quote + s + quote)
+        .map(s -> s.startsWith(quote) && s.endsWith(quote) ? s : quote + s + quote)
         .collect(Collectors.joining("."));
   }
 
