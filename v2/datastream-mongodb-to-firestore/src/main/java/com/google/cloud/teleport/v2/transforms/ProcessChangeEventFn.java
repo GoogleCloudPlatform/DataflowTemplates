@@ -156,6 +156,7 @@ public class ProcessChangeEventFn
               e.getMessage(),
               e);
           out.get(failedWriteTag).output(element);
+          LOG.info("Failed element sent to DLQ");
           break; // Exit the retry loop on non-transient error or max retries
         }
       } finally {

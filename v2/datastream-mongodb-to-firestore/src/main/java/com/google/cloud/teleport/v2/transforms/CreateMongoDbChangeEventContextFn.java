@@ -53,8 +53,8 @@ public class CreateMongoDbChangeEventContextFn
       out.get(successfulCreationTag).output(changeEventContext);
     } catch (Exception e) {
       LOG.error("Error creating MongoDbChangeEventContext, exception: {}, element: {}", e, element);
-      LOG.info("Sending failed element to DLQ");
       out.get(failedCreationTag).output(element);
+      LOG.info("Failed element sent to DLQ");
     }
   }
 }

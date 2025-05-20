@@ -1,0 +1,8 @@
+{
+  "mainClass": "com.google.cloud.teleport.v2.templates.DataStreamMongoDBToFirestore",
+  "classPath": "/template/datastream-mongodb-to-firestore/datastream-mongodb-to-firestore-conscrypt.jar:/template/datastream-mongodb-to-firestore/*:/template/datastream-mongodb-to-firestore/libs/*:/template/datastream-mongodb-to-firestore/classes",
+  "defaultParameterValues": {
+    "labels": "{\"goog-dataflow-provided-template-type\":\"flex\",\"goog-dataflow-provided-template-name\":\"datastream-mongodb-to-firestore\"}"
+  }
+}
+
