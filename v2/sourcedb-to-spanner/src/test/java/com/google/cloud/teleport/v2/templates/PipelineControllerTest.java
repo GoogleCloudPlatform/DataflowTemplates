@@ -156,6 +156,7 @@ public class PipelineControllerTest {
             + "}";
     try (BufferedWriter writer = Files.newBufferedWriter(schemaOverridesFile)) {
       writer.write(overridesJsonContent);
+      writer.flush();
     }
   }
 

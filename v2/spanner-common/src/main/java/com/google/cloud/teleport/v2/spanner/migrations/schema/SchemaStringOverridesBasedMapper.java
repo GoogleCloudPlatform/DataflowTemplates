@@ -236,13 +236,13 @@ public class SchemaStringOverridesBasedMapper implements ISchemaMapper, Serializ
 
   @Override
   public String getShardIdColumnName(String namespace, String spannerTableName) {
-    // For schema override based migrations, the shard id must be supplied via custom jar.
+    LOG.warn("For schema override based migrations, the shard id must be supplied via custom jar.");
     return null;
   }
 
   @Override
   public String getSyntheticPrimaryKeyColName(String namespace, String spannerTableName) {
-    // Synthetic PK cols will soon be deprecated hence not adding support for them.
+    LOG.warn("Synthetic PK are not supported for schema override based migrations.");
     return null;
   }
 
