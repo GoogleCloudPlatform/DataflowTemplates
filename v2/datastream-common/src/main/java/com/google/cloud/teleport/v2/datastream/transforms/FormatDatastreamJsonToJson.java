@@ -92,7 +92,7 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadataAsLong(record, "log_position"));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
-      // Mongodb Specific Metadata
+      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
       outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
       outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
     } else {

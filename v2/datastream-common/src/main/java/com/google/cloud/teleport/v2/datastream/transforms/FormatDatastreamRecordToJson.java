@@ -148,7 +148,7 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_lsn", getPostgresLsn(record));
       outputObject.put("_metadata_tx_id", getPostgresTxId(record));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
-      // Mongodb Specific Metadata
+      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
       outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
       outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
     } else {
