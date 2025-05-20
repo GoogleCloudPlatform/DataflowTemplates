@@ -730,6 +730,8 @@
         <module>spanner-to-sourcedb</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
+        <module>googlecloud-to-clickhouse</module>
+        <module>clickhouse-common</module>
         <module>real-spanner-service</module>
         <module>failure-injected-spanner-service</module>
         <module>failure-injection-policies</module>
