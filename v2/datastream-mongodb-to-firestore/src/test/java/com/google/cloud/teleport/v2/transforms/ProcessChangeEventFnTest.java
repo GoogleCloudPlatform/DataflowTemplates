@@ -277,7 +277,7 @@ public class ProcessChangeEventFnTest {
 
     processFn.processElement(mockContext, mockReceiver);
 
-    verify(mockShadowCollection, times(1)).find(mockSession, LOOKUP_BY_DOC_ID);
+    verify(mockShadowCollection, times(4)).find(mockSession, LOOKUP_BY_DOC_ID);
     ArgumentCaptor<MongoDbChangeEventContext> failureCaptor =
         ArgumentCaptor.forClass(MongoDbChangeEventContext.class);
     verify(mockReceiver).get(ProcessChangeEventFn.failedWriteTag);

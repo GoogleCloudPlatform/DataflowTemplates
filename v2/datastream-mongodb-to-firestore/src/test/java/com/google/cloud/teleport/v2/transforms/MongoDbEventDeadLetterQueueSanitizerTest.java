@@ -56,7 +56,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
-            + "\"isDeleteEvent\":false}";
+            + "\"isDeleteEvent\":false,"
+            + "\"isDlqReconsumed\":true}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 
@@ -70,7 +71,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
-            + "\"isDeleteEvent\":false}";
+            + "\"isDeleteEvent\":false,"
+            + "\"isDlqReconsumed\":true}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 
@@ -105,7 +107,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"dataCollection\":\"test_collection\","
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
-            + "\"isDeleteEvent\":false}";
+            + "\"isDeleteEvent\":false,"
+            + "\"isDlqReconsumed\":true}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 
