@@ -161,11 +161,13 @@ public class InformationSchemaScannerTest {
     assertThat(
         googleSQLInfoScanner.listUdfsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
-                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
-                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
-                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
-                + " p.specific_name, p.ordinal_position"));
+            "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name, "
+                + "r.data_type, r.routine_definition, r.security_type"
+                + " FROM information_schema.routines AS r"
+                + " WHERE r.routine_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " AND r.routine_type = 'FUNCTION'"
+                + " AND r.routine_body = 'SQL'"));
 
     assertThrows(
         IllegalArgumentException.class,
@@ -178,9 +180,10 @@ public class InformationSchemaScannerTest {
         googleSQLInfoScanner.listFunctionParametersSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
-                + " p.parameter_default  FROM information_schema.parameters AS p WHERE"
-                + " p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY"
-                + " p.specific_schema, p.specific_name, p.ordinal_position"));
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position"));
 
     assertThrows(
         IllegalArgumentException.class,
