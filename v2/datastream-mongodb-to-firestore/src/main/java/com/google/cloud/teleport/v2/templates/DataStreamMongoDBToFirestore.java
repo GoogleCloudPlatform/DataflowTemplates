@@ -175,8 +175,8 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "Process backfill events before CDC events",
         helpText =
-            "When true, all backfill events are processed before any CDC events. Default: true")
-    @Default.Boolean(true)
+            "When true, all backfill events are processed before any CDC events, otherwise the backfill and cdc events are processed together. Default: false")
+    @Default.Boolean(false)
     Boolean getProcessBackfillFirst();
 
     void setProcessBackfillFirst(Boolean value);
@@ -186,7 +186,7 @@ public class DataStreamMongoDBToFirestore {
         optional = true,
         description = "Use shadow tables for backfill events",
         helpText =
-            "When false, backfill events are processed without shadow tables. Default: false")
+            "When false, backfill events are processed without shadow tables. This only takes effect when processBackfillFirst is set to true. Default: false")
     @Default.Boolean(false)
     Boolean getUseShadowTablesForBackfill();
 

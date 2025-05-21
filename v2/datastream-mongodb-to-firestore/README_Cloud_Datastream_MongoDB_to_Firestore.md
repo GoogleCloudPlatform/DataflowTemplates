@@ -38,7 +38,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
-* **inputFilePattern**: Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.avro`.
+* **inputFilePattern**: Path of the file pattern glob to read from. For example, `gs://your-bucket/path/`.
 * **inputFileFormat**: The file format of the desired input files. Can be avro or json. Defaults to: avro.
 * **connectionUri**: URI to connect to the target project. It should start with either 'mongodb://' or 'mongodb+srv://'. If OIDC authentication mechanism is used and no TOKEN_RESOURCE is provided, it will automatically use FIRESTORE.
 * **databaseName**: The database to write to. For example, `(default)`.
@@ -54,8 +54,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **deadLetterQueueDirectory**: The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location.
 * **dlqRetryMinutes**: The number of minutes between dead letter queue retries. Defaults to `10`.
 * **dlqMaxRetryCount**: The max number of times temporary errors can be retried through DLQ. Defaults to `500`.
-* **processBackfillFirst**: When true, all backfill events are processed before any CDC events. Default: true.
-* **useShadowTablesForBackfill**: When false, backfill events are processed without shadow tables. Default: false.
+* **processBackfillFirst**: When true, all backfill events are processed before any CDC events, otherwise the backfill and cdc events are processed together. Default: false.
+* **useShadowTablesForBackfill**: When false, backfill events are processed without shadow tables. This only takes effect when processBackfillFirst is set to true. Default: false.
 * **runMode**: This is the run mode type, whether regular or with retryDLQ. Defaults to: regular.
 * **directoryWatchDurationInMinutes**: The Duration for which the pipeline should keep polling a directory in GCS. Datastreamoutput files are arranged in a directory structure which depicts the timestamp of the event grouped by minutes. This parameter should be approximately equal tomaximum delay which could occur between event occurring in source database and the same event being written to GCS by Datastream. 99.9 percentile = 10 minutes. Defaults to: 10.
 * **streamName**: The name or template for the stream to poll for schema information and source type.
@@ -153,7 +153,7 @@ export BATCH_SIZE=500
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
-export PROCESS_BACKFILL_FIRST=true
+export PROCESS_BACKFILL_FIRST=false
 export USE_SHADOW_TABLES_FOR_BACKFILL=false
 export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
@@ -216,7 +216,7 @@ export BATCH_SIZE=500
 export DEAD_LETTER_QUEUE_DIRECTORY=""
 export DLQ_RETRY_MINUTES=10
 export DLQ_MAX_RETRY_COUNT=500
-export PROCESS_BACKFILL_FIRST=true
+export PROCESS_BACKFILL_FIRST=false
 export USE_SHADOW_TABLES_FOR_BACKFILL=false
 export RUN_MODE=regular
 export DIRECTORY_WATCH_DURATION_IN_MINUTES=10
@@ -288,7 +288,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_mongodb_to_firest
     # deadLetterQueueDirectory = ""
     # dlqRetryMinutes = "10"
     # dlqMaxRetryCount = "500"
-    # processBackfillFirst = "true"
+    # processBackfillFirst = "false"
     # useShadowTablesForBackfill = "false"
     # runMode = "regular"
     # directoryWatchDurationInMinutes = "10"

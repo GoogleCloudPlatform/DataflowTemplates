@@ -35,7 +35,7 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.avro`"
+  description = "Path of the file pattern glob to read from. For example, `gs://your-bucket/path/`"
 
 }
 
@@ -113,13 +113,13 @@ variable "dlqMaxRetryCount" {
 
 variable "processBackfillFirst" {
   type        = bool
-  description = "When true, all backfill events are processed before any CDC events. Default: true"
+  description = "When true, all backfill events are processed before any CDC events, otherwise the backfill and cdc events are processed together. Default: false"
   default     = null
 }
 
 variable "useShadowTablesForBackfill" {
   type        = bool
-  description = "When false, backfill events are processed without shadow tables. Default: false"
+  description = "When false, backfill events are processed without shadow tables. This only takes effect when processBackfillFirst is set to true. Default: false"
   default     = null
 }
 
