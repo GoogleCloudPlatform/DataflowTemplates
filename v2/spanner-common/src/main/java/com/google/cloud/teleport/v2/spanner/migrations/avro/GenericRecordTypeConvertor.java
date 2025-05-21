@@ -114,7 +114,7 @@ public class GenericRecordTypeConvertor {
     }
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
-    // This is null/blank for identity/non-sharded cases.
+    // This is null/blank for identity/override/non-sharded cases.
     String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
       try {
