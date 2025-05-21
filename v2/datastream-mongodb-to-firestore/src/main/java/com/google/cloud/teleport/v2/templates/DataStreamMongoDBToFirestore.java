@@ -451,8 +451,6 @@ public class DataStreamMongoDBToFirestore {
                   })
               .applyToClusterSettings(
                   builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .retryWrites(true)
-              .retryReads(true)
               .uuidRepresentation(UuidRepresentation.STANDARD)
               .build();
       MongoClient mongoClient = MongoClients.create(settings);
@@ -996,8 +994,6 @@ public class DataStreamMongoDBToFirestore {
                   })
               .applyToClusterSettings(
                   builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .retryWrites(true)
-              .retryReads(true)
               .uuidRepresentation(UuidRepresentation.STANDARD)
               .build();
       client = MongoClients.create(settings);

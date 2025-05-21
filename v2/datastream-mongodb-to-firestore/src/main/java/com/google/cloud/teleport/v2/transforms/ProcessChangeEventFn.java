@@ -156,7 +156,7 @@ public class ProcessChangeEventFn
               e.getMessage(),
               e);
           out.get(failedWriteTag).output(element);
-          LOG.info("Failed element sent to DLQ");
+          LOG.info("Failed element of id {} sent to DLQ", element.getDocumentId());
           break; // Exit the retry loop on non-transient error or max retries
         }
       } finally {
@@ -193,8 +193,6 @@ public class ProcessChangeEventFn
                   })
               .applyToClusterSettings(
                   builder -> builder.serverSelectionTimeout(10, TimeUnit.MINUTES))
-              .retryWrites(true)
-              .retryReads(true)
               .uuidRepresentation(UuidRepresentation.STANDARD)
               .build();
       client = MongoClients.create(settings);
