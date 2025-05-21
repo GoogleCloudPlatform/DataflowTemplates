@@ -116,7 +116,7 @@ public class ProcessChangeEventFn
         break; // Exit the retry loop on success
       } catch (Exception e) {
         lastException = e;
-        if (session != null && !session.hasActiveTransaction()) {
+        if (session != null && session.hasActiveTransaction()) {
           try {
             session.abortTransaction();
             LOG.warn(
