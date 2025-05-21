@@ -170,8 +170,7 @@ public class InformationSchemaScannerTest {
                 + " AND r.routine_body = 'SQL'"));
 
     assertThrows(
-        IllegalArgumentException.class,
-        () -> postgresSQLInfoScanner.listUdfsSQL().getSql());
+        IllegalArgumentException.class, () -> postgresSQLInfoScanner.listUdfsSQL().getSql());
   }
 
   @Test
