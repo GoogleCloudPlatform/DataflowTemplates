@@ -39,8 +39,9 @@
         <jib.maven.version>3.4.0</jib.maven.version>
         <kafka-clients.version>3.7.0</kafka-clients.version>
         <opencensus.version>0.31.0</opencensus.version>
-        <protoc.version>4.28.3</protoc.version>
-
+        <protoc.version>4.29.4</protoc.version>
+        <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
+        <base-container-image.version>latest</base-container-image.version>
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
 
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
@@ -161,6 +162,11 @@
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>4.29.4</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -190,7 +196,7 @@
                         <from>
                             <!--
                             The Dataflow Template base image to use. This
-                             should not need to change unless we want to use the JDK11
+                             should not need to change unless we want to overwrite image path
                              -->
                             <image>${base-container-image}:${base-container-image.version}</image>
                         </from>
@@ -696,7 +702,7 @@
         <module>googlecloud-to-splunk</module>
         <module>google-ads-to-googlecloud</module>
         <module>jdbc-common</module>
-        <module>jdbc-to-googlecloud</module>
+        <module>jdbc-and-googlecloud</module>
         <module>jms-to-pubsub</module>
         <module>kafka-common</module>
         <module>kafka-to-bigquery</module>
@@ -724,6 +730,11 @@
         <module>spanner-to-sourcedb</module>
         <module>sqlserver-to-googlecloud</module>
         <module>streaming-data-generator</module>
+        <module>googlecloud-to-clickhouse</module>
+        <module>clickhouse-common</module>
+        <module>real-spanner-service</module>
+        <module>failure-injected-spanner-service</module>
+        <module>failure-injection-policies</module>
     </modules>
 
 </project>

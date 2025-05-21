@@ -76,15 +76,17 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
           paramsAdder)
       throws IOException {
     // Arrange
-    String createTableStatement =
+    List<String> statements = new ArrayList<>();
+    statements.add(String.format("DROP TABLE IF EXISTS `%s`", testName));
+    statements.add(
         String.format(
             "CREATE TABLE `%s` (\n"
                 + "  Id INT64 NOT NULL,\n"
                 + "  FirstName String(1024),\n"
                 + "  LastName String(1024),\n"
                 + ") PRIMARY KEY(Id)",
-            testName);
-    spannerResourceManager.executeDdlStatement(createTableStatement);
+            testName));
+    spannerResourceManager.executeDdlStatements(statements);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
     spannerResourceManager.write(expectedData);
 
@@ -150,15 +152,17 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
           paramsAdder)
       throws IOException {
     // Arrange
-    String createTableStatement =
+    List<String> statements = new ArrayList<>();
+    statements.add(String.format("DROP TABLE IF EXISTS \"%s\"", testName));
+    statements.add(
         String.format(
             "CREATE TABLE \"%s\" (\n"
                 + "  \"Id\" bigint NOT NULL,\n"
                 + "  \"FirstName\" character varying(256),\n"
                 + "  \"LastName\" character varying(256),\n"
                 + " PRIMARY KEY(\"Id\"))",
-            testName);
-    spannerResourceManager.executeDdlStatement(createTableStatement);
+            testName));
+    spannerResourceManager.executeDdlStatements(statements);
     List<Mutation> expectedData = generateTableRows(String.format("%s", testName));
     spannerResourceManager.write(expectedData);
 
@@ -221,14 +225,16 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
             .useCustomHost(spannerHost)
             .build();
     // Arrange
-    String createTableStatement =
+    List<String> statements = new ArrayList<>();
+    statements.add(String.format("DROP TABLE IF EXISTS `%s`", testName));
+    statements.add(
         String.format(
             "CREATE TABLE `%s` (\n"
                 + "  Id INT64 NOT NULL,\n"
                 + "  UuidCol UUID\n"
                 + ") PRIMARY KEY(Id)",
-            testName);
-    spannerResourceManager.executeDdlStatement(createTableStatement);
+            testName));
+    spannerResourceManager.executeDdlStatements(statements);
     List<Mutation> expectedData = generateTableRowsUUID(String.format("%s", testName));
     spannerResourceManager.write(expectedData);
 
@@ -285,14 +291,16 @@ public class SpannerToTextIT extends SpannerTemplateITBase {
             .useCustomHost(spannerHost)
             .build();
     // Arrange
-    String createTableStatement =
+    List<String> statements = new ArrayList<>();
+    statements.add(String.format("DROP TABLE IF EXISTS \"%s\"", testName));
+    statements.add(
         String.format(
             "CREATE TABLE \"%s\" (\n"
                 + "  \"Id\" bigint NOT NULL,\n"
                 + "  \"UuidCol\" uuid,\n"
                 + " PRIMARY KEY(\"Id\"))",
-            testName);
-    spannerResourceManager.executeDdlStatement(createTableStatement);
+            testName));
+    spannerResourceManager.executeDdlStatements(statements);
     List<Mutation> expectedData = generateTableRowsUUID(String.format("%s", testName));
     spannerResourceManager.write(expectedData);
 

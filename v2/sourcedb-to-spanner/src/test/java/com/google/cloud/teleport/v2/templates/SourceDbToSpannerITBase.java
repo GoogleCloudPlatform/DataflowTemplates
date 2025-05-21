@@ -40,6 +40,7 @@ import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
+import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
@@ -54,9 +55,17 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
  */
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  protected static final String VPC_REGION = "us-central1";
+  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
+  }
+
+  public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {
+    return CloudMySQLResourceManager.builder(testName).build();
   }
 
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
@@ -217,6 +226,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("outputDirectory", "gs://" + artifactBucketName);
           }
         };
+    params.putAll(ADDITIONAL_JOB_PARAMS);
     if (sourceResourceManager instanceof JDBCResourceManager) {
       params.putAll(getJdbcParameters((JDBCResourceManager) sourceResourceManager));
     } else if (sourceResourceManager instanceof CassandraResourceManager) {

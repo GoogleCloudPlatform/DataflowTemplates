@@ -1424,4 +1424,27 @@ public class InformationSchemaScannerIT {
     statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
+
+  @Test
+  public void defaultTimeZone() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( default_time_zone = \"UTC\" )\n\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void pgDefaultTimeZone() throws Exception {
+    List<String> statements =
+        Arrays.asList("ALTER DATABASE \"" + dbId + "\" SET spanner.default_time_zone = 'UTC'\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
 }

@@ -63,6 +63,7 @@ import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -139,6 +140,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
   }
 
   @Test
+  @Ignore("This test is flaky, and Oracle is not fully supported migration source yet")
   public void testDataStreamOracleToSpanner() throws IOException {
     // Run a simple IT
     simpleOracleToSpannerTest(
@@ -175,6 +177,7 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
   }
 
   @Test
+  @Ignore("This test is flaky, and Oracle is not fully supported migration source yet")
   public void testDataStreamOracleToSpannerJson() throws IOException {
     // Run a simple IT
     simpleOracleToSpannerTest(

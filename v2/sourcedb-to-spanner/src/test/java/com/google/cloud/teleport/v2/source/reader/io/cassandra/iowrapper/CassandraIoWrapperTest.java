@@ -79,7 +79,7 @@ public class CassandraIoWrapperTest {
 
     try (MockedStatic mockCassandraIoWrapperHelper = mockStatic(CassandraIOWrapperHelper.class)) {
       mockCassandraIoWrapperHelper
-          .when(() -> CassandraIOWrapperHelper.buildDataSource(testGcsPath))
+          .when(() -> CassandraIOWrapperHelper.buildDataSource(testGcsPath, null))
           .thenReturn(dataSource);
       mockCassandraIoWrapperHelper
           .when(() -> CassandraIOWrapperHelper.buildSchemaDiscovery())
@@ -100,7 +100,8 @@ public class CassandraIoWrapperTest {
           .when(() -> CassandraIOWrapperHelper.getTableReaders(dataSource, mockSourceSchema))
           .thenReturn(mockTableReaders);
 
-      CassandraIoWrapper cassandraIoWrapper = new CassandraIoWrapper(testGcsPath, tablesToRead);
+      CassandraIoWrapper cassandraIoWrapper =
+          new CassandraIoWrapper(testGcsPath, tablesToRead, null);
       assertThat(cassandraIoWrapper.discoverTableSchema()).isEqualTo(mockSourceSchema);
       assertThat(cassandraIoWrapper.getTableReaders()).isEqualTo(mockTableReaders);
     }

@@ -22,6 +22,7 @@ on:
     - 'main'
     paths:
       # Template wide common modules
+      - 'pom.xml'
       - 'v2/common/**'
       - 'v2/datastream-common/**'
       - 'it/google-cloud-platform/**'
@@ -33,6 +34,7 @@ on:
       - 'v2/kafka-to-bigquery/**'
       - 'v2/kafka-to-gcs/**'
       - 'v2/kafka-to-kafka/**'
+      - 'v2/pubsub-to-kafka/**'
   schedule:
     - cron: "6 */12 * * *"
   workflow_dispatch:

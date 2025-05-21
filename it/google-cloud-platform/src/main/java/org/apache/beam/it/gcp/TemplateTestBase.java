@@ -584,8 +584,18 @@ public abstract class TemplateTestBase {
       Runtime.getRuntime()
           .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
     }
+    printJobLink(testName, launchInfo);
 
     return launchInfo;
+  }
+
+  public void printJobLink(String testName, LaunchInfo launchInfo) {
+    LOG.info(
+        "Dataflow Console link for {}: https://console.cloud.google.com/dataflow/jobs/{}/{}?project={}",
+        testName,
+        launchInfo.region(),
+        launchInfo.jobId(),
+        launchInfo.projectId());
   }
 
   /** Get the Cloud Storage base path for this test suite. */
@@ -713,7 +723,7 @@ public abstract class TemplateTestBase {
    * for a specific instance of client and given job information, which is useful to enforcing
    * resource termination using {@link Runtime#addShutdownHook(Thread)}.
    */
-  static class CancelJobShutdownHook implements Runnable {
+  public static class CancelJobShutdownHook implements Runnable {
 
     private final PipelineLauncher pipelineLauncher;
     private final LaunchInfo launchInfo;
