@@ -54,7 +54,6 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.values.KV;
-import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -1035,7 +1034,6 @@ public class InformationSchemaScanner {
     }
   }
 
-  @NotNull
   @VisibleForTesting
   Statement listUdfsSQL() {
     Statement queryStatement;
