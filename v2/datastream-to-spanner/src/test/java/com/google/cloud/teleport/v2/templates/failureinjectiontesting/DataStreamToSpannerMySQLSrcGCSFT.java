@@ -28,6 +28,8 @@ import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -45,17 +47,12 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** DataStreamToSpannerSpannerFailureInjectionTest. */
+/** DataStreamToSpannerMySQLSrcGCSFT. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerMySQLSrcSpannerFT extends DataStreamToSpannerFTBase {
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerMySQLSrcSpannerFT.class);
+public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase {
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerFailureInjectionTesting/spanner-schema.sql";
 
@@ -90,22 +87,6 @@ public class DataStreamToSpannerMySQLSrcSpannerFT extends DataStreamToSpannerFTB
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
-
-    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(testName)
-            .withAdditionalMavenProfile("failureInjectionTest")
-            .addParameter(
-                "failureInjectionParameter",
-                "{\"policyType\":\"InitialLimitedDurationErrorInjectionPolicy\"}");
-
-    // launch forward migration template
-    jobInfo =
-        launchFwdDataflowJob(
-            spannerResourceManager,
-            gcsResourceManager,
-            pubsubResourceManager,
-            flexTemplateBuilder,
-            sourceConnectionProfile);
   }
 
   /**
@@ -120,7 +101,22 @@ public class DataStreamToSpannerMySQLSrcSpannerFT extends DataStreamToSpannerFTB
   }
 
   @Test
-  public void spannerRetryableErrorFailureInjectionTest() {
+  public void gcsNoPermissionFITest() throws IOException, InterruptedException {
+
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(testName);
+    // .addParameter(
+    //     "serviceAccount", "permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
+
+    // launch forward migration template
+    jobInfo =
+        launchFwdDataflowJob(
+            spannerResourceManager,
+            gcsResourceManager,
+            pubsubResourceManager,
+            flexTemplateBuilder,
+            sourceConnectionProfile);
+
     // Wait for Forward migration job to be in running state
     assertThatPipeline(jobInfo).isRunning();
 
@@ -148,5 +144,18 @@ public class DataStreamToSpannerMySQLSrcSpannerFT extends DataStreamToSpannerFTB
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
+  }
+
+  private String extractJobIdFromError(String message) {
+    Pattern pattern =
+        Pattern.compile(
+            "https://console.cloud.google.com/dataflow/jobs/([^/]+)/([^/?]+)(\\?project=([^&]+))?");
+    Matcher matcher = pattern.matcher(message);
+    if (matcher.find()) {
+      // Group 2 contains the jobId
+      return matcher.group(2);
+    } else {
+      return null;
+    }
   }
 }
