@@ -396,7 +396,8 @@ public class MongoDbChangeEventContextTest {
             + "\"documentId\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},"
             + "\"isDeleteEvent\":false,"
             + "\"timestamp\":{\"seconds\":1683782270,\"nanos\":123456789},"
-            + "\"isDlqReconsumed\":false}";
+            + "\"isDlqReconsumed\":false,"
+            + "\"_metadata_retry_count\":0}";
 
     assertEquals(jsonString, expectedJson);
   }

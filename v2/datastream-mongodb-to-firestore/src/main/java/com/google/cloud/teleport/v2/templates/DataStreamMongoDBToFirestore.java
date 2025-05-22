@@ -876,8 +876,8 @@ public class DataStreamMongoDBToFirestore {
         .apply(
             "Write Failed Json To DLQ",
             DLQWriteTransform.WriteDLQ.newBuilder()
-                .withDlqDirectory(dlqManager.getRetryDlqDirectoryWithDateTime())
-                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_retry_json/")
+                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_non_retry_json/")
                 .setIncludePaneInfo(true)
                 .build());
     LOG.info("DLQ setup completed for failed JSON processing");

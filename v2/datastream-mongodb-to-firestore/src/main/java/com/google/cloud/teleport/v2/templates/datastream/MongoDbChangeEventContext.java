@@ -58,6 +58,7 @@ public class MongoDbChangeEventContext implements Serializable {
   private final boolean isDeleteEvent;
   private final Document timestampDoc;
   private boolean isDlqReconsumed;
+  private int retryCount;
 
   /** Gets the change type from the event metadata. */
   private String getChangeType(JsonNode changeEvent) {
@@ -90,6 +91,11 @@ public class MongoDbChangeEventContext implements Serializable {
         payload.has(DatastreamConstants.CHANGE_EVENT)
             ? payload.get(DatastreamConstants.CHANGE_EVENT)
             : payload;
+
+    this.retryCount =
+        changeEvent.has(DatastreamConstants.RETRY_COUNT)
+            ? changeEvent.get("_metadata_retry_count").asInt()
+            : 0;
 
     // Extract collection name from the event
     if (changeEvent.has(DatastreamConstants.EVENT_SOURCE_METADATA)) {
@@ -217,6 +223,10 @@ public class MongoDbChangeEventContext implements Serializable {
     return isDlqReconsumed;
   }
 
+  public int getRetryCount() {
+    return retryCount;
+  }
+
   /**
    * Override toString() to provide a proper JSON representation of this object. This ensures that
    * when the object is serialized to a string, it produces valid JSON.
@@ -250,6 +260,7 @@ public class MongoDbChangeEventContext implements Serializable {
       }
 
       jsonNode.put(DatastreamConstants.IS_DLQ_RECONSUMED, this.isDlqReconsumed);
+      jsonNode.put(DatastreamConstants.RETRY_COUNT, this.retryCount);
 
       return OBJECT_MAPPER.writeValueAsString(jsonNode);
     } catch (JsonProcessingException e) {

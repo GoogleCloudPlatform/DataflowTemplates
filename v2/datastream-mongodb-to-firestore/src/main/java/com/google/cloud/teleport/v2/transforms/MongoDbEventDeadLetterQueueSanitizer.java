@@ -49,6 +49,7 @@ public class MongoDbEventDeadLetterQueueSanitizer
       jsonNode.putPOJO("documentId", input.getDocumentId());
       jsonNode.put("isDeleteEvent", input.isDeleteEvent());
       jsonNode.put(DatastreamConstants.IS_DLQ_RECONSUMED, true);
+      jsonNode.put(DatastreamConstants.RETRY_COUNT, input.getRetryCount() + 1);
 
       return OBJECT_MAPPER.writeValueAsString(jsonNode);
     } catch (JsonProcessingException e) {

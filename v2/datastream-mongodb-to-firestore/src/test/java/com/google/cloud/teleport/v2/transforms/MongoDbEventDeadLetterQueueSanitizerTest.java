@@ -57,7 +57,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
             + "\"isDeleteEvent\":false,"
-            + "\"isDlqReconsumed\":true}";
+            + "\"isDlqReconsumed\":true,"
+            + "\"_metadata_retry_count\":1}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 
@@ -72,7 +73,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
             + "\"isDeleteEvent\":false,"
-            + "\"isDlqReconsumed\":true}";
+            + "\"isDlqReconsumed\":true,"
+            + "\"_metadata_retry_count\":1}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 
@@ -108,7 +110,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"shadowCollection\":\"shadow_test_collection\","
             + "\"documentId\":\"test_id\","
             + "\"isDeleteEvent\":false,"
-            + "\"isDlqReconsumed\":true}";
+            + "\"isDlqReconsumed\":true,"
+            + "\"_metadata_retry_count\":1}";
     assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 
@@ -122,5 +125,20 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
             + "\"documentId\":123,"
             + "\"collection\":\"another_collection\"}";
     assertEquals(expectedJson, sanitizer.getErrorMessageJson(mockContext));
+  }
+
+  @Test
+  public void testRetryCountIncrements() throws Exception {
+    when(mockContext.getRetryCount()).thenReturn(123);
+
+    String expectedJson =
+        "{\"changeEvent\":{\"key\":\"value\"},"
+            + "\"dataCollection\":\"test_collection\","
+            + "\"shadowCollection\":\"shadow_test_collection\","
+            + "\"documentId\":\"test_id\","
+            + "\"isDeleteEvent\":false,"
+            + "\"isDlqReconsumed\":true,"
+            + "\"_metadata_retry_count\":124}";
+    assertEquals(expectedJson, sanitizer.getJsonMessage(mockContext));
   }
 }
