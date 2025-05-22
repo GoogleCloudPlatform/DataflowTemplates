@@ -63,7 +63,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
@@ -760,12 +759,10 @@ public class DataStreamMongoDBToFirestore {
           options.getDlqMaxRetryCount());
       return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
     } else {
-      String retryDlqUri =
-          FileSystems.matchNewResource(dlqDirectory, true)
-              .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
-              .toString();
+      String retryDlqUri = FileSystems.matchNewResource(dlqDirectory, true).toString();
       LOG.info("Creating DLQ manager in retry mode with retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+      return DeadLetterQueueManager.create(
+          dlqDirectory, retryDlqUri, options.getDlqMaxRetryCount());
     }
   }
 
