@@ -239,6 +239,18 @@ public abstract class JdbcIOWrapperConfig {
    */
   public abstract Integer minEvictableIdleTimeMillis();
 
+  /**
+   * Hint for number of uniformization stages. -1 indicates number of splitting stages =
+   * log(numPartitions). Set 0 to disable. The default setting limits number of stages provisioned
+   * for the split process. Currently we mostly deal with auto incrementing keys, so we don't need a
+   * split depth to make the partition uniform, unless there is a large dataset with a lot of holes.
+   * TODO(vardhanvthigle): if index is not of the type of a single auto incrementing key, don't set
+   * this. But it will require through benchmarking.
+   *
+   * @return
+   */
+  public abstract Long splitStageCountHint();
+
   private static final Integer DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS = 8 * 3600 * 1000;
 
   public abstract Builder toBuilder();
@@ -268,7 +280,8 @@ public abstract class JdbcIOWrapperConfig {
         .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
-            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS);
+            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
+        .setSplitStageCountHint(-1L);
   }
 
   public static Builder builderWithPostgreSQLDefaults() {
@@ -298,7 +311,8 @@ public abstract class JdbcIOWrapperConfig {
         .setRemoveAbandonedTimeout(DEFAULT_REMOVE_ABANDONED_TIMEOUT)
         .setMinEvictableIdleTimeMillis(DEFAULT_MIN_EVICTABLE_IDLE_TIME_MILLIS)
         .setSchemaDiscoveryConnectivityTimeoutMilliSeconds(
-            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS);
+            DEFAULT_SCHEMA_DISCOVERY_CONNECTIVITY_TIMEOUT_MILLISECONDS)
+        .setSplitStageCountHint(-1L);
   }
 
   @AutoValue.Builder
@@ -368,6 +382,8 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setMinEvictableIdleTimeMillis(Integer value);
 
     public abstract Builder setMaxConnections(Long value);
+
+    public abstract Builder setSplitStageCountHint(Long value);
 
     public abstract JdbcIOWrapperConfig autoBuild();
 

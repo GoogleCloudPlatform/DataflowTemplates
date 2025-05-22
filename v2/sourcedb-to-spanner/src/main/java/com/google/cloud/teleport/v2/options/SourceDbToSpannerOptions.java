@@ -336,4 +336,23 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getSchemaOverridesFilePath();
 
   void setSchemaOverridesFilePath(String value);
+
+  @TemplateParameter.Text(
+      order = 27,
+      optional = true,
+      description =
+          "Hint for number of uniformization stages. Currently Applicable only for jdc based sources like MySql or PG. Leave 0 or default to disable uniformization. Set to -1 for a log(numPartition) number of stages.",
+      helpText =
+          "Hint for number of uniformization stages."
+              + " Currently Applicable only for jdbc based sources like MySQL or PostgreSQL."
+              + " Leave 0 or default to disable uniformization."
+              + " Set to -1 for a log(numPartition) number of stages."
+              + " If your source primary key space is uniformly distributed (for example an auto-incrementing key with sparse holes), it's based to leave it disabled."
+              + " If your keyspace is not uniform, you might encounter a laggard VM in your dataflow run."
+              + " In such a case, you can set it to -1 to enable uniformization."
+              + " Manually setting it to values other than 0 or -1 would help you fine tune the tradeoff of the overhead added by uniformization stages and the  performance improvement due to better distribution of work.")
+  @Default.Long(0)
+  Long getUniformizationStageCountHint();
+
+  void setUniformizationStageCountHint(Long value);
 }

@@ -340,10 +340,10 @@ public class PostgreSQLDialectAdapterTest {
   @Test
   public void testCountQuery() {
     assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of(), 1000L))
-        .isEqualTo("SET statement_timeout = 1000; SELECT COUNT(*) FROM my_schema.table1");
+        .isEqualTo("SELECT COUNT(*) FROM my_schema.table1");
     assertThat(adapter.getCountQuery("my_schema.table1", ImmutableList.of("col1", "col2"), 1000L))
         .isEqualTo(
-            "SET statement_timeout = 1000; SELECT COUNT(*) FROM my_schema.table1 "
+            "SELECT COUNT(*) FROM my_schema.table1 "
                 + "WHERE ((? = FALSE) OR (col1 >= ? AND (col1 < ? OR (? = TRUE AND col1 = ?)))) "
                 + "AND ((? = FALSE) OR (col2 >= ? AND (col2 < ? OR (? = TRUE AND col2 = ?))))");
   }
