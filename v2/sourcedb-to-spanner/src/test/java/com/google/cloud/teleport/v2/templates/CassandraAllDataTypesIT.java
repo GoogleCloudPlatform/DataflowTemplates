@@ -35,7 +35,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -79,10 +78,6 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
     ResourceManagerUtils.cleanResources(spannerResourceManager, cassandraResourceManager);
   }
 
-  /*
-   * TODO(b/419404805) - re-enable the test.
-   */
-  @Ignore("https://github.com/apache/beam/issues/34863")
   @Test
   public void allTypesTest() throws Exception {
     loadCSQLFileResource(cassandraResourceManager, CASSANDRA_DUMP_FILE_RESOURCE);
