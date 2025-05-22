@@ -1009,24 +1009,7 @@ public class InformationSchemaScanner {
   }
 
   private void listUdfs(Ddl.Builder builder) {
-    Statement queryStatement;
-
-    switch (dialect) {
-      case GOOGLE_STANDARD_SQL:
-        queryStatement =
-            Statement.of(
-                "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name, "
-                    + "r.data_type, r.routine_definition, r.security_type"
-                    + " FROM information_schema.routines AS r"
-                    + " WHERE r.routine_schema NOT IN"
-                    + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
-                    + " AND r.routine_type = 'FUNCTION'"
-                    + " AND r.routine_body = 'SQL'");
-        break;
-      default:
-        throw new IllegalArgumentException(
-            "User-defined functions are not supported in dialect: " + dialect);
-    }
+    Statement queryStatement = listUdfsSQL();
 
     ResultSet resultSet = context.executeQuery(queryStatement);
 
@@ -1049,6 +1032,28 @@ public class InformationSchemaScanner {
           .security(Udf.SqlSecurity.valueOf(functionSecurityType))
           .endUdf();
     }
+  }
+
+  @VisibleForTesting
+  Statement listUdfsSQL() {
+    Statement queryStatement;
+    switch (dialect) {
+      case GOOGLE_STANDARD_SQL:
+        queryStatement =
+            Statement.of(
+                "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name, "
+                    + "r.data_type, r.routine_definition, r.security_type"
+                    + " FROM information_schema.routines AS r"
+                    + " WHERE r.routine_schema NOT IN"
+                    + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                    + " AND r.routine_type = 'FUNCTION'"
+                    + " AND r.routine_body = 'SQL'");
+        break;
+      default:
+        throw new IllegalArgumentException(
+            "User-defined functions are not supported in dialect: " + dialect);
+    }
+    return queryStatement;
   }
 
   private void listUdfParameters(Ddl.Builder builder) {
@@ -1084,9 +1089,10 @@ public class InformationSchemaScanner {
       case GOOGLE_STANDARD_SQL:
         return Statement.of(
             "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
-                + " p.parameter_default  FROM information_schema.parameters AS p WHERE"
-                + " p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') ORDER BY"
-                + " p.specific_schema, p.specific_name, p.ordinal_position");
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position");
       default:
         throw new IllegalArgumentException("Unrecognized dialect: " + dialect);
     }
