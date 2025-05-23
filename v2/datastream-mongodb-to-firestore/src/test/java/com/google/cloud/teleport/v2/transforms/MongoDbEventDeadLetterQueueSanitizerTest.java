@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -33,20 +34,22 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
 
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private MongoDbEventDeadLetterQueueSanitizer sanitizer;
-  private MongoDbChangeEventContext mockContext;
+  private FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> mockContext;
   private JsonNode mockChangeEvent;
 
   @Before
   public void setUp() throws Exception {
     sanitizer = new MongoDbEventDeadLetterQueueSanitizer();
-    mockContext = mock(MongoDbChangeEventContext.class);
+    MongoDbChangeEventContext mockChangeEventContext = mock(MongoDbChangeEventContext.class);
+    mockContext = FailsafeElement.of(mockChangeEventContext, mockChangeEventContext);
+    mockContext.setErrorMessage("MongoDbChangeEventContext processing error");
     mockChangeEvent = OBJECT_MAPPER.readTree("{\"key\": \"value\"}");
 
-    when(mockContext.getChangeEvent()).thenReturn(mockChangeEvent);
-    when(mockContext.getDataCollection()).thenReturn("test_collection");
-    when(mockContext.getShadowCollection()).thenReturn("shadow_test_collection");
-    when(mockContext.getDocumentId()).thenReturn("test_id");
-    when(mockContext.isDeleteEvent()).thenReturn(false);
+    when(mockChangeEventContext.getChangeEvent()).thenReturn(mockChangeEvent);
+    when(mockChangeEventContext.getDataCollection()).thenReturn("test_collection");
+    when(mockChangeEventContext.getShadowCollection()).thenReturn("shadow_test_collection");
+    when(mockChangeEventContext.getDocumentId()).thenReturn("test_id");
+    when(mockChangeEventContext.isDeleteEvent()).thenReturn(false);
   }
 
   @Test
@@ -65,7 +68,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
   @Test
   public void testGetJsonMessageEmptyChangeEvent() throws Exception {
     // Simulate JsonProcessingException by making getChangeEvent return null
-    when(mockContext.getChangeEvent()).thenReturn(null);
+    when(mockContext.getOriginalPayload().getChangeEvent()).thenReturn(null);
 
     String expectedJson =
         "{\"changeEvent\":null,"
@@ -90,7 +93,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
   @Test
   public void testGetErrorMessageJsonJsonProcessingException() throws Exception {
     // Simulate JsonProcessingException by making getDataCollection return null
-    when(mockContext.getDataCollection()).thenReturn(null);
+    when(mockContext.getOriginalPayload().getDataCollection()).thenReturn(null);
 
     assertEquals(
         "{\"errorType\":\"MongoDbChangeEventContext processing error\",\"documentId\":\"test_id\",\"collection\":null}",
@@ -102,7 +105,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
     JsonNode complexChangeEvent =
         OBJECT_MAPPER.readTree(
             "{\"_id\": {\"$oid\": \"645c9a7e7b8b1a0e9c0f8b3a\"}, \"data\": {\"field1\": \"value1\", \"field2\": 123}}");
-    when(mockContext.getChangeEvent()).thenReturn(complexChangeEvent);
+    when(mockContext.getOriginalPayload().getChangeEvent()).thenReturn(complexChangeEvent);
 
     String expectedJson =
         "{\"changeEvent\":{\"_id\":{\"$oid\":\"645c9a7e7b8b1a0e9c0f8b3a\"},\"data\":{\"field1\":\"value1\",\"field2\":123}},"
@@ -117,8 +120,8 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
 
   @Test
   public void testGetErrorMessageJsonWithDifferentValues() throws Exception {
-    when(mockContext.getDocumentId()).thenReturn(123L);
-    when(mockContext.getDataCollection()).thenReturn("another_collection");
+    when(mockContext.getOriginalPayload().getDocumentId()).thenReturn(123L);
+    when(mockContext.getOriginalPayload().getDataCollection()).thenReturn("another_collection");
 
     String expectedJson =
         "{\"errorType\":\"MongoDbChangeEventContext processing error\","
@@ -129,7 +132,7 @@ public class MongoDbEventDeadLetterQueueSanitizerTest {
 
   @Test
   public void testRetryCountIncrements() throws Exception {
-    when(mockContext.getRetryCount()).thenReturn(123);
+    when(mockContext.getOriginalPayload().getRetryCount()).thenReturn(123);
 
     String expectedJson =
         "{\"changeEvent\":{\"key\":\"value\"},"

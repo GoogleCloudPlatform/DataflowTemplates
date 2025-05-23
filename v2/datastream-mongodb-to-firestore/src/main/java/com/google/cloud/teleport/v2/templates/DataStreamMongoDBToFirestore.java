@@ -591,7 +591,10 @@ public class DataStreamMongoDBToFirestore {
             options.getUseShadowTablesForBackfill()
                 ? ProcessChangeEventFn.failedWriteTag
                 : ProcessBackfillEventFn.failedWriteTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
 
     // Handle failed backfill writes with DLQ
     writeFailedEventsToDlq(
@@ -620,7 +623,10 @@ public class DataStreamMongoDBToFirestore {
         .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
     cdcResult
         .get(ProcessChangeEventFn.failedWriteTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
 
     // Handle failed CDC writes with DLQ
     writeFailedEventsToDlq(options, cdcResult, dlqManager, ProcessChangeEventFn.failedWriteTag);
@@ -716,7 +722,10 @@ public class DataStreamMongoDBToFirestore {
     /* Set coder for failed writes */
     writeResult
         .get(ProcessChangeEventFn.failedWriteTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class));
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)));
 
     /* Handle failed writes with DLQ */
     LOG.info("Setting up DLQ handling for failed writes");
@@ -884,12 +893,15 @@ public class DataStreamMongoDBToFirestore {
       Options options,
       PCollectionTuple results,
       DeadLetterQueueManager dlqManager,
-      TupleTag<MongoDbChangeEventContext> failedTag) {
+      TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>> failedTag) {
     LOG.info("Setting up DLQ for failed MongoDB event processing");
     // Write failed writes to DLQ
     results
         .get(failedTag)
-        .setCoder(SerializableCoder.of(MongoDbChangeEventContext.class))
+        .setCoder(
+            FailsafeElementCoder.of(
+                SerializableCoder.of(MongoDbChangeEventContext.class),
+                SerializableCoder.of(MongoDbChangeEventContext.class)))
         .apply(
             "DLQ: Write Retryable Events Failures to GCS",
             MapElements.via(new MongoDbEventDeadLetterQueueSanitizer()))
@@ -959,8 +971,8 @@ public class DataStreamMongoDBToFirestore {
 
     public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
         new TupleTag<>("backfillSuccessfulWrite");
-    public static TupleTag<MongoDbChangeEventContext> failedWriteTag =
-        new TupleTag<>("backfillFailedWrite");
+    public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+        failedWriteTag = new TupleTag<>("backfillFailedWrite");
 
     private final String connectionString;
     private final String targetDatabaseName;
@@ -1098,7 +1110,11 @@ public class DataStreamMongoDBToFirestore {
 
         // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
-          out.get(failedWriteTag).output(event);
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(event, event);
+          failedElement.setErrorMessage(e.getMessage());
+          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          out.get(failedWriteTag).output(failedElement);
         }
       }
 
@@ -1157,7 +1173,11 @@ public class DataStreamMongoDBToFirestore {
 
         // On error, output all events as failed
         for (MongoDbChangeEventContext event : events) {
-          context.output(failedWriteTag, event, Instant.now(), GlobalWindow.INSTANCE);
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(event, event);
+          failedElement.setErrorMessage(e.getMessage());
+          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          context.output(failedWriteTag, failedElement, Instant.now(), GlobalWindow.INSTANCE);
         }
       }
 

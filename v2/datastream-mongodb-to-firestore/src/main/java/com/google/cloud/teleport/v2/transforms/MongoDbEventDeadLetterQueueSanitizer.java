@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.v2.cdc.dlq.DeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,27 +30,30 @@ import org.slf4j.LoggerFactory;
  * conversion to be stored in a GCS Dead Letter Queue.
  */
 public class MongoDbEventDeadLetterQueueSanitizer
-    extends DeadLetterQueueSanitizer<MongoDbChangeEventContext, String> {
+    extends DeadLetterQueueSanitizer<
+        FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>, String> {
   private static final Logger LOG =
       LoggerFactory.getLogger(MongoDbEventDeadLetterQueueSanitizer.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @Override
-  public String getJsonMessage(MongoDbChangeEventContext input) {
+  public String getJsonMessage(
+      FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> input) {
+    MongoDbChangeEventContext changeEvent = input.getOriginalPayload();
     try {
       // Serialize the change event to JSON
       ObjectNode jsonNode = OBJECT_MAPPER.createObjectNode();
 
       // Add the original change event JSON
-      jsonNode.set("changeEvent", input.getChangeEvent());
+      jsonNode.set("changeEvent", changeEvent.getChangeEvent());
 
       // Add other important fields
-      jsonNode.put("dataCollection", input.getDataCollection());
-      jsonNode.put("shadowCollection", input.getShadowCollection());
-      jsonNode.putPOJO("documentId", input.getDocumentId());
-      jsonNode.put("isDeleteEvent", input.isDeleteEvent());
+      jsonNode.put("dataCollection", changeEvent.getDataCollection());
+      jsonNode.put("shadowCollection", changeEvent.getShadowCollection());
+      jsonNode.putPOJO("documentId", changeEvent.getDocumentId());
+      jsonNode.put("isDeleteEvent", changeEvent.isDeleteEvent());
       jsonNode.put(DatastreamConstants.IS_DLQ_RECONSUMED, true);
-      jsonNode.put(DatastreamConstants.RETRY_COUNT, input.getRetryCount() + 1);
+      jsonNode.put(DatastreamConstants.RETRY_COUNT, changeEvent.getRetryCount() + 1);
 
       return OBJECT_MAPPER.writeValueAsString(jsonNode);
     } catch (JsonProcessingException e) {
@@ -59,7 +63,7 @@ public class MongoDbEventDeadLetterQueueSanitizer
         ObjectNode errorNode = OBJECT_MAPPER.createObjectNode();
         errorNode.put("error", "Failed to serialize MongoDbChangeEventContext");
         errorNode.put("errorMessage", e.getMessage());
-        errorNode.putPOJO("documentId", input.getDocumentId());
+        errorNode.putPOJO("documentId", changeEvent.getDocumentId());
         return OBJECT_MAPPER.writeValueAsString(errorNode);
       } catch (JsonProcessingException ex) {
         // This should never happen with a simple ObjectNode
@@ -70,12 +74,14 @@ public class MongoDbEventDeadLetterQueueSanitizer
   }
 
   @Override
-  public String getErrorMessageJson(MongoDbChangeEventContext input) {
+  public String getErrorMessageJson(
+      FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> input) {
     try {
+      MongoDbChangeEventContext eventContext = input.getOriginalPayload();
       ObjectNode errorNode = OBJECT_MAPPER.createObjectNode();
-      errorNode.put("errorType", "MongoDbChangeEventContext processing error");
-      errorNode.putPOJO("documentId", input.getDocumentId());
-      errorNode.put("collection", input.getDataCollection());
+      errorNode.put("errorType", input.getErrorMessage());
+      errorNode.putPOJO("documentId", eventContext.getDocumentId());
+      errorNode.put("collection", eventContext.getDataCollection());
       return OBJECT_MAPPER.writeValueAsString(errorNode);
     } catch (JsonProcessingException e) {
       LOG.error("Error creating error message JSON: {}", e.getMessage(), e);

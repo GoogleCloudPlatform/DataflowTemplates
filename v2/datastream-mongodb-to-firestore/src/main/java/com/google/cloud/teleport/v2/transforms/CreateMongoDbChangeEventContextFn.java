@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import java.util.Arrays;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
 import org.slf4j.Logger;
@@ -53,6 +54,8 @@ public class CreateMongoDbChangeEventContextFn
       out.get(successfulCreationTag).output(changeEventContext);
     } catch (Exception e) {
       LOG.error("Error creating MongoDbChangeEventContext, exception: {}, element: {}", e, element);
+      element.setErrorMessage(e.getMessage());
+      element.setStacktrace(Arrays.deepToString(e.getStackTrace()));
       out.get(failedCreationTag).output(element);
       LOG.info("Failed element sent to DLQ");
     }

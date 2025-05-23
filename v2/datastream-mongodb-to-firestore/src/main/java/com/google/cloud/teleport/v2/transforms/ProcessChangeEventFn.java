@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.transforms;
 import static com.mongodb.client.model.Filters.eq;
 
 import com.google.cloud.teleport.v2.templates.datastream.MongoDbChangeEventContext;
+import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
@@ -27,6 +28,7 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.ReplaceOptions;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.TupleTag;
@@ -49,7 +51,8 @@ public class ProcessChangeEventFn
 
   public static TupleTag<MongoDbChangeEventContext> successfulWriteTag =
       new TupleTag<>("successfulWrite");
-  public static TupleTag<MongoDbChangeEventContext> failedWriteTag = new TupleTag<>("failedWrite");
+  public static TupleTag<FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext>>
+      failedWriteTag = new TupleTag<>("failedWrite");
 
   public ProcessChangeEventFn(String connectionString, String databaseName) {
     this.connectionString = connectionString;
@@ -144,7 +147,11 @@ public class ProcessChangeEventFn
           } catch (InterruptedException ie) {
             Thread.currentThread().interrupt();
             LOG.error("Retry sleep interrupted for document ID: {}", element.getDocumentId(), ie);
-            out.get(failedWriteTag).output(element);
+            FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+                FailsafeElement.of(element, element);
+            failedElement.setErrorMessage(ie.getMessage());
+            failedElement.setStacktrace(Arrays.deepToString(ie.getStackTrace()));
+            out.get(failedWriteTag).output(failedElement);
             break; // Exit the retry loop if interrupted
           }
           retryCount++;
@@ -155,7 +162,11 @@ public class ProcessChangeEventFn
               element.getDocumentId(),
               e.getMessage(),
               e);
-          out.get(failedWriteTag).output(element);
+          FailsafeElement<MongoDbChangeEventContext, MongoDbChangeEventContext> failedElement =
+              FailsafeElement.of(element, element);
+          failedElement.setErrorMessage(e.getMessage());
+          failedElement.setStacktrace(Arrays.deepToString(e.getStackTrace()));
+          out.get(failedWriteTag).output(failedElement);
           LOG.info("Failed element of id {} sent to DLQ", element.getDocumentId());
           break; // Exit the retry loop on non-transient error or max retries
         }
