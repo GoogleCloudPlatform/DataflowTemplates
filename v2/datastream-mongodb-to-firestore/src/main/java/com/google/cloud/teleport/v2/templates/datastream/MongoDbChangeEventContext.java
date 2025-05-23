@@ -94,8 +94,10 @@ public class MongoDbChangeEventContext implements Serializable {
 
     this.retryCount =
         changeEvent.has(DatastreamConstants.RETRY_COUNT)
-            ? changeEvent.get("_metadata_retry_count").asInt()
-            : 0;
+            ? changeEvent.get(DatastreamConstants.RETRY_COUNT).asInt()
+            : payload.has(DatastreamConstants.RETRY_COUNT)
+                ? payload.get(DatastreamConstants.RETRY_COUNT).asInt()
+                : 0;
 
     // Extract collection name from the event
     if (changeEvent.has(DatastreamConstants.EVENT_SOURCE_METADATA)) {
