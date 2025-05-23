@@ -119,6 +119,10 @@ public class MongoDbChangeEventContext implements Serializable {
           OBJECT_MAPPER.readTree(changeEvent.get(DatastreamConstants.MONGODB_DOCUMENT_ID).asText());
       if (docIdVal.isIntegralNumber()) {
         this.documentId = docIdVal.asLong();
+        if (this.documentId.equals(0L)) {
+          LOG.error("Unsupported _id value of _id {}.", docIdVal);
+          throw new IllegalArgumentException("Unsupported _id value.");
+        }
       } else if (docIdVal.isTextual()) {
         this.documentId = docIdVal.asText();
       } else if (docIdVal.isObject()

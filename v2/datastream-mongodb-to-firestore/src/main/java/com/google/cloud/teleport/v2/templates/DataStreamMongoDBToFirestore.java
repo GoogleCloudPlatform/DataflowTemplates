@@ -817,10 +817,20 @@ public class DataStreamMongoDBToFirestore {
             .get(DeadLetterQueueManager.RETRYABLE_ERRORS)
             .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
 
-    // Set coder for non-retryable errors
+    // Write non-retryable errors to DLQ
     reconsumedElements
         .get(DeadLetterQueueManager.PERMANENT_ERRORS)
-        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()));
+        .setCoder(FailsafeElementCoder.of(StringUtf8Coder.of(), StringUtf8Coder.of()))
+        .apply(
+            "Write new non-retryable errors To DLQ",
+            MapElements.via(new StringDeadLetterQueueSanitizer()))
+        .setCoder(StringUtf8Coder.of())
+        .apply(
+            DLQWriteTransform.WriteDLQ.newBuilder()
+                .withDlqDirectory(dlqManager.getSevereDlqDirectoryWithDateTime())
+                .withTmpDirectory(dlqManager.getSevereDlqDirectory() + "tmp_severe/")
+                .setIncludePaneInfo(true)
+                .build());
 
     if (isRegularMode) {
       LOG.info("Regular Datastream flow - reading from GCS: {}", options.getInputFilePattern());
