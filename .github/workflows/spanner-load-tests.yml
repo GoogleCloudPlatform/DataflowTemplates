@@ -40,7 +40,7 @@ jobs:
       uses: ./.github/actions/setup-env
     - name: Get current date
       id: date
-      run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
     - name: Run Load Tests
       run: |
         ./cicd/run-load-tests \
@@ -96,7 +96,7 @@ jobs:
       uses: ./.github/actions/setup-env
     - name: Get current date
       id: date
-      run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
     - name: Run Load Test Observers
       run: |
         ./cicd/run-load-test-observer \
