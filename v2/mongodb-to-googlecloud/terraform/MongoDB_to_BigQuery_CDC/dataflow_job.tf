@@ -47,13 +47,13 @@ variable "mongoDbUri" {
 
 variable "database" {
   type        = string
-  description = "Database in MongoDB to read the collection from. (Example: my-db)"
+  description = "Database in MongoDB to read the collection from. For example, `my-db`"
 
 }
 
 variable "collection" {
   type        = string
-  description = "Name of the collection inside MongoDB database. (Example: my-collection)"
+  description = "Name of the collection inside MongoDB database. For example, `my-collection`"
 
 }
 
@@ -65,14 +65,14 @@ variable "userOption" {
 
 variable "KMSEncryptionKey" {
   type        = string
-  description = "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key)"
+  description = "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`"
   default     = null
 }
 
 variable "filter" {
   type        = string
   description = <<EOT
-Bson filter in json format. (Example: { "val": { $gt: 0, $lt: 9 }})
+Bson filter in json format. For example, `{ "val": { $gt: 0, $lt: 9 }}`
 EOT
   default     = null
 }
@@ -97,7 +97,7 @@ variable "storageWriteApiTriggeringFrequencySec" {
 
 variable "inputTopic" {
   type        = string
-  description = "The Pub/Sub input topic to read from, in the format of projects/<PROJECT_ID>/topics/<TOPIC_NAME>."
+  description = "The Pub/Sub input topic to read from, in the format of `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`."
 
 }
 
@@ -109,19 +109,19 @@ variable "outputTableSpec" {
 
 variable "bigQuerySchemaPath" {
   type        = string
-  description = "The Cloud Storage path for the BigQuery JSON schema. (Example: gs://your-bucket/your-schema.json)"
+  description = "The Cloud Storage path for the BigQuery JSON schema. For example, `gs://your-bucket/your-schema.json`"
   default     = null
 }
 
 variable "javascriptDocumentTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. (Example: gs://your-bucket/your-transforms/*.js)"
+  description = "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://your-bucket/your-transforms/*.js`"
   default     = null
 }
 
 variable "javascriptDocumentTransformFunctionName" {
   type        = string
-  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). (Example: transform)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). For example, `transform`"
   default     = null
 }
 
