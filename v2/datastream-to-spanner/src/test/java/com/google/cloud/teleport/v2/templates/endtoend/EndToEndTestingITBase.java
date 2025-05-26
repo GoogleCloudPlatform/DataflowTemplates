@@ -118,6 +118,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   // createPubsubResources generates pubsub topic, subscription and notification for migration.
   // It can be run in different modes based on type of migration.
+  // Modes can be rr for reverse replication and fwd for forward migration
   public SubscriptionName createPubsubResources(
       String identifierSuffix,
       PubsubResourceManager pubsubResourceManager,

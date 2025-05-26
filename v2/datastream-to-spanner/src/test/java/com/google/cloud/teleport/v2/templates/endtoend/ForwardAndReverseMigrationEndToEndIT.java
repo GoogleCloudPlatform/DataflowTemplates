@@ -37,7 +37,6 @@ import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
-import org.apache.beam.it.gcp.secretmanager.SecretManagerResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -76,7 +75,6 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
-  protected SecretManagerResourceManager secretClient;
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
 
@@ -105,8 +103,6 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
             createSpannerDatabase(ForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-        // fetch secrets
-        secretClient = SecretManagerResourceManager.builder(PROJECT, credentialsProvider).build();
         // create MySql Resources
         cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
         jdbcSource =
@@ -170,12 +166,16 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
 
   @Test
   public void spannerToSourceDbBasic() {
-    // Forward Migration check condition
+    // Forward Migration pipeline check
     assertThatPipeline(fwdJobInfo).isRunning();
+
+    // Reverse Migration pipeline check
+    assertThatPipeline(rrJobInfo).isRunning();
+
+    // Forward Migration check condition
     writeRowInMySqlAndAssertRows();
 
     // Reverse Migration check condition
-    assertThatPipeline(rrJobInfo).isRunning();
     writeRowInSpanner();
     assertRowInMySQL();
   }
