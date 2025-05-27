@@ -554,6 +554,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       SpannerResourceManager spannerResourceManager)
       throws IOException, InterruptedException {
     String spannerMigrationToolPath = System.getenv("SPANNER_MIGRATION_TOOL_PATH");
+    System.out.println("######");
     System.out.println(spannerMigrationToolPath);
     if (StringUtils.isBlank(spannerMigrationToolPath)) {
       throw new RuntimeException(
@@ -577,6 +578,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     command.add("--project=span-cloud-testing");
 
     ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+    System.out.println("######");
     Process process = processBuilder.start();
     // Regex to capture the session filename
     Pattern sessionFilePattern =
@@ -648,10 +651,12 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
                 + "\nSTDERR:\n"
                 + String.join("\n", capturedErrorLines));
       }
+      System.out.println("#####1");
       System.out.println("Spanner Migration Tool executed successfully.");
       if (tempCapturedSessionFileName[0] != null) {
         return tempCapturedSessionFileName[0];
       } else {
+        System.out.println("#####2");
         System.out.println("Warning: Session filename was not found in the tool output.");
         return "";
       }

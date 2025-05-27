@@ -22,7 +22,9 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -56,7 +58,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/BulkForwardAndReverseSharded/spanner-schema.sql";
-  private static String SESSION_FILE_RESOURCE;
+  private static String session_file_resource;
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "EndToEndTesting/BulkForwardAndReverseSharded/mysql-schema.sql";
 
@@ -104,6 +106,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     synchronized (BulkForwardAndReverseMigrationEndToEndIT.class) {
       testInstances.add(this);
       if (bulkJobInfo == null) {
+        System.out.println("####### 4");
         spannerResourceManager = createEmptySpannerDatabase();
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
         cloudSqlResourceManagerShardA =
@@ -154,13 +157,26 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                 databases);
         createAndUploadBulkShardConfigToGcs(
             new ArrayList<>(List.of(dataShard)), gcsResourceManager);
-        SESSION_FILE_RESOURCE =
+        session_file_resource =
             generateSessionFile(
                 jdbcSourceShardA, cloudSqlResourceManagerShardA, spannerResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
-            Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
+            Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.session_file_resource)
                 .getPath());
+        System.out.println("####### 3");
+        try {
+          System.out.println("####### 5");
+          File filePath = new File(BulkForwardAndReverseMigrationEndToEndIT.session_file_resource);
+          List<String> lines = Files.readAllLines(filePath.toPath());
+          for (String line : lines) {
+            System.out.println(line);
+          }
+        } catch (IOException e) {
+          System.out.println("####### 6");
+          System.err.println("Error reading file: " + e.getMessage());
+          e.printStackTrace();
+        }
         // writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
         // writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
         // bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
