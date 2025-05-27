@@ -52,9 +52,6 @@ import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
-import java.util.stream.Collectors;
-import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -74,8 +71,6 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 

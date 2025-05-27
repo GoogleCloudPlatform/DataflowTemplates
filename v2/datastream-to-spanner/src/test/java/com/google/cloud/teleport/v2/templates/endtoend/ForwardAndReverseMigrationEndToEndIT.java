@@ -185,7 +185,8 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(TABLE, NUM_EVENTS, COLUMNS, cdcEvents, 0, cloudSqlResourceManager),
+                    writeJdbcData(
+                        TABLE, NUM_EVENTS, COLUMNS, cdcEvents, 0, cloudSqlResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(NUM_EVENTS)
                         .setMaxRows(NUM_EVENTS)
