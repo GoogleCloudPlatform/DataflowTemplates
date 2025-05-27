@@ -27,6 +27,7 @@ import com.google.cloud.storage.Storage.BlobListOption;
 import com.google.cloud.storage.StorageOptions;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -40,6 +41,7 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.PipelineOperator.Result;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
@@ -51,7 +53,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -82,35 +83,56 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
 
   private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/cassandra-spanner-schema.sql";
 
-  LaunchInfo launchDlqReplay(LaunchInfo bulkJobInfo) throws IOException {
+  private LaunchInfo launchDlqReplay(LaunchInfo bulkJobInfo)
+      throws IOException, InterruptedException {
     String dlqGcsPath = getDlqPath(bulkJobInfo);
-    String newJobName =
-        (bulkJobInfo.jobId().length() < 4)
-            ? bulkJobInfo.jobId() + "-dlq"
-            : bulkJobInfo.jobId().substring(0, bulkJobInfo.jobId().length() - 4) + "-dlq";
+    String dlqJobName = PipelineUtils.createJobName("dlq-" + getClass().getSimpleName());
+    LOG.info(
+        "Bulk Job ID = {}, DLQ Job Name = {}, bulkInfo = {}",
+        bulkJobInfo.jobId(),
+        dlqJobName,
+        bulkJobInfo);
+
+    createAndUploadJarToGcs(getCustomTransformPath(bulkJobInfo));
+    CustomTransformation customTransformation =
+        CustomTransformation.builder(
+                getCustomTransformPath(bulkJobInfo),
+                "com.custom.CustomTransformationForCassandraAllDataTypesIT")
+            .build();
 
     FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(newJobName)
+        FlexTemplateDataflowJobResourceManager.builder(dlqJobName)
             .withTemplateName("Cloud_Datastream_to_Spanner")
             .withTemplateModulePath("v2/datastream-to-spanner")
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("spannerProjectId", PROJECT)
             .addParameter("deadLetterQueueDirectory", dlqGcsPath)
             .addParameter("streamName", "ignore")
             .addParameter("runMode", "retryDLQ")
             .addParameter("datastreamSourceType", "mysql")
+            .addParameter("transformationJarPath", customTransformation.jarPath())
+            .addParameter("transformationClassName", customTransformation.classPath())
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
+
     dlqFlexTemplateDataflowJobResourceManagers.add(flexTemplateDataflowJobResourceManager);
-    var dlqJobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    LaunchInfo dlqJobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(dlqJobInfo).isRunning();
     return dlqJobInfo;
   }
 
   private static String getDlqPath(LaunchInfo bulkJobInfo) {
     return bulkJobInfo.parameters().get("outputDirectory").replaceAll("/$", "") + "/dlq/";
+  }
+
+  private static String getDlqBucketName(LaunchInfo bulkJobInfo) {
+    return getDlqPath(bulkJobInfo).split("gs://")[1].split("/")[0];
+  }
+
+  private static String getCustomTransformPath(LaunchInfo bulkJobInfo) {
+    return bulkJobInfo.parameters().get("outputDirectory").replaceAll("/$", "")
+        + "/CustomTransformationAllDataTypes/";
   }
 
   /**
@@ -120,14 +142,11 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
   public void setUp() {
     cassandraResourceManager = setupCassandraResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
-    // TODO
-    skipBaseCleanup = true;
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    // TODO
     if (skipBaseCleanup) {
       ResourceManagerUtils.cleanResources(cassandraResourceManager);
       return;
@@ -136,10 +155,6 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
     dlqFlexTemplateDataflowJobResourceManagers.forEach(ResourceManagerUtils::cleanResources);
   }
 
-  /*
-   * TODO(b/419404805) - re-enable the test.
-   */
-  @Ignore("https://github.com/apache/beam/issues/34863")
   @Test
   public void allTypesTest() throws Exception {
     loadCSQLFileResource(cassandraResourceManager, CASSANDRA_DUMP_FILE_RESOURCE);
@@ -156,7 +171,11 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(35L)));
     assertThatResult(result).isLaunchFinished();
-    LOG.info("Listing DLQ Entries from {} ", jobInfo.parameters().get("outputDirectory"));
+    LOG.info(
+        "Listing DLQ Entries from output director {} , dlq path {}, bucket {} ",
+        jobInfo.parameters().get("outputDirectory"),
+        getDlqPath(jobInfo),
+        getDlqBucketName(jobInfo));
     List<String> dlqFiles = getDlqFileList(jobInfo);
     LOG.info("DLQ Entries from {} are {}", getDlqPath(jobInfo), dlqFiles);
     assertThat(dlqFiles).isNotEmpty();
@@ -226,7 +245,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
     List<String> dlqFiles =
         storage
             .list(
-                "smt-df-templates-test",
+                getDlqBucketName(bulkJobInfo),
                 BlobListOption.prefix(dlqGcsPath.replaceFirst("^gs://[^/]+/?", "")))
             .streamAll()
             .map(BlobInfo::getName)
