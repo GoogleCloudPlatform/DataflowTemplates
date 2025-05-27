@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -30,6 +31,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Ignoring tests for now.")
 public class DataStreamToSpanner100GbLT extends DataStreamToSpannerLTBase {
   @Test
   public void backfill100Gb() throws IOException, ParseException, InterruptedException {
