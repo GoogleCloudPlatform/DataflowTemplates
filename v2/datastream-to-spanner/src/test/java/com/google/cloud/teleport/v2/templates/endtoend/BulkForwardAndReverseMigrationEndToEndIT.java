@@ -102,10 +102,11 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
    */
   @Before
   public void setUp() throws IOException, InterruptedException {
+    System.out.println("####### 2");
     skipBaseCleanup = true;
     synchronized (BulkForwardAndReverseMigrationEndToEndIT.class) {
+      System.out.println("####### 1");
       testInstances.add(this);
-      if (bulkJobInfo == null) {
         System.out.println("####### 4");
         spannerResourceManager = createEmptySpannerDatabase();
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
@@ -181,7 +182,6 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         // writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
         // bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
       }
-    }
   }
 
   /**
@@ -198,6 +198,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
 
   @Test
   public void spannerToSourceDbBasic() {
+    System.out.println("####### test");
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(bulkJobInfo));
     assertThatResult(result).isLaunchFinished();
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, "id"))
