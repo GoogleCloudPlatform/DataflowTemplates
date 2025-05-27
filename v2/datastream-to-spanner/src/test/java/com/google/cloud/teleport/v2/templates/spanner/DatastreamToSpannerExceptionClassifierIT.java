@@ -76,7 +76,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
   }
 
   @Test
-  public void testInterleaveInsertChildBeforeParent() {
+  public void testInterleaveInParentInsertChildBeforeParent() {
     ErrorTag actualTag = null;
     SpannerException exception = null;
     Mutation mutation =
@@ -99,6 +99,27 @@ public class DatastreamToSpannerExceptionClassifierIT {
         exception.getMessage(),
         "NOT_FOUND: io.grpc.StatusRuntimeException: NOT_FOUND: Parent row for row [100,4] in table Books is missing. Row cannot be written.");
     assertSpannerExceptionClassification(exception, RETRYABLE_ERROR, actualTag);
+  }
+
+  @Test
+  public void testInterleaveInInsertChildBeforeParent() {
+    ErrorTag actualTag = null;
+    SpannerException exception = null;
+    Mutation mutation =
+        Mutation.newInsertBuilder("Series")
+            .set("id")
+            .to(4)
+            .set("author_id")
+            .to(100)
+            .set("title")
+            .to("Child")
+            .build();
+    try {
+      spannerResourceManager.writeInTransaction(List.of(mutation));
+    } catch (SpannerException e) {
+      exception = e;
+    }
+    Assert.assertNull(exception);
   }
 
   @Test
@@ -229,7 +250,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
   }
 
   @Test
-  public void testInterleavingDeleteParentWhenChildExists() {
+  public void testInterleavingInParentDeleteParentWhenChildExists() {
     ErrorTag actualTag = null;
     SpannerException exception = null;
     Mutation mutation = Mutation.delete("Authors", Key.of(1));

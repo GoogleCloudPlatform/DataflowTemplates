@@ -28,6 +28,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
+import org.apache.beam.it.gcp.TemplateTestBase.CancelJobShutdownHook;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,7 +54,8 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     pipelineLauncher = FlexTemplateClient.builder(CREDENTIALS).build();
     synchronized (specPaths) {
       if (!specPaths.containsKey(builder.templateName)) {
-        buildAndStageTemplate(builder.templateName, builder.templateModulePath);
+        buildAndStageTemplate(
+            builder.templateName, builder.templateModulePath, builder.additionalMavenProfile);
       }
     }
 
@@ -79,6 +81,10 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     LaunchInfo launchInfo = pipelineLauncher.launch(PROJECT, REGION, launchConfig);
     LOG.info("Dataflow job started");
     this.jobInfo = launchInfo;
+    if (launchInfo.jobId() != null && !launchInfo.jobId().isEmpty()) {
+      Runtime.getRuntime()
+          .addShutdownHook(new Thread(new CancelJobShutdownHook(pipelineLauncher, launchInfo)));
+    }
     return launchInfo;
   }
 
@@ -107,6 +113,7 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     private final Map<String, Object> environmentVariables;
     private String templateName;
     private String templateModulePath;
+    private String additionalMavenProfile;
 
     private Builder(String jobName) {
       this.jobName = jobName;
@@ -144,6 +151,12 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
       return this;
     }
 
+    public FlexTemplateDataflowJobResourceManager.Builder withAdditionalMavenProfile(
+        String profile) {
+      this.additionalMavenProfile = profile;
+      return this;
+    }
+
     public FlexTemplateDataflowJobResourceManager build() {
       if (templateName == null) {
         throw new IllegalArgumentException(
@@ -157,7 +170,8 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     }
   }
 
-  private void buildAndStageTemplate(String templateName, String modulePath) {
+  private void buildAndStageTemplate(
+      String templateName, String modulePath, String additionalMavenProfile) {
     LOG.info("Building and Staging {} template", templateName);
 
     String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
@@ -177,7 +191,9 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
               + " -DspecPath or provide a proper -DstageBucket for automatic staging.");
     }
 
-    String[] mavenCmd = buildMavenStageCommand(prefix, bucketName, templateName, modulePath);
+    String[] mavenCmd =
+        buildMavenStageCommand(
+            prefix, bucketName, templateName, modulePath, additionalMavenProfile);
     LOG.info("Running command to stage templates: {}", String.join(" ", mavenCmd));
 
     try {
@@ -198,7 +214,11 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
   }
 
   String[] buildMavenStageCommand(
-      String prefix, String bucketName, String templateName, String modulePath) {
+      String prefix,
+      String bucketName,
+      String templateName,
+      String modulePath,
+      String additionalMavenProfile) {
     File pom = new File("pom.xml").getAbsoluteFile();
     if (!pom.exists()) {
       throw new IllegalArgumentException(
@@ -207,6 +227,12 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
     String pomPath = pom.getAbsolutePath();
     String moduleBuild = "metadata,v2/common," + modulePath;
     pomPath = pomPath.replaceAll("/v2/.*", "/pom.xml");
+
+    if (additionalMavenProfile == null) {
+      additionalMavenProfile = "";
+    } else if (!additionalMavenProfile.isBlank()) {
+      additionalMavenProfile = "," + additionalMavenProfile;
+    }
 
     return new String[] {
       "mvn",
@@ -218,7 +244,7 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
       "-pl",
       moduleBuild,
       "-am",
-      "-PtemplatesStage,pluginOutputDir",
+      "-PtemplatesStage,pluginOutputDir" + additionalMavenProfile,
       // Skip shading for now due to flakiness / slowness in the process.
       "-DskipShade=" + true,
       "-DskipTests",

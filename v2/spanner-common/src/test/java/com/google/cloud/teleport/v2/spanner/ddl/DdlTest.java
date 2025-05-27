@@ -26,6 +26,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType.Kind;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.ImmutableList;
@@ -140,6 +142,35 @@ public class DdlTest {
   }
 
   @Test
+  public void testDdlCassandraOptions() {
+
+    Ddl.Builder builder = Ddl.builder();
+
+    builder
+        .createTable("Users")
+        .column("id")
+        .int64()
+        .notNull()
+        .columnOptions(ImmutableList.of("CASSANDRA_TYPE=\"int\"", "SOME_UNKNOWN_OPTION"))
+        .endColumn()
+        .column("first_name")
+        .string()
+        .size(10)
+        .endColumn()
+        .primaryKey()
+        .asc("id")
+        .end()
+        .endTable();
+    Ddl ddl = builder.build();
+    assertEquals(
+        ddl.table("Users").column("id").cassandraAnnotation().cassandraType(),
+        CassandraType.fromAnnotation("int"));
+    assertEquals(
+        ddl.table("Users").column("first_name").cassandraAnnotation().cassandraType().getKind(),
+        Kind.NONE);
+  }
+
+  @Test
   public void testDdlPG() {
     ForeignKey.Builder usersForeignKeyBuilder =
         ForeignKey.builder(Dialect.POSTGRESQL)
@@ -204,7 +235,7 @@ public class DdlTest {
   }
 
   @Test
-  public void testInterleavingGSQL() {
+  public void testInterleaveInParentGSQL() {
     Ddl ddl =
         Ddl.builder()
             .createTable("Users")
@@ -240,7 +271,8 @@ public class DdlTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
             .onDeleteCascade()
             .endTable()
             .build();
@@ -275,7 +307,7 @@ public class DdlTest {
   }
 
   @Test
-  public void testInterleavingPG() {
+  public void testInterleaveInParentPG() {
     Ddl ddl =
         Ddl.builder(Dialect.POSTGRESQL)
             .createTable("Users")
@@ -311,7 +343,8 @@ public class DdlTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
             .onDeleteCascade()
             .endTable()
             .build();
@@ -331,6 +364,138 @@ public class DdlTest {
                 + " PRIMARY KEY (\"id\")"
                 + " ) "
                 + " INTERLEAVE IN PARENT \"Users\" ON DELETE CASCADE"));
+    assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void testInterleaveInGSQL() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .string()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.string())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .float64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleavingParent("Users")
+            .interleaveType("IN")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE `Users` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `first_name`                            STRING(10),"
+                + " `last_name`                             STRING(MAX),"
+                + " ) PRIMARY KEY (`id` ASC)"
+                + " CREATE TABLE `Account` ("
+                + " `id`                                    INT64 NOT NULL,"
+                + " `balanceId`                             INT64 NOT NULL,"
+                + " `balance`                               FLOAT64 NOT NULL,"
+                + " ) PRIMARY KEY (`id` ASC), "
+                + " INTERLEAVE IN `Users`"));
+    Collection<Table> rootTables = ddl.rootTables();
+    assertEquals(1, rootTables.size());
+    assertEquals("Users", rootTables.iterator().next().name());
+    HashMultimap<Integer, String> perLevelView = ddl.perLevelView();
+    assertEquals(2, perLevelView.size());
+    assertTrue(perLevelView.containsKey(0));
+    assertEquals("users", perLevelView.get(0).iterator().next());
+    assertTrue(perLevelView.containsKey(1));
+    assertEquals("account", perLevelView.get(1).iterator().next());
+    assertNotNull(ddl.hashCode());
+
+    List<String> tablesReferenced = ddl.tablesReferenced("Account");
+  }
+
+  @Test
+  public void testInterleaveInPG() {
+    Ddl ddl =
+        Ddl.builder(Dialect.POSTGRESQL)
+            .createTable("Users")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("first_name")
+            .pgVarchar()
+            .size(10)
+            .endColumn()
+            .column("last_name")
+            .type(Type.pgVarchar())
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .endTable()
+            .createTable("Account")
+            .column("id")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("balanceId")
+            .pgInt8()
+            .notNull()
+            .endColumn()
+            .column("balance")
+            .pgFloat8()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("id")
+            .end()
+            .interleavingParent("Users")
+            .interleaveType("IN")
+            .onDeleteCascade()
+            .endTable()
+            .build();
+
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE TABLE \"Users\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"first_name\"                            character varying(10),"
+                + " \"last_name\"                             character varying,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " CREATE TABLE \"Account\" ("
+                + " \"id\"                                    bigint NOT NULL,"
+                + " \"balanceId\"                             bigint NOT NULL,"
+                + " \"balance\"                               double precision NOT NULL,"
+                + " PRIMARY KEY (\"id\")"
+                + " ) "
+                + " INTERLEAVE IN \"Users\""));
     assertNotNull(ddl.hashCode());
   }
 
@@ -548,7 +713,8 @@ public class DdlTest {
             .asc("id")
             .end()
             .foreignKeys(ImmutableList.of(accountsForeignKeyBuilder.build()))
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
+            .interleaveType("IN PARENT")
             .onDeleteCascade()
             .endTable()
             .createTable("BalanceNames")

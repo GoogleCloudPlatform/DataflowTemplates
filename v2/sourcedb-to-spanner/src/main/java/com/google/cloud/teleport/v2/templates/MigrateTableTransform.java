@@ -89,7 +89,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
     // Transform source data to Spanner Compatible Data
     SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(schemaMapper, customTransformation);
+        SourceRowToMutationDoFn.create(
+            schemaMapper, customTransformation, options.getInsertOnlyModeForSpannerMutations());
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",
@@ -102,7 +103,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
                             SourceDbToSpannerConstants.FILTERED_EVENT_TAG))));
 
     // Write to Spanner
-    SpannerWriter writer = new SpannerWriter(spannerConfig);
+    SpannerWriter writer =
+        new SpannerWriter(spannerConfig, options.getBatchSizeForSpannerMutations());
     SpannerWriteResult spannerWriteResult =
         writer.writeToSpanner(
             transformationResult

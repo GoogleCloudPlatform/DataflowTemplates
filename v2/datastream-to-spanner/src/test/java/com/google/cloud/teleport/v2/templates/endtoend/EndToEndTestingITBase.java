@@ -52,6 +52,9 @@ import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.IORedirectUtil;
+import java.util.stream.Collectors;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -71,6 +74,8 @@ import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
@@ -183,6 +188,9 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
   }
 
+  // createPubsubResources generates pubsub topic, subscription and notification for migration.
+  // It can be run in different modes based on type of migration.
+  // Modes can be rr for reverse replication and fwd for forward migration
   public SubscriptionName createPubsubResources(
       String identifierSuffix,
       PubsubResourceManager pubsubResourceManager,
@@ -198,6 +206,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     if (prefix.startsWith("/")) {
       prefix = prefix.substring(1);
     }
+    // create retry directory for reverse migration
     if (mode == "rr") {
       prefix += "/retry/";
     }
@@ -205,7 +214,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     return subscription;
   }
 
-  protected void createAndUploadRRShardConfigToGcs(
+  protected void createAndUploadReverseShardConfigToGcs(
       GcsResourceManager gcsResourceManager,
       CloudSqlResourceManager cloudSqlResourceManager,
       String privateHost) {
@@ -333,9 +342,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
       PubsubResourceManager pubsubResourceManager,
-      String sourceType,
-      String network,
-      String subnetwork)
+      String sourceType)
       throws IOException {
     String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
 
@@ -368,8 +375,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            // .addParameter("network", network)
-            // .addParameter("subnetwork", subnetwork)
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
@@ -417,6 +422,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
+            .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
     Stream stream =
         createDataStreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
@@ -432,9 +438,11 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
+            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+            .addParameter("gcsPubSubSubscription", subscription.toString())
+            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
-            .addParameter("outputDirectory", "gs://" + artifactBucketName)
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("use_runner_v2"))
@@ -486,9 +494,16 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       protected CheckResult check() {
         boolean success = true;
         List<String> messages = new ArrayList<>();
-        success &=
-            writeRows(tableName, numRows, columns, cdcEvents, startValue, cloudSqlResourceManager);
-        messages.add(String.format("rows insertion success in table %s: %s", tableName, success));
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (int i = 0; i < numRows; i++) {
+          Map<String, Object> values = new HashMap<>();
+          values.put("id", i);
+          values.putAll(columns);
+          rows.add(values);
+        }
+        cdcEvents.put(tableName, rows);
+        success &= cloudSqlResourceManager.write(tableName, rows);
+        messages.add(String.format("%d rows to %s", rows.size(), tableName));
 
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }

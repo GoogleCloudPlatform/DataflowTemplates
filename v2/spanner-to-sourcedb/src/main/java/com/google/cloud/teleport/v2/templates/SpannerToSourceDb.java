@@ -55,6 +55,7 @@ import com.google.cloud.teleport.v2.templates.utils.CassandraSourceSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -425,6 +426,18 @@ public class SpannerToSourceDb {
     String getFilterEventsDirectoryName();
 
     void setFilterEventsDirectoryName(String value);
+
+    @TemplateParameter.Boolean(
+        order = 29,
+        optional = true,
+        description = "Boolean setting if reverse migration is sharded",
+        helpText =
+            "Sets the template to a sharded migration. If source shard template contains more"
+                + " than one shard, the value will be set to true. This value defaults to false.")
+    @Default.Boolean(false)
+    Boolean getIsShardedMigration();
+
+    void setIsShardedMigration(Boolean value);
   }
 
   /**
@@ -538,7 +551,7 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
-    if (shards.size() == 1) {
+    if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
       if (shard.getLogicalShardId() == null) {
@@ -582,7 +595,7 @@ public class SpannerToSourceDb {
                 ? debugOptions.getNumberOfWorkerHarnessThreads()
                 : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
-    if (isRegularMode) {
+    if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
               pipeline.apply(

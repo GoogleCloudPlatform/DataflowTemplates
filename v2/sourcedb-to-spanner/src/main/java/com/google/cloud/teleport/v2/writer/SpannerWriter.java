@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.writer;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import java.io.Serializable;
+import javax.annotation.Nullable;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO.FailureMode;
@@ -35,15 +36,27 @@ public class SpannerWriter implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerWriter.class);
 
   private final SpannerConfig spannerConfig;
+  @Nullable private final Long batchSize;
 
-  public SpannerWriter(SpannerConfig spannerConfig) {
+  public SpannerWriter(SpannerConfig spannerConfig, @Nullable Long batchSize) {
     this.spannerConfig = spannerConfig;
+    this.batchSize = batchSize;
   }
 
   public Write getSpannerWrite() {
-    return SpannerIO.write()
-        .withSpannerConfig(spannerConfig)
-        .withFailureMode(FailureMode.REPORT_FAILURES);
+    return setBatchSize(
+        SpannerIO.write()
+            .withSpannerConfig(spannerConfig)
+            .withFailureMode(FailureMode.REPORT_FAILURES));
+  }
+
+  protected Write setBatchSize(Write write) {
+    if (batchSize != null && batchSize >= 0) {
+      LOG.info("Setting Spanner Batch Size as {}", batchSize);
+      return write.withBatchSizeBytes(batchSize);
+    } else {
+      return write;
+    }
   }
 
   public SpannerWriteResult writeToSpanner(PCollection<RowContext> rows) {

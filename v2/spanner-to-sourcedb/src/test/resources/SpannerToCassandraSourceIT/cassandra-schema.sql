@@ -49,7 +49,13 @@ CREATE TABLE AllDatatypeTransformation (
     frozen_map_text_to_set_column map<text, frozen<set<text>>>,
     frozen_set_of_maps_column set<frozen<map<text, int>>>,
     frozen_list_of_sets_column list<frozen<set<text>>>,
-    varint_column varint
+    varint_column varint,
+    inet_column INET,
+    timeuuid_column timeuuid,
+    duration_column duration,
+    uuid_column uuid,
+    ascii_column ascii,
+    bytes_column BLOB
 );
 
 CREATE TABLE AllDatatypeColumns (
@@ -94,7 +100,14 @@ CREATE TABLE AllDatatypeColumns (
     frozen_set_of_maps_column set<frozen<map<text, int>>>,
     frozen_list_of_sets_column list<frozen<set<text>>>,
     varint_column varint,
-    inet_column INET
+    inet_column INET,
+    timeuuid_column timeuuid,
+    duration_column duration,
+    uuid_column uuid,
+    ascii_column ascii,
+    list_text_column_from_array list<text>,
+    set_text_column_from_array set<text>
+
 );
 
 CREATE TABLE BoundaryConversionTestTable (
@@ -137,3 +150,75 @@ CREATE TABLE BoundaryConversionTestTable (
     map_timeuuid_column map<timeuuid, timeuuid>,
     map_inet_column map<inet, inet>
 );
+
+CREATE TABLE EmptyStringJsonTable (
+    varchar_column TEXT PRIMARY KEY,
+    empty_column TEXT,
+    double_float_map_col MAP<DOUBLE, FLOAT>,
+    decimal_set_col SET<DECIMAL>,
+    date_double_map_col MAP<DATE, DOUBLE>,
+    uuid_ascii_map_col MAP<UUID, TEXT>,
+    ascii_text_map_col MAP<TEXT, TEXT>,
+    timestamp_list_col LIST<TIMESTAMP>,
+    int_set_col SET<INT>,
+    smallint_set_col SET<SMALLINT>,
+    varchar_list_col LIST<VARCHAR>,
+    inet_list_col LIST<INET>,
+    bigint_list_col LIST<BIGINT>,
+    tinyint_varint_map_col MAP<TEXT, TEXT>,
+    text_set_col SET<TEXT>,
+    double_set_col SET<DOUBLE>,
+    time_list_col LIST<TEXT>,
+    frozen_ascii_list_col frozen<LIST<ASCII>>,
+    int_list_col LIST<INT>,
+    ascii_list_col LIST<ASCII>,
+    date_set_col SET<DATE>,
+    double_inet_map_col MAP<DOUBLE, INET>,
+    timestamp_set_col SET<TEXT>,
+    time_tinyint_map_col MAP<TEXT, TINYINT>,
+    bigint_set_col SET<BIGINT>,
+    varchar_set_col SET<TEXT>,
+    tinyint_set_col SET<TINYINT>,
+    bigint_boolean_map_col MAP<BIGINT, BOOLEAN>,
+    text_list_col LIST<TEXT>,
+    boolean_list_col LIST<BOOLEAN>,
+    blob_list_col LIST<BLOB>,
+    timeuuid_set_col SET<TIMEUUID>,
+    int_time_map_col MAP<INT, TEXT>,
+    time_set_col SET<TEXT>,
+    boolean_set_col SET<BOOLEAN>,
+    float_set_col SET<FLOAT>,
+    ascii_set_col SET<ASCII>,
+    uuid_list_col LIST<UUID>,
+    varchar_bigint_map_col MAP<TEXT, BIGINT>,
+    blob_int_map_col MAP<BLOB, INT>,
+    varint_blob_map_col MAP<TEXT, BLOB>,
+    double_list_col LIST<DOUBLE>,
+    float_list_col LIST<FLOAT>,
+    smallint_list_col LIST<SMALLINT>,
+    varint_list_col LIST<TEXT>,
+    float_smallint_map_col MAP<FLOAT, SMALLINT>,
+    smallint_timestamp_map_col MAP<SMALLINT, TIMESTAMP>,
+    text_timeuuid_map_col MAP<TEXT, TIMEUUID>,
+    timeuuid_list_col LIST<TIMEUUID>,
+    date_list_col LIST<DATE>,
+    uuid_set_col SET<UUID>,
+    boolean_decimal_map_col MAP<BOOLEAN, DECIMAL>,
+    blob_set_col SET<BLOB>,
+    inet_text_map_col MAP<INET, TEXT>,
+    varint_set_col SET<TEXT>,
+    tinyint_list_col LIST<TINYINT>,
+    timestamp_uuid_map_col MAP<TEXT, UUID>,
+    decimal_duration_map_col MAP<DECIMAL, TEXT>,
+    decimal_list_col LIST<DECIMAL>,
+    inet_set_col SET<INET>,
+    timeuuid_varchar_map_col MAP<TIMEUUID, VARCHAR>,
+    duration_list_col LIST<TEXT>,
+    frozen_ascii_set_col frozen<SET<ASCII>>
+);
+
+CREATE TABLE testtable_03tpcovf16ed0klxm3v808ch3btgq0uk (
+    id TEXT PRIMARY KEY,
+    col_qcbf69rmxtre3b_03tpcovf16ed TEXT
+);
+

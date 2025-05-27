@@ -104,15 +104,20 @@ public class CassandraIOWrapperHelperTest {
       mockFileReader
           .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
           .thenReturn(new URL[] {testUrl})
+          .thenReturn(new URL[] {testUrl})
           /* Empty URL List to test FileNotFoundException handling. */
           .thenReturn(new URL[] {});
 
-      DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(testGcsPath);
+      DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(testGcsPath, null);
       assertThat(dataSource.cassandra().loggedKeySpace()).isEqualTo("test-keyspace");
       assertThat(dataSource.cassandra().localDataCenter()).isEqualTo("datacenter1");
+      assertThat(dataSource.cassandra().numPartitions()).isEqualTo(null);
+      assertThat(
+              CassandraIOWrapperHelper.buildDataSource(testGcsPath, 42).cassandra().numPartitions())
+          .isEqualTo(42);
       assertThrows(
           SchemaDiscoveryException.class,
-          () -> CassandraIOWrapperHelper.buildDataSource(testGcsPath));
+          () -> CassandraIOWrapperHelper.buildDataSource(testGcsPath, null));
     }
   }
 

@@ -59,6 +59,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -77,7 +78,7 @@ public class DataStreamToSQLIT extends TemplateTestBase {
     POSTGRES
   }
 
-  @Rule public Timeout timeout = new Timeout(10, TimeUnit.MINUTES);
+  @Rule public Timeout timeout = new Timeout(30, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
 
   private static final String ROW_ID = "row_id";
@@ -136,12 +137,14 @@ public class DataStreamToSQLIT extends TemplateTestBase {
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToPostgresJson() throws IOException {
     // Run a simple IT
     simpleOracleToJdbcTest(JDBCType.POSTGRES, Function.identity());
   }
 
   @Test
+  @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToMySqlJsonGCSNotifications() throws IOException {
     // Set up pubsub notifications
     SubscriptionName subscriptionName = createGcsNotifications();

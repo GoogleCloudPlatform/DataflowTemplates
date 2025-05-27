@@ -50,6 +50,12 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -71,6 +77,8 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
 import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
@@ -110,6 +118,30 @@ public class DdlToAvroSchemaConverter {
       recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
       // Indicate that this is a "CREATE SCHEMA", not a table or a view.
       recordBuilder.prop(SPANNER_ENTITY, SPANNER_NAMED_SCHEMA);
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+    for (Udf udf : ddl.udfs()) {
+      LOG.info("DdlToAvo Udf {}", udf.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(udf.specificName()))
+              .namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, udf.specificName());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      // Indicate that this is a "CREATE FUNCTION", not a table or a view.
+      recordBuilder.prop(SPANNER_ENTITY, SPANNER_UDF);
+      recordBuilder.prop(SPANNER_UDF_NAME, udf.name());
+      recordBuilder.prop(SPANNER_UDF_DEFINITION, udf.definition());
+      if (udf.type() != null) {
+        recordBuilder.prop(SPANNER_UDF_TYPE, udf.type());
+      }
+      if (udf.security() != null) {
+        recordBuilder.prop(SPANNER_UDF_SECURITY, udf.security().toString());
+      }
+      int i = 0;
+      for (UdfParameter udfParameter : udf.parameters()) {
+        recordBuilder.prop(SPANNER_UDF_PARAMETER + i++, udfParameter.prettyPrint());
+      }
       schemas.add(recordBuilder.fields().endRecord());
     }
     for (Table table : ddl.allTables()) {
