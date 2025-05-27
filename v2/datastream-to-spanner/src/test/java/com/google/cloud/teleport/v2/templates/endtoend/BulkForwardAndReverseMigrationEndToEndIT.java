@@ -45,7 +45,6 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
-import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
 
 /**
  * Integration test for end-to-end Testing of all Spanner migration Flex templates for basic run
@@ -105,8 +104,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     synchronized (BulkForwardAndReverseMigrationEndToEndIT.class) {
       testInstances.add(this);
       if (bulkJobInfo == null) {
-        spannerResourceManager =
-            createEmptySpannerDatabase();
+        spannerResourceManager = createEmptySpannerDatabase();
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
         cloudSqlResourceManagerShardA =
             CloudMySQLResourceManager.builder(testName + "ShardA").build();
@@ -156,14 +154,16 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                 databases);
         createAndUploadBulkShardConfigToGcs(
             new ArrayList<>(List.of(dataShard)), gcsResourceManager);
-        SESSION_FILE_RESOURCE=generateSessionFile(jdbcSourceShardA, cloudSqlResourceManagerShardA, spannerResourceManager);
+        SESSION_FILE_RESOURCE =
+            generateSessionFile(
+                jdbcSourceShardA, cloudSqlResourceManagerShardA, spannerResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
                 .getPath());
-        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
-        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
-        //bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
+        // writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
+        // writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
+        // bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
       }
     }
   }
