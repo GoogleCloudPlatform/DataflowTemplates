@@ -225,8 +225,9 @@ public abstract class DatastreamToDML
           getSqlTemplateValues(
               rowObj, catalogName, schemaName, tableName, primaryKeys, tableSchema);
 
-      StringSubstitutor stringSubstitutor = new StringSubstitutor(sqlTemplateValues,"{","}");
-      String dmlSql = stringSubstitutor.setDisableSubstitutionInValues(true).replace(dmlSqlTemplate);
+      StringSubstitutor stringSubstitutor = new StringSubstitutor(sqlTemplateValues, "{", "}");
+      String dmlSql =
+          stringSubstitutor.setDisableSubstitutionInValues(true).replace(dmlSqlTemplate);
       return DmlInfo.of(
           failsafeValue,
           dmlSql,
