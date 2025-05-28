@@ -268,6 +268,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     } else {
       options.addEnvironment("numWorkers", 2);
     }
+    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
