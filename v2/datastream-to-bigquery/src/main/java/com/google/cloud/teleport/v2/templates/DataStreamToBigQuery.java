@@ -223,7 +223,7 @@ public class DataStreamToBigQuery {
         groupName = "Target",
         description = "Name or template for the dataset to contain staging tables.",
         helpText =
-            "The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.")
+            "The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.")
     @Default.String("{_metadata_dataset}")
     String getOutputStagingDatasetTemplate();
 
@@ -246,7 +246,7 @@ public class DataStreamToBigQuery {
         groupName = "Target",
         description = "Template for the dataset to contain replica tables.",
         helpText =
-            "The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.")
+            "The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
 
