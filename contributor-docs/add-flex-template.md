@@ -352,7 +352,7 @@ mvn clean install -pl v2/wordcount -am -Dmaven.test.skip
 ```
 
 The `-am` option guarantees that all the necessary local dependencies are
-included in the build. You can ignore the error releated to `v2/wordcount` if any error occurs.
+included in the build. You can ignore the error related to `v2/wordcount` if any error occurs.
 
 `-pl v2/wordcount` is how we specify the target module, allowing us to only
 build what we need. You can see all the available modules in the
