@@ -6,7 +6,7 @@ on:
   - cron: '0 0 * * 6'
   workflow_dispatch:
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   load_tests:
@@ -22,6 +22,9 @@ jobs:
     - name: Setup Environment
       id: setup-java-env
       uses: ./.github/actions/setup-java-env
+    - name: Get current date
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
     - name: Get Host IP
       id: variables
       run: echo "hostIP=$(gcloud compute instances list | grep $(hostname) | awk '{print $4; exit}' )" >> $GITHUB_OUTPUT
@@ -37,6 +40,15 @@ jobs:
         -DexportTable=template_performance_metrics -e -fae
       env:
         HOST_IP: ${{ steps.variables.outputs.hostIP }}
+    - name: Create Github issue on failure
+      if: failure()
+      uses: JasonEtco/create-an-issue@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        DATE: ${{ steps.date.outputs.date }}
+      with:
+        filename: .github/ISSUE_TEMPLATE/load-test-failure-issue-template.md
     - name: Upload Load Tests Report
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
