@@ -249,6 +249,17 @@ public class DataStreamToSQL {
     String getCustomConnectionString();
 
     void setCustomConnectionString(String value);
+
+    @TemplateParameter.Integer(
+        order = 15,
+        optional = true,
+        description = "Number of threads to use for Format to DML step.",
+        helpText =
+            "Determines key parallelism of Format to DML step, specifically, the value is passed into Reshuffle.withNumBuckets.")
+    @Default.Integer(100)
+    int getNumThreads();
+
+    void setNumThreads(int value);
   }
 
   /**
@@ -381,7 +392,11 @@ public class DataStreamToSQL {
      */
     PCollection<KV<String, DmlInfo>> dmlStatements =
         datastreamJsonRecords
-            .apply("Format to DML", CreateDml.of(dataSourceConfiguration).withSchemaMap(schemaMap))
+            .apply(
+                "Format to DML",
+                CreateDml.of(dataSourceConfiguration)
+                    .withSchemaMap(schemaMap)
+                    .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
 
     /*
