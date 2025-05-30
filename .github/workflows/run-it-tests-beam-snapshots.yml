@@ -50,7 +50,7 @@ jobs:
 
           MAJOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f1)
           MINOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f2)
-          PATCH_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f3) # Assuming patch version stays, e.g. 2.65.0 -> 2.66.0-SNAPSHOT
+          PATCH_VERSION=0
 
           NEXT_MINOR_VERSION=$((MINOR_VERSION + 1))
 
