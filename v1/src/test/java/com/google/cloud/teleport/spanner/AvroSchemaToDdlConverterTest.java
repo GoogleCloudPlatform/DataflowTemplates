@@ -595,7 +595,7 @@ public class AvroSchemaToDdlConverterTest {
             + "EDGE TABLES(\n"
             + "edgeBaseTable AS edgeAlias\n"
             + " KEY (edgePrimaryKey)\n"
-            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable DESTINATION KEY(destEdgeKey) REFERENCES baseTable\n"
+            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable(nodeKey) DESTINATION KEY(destEdgeKey) REFERENCES baseTable(otherNodeKey)\n"
             + "LABEL dummyLabelName3 NO PROPERTIES)";
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));

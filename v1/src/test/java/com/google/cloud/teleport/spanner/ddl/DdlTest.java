@@ -1025,7 +1025,7 @@ public class DdlTest {
                 + "EDGE TABLES(\n"
                 + "edge-base-table AS edge-alias\n"
                 + " KEY (edge-primary-key)\n"
-                + "SOURCE KEY(source-edge-key) REFERENCES base-table DESTINATION KEY(dest-edge-key) REFERENCES base-table\n"
+                + "SOURCE KEY(source-edge-key) REFERENCES base-table(node-key) DESTINATION KEY(dest-edge-key) REFERENCES base-table(other-node-key)\n"
                 + "LABEL dummy-label-name3 NO PROPERTIES"
                 + ")"));
   }
