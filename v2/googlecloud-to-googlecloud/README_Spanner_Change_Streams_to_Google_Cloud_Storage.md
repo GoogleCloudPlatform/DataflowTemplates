@@ -56,7 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, a Spanner change streams metadata table is automatically created during pipeline execution. You must provide a value for this parameter when updating an existing pipeline. Otherwise, don't use this parameter.
 * **startTimestamp**: The starting DateTime, inclusive, to use for reading change streams, in the format `Ex-2021-10-12T07:20:50.52Z`. Defaults to the timestamp when the pipeline starts, that is, the current time.
 * **endTimestamp**: The ending DateTime, inclusive, to use for reading change streams. For example, `Ex-2021-10-12T07:20:50.52Z`. Defaults to an infinite time in the future.
-* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://spanner.googleapis.com`. Defaults to: https://spanner.googleapis.com.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
 * **outputFileFormat**: The format of the output Cloud Storage file. Allowed formats are `TEXT` and `AVRO`. Defaults to `AVRO`.
 * **windowDuration**: The window duration is the interval in which data is written to the output directory. Configure the duration based on the pipeline's throughput. For example, a higher throughput might require smaller window sizes so that the data fits into memory. Defaults to 5m (five minutes), with a minimum of 1s (one second). Allowed formats are: [int]s (for seconds, example: 5s), [int]m (for minutes, example: 12m), [int]h (for hours, example: 2h). For example, `5m`.
 * **rpcPriority**: The request priority for Spanner calls. The value must be `HIGH`, `MEDIUM`, or `LOW`. Defaults to `HIGH`.
@@ -153,7 +153,7 @@ export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SPANNER_HOST=https://spanner.googleapis.com
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export OUTPUT_FILE_FORMAT=AVRO
 export WINDOW_DURATION=5m
 export RPC_PRIORITY=HIGH
@@ -212,7 +212,7 @@ export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SPANNER_HOST=https://spanner.googleapis.com
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export OUTPUT_FILE_FORMAT=AVRO
 export WINDOW_DURATION=5m
 export RPC_PRIORITY=HIGH
@@ -282,7 +282,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_google_c
     # spannerMetadataTableName = "<spannerMetadataTableName>"
     # startTimestamp = ""
     # endTimestamp = ""
-    # spannerHost = "https://spanner.googleapis.com"
+    # spannerHost = "https://batch-spanner.googleapis.com"
     # outputFileFormat = "AVRO"
     # windowDuration = "5m"
     # rpcPriority = "HIGH"

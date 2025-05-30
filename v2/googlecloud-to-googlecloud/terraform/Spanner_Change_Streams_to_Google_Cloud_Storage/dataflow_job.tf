@@ -95,7 +95,7 @@ variable "endTimestamp" {
 
 variable "spannerHost" {
   type        = string
-  description = "The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://spanner.googleapis.com). Defaults to: https://spanner.googleapis.com."
+  description = "The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com."
   default     = null
 }
 
