@@ -126,6 +126,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                   put(TABLE, AUTHOR_TABLE_COLUMNS);
                 }
               });
+      jdbcSource = jdbcSourceShardA;
       JDBCSource jdbcSourceShardB =
           createMySqlDatabase(
               cloudSqlResourceManagerShardB,
