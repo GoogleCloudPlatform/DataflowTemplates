@@ -42,6 +42,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -229,6 +230,27 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
+  protected void createAndUploadReverseMultiShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, Map<String, CloudSqlResourceManager> shardsList)
+      throws IOException {
+    JsonArray ja = new JsonArray();
+    for (Entry<String, CloudSqlResourceManager> shardInfo : shardsList.entrySet()) {
+      Shard shard = new Shard();
+      shard.setLogicalShardId(shardInfo.getKey());
+      shard.setUser(shardInfo.getValue().getUsername());
+      shard.setHost("10.94.208.4");
+      shard.setPassword(shardInfo.getValue().getPassword());
+      shard.setPort(String.valueOf(shardInfo.getValue().getPort()));
+      shard.setDbName(shardInfo.getValue().getDatabaseName());
+      JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
+      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
+      ja.add(jsObj);
+    }
+    String shardFileContents = ja.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
   protected void createAndUploadBulkShardConfigToGcs(
       ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
     JSONObject bulkConfig = new JSONObject();
@@ -278,6 +300,25 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     String shardFileContents = bulkConfig.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
+  }
+
+  protected void createAndUploadShardContextFileToGcs(
+      Map<String, Map<String, String>> streamDbMapping, GcsResourceManager gcsResourceManager) {
+    JSONObject shardConfig = new JSONObject();
+    JSONObject streams = new JSONObject();
+
+    for (String stream : streamDbMapping.keySet()) {
+      JSONObject dbs = new JSONObject();
+      for (String db : streamDbMapping.get(stream).keySet()) {
+        dbs.put(db, streamDbMapping.get(stream).get(db));
+      }
+      streams.put(stream, dbs);
+    }
+
+    shardConfig.put("StreamToDbAndShardMap", streams);
+    String shardFileContents = shardConfig.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/sharding-context.json", shardFileContents);
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
@@ -391,7 +432,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
-      PubsubResourceManager pubsubResourceManager)
+      PubsubResourceManager pubsubResourceManager,
+      Boolean multiSharded,
+      Map<String, String> dbs,
+      Boolean backfill)
       throws IOException {
     String testRootDir = getClass().getSimpleName();
 
@@ -420,11 +464,21 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
     Stream stream =
-        createDataStreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
+        createDataStreamResources(
+            artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager, backfill);
+    if (multiSharded) {
+      createAndUploadShardContextFileToGcs(
+          new HashMap<>() {
+            {
+              put(stream.getName(), dbs);
+            }
+          },
+          gcsResourceManager);
+    }
 
     String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
     // launch dataflow template
-    flexTemplateDataflowJobResourceManager =
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateDataflowJobResourceManagerBuilder =
         FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Cloud_Datastream_to_Spanner")
             .withTemplateModulePath("v2/datastream-to-spanner")
@@ -440,8 +494,14 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("inputFileFormat", "avro")
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
-            .build();
+                "additionalExperiments", Collections.singletonList("use_runner_v2"));
+
+    if (multiSharded) {
+      flexTemplateDataflowJobResourceManagerBuilder.addParameter(
+          "shardingContextFilePath", getGcsPath("input/context-shard.json", gcsResourceManager));
+    }
+
+    flexTemplateDataflowJobResourceManager = flexTemplateDataflowJobResourceManagerBuilder.build();
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
@@ -453,7 +513,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       String artifactBucketName,
       String gcsPrefix,
       JDBCSource jdbcSource,
-      DatastreamResourceManager datastreamResourceManager) {
+      DatastreamResourceManager datastreamResourceManager,
+      Boolean backfill) {
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
 
@@ -466,8 +527,15 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
 
     // Create and start DataStream stream
-    Stream stream =
-        datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
+    Stream stream;
+    if (backfill) {
+      stream =
+          datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
+    } else {
+      stream =
+          datastreamResourceManager.createStreamWoBackfill(
+              "ds-spanner", sourceConfig, destinationConfig);
+    }
     datastreamResourceManager.startStream(stream);
     return stream;
   }

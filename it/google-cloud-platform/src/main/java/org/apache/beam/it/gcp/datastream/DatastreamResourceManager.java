@@ -468,6 +468,67 @@ public final class DatastreamResourceManager implements ResourceManager {
     }
   }
 
+  /**
+   * Creates a Datastream stream from the given source to the given destination for only cdc events.
+   *
+   * @param streamId The ID of the stream.
+   * @param sourceConfig A SourceConfig object representing the source configuration.
+   * @param destinationConfig A DestinationConfig object representing the destination configuration.
+   * @return A Datastream stream object.
+   */
+  public synchronized Stream createStreamWoBackfill(
+      String streamId, SourceConfig sourceConfig, DestinationConfig destinationConfig) {
+    return createStreamWoBackfill(
+        streamId,
+        sourceConfig,
+        destinationConfig,
+        Stream.BackfillNoneStrategy.getDefaultInstance());
+  }
+
+  /**
+   * Creates a Datastream stream from the given source to the given destination for only cdc events.
+   *
+   * @param streamId The ID of the stream.
+   * @param sourceConfig A SourceConfig object representing the source configuration.
+   * @param destinationConfig A DestinationConfig object representing the destination configuration.
+   * @param backfillNoneStrategy
+   * @return A Datastream stream object.
+   */
+  public synchronized Stream createStreamWoBackfill(
+      String streamId,
+      SourceConfig sourceConfig,
+      DestinationConfig destinationConfig,
+      Stream.BackfillNoneStrategy backfillNoneStrategy) {
+
+    streamId = generateDatastreamId(testId + "-" + streamId);
+    LOG.info("Creating Stream {} in project {}.", streamId, projectId);
+
+    try {
+      CreateStreamRequest request =
+          CreateStreamRequest.newBuilder()
+              .setParent(LocationName.format(projectId, location))
+              .setStreamId(streamId)
+              .setStream(
+                  Stream.newBuilder()
+                      .setDisplayName(streamId)
+                      .setSourceConfig(sourceConfig)
+                      .setDestinationConfig(destinationConfig)
+                      .setBackfillNone(backfillNoneStrategy)
+                      .build())
+              .build();
+
+      Stream reference =
+          Failsafe.with(retryOnCancellationException())
+              .get(() -> datastreamClient.createStreamAsync(request).get());
+      createdStreamIds.add(streamId);
+
+      LOG.info("Successfully created Stream {} in project {}.", streamId, projectId);
+      return reference;
+    } catch (Exception e) {
+      throw new DatastreamResourceManagerException("Failed to create stream. ", e);
+    }
+  }
+
   public synchronized Stream updateStreamState(Stream stream, Stream.State state) {
 
     LOG.info("Updating {}'s state to {} in project {}.", stream.getName(), state.name(), projectId);

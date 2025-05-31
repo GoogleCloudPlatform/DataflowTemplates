@@ -132,7 +132,13 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
 
         // launch forward migration template
         fwdJobInfo =
-            launchFwdDataflowJob(spannerResourceManager, gcsResourceManager, pubsubResourceManager);
+            launchFwdDataflowJob(
+                spannerResourceManager,
+                gcsResourceManager,
+                pubsubResourceManager,
+                false,
+                null,
+                true);
 
         // launch reverse migration template
         rrJobInfo =
