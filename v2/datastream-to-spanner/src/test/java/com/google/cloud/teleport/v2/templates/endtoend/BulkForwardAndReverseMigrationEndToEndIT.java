@@ -115,7 +115,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
 
       // Create MySql Resource
       cloudSqlResourceManagerShardA =
-          CloudMySQLResourceManager.builder(testName + "ShardA").build();
+          CloudMySQLResourceManager.builder(testName).build();
       cloudSqlResourceManagerShardB =
           CloudMySQLResourceManager.builder(testName + "ShardB").build();
       JDBCSource jdbcSourceShardA =
