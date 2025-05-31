@@ -24,6 +24,7 @@ import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.StandardSQLTypeName;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.bigquery.TableResult;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
@@ -32,7 +33,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +45,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(CSVToBigQuery.class)
 @RunWith(JUnit4.class)
-public final class CSVToBigQueryIT extends TemplateTestBase {
+public final class CSVToBigQueryIT extends V1TemplateTestBase {
 
   private static final String BQ_DESTINATION_TABLE_SCHEMA_PATH =
       "CSVToBigQueryIT/bq_destination_table_schema.json";

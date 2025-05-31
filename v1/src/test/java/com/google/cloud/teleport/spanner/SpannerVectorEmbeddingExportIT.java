@@ -24,6 +24,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.templates.SpannerVectorEmbeddingExport;
 import java.io.IOException;
@@ -36,7 +37,6 @@ import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.JsonTestUtil;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -53,7 +53,7 @@ import org.junit.runners.Parameterized;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(SpannerVectorEmbeddingExport.class)
 @RunWith(Parameterized.class)
-public class SpannerVectorEmbeddingExportIT extends TemplateTestBase {
+public class SpannerVectorEmbeddingExportIT extends V1TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 100;
 

@@ -22,6 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.kms.v1.CryptoKey;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
@@ -39,7 +40,6 @@ import java.util.function.Function;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.kms.KMSResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
@@ -63,7 +63,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(PubSubToSplunk.class)
 @RunWith(JUnit4.class)
-public class PubSubToSplunkIT extends TemplateTestBase {
+public class PubSubToSplunkIT extends V1TemplateTestBase {
 
   private static final int MESSAGES_COUNT = 200;
   private static final int BAD_MESSAGES_COUNT = 50;

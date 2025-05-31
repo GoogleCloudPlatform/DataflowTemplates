@@ -21,6 +21,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.awaitility.Awaitility.await;
 
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
@@ -33,7 +34,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -48,7 +48,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(TextToPubsub.class)
 @RunWith(JUnit4.class)
-public class TextToPubsubIT extends TemplateTestBase {
+public class TextToPubsubIT extends V1TemplateTestBase {
 
   private static final String TEST_ROOT_DIR = TextToPubsubIT.class.getSimpleName();
   private PubsubResourceManager pubsubResourceManager;

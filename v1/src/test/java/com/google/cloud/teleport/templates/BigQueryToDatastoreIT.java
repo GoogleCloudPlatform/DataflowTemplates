@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.InsertAllRequest.RowToInsert;
 import com.google.cloud.bigquery.Schema;
 import com.google.cloud.bigquery.TableId;
 import com.google.cloud.datastore.Entity;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -36,7 +37,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.utils.BigQueryTestUtil;
 import org.apache.beam.it.gcp.datastore.DatastoreResourceManager;
@@ -51,7 +51,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigQueryToDatastore.class)
 @RunWith(JUnit4.class)
-public final class BigQueryToDatastoreIT extends TemplateTestBase {
+public final class BigQueryToDatastoreIT extends V1TemplateTestBase {
 
   private BigQueryResourceManager bigQueryResourceManager;
   private DatastoreResourceManager datastoreResourceManager;

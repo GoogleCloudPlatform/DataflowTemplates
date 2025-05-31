@@ -24,6 +24,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
 import com.google.cloud.teleport.bigtable.BigtableToAvro;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
@@ -35,7 +36,6 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.artifacts.utils.AvroTestUtil;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
@@ -50,7 +50,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(BigtableToAvro.class)
 @RunWith(JUnit4.class)
-public class BigtableToAvroIT extends TemplateTestBase {
+public class BigtableToAvroIT extends V1TemplateTestBase {
 
   private BigtableResourceManager bigtableResourceManager;
 

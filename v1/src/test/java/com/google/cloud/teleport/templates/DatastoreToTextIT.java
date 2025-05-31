@@ -23,6 +23,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.datastore.Entity;
 import com.google.cloud.datastore.FullEntity;
 import com.google.cloud.datastore.IncompleteKey;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
 import java.util.List;
@@ -33,7 +34,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.Artifact;
 import org.apache.beam.it.gcp.datastore.DatastoreResourceManager;
 import org.junit.After;
@@ -46,7 +46,7 @@ import org.junit.runners.JUnit4;
 /** Integration test for {@link TextToDatastore}. */
 @Category(TemplateIntegrationTest.class)
 @RunWith(JUnit4.class)
-public final class DatastoreToTextIT extends TemplateTestBase {
+public final class DatastoreToTextIT extends V1TemplateTestBase {
 
   private DatastoreResourceManager datastoreResourceManager;
 

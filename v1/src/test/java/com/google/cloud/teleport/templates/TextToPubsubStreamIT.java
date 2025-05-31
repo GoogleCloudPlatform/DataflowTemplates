@@ -20,6 +20,7 @@ import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPat
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.ByteStreams;
@@ -38,7 +39,6 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.apache.beam.sdk.io.FileSystems;
@@ -59,7 +59,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
 @TemplateIntegrationTest(TextToPubsubStream.class)
 @RunWith(JUnit4.class)
-public class TextToPubsubStreamIT extends TemplateTestBase {
+public class TextToPubsubStreamIT extends V1TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(TextToPubsubStreamIT.class);
   private static final String TEST_ROOT_DIR = TextToPubsubStreamIT.class.getSimpleName();
 

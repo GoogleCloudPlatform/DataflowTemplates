@@ -2,6 +2,7 @@ package org.apache.beam.it.gcp.spanner;
 
 import static org.junit.Assume.assumeTrue;
 
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.common.collect.ImmutableSet;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -10,7 +11,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.junit.Before;
 import org.junit.runner.RunWith;
@@ -28,7 +28,7 @@ import org.junit.runners.Parameterized.Parameters;
  * it.
  */
 @RunWith(Parameterized.class)
-public abstract class SpannerTemplateITBase extends TemplateTestBase {
+public abstract class SpannerTemplateITBase extends V1TemplateTestBase {
 
   @Parameterized.Parameter(0)
   public String spannerHost;

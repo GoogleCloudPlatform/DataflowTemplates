@@ -22,6 +22,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.bigtable.data.v2.models.Row;
 import com.google.cloud.teleport.bigtable.ParquetToBigtable;
+import com.google.cloud.teleport.it.gcp.base.V1TemplateTestBase;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.Resources;
@@ -31,7 +32,6 @@ import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -44,7 +44,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(ParquetToBigtable.class)
 @RunWith(JUnit4.class)
-public class ParquetToBigtableIT extends TemplateTestBase {
+public class ParquetToBigtableIT extends V1TemplateTestBase {
 
   private BigtableResourceManager bigtableResourceManager;
 
