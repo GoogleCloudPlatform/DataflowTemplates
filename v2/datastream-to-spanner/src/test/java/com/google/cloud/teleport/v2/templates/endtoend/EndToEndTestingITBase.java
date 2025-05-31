@@ -516,7 +516,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       DatastreamResourceManager datastreamResourceManager,
       Boolean backfill) {
     SourceConfig sourceConfig =
-        datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
+        datastreamResourceManager.buildJDBCSourceConfig("MYSQL", jdbcSource);
 
     // Create DataStream GCS Destination Connection profile and config
     DestinationConfig destinationConfig =
