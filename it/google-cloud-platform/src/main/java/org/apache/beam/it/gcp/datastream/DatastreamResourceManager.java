@@ -173,12 +173,19 @@ public final class DatastreamResourceManager implements ResourceManager {
         projectId);
 
     ConnectionProfile.Builder connectionProfileBuilder = ConnectionProfile.newBuilder();
+    System.out.println("####");
+    System.out.println(source.type());
+    System.out.println(source.hostname());
+    System.out.println(source.username());
+    System.out.println(source.password());
+    System.out.println(source.port());
+
 
     switch (source.type()) {
       case MYSQL:
         MysqlProfile.Builder mysqlProfileBuilder = MysqlProfile.newBuilder();
         mysqlProfileBuilder
-            .setHostname(source.hostname())
+            .setHostname("10.94.208.4")
             .setUsername(source.username())
             .setPassword(source.password())
             .setPort(source.port());
@@ -237,6 +244,7 @@ public final class DatastreamResourceManager implements ResourceManager {
    */
   public synchronized SourceConfig buildJDBCSourceConfig(
       String sourceConnectionProfileId, JDBCSource source) {
+    System.out.println(sourceConnectionProfileId);
 
     ConnectionProfile connectionProfile =
         createJDBCSourceConnectionProfile(
@@ -246,6 +254,7 @@ public final class DatastreamResourceManager implements ResourceManager {
 
     switch (source.type()) {
       case MYSQL:
+        System.out.println("###1");
         sourceConfigBuilder.setMysqlSourceConfig((MysqlSourceConfig) source.config());
         break;
       case POSTGRESQL:
