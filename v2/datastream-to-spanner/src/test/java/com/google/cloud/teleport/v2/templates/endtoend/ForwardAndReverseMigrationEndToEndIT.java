@@ -132,7 +132,13 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
 
         // launch forward migration template
         fwdJobInfo =
-            launchFwdDataflowJob(spannerResourceManager, gcsResourceManager, pubsubResourceManager);
+            launchFwdDataflowJob(
+                spannerResourceManager,
+                gcsResourceManager,
+                pubsubResourceManager,
+                false,
+                null,
+                true);
 
         // launch reverse migration template
         rrJobInfo =
@@ -185,7 +191,8 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(TABLE, NUM_EVENTS, COLUMNS, cdcEvents, cloudSqlResourceManager),
+                    writeJdbcData(
+                        TABLE, NUM_EVENTS, COLUMNS, cdcEvents, 0, cloudSqlResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(NUM_EVENTS)
                         .setMaxRows(NUM_EVENTS)
