@@ -43,7 +43,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 env:
@@ -134,7 +134,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
-        run: | 
+        run: |
           ./cicd/run-it-smoke-tests \
           --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
@@ -164,7 +164,7 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: | 
+        run: |
           ./cicd/run-it-tests \
           --modules-to-build="DEFAULT" \
           --it-region="us-central1" \
