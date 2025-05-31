@@ -180,7 +180,6 @@ public final class DatastreamResourceManager implements ResourceManager {
     System.out.println(source.password());
     System.out.println(source.port());
 
-
     switch (source.type()) {
       case MYSQL:
         MysqlProfile.Builder mysqlProfileBuilder = MysqlProfile.newBuilder();
