@@ -72,7 +72,7 @@ func ModulesToBuild() []string {
 		for k, v := range moduleMap {
 			if k != "ALL" && k != "DEFAULT" {
 				for _, n := range v {
-					if !(strings.HasPrefix(n, "plugins/") || (strings.Contains(n, "common/") && n != "v2/bigtable-common/")) {
+					if !(strings.HasPrefix(n, "plugins/") || strings.Contains(n, "common/")) {
 						s = append(s, "!"+n)
 					}
 				}
