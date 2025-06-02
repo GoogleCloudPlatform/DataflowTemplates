@@ -53,6 +53,10 @@ func TestModulesToBuild(t *testing.T) {
 			input:    "BIGTABLE",
 			expected: []string{"v2/bigtable-common/", "v2/bigquery-to-bigtable/", "v2/bigtable-changestreams-to-hbase/", "plugins/templates-maven-plugin"},
 		},
+		{
+			input:    "DATASTREAM",
+			expected: []string{"v2/datastream-common/", "v2/datastream-mongodb-to-firestore/", "v2/datastream-to-bigquery/", "v2/datastream-to-mongodb/", "v2/datastream-to-postgres/", "v2/datastream-to-sql/", "plugins/templates-maven-plugin"},
+		},
 	}
 
 	for _, test := range tests {
@@ -69,7 +73,7 @@ func TestDefaultExcludedSubModules(t *testing.T) {
 	modulesToBuild = "DEFAULT"
 	defaults := ModulesToBuild()
 	// these are modules appended to moduleMap
-	excluded := map[string]int{"plugins/templates-maven-plugin": 0, "metadata/": 0, "v2/kafka-common/": 0, "v2/bigtable-common/": 0}
+	excluded := map[string]int{"plugins/templates-maven-plugin": 0, "metadata/": 0, "v2/kafka-common/": 0, "v2/bigtable-common/": 0, "v2/datastream-common/": 0}
 	var s []string
 	for m, _ := range moduleMap {
 		if m == "ALL" || m == "DEFAULT" {

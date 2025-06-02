@@ -22,11 +22,12 @@ import (
 )
 
 const (
-	ALL      = "ALL"     // All modules
-	DEFAULT  = "DEFAULT" // Modules other than those excluded
-	KAFKA    = "KAFKA"
-	SPANNER  = "SPANNER"
-	BIGTABLE = "BIGTABLE"
+	ALL        = "ALL"     // All modules
+	DEFAULT    = "DEFAULT" // Modules other than those excluded
+	KAFKA      = "KAFKA"
+	SPANNER    = "SPANNER"
+	BIGTABLE   = "BIGTABLE"
+	DATASTREAM = "DATASTREAM"
 )
 
 // Avoid making these vars public.
@@ -53,6 +54,14 @@ var (
 		BIGTABLE: {"v2/bigtable-common/",
 			"v2/bigquery-to-bigtable/",
 			"v2/bigtable-changestreams-to-hbase/",
+			"plugins/templates-maven-plugin",
+		},
+		DATASTREAM: {"v2/datastream-common/",
+			"v2/datastream-mongodb-to-firestore/",
+			"v2/datastream-to-bigquery/",
+			"v2/datastream-to-mongodb/",
+			"v2/datastream-to-postgres/",
+			"v2/datastream-to-sql/",
 			"plugins/templates-maven-plugin",
 		},
 	}
