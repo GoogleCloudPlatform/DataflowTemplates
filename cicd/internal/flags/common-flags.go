@@ -49,7 +49,7 @@ var (
 			"v2/gcs-to-sourcedb/",
 			"v2/sourcedb-to-spanner/",
 			"v2/spanner-to-sourcedb/",
-			"v2/spanner-custom-shard",
+			"v2/spanner-custom-shard/",
 			"plugins/templates-maven-plugin"},
 		BIGTABLE: {"v2/bigtable-common/",
 			"v2/bigquery-to-bigtable/",
@@ -62,6 +62,7 @@ var (
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-postgres/",
 			"v2/datastream-to-sql/",
+			"v2/spanner-custom-shard/",
 			"plugins/templates-maven-plugin",
 		},
 	}
