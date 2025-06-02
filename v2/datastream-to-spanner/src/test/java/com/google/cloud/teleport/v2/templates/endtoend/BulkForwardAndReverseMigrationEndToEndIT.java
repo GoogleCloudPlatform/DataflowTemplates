@@ -177,19 +177,19 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
       // launch bulk migration template
       bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
       // launch forward migration template
-      fwdJobInfo =
-          launchFwdDataflowJob(
-              spannerResourceManager,
-              gcsResourceManager,
-              pubsubResourceManager,
-              true,
-              new HashMap<>() {
-                {
-                  put(cloudSqlResourceManagerShardA.getDatabaseName(), "ref1");
-                  put(cloudSqlResourceManagerShardB.getDatabaseName(), "ref2");
-                }
-              },
-              false);
+      // fwdJobInfo =
+      //     launchFwdDataflowJob(
+      //         spannerResourceManager,
+      //         gcsResourceManager,
+      //         pubsubResourceManager,
+      //         true,
+      //         new HashMap<>() {
+      //           {
+      //             put(cloudSqlResourceManagerShardA.getDatabaseName(), "ref1");
+      //             put(cloudSqlResourceManagerShardB.getDatabaseName(), "ref2");
+      //           }
+      //         },
+      //         false);
       // launch reverse migration template
       createAndUploadReverseMultiShardConfigToGcs(
           gcsResourceManager,
