@@ -22,10 +22,11 @@ import (
 )
 
 const (
-	ALL     = "ALL"     // All modules
-	DEFAULT = "DEFAULT" // Modules other than those excluded
-	KAFKA   = "KAFKA"
-	SPANNER = "SPANNER"
+	ALL      = "ALL"     // All modules
+	DEFAULT  = "DEFAULT" // Modules other than those excluded
+	KAFKA    = "KAFKA"
+	SPANNER  = "SPANNER"
+	BIGTABLE = "BIGTABLE"
 )
 
 // Avoid making these vars public.
@@ -49,6 +50,11 @@ var (
 			"v2/spanner-to-sourcedb/",
 			"v2/spanner-custom-shard",
 			"plugins/templates-maven-plugin"},
+		BIGTABLE: {"v2/bigtable-common/",
+			"v2/bigquery-to-bigtable/",
+			"v2/bigtable-changestreams-to-hbase/",
+			"plugins/templates-maven-plugin",
+		},
 	}
 )
 
