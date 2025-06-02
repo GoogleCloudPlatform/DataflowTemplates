@@ -54,8 +54,9 @@ func TestModulesToBuild(t *testing.T) {
 			expected: []string{"v2/bigtable-common/", "v2/bigquery-to-bigtable/", "v2/bigtable-changestreams-to-hbase/", "plugins/templates-maven-plugin"},
 		},
 		{
-			input:    "DATASTREAM",
-			expected: []string{"v2/datastream-common/", "v2/datastream-mongodb-to-firestore/", "v2/datastream-to-bigquery/", "v2/datastream-to-mongodb/", "v2/datastream-to-postgres/", "v2/datastream-to-sql/", "v2/spanner-custom-shard/", "plugins/templates-maven-plugin"},
+			input: "DATASTREAM",
+			expected: []string{"v2/datastream-common/", "v2/datastream-mongodb-to-firestore/", "v2/datastream-to-bigquery/", "v2/datastream-to-mongodb/", "v2/datastream-to-postgres/",
+				"v2/datastream-to-sql/", "v2/spanner-custom-shard/", "v2/spanner-change-streams-to-sharded-file-sink/", "plugins/templates-maven-plugin"},
 		},
 	}
 

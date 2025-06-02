@@ -63,6 +63,7 @@ var (
 			"v2/datastream-to-postgres/",
 			"v2/datastream-to-sql/",
 			"v2/spanner-custom-shard/",
+			"v2/spanner-change-streams-to-sharded-file-sink/",
 			"plugins/templates-maven-plugin",
 		},
 	}

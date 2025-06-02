@@ -25,6 +25,8 @@ on:
       - 'pom.xml'
       - 'v2/common/**'
       - 'v2/datastream-common/**'
+      - 'v2/spanner-custom-shard/**'
+      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
       - 'it/google-cloud-platform/**'
       - 'it/conditions/**'
       # Datastream template paths
