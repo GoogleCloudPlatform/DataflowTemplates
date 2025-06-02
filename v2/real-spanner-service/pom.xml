@@ -49,9 +49,18 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-          <forceCreation>true</forceCreation>
-        </configuration>
+        <executions>
+          <execution>
+            <id>default-jar</id>
+            <phase>package</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+            <configuration>
+              <forceCreation>true</forceCreation>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
