@@ -231,15 +231,13 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   protected void createAndUploadReverseMultiShardConfigToGcs(
-      GcsResourceManager gcsResourceManager, Map<String, CloudSqlResourceManager> shardsList)
-      throws IOException {
+      GcsResourceManager gcsResourceManager, Map<String, CloudSqlResourceManager> shardsList) {
     JsonArray ja = new JsonArray();
     for (Entry<String, CloudSqlResourceManager> shardInfo : shardsList.entrySet()) {
       Shard shard = new Shard();
-      System.out.println(shardInfo.getKey());
       shard.setLogicalShardId(shardInfo.getKey());
       shard.setUser(shardInfo.getValue().getUsername());
-      shard.setHost("10.94.208.4");
+      shard.setHost(shardInfo.getValue().getHost());
       shard.setPassword(shardInfo.getValue().getPassword());
       shard.setPort(String.valueOf(shardInfo.getValue().getPort()));
       shard.setDbName(shardInfo.getValue().getDatabaseName());
@@ -623,8 +621,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       SpannerResourceManager spannerResourceManager)
       throws IOException, InterruptedException {
     String spannerMigrationToolPath = System.getenv("SPANNER_MIGRATION_TOOL_PATH");
-    System.out.println("######");
-    System.out.println(spannerMigrationToolPath);
     if (StringUtils.isBlank(spannerMigrationToolPath)) {
       throw new RuntimeException(
           "Error: spanner_migration_tool_path environment variable is not set or is empty.");
@@ -648,7 +644,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
     ProcessBuilder processBuilder = new ProcessBuilder(command);
 
-    System.out.println("######");
     Process process = processBuilder.start();
     // Regex to capture the session filename
     Pattern sessionFilePattern =

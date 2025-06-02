@@ -114,7 +114,8 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
       pubsubResourceManager = setUpPubSubResourceManager();
 
       // Create MySql Resource
-      cloudSqlResourceManagerShardA = CloudMySQLResourceManager.builder("sharda").build();
+      cloudSqlResourceManagerShardA =
+          CloudMySQLResourceManager.builder(testName + "ShardA").build();
       cloudSqlResourceManagerShardB =
           CloudMySQLResourceManager.builder(testName + "ShardB").build();
       JDBCSource jdbcSourceShardA =
@@ -152,7 +153,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
       DataShard dataShard =
           new DataShard(
               "1",
-              "10.94.208.4",
+              jdbcSourceShardA.hostname(),
               jdbcSourceShardA.username(),
               jdbcSourceShardA.password(),
               String.valueOf(jdbcSourceShardA.port()),
@@ -177,26 +178,30 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
       // launch bulk migration template
       bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
       // launch forward migration template
-      // fwdJobInfo =
-      //     launchFwdDataflowJob(
-      //         spannerResourceManager,
-      //         gcsResourceManager,
-      //         pubsubResourceManager,
-      //         true,
-      //         new HashMap<>() {
-      //           {
-      //             put(cloudSqlResourceManagerShardA.getDatabaseName(), "ref1");
-      //             put(cloudSqlResourceManagerShardB.getDatabaseName(), "ref2");
-      //           }
-      //         },
-      //         false);
+      fwdJobInfo =
+          launchFwdDataflowJob(
+              spannerResourceManager,
+              gcsResourceManager,
+              pubsubResourceManager,
+              true,
+              new HashMap<>() {
+                {
+                  put(
+                      cloudSqlResourceManagerShardA.getDatabaseName(),
+                      cloudSqlResourceManagerShardA.getDatabaseName());
+                  put(
+                      cloudSqlResourceManagerShardB.getDatabaseName(),
+                      cloudSqlResourceManagerShardB.getDatabaseName());
+                }
+              },
+              false);
       // launch reverse migration template
       createAndUploadReverseMultiShardConfigToGcs(
           gcsResourceManager,
           new HashMap<>() {
             {
-              put("ShardA", cloudSqlResourceManagerShardA);
-              put("ShardB", cloudSqlResourceManagerShardB);
+              put(cloudSqlResourceManagerShardA.getDatabaseName(), cloudSqlResourceManagerShardA);
+              put(cloudSqlResourceManagerShardB.getDatabaseName(), cloudSqlResourceManagerShardB);
             }
           });
       rrJobInfo =
