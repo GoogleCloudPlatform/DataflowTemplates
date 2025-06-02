@@ -57,6 +57,7 @@ var (
 			"plugins/templates-maven-plugin",
 		},
 		DATASTREAM: {"v2/datastream-common/",
+			"v2/datastream-to-spanner/",
 			"v2/datastream-mongodb-to-firestore/",
 			"v2/datastream-to-bigquery/",
 			"v2/datastream-to-mongodb/",
