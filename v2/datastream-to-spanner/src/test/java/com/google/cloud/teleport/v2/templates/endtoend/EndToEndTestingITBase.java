@@ -236,6 +236,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     JsonArray ja = new JsonArray();
     for (Entry<String, CloudSqlResourceManager> shardInfo : shardsList.entrySet()) {
       Shard shard = new Shard();
+      System.out.println(shardInfo.getKey());
       shard.setLogicalShardId(shardInfo.getKey());
       shard.setUser(shardInfo.getValue().getUsername());
       shard.setHost("10.94.208.4");

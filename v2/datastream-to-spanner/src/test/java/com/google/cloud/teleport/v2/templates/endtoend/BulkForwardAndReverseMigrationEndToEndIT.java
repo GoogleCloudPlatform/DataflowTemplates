@@ -240,7 +240,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
             .set("name")
             .to("FF")
             .set("migration_shard_id")
-            .to("ref1")
+            .to(cloudSqlResourceManagerShardA.getDatabaseName())
             .build();
     spannerResourceManager.write(m1);
     Mutation m2 =
@@ -250,7 +250,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
             .set("name")
             .to("B")
             .set("migration_shard_id")
-            .to("ref1")
+            .to(cloudSqlResourceManagerShardA.getDatabaseName())
             .build();
     spannerResourceManager.write(m2);
   }
