@@ -446,7 +446,7 @@
                 </property>
               </systemProperties>
               <includes>
-                <include>**/*IT.java</include>
+                <include>**/*EndToEndIT.java</include>
               </includes>
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>
