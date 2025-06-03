@@ -183,12 +183,12 @@ public class SpannerChangeStreamsUtils {
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH)) // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))
             : databaseClient
                 .singleUse()
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) { // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))) {
       while (columnsResultSet.next()) {
         String tableName = columnsResultSet.getString(informationSchemaTableName());
         String columnName = columnsResultSet.getString(informationSchemaColumnName());
@@ -292,12 +292,12 @@ public class SpannerChangeStreamsUtils {
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH)) // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))
             : databaseClient
                 .singleUse()
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) { // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))) {
       while (keyColumnsResultSet.next()) {
         String tableName = keyColumnsResultSet.getString(informationSchemaTableName());
         String columnName = keyColumnsResultSet.getString(informationSchemaColumnName());
@@ -366,12 +366,12 @@ public class SpannerChangeStreamsUtils {
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH)) // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))
             : databaseClient
                 .singleUse()
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) { // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))) {
 
       while (resultSet.next()) {
         result.add(resultSet.getString(informationSchemaTableName()));
@@ -414,12 +414,12 @@ public class SpannerChangeStreamsUtils {
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH)) // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))
             : databaseClient
                 .singleUse()
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) { // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))) {
       while (resultSet.next()) {
         if (this.isPostgres()) {
           String resultString = resultSet.getString(informationSchemaAll());
@@ -478,12 +478,12 @@ public class SpannerChangeStreamsUtils {
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH)) // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))
             : databaseClient
                 .singleUse()
                 .executeQuery(
                     statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) { // Added rpcPriority
+                    Options.priority(Options.RpcPriority.HIGH))) {
 
       while (resultSet.next()) {
         String tableName = resultSet.getString(informationSchemaTableName());
