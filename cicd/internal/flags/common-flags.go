@@ -28,6 +28,7 @@ const (
 	SPANNER    = "SPANNER"
 	BIGTABLE   = "BIGTABLE"
 	DATASTREAM = "DATASTREAM"
+	PUBSUB     = "PUBSUB"
 )
 
 // Avoid making these vars public.
@@ -69,6 +70,19 @@ var (
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-postgres/",
 			"v2/datastream-to-sql/",
+		},
+		PUBSUB: {"v2/pubsub-binary-to-bigquery/",
+			"v2/pubsub-cdc-to-bigquery/",
+			"v2/pubsub-to-jms/",
+			"v2/pubsub-to-kafka/",
+			"v2/pubsub-to-mongodb/",
+			"v2/pubsub-to-redis/",
+			"v2/azure-eventhub-to-pubsub/",
+			"v2/jms-to-pubsub/",
+			"v2/kafka-to-pubsub/",
+			"v2/mqtt-to-pubsub/",
+			"v2/kinesis-to-pubsub/",
+			"plugins/templates-maven-plugin",
 		},
 	}
 )
