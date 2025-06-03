@@ -175,7 +175,10 @@ public final class FailsafeModJsonToTableRowTransformer {
           spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
           spannerTableByName =
               new SpannerChangeStreamsUtils(
-                      spannerAccessor.getDatabaseClient(), spannerChangeStream, dialect)
+                      spannerAccessor.getDatabaseClient(),
+                      spannerChangeStream,
+                      dialect,
+                      spannerConfig.getRpcPriority().get())
                   .getSpannerTableByName();
         } catch (RuntimeException e) {
           LOG.error(
@@ -264,7 +267,12 @@ public final class FailsafeModJsonToTableRowTransformer {
         if (mod.getModType() != ModType.DELETE) {
           spannerTableByName =
               SchemaUpdateUtils.updateStoredSchemaIfNeeded(
-                  spannerAccessor, spannerChangeStream, dialect, mod, spannerTableByName);
+                  spannerAccessor,
+                  spannerChangeStream,
+                  dialect,
+                  mod,
+                  spannerTableByName,
+                  spannerConfig.getRpcPriority().get());
         }
 
         try {

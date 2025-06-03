@@ -63,6 +63,7 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.ResultSets;
@@ -98,6 +99,7 @@ public class SchemaUtilsTest {
   @Mock private ReadContext mockReadContext;
   private List<TrackedSpannerColumn> spannerColumnsOfAllTypes;
   private Timestamp now = Timestamp.now();
+  private Options.RpcPriority priority = Options.RpcPriority.HIGH;
 
   @Before
   public void setUp() {
@@ -146,7 +148,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, now)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, priority, now)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -180,7 +182,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, now)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, priority, now)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -215,7 +218,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, priority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -249,7 +252,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, priority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -369,7 +373,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, now)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, priority, now)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -417,7 +421,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, priority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -463,7 +467,8 @@ public class SchemaUtilsTest {
     // spotless:on
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, priority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
