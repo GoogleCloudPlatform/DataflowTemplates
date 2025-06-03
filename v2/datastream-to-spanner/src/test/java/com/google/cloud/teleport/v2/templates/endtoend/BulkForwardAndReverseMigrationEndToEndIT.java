@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.endtoend;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -23,23 +22,17 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
-import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
-import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -161,7 +154,8 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     //           "",
     //           "",
     //           databases);
-    //   createAndUploadBulkShardConfigToGcs(new ArrayList<>(List.of(dataShard)), gcsResourceManager);
+    //   createAndUploadBulkShardConfigToGcs(new ArrayList<>(List.of(dataShard)),
+    // gcsResourceManager);
     //
     //   // launch datastream
     //   datastreamResourceManager =
@@ -200,8 +194,10 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     //       gcsResourceManager,
     //       new HashMap<>() {
     //         {
-    //           put(cloudSqlResourceManagerShardA.getDatabaseName(), cloudSqlResourceManagerShardA);
-    //           put(cloudSqlResourceManagerShardB.getDatabaseName(), cloudSqlResourceManagerShardB);
+    //           put(cloudSqlResourceManagerShardA.getDatabaseName(),
+    // cloudSqlResourceManagerShardA);
+    //           put(cloudSqlResourceManagerShardB.getDatabaseName(),
+    // cloudSqlResourceManagerShardB);
     //         }
     //       });
     //   rrJobInfo =
