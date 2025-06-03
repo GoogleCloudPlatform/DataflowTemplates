@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.neo4j.driver.Config;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.GraphDatabase;
+import org.neo4j.driver.Logging;
 import org.neo4j.driver.Session;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.TransactionConfig;
@@ -50,7 +51,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
             GraphDatabase.driver(
                 settings.getServerUrl(),
                 settings.asAuthToken(),
-                Config.builder().withUserAgent(Neo4jTelemetry.userAgent(templateVersion)).build()));
+                Config.builder()
+                    .withLogging(Logging.slf4j())
+                    .withUserAgent(Neo4jTelemetry.userAgent(templateVersion))
+                    .build()));
   }
 
   @VisibleForTesting
