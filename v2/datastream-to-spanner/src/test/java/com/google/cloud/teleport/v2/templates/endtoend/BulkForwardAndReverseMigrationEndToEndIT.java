@@ -36,11 +36,13 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
@@ -253,9 +255,30 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, "id"))
         .hasRows(4);
 
+    // Forward Migration check condition
+    writeRowInMySqlAndAssertRows();
+
     // Reverse Migration check condition
     writeRowInSpanner();
     assertRowInMySQL();
+  }
+
+  private void writeRowInMySqlAndAssertRows() {
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeJdbcData(TABLE, NUM_EVENTS, COLUMNS, cdcEvents, cloudSqlResourceManagerShardB),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE)
+                        .setMinRows(6)
+                        .setMaxRows(6)
+                        .build()))
+            .build();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
+    assertThatResult(result).meetsConditions();
   }
 
   private void writeRowInSpanner() {
