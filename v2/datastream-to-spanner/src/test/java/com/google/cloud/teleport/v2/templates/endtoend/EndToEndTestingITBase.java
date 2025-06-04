@@ -523,6 +523,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       Integer numRows,
       Map<String, Object> columns,
       Map<String, List<Map<String, Object>>> cdcEvents,
+      Integer startValue,
       CloudSqlResourceManager cloudSqlResourceManager) {
     return new ConditionCheck() {
       @Override
@@ -532,17 +533,17 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
       @Override
       protected CheckResult check() {
-        boolean success = true;
         List<String> messages = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (int i = 0; i < numRows; i++) {
+        for (int i = startValue; i < numRows + startValue; i++) {
           Map<String, Object> values = new HashMap<>();
           values.put("id", i);
           values.putAll(columns);
           rows.add(values);
         }
         cdcEvents.put(tableName, rows);
-        success &= cloudSqlResourceManager.write(tableName, rows);
+        boolean success = cloudSqlResourceManager.write(tableName, rows);
+        LOG.info(String.format("%d rows to %s", rows.size(), tableName));
         messages.add(String.format("%d rows to %s", rows.size(), tableName));
 
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
