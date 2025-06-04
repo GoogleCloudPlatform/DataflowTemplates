@@ -226,7 +226,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
   public void testAvroConfluent() throws Exception {
     schemaRegistryResourceManager =
         SchemaRegistryResourceManager.builder(testName)
-            .withTestcontainerKafkaBootstrapServers(
+            .withTestContainerKafkaBootstrapServers(
                 Arrays.stream(kafkaResourceManager.getBootstrapServers().split(","))
                     .map(protocolHostPort -> protocolHostPort.split("://")[1].split(":")[1])
                     .map(Integer::parseInt)

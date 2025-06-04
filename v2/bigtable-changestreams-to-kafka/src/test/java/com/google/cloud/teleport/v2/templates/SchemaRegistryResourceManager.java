@@ -67,7 +67,7 @@ public class SchemaRegistryResourceManager extends TestContainerResourceManager<
       super(testId, IMAGE_NAME, IMAGE_TAG);
     }
 
-    public Builder withTestcontainerKafkaBootstrapServers(Set<Integer> hostPorts) {
+    public Builder withTestContainerKafkaBootstrapServers(Set<Integer> hostPorts) {
       if (hostPorts.isEmpty()) {
         throw new IllegalArgumentException("At least one Kafka port needed.");
       }
