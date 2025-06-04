@@ -95,6 +95,10 @@ public final class SpannerResourceManager implements ResourceManager {
   private static final Duration CREATE_BACKOFF_MAX_DELAY = Duration.ofSeconds(60);
   private static final double CREATE_BACKOFF_JITTER = 0.1;
 
+  // Retry settings for database verification after creation
+  private static final int MAX_DB_CHECK_RETRIES = 10;
+  private static final long DB_CHECK_DELAY_MS = 10_000; // 10 seconds
+
   private boolean hasInstance = false;
   private boolean hasDatabase = false;
 
@@ -214,25 +218,78 @@ public final class SpannerResourceManager implements ResourceManager {
     LOG.info("Creating database {} in instance {}.", databaseId, instanceId);
 
     try {
-      Database database =
-          Failsafe.with(retryOnQuotaException())
-              .get(
-                  () ->
-                      databaseAdminClient
-                          .createDatabase(
-                              databaseAdminClient
-                                  .newDatabaseBuilder(
-                                      DatabaseId.of(projectId, instanceId, databaseId))
-                                  .setDialect(dialect)
-                                  .build(),
-                              ImmutableList.of())
-                          .get());
+      // Create the database.
+      Failsafe.with(retryOnQuotaException())
+          .get(
+              () ->
+                  databaseAdminClient
+                      .createDatabase( // Less indentation here
+                          databaseAdminClient
+                              .newDatabaseBuilder(DatabaseId.of(projectId, instanceId, databaseId))
+                              .setDialect(dialect)
+                              .build(),
+                          ImmutableList.of())
+                      .get());
+
+      // Verify that the database was created successfully by attempting to retrieve it.
+      // Retry up to MAX_DB_CHECK_RETRIES times with a delay.
+      Database retrievedDatabaseState = null;
+      for (int attempt = 1; attempt <= MAX_DB_CHECK_RETRIES; attempt++) {
+        try {
+          retrievedDatabaseState = databaseAdminClient.getDatabase(instanceId, databaseId);
+          // If the above line does not throw, the database exists and is ready.
+          LOG.info(
+              "Database {} successfully verified on attempt {}/{}.",
+              databaseId,
+              attempt,
+              MAX_DB_CHECK_RETRIES);
+          break; // Exit loop if database is found
+        } catch (SpannerException se) {
+          LOG.warn(
+              "Attempt {}/{} to verify database {} failed: {}. Retrying in {}ms...",
+              attempt,
+              MAX_DB_CHECK_RETRIES,
+              databaseId,
+              se.getMessage(),
+              DB_CHECK_DELAY_MS);
+          if (attempt == MAX_DB_CHECK_RETRIES) {
+            // This was the last attempt, rethrow the exception
+            throw se;
+          }
+          try {
+            Thread.sleep(DB_CHECK_DELAY_MS);
+          } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+            throw new SpannerResourceManagerException(
+                "Database verification interrupted while waiting for retry.", ie);
+          }
+        }
+      }
+
+      if (retrievedDatabaseState == null) {
+        // This should ideally not be reached if the loop logic is correct and an exception
+        // is thrown on the last failed attempt.
+        throw new SpannerResourceManagerException(
+            "Failed to verify database "
+                + databaseId
+                + " after "
+                + MAX_DB_CHECK_RETRIES
+                + " attempts.");
+      }
 
       hasDatabase = true;
-      LOG.info("Successfully created database {}: {}.", databaseId, database.getState());
+      LOG.info(
+          "Successfully created and verified database {}: {}.",
+          databaseId,
+          retrievedDatabaseState.getState());
     } catch (Exception e) {
       cleanupAll();
-      throw new SpannerResourceManagerException("Failed to create database.", e);
+      // Ensure the original exception type is preserved if it's already a
+      // SpannerResourceManagerException
+      if (e instanceof SpannerResourceManagerException) {
+        throw (SpannerResourceManagerException) e;
+      }
+      throw new SpannerResourceManagerException("Failed to create or verify database.", e);
     }
   }
 
