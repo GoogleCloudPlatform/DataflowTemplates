@@ -393,6 +393,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
+      String jobName,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       PubsubResourceManager pubsubResourceManager,
@@ -438,8 +439,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
           },
           gcsResourceManager);
     }
-
-    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
 
     if (multiSharded) {
       flexTemplateDataflowJobResourceManager =

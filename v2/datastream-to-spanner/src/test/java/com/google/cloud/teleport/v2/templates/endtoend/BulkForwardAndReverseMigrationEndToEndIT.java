@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
@@ -174,6 +175,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         // launch forward migration template
         fwdJobInfo =
             launchFwdDataflowJob(
+                PipelineUtils.createJobName("fwd-" + getClass().getSimpleName()),
                 spannerResourceManager,
                 gcsResourceManager,
                 pubsubResourceManager,
