@@ -15,8 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
@@ -37,11 +35,11 @@ import com.google.cloud.teleport.v2.kafka.transforms.JsonAvroSerializer;
 import com.google.cloud.teleport.v2.kafka.utils.FileAwareFactoryFn;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaConfig;
 import com.google.cloud.teleport.v2.kafka.utils.KafkaTopicUtils;
-import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
 import com.google.cloud.teleport.v2.templates.model.BigtableSource;
 import com.google.cloud.teleport.v2.templates.model.Mod;
 import com.google.cloud.teleport.v2.templates.options.BigtableChangeStreamsToKafkaOptions;
+import com.google.cloud.teleport.v2.templates.options.BigtableChangeStreamsToKafkaOptionsUtils;
 import com.google.cloud.teleport.v2.templates.schemautils.KafkaUtils;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -135,115 +133,6 @@ public final class BigtableChangeStreamsToKafka {
     run(options);
   }
 
-  private static void validateOptions(BigtableChangeStreamsToKafkaOptions options) {
-    // DLQ
-    if (options.getDlqRetryMinutes() <= 0) {
-      throw new IllegalArgumentException("dlqRetryMinutes must be positive.");
-    }
-    if (options.getDlqMaxRetries() < 0) {
-      throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
-    }
-
-    // Kafka non-auth
-    if (StringUtils.isEmpty(options.getWriteBootstrapServerAndTopic())) {
-      throw new IllegalArgumentException("WriteBootstrapServerAndTopic must be set.");
-    }
-    // Kafka auth
-    if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.SASL_PLAIN)) {
-      checkArgument(
-          options.getKafkaWriteUsernameSecretId().trim().length() > 0,
-          "KafkaWriteUsernameSecretId required to access username for destination Kafka");
-      checkArgument(
-          options.getKafkaWritePasswordSecretId().trim().length() > 0,
-          "KafkaWritePasswordSecretId required to access password for destination Kafka");
-    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.TLS)) {
-      checkArgument(
-          options.getKafkaWriteTruststoreLocation().trim().length() > 0,
-          "KafkaWriteTruststoreLocation for trust store certificate required for ssl authentication");
-      checkArgument(
-          options.getKafkaWriteTruststorePasswordSecretId().trim().length() > 0,
-          "KafkaWriteTruststorePasswordSecretId for trust store password required for accessing truststore");
-      checkArgument(
-          options.getKafkaWriteKeystoreLocation().trim().length() > 0,
-          "KafkaWriteKeystoreLocation for key store location required for ssl authentication");
-      checkArgument(
-          options.getKafkaWriteKeystorePasswordSecretId().trim().length() > 0,
-          "KafkaWriteKeystorePasswordSecretId for key store password required to access key store");
-      checkArgument(
-          options.getKafkaWriteKeyPasswordSecretId().trim().length() > 0,
-          "KafkaWriteKeyPasswordSecretId for key password secret id version required for SSL authentication");
-    } else if (options.getKafkaWriteAuthenticationMethod().equals(KafkaAuthenticationMethod.NONE)
-        || options
-            .getKafkaWriteAuthenticationMethod()
-            .equals(KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS)) {
-      // No additional validation is required for these auth mechanisms since they don't depend on
-      // any specific pipeline options.
-    } else {
-      throw new UnsupportedOperationException(
-          "Kafka authentication method not supported: "
-              + options.getKafkaWriteAuthenticationMethod());
-    }
-
-    if (options
-        .getMessageFormat()
-        .equals(KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT)) {
-      // Schema Registry non-auth
-      if (StringUtils.isEmpty(options.getSchemaRegistryConnectionUrl())) {
-        throw new IllegalArgumentException(
-            "SchemaRegistryConnectionUrl must be set when MessageFormat is set to '"
-                + KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT
-                + "'");
-      }
-      if (!options.getSchemaFormat().equals(KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY)) {
-        throw new IllegalArgumentException(
-            "SchemaFormat must be set to '"
-                + KafkaTemplateParameters.SchemaFormat.SCHEMA_REGISTRY
-                + "' when MessageFormat is set to '"
-                + KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT
-                + "'");
-      }
-      // Schema Registry auth
-      if (options.getSchemaRegistryAuthenticationMode().equals(KafkaAuthenticationMethod.TLS)) {
-        checkArgument(
-            options.getSchemaRegistryTruststoreLocation().trim().length() > 0,
-            "SchemaRegistryTruststoreLocation for trust store certificate required for ssl authentication");
-        checkArgument(
-            options.getSchemaRegistryTruststorePasswordSecretId().trim().length() > 0,
-            "SchemaRegistryTruststorePasswordSecretId for trust store password required for accessing truststore");
-        checkArgument(
-            options.getSchemaRegistryKeystoreLocation().trim().length() > 0,
-            "SchemaRegistryKeystoreLocation for key store location required for ssl authentication");
-        checkArgument(
-            options.getSchemaRegistryKeystorePasswordSecretId().trim().length() > 0,
-            "SchemaRegistryKeystorePasswordSecretId for key store password required to access key store");
-        checkArgument(
-            options.getSchemaRegistryKeyPasswordSecretId().trim().length() > 0,
-            "SchemaRegistryKeyPasswordSecretId for source key password secret id version required for SSL authentication");
-      } else if (options
-          .getSchemaRegistryAuthenticationMode()
-          .equals(KafkaAuthenticationMethod.OAUTH)) {
-        checkArgument(
-            options.getSchemaRegistryOauthTokenEndpointUrl().trim().length() > 0,
-            "SchemaRegistryOauthTokenEndpointUrl for OAuth token endpoint URL required for oauth authentication");
-        checkArgument(
-            options.getSchemaRegistryOauthClientId().trim().length() > 0,
-            "SchemaRegistryOauthClientId for OAuth client ID required for oauth authentication");
-        checkArgument(
-            options.getSchemaRegistryOauthClientSecretId().trim().length() > 0,
-            "SchemaRegistryOauthClientSecretId for OAuth client secret ID required for oauth authentication");
-      } else if (options
-          .getSchemaRegistryAuthenticationMode()
-          .equals(KafkaAuthenticationMethod.NONE)) {
-        // No additional validation is required since it doesn't depend on any specific pipeline
-        // options.
-      } else {
-        throw new UnsupportedOperationException(
-            "Schema Registry authentication method not supported: "
-                + options.getSchemaRegistryAuthenticationMode());
-      }
-    }
-  }
-
   private static void setOptions(BigtableChangeStreamsToKafkaOptions options) {
     options.setStreaming(true);
     options.setEnableStreamingEngine(true);
@@ -265,6 +154,8 @@ public final class BigtableChangeStreamsToKafka {
       experiments.add(USE_RUNNER_V2_EXPERIMENT);
     }
     options.setExperiments(experiments);
+
+    BigtableChangeStreamsToKafkaOptionsUtils.validate(options);
   }
 
   /**
@@ -275,7 +166,6 @@ public final class BigtableChangeStreamsToKafka {
    */
   public static PipelineResult run(BigtableChangeStreamsToKafkaOptions options) {
     setOptions(options);
-    validateOptions(options);
 
     String bigtableProject =
         StringUtils.isEmpty(options.getBigtableReadProjectId())
