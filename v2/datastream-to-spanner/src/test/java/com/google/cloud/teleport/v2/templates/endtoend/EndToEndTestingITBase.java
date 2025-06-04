@@ -67,8 +67,8 @@ import org.slf4j.LoggerFactory;
 
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
-  private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
+  private final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
+  private FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
 
@@ -337,13 +337,13 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchRRDataflowJob(
+      String jobName,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
       PubsubResourceManager pubsubResourceManager,
       String sourceType)
       throws IOException {
-    String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
 
     // create subscription
     SubscriptionName rrSubscriptionName =
@@ -356,7 +356,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
     // Launch Dataflow template
     flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(rrJobName)
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Spanner_to_SourceDb")
             .withTemplateModulePath("v2/spanner-to-sourcedb")
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))

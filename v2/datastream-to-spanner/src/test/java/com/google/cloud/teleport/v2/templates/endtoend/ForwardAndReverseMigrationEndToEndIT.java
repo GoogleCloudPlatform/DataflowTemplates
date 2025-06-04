@@ -145,6 +145,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
         // launch reverse migration template
         rrJobInfo =
             launchRRDataflowJob(
+                PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
                 spannerResourceManager,
                 gcsResourceManager,
                 spannerMetadataResourceManager,

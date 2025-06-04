@@ -138,6 +138,11 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
 
+        gcsResourceManager.uploadArtifact(
+            "input/session.json",
+            Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
+                .getPath());
+
         Database databaseA =
             new Database(
                 cloudSqlResourceManagerShardA.getDatabaseName(),
@@ -167,10 +172,11 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();
 
-        gcsResourceManager.uploadArtifact(
-            "input/session.json",
-            Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
-                .getPath());
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
+
+        // launch bulk migration template
+        bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
 
         // launch forward migration template
         fwdJobInfo =
@@ -202,6 +208,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
             });
         rrJobInfo =
             launchRRDataflowJob(
+                PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
                 spannerResourceManager,
                 gcsResourceManager,
                 spannerMetadataResourceManager,
