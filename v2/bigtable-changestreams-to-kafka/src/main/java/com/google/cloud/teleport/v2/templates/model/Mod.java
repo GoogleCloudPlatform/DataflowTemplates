@@ -85,7 +85,7 @@ public final class Mod implements Serializable {
     this.commitTimestampSeconds = mutation.getCommitTimestamp().getEpochSecond();
     this.modType = ModType.DELETE_FAMILY;
 
-    Map<String, Object> propertiesMap = Maps.newLinkedHashMap();
+    Map<String, Object> propertiesMap = Maps.newHashMap();
     setCommonProperties(propertiesMap, source, mutation);
     setSpecificProperties(propertiesMap, deleteFamily);
     this.changeJson = convertPropertiesToJson(propertiesMap);
