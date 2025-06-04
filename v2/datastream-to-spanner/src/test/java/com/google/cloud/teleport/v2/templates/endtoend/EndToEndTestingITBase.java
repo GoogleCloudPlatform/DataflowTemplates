@@ -440,31 +440,49 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     }
 
     String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
-    // launch dataflow template
-    FlexTemplateDataflowJobResourceManager.Builder flexTemplateDataflowJobResourceManagerBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(jobName)
-            .withTemplateName("Cloud_Datastream_to_Spanner")
-            .withTemplateModulePath("v2/datastream-to-spanner")
-            .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
-            .addParameter("streamName", stream.getName())
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("projectId", PROJECT)
-            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
-            .addParameter("gcsPubSubSubscription", subscription.toString())
-            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
-            .addParameter("datastreamSourceType", "mysql")
-            .addParameter("inputFileFormat", "avro")
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"));
 
     if (multiSharded) {
-      flexTemplateDataflowJobResourceManagerBuilder.addParameter(
-          "shardingContextFilePath", getGcsPath("input/context-shard.json", gcsResourceManager));
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Cloud_Datastream_to_Spanner")
+              .withTemplateModulePath("v2/datastream-to-spanner")
+              .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
+              .addParameter("streamName", stream.getName())
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+              .addParameter("gcsPubSubSubscription", subscription.toString())
+              .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+              .addParameter("datastreamSourceType", "mysql")
+              .addParameter("inputFileFormat", "avro")
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter(
+                  "shardingContextFilePath",
+                  getGcsPath("input/context-shard.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("use_runner_v2"))
+              .build();
+    } else {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Cloud_Datastream_to_Spanner")
+              .withTemplateModulePath("v2/datastream-to-spanner")
+              .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
+              .addParameter("streamName", stream.getName())
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+              .addParameter("gcsPubSubSubscription", subscription.toString())
+              .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+              .addParameter("datastreamSourceType", "mysql")
+              .addParameter("inputFileFormat", "avro")
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("use_runner_v2"))
+              .build();
     }
-
-    flexTemplateDataflowJobResourceManager = flexTemplateDataflowJobResourceManagerBuilder.build();
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
