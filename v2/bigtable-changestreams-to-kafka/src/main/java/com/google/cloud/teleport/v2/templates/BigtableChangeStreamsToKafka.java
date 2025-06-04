@@ -51,6 +51,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -138,20 +139,9 @@ public final class BigtableChangeStreamsToKafka {
 
     // Add use_runner_v2 to the experiments option, since change streams connector is only supported
     // on Dataflow runner v2.
-    List<String> experiments = options.getExperiments();
-    if (experiments == null) {
-      experiments = new ArrayList<>();
-    }
-    boolean hasUseRunnerV2 = false;
-    for (String experiment : experiments) {
-      if (experiment.equalsIgnoreCase(USE_RUNNER_V2_EXPERIMENT)) {
-        hasUseRunnerV2 = true;
-        break;
-      }
-    }
-    if (!hasUseRunnerV2) {
-      experiments.add(USE_RUNNER_V2_EXPERIMENT);
-    }
+    List<String> experiments =
+        Optional.ofNullable(options.getExperiments()).orElse(new ArrayList<>());
+    experiments.add(USE_RUNNER_V2_EXPERIMENT);
     options.setExperiments(experiments);
 
     BigtableChangeStreamsToKafkaOptionsUtils.validate(options);
