@@ -424,6 +424,13 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     String value = UUID.randomUUID().toString();
     long timestamp = 12000L;
 
+    RowMutation rowMutationContainingOnlyIgnoredCells =
+        RowMutation.create(TableId.of(srcTable), rowkey)
+            .setCell(IGNORED_COLUMN_FAMILY, column1, 2 * timestamp, value)
+            .setCell(IGNORED_COLUMN_FAMILY, column2, 2 * timestamp, value)
+            .setCell(IGNORED_COLUMN_FAMILY, ignoredColumn, 2 * timestamp, value)
+            .setCell(COLUMN_FAMILY1, ignoredColumn, 2 * timestamp, value);
+
     RowMutation rowMutation =
         RowMutation.create(TableId.of(srcTable), rowkey)
             .setCell(IGNORED_COLUMN_FAMILY, column1, timestamp, value)
@@ -454,6 +461,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
             .setValue(B64.encodeToString(value.getBytes(charset)))
             .build();
 
+    bigtableResourceManager.write(rowMutationContainingOnlyIgnoredCells);
     bigtableResourceManager.write(rowMutation);
 
     kafkaConsumer.subscribe(List.of(topicName));
