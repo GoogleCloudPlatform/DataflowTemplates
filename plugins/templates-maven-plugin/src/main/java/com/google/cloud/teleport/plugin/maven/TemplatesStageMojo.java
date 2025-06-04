@@ -803,6 +803,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String templatePath)
       throws IOException, InterruptedException, TemplateException {
 
+    // Hardcoded beamVersion to 2.64.0 as a workaround for YAML templates
+    // This should be changed to 2.66.0 once it is out
+    String tempBeamVersion = "2.64.0";
+    LOG.info("Using hardcoded beamVersion for YAML template: {}", tempBeamVersion);
+
     // extract image properties for Dockerfile
     String dockerfilePath = outputClassesDirectory.getPath() + "/" + containerName + "/Dockerfile";
     File dockerfile = new File(dockerfilePath);
@@ -821,12 +826,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       DockerfileGenerator.Builder dockerfileBuilder =
           DockerfileGenerator.builder(
                   definition.getTemplateAnnotation().type(),
-                  beamVersion,
+                  tempBeamVersion,
                   containerName,
                   outputClassesDirectory)
               .setBasePythonContainerImage(basePythonContainerImage)
               .setBaseJavaContainerImage(baseContainerImage)
-              .setPythonVersion(pythonVersion)
+              // this should be remverted to use pythonVersion when Beam 2.66.0 is out
+              .setPythonVersion(tempBeamVersion)
+              //.setPythonVersion(pythonVersion)
               .setEntryPoint(entryPoint)
               .setFilesToCopy(filesToCopy);
 
