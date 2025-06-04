@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
 import com.google.cloud.bigtable.data.v2.models.DeleteFamily;
@@ -171,15 +170,9 @@ public final class BigtableChangeStreamsToKafka {
         StringUtils.isEmpty(options.getBigtableReadProjectId())
             ? options.getProject()
             : options.getBigtableReadProjectId();
-
-    Instant startTimestamp;
-    if (options.getBigtableChangeStreamStartTimestamp().isEmpty()) {
-      startTimestamp = Instant.now();
-    } else {
-      Timestamp ts = Timestamp.parseTimestamp(options.getBigtableChangeStreamStartTimestamp());
-      startTimestamp = Instant.ofEpochMilli(ts.getSeconds() * 1000 + ts.getNanos() / 1000000);
-    }
-    BigtableSource sourceInfo = buildBigtableSource(options);
+    Instant startTimestamp = BigtableChangeStreamsToKafkaOptionsUtils.getStartTimestamp(options);
+    BigtableSource sourceInfo =
+        BigtableChangeStreamsToKafkaOptionsUtils.buildBigtableSource(options);
 
     /*
      * Stages:
@@ -319,17 +312,6 @@ public final class BigtableChangeStreamsToKafka {
     return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetries());
   }
 
-  private static BigtableSource buildBigtableSource(BigtableChangeStreamsToKafkaOptions options) {
-    return new BigtableSource(
-        options.getBigtableReadInstanceId(),
-        options.getBigtableReadTableId(),
-        StringUtils.isEmpty(options.getBigtableChangeStreamCharset())
-            ? "UTF-8"
-            : options.getBigtableChangeStreamCharset(),
-        options.getBigtableChangeStreamIgnoreColumnFamilies(),
-        options.getBigtableChangeStreamIgnoreColumns());
-  }
-
   /**
    * DoFn that converts a {@link ChangeStreamMutation} to multiple {@link Mod} in serialized JSON
    * format.
@@ -406,7 +388,9 @@ public final class BigtableChangeStreamsToKafka {
     WriteToKafkaFn(BigtableChangeStreamsToKafkaOptions options) {
       Class<?> serializerClass = getSerializerClass(options.getMessageFormat());
       base64EncodeByteFields = JsonAvroSerializer.class.equals(serializerClass);
-      kafkaUtils = new KafkaUtils(buildBigtableSource(options).getCharset());
+      kafkaUtils =
+          new KafkaUtils(
+              BigtableChangeStreamsToKafkaOptionsUtils.buildBigtableSource(options).getCharset());
       List<String> destinationBootstrapServerAndTopicList =
           KafkaTopicUtils.getBootstrapServerAndTopic(
               options.getWriteBootstrapServerAndTopic(), options.getProject());

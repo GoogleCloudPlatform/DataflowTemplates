@@ -17,10 +17,38 @@ package com.google.cloud.teleport.v2.templates.options;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.kafka.values.KafkaAuthenticationMethod;
 import com.google.cloud.teleport.v2.kafka.values.KafkaTemplateParameters;
+import com.google.cloud.teleport.v2.templates.model.BigtableSource;
+import java.util.concurrent.TimeUnit;
+import org.apache.commons.lang3.StringUtils;
+import org.joda.time.Duration;
+import org.joda.time.Instant;
 
 public class BigtableChangeStreamsToKafkaOptionsUtils {
+  public static Instant getStartTimestamp(BigtableChangeStreamsToKafkaOptions options) {
+    if (options.getBigtableChangeStreamStartTimestamp().isEmpty()) {
+      return Instant.now();
+    } else {
+      Timestamp ts = Timestamp.parseTimestamp(options.getBigtableChangeStreamStartTimestamp());
+      return Instant.ofEpochSecond(ts.getSeconds())
+          .plus(
+              Duration.millis(TimeUnit.MILLISECONDS.convert(ts.getNanos(), TimeUnit.NANOSECONDS)));
+    }
+  }
+
+  public static BigtableSource buildBigtableSource(BigtableChangeStreamsToKafkaOptions options) {
+    return new BigtableSource(
+        options.getBigtableReadInstanceId(),
+        options.getBigtableReadTableId(),
+        StringUtils.isEmpty(options.getBigtableChangeStreamCharset())
+            ? "UTF-8"
+            : options.getBigtableChangeStreamCharset(),
+        options.getBigtableChangeStreamIgnoreColumnFamilies(),
+        options.getBigtableChangeStreamIgnoreColumns());
+  }
+
   public static void validate(BigtableChangeStreamsToKafkaOptions options) {
     // DLQ
     checkArgument(options.getDlqRetryMinutes() > 0, "dlqRetryMinutes must be positive");
