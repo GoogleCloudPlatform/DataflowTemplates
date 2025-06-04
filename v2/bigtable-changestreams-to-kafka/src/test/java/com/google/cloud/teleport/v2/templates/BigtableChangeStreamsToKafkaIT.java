@@ -475,8 +475,10 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     assertEquals(expected.getIsGC(), jsonTree.get("isGC").asBoolean());
     assertTrue(jsonTree.get("tieBreaker").asLong() >= 0);
     assertTrue(
-        expected.getCommitTimestamp() - 10000000L
-            <= Long.parseLong(jsonTree.get("commitTimestamp").asText()));
+        Math.abs(
+                Long.parseLong(jsonTree.get("commitTimestamp").asText())
+                    - expected.getCommitTimestamp())
+            <= 10000000L);
     assertEquals(expected.getColumnFamily(), jsonTree.get("columnFamily").asText());
     assertEquals(
         (Object) expected.getTimestamp(),
@@ -503,7 +505,8 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     assertEquals(expected.getModType(), received.getModType());
     assertEquals(expected.getIsGC(), received.getIsGC());
     assertTrue(received.getTieBreaker() >= 0);
-    assertTrue(expected.getCommitTimestamp() - 10000000L <= received.getCommitTimestamp());
+    assertTrue(
+        Math.abs(received.getCommitTimestamp() - expected.getCommitTimestamp()) <= 10000000L);
     assertEquals(
         nullSafeToString(expected.getColumnFamily()), nullSafeToString(received.getColumnFamily()));
     assertEquals(expected.getColumn(), received.getColumn());
@@ -526,7 +529,9 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     assertEquals(expected.getModType().toString(), received.get("modType").toString());
     assertEquals(expected.getIsGC(), received.get("isGC"));
 
-    assertTrue(expected.getCommitTimestamp() - 10000000L <= (Long) received.get("commitTimestamp"));
+    assertTrue(
+        Math.abs((Long) received.get("commitTimestamp") - expected.getCommitTimestamp())
+            <= 10000000L);
     assertEquals(
         nullSafeToString(expected.getColumnFamily()),
         nullSafeToString(received.get("columnFamily")));
