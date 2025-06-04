@@ -20,5 +20,5 @@ public enum ModType {
   SET_CELL,
   DELETE_CELLS,
   DELETE_FAMILY,
-  UNKNOWN;
+  UNKNOWN,
 }

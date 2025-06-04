@@ -33,7 +33,6 @@ public class BigtableSource implements Serializable {
   private final String tableId;
   private final String charset;
   private final Set<String> columnFamiliesToIgnore;
-  private final Set<String> columnsToIgnore;
   private final Map<String, Set<String>> ignoredColumnsMap;
 
   public BigtableSource(
@@ -53,10 +52,11 @@ public class BigtableSource implements Serializable {
               .collect(Collectors.toSet());
     }
 
+    Set<String> columnsToIgnore;
     if (StringUtils.isBlank(ignoreColumns)) {
-      this.columnsToIgnore = Collections.emptySet();
+      columnsToIgnore = Collections.emptySet();
     } else {
-      this.columnsToIgnore =
+      columnsToIgnore =
           Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
     }
 

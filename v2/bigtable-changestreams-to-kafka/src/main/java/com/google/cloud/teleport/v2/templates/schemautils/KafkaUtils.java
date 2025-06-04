@@ -121,7 +121,8 @@ public class KafkaUtils implements Serializable {
 
     // Just in case, validate that every column in the enum has a formatter
     for (KafkaFields field : KafkaFields.values()) {
-      Validate.notNull(FORMATTERS.get(field));
+      Validate.notNull(
+          FORMATTERS.get(field), "Formatter for field '" + field.name() + "' not set up.");
     }
   }
 

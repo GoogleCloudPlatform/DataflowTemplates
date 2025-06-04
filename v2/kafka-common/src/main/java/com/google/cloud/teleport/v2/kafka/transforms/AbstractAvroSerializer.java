@@ -29,7 +29,7 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.serialization.Serializer;
 
 public abstract class AbstractAvroSerializer implements Serializer<GenericRecord> {
-  private Schema schemaOverride;
+  private final Schema schemaOverride;
 
   public AbstractAvroSerializer(Schema schemaOverride) {
     this.schemaOverride = schemaOverride;

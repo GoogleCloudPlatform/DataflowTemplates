@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.cloud.Timestamp;
 import com.google.cloud.bigtable.data.v2.models.ChangeStreamMutation;
 import com.google.cloud.bigtable.data.v2.models.DeleteCells;
@@ -359,8 +358,7 @@ public final class BigtableChangeStreamsToKafka {
                       @ProcessElement
                       public void process(
                           @Element String input,
-                          OutputReceiver<FailsafeElement<String, String>> receiver)
-                          throws JsonProcessingException {
+                          OutputReceiver<FailsafeElement<String, String>> receiver) {
                         receiver.output(FailsafeElement.of(input, input));
                       }
                     }));
@@ -474,25 +472,22 @@ public final class BigtableChangeStreamsToKafka {
     public void process(@Element ChangeStreamMutation input, OutputReceiver<String> receiver)
         throws Exception {
       for (Entry entry : input.getEntries()) {
-        Mod mod = null;
-        if (entry instanceof SetCell) {
-          SetCell setCell = (SetCell) entry;
+        Mod mod;
+        if (entry instanceof SetCell setCell) {
           if (sourceInfo.isIgnoredColumnFamily(setCell.getFamilyName())
               || sourceInfo.isIgnoredColumn(
                   setCell.getFamilyName(), setCell.getQualifier().toString(charset))) {
             continue;
           }
           mod = new Mod(sourceInfo, input, setCell);
-        } else if (entry instanceof DeleteCells) {
-          DeleteCells deleteCells = (DeleteCells) entry;
+        } else if (entry instanceof DeleteCells deleteCells) {
           if (sourceInfo.isIgnoredColumnFamily(deleteCells.getFamilyName())
               || sourceInfo.isIgnoredColumn(
                   deleteCells.getFamilyName(), deleteCells.getQualifier().toString(charset))) {
             continue;
           }
           mod = new Mod(sourceInfo, input, deleteCells);
-        } else if (entry instanceof DeleteFamily) {
-          DeleteFamily deleteFamily = (DeleteFamily) entry;
+        } else if (entry instanceof DeleteFamily deleteFamily) {
           if (sourceInfo.isIgnoredColumnFamily(deleteFamily.getFamilyName())) {
             continue;
           }
@@ -573,16 +568,15 @@ public final class BigtableChangeStreamsToKafka {
 
     private static Class<? extends Serializer<? super GenericRecord>> getSerializerClass(
         String messageFormat) {
-      switch (messageFormat) {
-        case KafkaTemplateParameters.MessageFormatConstants.AVRO_CONFLUENT_WIRE_FORMAT:
-          return KafkaAvroSerializer.class;
-        case KafkaTemplateParameters.MessageFormatConstants.AVRO_BINARY_ENCODING:
-          return BinaryAvroSerializer.class;
-        case KafkaTemplateParameters.MessageFormatConstants.JSON:
-          return JsonAvroSerializer.class;
-        default:
-          throw new IllegalArgumentException("Unexpected message format: " + messageFormat);
-      }
+      return switch (messageFormat) {
+        case KafkaTemplateParameters.MessageFormatConstants
+            .AVRO_CONFLUENT_WIRE_FORMAT -> KafkaAvroSerializer.class;
+        case KafkaTemplateParameters.MessageFormatConstants
+            .AVRO_BINARY_ENCODING -> BinaryAvroSerializer.class;
+        case KafkaTemplateParameters.MessageFormatConstants.JSON -> JsonAvroSerializer.class;
+        default -> throw new IllegalArgumentException(
+            "Unexpected message format: " + messageFormat);
+      };
     }
   }
 

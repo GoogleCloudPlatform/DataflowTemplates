@@ -29,6 +29,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.google.cloud.bigtable.admin.v2.models.StorageType;
 import com.google.cloud.bigtable.data.v2.models.RowMutation;
+import com.google.cloud.bigtable.data.v2.models.TableId;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessage;
 import com.google.cloud.teleport.bigtable.ChangelogEntryMessageBase64;
 import com.google.cloud.teleport.bigtable.ModType;
@@ -142,7 +143,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     long timestamp = 12000L;
 
     RowMutation rowMutation =
-        RowMutation.create(srcTable, rowkey)
+        RowMutation.create(TableId.of(srcTable), rowkey)
             .setCell(
                 STANDARD_COLUMN_FAMILY,
                 ByteString.copyFrom(columnBytes),
@@ -208,7 +209,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     assertThatPipeline(launchInfo).isRunning();
 
     RowMutation rowMutation =
-        RowMutation.create(srcTable, rowkey)
+        RowMutation.create(TableId.of(srcTable), rowkey)
             .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, value);
 
     bigtableResourceManager.write(rowMutation);
@@ -275,7 +276,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
       assertThatPipeline(launchInfo).isRunning();
 
       RowMutation rowMutation =
-          RowMutation.create(srcTable, rowkey)
+          RowMutation.create(TableId.of(srcTable), rowkey)
               .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, value);
 
       bigtableResourceManager.write(rowMutation);
@@ -287,9 +288,10 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
       validateAvroMessageData(expected, receivedMessages.get(0).value());
       assertArrayEquals(rowkey.getBytes(StandardCharsets.UTF_8), receivedMessages.get(0).key());
 
-      SchemaRegistryClient src = new CachedSchemaRegistryClient(schemaRegistryUrl, 10);
-      ParsedSchema schema = src.getSchemaBySubjectAndId(topicName, 1);
-      assertEquals(ChangelogEntryMessage.class.getName(), schema.name());
+      try (SchemaRegistryClient src = new CachedSchemaRegistryClient(schemaRegistryUrl, 10)) {
+        ParsedSchema schema = src.getSchemaBySubjectAndId(topicName, 1);
+        assertEquals(ChangelogEntryMessage.class.getName(), schema.name());
+      }
     }
   }
 
@@ -318,12 +320,12 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     long timestamp = 12000L;
 
     RowMutation tooLargeMutation =
-        RowMutation.create(srcTable, rowkey)
+        RowMutation.create(TableId.of(srcTable), rowkey)
             .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, tooBigValue);
     bigtableResourceManager.write(tooLargeMutation);
 
     RowMutation smallMutation =
-        RowMutation.create(srcTable, rowkey)
+        RowMutation.create(TableId.of(srcTable), rowkey)
             .setCell(STANDARD_COLUMN_FAMILY, column, timestamp, goodValue);
     bigtableResourceManager.write(smallMutation);
 
@@ -423,7 +425,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     long timestamp = 12000L;
 
     RowMutation rowMutation =
-        RowMutation.create(srcTable, rowkey)
+        RowMutation.create(TableId.of(srcTable), rowkey)
             .setCell(IGNORED_COLUMN_FAMILY, column1, timestamp, value)
             .setCell(COLUMN_FAMILY1, ignoredColumn, timestamp, value)
             .setCell(
@@ -650,7 +652,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
             .addParameter("kafkaWriteAuthenticationMethod", "NONE")
             .addParameter("disableDlqRetries", Boolean.toString(noDlqRetry));
     for (Map.Entry<String, String> additionalParameter : additionalParameters.entrySet()) {
-      builder = builder.addParameter(additionalParameter.getKey(), additionalParameter.getValue());
+      builder.addParameter(additionalParameter.getKey(), additionalParameter.getValue());
     }
     return super.launchTemplate(builder);
   }

@@ -32,5 +32,5 @@ public enum KafkaFields {
   SOURCE_INSTANCE,
   SOURCE_CLUSTER,
   SOURCE_TABLE,
-  TIEBREAKER;
+  TIEBREAKER,
 }

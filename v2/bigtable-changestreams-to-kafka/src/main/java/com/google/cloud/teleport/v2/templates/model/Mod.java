@@ -158,10 +158,9 @@ public final class Mod implements Serializable {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof Mod)) {
+    if (!(o instanceof Mod that)) {
       return false;
     }
-    Mod that = (Mod) o;
     return StringUtils.equals(changeJson, that.changeJson)
         && commitTimestampSeconds == that.commitTimestampSeconds
         && commitTimestampNanos == that.commitTimestampNanos
