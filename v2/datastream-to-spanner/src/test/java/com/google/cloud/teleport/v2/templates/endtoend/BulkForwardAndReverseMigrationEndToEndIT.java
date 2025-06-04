@@ -175,7 +175,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         // launch forward migration template
         fwdJobInfo =
             launchFwdDataflowJob(
-                PipelineUtils.createJobName("fwd-" + getClass().getSimpleName()),
+                PipelineUtils.createJobName("fwd" + getClass().getSimpleName()),
                 spannerResourceManager,
                 gcsResourceManager,
                 pubsubResourceManager,

@@ -297,7 +297,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
     shardConfig.put("StreamToDbAndShardMap", streams);
     String shardFileContents = shardConfig.toString();
-    LOG.info("Shard file contents: {}", shardFileContents);
+    LOG.info("Shard context file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/sharding-context.json", shardFileContents);
   }
 
@@ -434,7 +434,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       createAndUploadShardContextFileToGcs(
           new HashMap<>() {
             {
-              put(stream.getName(), dbs);
+              put(stream.getDisplayName(), dbs);
             }
           },
           gcsResourceManager);
@@ -458,7 +458,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
               .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
               .addParameter(
                   "shardingContextFilePath",
-                  getGcsPath("input/context-shard.json", gcsResourceManager))
+                  getGcsPath("input/sharding-context.json", gcsResourceManager))
               .addEnvironmentVariable(
                   "additionalExperiments", Collections.singletonList("use_runner_v2"))
               .build();
