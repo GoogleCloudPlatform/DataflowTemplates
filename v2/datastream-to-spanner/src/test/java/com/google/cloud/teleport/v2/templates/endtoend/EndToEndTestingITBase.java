@@ -318,8 +318,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addParameter(
                 "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
-            .addParameter("network", "test")
-            .addParameter("subnetwork", "regions/us-central1/subnetworks/test")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"))
             .build();
