@@ -823,11 +823,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String tempBeamVersion = "2.64.0";
       LOG.info("Using hardcoded beamVersion for YAML template: {}", tempBeamVersion);
       String tempBasePythonContainerImage =
-      "gcr.io/dataflow-templates-base/python311-template-launcher-base:20250402-rc00";
-      LOG.info("Using hardcoded beamVersion for YAML template base Python container: {}", tempBasePythonContainerImage);
+          "gcr.io/dataflow-templates-base/python311-template-launcher-base:20250402-rc00";
+      LOG.info(
+          "Using hardcoded beamVersion for YAML template base Python container: {}",
+          tempBasePythonContainerImage);
       String tempBaseContainerImage =
-      "gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless:20250402-rc00";
-      LOG.info("Using hardcoded beamVersion for YAML template base Java container: {}", tempBaseContainerImage);
+          "gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless:20250402-rc00";
+      LOG.info(
+          "Using hardcoded beamVersion for YAML template base Java container: {}",
+          tempBaseContainerImage);
 
       // these should be removed after Beam 2.66.0 is out
       DockerfileGenerator.Builder dockerfileBuilder =
