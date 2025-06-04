@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
 
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
-  private final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
+  private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
   private FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
