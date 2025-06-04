@@ -262,6 +262,14 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       JDBCSource jdbcSource)
       throws IOException {
 
+    try {
+      Thread.sleep(30000);
+    } catch (InterruptedException e) {
+      // Handle the interruption or re-throw as a runtime exception if appropriate
+      Thread.currentThread().interrupt(); // Preserve interrupt status
+      throw new RuntimeException(e);
+    }
+
     if (sessionFileResourceName != null) {
       gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/session.json",
