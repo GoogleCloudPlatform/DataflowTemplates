@@ -842,7 +842,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                   outputClassesDirectory)
               .setBasePythonContainerImage(tempBasePythonContainerImage)
               .setBaseJavaContainerImage(tempBaseContainerImage)
-              .setPythonVersion(tempBeamVersion)
+              .setPythonVersion(pythonVersion)
               .setEntryPoint(entryPoint)
               .setFilesToCopy(filesToCopy);
 
