@@ -298,6 +298,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     shardConfig.put("StreamToDbAndShardMap", streams);
     String shardFileContents = shardConfig.toString();
     LOG.info("Shard context file contents: {}", shardFileContents);
+    String spannerMigrationToolPath = System.getenv("SPANNER_MIGRATION_TOOL_PATH");
+    LOG.info("Session File Path: " + spannerMigrationToolPath);
+    spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
+    LOG.info("Session File Path: " + spannerMigrationToolPath);
     gcsResourceManager.createArtifact("input/sharding-context.json", shardFileContents);
   }
 

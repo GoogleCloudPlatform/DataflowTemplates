@@ -105,10 +105,6 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
     synchronized (BulkForwardAndReverseMigrationEndToEndIT.class) {
-      String spannerMigrationToolPath = System.getenv("SPANNER_MIGRATION_TOOL_PATH");
-      System.out.println("Session File Path: " + spannerMigrationToolPath);
-      spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
-      System.out.println("Session File Path: " + spannerMigrationToolPath);
       testInstances.add(this);
       if (rrJobInfo == null || fwdJobInfo == null) {
         // create Spanner Resources
