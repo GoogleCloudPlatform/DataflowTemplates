@@ -179,7 +179,11 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
 
         // launch bulk migration template
-        bulkJobInfo = launchBulkDataflowJob(spannerResourceManager, gcsResourceManager);
+        bulkJobInfo =
+            launchBulkDataflowJob(
+                PipelineUtils.createJobName("bulk" + getClass().getSimpleName()),
+                spannerResourceManager,
+                gcsResourceManager);
 
         // launch forward migration template
         fwdJobInfo =

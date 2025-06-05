@@ -52,7 +52,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
@@ -309,10 +308,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
-      SpannerResourceManager spannerResourceManager, GcsResourceManager gcsResourceManager)
+      String jobName,
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager)
       throws IOException {
-
-    String jobName = PipelineUtils.createJobName("bulk-" + getClass().getSimpleName());
     // launch dataflow template
     flexTemplateDataflowJobResourceManager =
         FlexTemplateDataflowJobResourceManager.builder(jobName)
@@ -628,8 +627,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     command.add("--target-profile=" + targetProfile);
     command.add("--project=span-cloud-testing");
 
-    System.out.println("#####");
-    System.out.println(command);
     ProcessBuilder processBuilder = new ProcessBuilder(command);
 
     Process process = processBuilder.start();
@@ -703,14 +700,9 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
                 + "\nSTDERR:\n"
                 + String.join("\n", capturedErrorLines));
       }
-      System.out.println("#####1");
-      System.out.println("Spanner Migration Tool executed successfully.");
       if (tempCapturedSessionFileName[0] != null) {
-        System.out.println("#####");
-        System.out.println(tempCapturedSessionFileName[0]);
         return tempCapturedSessionFileName[0];
       } else {
-        System.out.println("#####2");
         System.out.println("Warning: Session filename was not found in the tool output.");
         return "";
       }
