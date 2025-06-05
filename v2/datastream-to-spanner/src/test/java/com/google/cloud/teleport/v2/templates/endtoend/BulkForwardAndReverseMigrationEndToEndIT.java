@@ -140,6 +140,8 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
 
+        generateSessionFile(
+            jdbcSourceShardA, cloudSqlResourceManagerShardA, spannerResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json",
             Resources.getResource(BulkForwardAndReverseMigrationEndToEndIT.SESSION_FILE_RESOURCE)
