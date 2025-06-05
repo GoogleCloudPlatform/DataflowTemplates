@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.Type;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
@@ -56,6 +57,7 @@ public final class SchemaUpdateUtilsTest {
   @Mock private ReadContext mockReadContext;
   @Mock private SpannerAccessor mockSpannerAccessor;
   private Timestamp now = Timestamp.now();
+  private Options.RpcPriority priority = Options.RpcPriority.HIGH;
 
   @Before
   public void setUp() {
@@ -206,7 +208,12 @@ public final class SchemaUpdateUtilsTest {
       Map<String, TrackedSpannerTable> currSpannerTableByName = createSpannerTableByName();
       currSpannerTableByName =
           SchemaUpdateUtils.updateStoredSchemaIfNeeded(
-              mockSpannerAccessor, changeStreamName, dialect, mod, currSpannerTableByName);
+              mockSpannerAccessor,
+              changeStreamName,
+              dialect,
+              mod,
+              currSpannerTableByName,
+              priority);
       // Ensure the stored schema is updated with the schema from INFORMATION_SCHEMA.
       assertThat(expectedSpannerTableByName.get("Singers").getNonPkColumns().size()).isEqualTo(2);
       assertThat(currSpannerTableByName.get("Singers").getNonPkColumns().size()).isEqualTo(2);

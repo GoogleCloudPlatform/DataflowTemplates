@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.schemautils;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.Mod;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.ModColumnType;
 import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.model.TrackedSpannerColumn;
@@ -111,7 +112,8 @@ public class SchemaUpdateUtils {
       String spannerChangeStream,
       Dialect dialect,
       Mod mod,
-      Map<String, TrackedSpannerTable> spannerTableByName) {
+      Map<String, TrackedSpannerTable> spannerTableByName,
+      RpcPriority rpcPriority) {
     if (!spannerTableByName.containsKey(mod.getTableName())
         || SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)) {
       if (mod.getValueCaptureType() != ValueCaptureType.NEW_ROW) {
@@ -124,6 +126,7 @@ public class SchemaUpdateUtils {
                     spannerAccessor.getDatabaseClient(),
                     spannerChangeStream,
                     dialect,
+                    rpcPriority,
                     spannerCommitTimestamp)
                 .getSpannerTableByName();
       } else {

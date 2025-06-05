@@ -54,6 +54,7 @@ import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigqu
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_NULLABLE_ARRAY_VAL;
 import static com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.TestUtils.TIMESTAMP_VAL;
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import com.google.api.services.bigquery.model.TableFieldSchema;
@@ -63,6 +64,8 @@ import com.google.cloud.bigquery.Field;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.Options.ReadQueryUpdateTransactionOption;
 import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.ResultSets;
@@ -83,10 +86,13 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.json.JSONObject;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /** Test class for {@link SchemaUtilsTest}. */
@@ -94,10 +100,14 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class SchemaUtilsTest {
 
   private static final String changeStreamName = "changeStreamName";
+  private static final Options.RpcPriority rpcPriority = Options.RpcPriority.HIGH;
+  private static ReadQueryUpdateTransactionOption priorityQueryOption =
+      Options.priority(rpcPriority);
   @Mock private DatabaseClient mockDatabaseClient;
   @Mock private ReadContext mockReadContext;
   private List<TrackedSpannerColumn> spannerColumnsOfAllTypes;
   private Timestamp now = Timestamp.now();
+  private MockedStatic<Options> mockedOptions;
 
   @Before
   public void setUp() {
@@ -124,6 +134,17 @@ public class SchemaUtilsTest {
             TrackedSpannerColumn.create(NUMERIC_ARRAY_COL, Type.array(Type.numeric()), 16, -1),
             TrackedSpannerColumn.create(STRING_ARRAY_COL, Type.array(Type.string()), 17, -1),
             TrackedSpannerColumn.create(TIMESTAMP_ARRAY_COL, Type.array(Type.timestamp()), 18, -1));
+    mockedOptions = Mockito.mockStatic(Options.class);
+    mockedOptions
+        .when(() -> Options.priority(any(Options.RpcPriority.class)))
+        .thenReturn(priorityQueryOption);
+  }
+
+  @After
+  public void tearDown() {
+    if (mockedOptions != null) {
+      mockedOptions.close();
+    }
   }
 
   @Test
@@ -136,7 +157,8 @@ public class SchemaUtilsTest {
         "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -146,7 +168,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, now)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, rpcPriority, now)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -171,7 +193,8 @@ public class SchemaUtilsTest {
         "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = $1";
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -180,7 +203,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, now)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, rpcPriority, now)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -205,7 +229,8 @@ public class SchemaUtilsTest {
         "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -215,7 +240,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, rpcPriority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -240,7 +265,8 @@ public class SchemaUtilsTest {
         "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = $1";
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -249,7 +275,8 @@ public class SchemaUtilsTest {
                 Collections.emptyList()));
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, rpcPriority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -304,7 +331,8 @@ public class SchemaUtilsTest {
             Statement.newBuilder(sql)
                 .bind("tableNames")
                 .to(Value.stringArray(new ArrayList<>(tableNames)))
-                .build()))
+                .build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -344,7 +372,8 @@ public class SchemaUtilsTest {
                     .build()));
     // spotless:on
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("tableNames").to(Value.stringArray(tableNames)).build()))
+            Statement.newBuilder(sql).bind("tableNames").to(Value.stringArray(tableNames)).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -359,7 +388,8 @@ public class SchemaUtilsTest {
         "SELECT TABLE_NAME, COLUMN_NAME FROM INFORMATION_SCHEMA.CHANGE_STREAM_COLUMNS "
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -369,7 +399,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, now)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, rpcPriority, now)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -394,7 +424,7 @@ public class SchemaUtilsTest {
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
     // spotless:off
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(), Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -417,7 +447,7 @@ public class SchemaUtilsTest {
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
         new SpannerChangeStreamsUtils(
-                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL)
+                mockDatabaseClient, changeStreamName, Dialect.GOOGLE_STANDARD_SQL, rpcPriority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -441,7 +471,7 @@ public class SchemaUtilsTest {
             + "WHERE CHANGE_STREAM_NAME = $1";
     // spotless:off
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build(), Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -463,7 +493,8 @@ public class SchemaUtilsTest {
     // spotless:on
 
     Map<String, TrackedSpannerTable> actualSpannerTableByName =
-        new SpannerChangeStreamsUtils(mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL)
+        new SpannerChangeStreamsUtils(
+                mockDatabaseClient, changeStreamName, Dialect.POSTGRESQL, rpcPriority)
             .getSpannerTableByName();
 
     List<TrackedSpannerColumn> singersPkColumns =
@@ -794,7 +825,8 @@ public class SchemaUtilsTest {
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
 
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(Type.StructField.of("ALL", Type.bool())),
@@ -808,7 +840,8 @@ public class SchemaUtilsTest {
             + "WHERE CHANGE_STREAM_NAME = $1";
 
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(Type.StructField.of("all", Type.string())),
@@ -822,7 +855,7 @@ public class SchemaUtilsTest {
   private void mockInformationSchemaTablesQuery() {
     String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = \"\"";
 
-    when(mockReadContext.executeQuery(Statement.of(sql)))
+    when(mockReadContext.executeQuery(Statement.of(sql), Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(Type.StructField.of("TABLE_NAME", Type.string())),
@@ -833,7 +866,7 @@ public class SchemaUtilsTest {
   private void mockInformationSchemaTablesQueryPostgres() {
     String sql = "SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'public'";
 
-    when(mockReadContext.executeQuery(Statement.of(sql)))
+    when(mockReadContext.executeQuery(Statement.of(sql), Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(Type.StructField.of("table_name", Type.string())),
@@ -887,7 +920,8 @@ public class SchemaUtilsTest {
             Statement.newBuilder(sql)
                 .bind("tableNames")
                 .to(Value.stringArray(new ArrayList<>(tableNames)))
-                .build()))
+                .build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -942,7 +976,9 @@ public class SchemaUtilsTest {
                     .build()));
     // spotless:on
 
-    when(mockReadContext.executeQuery(Statement.newBuilder(sqlStringBuilder.toString()).build()))
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sqlStringBuilder.toString()).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -959,7 +995,8 @@ public class SchemaUtilsTest {
             + "WHERE CHANGE_STREAM_NAME = @changeStreamName";
 
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("changeStreamName").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(Type.StructField.of("TABLE_NAME", Type.string())),
@@ -973,7 +1010,8 @@ public class SchemaUtilsTest {
             + "WHERE CHANGE_STREAM_NAME = $1";
 
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build()))
+            Statement.newBuilder(sql).bind("p1").to(changeStreamName).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(Type.StructField.of("table_name", Type.string())),
@@ -1004,7 +1042,8 @@ public class SchemaUtilsTest {
     // spotless:on
 
     when(mockReadContext.executeQuery(
-            Statement.newBuilder(sql).bind("tableNames").to(Value.stringArray(tableNames)).build()))
+            Statement.newBuilder(sql).bind("tableNames").to(Value.stringArray(tableNames)).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
@@ -1039,7 +1078,9 @@ public class SchemaUtilsTest {
                     .build()));
     // spotless:on
 
-    when(mockReadContext.executeQuery(Statement.newBuilder(sqlStringBuilder.toString()).build()))
+    when(mockReadContext.executeQuery(
+            Statement.newBuilder(sqlStringBuilder.toString()).build(),
+            Options.priority(rpcPriority)))
         .thenReturn(
             ResultSets.forRows(
                 Type.struct(
