@@ -181,14 +181,10 @@ public class SpannerChangeStreamsUtils {
         bound != null
             ? databaseClient
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))
             : databaseClient
                 .singleUse()
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) {
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))) {
       while (columnsResultSet.next()) {
         String tableName = columnsResultSet.getString(informationSchemaTableName());
         String columnName = columnsResultSet.getString(informationSchemaColumnName());
@@ -290,14 +286,10 @@ public class SpannerChangeStreamsUtils {
         bound != null
             ? databaseClient
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))
             : databaseClient
                 .singleUse()
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) {
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))) {
       while (keyColumnsResultSet.next()) {
         String tableName = keyColumnsResultSet.getString(informationSchemaTableName());
         String columnName = keyColumnsResultSet.getString(informationSchemaColumnName());
@@ -364,14 +356,10 @@ public class SpannerChangeStreamsUtils {
         bound != null
             ? databaseClient
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))
             : databaseClient
                 .singleUse()
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) {
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))) {
 
       while (resultSet.next()) {
         result.add(resultSet.getString(informationSchemaTableName()));
@@ -412,14 +400,10 @@ public class SpannerChangeStreamsUtils {
         bound != null
             ? databaseClient
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))
             : databaseClient
                 .singleUse()
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) {
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))) {
       while (resultSet.next()) {
         if (this.isPostgres()) {
           String resultString = resultSet.getString(informationSchemaAll());
@@ -476,14 +460,10 @@ public class SpannerChangeStreamsUtils {
         bound != null
             ? databaseClient
                 .singleUse(TimestampBound.ofReadTimestamp(bound))
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))
             : databaseClient
                 .singleUse()
-                .executeQuery(
-                    statementBuilder.build(),
-                    Options.priority(Options.RpcPriority.HIGH))) {
+                .executeQuery(statementBuilder.build(), Options.priority(rpcPriority))) {
 
       while (resultSet.next()) {
         String tableName = resultSet.getString(informationSchemaTableName());
