@@ -177,7 +177,7 @@ jobs:
     - name: Install Node.js
       uses: actions/setup-node@v4
       with:
-      node-version: 18
+        node-version: 18
     - name: Install Angular CLI
       run: npm install -g @angular/cli
     - name: Install UI Dependencies
