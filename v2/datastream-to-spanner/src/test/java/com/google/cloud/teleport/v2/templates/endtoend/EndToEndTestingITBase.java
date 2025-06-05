@@ -537,7 +537,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (int i = startValue; i < numRows + startValue; i++) {
           Map<String, Object> values = new HashMap<>();
-          System.out.println("new row is: " + i);
           values.put("id", i);
           values.putAll(columns);
           rows.add(values);
@@ -546,13 +545,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         boolean success = cloudSqlResourceManager.write(tableName, rows);
         LOG.info(String.format("%d rows to %s", rows.size(), tableName));
         messages.add(String.format("%d rows to %s", rows.size(), tableName));
-        System.out.println("Authors row count: " + cloudSqlResourceManager.getRowCount("Authors"));
-        List<Map<String, Object>> rowsAuthor = cloudSqlResourceManager.readTable("Authors");
-        for (Map<String, Object> row : rowsAuthor) {
-          System.out.println(row.get("id"));
-          System.out.println(row.get("name"));
-        }
-
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }
     };

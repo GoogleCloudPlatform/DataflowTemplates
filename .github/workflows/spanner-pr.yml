@@ -162,7 +162,7 @@ jobs:
     needs: []
     timeout-minutes: 180
     # Run on any runner that matches all the specified runs-on values.
-    runs-on: [self-hosted, it]
+    runs-on: [self-hosted, spanner-poc]
     steps:
     - name: Checkout Code
       uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
