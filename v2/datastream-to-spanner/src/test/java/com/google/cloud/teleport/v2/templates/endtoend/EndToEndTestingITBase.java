@@ -75,7 +75,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
   private FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
-  public DatastreamResourceManager datastreamResourceManager;
+  protected static DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
 
   protected class DataShard {

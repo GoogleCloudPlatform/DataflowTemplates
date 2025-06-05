@@ -63,8 +63,6 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/BulkForwardAndReverseMigrationEndToEndIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE =
-      "EndToEndTesting/BulkForwardAndReverseMigrationEndToEndIT/session.json";
 
   private static final String TABLE = "Authors";
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =
@@ -139,7 +137,6 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-
         String sessionFilePath =
             generateSessionFile(
                 jdbcSourceShardA, cloudSqlResourceManagerShardA, spannerResourceManager);
@@ -175,6 +172,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();
 
+        // Write backfill data
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
 
@@ -204,6 +202,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
                   }
                 },
                 false);
+
         // launch reverse migration template
         createAndUploadReverseMultiShardConfigToGcs(
             gcsResourceManager,
@@ -238,9 +237,11 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         spannerMetadataResourceManager,
+        gcsResourceManager,
         pubsubResourceManager,
         cloudSqlResourceManagerShardA,
-        cloudSqlResourceManagerShardB);
+        cloudSqlResourceManagerShardB,
+        datastreamResourceManager);
   }
 
   @Test
@@ -254,6 +255,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     // Reverse Migration pipeline check
     assertThatPipeline(rrJobInfo).isRunning();
 
+    // Bulk Migration check condition
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(bulkJobInfo));
     assertThatResult(result).isLaunchFinished();
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, "id"))
