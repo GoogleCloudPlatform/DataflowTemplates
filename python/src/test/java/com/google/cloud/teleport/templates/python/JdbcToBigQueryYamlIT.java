@@ -92,7 +92,7 @@ public class JdbcToBigQueryYamlIT extends TemplateTestBase {
   public void testJdbcToBigQuery() throws IOException {
     // Arrange JDBC source
     HashMap<String, String> columns = new HashMap<>();
-    columns.put(ROW_ID, "INTEGER NOT NULL PRIMARY KEY");
+    columns.put(ROW_ID, "INTEGER NOT NULL");
     columns.put(NAME, "VARCHAR(100)");
     columns.put(AGE, "INTEGER");
     JDBCResourceManager.JDBCSchema jdbcSchema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
