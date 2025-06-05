@@ -268,7 +268,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(TABLE, 1, COLUMNS, cdcEvents, 8, cloudSqlResourceManagerShardB),
+                    writeJdbcData(TABLE, 1, COLUMNS, cdcEvents, 8, cloudSqlResourceManagerShardA),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(5)
                         .setMaxRows(5)
@@ -309,10 +309,10 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         pipelineOperator()
             .waitForCondition(
                 createConfig(rrJobInfo, Duration.ofMinutes(10)),
-                () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 4);
+                () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 5);
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManagerShardA.readTable(TABLE);
-    assertThat(rows).hasSize(4);
+    assertThat(rows).hasSize(5);
     assertThat(rows.get(2).get("id")).isEqualTo(2);
     assertThat(rows.get(2).get("name")).isEqualTo("FF");
   }
