@@ -818,17 +818,46 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       // Generate Dockerfile
       LOG.info("Generating dockerfile " + dockerfilePath);
+
+      // Hardcoded beamVersion to 2.64.0 as a workaround for YAML templates
+      String tempBeamVersion = "2.64.0";
+      LOG.info("Using hardcoded beamVersion for YAML template: {}", tempBeamVersion);
+      String tempBasePythonContainerImage =
+          "gcr.io/dataflow-templates-base/python311-template-launcher-base:20250402-rc00";
+      LOG.info(
+          "Using hardcoded beamVersion for YAML template base Python container: {}",
+          tempBasePythonContainerImage);
+      String tempBaseContainerImage =
+          "gcr.io/dataflow-templates-base/java17-template-launcher-base-distroless:20250402-rc00";
+      LOG.info(
+          "Using hardcoded beamVersion for YAML template base Java container: {}",
+          tempBaseContainerImage);
+
+      // these should be removed after Beam 2.66.0 is out
       DockerfileGenerator.Builder dockerfileBuilder =
           DockerfileGenerator.builder(
                   definition.getTemplateAnnotation().type(),
-                  beamVersion,
+                  tempBeamVersion,
                   containerName,
                   outputClassesDirectory)
-              .setBasePythonContainerImage(basePythonContainerImage)
-              .setBaseJavaContainerImage(baseContainerImage)
+              .setBasePythonContainerImage(tempBasePythonContainerImage)
+              .setBaseJavaContainerImage(tempBaseContainerImage)
               .setPythonVersion(pythonVersion)
               .setEntryPoint(entryPoint)
               .setFilesToCopy(filesToCopy);
+
+      // these lines should be uncommented when Beam 2.66.0 is out
+      // DockerfileGenerator.Builder dockerfileBuilder =
+      //     DockerfileGenerator.builder(
+      //             definition.getTemplateAnnotation().type(),
+      //             beamVersion,
+      //             containerName,
+      //             outputClassesDirectory)
+      //         .setBasePythonContainerImage(basePythonContainerImage)
+      //         .setBaseJavaContainerImage(baseContainerImage)
+      //         .setPythonVersion(pythonVersion)
+      //         .setEntryPoint(entryPoint)
+      //         .setFilesToCopy(filesToCopy);
 
       // Set Airlock parameters
       if (internalMaven) {
