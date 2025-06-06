@@ -36,7 +36,6 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-    <postgresql.version>42.6.1</postgresql.version>
   </properties>
 
   <dependencies>
@@ -52,14 +51,6 @@
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>it-google-cloud-platform</artifactId>
       <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <!-- PostgreSQL JDBC driver for running ITs -->
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${postgresql.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
