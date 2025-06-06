@@ -3,6 +3,7 @@ pipeline:
   transforms:
     - type: ReadFromPostgres
       config:
+        driver_class_name: "org.postgresql.Driver"
         url: "{{ JDBC_URL }}"
         username: "{{ JDBC_USERNAME }}"
         password: "{{ JDBC_PASSWORD }}"
