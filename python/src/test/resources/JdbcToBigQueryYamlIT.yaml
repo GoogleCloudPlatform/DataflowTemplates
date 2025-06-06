@@ -1,7 +1,7 @@
 pipeline:
   type: chain
   transforms:
-    - type: ReadFromJdbc
+    - type: ReadFromPostgres
       config:
         url: "{{ JDBC_URL }}"
         username: "{{ JDBC_USERNAME }}"
