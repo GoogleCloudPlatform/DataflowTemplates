@@ -6,7 +6,7 @@ pipeline:
         jdbc_url: "{{ JDBC_URL }}"
         username: "{{ JDBC_USERNAME }}"
         password: "{{ JDBC_PASSWORD }}"
-        query: "{{ JDBC_QUERY }}"
+        read_query: "{{ JDBC_QUERY }}"
     - type: WriteToBigQuery
       config:
         table: "{{ BQ_TABLE_SPEC }}"
