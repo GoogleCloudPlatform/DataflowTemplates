@@ -29,6 +29,7 @@ CREATE TABLE AllDatatypeTransformation (
     tinyblob_column TINYBLOB,
     tinytext_column TINYTEXT,
     json_column JSON,
+    bigint_unsigned_column BIGINT UNSIGNED,
     PRIMARY KEY (int_column)
 );
 
@@ -40,7 +41,7 @@ INSERT INTO AllDatatypeTransformation (
     timestamp_column, time_column, year_column, blob_column, enum_column,
     bool_column, varbinary_column, bit_column, binary_column, char_column, longblob_column,
     longtext_column, mediumblob_column, mediumint_column, mediumtext_column, set_column, smallint_column,
-    tinyblob_column, tinytext_column, json_column
+    tinyblob_column, tinytext_column, json_column, bigint_unsigned_column
 )
 VALUES (
     'id1', 12, 'This is a text value', '2024-06-21', 100,
@@ -48,6 +49,6 @@ VALUES (
     '2022-12-31 23:59:58', '17:00:00', '2024', x'7835383030', '2',
     false, x'7835383030000000000000000000000000000000', 42,x'7835383030000000000000000000000000000000',
     'a', x'7835383030', 'This is longtext', x'7835383030', 2000, 'This is mediumtext',
-    'v1,v2', 10, x'7835383030', 'This is tinytext', '{"k1": "v1"}'
+    'v1,v2', 10, x'7835383030', 'This is tinytext', '{"k1": "v1"}', 12345
 );
 
