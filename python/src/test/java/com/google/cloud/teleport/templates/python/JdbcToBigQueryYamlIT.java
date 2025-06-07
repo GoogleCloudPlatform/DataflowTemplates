@@ -40,7 +40,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
 import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
@@ -57,7 +57,7 @@ import org.junit.runners.JUnit4;
 @Category(TemplateIntegrationTest.class)
 @TemplateIntegrationTest(YAMLTemplate.class)
 @RunWith(JUnit4.class)
-public class JdbcToBigQueryYamlIT extends TemplateTestBase {
+public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
 
   private PostgresResourceManager postgresResourceManager;
   private BigQueryResourceManager bigQueryResourceManager;
@@ -121,9 +121,15 @@ public class JdbcToBigQueryYamlIT extends TemplateTestBase {
                 + "\"JDBC_USERNAME\": \"%s\", "
                 + "\"JDBC_PASSWORD\": \"%s\", "
                 + "\"JDBC_QUERY\": \"%s\", "
-                + "\"BQ_TABLE_SPEC\": \"%s\""
+                + "\"BQ_TABLE_SPEC\": \"%s\","
+                + "\"JDBC_DRIVER_JARS\": \"%s\""
                 + "}",
-            jdbcUrl, username, password, query, toTableSpecStandard(table));
+            jdbcUrl,
+            username,
+            password,
+            query,
+            toTableSpecStandard(table),
+            postgresDriverGCSPath());
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
