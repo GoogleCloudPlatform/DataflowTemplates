@@ -42,7 +42,6 @@ import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.JDBCBaseIT;
 import org.apache.beam.it.gcp.bigquery.BigQueryResourceManager;
-import org.apache.beam.it.gcp.bigquery.conditions.BigQueryRowsCheck;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -151,16 +150,10 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     }
     postgresResourceManager.write(JDBC_TABLE_NAME, expectedData);
 
-    Result result =
-        pipelineOperator()
-            .waitForConditionsAndFinish(
-                createConfig(info),
-                BigQueryRowsCheck.builder(bigQueryResourceManager, table)
-                    .setMinRows(ROW_COUNT)
-                    .build());
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     // Assert
-    assertThatResult(result).meetsConditions();
+    assertThatResult(result).isLaunchFinished();
     TableResult actualRecords = bigQueryResourceManager.readTable(table);
     assertThatBigQueryRecords(actualRecords).hasRecordsUnordered(expectedData);
   }
