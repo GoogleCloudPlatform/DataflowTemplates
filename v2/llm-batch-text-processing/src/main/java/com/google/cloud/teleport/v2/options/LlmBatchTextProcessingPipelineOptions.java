@@ -18,8 +18,10 @@ package com.google.cloud.teleport.v2.options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.PipelineOptions;
 
+/** Pipeline options for the LLM batch text processing template. */
 public interface LlmBatchTextProcessingPipelineOptions extends PipelineOptions {
 
+  /** API key to authenticate with the LLM provider */
   @TemplateParameter.Text(
       order = 1,
       optional = false,
@@ -29,6 +31,7 @@ public interface LlmBatchTextProcessingPipelineOptions extends PipelineOptions {
 
   void setApiKey(String key);
 
+  /** Prompt instruction to apply on each input element. */
   @TemplateParameter.Text(
       order = 2,
       optional = false,
@@ -38,6 +41,7 @@ public interface LlmBatchTextProcessingPipelineOptions extends PipelineOptions {
 
   void setPrompt(String prompt);
 
+  /** Name of the model to use for processing. Example: gpt-3.5-turbo, gpt-4. */
   @TemplateParameter.Text(
       order = 3,
       optional = false,
@@ -47,6 +51,7 @@ public interface LlmBatchTextProcessingPipelineOptions extends PipelineOptions {
 
   void setModelName(String name);
 
+  /** GCS path to the input data file. Expected format: gs://<bucket>/path/to/input.txt */
   @TemplateParameter.GcsReadFile(
       order = 4,
       optional = false,
@@ -56,6 +61,10 @@ public interface LlmBatchTextProcessingPipelineOptions extends PipelineOptions {
 
   void setInputDataFile(String file);
 
+  /**
+   * GCS path to the output file where results will be written. Example:
+   * gs://<bucket>/path/to/output
+   */
   @TemplateParameter.GcsWriteFile(
       order = 5,
       optional = false,

@@ -32,6 +32,17 @@ import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.TypeDescriptors;
 
+/**
+ * A simple Apache Beam pipeline to batch process text input using an LLM model
+ *
+ * <p>This pipeline:
+ *
+ * <ul>
+ *   <li>Reads text input from a file (e.g., GCS)
+ *   <li>Processes each line using the configured LLM
+ *   <li>Writes model output to a target file in GCS
+ * </ul>
+ */
 @Template(
     category = TemplateCategory.BATCH,
     description = {"Simple template to batch process data using LLM"},
@@ -50,6 +61,7 @@ public final class LlmBatchTextProcessing {
     run(options);
   }
 
+  /** Defines and runs the pipeline using provided {@link LlmBatchTextProcessingPipelineOptions}. */
   public static PipelineResult run(LlmBatchTextProcessingPipelineOptions options) {
 
     checkNotNull(options, "options argument to run method cannot be null.");

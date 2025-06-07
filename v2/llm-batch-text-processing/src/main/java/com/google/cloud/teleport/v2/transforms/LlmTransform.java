@@ -21,8 +21,20 @@ import com.langchainbeam.model.LangchainBeamOutput;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PCollection;
 
+/**
+ * LlmTransform a Beam PTransform to process input text using an LLM via LangchainBeam. It wraps
+ * model execution logic for easy reuse in pipelines.
+ */
 public class LlmTransform {
 
+  /**
+   * Returns a {@link PTransform} that applies the given {@link LangchainModelHandler} to each
+   * element in the input {@link PCollection} of strings, producing a {@link PCollection} of {@link
+   * LangchainBeamOutput} containing both input and model output.
+   *
+   * @param handler an initialized LangchainModelHandler with model and prompt configuration
+   * @return a Beam transform that applies the LLM to each input element
+   */
   public static PTransform<PCollection<String>, PCollection<LangchainBeamOutput>> generate(
       LangchainModelHandler handler) {
     return LangchainBeam.run(handler);
