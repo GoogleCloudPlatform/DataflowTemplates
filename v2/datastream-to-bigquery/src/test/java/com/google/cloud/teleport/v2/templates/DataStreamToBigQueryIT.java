@@ -220,6 +220,22 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
                 .addEnvironment("enableStreamingEngine", true));
   }
 
+  @Test
+  public void testDataStreamToBigQueryUsingStorageWriteApi() throws IOException {
+    // Set up pubsub notifications
+    SubscriptionName subscriptionName = createGcsNotifications();
+
+    simpleJdbcToBigQueryTest(
+        JDBCType.MYSQL,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", subscriptionName.toString())
+                .addParameter("useStorageWriteApi", "true")
+                .addEnvironment("enableStreamingEngine", true));
+  }
+
   private void simpleJdbcToBigQueryTest(
       JDBCType jdbcType,
       DatastreamResourceManager.DestinationOutputFormat fileFormat,
