@@ -43,12 +43,18 @@ import com.google.cloud.teleport.v2.transforms.UDFTextTransformer.InputUDFToTabl
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Splitter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.coders.AtomicCoder;
+import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.CoderException;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -428,6 +434,8 @@ public class DataStreamToBigQuery {
      */
 
     Pipeline pipeline = Pipeline.create(options);
+    pipeline.getCoderRegistry().registerCoderForClass(TableId.class, TableIdCoder.of());
+
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
 
     String bigqueryProjectId = getBigQueryProjectId(options);
@@ -650,5 +658,41 @@ public class DataStreamToBigQuery {
 
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     return DeadLetterQueueManager.create(dlqDirectory);
+  }
+
+  /** A deterministic coder for {@link TableId}. */
+  static class TableIdCoder extends AtomicCoder<TableId> {
+    private static final TableIdCoder INSTANCE = new TableIdCoder();
+    private static final Coder<String> STRING_CODER = StringUtf8Coder.of();
+
+    public static TableIdCoder of() {
+      return INSTANCE;
+    }
+
+    @Override
+    public void encode(TableId value, OutputStream outStream) throws IOException, CoderException {
+      if (value == null) {
+        throw new CoderException("The BigQuery TableId was null.");
+      }
+      if (value.getDataset() == null || value.getTable() == null) {
+        throw new CoderException("The BigQuery TableId is missing a dataset or table.");
+      }
+
+      STRING_CODER.encode(value.getProject(), outStream);
+      STRING_CODER.encode(value.getDataset(), outStream);
+      STRING_CODER.encode(value.getTable(), outStream);
+    }
+
+    @Override
+    public TableId decode(InputStream inStream) throws IOException, CoderException {
+      String project = STRING_CODER.decode(inStream);
+      String dataset = STRING_CODER.decode(inStream);
+      String table = STRING_CODER.decode(inStream);
+
+      return TableId.of(project, dataset, table);
+    }
+
+    @Override
+    public void verifyDeterministic() {}
   }
 }
