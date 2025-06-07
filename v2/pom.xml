@@ -736,6 +736,7 @@
         <module>real-spanner-service</module>
         <module>failure-injected-spanner-service</module>
         <module>failure-injection-policies</module>
+        <module>llm-batch-text-processing</module>
     </modules>
 
 </project>
