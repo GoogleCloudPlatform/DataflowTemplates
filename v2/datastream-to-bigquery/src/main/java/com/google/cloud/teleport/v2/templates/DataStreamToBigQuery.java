@@ -570,6 +570,7 @@ public class DataStreamToBigQuery {
                       .withFormatRecordOnFailureFunction(element -> element.getValue())
                       .withoutValidation()
                       .ignoreInsertIds()
+                      .ignoreUnknownValues()
                       .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                       .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                       .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
@@ -584,6 +585,7 @@ public class DataStreamToBigQuery {
                   .withFormatRecordOnFailureFunction(element -> element.getValue())
                   .withoutValidation()
                   .ignoreInsertIds()
+                  .ignoreUnknownValues()
                   .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                   .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                   .withExtendedErrorInfo() // takes effect only when Storage Write API is off
