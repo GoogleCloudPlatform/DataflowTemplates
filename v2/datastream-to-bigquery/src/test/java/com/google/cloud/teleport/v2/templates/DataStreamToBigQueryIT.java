@@ -233,6 +233,7 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputFileFormat", "avro")
                 .addParameter("gcsPubSubSubscription", subscriptionName.toString())
                 .addParameter("useStorageWriteApi", "true")
+                .addParameter("useStorageWriteApiAtLeastOnce", "true")
                 .addParameter("numStorageWriteApiStreams", "1")
                 .addParameter("storageWriteApiTriggeringFrequencySec", "1")
                 .addEnvironment("enableStreamingEngine", true));

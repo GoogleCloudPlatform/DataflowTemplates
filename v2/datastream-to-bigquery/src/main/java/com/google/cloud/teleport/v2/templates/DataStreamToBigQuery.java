@@ -567,7 +567,9 @@ public class DataStreamToBigQuery {
                               })
                       .withFormatFunction(
                           element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
+                      .withFormatRecordOnFailureFunction(element -> element.getValue())
                       .withoutValidation()
+                      .ignoreInsertIds()
                       .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                       .withWriteDisposition(WriteDisposition.WRITE_APPEND)
                       .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
