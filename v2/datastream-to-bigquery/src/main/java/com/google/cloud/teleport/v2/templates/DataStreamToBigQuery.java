@@ -547,7 +547,7 @@ public class DataStreamToBigQuery {
                           TableId tableId = input.getKey();
                           String projectId = tableId.getProject();
                           if (projectId == null) {
-                            projectId = getBigQueryProjectId(options);
+                            projectId = bigqueryProjectId;
                           }
                           return KV.of(
                               String.format(
