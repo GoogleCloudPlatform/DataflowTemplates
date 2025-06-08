@@ -55,6 +55,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
+import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -65,12 +66,14 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -555,9 +558,15 @@ public class DataStreamToBigQuery {
               .apply(
                   "Write Successful Records",
                   BigQueryIO.<KV<String, TableRow>>write()
+                      .to(
+                          (SerializableFunction<
+                                  ValueInSingleWindow<KV<String, TableRow>>, TableDestination>)
+                              value -> {
+                                String tableSpec = value.getValue().getKey();
+                                return new TableDestination(tableSpec, "Table for " + tableSpec);
+                              })
                       .withFormatFunction(
                           element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
-                      .withFormatRecordOnFailureFunction(element -> element.getValue())
                       .withoutValidation()
                       .withCreateDisposition(CreateDisposition.CREATE_NEVER)
                       .withWriteDisposition(WriteDisposition.WRITE_APPEND)
