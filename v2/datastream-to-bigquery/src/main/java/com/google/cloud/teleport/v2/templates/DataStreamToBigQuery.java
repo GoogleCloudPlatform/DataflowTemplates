@@ -52,9 +52,10 @@ import java.util.regex.Pattern;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.coders.AtomicCoder;
-import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.Coder.NonDeterministicException;
 import org.apache.beam.sdk.coders.CoderException;
+import org.apache.beam.sdk.coders.CustomCoder;
+import org.apache.beam.sdk.coders.NullableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
@@ -661,38 +662,41 @@ public class DataStreamToBigQuery {
   }
 
   /** A deterministic coder for {@link TableId}. */
-  static class TableIdCoder extends AtomicCoder<TableId> {
+  static class TableIdCoder extends CustomCoder<TableId> {
+
     private static final TableIdCoder INSTANCE = new TableIdCoder();
-    private static final Coder<String> STRING_CODER = StringUtf8Coder.of();
+    private static final StringUtf8Coder STRING_CODER = StringUtf8Coder.of();
+    private static final NullableCoder<String> NULLABLE_STRING_CODER =
+        NullableCoder.of(STRING_CODER);
 
     public static TableIdCoder of() {
       return INSTANCE;
     }
 
     @Override
-    public void encode(TableId value, OutputStream outStream) throws IOException, CoderException {
+    public void encode(TableId value, OutputStream outStream) throws CoderException, IOException {
       if (value == null) {
-        throw new CoderException("The BigQuery TableId was null.");
+        throw new CoderException("Cannot encode a null TableId.");
       }
-      if (value.getDataset() == null || value.getTable() == null) {
-        throw new CoderException("The BigQuery TableId is missing a dataset or table.");
-      }
-
-      STRING_CODER.encode(value.getProject(), outStream);
+      NULLABLE_STRING_CODER.encode(value.getProject(), outStream);
       STRING_CODER.encode(value.getDataset(), outStream);
       STRING_CODER.encode(value.getTable(), outStream);
     }
 
     @Override
-    public TableId decode(InputStream inStream) throws IOException, CoderException {
-      String project = STRING_CODER.decode(inStream);
+    public TableId decode(InputStream inStream) throws CoderException, IOException {
+      String project = NULLABLE_STRING_CODER.decode(inStream);
       String dataset = STRING_CODER.decode(inStream);
       String table = STRING_CODER.decode(inStream);
-
+      if (project == null) {
+        return TableId.of(dataset, table);
+      }
       return TableId.of(project, dataset, table);
     }
 
     @Override
-    public void verifyDeterministic() {}
+    public void verifyDeterministic() throws NonDeterministicException {
+      // This coder is deterministic because its components are deterministic.
+    }
   }
 }
