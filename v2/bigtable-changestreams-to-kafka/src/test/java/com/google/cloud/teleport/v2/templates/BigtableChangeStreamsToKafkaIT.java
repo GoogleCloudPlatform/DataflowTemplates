@@ -56,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -100,6 +101,8 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
 
   private static final int KAFKA_PARTITIONS = 1;
   private static final Duration KAFKA_POLL_TIMEOUT = Duration.ofMillis(1000);
+  private static final long MAX_MESSAGE_LAG_MICROS =
+      TimeUnit.MICROSECONDS.convert(Duration.ofSeconds(20));
 
   private static final String STANDARD_COLUMN_FAMILY = "cf";
   private static final String COLUMN_FAMILY1 = "cf1";
@@ -486,7 +489,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
         Math.abs(
                 Long.parseLong(jsonTree.get("commitTimestamp").asText())
                     - expected.getCommitTimestamp())
-            <= 20000000L);
+            <= MAX_MESSAGE_LAG_MICROS);
     assertEquals(expected.getColumnFamily(), jsonTree.get("columnFamily").asText());
     assertEquals(
         (Object) expected.getTimestamp(),
@@ -514,7 +517,8 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
     assertEquals(expected.getIsGC(), received.getIsGC());
     assertTrue(received.getTieBreaker() >= 0);
     assertTrue(
-        Math.abs(received.getCommitTimestamp() - expected.getCommitTimestamp()) <= 20000000L);
+        Math.abs(received.getCommitTimestamp() - expected.getCommitTimestamp())
+            <= MAX_MESSAGE_LAG_MICROS);
     assertEquals(
         nullSafeToString(expected.getColumnFamily()), nullSafeToString(received.getColumnFamily()));
     assertEquals(expected.getColumn(), received.getColumn());
@@ -539,7 +543,7 @@ public class BigtableChangeStreamsToKafkaIT extends TemplateTestBase {
 
     assertTrue(
         Math.abs((Long) received.get("commitTimestamp") - expected.getCommitTimestamp())
-            <= 20000000L);
+            <= MAX_MESSAGE_LAG_MICROS);
     assertEquals(
         nullSafeToString(expected.getColumnFamily()),
         nullSafeToString(received.get("columnFamily")));
