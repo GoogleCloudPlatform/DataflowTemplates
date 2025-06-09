@@ -77,6 +77,8 @@ jobs:
         run: ./cicd/run-build
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests
+      - name: Cleanup Resources
+        run: ./test-infra/cleanup_resources.sh
       # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
       #   are fixed
       - name: Run Integration Smoke Tests
