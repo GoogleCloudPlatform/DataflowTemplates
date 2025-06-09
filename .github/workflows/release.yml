@@ -89,7 +89,7 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2
-      - name: Run Integration Tests Without Datastream and Spanner
+      - name: Run Integration Tests With DEFAULT
         run: |
           ./cicd/run-it-tests \
           --it-region="us-central1" \
@@ -99,7 +99,29 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2 \
-          --modules-to-build="DEFAULT,KAFKA,BIGTABLE"
+          --modules-to-build="DEFAULT"
+      - name: Run Integration Tests With KAFKA
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=2 \
+          --modules-to-build="KAFKA"
+      - name: Run Integration Tests With BIGTABLE
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=2 \
+          --modules-to-build="BIGTABLE"
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
         with:
