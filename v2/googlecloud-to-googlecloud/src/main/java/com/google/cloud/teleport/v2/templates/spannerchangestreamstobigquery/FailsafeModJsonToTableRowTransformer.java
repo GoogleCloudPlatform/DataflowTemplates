@@ -5,7 +5,7 @@
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -29,6 +29,7 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Key.Builder;
 import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.SpannerOptions.CallContextConfigurator;
@@ -110,7 +111,8 @@ public final class FailsafeModJsonToTableRowTransformer {
                           failsafeModJsonToTableRowOptions.getIgnoreFields(),
                           transformOut,
                           transformDeadLetterOut,
-                          failsafeModJsonToTableRowOptions.getUseStorageWriteApi()))
+                          failsafeModJsonToTableRowOptions.getUseStorageWriteApi(),
+                          failsafeModJsonToTableRowOptions.getSpannerConfig().getRpcPriority().get()))
                   .withOutputTags(transformOut, TupleTagList.of(transformDeadLetterOut)));
       out.get(transformDeadLetterOut).setCoder(failsafeModJsonToTableRowOptions.getCoder());
       return out;
@@ -133,6 +135,7 @@ public final class FailsafeModJsonToTableRowTransformer {
       private transient CallContextConfigurator callContextConfigurator;
       private transient boolean seenException;
       private Boolean useStorageWriteApi;
+      private RpcPriority rpcPriority;
       private Dialect dialect;
 
       public FailsafeModJsonToTableRowFn(
@@ -141,13 +144,15 @@ public final class FailsafeModJsonToTableRowTransformer {
           ImmutableSet<String> ignoreFields,
           TupleTag<TableRow> transformOut,
           TupleTag<FailsafeElement<String, String>> transformDeadLetterOut,
-          Boolean useStorageWriteApi) {
+          Boolean useStorageWriteApi,
+          RpcPriority rpcPriority) {
         this.spannerConfig = spannerConfig;
         this.spannerChangeStream = spannerChangeStream;
         this.transformOut = transformOut;
         this.transformDeadLetterOut = transformDeadLetterOut;
         this.ignoreFields = ignoreFields;
         this.useStorageWriteApi = useStorageWriteApi;
+        this.rpcPriority = rpcPriority;
         this.dialect = getDialect(spannerConfig);
       }
 
@@ -178,7 +183,7 @@ public final class FailsafeModJsonToTableRowTransformer {
                       spannerAccessor.getDatabaseClient(),
                       spannerChangeStream,
                       dialect,
-                      spannerConfig.getRpcPriority().get())
+                      rpcPriority)
                   .getSpannerTableByName();
         } catch (RuntimeException e) {
           LOG.error(
@@ -272,7 +277,7 @@ public final class FailsafeModJsonToTableRowTransformer {
                   dialect,
                   mod,
                   spannerTableByName,
-                  spannerConfig.getRpcPriority().get());
+                  rpcPriority);
         }
 
         try {
@@ -397,7 +402,7 @@ public final class FailsafeModJsonToTableRowTransformer {
           com.google.cloud.Timestamp spannerCommitTimestamp,
           TableRow tableRow) {
         Options.ReadQueryUpdateTransactionOption options =
-            Options.priority(spannerConfig.getRpcPriority().get());
+            Options.priority(rpcPriority);
         // Create a context that uses the custom call configuration.
         Context context =
             Context.current()
