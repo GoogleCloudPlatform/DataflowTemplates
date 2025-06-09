@@ -5,7 +5,7 @@
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -112,7 +112,10 @@ public final class FailsafeModJsonToTableRowTransformer {
                           transformOut,
                           transformDeadLetterOut,
                           failsafeModJsonToTableRowOptions.getUseStorageWriteApi(),
-                          failsafeModJsonToTableRowOptions.getSpannerConfig().getRpcPriority().get()))
+                          failsafeModJsonToTableRowOptions
+                              .getSpannerConfig()
+                              .getRpcPriority()
+                              .get()))
                   .withOutputTags(transformOut, TupleTagList.of(transformDeadLetterOut)));
       out.get(transformDeadLetterOut).setCoder(failsafeModJsonToTableRowOptions.getCoder());
       return out;
@@ -401,8 +404,7 @@ public final class FailsafeModJsonToTableRowTransformer {
           List<String> spannerNonPkColumnNames,
           com.google.cloud.Timestamp spannerCommitTimestamp,
           TableRow tableRow) {
-        Options.ReadQueryUpdateTransactionOption options =
-            Options.priority(rpcPriority);
+        Options.ReadQueryUpdateTransactionOption options = Options.priority(rpcPriority);
         // Create a context that uses the custom call configuration.
         Context context =
             Context.current()
