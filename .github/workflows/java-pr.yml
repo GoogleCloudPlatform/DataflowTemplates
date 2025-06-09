@@ -33,8 +33,6 @@ on:
       # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
       - '!v2/datastream-to-spanner/**'
       - '!v2/spanner-common/**'
-      - '!v2/spanner-change-streams-to-sharded-file-sink/**'
-      - '!v2/gcs-to-sourcedb/**'
       - '!v2/spanner-migrations-sdk/**'
       - '!v2/spanner-custom-shard/**'
       - '!v2/sourcedb-to-spanner/**'
