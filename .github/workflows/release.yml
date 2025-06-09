@@ -99,7 +99,7 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2 \
-          --modules-to-build="!SPANNER,!DATASTREAM"
+          --modules-to-build="DEFAULT,KAFKA,BIGTABLE"
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
         with:
