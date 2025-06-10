@@ -113,6 +113,8 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     String password = postgresResourceManager.getPassword();
     String query = String.format("SELECT %s, %s, %s FROM %s", ROW_ID, NAME, AGE, JDBC_TABLE_NAME);
 
+    // TODO: when Beam 2.66.0 is released, JDBC_DRIVER_JARS and JDBC_DRIVER_CLASS_NAME can be
+    // removed
     String jinjaVars =
         String.format(
             "{"
@@ -120,15 +122,17 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
                 + "\"JDBC_USERNAME\": \"%s\", "
                 + "\"JDBC_PASSWORD\": \"%s\", "
                 + "\"JDBC_QUERY\": \"%s\", "
-                + "\"BQ_TABLE_SPEC\": \"%s\","
-                + "\"JDBC_DRIVER_JARS\": \"%s\""
+                + "\"BQ_TABLE_SPEC\": \"%s\", "
+                + "\"JDBC_DRIVER_JARS\": \"%s\", "
+                + "\"JDBC_DRIVER_CLASS_NAME\": \"%s\""
                 + "}",
             jdbcUrl,
             username,
             password,
             query,
             toTableSpecStandard(table),
-            postgresDriverGCSPath());
+            postgresDriverGCSPath(),
+            POSTGRES_DRIVER);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
