@@ -35,34 +35,38 @@ variable "region" {
 
 variable "bigtableProjectId" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from"
+  description = "The ID of the Google Cloud project that contains the Bigtable instance that you want to read data from."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Bigtable instance that contains the table."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to read"
+  description = "The ID of the Bigtable table to export."
 
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path)"
+  description = "The Cloud Storage path where data is written. For example, `gs://mybucket/somefolder`"
 
 }
 
 variable "filenamePrefix" {
   type        = string
-  description = <<EOT
-The prefix of the Avro file name. For example, "table1-". Defaults to: part.
-EOT
+  description = "The prefix of the Avro filename. For example, `output-`. Defaults to: part."
   default     = "part"
+}
+
+variable "bigtableAppProfileId" {
+  type        = string
+  description = "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile."
+  default     = null
 }
 
 
@@ -162,11 +166,12 @@ resource "google_dataflow_job" "generated" {
   provider          = google
   template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_Bigtable_to_GCS_Avro"
   parameters = {
-    bigtableProjectId  = var.bigtableProjectId
-    bigtableInstanceId = var.bigtableInstanceId
-    bigtableTableId    = var.bigtableTableId
-    outputDirectory    = var.outputDirectory
-    filenamePrefix     = var.filenamePrefix
+    bigtableProjectId    = var.bigtableProjectId
+    bigtableInstanceId   = var.bigtableInstanceId
+    bigtableTableId      = var.bigtableTableId
+    outputDirectory      = var.outputDirectory
+    filenamePrefix       = var.filenamePrefix
+    bigtableAppProfileId = var.bigtableAppProfileId
   }
 
   additional_experiments       = var.additional_experiments
@@ -178,6 +183,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

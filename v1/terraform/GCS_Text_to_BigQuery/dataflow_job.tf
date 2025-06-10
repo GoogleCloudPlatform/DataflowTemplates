@@ -35,7 +35,7 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv)"
+  description = "Path of the file pattern glob to read from. For example, `gs://your-bucket/path/*.csv`"
 
 }
 
@@ -78,19 +78,19 @@ variable "outputTable" {
 
 variable "bigQueryLoadingTemporaryDirectory" {
   type        = string
-  description = "Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)"
+  description = "Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`"
 
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions."
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`."
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
@@ -208,6 +208,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

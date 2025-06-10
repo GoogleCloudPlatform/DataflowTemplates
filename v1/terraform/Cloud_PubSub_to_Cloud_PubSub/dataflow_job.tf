@@ -35,25 +35,25 @@ variable "region" {
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "The Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The Pub/Sub topic to write the output to. For example, `projects/your-project-id/topics/your-topic-name`"
 
 }
 
 variable "filterKey" {
   type        = string
-  description = "Attribute key by which events are filtered. No filters are applied if no key is specified."
+  description = "The attribute key to use to filter events. No filters are applied if `filterKey` is not specified."
   default     = null
 }
 
 variable "filterValue" {
   type        = string
-  description = "Filter attribute value to use if an event filter key is provided. Accepts a valid Java Regex string as an event filter value. In case a regex is provided, the complete expression should match in order for the message to be filtered. Partial matches (e.g. substring) will not be filtered. A null event filter value is used by default."
+  description = "The attribute value to use to filter events when a `filterKey` is provided. By default, a null `filterValue` is used."
   default     = null
 }
 
@@ -169,6 +169,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork
