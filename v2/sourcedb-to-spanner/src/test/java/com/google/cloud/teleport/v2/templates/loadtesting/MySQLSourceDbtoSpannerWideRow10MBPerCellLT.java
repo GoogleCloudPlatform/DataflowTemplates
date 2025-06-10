@@ -30,18 +30,16 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpannerLTBase {
   private static final String WORKER_MACHINE_TYPE = "n1-highmem-96";
+  private static final String LAUNCHER_MACHINE_TYPE = "n1-highmem-64";
   private static final String FETCH_SIZE = "4000";
 
   @Test
   public void mySQLToSpannerWideRow10MBPerCellTest() throws Exception {
 
-    String username =
-        accessSecret("projects/269744978479/secrets/wide-row-table-username/versions/1");
-    String password =
-        accessSecret("projects/269744978479/secrets/wide-row-table-password/versions/1");
+    String username = "user";
+    String password = "password";
     String database = "10MBStringCell";
-    String host =
-        accessSecret("projects/269744978479/secrets/wide-row-table-private-host/versions/1");
+    String host = "34.55.186.150";
     int port = 3306;
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
@@ -62,17 +60,12 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
           }
         };
 
-    ADDITIONAL_JOB_PARAMS.putAll(
+    Map<String, String> env =
         new HashMap<>() {
           {
-            put("network", VPC_NAME);
-            put("subnetwork", SUBNET_NAME);
-            put("workerRegion", VPC_REGION);
+            put("launcherMachineType", LAUNCHER_MACHINE_TYPE);
           }
-        });
-
-    Map<String, String> env = new HashMap<>() {};
-
+        };
     runLoadTest(expectedCountPerTable, params, env);
   }
 }
