@@ -54,6 +54,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **databaseName**: The name of the SQL database to connect to. The default value is `postgres`.
 * **schemaMap**: A map of key/values used to dictate schema name changes (ie. old_name:new_name,CaseError:case_error). Defaults to empty.
 * **customConnectionString**: Optional connection string which will be used instead of the default database string.
+* **numThreads**: Determines key parallelism of Format to DML step, specifically, the value is passed into Reshuffle.withNumBuckets. Defaults to: 100.
 
 
 
@@ -148,6 +149,7 @@ export DATABASE_PORT=5432
 export DATABASE_NAME=postgres
 export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
+export NUM_THREADS=100
 
 gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --project "$PROJECT" \
@@ -166,7 +168,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --parameters "databasePassword=$DATABASE_PASSWORD" \
   --parameters "databaseName=$DATABASE_NAME" \
   --parameters "schemaMap=$SCHEMA_MAP" \
-  --parameters "customConnectionString=$CUSTOM_CONNECTION_STRING"
+  --parameters "customConnectionString=$CUSTOM_CONNECTION_STRING" \
+  --parameters "numThreads=$NUM_THREADS"
 ```
 
 For more information about the command, please check:
@@ -201,6 +204,7 @@ export DATABASE_PORT=5432
 export DATABASE_NAME=postgres
 export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
+export NUM_THREADS=100
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -209,7 +213,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-sql-job" \
 -DtemplateName="Cloud_Datastream_to_SQL" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING,numThreads=$NUM_THREADS" \
 -f v2/datastream-to-sql
 ```
 
@@ -268,6 +272,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_sql" {
     # databaseName = "postgres"
     # schemaMap = ""
     # customConnectionString = ""
+    # numThreads = "100"
   }
 }
 ```
