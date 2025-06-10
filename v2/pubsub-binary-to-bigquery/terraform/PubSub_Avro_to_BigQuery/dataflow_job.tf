@@ -35,65 +35,61 @@ variable "region" {
 
 variable "schemaPath" {
   type        = string
-  description = "Cloud Storage path to Avro schema file. For example, gs://MyBucket/file.avsc."
+  description = "The Cloud Storage location of the Avro schema file. For example, `gs://path/to/my/schema.avsc`."
 
+}
+
+variable "useStorageWriteApiAtLeastOnce" {
+  type        = bool
+  description = " When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to true. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`."
+  default     = null
 }
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "The Pub/Sub input subscription to read from. For example, `projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>`"
 
 }
 
 variable "outputTableSpec" {
   type        = string
-  description = "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects."
+  description = "The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema."
 
 }
 
 variable "writeDisposition" {
   type        = string
-  description = "BigQuery WriteDisposition. For example, WRITE_APPEND, WRITE_EMPTY or WRITE_TRUNCATE. Defaults to: WRITE_APPEND."
+  description = "The BigQuery WriteDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload) value. For example, `WRITE_APPEND`, `WRITE_EMPTY`, or `WRITE_TRUNCATE`. Defaults to `WRITE_APPEND`."
   default     = null
 }
 
 variable "createDisposition" {
   type        = string
-  description = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_IF_NEEDED."
+  description = "The BigQuery CreateDisposition (https://cloud.google.com/bigquery/docs/reference/rest/v2/Job#jobconfigurationload). For example, `CREATE_IF_NEEDED` and `CREATE_NEVER`. Defaults to `CREATE_IF_NEEDED`."
   default     = null
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The Pub/Sub topic to use for unprocessed records. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`"
 
 }
 
 variable "useStorageWriteApi" {
   type        = bool
-  description = <<EOT
-If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-EOT
-  default     = null
-}
-
-variable "useStorageWriteApiAtLeastOnce" {
-  type        = bool
-  description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-EOT
+  description = "If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "numStorageWriteApiStreams" {
   type        = number
-  description = "Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0."
+  description = "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0."
   default     = null
 }
 
 variable "storageWriteApiTriggeringFrequencySec" {
   type        = number
-  description = "Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values."
+  description = "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter."
   default     = null
 }
 
@@ -161,7 +157,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -223,13 +220,13 @@ resource "google_dataflow_flex_template_job" "generated" {
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/PubSub_Avro_to_BigQuery"
   parameters = {
     schemaPath                            = var.schemaPath
+    useStorageWriteApiAtLeastOnce         = tostring(var.useStorageWriteApiAtLeastOnce)
     inputSubscription                     = var.inputSubscription
     outputTableSpec                       = var.outputTableSpec
     writeDisposition                      = var.writeDisposition
     createDisposition                     = var.createDisposition
     outputTopic                           = var.outputTopic
     useStorageWriteApi                    = tostring(var.useStorageWriteApi)
-    useStorageWriteApiAtLeastOnce         = tostring(var.useStorageWriteApiAtLeastOnce)
     numStorageWriteApiStreams             = tostring(var.numStorageWriteApiStreams)
     storageWriteApiTriggeringFrequencySec = tostring(var.storageWriteApiTriggeringFrequencySec)
   }
@@ -246,6 +243,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

@@ -35,13 +35,13 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "This is the file location for Datastream file output in Cloud Storage. Normally, this will be gs://${BUCKET}/${ROOT_PATH}/."
-
+  description = "The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled. Please use this feature only for retrying entries that land in severe DLQ."
+  default     = null
 }
 
 variable "inputFileFormat" {
   type        = string
-  description = "This is the format of the output file produced by Datastream. By default this will be avro."
+  description = "The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`."
   default     = null
 }
 
@@ -53,43 +53,43 @@ variable "sessionFilePath" {
 
 variable "instanceId" {
   type        = string
-  description = "This is the name of the Cloud Spanner instance where the changes are replicated."
+  description = "The Spanner instance where the changes are replicated."
 
 }
 
 variable "databaseId" {
   type        = string
-  description = "This is the name of the Cloud Spanner database where the changes are replicated."
+  description = "The Spanner database where the changes are replicated."
 
 }
 
 variable "projectId" {
   type        = string
-  description = "This is the name of the Cloud Spanner project."
+  description = "The Spanner project ID."
   default     = null
 }
 
 variable "spannerHost" {
   type        = string
-  description = "The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com."
+  description = "The Cloud Spanner endpoint to call in the template. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com."
   default     = null
 }
 
 variable "gcsPubSubSubscription" {
   type        = string
-  description = "The Pub/Sub subscription being used in a Cloud Storage notification policy. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>."
+  description = "The Pub/Sub subscription being used in a Cloud Storage notification policy. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`."
   default     = null
 }
 
 variable "streamName" {
   type        = string
-  description = "This is the Datastream stream name used to get information."
-
+  description = "The name or template for the stream to poll for schema information and source type."
+  default     = null
 }
 
 variable "shadowTablePrefix" {
   type        = string
-  description = "The prefix used for the shadow table. Defaults to: shadow_."
+  description = "The prefix used to name shadow tables. Default: `shadow_`."
   default     = null
 }
 
@@ -113,19 +113,19 @@ variable "fileReadConcurrency" {
 
 variable "deadLetterQueueDirectory" {
   type        = string
-  description = "This is the file path to store the deadletter queue output. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions."
+  description = "The file path used when storing the error queue output. The default file path is a directory under the Dataflow job's temp location."
   default     = null
 }
 
 variable "dlqRetryMinutes" {
   type        = number
-  description = "The number of minutes between dead letter queue retries. Defaults to 10."
+  description = "The number of minutes between dead letter queue retries. Defaults to `10`."
   default     = null
 }
 
 variable "dlqMaxRetryCount" {
   type        = number
-  description = "The max number of times temporary errors can be retried through DLQ. Defaults to 500."
+  description = "The max number of times temporary errors can be retried through DLQ. Defaults to `500`."
   default     = null
 }
 
@@ -167,13 +167,79 @@ variable "directoryWatchDurationInMinutes" {
 
 variable "spannerPriority" {
   type        = string
-  description = "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to HIGH"
+  description = "The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`."
   default     = null
 }
 
 variable "dlqGcsPubSubSubscription" {
   type        = string
-  description = "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. The name should be in the format of projects/<project-id>/subscriptions/<subscription-name>. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored."
+  description = "The Pub/Sub subscription being used in a Cloud Storage notification policy for DLQ retry directory when running in regular mode. For the name, use the format `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`. When set, the deadLetterQueueDirectory and dlqRetryMinutes are ignored."
+  default     = null
+}
+
+variable "transformationJarPath" {
+  type        = string
+  description = "Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records in forward migration. Defaults to empty."
+  default     = null
+}
+
+variable "transformationClassName" {
+  type        = string
+  description = "Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty."
+  default     = null
+}
+
+variable "transformationCustomParameters" {
+  type        = string
+  description = "String containing any custom parameters to be passed to the custom transformation class. Defaults to empty."
+  default     = null
+}
+
+variable "filteredEventsDirectory" {
+  type        = string
+  description = "This is the file path to store the events filtered via custom transformation. Default is a directory under the Dataflow job's temp location. The default value is enough under most conditions."
+  default     = null
+}
+
+variable "shardingContextFilePath" {
+  type        = string
+  description = "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard.It is of the format Map<stream_name, Map<db_name, shard_id>>"
+  default     = null
+}
+
+variable "tableOverrides" {
+  type        = string
+  description = "These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty."
+  default     = null
+}
+
+variable "columnOverrides" {
+  type        = string
+  description = "These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty."
+  default     = null
+}
+
+variable "schemaOverridesFilePath" {
+  type        = string
+  description = "A file which specifies the table and the column name overrides from source to spanner. Defaults to empty."
+  default     = null
+}
+
+variable "shadowTableSpannerDatabaseId" {
+  type        = string
+  description = "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well. Defaults to empty."
+  default     = null
+}
+
+variable "shadowTableSpannerInstanceId" {
+  type        = string
+  description = "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well. Defaults to empty."
+  default     = null
+}
+
+variable "failureInjectionParameter" {
+  type        = string
+  description = "Failure injection parameter. Only used for testing. Defaults to empty."
   default     = null
 }
 
@@ -241,7 +307,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -326,6 +393,17 @@ resource "google_dataflow_flex_template_job" "generated" {
     directoryWatchDurationInMinutes = tostring(var.directoryWatchDurationInMinutes)
     spannerPriority                 = var.spannerPriority
     dlqGcsPubSubSubscription        = var.dlqGcsPubSubSubscription
+    transformationJarPath           = var.transformationJarPath
+    transformationClassName         = var.transformationClassName
+    transformationCustomParameters  = var.transformationCustomParameters
+    filteredEventsDirectory         = var.filteredEventsDirectory
+    shardingContextFilePath         = var.shardingContextFilePath
+    tableOverrides                  = var.tableOverrides
+    columnOverrides                 = var.columnOverrides
+    schemaOverridesFilePath         = var.schemaOverridesFilePath
+    shadowTableSpannerDatabaseId    = var.shadowTableSpannerDatabaseId
+    shadowTableSpannerInstanceId    = var.shadowTableSpannerInstanceId
+    failureInjectionParameter       = var.failureInjectionParameter
   }
 
   additional_experiments       = var.additional_experiments
@@ -340,6 +418,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

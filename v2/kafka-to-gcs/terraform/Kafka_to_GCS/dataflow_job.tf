@@ -35,13 +35,13 @@ variable "region" {
 
 variable "bootstrapServers" {
   type        = string
-  description = "Kafka Bootstrap Server list, separated by commas. (Example: localhost:9092,127.0.0.1:9093)"
+  description = "Kafka Bootstrap Server list, separated by commas. For example, `localhost:9092,127.0.0.1:9093`"
 
 }
 
 variable "inputTopics" {
   type        = string
-  description = "Kafka topic(s) to read the input from. (Example: topic1,topic2)"
+  description = "Kafka topic(s) to read the input from. For example, `topic1,topic2`"
 
 }
 
@@ -53,19 +53,19 @@ variable "outputFileFormat" {
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5m."
+  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `5m`. Defaults to: 5m."
   default     = null
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "The path and filename prefix for writing output files. Must end with a slash. (Example: gs://your-bucket/your-path)"
+  description = "The path and filename prefix for writing output files. Must end with a slash. For example, `gs://your-bucket/your-path`"
 
 }
 
 variable "outputFilenamePrefix" {
   type        = string
-  description = "The prefix to place on each windowed file. (Example: output-). Defaults to: output."
+  description = "The prefix to place on each windowed file. For example, `output-`. Defaults to: output."
   default     = null
 }
 
@@ -139,7 +139,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -221,6 +222,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

@@ -47,7 +47,7 @@ variable "outputFileFormat" {
 
 variable "inputFileSpec" {
   type        = string
-  description = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv"
+  description = "The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`."
 
 }
 
@@ -59,55 +59,55 @@ variable "containsHeaders" {
 
 variable "deadletterTable" {
   type        = string
-  description = "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name)"
+  description = "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. For example, `your-project:your-dataset.your-table-name`"
   default     = null
 }
 
 variable "delimiter" {
   type        = string
-  description = "The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,)"
+  description = "The column delimiter of the input text files. Default: `,` For example, `,`"
   default     = null
 }
 
 variable "csvFormat" {
   type        = string
-  description = "CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
+  description = "CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
   default     = null
 }
 
 variable "jsonSchemaPath" {
   type        = string
-  description = "Path to JSON schema. Default: null. (Example: gs://path/to/schema)"
+  description = "The path to the JSON schema. Defaults to `null`. For example, `gs://path/to/schema`"
   default     = null
 }
 
 variable "largeNumFiles" {
   type        = bool
-  description = "Set to true if number of files is in the tens of thousands. Defaults to: false."
+  description = "Set to true if number of files is in the tens of thousands. Defaults to `false`."
   default     = null
 }
 
 variable "csvFileEncoding" {
   type        = string
-  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  description = "The CSV file character encoding format. Allowed values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8."
   default     = null
 }
 
 variable "logDetailedCsvConversionErrors" {
   type        = bool
-  description = "Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false."
+  description = "Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`."
   default     = null
 }
 
 variable "outputBucket" {
   type        = string
-  description = "Cloud storage directory for writing output files. This value must end in a slash. (Example: gs://your-bucket/path/)"
+  description = "Cloud storage directory for writing output files. This value must end in a slash. For example, `gs://your-bucket/path/`"
 
 }
 
 variable "schema" {
   type        = string
-  description = "Cloud storage path to the avro schema file. (Example: gs://your-bucket/your-path/schema.avsc)"
+  description = "Cloud storage path to the avro schema file. For example, `gs://your-bucket/your-path/schema.avsc`"
 
 }
 
@@ -187,7 +187,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -277,6 +278,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

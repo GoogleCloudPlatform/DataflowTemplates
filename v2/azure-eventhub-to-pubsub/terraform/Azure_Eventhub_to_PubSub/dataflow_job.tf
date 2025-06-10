@@ -35,25 +35,25 @@ variable "region" {
 
 variable "brokerServer" {
   type        = string
-  description = "Server IP or DNS for Azure Eventhub Endpoint (Example: mynamespace.servicebus.windows.net:9093)"
+  description = "Server IP or DNS for Azure Eventhub Endpoint For example, `mynamespace.servicebus.windows.net:9093`"
 
 }
 
 variable "inputTopic" {
   type        = string
-  description = "Azure Eventhub topic(s) to read the input from (Example: topic)"
+  description = "Azure Eventhub topic(s) to read the input from For example, `topic`"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' For example, `projects/your-project-id/topics/your-topic-name`"
 
 }
 
 variable "secret" {
   type        = string
-  description = "Secret Version, it can be a number like 1,2 or 3 or can be 'latest' (Example: projects/{project}/secrets/{secret}/versions/{secret_version})"
+  description = "Secret Version, it can be a number like 1,2 or 3 or can be 'latest' For example, `projects/{project}/secrets/{secret}/versions/{secret_version}`"
 
 }
 
@@ -121,7 +121,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -200,6 +201,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
