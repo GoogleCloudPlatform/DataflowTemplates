@@ -66,7 +66,7 @@ jobs:
           TAG_NAME: ${{ steps.variables.outputs.tagName }}
       - name: Push release branch
         run: |
-          git push origin --delete $RELEASE_BRANCH_NAME || true  
+          git push origin --delete $RELEASE_BRANCH_NAME || true
           git push -u origin $RELEASE_BRANCH_NAME
         env:
           RELEASE_BRANCH_NAME: ${{ steps.variables.outputs.releaseBranchName }}
@@ -77,6 +77,8 @@ jobs:
         run: ./cicd/run-build
       - name: Run Unit Tests
         run: ./cicd/run-unit-tests
+      - name: Cleanup Resources
+        run: ./test-infra/cleanup_resources.sh
       # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
       #   are fixed
       - name: Run Integration Smoke Tests
@@ -89,8 +91,70 @@ jobs:
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2
-      # TODO(https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/1807) - Remove once Staging Spanner tests
-      #   are fixed
+      - name: Run Integration Tests With DEFAULT
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=2 \
+          --modules-to-build="DEFAULT"
+      - name: Run Integration Tests With KAFKA
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=2 \
+          --modules-to-build="KAFKA"
+      - name: Run Integration Tests With BIGTABLE
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=2 \
+          --modules-to-build="BIGTABLE"
+      - name: Upload Site Report
+        uses: ./.github/actions/publish-site-report
+        with:
+          output-zip-file: test-report
+        if: always()
+
+  release-it-datastream:
+    name: Create Release - IT Datastream
+    needs: [release]
+    runs-on: [self-hosted, release]
+    steps:
+      - name: Get releaser identity
+        run: |
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+      - name: Declare release branch name and tag name
+        id: variables
+        run: |
+          echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+      - name: Checkout code
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
+        with:
+          ref: ${{ steps.variables.outputs.releaseBranchName }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
       - name: Run Integration Tests
         run: |
           ./cicd/run-it-tests \
@@ -100,12 +164,78 @@ jobs:
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
-          --it-retry-failures=2
+          --it-retry-failures=3 \
+          --modules-to-build="DATASTREAM"
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
         with:
-          output-zip-file: test-report
+          output-zip-file: test-report-datastream
         if: always()
+
+  release-it-spanner:
+    name: Create Release - IT Spanner
+    needs: [release-it-datastream]
+    runs-on: [self-hosted, release]
+    steps:
+      - name: Get releaser identity
+        run: |
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+      - name: Declare release branch name and tag name
+        id: variables
+        run: |
+          echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+      - name: Checkout code
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
+        with:
+          ref: ${{ steps.variables.outputs.releaseBranchName }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Tests
+        run: |
+          ./cicd/run-it-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1" \
+          --it-spanner-host="https://batch-spanner.googleapis.com" \
+          --it-release=true \
+          --it-retry-failures=3 \
+          --modules-to-build="SPANNER"
+      - name: Upload Site Report
+        uses: ./.github/actions/publish-site-report
+        with:
+          output-zip-file: test-report-spanner
+        if: always()
+
+  finalize-release:
+    name: Finalize Release
+    needs: [release-it-spanner]
+    runs-on: [self-hosted, release]
+    steps:
+      - name: Get releaser identity
+        run: |
+          git config --global user.name '${{github.actor}}'
+          git config --global user.email '${{github.actor}}@users.noreply.github.com'
+      - name: Declare release branch name and tag name
+        id: variables
+        run: |
+          echo "releaseBranchName=release_${CANDIDATE_NAME}" >> $GITHUB_OUTPUT
+          echo "tagName=${CANDIDATE_NAME^^}" >> $GITHUB_OUTPUT
+        env:
+          CANDIDATE_NAME: ${{ inputs.candidateName }}
+      - name: Checkout code
+        uses: actions/checkout@1e31de5234b9f8995739874a8ce0492dc87873e2 # v4.0.0
+        with:
+          ref: ${{ steps.variables.outputs.releaseBranchName }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Push tags
         run: |
           git push -u origin --tags
