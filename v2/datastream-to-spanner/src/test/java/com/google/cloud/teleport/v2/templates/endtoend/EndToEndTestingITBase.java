@@ -310,23 +310,39 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
       String jobName,
       SpannerResourceManager spannerResourceManager,
-      GcsResourceManager gcsResourceManager)
+      GcsResourceManager gcsResourceManager,
+      Boolean multiSharded)
       throws IOException {
     // launch dataflow template
-    flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(jobName)
-            .withTemplateName("Sourcedb_to_Spanner_Flex")
-            .withTemplateModulePath("v2/sourcedb-to-spanner")
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName)
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addParameter(
-                "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("disable_runner_v2"))
-            .build();
+    if (multiSharded) {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Sourcedb_to_Spanner_Flex")
+              .withTemplateModulePath("v2/sourcedb-to-spanner")
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("outputDirectory", "gs://" + artifactBucketName)
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter(
+                  "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+              .build();
+    } else {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Sourcedb_to_Spanner_Flex")
+              .withTemplateModulePath("v2/sourcedb-to-spanner")
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("outputDirectory", "gs://" + artifactBucketName)
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+              .build();
+    }
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
