@@ -19,6 +19,8 @@ jobs:
       security-events: write
       actions: read
       contents: read
+      # Needed for GitHub OIDC token if publish_results is true
+      id-token: write
 
     steps:
       - name: "Checkout code"
