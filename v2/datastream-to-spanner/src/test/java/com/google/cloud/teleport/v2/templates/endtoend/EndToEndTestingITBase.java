@@ -42,10 +42,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
-import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
@@ -59,15 +65,64 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.apache.commons.lang3.StringUtils;
 
 public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(EndToEndTestingITBase.class);
-  private static FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
-  public DatastreamResourceManager datastreamResourceManager;
+  private FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager;
+  protected static DatastreamResourceManager datastreamResourceManager;
   protected JDBCSource jdbcSource;
+
+  protected class DataShard {
+    String dataShardId;
+    String host;
+    String user;
+    String password;
+    String port;
+    String dbName;
+    String namespace;
+    String connectionProperties;
+    ArrayList<Database> databases;
+
+    public DataShard(
+        String dataShardId,
+        String host,
+        String user,
+        String password,
+        String port,
+        String dbName,
+        String namespace,
+        String connectionProperties,
+        ArrayList<Database> databases) {
+
+      this.dataShardId = dataShardId;
+      this.host = host;
+      this.user = user;
+      this.password = password;
+      this.port = port;
+      this.dbName = dbName;
+      this.namespace = namespace;
+      this.connectionProperties = connectionProperties;
+      this.databases = databases;
+    }
+  }
+
+  protected class Database {
+    String dbName;
+    String databaseId;
+    String refDataShardId;
+
+    public Database(String dbName, String databaseId, String refDataShardId) {
+      this.dbName = dbName;
+      this.databaseId = databaseId;
+      this.refDataShardId = refDataShardId;
+    }
+  }
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -162,6 +217,139 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
+  protected void createAndUploadReverseMultiShardConfigToGcs(
+      GcsResourceManager gcsResourceManager, Map<String, CloudSqlResourceManager> shardsList) {
+    JsonArray ja = new JsonArray();
+    for (Entry<String, CloudSqlResourceManager> shardInfo : shardsList.entrySet()) {
+      Shard shard = new Shard();
+      shard.setLogicalShardId(shardInfo.getKey());
+      shard.setUser(shardInfo.getValue().getUsername());
+      shard.setHost(shardInfo.getValue().getHost());
+      shard.setPassword(shardInfo.getValue().getPassword());
+      shard.setPort(String.valueOf(shardInfo.getValue().getPort()));
+      shard.setDbName(shardInfo.getValue().getDatabaseName());
+      JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
+      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
+      ja.add(jsObj);
+    }
+    String shardFileContents = ja.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void createAndUploadBulkShardConfigToGcs(
+      ArrayList<DataShard> dataShardsList, GcsResourceManager gcsResourceManager) {
+    JSONObject bulkConfig = new JSONObject();
+    bulkConfig.put("configType", "dataflow");
+
+    JSONObject shardConfigBulk = new JSONObject();
+
+    JSONObject schemaSourceJson = new JSONObject();
+    schemaSourceJson.put("dataShardId", "");
+    schemaSourceJson.put("host", "");
+    schemaSourceJson.put("user", "");
+    schemaSourceJson.put("password", "");
+    schemaSourceJson.put("port", "");
+    schemaSourceJson.put("dbName", "");
+    shardConfigBulk.put("schemaSource", schemaSourceJson);
+
+    JSONArray dataShardsArray = new JSONArray();
+    if (dataShardsList != null) {
+      for (DataShard shardData : dataShardsList) {
+        JSONObject shardJson = new JSONObject();
+
+        shardJson.put("dataShardId", shardData.dataShardId);
+        shardJson.put("host", shardData.host);
+        shardJson.put("user", shardData.user);
+        shardJson.put("password", shardData.password);
+        shardJson.put("port", shardData.port);
+        shardJson.put("dbName", shardData.dbName);
+        shardJson.put("namespace", shardData.namespace);
+        shardJson.put("connectionProperties", shardData.connectionProperties);
+
+        JSONArray databasesArray = new JSONArray();
+
+        for (Database dbData : shardData.databases) {
+          JSONObject dbJson = new JSONObject();
+          dbJson.put("dbName", dbData.dbName);
+          dbJson.put("databaseId", dbData.databaseId);
+          dbJson.put("refDataShardId", dbData.refDataShardId);
+          databasesArray.put(dbJson);
+        }
+        shardJson.put("databases", databasesArray);
+        dataShardsArray.put(shardJson);
+      }
+    }
+    shardConfigBulk.put("dataShards", dataShardsArray);
+
+    bulkConfig.put("shardConfigurationBulk", shardConfigBulk);
+    String shardFileContents = bulkConfig.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
+  }
+
+  protected void createAndUploadShardContextFileToGcs(
+      Map<String, Map<String, String>> streamDbMapping, GcsResourceManager gcsResourceManager) {
+    JSONObject shardConfig = new JSONObject();
+    JSONObject streams = new JSONObject();
+
+    for (String stream : streamDbMapping.keySet()) {
+      JSONObject dbs = new JSONObject();
+      for (String db : streamDbMapping.get(stream).keySet()) {
+        dbs.put(db, streamDbMapping.get(stream).get(db));
+      }
+      streams.put(stream, dbs);
+    }
+
+    shardConfig.put("StreamToDbAndShardMap", streams);
+    String shardFileContents = shardConfig.toString();
+    LOG.info("Shard context file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/sharding-context.json", shardFileContents);
+  }
+
+  protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
+      String jobName,
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      Boolean multiSharded)
+      throws IOException {
+    // launch dataflow template
+    if (multiSharded) {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Sourcedb_to_Spanner_Flex")
+              .withTemplateModulePath("v2/sourcedb-to-spanner")
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("outputDirectory", "gs://" + artifactBucketName)
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter(
+                  "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+              .build();
+    } else {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Sourcedb_to_Spanner_Flex")
+              .withTemplateModulePath("v2/sourcedb-to-spanner")
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("outputDirectory", "gs://" + artifactBucketName)
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+              .build();
+    }
+
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
+  }
+
   public String getGcsFullPath(
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
@@ -169,13 +357,13 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchRRDataflowJob(
+      String jobName,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
       PubsubResourceManager pubsubResourceManager,
       String sourceType)
       throws IOException {
-    String rrJobName = PipelineUtils.createJobName("rrev-it" + testName);
 
     // create subscription
     SubscriptionName rrSubscriptionName =
@@ -188,7 +376,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
     // Launch Dataflow template
     flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(rrJobName)
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Spanner_to_SourceDb")
             .withTemplateModulePath("v2/spanner-to-sourcedb")
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
@@ -225,9 +413,13 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   public PipelineLauncher.LaunchInfo launchFwdDataflowJob(
+      String jobName,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
-      PubsubResourceManager pubsubResourceManager)
+      PubsubResourceManager pubsubResourceManager,
+      Boolean multiSharded,
+      Map<String, String> dbs,
+      Boolean backfill)
       throws IOException {
     String testRootDir = getClass().getSimpleName();
 
@@ -256,28 +448,60 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             .setPrivateConnectivity("datastream-private-connect-us-central1")
             .build();
     Stream stream =
-        createDataStreamResources(artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager);
+        createDataStreamResources(
+            artifactBucket, gcsPrefix, jdbcSource, datastreamResourceManager, backfill);
+    if (multiSharded) {
+      createAndUploadShardContextFileToGcs(
+          new HashMap<>() {
+            {
+              put(stream.getDisplayName(), dbs);
+            }
+          },
+          gcsResourceManager);
+    }
 
-    String jobName = PipelineUtils.createJobName("fwd-" + getClass().getSimpleName());
-    // launch dataflow template
-    flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(jobName)
-            .withTemplateName("Cloud_Datastream_to_Spanner")
-            .withTemplateModulePath("v2/datastream-to-spanner")
-            .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
-            .addParameter("streamName", stream.getName())
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("projectId", PROJECT)
-            .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
-            .addParameter("gcsPubSubSubscription", subscription.toString())
-            .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
-            .addParameter("datastreamSourceType", "mysql")
-            .addParameter("inputFileFormat", "avro")
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
-            .build();
+    if (multiSharded) {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Cloud_Datastream_to_Spanner")
+              .withTemplateModulePath("v2/datastream-to-spanner")
+              .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
+              .addParameter("streamName", stream.getName())
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+              .addParameter("gcsPubSubSubscription", subscription.toString())
+              .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+              .addParameter("datastreamSourceType", "mysql")
+              .addParameter("inputFileFormat", "avro")
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter(
+                  "shardingContextFilePath",
+                  getGcsPath("input/sharding-context.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("use_runner_v2"))
+              .build();
+    } else {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Cloud_Datastream_to_Spanner")
+              .withTemplateModulePath("v2/datastream-to-spanner")
+              .addParameter("inputFilePattern", getGcsPath(artifactBucket, gcsPrefix))
+              .addParameter("streamName", stream.getName())
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("deadLetterQueueDirectory", getGcsPath(artifactBucket, dlqGcsPrefix))
+              .addParameter("gcsPubSubSubscription", subscription.toString())
+              .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+              .addParameter("datastreamSourceType", "mysql")
+              .addParameter("inputFileFormat", "avro")
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("use_runner_v2"))
+              .build();
+    }
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
@@ -289,7 +513,8 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       String artifactBucketName,
       String gcsPrefix,
       JDBCSource jdbcSource,
-      DatastreamResourceManager datastreamResourceManager) {
+      DatastreamResourceManager datastreamResourceManager,
+      Boolean backfill) {
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("mysql", jdbcSource);
 
@@ -302,8 +527,15 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
             DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT);
 
     // Create and start DataStream stream
-    Stream stream =
-        datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
+    Stream stream;
+    if (backfill) {
+      stream =
+          datastreamResourceManager.createStream("ds-spanner", sourceConfig, destinationConfig);
+    } else {
+      stream =
+          datastreamResourceManager.createStreamWoBackfill(
+              "ds-spanner", sourceConfig, destinationConfig);
+    }
     datastreamResourceManager.startStream(stream);
     return stream;
   }
@@ -313,6 +545,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       Integer numRows,
       Map<String, Object> columns,
       Map<String, List<Map<String, Object>>> cdcEvents,
+      Integer startValue,
       CloudSqlResourceManager cloudSqlResourceManager) {
     return new ConditionCheck() {
       @Override
@@ -322,22 +555,41 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
 
       @Override
       protected CheckResult check() {
-        boolean success = true;
         List<String> messages = new ArrayList<>();
         List<Map<String, Object>> rows = new ArrayList<>();
-        for (int i = 0; i < numRows; i++) {
+        for (int i = startValue; i < numRows + startValue; i++) {
           Map<String, Object> values = new HashMap<>();
           values.put("id", i);
           values.putAll(columns);
           rows.add(values);
         }
         cdcEvents.put(tableName, rows);
-        success &= cloudSqlResourceManager.write(tableName, rows);
+        boolean success = cloudSqlResourceManager.write(tableName, rows);
+        LOG.info(String.format("%d rows to %s", rows.size(), tableName));
         messages.add(String.format("%d rows to %s", rows.size(), tableName));
-
         return new CheckResult(success, "Sent " + String.join(", ", messages) + ".");
       }
     };
+  }
+
+  protected boolean writeRows(
+      String tableName,
+      Integer numRows,
+      Map<String, Object> columns,
+      Map<String, List<Map<String, Object>>> cdcEvents,
+      Integer startValue,
+      CloudSqlResourceManager cloudSqlResourceManager) {
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (int i = startValue; i < numRows + startValue; i++) {
+      Map<String, Object> values = new HashMap<>();
+      values.put("id", i);
+      values.putAll(columns);
+      rows.add(values);
+    }
+    cdcEvents.put(tableName, rows);
+    boolean success = cloudSqlResourceManager.write(tableName, rows);
+    LOG.info(String.format("%d rows to %s", rows.size(), tableName));
+    return success;
   }
 
   protected String generateSessionFile(String srcDb, String spannerDb, String sessionFileResource)
@@ -361,5 +613,123 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         .setAllowedTables(
             Map.of(cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList()))
         .build();
+  }
+
+  protected String generateSessionFile(
+      JDBCSource jdbcSourceShard,
+      CloudSqlResourceManager cloudSqlResourceManager,
+      SpannerResourceManager spannerResourceManager)
+      throws IOException, InterruptedException {
+    String spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
+    if (StringUtils.isBlank(spannerMigrationToolPath)) {
+      throw new RuntimeException(
+          "Error: spanner_migration_tool_path environment variable is not set or is empty.");
+    }
+    List<String> command = new ArrayList<>();
+    command.add(spannerMigrationToolPath);
+    command.add("schema");
+    command.add("--source=MySQL");
+    String sourceProfile =
+        String.format(
+            "host=%s,port=%s,user=%s,password=%s,dbName=%s",
+            jdbcSourceShard.hostname(),
+            jdbcSourceShard.port(),
+            jdbcSourceShard.username(),
+            jdbcSourceShard.password(),
+            cloudSqlResourceManager.getDatabaseName());
+    command.add("--source-profile=" + sourceProfile);
+    String targetProfile =
+        String.format("project=%s,instance=%s", PROJECT, spannerResourceManager.getInstanceId());
+    command.add("--target-profile=" + targetProfile);
+    command.add("--project=span-cloud-testing");
+
+    ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+    Process process = processBuilder.start();
+    // Regex to capture the session filename
+    Pattern sessionFilePattern =
+        Pattern.compile("^Wrote session to file '([^']+\\.session\\.json)'\\.?$");
+
+    final List<String> capturedOutputLines = new ArrayList<>();
+    final List<String> capturedErrorLines = new ArrayList<>();
+    String[] tempCapturedSessionFileName = new String[1]; // Effectively final for lambda
+
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    // Read stdout
+    Future<?> stdoutFuture =
+        executor.submit(
+            () -> {
+              try (BufferedReader reader =
+                  new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                  System.out.println("TOOL_STDOUT: " + line); // Log all output
+                  capturedOutputLines.add(line);
+                  Matcher matcher = sessionFilePattern.matcher(line);
+                  if (matcher.find()) {
+                    tempCapturedSessionFileName[0] = matcher.group(1);
+                    System.out.println(
+                        ">>>> Captured session filename: " + tempCapturedSessionFileName[0]);
+                  }
+                }
+              } catch (IOException e) {
+                System.err.println("Error reading tool stdout: " + e.getMessage());
+              }
+            });
+
+    // Read stderr
+    Future<?> stderrFuture =
+        executor.submit(
+            () -> {
+              try (BufferedReader reader =
+                  new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                  System.err.println("TOOL_STDERR: " + line); // Log all error output
+                  capturedErrorLines.add(line);
+                }
+              } catch (IOException e) {
+                System.err.println("Error reading tool stderr: " + e.getMessage());
+              }
+            });
+
+    boolean exited = process.waitFor(5, TimeUnit.MINUTES);
+
+    // Wait for stream readers to finish
+    try {
+      stdoutFuture.get(1, TimeUnit.MINUTES); // Timeout for stdout reader
+      stderrFuture.get(1, TimeUnit.MINUTES); // Timeout for stderr reader
+    } catch (Exception e) {
+      System.err.println(
+          "Timeout or error waiting for stream readers to finish: " + e.getMessage());
+    }
+    executor.shutdownNow(); // Terminate threads if they are still running
+
+    if (exited) {
+      if (process.exitValue() != 0) {
+        throw new RuntimeException(
+            "Spanner Migration Tool failed with exit code: "
+                + process.exitValue()
+                + "\nSTDOUT:\n"
+                + String.join("\n", capturedOutputLines)
+                + "\nSTDERR:\n"
+                + String.join("\n", capturedErrorLines));
+      }
+      if (tempCapturedSessionFileName[0] != null) {
+        return tempCapturedSessionFileName[0];
+      } else {
+        System.out.println("Warning: Session filename was not found in the tool output.");
+        return "";
+      }
+    } else {
+      process.destroyForcibly();
+      throw new RuntimeException(
+          "Spanner Migration Tool timed out."
+              + "\nPartial STDOUT:\n"
+              + String.join("\n", capturedOutputLines)
+              + "\nPartial STDERR:\n"
+              + String.join("\n", capturedErrorLines));
+    }
   }
 }
