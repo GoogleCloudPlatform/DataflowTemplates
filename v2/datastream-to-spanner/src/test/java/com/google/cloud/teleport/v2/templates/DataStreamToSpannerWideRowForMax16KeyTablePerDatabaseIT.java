@@ -57,7 +57,7 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore("Triaging flaky test")
+@Ignore("Triaging flaky test") // TODO(b/424087227)
 public class DataStreamToSpannerWideRowForMax16KeyTablePerDatabaseIT
     extends DataStreamToSpannerITBase {
 

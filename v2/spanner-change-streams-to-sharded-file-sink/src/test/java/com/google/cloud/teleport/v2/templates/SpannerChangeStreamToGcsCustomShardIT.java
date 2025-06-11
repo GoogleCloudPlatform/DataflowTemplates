@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerChangeStreamsToShardedFileSink.class)
 @RunWith(JUnit4.class)
+@Ignore("The template is being deprecated.")
 public class SpannerChangeStreamToGcsCustomShardIT extends SpannerChangeStreamToGcsITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerChangeStreamToGcsCustomShardIT.class);

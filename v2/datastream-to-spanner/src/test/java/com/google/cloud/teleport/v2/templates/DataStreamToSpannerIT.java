@@ -73,7 +73,7 @@ import org.junit.runners.Parameterized;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(Parameterized.class)
-@Ignore("Triaging flaky test")
+@Ignore("Triaging flaky test") // TODO(b/424086159)
 public class DataStreamToSpannerIT extends SpannerTemplateITBase {
 
   enum JDBCType {

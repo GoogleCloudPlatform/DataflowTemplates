@@ -56,6 +56,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(GCSToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("The template is being deprecated.")
 public class GCSToSourceDbWithReaderIT extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(GCSToSourceDbWithReaderIT.class);

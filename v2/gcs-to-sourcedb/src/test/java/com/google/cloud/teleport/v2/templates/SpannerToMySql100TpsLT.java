@@ -45,6 +45,7 @@ import org.slf4j.LoggerFactory;
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(GCSToSourceDb.class)
 @RunWith(JUnit4.class)
+@Ignore("The template is being deprecated.")
 public class SpannerToMySql100TpsLT extends SpannerToJdbcLTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySql100TpsLT.class);
