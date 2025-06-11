@@ -39,7 +39,7 @@ public class MySQLSourceDbtoSpannerWideRow10MBPerCellLT extends SourceDbToSpanne
     String username = "user";
     String password = "password";
     String database = "10MBStringCell";
-    String host = "34.55.186.150";
+    String host = "10.37.240.10";
     int port = 3306;
 
     setUp(SQLDialect.MYSQL, host, port, username, password, database);
