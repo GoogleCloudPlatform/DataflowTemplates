@@ -91,8 +91,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
         }
       };
 
-  private static final Integer NUM_EVENTS = 2;
-
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
    *
@@ -141,6 +139,10 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
 
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();
+
+        // Write rows to mysql
+        writeRows(TABLE, 2, COLUMNS, new HashMap<>(), 1, cloudSqlResourceManagerShardA);
+        writeRows(TABLE, 2, COLUMNS, new HashMap<>(), 1, cloudSqlResourceManagerShardB);
 
         // launch forward migration template
         fwdJobInfo =
@@ -224,10 +226,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(
-                        TABLE, NUM_EVENTS, COLUMNS, cdcEvents, 0, cloudSqlResourceManagerShardA),
-                    writeJdbcData(
-                        TABLE, NUM_EVENTS, COLUMNS, cdcEvents, 0, cloudSqlResourceManagerShardB),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(4)
                         .setMaxRows(4)
