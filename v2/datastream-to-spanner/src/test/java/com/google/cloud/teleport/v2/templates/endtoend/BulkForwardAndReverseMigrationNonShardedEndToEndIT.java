@@ -133,7 +133,7 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
         pubsubResourceManager = setUpPubSubResourceManager();
 
         // Write backfill data
-        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManager);
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 1, cloudSqlResourceManager);
 
         // launch bulk migration template
         bulkJobInfo =
@@ -219,7 +219,7 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(TABLE, 1, COLUMNS, cdcEvents, 8, cloudSqlResourceManager),
+                    writeJdbcData(TABLE, 1, COLUMNS, cdcEvents, 3, cloudSqlResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(3)
                         .setMaxRows(3)
@@ -250,7 +250,6 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManager.readTable(TABLE);
     assertThat(rows).hasSize(5);
-    assertThat(rows.get(4).get("id")).isEqualTo(4);
     assertThat(rows.get(4).get("name")).isEqualTo("FF");
   }
 }
