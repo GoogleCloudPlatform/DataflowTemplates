@@ -141,6 +141,7 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
                 PipelineUtils.createJobName("bulk" + getClass().getSimpleName()),
                 spannerResourceManager,
                 gcsResourceManager,
+                cloudSqlResourceManager,
                 false);
 
         // launch forward migration template

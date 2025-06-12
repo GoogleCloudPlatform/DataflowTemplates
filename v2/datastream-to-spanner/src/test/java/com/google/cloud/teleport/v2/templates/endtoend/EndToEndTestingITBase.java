@@ -311,6 +311,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       String jobName,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
+      CloudSqlResourceManager cloudSqlResourceManager,
       Boolean multiSharded)
       throws IOException {
     // launch dataflow template
@@ -339,6 +340,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
               .addParameter("projectId", PROJECT)
               .addParameter("outputDirectory", "gs://" + artifactBucketName)
               .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter("sourceConfigURL", cloudSqlResourceManager.getUri())
+              .addParameter("username", cloudSqlResourceManager.getUsername())
+              .addParameter("password", cloudSqlResourceManager.getPassword())
+              .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
               .addEnvironmentVariable(
                   "additionalExperiments", Collections.singletonList("disable_runner_v2"))
               .build();
