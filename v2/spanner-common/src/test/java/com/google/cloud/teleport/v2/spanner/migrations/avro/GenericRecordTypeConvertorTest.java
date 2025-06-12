@@ -452,9 +452,10 @@ public class GenericRecordTypeConvertorTest {
    */
   @Test
   public void testPrimitiveAndNonPrimitiveTypesHandling() throws InvalidTransformationException {
+    final String tableName = "few_types";
     Ddl ddl =
         Ddl.builder(Dialect.GOOGLE_STANDARD_SQL)
-            .createTable("few_types")
+            .createTable(tableName)
             .column("booleanCol")
             .bool()
             .notNull()
@@ -479,13 +480,24 @@ public class GenericRecordTypeConvertorTest {
             .endColumn()
             .endTable()
             .build();
+    final ISchemaMapper schemaMapper = new IdentityMapper(ddl);
     GenericRecordTypeConvertor genericRecordTypeConvertor =
-        new GenericRecordTypeConvertor(new IdentityMapper(ddl), "", null, null);
+        new GenericRecordTypeConvertor(schemaMapper, "", null, null);
+    /*
+     * BooleanNull Column and BooelanNotNullColumn test avro schema which
+     * is unioned with NUll and also columns that don't exist in Spanner DDL.
+     */
     Schema payloadSchema =
         SchemaBuilder.record("payload")
             .fields()
             .name("booleanCol")
             .type(SchemaBuilder.builder().booleanType())
+            .noDefault()
+            .name("booleanNullCol")
+            .type(SchemaBuilder.builder().unionOf().nullType().and().booleanType().endUnion())
+            .noDefault()
+            .name("booleanNotNullCol")
+            .type(SchemaBuilder.builder().unionOf().nullType().and().booleanType().endUnion())
             .noDefault()
             .name("intervalNanoCol")
             .type(AvroTestingHelper.INTERVAL_NANOS_SCHEMA)
@@ -511,6 +523,8 @@ public class GenericRecordTypeConvertorTest {
     GenericRecord payload =
         new GenericRecordBuilder(payloadSchema)
             .set("booleanCol", true)
+            .set("booleanNullCol", null)
+            .set("booleanNotNullCol", false)
             .set(
                 "intervalNanoCol",
                 AvroTestingHelper.createIntervalNanosRecord(
@@ -543,6 +557,42 @@ public class GenericRecordTypeConvertorTest {
                 Type.bool(),
                 getTestCassandraAnnotationNone()))
         .isEqualTo(Value.bool(true));
+    // Test Handling for DLQ path.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("booleanCol"), tableName, schemaMapper))
+        .isEqualTo(true);
+
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("booleanNullCol"),
+                payloadSchema.getField("booleanNullCol").schema(),
+                "booleanNullCol",
+                Type.bool(),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.bool(null));
+    // Test Handling for DLQ path for Null.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("booleanNullCol"), tableName, schemaMapper))
+        .isEqualTo(null);
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                null, payloadSchema.getField("booleanNullCol"), tableName, schemaMapper))
+        .isEqualTo(null);
+    assertThat(
+            genericRecordTypeConvertor.getSpannerValue(
+                payload.get("booleanNotNullCol"),
+                payloadSchema.getField("booleanNotNullCol").schema(),
+                "booleanNotNullCol",
+                Type.bool(),
+                getTestCassandraAnnotationNone()))
+        .isEqualTo(Value.bool(false));
+    // Test Handling for DLQ path for Null.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("booleanNotNullCol"), tableName, schemaMapper))
+        .isEqualTo(false);
 
     assertThat(
             genericRecordTypeConvertor.getSpannerValue(
@@ -552,6 +602,11 @@ public class GenericRecordTypeConvertorTest {
                 Type.string(),
                 getTestCassandraAnnotationNone()))
         .isEqualTo(Value.string("P1000Y1000M3890DT30H31M12.000000009S"));
+    // Test Handling for DLQ path.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("intervalNanoCol"), tableName, schemaMapper))
+        .isEqualTo("P1000Y1000M3890DT30H31M12.000000009S");
 
     assertThat(
             genericRecordTypeConvertor.getSpannerValue(
@@ -561,6 +616,11 @@ public class GenericRecordTypeConvertorTest {
                 Type.timestamp(),
                 getTestCassandraAnnotationNone()))
         .isEqualTo(Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z")));
+    // Test Handling for DLQ path.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("timeStampCol"), tableName, schemaMapper))
+        .isEqualTo("2020-10-13T14:30:00.056Z");
 
     assertThat(
             genericRecordTypeConvertor.getSpannerValue(
@@ -570,6 +630,11 @@ public class GenericRecordTypeConvertorTest {
                 Type.array(Type.bool()),
                 getTestCassandraAnnotationNone()))
         .isEqualTo(Value.boolArray(ImmutableList.of(true, false)));
+    // Test Handling for DLQ path.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("booleanArrayCol"), tableName, schemaMapper))
+        .isEqualTo(ImmutableList.of(true, false).toArray());
 
     assertThat(
             genericRecordTypeConvertor.getSpannerValue(
@@ -584,6 +649,16 @@ public class GenericRecordTypeConvertorTest {
                     "P1000Y1000M3890DT30H31M12.000000009S",
                     "P1000Y1000M3890DT30H31M12.000000009S",
                     "P1000Y1000M3890DT25H12.000000009S")));
+    // Test Handling for DLQ path.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("intervalNanoArrayCol"), tableName, schemaMapper))
+        .isEqualTo(
+            ImmutableList.of(
+                    "P1000Y1000M3890DT30H31M12.000000009S",
+                    "P1000Y1000M3890DT30H31M12.000000009S",
+                    "P1000Y1000M3890DT25H12.000000009S")
+                .toArray());
 
     assertThat(
             genericRecordTypeConvertor.getSpannerValue(
@@ -593,6 +668,12 @@ public class GenericRecordTypeConvertorTest {
                 Type.array(Type.timestamp()),
                 getTestCassandraAnnotationNone()))
         .isEqualTo(Value.timestampArray(expectedTimeStampArray));
+
+    // Test Handling for DLQ path.
+    assertThat(
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                payload, payloadSchema.getField("timeStampArrayCol"), tableName, schemaMapper))
+        .isEqualTo(new String[] {"2020-10-13T14:30:00.056Z", null});
 
     /* Pass through for non-array types */
     assertThat(

@@ -299,9 +299,11 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
     } catch (DroppedTableException e) {
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
-      LOG.warn(e.getMessage());
+      // Note that this is not loogged to DLQ!!
+      LOG.error("Table dropped during migration for changeEventMessage {}", msg, e.getMessage());
       droppedTableExceptions.inc();
     } catch (InvalidChangeEventException e) {
+      LOG.error("Invalid Change Exception", e);
       // Errors that result from invalid change events.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       invalidEvents.inc();
@@ -310,6 +312,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
             .inc();
       }
     } catch (ChangeEventConvertorException e) {
+      LOG.error("Conversion Error", e);
       // Errors that result during Event conversions are not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       if (migrationShardId != null) {
@@ -358,6 +361,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         retryableErrors.inc();
       }
     } catch (Exception e) {
+      LOG.error("Unhandled Exception", e);
       // Any other errors are considered severe and not retryable.
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
