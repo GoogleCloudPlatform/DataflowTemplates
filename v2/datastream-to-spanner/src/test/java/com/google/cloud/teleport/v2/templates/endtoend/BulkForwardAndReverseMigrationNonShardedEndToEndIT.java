@@ -250,6 +250,7 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManager.readTable(TABLE);
     assertThat(rows).hasSize(5);
-    assertThat(rows.get(4).get("name")).isEqualTo("FF");
+    assertThat(rows.get(3).get("id")).isEqualTo(4);
+    assertThat(rows.get(3).get("name")).isEqualTo("FF");
   }
 }
