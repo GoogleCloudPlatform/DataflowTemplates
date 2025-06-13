@@ -15,12 +15,14 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.joda.time.Duration;
 import org.junit.Test;
 import org.mockito.Mockito;
 
@@ -34,10 +36,17 @@ public class SourceDbToSpannerTest {
     when(mockOptions.getSpannerHost()).thenReturn("testHost");
     when(mockOptions.getInstanceId()).thenReturn("testInstance");
     when(mockOptions.getDatabaseId()).thenReturn("testDatabaseId");
+    when(mockOptions.getMaxCommitDelay()).thenReturn(-1L).thenReturn(42L);
 
+    // For first set of mocks.
     SpannerConfig config = SourceDbToSpanner.createSpannerConfig(mockOptions);
     assertEquals(config.getProjectId().get(), "testProject");
     assertEquals(config.getInstanceId().get(), "testInstance");
     assertEquals(config.getDatabaseId().get(), "testDatabaseId");
+    assertThat(config.getMaxCommitDelay()).isNull();
+
+    // For second set of mocks.
+    config = SourceDbToSpanner.createSpannerConfig(mockOptions);
+    assertEquals(config.getMaxCommitDelay().get(), Duration.millis(42L));
   }
 }
