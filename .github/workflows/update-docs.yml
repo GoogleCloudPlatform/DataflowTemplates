@@ -21,6 +21,9 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Install Templates Plugin
+        run: |
+          mvn clean install -pl plugins/templates-maven-plugin -am
       - name: Generate Documentation
         run: |
           mvn clean prepare-package \
