@@ -5,6 +5,9 @@ on:
     - cron: '0 16 * * 2' # Every Tuesday at 11 AM EST (16:00 UTC)
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   update-docs:
     name: Update Template Documentation
@@ -30,17 +33,8 @@ jobs:
             -DskipTests \
             -PtemplatesSpec
 
-      - name: Check for changes
-        id: changes
-        run: |
-          git status --porcelain
-          if [[ -z $(git status --porcelain) ]]; then
-            echo "no_changes=true" >> $GITHUB_OUTPUT
-          fi
-
       - name: Create Pull Request
-        if: steps.changes.outputs.no_changes != 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: 'docs: update generated documentation'
@@ -51,3 +45,4 @@ jobs:
           branch: chore/update-generated-docs
           base: main
           labels: 'owl-bot-copy'
+          team-reviewers: GoogleCloudPlatform/dataflow-templates-wg
