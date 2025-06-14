@@ -35,37 +35,37 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.csv)"
+  description = "The CSV files to read input data records from. Wildcards are also accepted. For example, `gs://mybucket/my_csv_filename.csv or gs://mybucket/file-*.csv`"
 
 }
 
 variable "deidentifyTemplateName" {
   type        = string
-  description = "Cloud DLP template to deidentify contents. Must be created here: https://console.cloud.google.com/security/dlp/create/template. (Example: projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id)"
+  description = "The Sensitive Data Protection de-identification template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/deidentifyTemplates/<TEMPLATE_ID>`. For example, `projects/your-project-id/locations/global/deidentifyTemplates/generated_template_id`"
 
 }
 
 variable "inspectTemplateName" {
   type        = string
-  description = "Cloud DLP template to inspect contents. (Example: projects/your-project-id/locations/global/inspectTemplates/generated_template_id)"
+  description = "The Sensitive Data Protection inspection template to use for API requests, specified with the pattern `projects/<PROJECT_ID>/identifyTemplates/<TEMPLATE_ID>`. For example, `projects/your-project-id/locations/global/inspectTemplates/generated_template_id`"
   default     = null
 }
 
 variable "batchSize" {
   type        = number
-  description = "Batch size contents (number of rows) to optimize DLP API call. Total size of the rows must not exceed 512 KB and total cell count must not exceed 50,000. Default batch size is set to 100. Ex. 1000"
+  description = "The chunking or batch size to use for sending data to inspect and detokenize. For a CSV file, the value of `batchSize` is the number of rows in a batch. Determine the batch size based on the size of the records and the sizing of the file. The DLP API has a payload size limit of 524 KB per API call."
   default     = null
 }
 
 variable "datasetName" {
   type        = string
-  description = "BigQuery Dataset to be used. Dataset must exist prior to execution. Ex. pii_dataset"
+  description = "The BigQuery dataset to use when sending tokenized results. The dataset must exist prior to execution."
 
 }
 
 variable "dlpProjectId" {
   type        = string
-  description = "Cloud DLP project ID to be used for data masking/tokenization. Ex. your-dlp-project"
+  description = "The ID for the Google Cloud project that owns the DLP API resource. This project can be the same project that owns the Sensitive Data Protection templates, or it can be a separate project."
 
 }
 
@@ -183,6 +183,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

@@ -35,49 +35,49 @@ variable "region" {
 
 variable "jobSpecUri" {
   type        = string
-  description = "The path to the job specification file, which contains the configuration for source and target metadata."
+  description = "The path to the job specification file, which contains the JSON description of data sources, Neo4j targets and actions."
 
 }
 
 variable "neo4jConnectionUri" {
   type        = string
-  description = "The path to Neo4j connection metadata JSON file. This is an alternative to the secret option."
+  description = "The path to the Neo4j connection JSON file."
   default     = null
 }
 
 variable "neo4jConnectionSecretId" {
   type        = string
-  description = "The secret ID for the Neo4j connection metadata. This is an alternative to the GCS path option."
+  description = "The secret ID for the Neo4j connection metadata. You can use this value as an alternative to the `neo4jConnectionUri`."
   default     = null
 }
 
 variable "optionsJson" {
   type        = string
-  description = "Options JSON. Use runtime tokens. (Example: {token1:value1,token2:value2}). Defaults to empty."
+  description = "A JSON object that is also called runtime tokens For example, `{token1:value1,token2:value2}. Spec can refer to $token1 and $token2.`. Defaults to empty."
   default     = null
 }
 
 variable "readQuery" {
   type        = string
-  description = "Override SQL query. Defaults to empty."
+  description = "SQL query override. Defaults to empty."
   default     = null
 }
 
 variable "inputFilePattern" {
   type        = string
-  description = "Override text file pattern (Example: gs://your-bucket/path/*.json). Defaults to empty."
+  description = "The text file path override For example, `gs://your-bucket/path/*.json`. Defaults to empty."
   default     = null
 }
 
 variable "disabledAlgorithms" {
   type        = string
-  description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
+  description = "Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`"
   default     = null
 }
 
 variable "extraFilesToStage" {
   type        = string
-  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
+  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`"
   default     = null
 }
 
@@ -145,7 +145,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -228,6 +229,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

@@ -33,21 +33,27 @@ variable "region" {
   description = "The region in which the created job should run."
 }
 
+variable "sourceDbDialect" {
+  type        = string
+  description = "Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL."
+  default     = null
+}
+
 variable "jdbcDriverJars" {
   type        = string
-  description = "The comma-separated list of driver JAR files. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar). Defaults to empty."
+  description = "The comma-separated list of driver JAR files. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`. Defaults to empty."
   default     = null
 }
 
 variable "jdbcDriverClassName" {
   type        = string
-  description = "The JDBC driver class name. (Example: com.mysql.jdbc.Driver). Defaults to: com.mysql.jdbc.Driver."
+  description = "The JDBC driver class name. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver."
   default     = null
 }
 
-variable "sourceDbURL" {
+variable "sourceConfigURL" {
   type        = string
-  description = "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
+  description = "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config"
 
 }
 
@@ -65,13 +71,19 @@ variable "password" {
 
 variable "tables" {
   type        = string
-  description = "Tables to read from using partitions. Defaults to empty."
+  description = "Tables to migrate from source. Defaults to empty."
   default     = null
 }
 
 variable "numPartitions" {
   type        = number
   description = "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1. Defaults to: 0."
+  default     = null
+}
+
+variable "fetchSize" {
+  type        = number
+  description = "The number of rows to fetch per page read for JDBC source. If not set, the default of JdbcIO of 50_000 rows gets used. If source dialect is Mysql, please see the note below. This ultimately translated to Statement.setFetchSize call at Jdbc layer. It should ONLY be used if the default value throws memory errors.Note for MySql Source:  FetchSize is ignored by the Mysql connector unless, `useCursorFetch=true` is also part of the connection properties.In case, the fetchSize parameter is explicitly set, for MySql dialect, the pipeline will add `useCursorFetch=true` to the connection properties by default."
   default     = null
 }
 
@@ -95,13 +107,13 @@ variable "projectId" {
 
 variable "spannerHost" {
   type        = string
-  description = "The Cloud Spanner endpoint to call in the template. (Example: https://batch-spanner.googleapis.com). Defaults to: https://batch-spanner.googleapis.com."
+  description = "The Cloud Spanner endpoint to call in the template. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com."
   default     = null
 }
 
 variable "maxConnections" {
   type        = number
-  description = "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. (Example: -1). Defaults to: 0."
+  description = "Configures the JDBC connection pool on each worker with maximum number of connections. Use a negative number for no limit. For example, `-1`. Defaults to: 0."
   default     = null
 }
 
@@ -111,27 +123,87 @@ variable "sessionFilePath" {
   default     = null
 }
 
-variable "DLQDirectory" {
+variable "outputDirectory" {
   type        = string
-  description = "This directory is used to dump the failed records in a migration."
+  description = "This directory is used to dump the failed/skipped/filtered records in a migration."
 
+}
+
+variable "transformationJarPath" {
+  type        = string
+  description = "Custom jar location in Cloud Storage that contains the custom transformation logic for processing records. Defaults to empty."
+  default     = null
+}
+
+variable "transformationClassName" {
+  type        = string
+  description = "Fully qualified class name having the custom transformation logic. It is a mandatory field in case transformationJarPath is specified. Defaults to empty."
+  default     = null
+}
+
+variable "transformationCustomParameters" {
+  type        = string
+  description = "String containing any custom parameters to be passed to the custom transformation class. Defaults to empty."
+  default     = null
+}
+
+variable "namespace" {
+  type        = string
+  description = "Namespace to exported. For PostgreSQL, if no namespace is provided, 'public' will be used. Defaults to empty."
+  default     = null
+}
+
+variable "insertOnlyModeForSpannerMutations" {
+  type        = string
+  description = "By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten."
+  default     = null
+}
+
+variable "batchSizeForSpannerMutations" {
+  type        = string
+  description = "BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations."
+  default     = null
+}
+
+variable "spannerPriority" {
+  type        = string
+  description = "The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `MEDIUM`."
+  default     = null
+}
+
+variable "tableOverrides" {
+  type        = string
+  description = "These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty."
+  default     = null
+}
+
+variable "columnOverrides" {
+  type        = string
+  description = "These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty."
+  default     = null
+}
+
+variable "schemaOverridesFilePath" {
+  type        = string
+  description = "A file which specifies the table and the column name overrides from source to spanner. Defaults to empty."
+  default     = null
+}
+
+variable "uniformizationStageCountHint" {
+  type        = string
+  description = "Hint for number of uniformization stages. Currently Applicable only for jdbc based sources like MySQL or PostgreSQL. Leave 0 or default to disable uniformization. Set to -1 for a log(numPartition) number of stages. If your source primary key space is uniformly distributed (for example an auto-incrementing key with sparse holes), it's based to leave it disabled. If your keyspace is not uniform, you might encounter a laggard VM in your dataflow run. In such a case, you can set it to -1 to enable uniformization. Manually setting it to values other than 0 or -1 would help you fine tune the tradeoff of the overhead added by uniformization stages and the  performance improvement due to better distribution of work."
+  default     = null
 }
 
 variable "disabledAlgorithms" {
   type        = string
-  description = "Comma separated algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. (Example: SSLv3, RC4)"
+  description = "Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`"
   default     = null
 }
 
 variable "extraFilesToStage" {
   type        = string
-  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. (Example: gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>)"
-  default     = null
-}
-
-variable "defaultLogLevel" {
-  type        = string
-  description = "Set Log level in the workers. Supported options are OFF, ERROR, WARN, INFO, DEBUG, TRACE. Defaults to INFO"
+  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`"
   default     = null
 }
 
@@ -199,7 +271,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -260,23 +333,35 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Sourcedb_to_Spanner_Flex"
   parameters = {
-    jdbcDriverJars      = var.jdbcDriverJars
-    jdbcDriverClassName = var.jdbcDriverClassName
-    sourceDbURL         = var.sourceDbURL
-    username            = var.username
-    password            = var.password
-    tables              = var.tables
-    numPartitions       = tostring(var.numPartitions)
-    instanceId          = var.instanceId
-    databaseId          = var.databaseId
-    projectId           = var.projectId
-    spannerHost         = var.spannerHost
-    maxConnections      = tostring(var.maxConnections)
-    sessionFilePath     = var.sessionFilePath
-    DLQDirectory        = var.DLQDirectory
-    disabledAlgorithms  = var.disabledAlgorithms
-    extraFilesToStage   = var.extraFilesToStage
-    defaultLogLevel     = var.defaultLogLevel
+    sourceDbDialect                   = var.sourceDbDialect
+    jdbcDriverJars                    = var.jdbcDriverJars
+    jdbcDriverClassName               = var.jdbcDriverClassName
+    sourceConfigURL                   = var.sourceConfigURL
+    username                          = var.username
+    password                          = var.password
+    tables                            = var.tables
+    numPartitions                     = tostring(var.numPartitions)
+    fetchSize                         = tostring(var.fetchSize)
+    instanceId                        = var.instanceId
+    databaseId                        = var.databaseId
+    projectId                         = var.projectId
+    spannerHost                       = var.spannerHost
+    maxConnections                    = tostring(var.maxConnections)
+    sessionFilePath                   = var.sessionFilePath
+    outputDirectory                   = var.outputDirectory
+    transformationJarPath             = var.transformationJarPath
+    transformationClassName           = var.transformationClassName
+    transformationCustomParameters    = var.transformationCustomParameters
+    namespace                         = var.namespace
+    insertOnlyModeForSpannerMutations = var.insertOnlyModeForSpannerMutations
+    batchSizeForSpannerMutations      = var.batchSizeForSpannerMutations
+    spannerPriority                   = var.spannerPriority
+    tableOverrides                    = var.tableOverrides
+    columnOverrides                   = var.columnOverrides
+    schemaOverridesFilePath           = var.schemaOverridesFilePath
+    uniformizationStageCountHint      = var.uniformizationStageCountHint
+    disabledAlgorithms                = var.disabledAlgorithms
+    extraFilesToStage                 = var.extraFilesToStage
   }
 
   additional_experiments       = var.additional_experiments
@@ -291,6 +376,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

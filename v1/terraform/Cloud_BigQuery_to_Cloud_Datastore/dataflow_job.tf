@@ -35,7 +35,7 @@ variable "region" {
 
 variable "readQuery" {
   type        = string
-  description = "SQL query in standard SQL to pull data from BigQuery"
+  description = "A BigQuery SQL query that extracts data from the source. For example, `select * from dataset1.sample_table`."
 
 }
 
@@ -47,13 +47,13 @@ variable "readIdColumn" {
 
 variable "invalidOutputPath" {
   type        = string
-  description = "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path)"
+  description = "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. For example, `gs://your-bucket/your-path`"
   default     = null
 }
 
 variable "datastoreWriteProjectId" {
   type        = string
-  description = "The Google Cloud project ID of where to write Datastore entities"
+  description = "The ID of the Google Cloud project to write the Datastore entities to."
 
 }
 
@@ -70,14 +70,14 @@ variable "datastoreWriteNamespace" {
 }
 
 variable "datastoreHintNumWorkers" {
-  type        = string
-  description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500."
+  type        = number
+  description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to `500`."
   default     = null
 }
 
 variable "errorWritePath" {
   type        = string
-  description = "The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/)"
+  description = "The error log output file to use for write failures that occur during processing. For example, `gs://your-bucket/errors/`"
 
 }
 
@@ -184,7 +184,7 @@ resource "google_dataflow_job" "generated" {
     datastoreWriteProjectId  = var.datastoreWriteProjectId
     datastoreWriteEntityKind = var.datastoreWriteEntityKind
     datastoreWriteNamespace  = var.datastoreWriteNamespace
-    datastoreHintNumWorkers  = var.datastoreHintNumWorkers
+    datastoreHintNumWorkers  = tostring(var.datastoreHintNumWorkers)
     errorWritePath           = var.errorWritePath
   }
 
@@ -197,6 +197,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

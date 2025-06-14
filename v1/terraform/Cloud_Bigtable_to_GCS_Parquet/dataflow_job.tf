@@ -35,39 +35,43 @@ variable "region" {
 
 variable "bigtableProjectId" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from"
+  description = "The ID of the Google Cloud project that contains the Cloud Bigtable instance that you want to read data from."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Cloud Bigtable instance that contains the table."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to export"
+  description = "The ID of the Cloud Bigtable table to export."
 
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path)"
+  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse the directory path for date and time formatters. For example: `gs://your-bucket/your-path`."
 
 }
 
 variable "filenamePrefix" {
   type        = string
-  description = <<EOT
-The prefix of the Parquet file name. For example, "table1-". Defaults to: part.
-EOT
+  description = "The prefix of the Parquet file name. For example, `table1-`. Defaults to: `part`."
   default     = "part"
 }
 
 variable "numShards" {
   type        = number
-  description = "The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. Default value is decided by Dataflow."
+  description = "The maximum number of output shards produced when writing. A higher number of shards means higher throughput for writing to Cloud Storage, but potentially higher data aggregation cost across shards when processing output Cloud Storage files. The default value is decided by Dataflow."
+  default     = null
+}
+
+variable "bigtableAppProfileId" {
+  type        = string
+  description = "The ID of the Bigtable application profile to use for the export. If you don't specify an app profile, Bigtable uses the instance's default app profile: https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile."
   default     = null
 }
 
@@ -168,12 +172,13 @@ resource "google_dataflow_job" "generated" {
   provider          = google
   template_gcs_path = "gs://dataflow-templates-${var.region}/latest/Cloud_Bigtable_to_GCS_Parquet"
   parameters = {
-    bigtableProjectId  = var.bigtableProjectId
-    bigtableInstanceId = var.bigtableInstanceId
-    bigtableTableId    = var.bigtableTableId
-    outputDirectory    = var.outputDirectory
-    filenamePrefix     = var.filenamePrefix
-    numShards          = tostring(var.numShards)
+    bigtableProjectId    = var.bigtableProjectId
+    bigtableInstanceId   = var.bigtableInstanceId
+    bigtableTableId      = var.bigtableTableId
+    outputDirectory      = var.outputDirectory
+    filenamePrefix       = var.filenamePrefix
+    numShards            = tostring(var.numShards)
+    bigtableAppProfileId = var.bigtableAppProfileId
   }
 
   additional_experiments       = var.additional_experiments
@@ -185,6 +190,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork
