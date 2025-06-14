@@ -133,7 +133,7 @@ func (*mvnFlags) RunLoadTestObserver() string {
 
 // The number of modules Maven is going to build in parallel in a multi-module project.
 func (*mvnFlags) ThreadCount(count int) string {
-	return "-T" + strconv.Itoa(count)
+	return "-T" + strconv.Itoa(count) + " -X "
 }
 
 // The number of tests Maven Surefire plugin is going to run in parallel for each Maven build
