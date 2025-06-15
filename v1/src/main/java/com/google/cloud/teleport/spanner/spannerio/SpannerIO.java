@@ -82,6 +82,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.google.protobuf.Value;
 import org.apache.beam.runners.core.metrics.GcpResourceIdentifiers;
 import org.apache.beam.runners.core.metrics.MonitoringInfoConstants;
 import org.apache.beam.runners.core.metrics.ServiceCallMetric;
@@ -480,6 +482,14 @@ public class SpannerIO {
         .build();
   }
 
+  public static ReadAllAsProtos readAllAsValueProtos() {
+    return new AutoValue_SpannerIO_ReadAllAsProtos.Builder()
+        .setSpannerConfig(SpannerConfig.create())
+        .setTimestampBound(TimestampBound.strong())
+        .setBatching(true)
+        .build();
+  }
+
   public static Read readWithSchema() {
     return read()
         .withBeamRowConverters(
@@ -678,6 +688,195 @@ public class SpannerIO {
       } else {
         readTransform =
             NaiveSpannerRead.create(getSpannerConfig(), getTransaction(), getTimestampBound());
+      }
+      return input
+          .apply("Reshuffle", Reshuffle.viaRandomKey())
+          .apply("Read from Cloud Spanner", readTransform);
+    }
+
+    /** Helper function to create ServiceCallMetrics. */
+    static ServiceCallMetric buildServiceCallMetricForReadOp(
+        SpannerConfig config, ReadOperation op) {
+
+      HashMap<String, String> baseLabels = buildServiceCallMetricLabels(config);
+      baseLabels.put(MonitoringInfoConstants.Labels.METHOD, "Read");
+
+      if (op.getQuery() != null) {
+        String queryName = op.getQueryName();
+        if (queryName == null || queryName.isEmpty()) {
+          // if queryName is not specified, use a hash of the SQL statement string.
+          queryName = String.format("UNNAMED_QUERY#%08x", op.getQuery().getSql().hashCode());
+        }
+
+        baseLabels.put(
+            MonitoringInfoConstants.Labels.RESOURCE,
+            GcpResourceIdentifiers.spannerQuery(
+                baseLabels.get(MonitoringInfoConstants.Labels.SPANNER_PROJECT_ID),
+                config.getInstanceId().get(),
+                config.getDatabaseId().get(),
+                queryName));
+        baseLabels.put(MonitoringInfoConstants.Labels.SPANNER_QUERY_NAME, queryName);
+      } else {
+        baseLabels.put(
+            MonitoringInfoConstants.Labels.RESOURCE,
+            GcpResourceIdentifiers.spannerTable(
+                baseLabels.get(MonitoringInfoConstants.Labels.SPANNER_PROJECT_ID),
+                config.getInstanceId().get(),
+                config.getDatabaseId().get(),
+                op.getTable()));
+        baseLabels.put(MonitoringInfoConstants.Labels.TABLE_ID, op.getTable());
+      }
+      return new ServiceCallMetric(MonitoringInfoConstants.Urns.API_REQUEST_COUNT, baseLabels);
+    }
+  }
+
+  @AutoValue
+  public abstract static class ReadAllAsProtos
+      extends PTransform<PCollection<ReadOperation>, PCollection<List<com.google.protobuf.Value>>> {
+
+    abstract SpannerConfig getSpannerConfig();
+
+    abstract @Nullable
+    PCollectionView<com.google.cloud.teleport.spanner.spannerio.Transaction> getTransaction();
+
+    abstract @Nullable TimestampBound getTimestampBound();
+
+    abstract Builder toBuilder();
+
+    @AutoValue.Builder
+    abstract static class Builder {
+
+      abstract Builder setSpannerConfig(SpannerConfig spannerConfig);
+
+      abstract Builder setTransaction(
+          PCollectionView<com.google.cloud.teleport.spanner.spannerio.Transaction> transaction);
+
+      abstract Builder setTimestampBound(TimestampBound timestampBound);
+
+      abstract Builder setBatching(Boolean batching);
+
+      abstract ReadAllAsProtos build();
+    }
+
+    /** Specifies the Cloud Spanner configuration. */
+    public ReadAllAsProtos withSpannerConfig(SpannerConfig spannerConfig) {
+      return toBuilder().setSpannerConfig(spannerConfig).build();
+    }
+
+    /** Specifies the Cloud Spanner project. */
+    public ReadAllAsProtos withProjectId(String projectId) {
+      return withProjectId(ValueProvider.StaticValueProvider.of(projectId));
+    }
+
+    /** Specifies the Cloud Spanner project. */
+    public ReadAllAsProtos withProjectId(ValueProvider<String> projectId) {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withProjectId(projectId));
+    }
+
+    /** Specifies the Cloud Spanner instance. */
+    public ReadAllAsProtos withInstanceId(String instanceId) {
+      return withInstanceId(ValueProvider.StaticValueProvider.of(instanceId));
+    }
+
+    /** Specifies the Cloud Spanner instance. */
+    public ReadAllAsProtos withInstanceId(ValueProvider<String> instanceId) {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withInstanceId(instanceId));
+    }
+
+    /** Specifies the Cloud Spanner database. */
+    public ReadAllAsProtos withDatabaseId(String databaseId) {
+      return withDatabaseId(ValueProvider.StaticValueProvider.of(databaseId));
+    }
+
+    /** Specifies the Cloud Spanner host. */
+    public ReadAllAsProtos withHost(ValueProvider<String> host) {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withHost(host));
+    }
+
+    public ReadAllAsProtos withHost(String host) {
+      return withHost(ValueProvider.StaticValueProvider.of(host));
+    }
+
+    /** Specifies the Cloud Spanner emulator host. */
+    public ReadAllAsProtos withEmulatorHost(ValueProvider<String> emulatorHost) {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withEmulatorHost(emulatorHost));
+    }
+
+    public ReadAllAsProtos withEmulatorHost(String emulatorHost) {
+      return withEmulatorHost(ValueProvider.StaticValueProvider.of(emulatorHost));
+    }
+
+    /** Specifies the Cloud Spanner database. */
+    public ReadAllAsProtos withDatabaseId(ValueProvider<String> databaseId) {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withDatabaseId(databaseId));
+    }
+
+    @VisibleForTesting
+    ReadAllAsProtos withServiceFactory(ServiceFactory<Spanner, SpannerOptions> serviceFactory) {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withServiceFactory(serviceFactory));
+    }
+
+    public ReadAllAsProtos withTransaction(
+        PCollectionView<com.google.cloud.teleport.spanner.spannerio.Transaction> transaction) {
+      return toBuilder().setTransaction(transaction).build();
+    }
+
+    public ReadAllAsProtos withTimestamp(Timestamp timestamp) {
+      return withTimestampBound(TimestampBound.ofReadTimestamp(timestamp));
+    }
+
+    public ReadAllAsProtos withTimestampBound(TimestampBound timestampBound) {
+      return toBuilder().setTimestampBound(timestampBound).build();
+    }
+
+    /**
+     * By default the <a
+     * href="https://cloud.google.com/spanner/docs/reads#read_data_in_parallel">PartitionQuery
+     * API</a> is used to read data from Cloud Spanner. It is useful to disable batching when the
+     * underlying query is not root-partitionable.
+     */
+    public ReadAllAsProtos withBatching(boolean batching) {
+      return toBuilder().setBatching(batching).build();
+    }
+
+    public ReadAllAsProtos withLowPriority() {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withRpcPriority(RpcPriority.LOW));
+    }
+
+    public ReadAllAsProtos withHighPriority() {
+      SpannerConfig config = getSpannerConfig();
+      return withSpannerConfig(config.withRpcPriority(RpcPriority.HIGH));
+    }
+
+    abstract Boolean getBatching();
+
+    @Override
+    public PCollection<List<Value>> expand(PCollection<ReadOperation> input) {
+
+      if (IsBounded.UNBOUNDED == input.isBounded()) {
+        // Warn that SpannerIO.ReadAll should not be used on unbounded inputs.
+        LOG.warn(
+            "SpannerIO.ReadAll({}) is being applied to an unbounded input. "
+                + "This is not supported and can lead to runtime failures.",
+            this.getName());
+      }
+
+      PTransform<PCollection<ReadOperation>, PCollection<List<Value>>> readTransform;
+      if (getBatching()) {
+        readTransform =
+            BatchSpannerReadAsProto.create(getSpannerConfig(), getTransaction(), getTimestampBound());
+      } else {
+        // TODO: fix
+//        readTransform =
+//            NaiveSpannerRead.create(getSpannerConfig(), getTransaction(), getTimestampBound());
+        readTransform = BatchSpannerReadAsProto.create(getSpannerConfig(), getTransaction(), getTimestampBound());
       }
       return input
           .apply("Reshuffle", Reshuffle.viaRandomKey())
