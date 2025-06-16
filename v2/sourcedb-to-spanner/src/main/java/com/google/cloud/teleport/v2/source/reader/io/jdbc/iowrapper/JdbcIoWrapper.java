@@ -307,14 +307,17 @@ public final class JdbcIoWrapper implements IoWrapper {
       } else {
         ImmutableSet<IndexType> supportedIndexTypes =
             ImmutableSet.of(
-                IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED, IndexType.BINARY);
+                IndexType.NUMERIC,
+                IndexType.STRING,
+                IndexType.BIG_INT_UNSIGNED,
+                IndexType.BINARY,
+                IndexType.DATE_TIME);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
         //        Note: most of the implementation is generic for any unique index.
         //        Need to benchmark and do the end to end implementation.
-        //    2. support for DateTime type
-        //    3. support for composite indexes
+        //    2. support for composite indexes
         //       Note: though we have most of the code for composite index, since we cap the
         // splitting stages to 1, additional indexes will not be considered for splitting as of now.
         tableIndexInfo.stream()
