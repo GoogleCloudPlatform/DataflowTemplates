@@ -198,7 +198,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         spannerMetadataResourceManager,
-        gcsResourceManager,
         pubsubResourceManager,
         cloudSqlResourceManagerShardA,
         cloudSqlResourceManagerShardB,
@@ -222,7 +221,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
   }
 
   private void writeRowInMySqlAndAssertRows() {
-    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
