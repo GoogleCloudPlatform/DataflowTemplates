@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
+import java.sql.Timestamp;
 import javax.annotation.Nullable;
 
 @AutoValue
@@ -151,5 +152,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.NUMERIC, Long.class,
           IndexType.STRING, String.class,
           IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
-          IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS);
+          IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
+          IndexType.DATE_TIME, Timestamp.class);
 }

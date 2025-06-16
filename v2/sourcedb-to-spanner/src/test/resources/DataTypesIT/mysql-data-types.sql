@@ -260,6 +260,12 @@ CREATE TABLE tiny_text_pk_table (
    CONSTRAINT PRIMARY KEY (id(20))
 );
 
+CREATE TABLE date_time_pk_table (
+                                    id DATETIME,
+                                    date_time_pk_col DATETIME NOT NULL,
+                                    CONSTRAINT PRIMARY KEY (id)
+);
+
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -396,6 +402,8 @@ INSERT INTO `tiny_blob_pk_table` (`id`, `tiny_blob_pk_col`) VALUES (FROM_BASE64(
 INSERT INTO `char_pk_table` (`id`, `char_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
 INSERT INTO `varchar_pk_table` (`id`, `varchar_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
 INSERT INTO `tiny_text_pk_table` (`id`, `tiny_text_pk_col`) VALUES ('AA==', 'AA=='), ('gAAAAAAAAAA=', 'gAAAAAAAAAA=');
+INSERT INTO `date_time_pk_table` (`id`, `date_time_pk_col`) VALUES ('1000-01-01 00:00:00', '1000-01-01 00:00:00'), ('1000-01-01 00:00:01', '1000-01-01 00:00:01'),
+                                                                   ('9999-12-30 23:59:59', '9999-12-30 23:59:59'),  ('9999-12-31 23:59:59', '9999-12-31 23:59:59');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

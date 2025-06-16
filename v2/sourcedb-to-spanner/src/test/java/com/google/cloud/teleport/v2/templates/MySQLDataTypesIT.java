@@ -251,6 +251,14 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("char_pk", createRows("char_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("varchar_pk", createRows("varchar_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("tiny_text_pk", createRows("tiny_text_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put(
+        "date_time_pk",
+        createRows(
+            "date_time_pk",
+            "1000-01-01T00:00:00Z",
+            "1000-01-01T00:00:01Z",
+            "9999-12-30T23:59:59Z",
+            "9999-12-31T23:59:59Z"));
     return expectedData;
   }
 
