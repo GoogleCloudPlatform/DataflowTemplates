@@ -59,9 +59,9 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @RunWith(JUnit4.class)
 public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
-      "EndToEndTesting/NoneShardedMigration/spanner-schema.sql";
+      "EndToEndTesting/NonShardedMigration/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE =
-      "EndToEndTesting/NoneShardedMigration/session.json";
+      "EndToEndTesting/NonShardedMigration/session.json";
 
   private static final String TABLE = "Authors";
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =

@@ -62,7 +62,7 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/ShardedMigration/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE =
-      "EndToEndTesting/NoneShardedMigration/session.json";
+      "EndToEndTesting/ShardedMigration/session.json";
 
   private static final String TABLE = "Authors";
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =
@@ -198,6 +198,7 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         spannerMetadataResourceManager,
+        gcsResourceManager,
         pubsubResourceManager,
         cloudSqlResourceManagerShardA,
         cloudSqlResourceManagerShardB,
