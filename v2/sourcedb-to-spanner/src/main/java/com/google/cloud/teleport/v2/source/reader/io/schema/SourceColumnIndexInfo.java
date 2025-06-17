@@ -142,7 +142,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     BIG_INT_UNSIGNED,
     BINARY,
     STRING,
-    DATE_TIME,
+    TIME_STAMP,
     OTHER
   };
 
@@ -153,5 +153,5 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.STRING, String.class,
           IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
           IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
-          IndexType.DATE_TIME, Timestamp.class);
+          IndexType.TIME_STAMP, Timestamp.class);
 }

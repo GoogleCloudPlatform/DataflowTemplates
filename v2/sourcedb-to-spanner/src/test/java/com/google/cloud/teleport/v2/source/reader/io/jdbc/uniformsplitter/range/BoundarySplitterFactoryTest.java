@@ -302,6 +302,8 @@ public class BoundarySplitterFactoryTest {
   @Test
   public void testTimeStampSplitting() {
     assertThat(BoundarySplitterFactory.splitInstants(null, null)).isEqualTo(null);
+    assertThat(BoundarySplitterFactory.splitInstants(null, Instant.EPOCH))
+        .isEqualTo(BoundarySplitterFactory.splitInstants(Instant.EPOCH, null));
     assertThat(BoundarySplitterFactory.splitInstants(Instant.MIN, Instant.MAX))
         .isEqualTo(Instant.parse("0000-07-01T23:59:59.999999999Z"));
 
