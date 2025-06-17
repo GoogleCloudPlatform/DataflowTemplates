@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
     displayName = "Spanner Change Streams to Sharded File Sink [Deprecated]",
     description =
         "Streaming pipeline. Ingests data from Spanner Change Streams, splits them into shards and"
-            + " intervals , and writes them to a file sink. [Deprecated: Please use Spanner Change Streams to Source Database template instread]",
+            + " intervals , and writes them to a file sink. [Deprecated: Please use Spanner Change Streams to Source Database template instead]",
     optionsClass = Options.class,
     flexContainerName = "spanner-change-streams-to-sharded-file-sink",
     documentation =
