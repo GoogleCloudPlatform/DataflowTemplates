@@ -643,7 +643,7 @@ public class AssignShardIdFnTest {
     return spSchema;
   }
 
-  public static Map<String, NameAndCols> getSampleSpannerToId() {
+  private static Map<String, NameAndCols> getSampleSpannerToId() {
     Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
     Map<String, String> t1ColIds = new HashMap<String, String>();
     t1ColIds.put("accountId", "c1");
@@ -654,7 +654,7 @@ public class AssignShardIdFnTest {
     return spannerToId;
   }
 
-  static Ddl getTestDdl() {
+  private static Ddl getTestDdl() {
     Ddl ddl =
         Ddl.builder()
             .createTable("tableName")
@@ -678,7 +678,7 @@ public class AssignShardIdFnTest {
     return ddl;
   }
 
-  static Ddl getTestDdlForPrimaryKeyTest() {
+  private static Ddl getTestDdlForPrimaryKeyTest() {
 
     Ddl ddl =
         Ddl.builder()
@@ -743,7 +743,7 @@ public class AssignShardIdFnTest {
     return ddl;
   }
 
-  public static Schema getSchemaObjectAllDatatypes() {
+  private static Schema getSchemaObjectAllDatatypes() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
     Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
     Map<String, SpannerTable> spSchema = getSampleSpSchemaAllDatatypes();
@@ -753,7 +753,7 @@ public class AssignShardIdFnTest {
     return expectedSchema;
   }
 
-  public static Map<String, SpannerTable> getSampleSpSchemaAllDatatypes() {
+  private static Map<String, SpannerTable> getSampleSpSchemaAllDatatypes() {
     Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
     Map<String, SpannerColumnDefinition> t1SpColDefs =
         new HashMap<String, SpannerColumnDefinition>();
@@ -813,7 +813,7 @@ public class AssignShardIdFnTest {
     return spSchema;
   }
 
-  public static Map<String, NameAndCols> getSampleSpannerToIdAllDatatypes() {
+  private static Map<String, NameAndCols> getSampleSpannerToIdAllDatatypes() {
     Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
     Map<String, String> t1ColIds = new HashMap<String, String>();
     t1ColIds.put("first_name", "c1");
@@ -834,7 +834,7 @@ public class AssignShardIdFnTest {
     return spannerToId;
   }
 
-  public static Schema getBotchedSchemaObjectForInvalidSpannerToOid() {
+  private static Schema getBotchedSchemaObjectForInvalidSpannerToOid() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
     Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
     Map<String, SpannerTable> spSchema = getSampleSpSchema();
@@ -844,7 +844,7 @@ public class AssignShardIdFnTest {
     return expectedSchema;
   }
 
-  public static Schema getBotchedSchemaObjectForInvalidSpSchema() {
+  private static Schema getBotchedSchemaObjectForInvalidSpSchema() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
     Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
     Map<String, SpannerTable> spSchema = getBotchedSampleSpSchema();
@@ -854,7 +854,7 @@ public class AssignShardIdFnTest {
     return expectedSchema;
   }
 
-  public static Schema getBotchedSchemaObjectForMissingShardColumn() {
+  private static Schema getBotchedSchemaObjectForMissingShardColumn() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
     Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
     Map<String, SpannerTable> spSchema = getBotchedSampleSpColmSchema();
@@ -864,7 +864,7 @@ public class AssignShardIdFnTest {
     return expectedSchema;
   }
 
-  public static Map<String, SpannerTable> getBotchedSampleSpSchema() {
+  private static Map<String, SpannerTable> getBotchedSampleSpSchema() {
     Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
     Map<String, SpannerColumnDefinition> t1SpColDefs =
         new HashMap<String, SpannerColumnDefinition>();
@@ -888,7 +888,7 @@ public class AssignShardIdFnTest {
     return spSchema;
   }
 
-  public static Map<String, NameAndCols> getBotchedSampleSpannerToId() {
+  private static Map<String, NameAndCols> getBotchedSampleSpannerToId() {
     Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
     Map<String, String> t1ColIds = new HashMap<String, String>();
     t1ColIds.put("accountId", "c1");
@@ -899,7 +899,7 @@ public class AssignShardIdFnTest {
     return spannerToId;
   }
 
-  public static Map<String, SpannerTable> getBotchedSampleSpColmSchema() {
+  private static Map<String, SpannerTable> getBotchedSampleSpColmSchema() {
     Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
     Map<String, SpannerColumnDefinition> t1SpColDefs =
         new HashMap<String, SpannerColumnDefinition>();
