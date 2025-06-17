@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
     displayName = "GCS to Source DB [Deprecated]",
     description =
         "Streaming pipeline. Reads Spanner change stream messages from GCS, orders them,"
-            + " transforms them, and writes them to a Source Database like MySQL. [Deprecated: Please use Spanner Change Streams to Source Database template instread]",
+            + " transforms them, and writes them to a Source Database like MySQL. [Deprecated: Please use Spanner Change Streams to Source Database template instead]",
     optionsClass = Options.class,
     flexContainerName = "gcs-to-sourcedb",
     documentation =
