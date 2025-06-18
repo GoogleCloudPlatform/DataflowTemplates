@@ -187,6 +187,7 @@ public class AssignShardIdFn
         qualifiedShard = this.shardName;
       } else {
         // Skip from processing if table not in session File
+        //TODO: remove dependency on session file when session file is made optional
         boolean doesTableExist = doesTableExistInSessionFile(tableName);
         if (!doesTableExist) {
           LOG.warn(
