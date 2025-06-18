@@ -21,6 +21,8 @@ import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -158,6 +160,8 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
+  private static final Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+
   private static Boundary<Timestamp> fromTimestamps(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
@@ -167,8 +171,8 @@ public class BoundaryExtractorFactory {
     resultSet.next();
     return Boundary.<Timestamp>builder()
         .setPartitionColumn(partitionColumn)
-        .setStart(resultSet.getTimestamp(1))
-        .setEnd(resultSet.getTimestamp(2))
+        .setStart(resultSet.getTimestamp(1, utcCalendar))
+        .setEnd(resultSet.getTimestamp(2, utcCalendar))
         .setBoundarySplitter(BoundarySplitterFactory.create(Timestamp.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();

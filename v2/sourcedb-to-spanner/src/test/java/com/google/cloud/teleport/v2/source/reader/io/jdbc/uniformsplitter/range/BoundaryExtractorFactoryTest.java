@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory.BYTE_ARRAY_CLASS;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
@@ -246,9 +248,10 @@ public class BoundaryExtractorFactoryTest {
     BoundaryExtractor<Timestamp> extractor = BoundaryExtractorFactory.create(Timestamp.class);
     Timestamp start = Timestamp.valueOf("0000-01-01 00:00:00.000000000");
     Timestamp end = Timestamp.valueOf("2041-01-31 23:59:59.999999999");
+
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getTimestamp(1)).thenReturn(start);
-    when(mockResultSet.getTimestamp(2)).thenReturn(end);
+    when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(start);
+    when(mockResultSet.getTimestamp(eq(2), any())).thenReturn(end);
     Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
