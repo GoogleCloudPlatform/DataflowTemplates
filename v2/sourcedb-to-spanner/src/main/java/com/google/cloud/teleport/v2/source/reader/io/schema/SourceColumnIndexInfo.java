@@ -88,7 +88,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
    * @return builder.
    */
   public static Builder builder() {
-    return new AutoValue_SourceColumnIndexInfo.Builder();
+    return new AutoValue_SourceColumnIndexInfo.Builder().setCardinality(0L);
   }
 
   @Override
