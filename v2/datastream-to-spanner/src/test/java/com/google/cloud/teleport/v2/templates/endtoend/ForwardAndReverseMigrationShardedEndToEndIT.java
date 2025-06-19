@@ -24,7 +24,6 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
-import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -91,6 +90,8 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
         }
       };
 
+  private static final Integer NUM_EVENTS = 2;
+
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
    *
@@ -134,15 +135,18 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
+        gcsResourceManager.createArtifact(
+            "input/session.json",
+            generateSessionFile(
+                cloudSqlResourceManagerShardA.getDatabaseName(),
+                spannerResourceManager.getDatabaseId(),
+                SESSION_FILE_RESOURCE));
 
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();
 
-        // Write rows to mysql
-        writeRows(TABLE, 2, COLUMNS, new HashMap<>(), 1, cloudSqlResourceManagerShardA);
-        writeRows(TABLE, 2, COLUMNS, new HashMap<>(), 1, cloudSqlResourceManagerShardB);
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
+        writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
 
         // launch forward migration template
         fwdJobInfo =
@@ -198,7 +202,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         spannerMetadataResourceManager,
-        gcsResourceManager,
         pubsubResourceManager,
         cloudSqlResourceManagerShardA,
         cloudSqlResourceManagerShardB,

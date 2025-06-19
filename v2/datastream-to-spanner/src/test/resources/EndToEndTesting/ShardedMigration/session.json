@@ -2,7 +2,7 @@
   "SessionName": "NewSession",
   "EditorName": "",
   "DatabaseType": "mysql",
-  "DatabaseName": "author",
+  "DatabaseName": "SP_DATABASE",
   "Dialect": "google_standard_sql",
   "Notes": null,
   "Tags": null,
@@ -99,7 +99,8 @@
       "Indexes": null,
       "ParentTable": {
         "Id": "",
-        "OnDelete": ""
+        "OnDelete": "",
+        "InterleaveType": ""
       },
       "CheckConstraints": null,
       "Comment": "Spanner schema for source table Authors",
@@ -110,7 +111,7 @@
   "SrcSchema": {
     "t1": {
       "Name": "Authors",
-      "Schema": "author",
+      "Schema": "SRC_DATABASE",
       "ColIds": [
         "c2",
         "c3"
@@ -226,11 +227,13 @@
       }
     }
   ],
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
   "IsSharded": true,
   "SpRegion": "",
   "ResourceValidation": false,
-  "UI": false,
-  "SpSequences": {},
-  "SrcSequences": {},
-  "Source": "mysql"
+  "UI": false
 }
