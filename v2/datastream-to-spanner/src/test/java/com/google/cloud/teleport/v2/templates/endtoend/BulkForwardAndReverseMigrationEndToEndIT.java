@@ -24,7 +24,6 @@ import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
-import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -137,11 +136,12 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        String sessionFilePath =
-            generateSessionFile(
-                jdbcSourceShardA, cloudSqlResourceManagerShardA, spannerResourceManager);
-        gcsResourceManager.uploadArtifact(
-            "input/session.json", Resources.getResource(sessionFilePath).getPath());
+
+        generateAndUploadSessionFileUsingSMT(
+            jdbcSourceShardA,
+            cloudSqlResourceManagerShardA,
+            spannerResourceManager,
+            gcsResourceManager);
 
         Database databaseA =
             new Database(
