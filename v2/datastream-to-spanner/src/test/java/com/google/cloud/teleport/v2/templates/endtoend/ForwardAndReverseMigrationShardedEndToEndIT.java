@@ -21,9 +21,11 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -204,8 +206,7 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
         spannerMetadataResourceManager,
         pubsubResourceManager,
         cloudSqlResourceManagerShardA,
-        cloudSqlResourceManagerShardB,
-        datastreamResourceManager);
+        cloudSqlResourceManagerShardB);
   }
 
   @Test
@@ -224,6 +225,26 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     assertRowInMySQL();
   }
 
+  private void readRows() {
+    ImmutableList<Struct> authorSpanner = spannerResourceManager.readTableRecords("Authors");
+    System.out.println("Spanner rows");
+    for (Struct row : authorSpanner) {
+      System.out.println(row.toString());
+    }
+    System.out.println("SQL rows A");
+    List<Map<String, Object>> rowsA = cloudSqlResourceManagerShardA.readTable(TABLE);
+    for (Map<String, Object> row : rowsA) {
+      System.out.println(row.get("id"));
+      System.out.println(row.get("name"));
+    }
+    System.out.println("SQL rows B");
+    List<Map<String, Object>> rowsB = cloudSqlResourceManagerShardB.readTable(TABLE);
+    for (Map<String, Object> row : rowsB) {
+      System.out.println(row.get("id"));
+      System.out.println(row.get("name"));
+    }
+  }
+
   private void writeRowInMySqlAndAssertRows() {
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -237,6 +258,9 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
+    readRows();
+    System.out.println(cloudSqlResourceManagerShardA.getDatabaseName());
+    System.out.println(cloudSqlResourceManagerShardB.getDatabaseName());
     assertThatResult(result).meetsConditions();
   }
 
