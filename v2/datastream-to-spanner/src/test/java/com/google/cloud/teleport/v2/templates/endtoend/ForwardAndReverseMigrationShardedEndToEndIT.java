@@ -226,7 +226,8 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
   }
 
   private void readRows() {
-    ImmutableList<Struct> authorSpanner = spannerResourceManager.readTableRecords("Authors");
+    ImmutableList<Struct> authorSpanner =
+        spannerResourceManager.readTableRecords("Authors", "id", "migration_shard_id");
     System.out.println("Spanner rows");
     for (Struct row : authorSpanner) {
       System.out.println(row.toString());
