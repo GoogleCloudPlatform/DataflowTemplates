@@ -35,93 +35,97 @@ variable "region" {
 
 variable "connectionURL" {
   type        = string
-  description = "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. (Example: jdbc:mysql://some-host:3306/sampledb)"
+  description = "The JDBC connection URL string. For example, `jdbc:mysql://some-host:3306/sampledb`. Can be passed in as a string that's Base64-encoded and then encrypted with a Cloud KMS key. For example, `jdbc:mysql://some-host:3306/sampledb`"
 
 }
 
 variable "connectionProperties" {
   type        = string
-  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
+  description = "The properties string to use for the JDBC connection. The format of the string must be `[propertyName=property;]*`.For more information, see Configuration Properties (https://dev.mysql.com/doc/connector-j/en/connector-j-reference-configuration-properties.html) in the MySQL documentation. For example, `unicode=true;characterEncoding=UTF-8`"
   default     = null
 }
 
 variable "username" {
   type        = string
-  description = "The username to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key."
+  description = "The username to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}."
   default     = null
 }
 
 variable "password" {
   type        = string
-  description = "The password to be used for the JDBC connection. Can be passed in as a Base64-encoded string encrypted with a Cloud KMS key."
+  description = "The password to use for the JDBC connection. Can be passed in as a string that's encrypted with a Cloud KMS key, or can be a Secret Manager secret in the form projects/{project}/secrets/{secret}/versions/{secret_version}."
   default     = null
 }
 
 variable "query" {
   type        = string
-  description = "The query to be run on the source to extract the data. (Example: select * from sampledb.sample_table)"
+  description = "The query to run on the source to extract the data. Note that some JDBC SQL and BigQuery types, although sharing the same name, have some differences. Some important SQL -> BigQuery type mappings to keep in mind are `DATETIME --> TIMESTAMP`. Type casting may be required if your schemas do not match. For example, `select * from sampledb.sample_table`"
   default     = null
 }
 
 variable "outputTable" {
   type        = string
-  description = "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects. (Example: <my-project>:<my-dataset>.<my-table>)"
+  description = "The BigQuery output table location. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`"
 
 }
 
 variable "bigQueryLoadingTemporaryDirectory" {
   type        = string
-  description = "The temporary directory for the BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)"
+  description = "The temporary directory for the BigQuery loading process. For example, `gs://your-bucket/your-files/temp_dir`"
 
 }
 
 variable "KMSEncryptionKey" {
   type        = string
-  description = "Cloud KMS Encryption Key to decrypt the username, password, and connection string. If Cloud KMS key is passed in, the username, password, and connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key)"
+  description = "The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  pass in a Cloud KMS key, you must also encrypt the username, password, and connection string. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`"
   default     = null
 }
 
 variable "useColumnAlias" {
   type        = bool
-  description = <<EOT
-If enabled (set to true) the pipeline will consider column alias ("AS") instead of the column name to map the rows to BigQuery. Defaults to false.
-EOT
+  description = "If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`."
   default     = null
 }
 
 variable "isTruncate" {
   type        = bool
-  description = "If enabled (set to true) the pipeline will truncate before loading data into BigQuery. Defaults to false, which is used to only append data."
+  description = "If set to `true`, the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data."
   default     = null
 }
 
 variable "partitionColumn" {
   type        = string
-  description = "If this parameter is provided (along with `table`), JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only Long partition columns are supported."
+  description = "If `partitionColumn` is specified along with the `table`, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, supports `Long` and `DateTime` partition columns. Pass the column type through `partitionColumnType`."
+  default     = null
+}
+
+variable "partitionColumnType" {
+  type        = string
+  description = "The type of the `partitionColumn`, accepts either `long` or `datetime`. Defaults to: long."
   default     = null
 }
 
 variable "table" {
   type        = string
-  description = "Table to read from using partitions. This parameter also accepts a subquery in parentheses. (Example: (select id, name from Person) as subq)"
+  description = "The table to read from when using partitions. This parameter also accepts a subquery in parentheses. For example, `(select id, name from Person) as subq`"
   default     = null
 }
 
 variable "numPartitions" {
   type        = number
-  description = "The number of partitions. This, along with the lower and upper bound, form partitions strides for generated WHERE clause expressions used to split the partition column evenly. When the input is less than 1, the number is set to 1."
+  description = "The number of partitions. With the lower and upper bound, this value forms partition strides for generated `WHERE` clause expressions that are used to split the partition column evenly. When the input is less than `1`, the number is set to `1`."
   default     = null
 }
 
 variable "lowerBound" {
-  type        = number
-  description = "Lower bound used in the partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)"
+  type        = string
+  description = "The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` partitionColumnType accepts lower bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`."
   default     = null
 }
 
 variable "upperBound" {
-  type        = number
-  description = "Upper bound used in partition scheme. If not provided, it is automatically inferred by Beam (for the supported types)"
+  type        = string
+  description = "The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` partitionColumnType accepts upper bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`."
   default     = null
 }
 
@@ -133,39 +137,45 @@ variable "fetchSize" {
 
 variable "createDisposition" {
   type        = string
-  description = "BigQuery CreateDisposition. For example, CREATE_IF_NEEDED, CREATE_NEVER. Defaults to: CREATE_NEVER."
+  description = "The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`. Defaults to: CREATE_NEVER."
   default     = null
 }
 
 variable "bigQuerySchemaPath" {
   type        = string
-  description = "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to CREATE_IF_NEEDED, this parameter must be specified. (Example: gs://your-bucket/your-schema.json)"
+  description = "The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to `CREATE_IF_NEEDED`, this parameter must be specified. For example, `gs://your-bucket/your-schema.json`"
+  default     = null
+}
+
+variable "outputDeadletterTable" {
+  type        = string
+  description = <<EOT
+The BigQuery table to use for messages that failed to reach the output table, formatted as `"PROJECT_ID:DATASET_NAME.TABLE_NAME"`. If the table doesn't exist, it is created when the pipeline runs. If this parameter is not specified, the pipeline will fail on write errors.This parameter can only be specified if `useStorageWriteApi` or `useStorageWriteApiAtLeastOnce` is set to true.
+EOT
   default     = null
 }
 
 variable "disabledAlgorithms" {
   type        = string
-  description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
+  description = "Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`"
   default     = null
 }
 
 variable "extraFilesToStage" {
   type        = string
-  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
+  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`"
   default     = null
 }
 
 variable "useStorageWriteApi" {
   type        = bool
-  description = "If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false."
+  description = "If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "useStorageWriteApiAtLeastOnce" {
   type        = bool
-  description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-EOT
+  description = "When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`."
   default     = null
 }
 
@@ -233,7 +243,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -305,13 +316,15 @@ resource "google_dataflow_flex_template_job" "generated" {
     useColumnAlias                    = tostring(var.useColumnAlias)
     isTruncate                        = tostring(var.isTruncate)
     partitionColumn                   = var.partitionColumn
+    partitionColumnType               = var.partitionColumnType
     table                             = var.table
     numPartitions                     = tostring(var.numPartitions)
-    lowerBound                        = tostring(var.lowerBound)
-    upperBound                        = tostring(var.upperBound)
+    lowerBound                        = var.lowerBound
+    upperBound                        = var.upperBound
     fetchSize                         = tostring(var.fetchSize)
     createDisposition                 = var.createDisposition
     bigQuerySchemaPath                = var.bigQuerySchemaPath
+    outputDeadletterTable             = var.outputDeadletterTable
     disabledAlgorithms                = var.disabledAlgorithms
     extraFilesToStage                 = var.extraFilesToStage
     useStorageWriteApi                = tostring(var.useStorageWriteApi)
@@ -330,6 +343,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

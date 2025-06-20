@@ -29,7 +29,8 @@ public interface KafkaWriteOptions extends PipelineOptions {
       groupName = "Destination",
       order = 3,
       description = "Destination Kafka Topic",
-      helpText = "Kafka topic to write the output to.")
+      helpText = "Kafka bootstrap server and topic to write the output to.",
+      example = "bootstrap.<KAFKA_CLUSTER>.<REGION>.managedkafka.<PROJECT>.cloud.goog:9092;<TOPIC>")
   String getWriteBootstrapServerAndTopic();
 
   void setWriteBootstrapServerAndTopic(String destinationTopic);

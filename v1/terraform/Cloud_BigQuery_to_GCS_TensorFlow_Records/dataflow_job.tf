@@ -35,7 +35,7 @@ variable "region" {
 
 variable "readQuery" {
   type        = string
-  description = "SQL query in standard SQL to pull data from BigQuery"
+  description = "A BigQuery SQL query that extracts data from the source. For example, `select * from dataset1.sample_table`."
 
 }
 
@@ -47,37 +47,37 @@ variable "readIdColumn" {
 
 variable "invalidOutputPath" {
   type        = string
-  description = "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. (Example: gs://your-bucket/your-path)"
+  description = "Cloud Storage path where to write BigQuery rows that cannot be converted to target entities. For example, `gs://your-bucket/your-path`"
   default     = null
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "Cloud Storage directory to store output TFRecord files. (Example: gs://your-bucket/your-path)"
+  description = "The top-level Cloud Storage path prefix to use when writing the training, testing, and validation TFRecord files. Subdirectories for resulting training, testing, and validation TFRecord files are automatically generated from `outputDirectory`. For example, `gs://mybucket/output`"
 
 }
 
 variable "outputSuffix" {
   type        = string
-  description = "File suffix to append to TFRecord files. Defaults to .tfrecord"
+  description = "The file suffix for the training, testing, and validation TFRecord files that are written. The default value is `.tfrecord`."
   default     = null
 }
 
 variable "trainingPercentage" {
-  type        = string
-  description = "Defaults to 1 or 100%. Should be decimal between 0 and 1 inclusive"
+  type        = number
+  description = "The percentage of query data allocated to training TFRecord files. The default value is `1`, or `100%`."
   default     = null
 }
 
 variable "testingPercentage" {
-  type        = string
-  description = "Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive"
+  type        = number
+  description = "The percentage of query data allocated to testing TFRecord files. The default value is `0`, or `0%`."
   default     = null
 }
 
 variable "validationPercentage" {
-  type        = string
-  description = "Defaults to 0 or 0%. Should be decimal between 0 and 1 inclusive"
+  type        = number
+  description = "The percentage of query data allocated to validation TFRecord files. The default value is `0`, or `0%`."
   default     = null
 }
 
@@ -183,9 +183,9 @@ resource "google_dataflow_job" "generated" {
     invalidOutputPath    = var.invalidOutputPath
     outputDirectory      = var.outputDirectory
     outputSuffix         = var.outputSuffix
-    trainingPercentage   = var.trainingPercentage
-    testingPercentage    = var.testingPercentage
-    validationPercentage = var.validationPercentage
+    trainingPercentage   = tostring(var.trainingPercentage)
+    testingPercentage    = tostring(var.testingPercentage)
+    validationPercentage = tostring(var.validationPercentage)
   }
 
   additional_experiments       = var.additional_experiments
@@ -197,6 +197,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

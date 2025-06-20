@@ -35,91 +35,91 @@ variable "region" {
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "The Pub/Sub subscription to read the input from. For example, `projects/your-project-id/subscriptions/your-subscription-name`"
 
 }
 
 variable "token" {
   type        = string
-  description = "Splunk Http Event Collector (HEC) authentication token. Must be provided if the tokenSource is set to PLAINTEXT or KMS."
+  description = "The Splunk HEC authentication token. Must be provided if the `tokenSource` parameter is set to `PLAINTEXT` or `KMS`."
   default     = null
 }
 
 variable "url" {
   type        = string
-  description = "Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. (Example: https://splunk-hec-host:8088)"
+  description = "The Splunk HEC URL. The URL must be routable from the VPC that the pipeline runs in. For example, `https://splunk-hec-host:8088`"
 
 }
 
 variable "batchCount" {
   type        = number
-  description = "Batch size for sending multiple events to Splunk HEC. Defaults to 10."
+  description = "The batch size for sending multiple events to Splunk. Defaults to `1` (no batching)."
   default     = null
 }
 
 variable "disableCertificateValidation" {
   type        = bool
-  description = "Disable SSL certificate validation (true/false). Default false (validation enabled). If true, the certificates are not validated (all certificates are trusted) and  `rootCaCertificatePath` parameter is ignored."
+  description = "Disable SSL certificate validation. Default `false` (validation enabled). If `true`, the certificates are not validated (all certificates are trusted) and `rootCaCertificatePath` parameter is ignored."
   default     = null
 }
 
 variable "parallelism" {
   type        = number
-  description = "Maximum number of parallel requests. Default 1 (no parallelism)."
+  description = "The maximum number of parallel requests. Defaults to `1` (no parallelism)."
   default     = null
 }
 
 variable "includePubsubMessage" {
   type        = bool
-  description = "Include full Pub/Sub message in the payload (true/false). Defaults to false (only data element is included in the payload)."
+  description = "Include the full Pub/Sub message in the payload. Default `false` (only the data element is included in the payload)."
   default     = null
 }
 
 variable "tokenKMSEncryptionKey" {
   type        = string
-  description = "The Cloud KMS key to decrypt the HEC token string. This parameter must be provided if the tokenSource is set to KMS. If this parameter is provided, token string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name)"
+  description = "The Cloud KMS key to use to decrypt the HEC token string. This parameter must be provided when tokenSource is set to KMS. If the Cloud KMS key is provided, the HEC token string must be passed in encrypted. For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`"
   default     = null
 }
 
 variable "tokenSecretId" {
   type        = string
-  description = "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version)"
+  description = "The Secret Manager secret ID for the token. This parameter must provided when the tokenSource is set to `SECRET_MANAGER`. For example, `projects/your-project-id/secrets/your-secret/versions/your-secret-version`"
   default     = null
 }
 
 variable "tokenSource" {
   type        = string
-  description = "Source of the token. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager is used. If tokenSource is set to KMS, tokenKMSEncryptionKey and encrypted token must be provided. If tokenSource is set to SECRET_MANAGER, tokenSecretId must be provided. If tokenSource is set to PLAINTEXT, token must be provided."
+  description = "The source of the token. The following values are allowed: `PLAINTEXT`, `KMS`, and `SECRET_MANAGER`. You must provide this parameter when Secret Manager is used. If `tokenSource` is set to `KMS`, `tokenKMSEncryptionKey`, and encrypted, then `token` must be provided. If `tokenSource` is set to `SECRET_MANAGER`, then `tokenSecretId` must be provided. If `tokenSource` is set to `PLAINTEXT`, then `token` must be provided."
   default     = null
 }
 
 variable "rootCaCertificatePath" {
   type        = string
-  description = "The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt)"
+  description = "The full URL to the root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and can be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file is fetched and added to the Dataflow worker's trust store in order to verify the Splunk HEC endpoint's SSL certificate. If this parameter is not provided, the default trust store is used. For example, `gs://mybucket/mycerts/privateCA.crt`"
   default     = null
 }
 
 variable "enableBatchLogs" {
   type        = bool
-  description = "Parameter which specifies if logs should be enabled for batches written to Splunk. Defaults to: true."
+  description = "Specifies whether logs should be enabled for batches written to Splunk. Default: `true`."
   default     = null
 }
 
 variable "enableGzipHttpCompression" {
-  type        = string
-  description = "Parameter which specifies if HTTP requests sent to Splunk HEC should be GZIP encoded. Defaults to: true."
+  type        = bool
+  description = "Specifies whether HTTP requests sent to Splunk HEC should be compressed (gzip content encoded). Default: `true`."
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions."
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`."
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
@@ -131,7 +131,7 @@ variable "javascriptTextTransformReloadIntervalMinutes" {
 
 variable "outputDeadletterTopic" {
   type        = string
-  description = "The Pub/Sub topic to publish deadletter records to. The name should be in the format of `projects/your-project-id/topics/your-topic-name`."
+  description = "The Pub/Sub topic to forward undeliverable messages to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`."
 
 }
 
@@ -244,7 +244,7 @@ resource "google_dataflow_job" "generated" {
     tokenSource                                  = var.tokenSource
     rootCaCertificatePath                        = var.rootCaCertificatePath
     enableBatchLogs                              = tostring(var.enableBatchLogs)
-    enableGzipHttpCompression                    = var.enableGzipHttpCompression
+    enableGzipHttpCompression                    = tostring(var.enableGzipHttpCompression)
     javascriptTextTransformGcsPath               = var.javascriptTextTransformGcsPath
     javascriptTextTransformFunctionName          = var.javascriptTextTransformFunctionName
     javascriptTextTransformReloadIntervalMinutes = tostring(var.javascriptTextTransformReloadIntervalMinutes)
@@ -260,6 +260,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

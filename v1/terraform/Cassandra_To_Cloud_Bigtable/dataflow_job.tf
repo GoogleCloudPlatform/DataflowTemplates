@@ -41,7 +41,7 @@ variable "cassandraHosts" {
 
 variable "cassandraPort" {
   type        = number
-  description = "The TCP port to use to reach Apache Cassandra on the nodes. The default value is 9042."
+  description = "The TCP port to use to reach Apache Cassandra on the nodes. The default value is `9042`."
   default     = null
 }
 
@@ -77,13 +77,13 @@ variable "bigtableTableId" {
 
 variable "defaultColumnFamily" {
   type        = string
-  description = "The name of the column family of the Bigtable table. The default value is default."
+  description = "The name of the column family of the Bigtable table. The default value is `default`."
   default     = null
 }
 
 variable "rowKeySeparator" {
   type        = string
-  description = "The separator used to build row-keys. The default value is '#'."
+  description = "The separator used to build row-keys. The default value is `#`."
   default     = null
 }
 
@@ -227,6 +227,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork
