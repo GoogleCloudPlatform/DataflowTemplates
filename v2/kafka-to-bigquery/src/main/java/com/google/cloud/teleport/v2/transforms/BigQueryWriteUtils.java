@@ -60,6 +60,8 @@ public class BigQueryWriteUtils {
 
     private Boolean persistKafkaKey;
 
+    private Boolean persistKafkaTopic;
+
     private String writeDisposition;
 
     private String createDisposition;
@@ -82,6 +84,7 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
+        Boolean persistKafkaTopic,
         Boolean useAutoSharding) {
       this.avroSchema = avroSchema;
       this.outputTableSpec = outputTableSpec;
@@ -90,6 +93,7 @@ public class BigQueryWriteUtils {
       this.numStorageWriteApiStreams = numStorageWriteApiStreams;
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
+      this.persistKafkaTopic = persistKafkaTopic;
       this.useAutoSharding = useAutoSharding;
       this.errorHandler = new ErrorHandler.DefaultErrorHandler<>();
     }
@@ -103,6 +107,7 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
+        Boolean persistKafkaTopic,
         Boolean useAutoSharding,
         ErrorHandler<BadRecord, ?> errorHandler) {
       this.avroSchema = avroSchema;
@@ -112,6 +117,7 @@ public class BigQueryWriteUtils {
       this.numStorageWriteApiStreams = numStorageWriteApiStreams;
       this.storageWriteApiTriggeringFrequencySec = storageWriteApiTriggeringFrequencySec;
       this.persistKafkaKey = persistKafkaKey;
+      this.persistKafkaTopic = persistKafkaTopic;
       this.useAutoSharding = useAutoSharding;
       this.errorHandler = errorHandler;
     }
@@ -124,6 +130,7 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
+        Boolean persistKafkaTopic,
         Boolean useAutoSharding) {
       return new BigQueryWriteUtils.BigQueryWrite(
           avroSchema,
@@ -133,6 +140,7 @@ public class BigQueryWriteUtils {
           numStorageWriteApiStreams,
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
+          persistKafkaTopic,
           useAutoSharding);
     }
 
@@ -144,6 +152,7 @@ public class BigQueryWriteUtils {
         Integer numStorageWriteApiStreams,
         Integer storageWriteApiTriggeringFrequencySec,
         Boolean persistKafkaKey,
+        Boolean persistKafkaTopic,
         Boolean useAutoSharding,
         ErrorHandler<BadRecord, ?> errorHandler) {
       return new BigQueryWriteUtils.BigQueryWrite(
@@ -154,6 +163,7 @@ public class BigQueryWriteUtils {
           numStorageWriteApiStreams,
           storageWriteApiTriggeringFrequencySec,
           persistKafkaKey,
+          persistKafkaTopic,
           useAutoSharding,
           errorHandler);
     }
@@ -166,8 +176,11 @@ public class BigQueryWriteUtils {
 
       private boolean persistKafkaKey;
 
-      GenericRecordToTableRowFn(boolean persistKafkaKey) {
+      private boolean persistKafkaTopic;
+
+      GenericRecordToTableRowFn(boolean persistKafkaKey, boolean persistKafkaTopic) {
         this.persistKafkaKey = persistKafkaKey;
+        this.persistKafkaTopic = persistKafkaTopic;
       }
 
       @ProcessElement
@@ -180,6 +193,9 @@ public class BigQueryWriteUtils {
                     AvroUtils.toBeamSchema(element.getPayload().getSchema())));
         if (this.persistKafkaKey) {
           row.set(BigQueryConstants.KAFKA_KEY_FIELD, element.getOriginalPayload().getKV().getKey());
+        }
+        if (this.persistKafkaTopic) {
+          row.set(BigQueryConstants.KAFKA_TOPIC_FIELD, element.getOriginalPayload().getTopic());
         }
         context.output(FailsafeElement.of(element.getOriginalPayload(), row));
       }
@@ -229,7 +245,8 @@ public class BigQueryWriteUtils {
           input
               .apply(
                   "ConvertGenericRecordToTableRow",
-                  ParDo.of(new GenericRecordToTableRowFn(this.persistKafkaKey)))
+                  ParDo.of(
+                      new GenericRecordToTableRowFn(this.persistKafkaKey, this.persistKafkaTopic)))
               .setCoder(
                   FailsafeElementCoder.of(
                       KafkaRecordCoder.of(
