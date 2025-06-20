@@ -46,6 +46,10 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **insertOnlyModeForSpannerMutations**: By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.
 * **batchSizeForSpannerMutations**: BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.
 * **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `MEDIUM`.
+* **tableOverrides**: These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
+* **columnOverrides**: These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
+* **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
+* **uniformizationStageCountHint**: Hint for number of uniformization stages. Currently Applicable only for jdbc based sources like MySQL or PostgreSQL. Leave 0 or default to disable uniformization. Set to -1 for a log(numPartition) number of stages. If your source primary key space is uniformly distributed (for example an auto-incrementing key with sparse holes), it's based to leave it disabled. If your keyspace is not uniform, you might encounter a laggard VM in your dataflow run. In such a case, you can set it to -1 to enable uniformization. Manually setting it to values other than 0 or -1 would help you fine tune the tradeoff of the overhead added by uniformization stages and the  performance improvement due to better distribution of work.
 * **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
 * **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
@@ -151,6 +155,10 @@ export NAMESPACE=""
 export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS=false
 export BATCH_SIZE_FOR_SPANNER_MUTATIONS=-1
 export SPANNER_PRIORITY=MEDIUM
+export TABLE_OVERRIDES=""
+export COLUMN_OVERRIDES=""
+export SCHEMA_OVERRIDES_FILE_PATH=""
+export UNIFORMIZATION_STAGE_COUNT_HINT=0
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -181,6 +189,10 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS" \
   --parameters "batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS" \
   --parameters "spannerPriority=$SPANNER_PRIORITY" \
+  --parameters "tableOverrides=$TABLE_OVERRIDES" \
+  --parameters "columnOverrides=$COLUMN_OVERRIDES" \
+  --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
+  --parameters "uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
@@ -226,6 +238,10 @@ export NAMESPACE=""
 export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS=false
 export BATCH_SIZE_FOR_SPANNER_MUTATIONS=-1
 export SPANNER_PRIORITY=MEDIUM
+export TABLE_OVERRIDES=""
+export COLUMN_OVERRIDES=""
+export SCHEMA_OVERRIDES_FILE_PATH=""
+export UNIFORMIZATION_STAGE_COUNT_HINT=0
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -236,7 +252,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS,batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS,spannerPriority=$SPANNER_PRIORITY,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS,batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS,spannerPriority=$SPANNER_PRIORITY,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -304,6 +320,10 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # insertOnlyModeForSpannerMutations = "false"
     # batchSizeForSpannerMutations = "-1"
     # spannerPriority = "MEDIUM"
+    # tableOverrides = ""
+    # columnOverrides = ""
+    # schemaOverridesFilePath = ""
+    # uniformizationStageCountHint = "0"
     # disabledAlgorithms = "<disabledAlgorithms>"
     # extraFilesToStage = "<extraFilesToStage>"
   }

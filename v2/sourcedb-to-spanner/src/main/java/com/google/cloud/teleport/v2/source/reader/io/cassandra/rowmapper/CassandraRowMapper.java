@@ -60,7 +60,7 @@ abstract class CassandraRowMapper implements Transformer<Row, SourceRow>, Serial
     long time = getCurrentTimeMicros();
 
     SourceRow.Builder sourceRowBuilder =
-        SourceRow.builder(sourceSchemaReference(), sourceTableSchema(), "", time);
+        SourceRow.builder(sourceSchemaReference(), sourceTableSchema(), null, time);
 
     sourceTableSchema()
         .sourceColumnNameToSourceColumnType()

@@ -1,0 +1,48 @@
+name: Update Template Documentation
+
+on:
+  schedule:
+    - cron: '0 16 * * 2' # Every Tuesday at 11 AM EST (16:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-docs:
+    name: Update Template Documentation
+    runs-on: ubuntu-latest
+    if: github.repository == 'GoogleCloudPlatform/DataflowTemplates'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Install Templates Plugin
+        run: |
+          mvn clean install -pl plugins/templates-maven-plugin -am
+      - name: Generate Documentation
+        run: |
+          mvn clean prepare-package \
+            -DskipTests \
+            -PtemplatesSpec
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'docs: update generated documentation'
+          title: 'chore(docs): update generated documentation'
+          body: |
+            This PR updates the generated documentation for the templates.
+            This is an automated PR created by the update-docs workflow.
+          branch: chore/update-generated-docs
+          base: main
+          team-reviewers: GoogleCloudPlatform/dataflow-templates-wg

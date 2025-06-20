@@ -23,6 +23,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.values.PCollectionView;
@@ -263,6 +265,60 @@ public class BoundarySplitterFactoryTest {
     assertThrows(
         UnsupportedOperationException.class,
         () -> BoundarySplitterFactory.create(GenericObjectPool.class));
+  }
+
+  @Test
+  public void testInstantMapping() {
+    assertThat(BoundarySplitterFactory.instantToBigIntNanos(Instant.MIN))
+        .isEqualTo(new BigInteger("-31557014167219200000000000"));
+    assertThat(
+            BoundarySplitterFactory.bigIntNanosToInstant(
+                BoundarySplitterFactory.instantToBigIntNanos(Instant.MIN)))
+        .isEqualTo(Instant.MIN);
+    assertThat(BoundarySplitterFactory.instantToBigIntNanos(Instant.MAX))
+        .isEqualTo(new BigInteger("31556889864403199999999999"));
+    assertThat(
+            BoundarySplitterFactory.bigIntNanosToInstant(
+                BoundarySplitterFactory.instantToBigIntNanos(Instant.MAX)))
+        .isEqualTo(Instant.MAX);
+    assertThat(BoundarySplitterFactory.instantToBigIntNanos(Instant.EPOCH))
+        .isEqualTo(new BigInteger("0"));
+    assertThat(
+            BoundarySplitterFactory.bigIntNanosToInstant(
+                BoundarySplitterFactory.instantToBigIntNanos(Instant.EPOCH)))
+        .isEqualTo(Instant.EPOCH);
+    assertThat(BoundarySplitterFactory.instantToBigIntNanos(null)).isNull();
+    assertThat(BoundarySplitterFactory.bigIntNanosToInstant(null)).isNull();
+    assertThat(BoundarySplitterFactory.timeStampToInstant(null)).isNull();
+    assertThat(BoundarySplitterFactory.instantToTimestamp(null)).isNull();
+    assertThat(
+            BoundarySplitterFactory.timeStampToInstant(
+                Timestamp.valueOf("1970-01-01 00:00:00.000000000")))
+        .isEqualTo(Instant.EPOCH);
+    assertThat(BoundarySplitterFactory.instantToTimestamp(Instant.EPOCH))
+        .isEqualTo(Timestamp.valueOf("1970-01-01 00:00:00.000000000"));
+  }
+
+  @Test
+  public void testTimeStampSplitting() {
+    assertThat(BoundarySplitterFactory.splitInstants(null, null)).isEqualTo(null);
+    assertThat(BoundarySplitterFactory.splitInstants(null, Instant.EPOCH))
+        .isEqualTo(BoundarySplitterFactory.splitInstants(Instant.EPOCH, null));
+    assertThat(BoundarySplitterFactory.splitInstants(Instant.MIN, Instant.MAX))
+        .isEqualTo(Instant.parse("0000-07-01T23:59:59.999999999Z"));
+
+    BoundarySplitter<Timestamp> splitter = BoundarySplitterFactory.create(Timestamp.class);
+    assertThat(
+            splitter.getSplitPoint(
+                Timestamp.valueOf("1970-01-01 00:00:00.000000000"),
+                Timestamp.valueOf("1980-01-01 00:00:00.000000000"),
+                PartitionColumn.builder()
+                    .setColumnName("col1")
+                    .setColumnClass(Timestamp.class)
+                    .build(),
+                null,
+                null))
+        .isEqualTo(Timestamp.valueOf("1975-01-01 00:00:00.000000000"));
   }
 
   /* Not for production as it does not look at collation ordering */

@@ -357,7 +357,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
           .put("BIGINT UNSIGNED", IndexType.BIG_INT_UNSIGNED)
           .put("BIGINT", IndexType.NUMERIC)
-          .put("DATETIME", IndexType.DATE_TIME)
           .put("INTEGER", IndexType.NUMERIC)
           .put("INTEGER UNSIGNED", IndexType.NUMERIC)
           .put("MEDIUMINT", IndexType.NUMERIC)
@@ -372,6 +371,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("VARBINARY", IndexType.BINARY)
           .put("TINYBLOB", IndexType.BINARY)
           .put("TINYTEXT", IndexType.STRING)
+          .put("DATETIME", IndexType.TIME_STAMP)
+          .put("TIMESTAMP", IndexType.TIME_STAMP)
           .build();
 
   /**
