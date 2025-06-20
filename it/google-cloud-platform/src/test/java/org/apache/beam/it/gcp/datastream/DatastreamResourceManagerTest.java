@@ -203,6 +203,42 @@ public class DatastreamResourceManagerTest {
   }
 
   @Test
+  public void testCreateStreamWoBackfillExecutionExceptionShouldFail()
+      throws ExecutionException, InterruptedException {
+    when(datastreamClient.createStreamAsync(any(CreateStreamRequest.class)))
+        .thenReturn(createStreamRequest);
+    when(createStreamRequest.get()).thenThrow(ExecutionException.class);
+    DatastreamResourceManagerException exception =
+        assertThrows(
+            DatastreamResourceManagerException.class,
+            () -> testManager.createStreamWoBackfill(STREAM_ID, sourceConfig, destinationConfig));
+    assertThat(exception).hasMessageThat().contains("Failed to create stream.");
+  }
+
+  @Test
+  public void testCreateStreamWoBackfillInterruptedExceptionShouldFail()
+      throws ExecutionException, InterruptedException {
+    when(datastreamClient.createStreamAsync(any(CreateStreamRequest.class)))
+        .thenReturn(createStreamRequest);
+    when(createStreamRequest.get()).thenThrow(InterruptedException.class);
+    DatastreamResourceManagerException exception =
+        assertThrows(
+            DatastreamResourceManagerException.class,
+            () -> testManager.createStreamWoBackfill(STREAM_ID, sourceConfig, destinationConfig));
+    assertThat(exception).hasMessageThat().contains("Failed to create stream.");
+  }
+
+  @Test
+  public void testCreateStreamWoBackfillShouldCreateSuccessfully()
+      throws ExecutionException, InterruptedException {
+    when(datastreamClient.createStreamAsync(any(CreateStreamRequest.class)))
+        .thenReturn(createStreamRequest);
+    when(createStreamRequest.get()).thenReturn(stream);
+    assertThat(testManager.createStreamWoBackfill(STREAM_ID, sourceConfig, destinationConfig))
+        .isEqualTo(stream);
+  }
+
+  @Test
   public void testUpdateStreamStateInterruptedExceptionShouldFail()
       throws ExecutionException, InterruptedException {
     when(datastreamClient.updateStreamAsync(any(UpdateStreamRequest.class)))

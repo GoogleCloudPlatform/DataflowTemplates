@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
@@ -55,9 +56,11 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
-  private static final String SPANNER_DDL_RESOURCE = "EndToEndTesting/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "EndToEndTesting/session.json";
+public class ForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEndTestingITBase {
+  private static final String SPANNER_DDL_RESOURCE =
+      "EndToEndTesting/NonShardedMigration/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE =
+      "EndToEndTesting/NonShardedMigration/session.json";
 
   private static final String TABLE = "Authors";
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =
@@ -67,7 +70,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
           put("name", "VARCHAR(200)");
         }
       };
-  private static final HashSet<ForwardAndReverseMigrationEndToEndIT> testInstances =
+  private static final HashSet<ForwardAndReverseMigrationNonShardedEndToEndIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo rrJobInfo;
   private static PipelineLauncher.LaunchInfo fwdJobInfo;
@@ -95,12 +98,13 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (ForwardAndReverseMigrationEndToEndIT.class) {
+    synchronized (ForwardAndReverseMigrationNonShardedEndToEndIT.class) {
       testInstances.add(this);
       if (rrJobInfo == null || fwdJobInfo == null) {
         // create Spanner Resources
         spannerResourceManager =
-            createSpannerDatabase(ForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(
+                ForwardAndReverseMigrationNonShardedEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         // create MySql Resources
@@ -132,11 +136,19 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
 
         // launch forward migration template
         fwdJobInfo =
-            launchFwdDataflowJob(spannerResourceManager, gcsResourceManager, pubsubResourceManager);
+            launchFwdDataflowJob(
+                PipelineUtils.createJobName("fwd" + getClass().getSimpleName()),
+                spannerResourceManager,
+                gcsResourceManager,
+                pubsubResourceManager,
+                false,
+                null,
+                true);
 
         // launch reverse migration template
         rrJobInfo =
             launchRRDataflowJob(
+                PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
                 spannerResourceManager,
                 gcsResourceManager,
                 spannerMetadataResourceManager,
@@ -153,7 +165,7 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (ForwardAndReverseMigrationEndToEndIT instance : testInstances) {
+    for (ForwardAndReverseMigrationNonShardedEndToEndIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
@@ -185,7 +197,8 @@ public class ForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(TABLE, NUM_EVENTS, COLUMNS, cdcEvents, cloudSqlResourceManager),
+                    writeJdbcData(
+                        TABLE, NUM_EVENTS, COLUMNS, cdcEvents, 0, cloudSqlResourceManager),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
                         .setMinRows(NUM_EVENTS)
                         .setMaxRows(NUM_EVENTS)
