@@ -4,10 +4,9 @@
     "Name": "Singers",
     "ColIds": [
      "c3",
-     "c4",
-     "c36"
+     "c4"
     ],
-    "ShardIdColumn": "c36",
+    "ShardIdColumn": "",
     "ColDefs": {
      "c3": {
       "Name": "SingerId",
@@ -19,17 +18,6 @@
       "NotNull": true,
       "Comment": "From: SingerId bigint(19)",
       "Id": "c3"
-     },
-     "c36": {
-      "Name": "migration_shard_id",
-      "T": {
-       "Name": "STRING",
-       "Len": 50,
-       "IsArray": false
-      },
-      "NotNull": false,
-      "Comment": "",
-      "Id": "c36"
      },
      "c4": {
       "Name": "FirstName",
@@ -46,11 +34,6 @@
     "PrimaryKeys": [
      {
       "ColId": "c3",
-      "Desc": false,
-      "Order": 2
-     },
-     {
-      "ColId": "c36",
       "Desc": false,
       "Order": 1
      }
@@ -129,9 +112,6 @@
    "t1": {
     "ColumnLevelIssues": {
      "c3": [],
-     "c36": [
-      28
-     ],
      "c4": []
     },
     "TableLevelIssues": null

@@ -270,7 +270,7 @@ public class PostgreSQLDialectAdapterTest {
                     .setIsPrimary(false)
                     .setCardinality(2L)
                     .setOrdinalPosition(2L)
-                    .setIndexType(SourceColumnIndexInfo.IndexType.DATE_TIME)
+                    .setIndexType(SourceColumnIndexInfo.IndexType.TIME_STAMP)
                     .build()));
   }
 
