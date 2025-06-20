@@ -59,9 +59,9 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
-public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITBase {
+public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
-      "EndToEndTesting/BulkForwardAndReverseMigrationEndToEndIT/spanner-schema.sql";
+      "EndToEndTesting/ShardedMigration/spanner-schema.sql";
 
   private static final String TABLE = "Authors";
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =
@@ -71,7 +71,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
           put("name", "VARCHAR(200)");
         }
       };
-  private static final HashSet<BulkForwardAndReverseMigrationEndToEndIT> testInstances =
+  private static final HashSet<BulkForwardAndReverseMigrationShardedEndToEndIT> testInstances =
       new HashSet<>();
   private static PipelineLauncher.LaunchInfo bulkJobInfo;
   private static PipelineLauncher.LaunchInfo rrJobInfo;
@@ -101,12 +101,13 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (BulkForwardAndReverseMigrationEndToEndIT.class) {
+    synchronized (BulkForwardAndReverseMigrationShardedEndToEndIT.class) {
       testInstances.add(this);
       if (rrJobInfo == null || fwdJobInfo == null) {
         // create Spanner Resources
         spannerResourceManager =
-            createSpannerDatabase(BulkForwardAndReverseMigrationEndToEndIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(
+                BulkForwardAndReverseMigrationShardedEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         // Create MySql Resource
@@ -231,7 +232,7 @@ public class BulkForwardAndReverseMigrationEndToEndIT extends EndToEndTestingITB
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (BulkForwardAndReverseMigrationEndToEndIT instance : testInstances) {
+    for (BulkForwardAndReverseMigrationShardedEndToEndIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
