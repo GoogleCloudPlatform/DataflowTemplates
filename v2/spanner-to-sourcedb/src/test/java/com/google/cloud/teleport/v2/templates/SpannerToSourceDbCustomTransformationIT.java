@@ -47,7 +47,6 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -62,7 +61,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("This test is disabled currently")
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
@@ -342,10 +340,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1);
-    /*
-     * Added to handle updates.
-     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
-     */
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
 
     assertThatResult(result).meetsConditions();
@@ -353,12 +347,22 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
-    /*
-     * Added to handle updates.
-     * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
-     */
+                createConfig(jobInfo, Duration.ofMinutes(30)),
+                () -> {
+                  List<Map<String, Object>> rows =
+                      jdbcResourceManager.runSQLQuery(
+                          String.format("select * from %s order by %s", TABLE2, "varchar_column"));
+                  System.out.println("#########");
+                  System.out.println(jdbcResourceManager.getRowCount(TABLE2));
+                  for (Map<String, Object> r : rows) {
+                    for (Map.Entry<String, Object> entry : r.entrySet()) {
+                      System.out.println("Key: " + entry.getKey() + ", Value: " + entry.getValue());
+                    }
+                  }
+                  System.out.println("count");
+                  System.out.println(jdbcResourceManager.getRowCount(TABLE2) == 2);
+                  return jdbcResourceManager.getRowCount(TABLE2) == 2 && checkCondition(rows);
+                });
     Thread.sleep(Duration.ofMinutes(1L).toMillis());
     assertThatResult(result).meetsConditions();
 
@@ -423,5 +427,71 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             String.format(
                 "select * from %s where %s like '%s'", TABLE2, "varchar_column", "example1"));
     assertThat(rows).hasSize(0);
+  }
+
+  boolean checkCondition(List<Map<String, Object>> rows) {
+    System.out.println(
+        "varchar_column "
+            + rows.get(1).get("varchar_column").equals("example2")
+            + "bigint_column "
+            + rows.get(1).get("bigint_column").equals(1000)
+            + "binary_column "
+            + rows.get(1).get("binary_column").equals("bin_column".getBytes(StandardCharsets.UTF_8))
+            + "bit_column "
+            + rows.get(1).get("bit_column").equals("1".getBytes(StandardCharsets.UTF_8))
+            + "blob_column "
+            + rows.get(1).get("blob_column").equals("blob_column".getBytes(StandardCharsets.UTF_8))
+            + "bool_column "
+            + rows.get(1).get("bool_column").equals(true)
+            + "date_column "
+            + rows.get(1).get("date_column").equals(java.sql.Date.valueOf("2024-01-01"))
+            + "datetime_column "
+            + rows.get(1)
+                .get("datetime_column")
+                .equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56))
+            + "decimal_column "
+            + rows.get(1).get("decimal_column").equals(new BigDecimal("99999.99"))
+            + "double_column "
+            + rows.get(1).get("double_column").equals(123456.123)
+            + "enum_column "
+            + rows.get(1).get("enum_column").equals("1")
+            + "float_column "
+            + rows.get(1).get("float_column").equals(12345.67f)
+            + "int_column "
+            + rows.get(1).get("int_column").equals(100)
+            + "text_column "
+            + rows.get(1).get("text_column").equals("Sample text for entry 2")
+            + "time_column "
+            + rows.get(1).get("time_column").equals(java.sql.Time.valueOf("14:30:00"))
+            + "timestamp_column "
+            + rows.get(1)
+                .get("timestamp_column")
+                .equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"))
+            + "tinyint_column "
+            + rows.get(1).get("tinyint_column").equals(2)
+            + "year_column "
+            + rows.get(1).get("year_column").equals(java.sql.Date.valueOf("2024-01-01")));
+    return rows.get(1).get("varchar_column").equals("example2")
+        && rows.get(1).get("bigint_column").equals(1000)
+        && rows.get(1).get("binary_column").equals("bin_column".getBytes(StandardCharsets.UTF_8))
+        && rows.get(1).get("bit_column").equals("1".getBytes(StandardCharsets.UTF_8))
+        && rows.get(1).get("blob_column").equals("blob_column".getBytes(StandardCharsets.UTF_8))
+        && rows.get(1).get("bool_column").equals(true)
+        && rows.get(1).get("date_column").equals(java.sql.Date.valueOf("2024-01-01"))
+        && rows.get(1)
+            .get("datetime_column")
+            .equals(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56))
+        && rows.get(1).get("decimal_column").equals(new BigDecimal("99999.99"))
+        && rows.get(1).get("double_column").equals(123456.123)
+        && rows.get(1).get("enum_column").equals("1")
+        && rows.get(1).get("float_column").equals(12345.67f)
+        && rows.get(1).get("int_column").equals(100)
+        && rows.get(1).get("text_column").equals("Sample text for entry 2")
+        && rows.get(1).get("time_column").equals(java.sql.Time.valueOf("14:30:00"))
+        && rows.get(1)
+            .get("timestamp_column")
+            .equals(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"))
+        && rows.get(1).get("tinyint_column").equals(2)
+        && rows.get(1).get("year_column").equals(java.sql.Date.valueOf("2024-01-01"));
   }
 }
