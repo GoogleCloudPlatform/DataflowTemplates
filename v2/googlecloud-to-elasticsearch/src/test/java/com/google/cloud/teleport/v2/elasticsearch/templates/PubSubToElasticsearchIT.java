@@ -161,7 +161,7 @@ public final class PubSubToElasticsearchIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 () -> elasticsearchResourceManager.count(indexName) >= MESSAGES_TO_SEND,
                 pubsubCheck);

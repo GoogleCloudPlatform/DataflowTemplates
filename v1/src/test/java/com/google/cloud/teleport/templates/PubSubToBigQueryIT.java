@@ -168,7 +168,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 pubSubMessageSender,
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
@@ -243,7 +243,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
                     .setMinRows(MESSAGES_COUNT)
@@ -399,7 +399,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result reloadedResult =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 pubSubReloadedMessageSender,
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
@@ -549,7 +549,7 @@ public final class PubSubToBigQueryIT extends TemplateTestBase {
 
     Result reloadedResult =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 pubSubReloadedMessageSender,
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)

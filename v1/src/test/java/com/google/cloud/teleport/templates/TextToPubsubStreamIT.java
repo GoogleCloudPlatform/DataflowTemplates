@@ -107,7 +107,7 @@ public class TextToPubsubStreamIT extends TemplateTestBase {
             .setMinMessages(1)
             .build();
 
-    Result result = pipelineOperator().waitForConditionAndFinish(createConfig(info), pubsubCheck);
+    Result result = pipelineOperator().waitForConditionAndCancel(createConfig(info), pubsubCheck);
     assertThatResult(result).meetsConditions();
 
     List<String> actualMessages =
