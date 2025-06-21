@@ -20,6 +20,9 @@ import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.CoreConstants;
 import ch.qos.logback.core.UnsynchronizedAppenderBase;
 import com.google.gson.Gson;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 
 /**
  * A simple logging Appender that output logs in Json format. Inspired by
@@ -27,6 +30,8 @@ import com.google.gson.Gson;
  */
 public class JsonAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
   private static final Gson gson = new Gson();
+  private static final DateTimeFormatter TIMESTAMP_FORMATTER =
+      DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS'Z'").withZone(ZoneOffset.UTC);
 
   @Override
   protected void append(ILoggingEvent event) {
@@ -38,16 +43,23 @@ public class JsonAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
           .append(CoreConstants.LINE_SEPARATOR)
           .append(ThrowableProxyUtil.asString(event.getThrowableProxy()));
     }
-    System.err.println(gson.toJson(new JsonEntry(message, event.getLevel().toString())));
+    System.err.println(
+        gson.toJson(
+            new JsonEntry(
+                message,
+                event.getLevel().toString(),
+                TIMESTAMP_FORMATTER.format(Instant.ofEpochMilli(event.getTimeStamp())))));
   }
 
   private static final class JsonEntry {
     final CharSequence message;
     final CharSequence severity;
+    final CharSequence timestamp;
 
-    public JsonEntry(CharSequence message, CharSequence severity) {
+    public JsonEntry(CharSequence message, CharSequence severity, CharSequence timestamp) {
       this.message = message;
       this.severity = severity;
+      this.timestamp = timestamp;
     }
   }
 }
