@@ -1,0 +1,211 @@
+# Copyright 2024 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Checks that are intended to run on PRs containing Java code.
+
+name: Datastream PR
+
+on:
+  pull_request:
+    branches:
+    - 'main'
+    paths:
+      # Template wide common modules
+      - 'pom.xml'
+      - 'v2/common/**'
+      - 'v2/datastream-common/**'
+      - 'v2/spanner-custom-shard/**'
+      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+      - 'it/google-cloud-platform/**'
+      - 'it/conditions/**'
+      # Datastream template paths
+      - '.github/workflows/datastream-pr.yml'
+      - 'v2/datastream-mongodb-to-firestore/**'
+      - 'v2/datastream-to-bigquery/**'
+      - 'v2/datastream-to-mongodb/**'
+      - 'v2/datastream-to-postgres/**'
+      - 'v2/datastream-to-spanner/**'
+      - 'v2/datastream-to-sql/**'
+  schedule:
+    - cron: "6 */12 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+permissions: read-all
+
+jobs:
+  spotless_check:
+    name: Spotless
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Spotless
+        run: |
+          ./cicd/run-spotless \
+          --modules-to-build="DATASTREAM"
+  checkstyle_check:
+    name: Checkstyle
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Checkstyle
+        run: |
+          ./cicd/run-checkstyle \
+          --modules-to-build="DATASTREAM"
+  java_build:
+    name: Build
+    timeout-minutes: 60
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Build
+        run: |
+          ./cicd/run-build \
+          --modules-to-build="DATASTREAM"
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+  java_unit_tests:
+    name: Unit Tests
+    needs: [java_build]
+    timeout-minutes: 60
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Unit Tests
+        run: |
+          ./cicd/run-unit-tests \
+          --modules-to-build="DATASTREAM"
+      - name: Upload Unit Tests Report
+        uses: actions/upload-artifact@v4
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-unit-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v4.0.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: GoogleCloudPlatform/DataflowTemplates
+          files: 'target/site/jacoco-aggregate/jacoco.xml'
+          # Temp fix for https://github.com/codecov/codecov-action/issues/1487
+          version: v0.6.0
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+  java_integration_smoke_tests_templates:
+    name: Dataflow Templates Integration Smoke Tests
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Smoke Tests
+        run: |
+          ./cicd/run-it-smoke-tests \
+          --modules-to-build="DATASTREAM" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Upload Smoke Tests Report
+        uses: actions/upload-artifact@v4
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-smoke-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+  java_integration_tests_templates:
+    name: Dataflow Templates Integration Tests
+    needs: [java_integration_smoke_tests_templates]
+    timeout-minutes: 240
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Integration Tests
+        run: |
+          ./cicd/run-it-tests \
+          --modules-to-build="DATASTREAM" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Upload Integration Tests Report
+        uses: actions/upload-artifact@v4
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-integration-test-results
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 1
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()
+  java_load_tests_templates:
+    if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
+    name: Dataflow Templates Load Tests
+    needs: [spotless_check, checkstyle_check, java_build, java_integration_tests_templates]
+    timeout-minutes: 600
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, perf]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+      - name: Run Load Tests
+        run: |
+          ./cicd/run-load-tests \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()

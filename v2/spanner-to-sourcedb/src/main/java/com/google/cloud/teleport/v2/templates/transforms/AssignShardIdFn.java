@@ -27,7 +27,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
@@ -188,8 +187,9 @@ public class AssignShardIdFn
         qualifiedShard = this.shardName;
       } else {
         // Skip from processing if table not in session File
-        String shardIdColumn = getShardIdColumnForTableName(tableName);
-        if (shardIdColumn.isEmpty()) {
+        // TODO: remove dependency on session file when session file is made optional
+        boolean doesTableExist = doesTableExistInSessionFile(tableName);
+        if (!doesTableExist) {
           LOG.warn(
               "Writing record for table {} to skipped directory name {} since table not present in"
                   + " the session file.",
@@ -450,27 +450,14 @@ public class AssignShardIdFn
     }
   }
 
-  private String getShardIdColumnForTableName(String tableName) throws IllegalArgumentException {
-    if (!schema.getSpannerToID().containsKey(tableName)) {
-      LOG.warn(
-          "Table {} found in change record but not found in session file. Skipping record",
-          tableName);
-      return "";
+  private boolean doesTableExistInSessionFile(String tableName) throws IllegalArgumentException {
+    if (schema.getSpannerToID().containsKey(tableName)) {
+      return true;
     }
-    String tableId = schema.getSpannerToID().get(tableName).getName();
-    if (!schema.getSpSchema().containsKey(tableId)) {
-      LOG.warn("Table {} not found in session file. Skipping record.", tableId);
-      return "";
-    }
-    SpannerTable spTable = schema.getSpSchema().get(tableId);
-    String shardColId = spTable.getShardIdColumn();
-    if (!spTable.getColDefs().containsKey(shardColId)) {
-      throw new IllegalArgumentException(
-          "ColumnId "
-              + shardColId
-              + " not found in session file. Please provide a valid session file.");
-    }
-    return spTable.getColDefs().get(shardColId).getName();
+    LOG.warn(
+        "Table {} found in change record but not found in session file. Skipping record",
+        tableName);
+    return false;
   }
 
   private Map<String, Object> getSpannerRecordFromChangeStreamData(

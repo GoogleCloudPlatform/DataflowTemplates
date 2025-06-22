@@ -508,7 +508,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       case "N":
         return SourceColumnIndexInfo.IndexType.NUMERIC;
       case "D":
-        return SourceColumnIndexInfo.IndexType.DATE_TIME;
+        return SourceColumnIndexInfo.IndexType.TIME_STAMP;
       case "S":
         return SourceColumnIndexInfo.IndexType.STRING;
       default:

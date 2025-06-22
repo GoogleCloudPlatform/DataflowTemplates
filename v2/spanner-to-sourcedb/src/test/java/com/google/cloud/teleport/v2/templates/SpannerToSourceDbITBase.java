@@ -265,6 +265,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();

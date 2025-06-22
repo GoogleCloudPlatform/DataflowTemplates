@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.writer;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -26,6 +27,10 @@ import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SchemaTestUtils;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableSchema;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform.WriteDLQ;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -37,6 +42,8 @@ import org.apache.beam.sdk.values.PCollection;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 
 public class DeadLetterQueueTest {
 
@@ -81,7 +88,12 @@ public class DeadLetterQueueTest {
   @Test
   public void testCreateGCSDLQ() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>(), SQLDialect.MYSQL);
+        DeadLetterQueue.create(
+            "testDir",
+            spannerDdl,
+            new HashMap<>(),
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdl));
     assertEquals("testDir", dlq.getDlqDirectory());
 
     assertTrue(dlq.getDlqTransform() instanceof WriteDLQ);
@@ -91,29 +103,89 @@ public class DeadLetterQueueTest {
 
   @Test
   public void testCreateLogDlq() {
+
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("", "mydb");
+    SourceTableSchema schema =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName(testTable)
+            .addSourceColumnNameToSourceColumnType(
+                "new_quantity", new SourceColumnType("Bigint", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "timestamp_col", new SourceColumnType("timestamp", new Long[] {}, null))
+            .build();
+
+    Ddl spannerDdlWithLogicalTypes =
+        Ddl.builder()
+            .createTable(testTable)
+            .column("new_quantity")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("timestamp_col")
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>(), SQLDialect.POSTGRESQL);
-    assertEquals("LOG", dlq.getDlqDirectory());
-    assertTrue(dlq.getDlqTransform() instanceof DeadLetterQueue.WriteToLog);
+        DeadLetterQueue.create(
+            "LOG",
+            spannerDdlWithLogicalTypes,
+            new HashMap<>(),
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdlWithLogicalTypes));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("new_quantity", 42L)
+                    .setField("timestamp_col", "1749630376")
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    String expectedDataWithSuccessfulConversion =
+        "\"timestamp_col\":\"1970-01-01T00:29:09.630376Z\",\"new_quantity\":\"42\"";
+    String expectedDataForConversionException =
+        "\"timestamp_col\":\"1749630376\",\"new_quantity\":\"42\"";
+    assertThat(dlq.rowContextToDlqElement(r1).getPayload())
+        .contains(expectedDataWithSuccessfulConversion);
+    try (MockedStatic<GenericRecordTypeConvertor> genericRecordTypeConvertorMockedStatic =
+        Mockito.mockStatic(GenericRecordTypeConvertor.class)) {
+      genericRecordTypeConvertorMockedStatic
+          .when(
+              () ->
+                  GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                      Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
+          .thenThrow(new RuntimeException("testException"));
+
+      assertThat(dlq.rowContextToDlqElement(r1).getPayload())
+          .contains(expectedDataForConversionException);
+    }
   }
 
   @Test
   public void testCreateIgnoreDlq() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("IGNORE", spannerDdl, new HashMap<>(), SQLDialect.MYSQL);
+        DeadLetterQueue.create(
+            "IGNORE", spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
     assertEquals("IGNORE", dlq.getDlqDirectory());
     assertNull(dlq.getDlqTransform());
   }
 
   @Test(expected = RuntimeException.class)
   public void testNoDlqDirectory() {
-    DeadLetterQueue.create(null, spannerDdl, new HashMap<>(), SQLDialect.MYSQL).getDlqDirectory();
+    DeadLetterQueue.create(
+            null, spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl))
+        .getDlqDirectory();
   }
 
   @Test
   public void testFilteredRowsToLog() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>(), SQLDialect.MYSQL);
+        DeadLetterQueue.create(
+            "LOG", spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
@@ -139,9 +211,21 @@ public class DeadLetterQueueTest {
   }
 
   @Test
+  public void testLogicalTypes() {
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "LOG", spannerDdl, new HashMap<>(), SQLDialect.MYSQL, getIdentityMapper(spannerDdl));
+  }
+
+  @Test
   public void testFailedRowsToLog() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("LOG", spannerDdl, new HashMap<>(), SQLDialect.POSTGRESQL);
+        DeadLetterQueue.create(
+            "LOG",
+            spannerDdl,
+            new HashMap<>(),
+            SQLDialect.POSTGRESQL,
+            getIdentityMapper(spannerDdl));
     final String testTable = "srcTable";
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
@@ -174,7 +258,12 @@ public class DeadLetterQueueTest {
 
     Map<String, String> srcTableToShardId = Map.of(testTable, "migration_id");
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, srcTableToShardId, SQLDialect.MYSQL);
+        DeadLetterQueue.create(
+            "testDir",
+            spannerDdl,
+            srcTableToShardId,
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdl));
 
     RowContext r1 =
         RowContext.builder()
@@ -203,7 +292,12 @@ public class DeadLetterQueueTest {
     var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema("nonExistentTable");
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>(), SQLDialect.MYSQL);
+        DeadLetterQueue.create(
+            "testDir",
+            spannerDdl,
+            new HashMap<>(),
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdl));
 
     RowContext r1 =
         RowContext.builder()
@@ -226,7 +320,12 @@ public class DeadLetterQueueTest {
     SourceTableSchema schema = SchemaTestUtils.generateTestTableSchema(testTable);
 
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>(), SQLDialect.POSTGRESQL);
+        DeadLetterQueue.create(
+            "testDir",
+            spannerDdl,
+            new HashMap<>(),
+            SQLDialect.POSTGRESQL,
+            getIdentityMapper(spannerDdl));
 
     RowContext r1 =
         RowContext.builder()
@@ -250,7 +349,12 @@ public class DeadLetterQueueTest {
   @Test
   public void testMutationToDlqElement() {
     DeadLetterQueue dlq =
-        DeadLetterQueue.create("testDir", spannerDdl, new HashMap<>(), SQLDialect.MYSQL);
+        DeadLetterQueue.create(
+            "testDir",
+            spannerDdl,
+            new HashMap<>(),
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdl));
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("srcTable")
             .set("firstName")
@@ -263,5 +367,9 @@ public class DeadLetterQueueTest {
     assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
     assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
     assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+  }
+
+  private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
+    return new IdentityMapper(spannerDdl);
   }
 }

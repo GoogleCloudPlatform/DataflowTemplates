@@ -222,7 +222,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
-            put("outputDirectory", "gs://" + artifactBucketName);
           }
         };
     params.putAll(ADDITIONAL_JOB_PARAMS);
@@ -231,6 +230,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     } else if (sourceResourceManager instanceof CassandraResourceManager) {
       params.putAll(
           getCassandraParameters((CassandraResourceManager) sourceResourceManager, gcsPathPrefix));
+    }
+    if (!params.containsKey("outputDirectory")) {
+      params.put("outputDirectory", "gs://" + artifactBucketName);
     }
 
     if (sessionFileResourceName != null) {
@@ -327,9 +329,19 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
                 ? gcsPathPrefix.substring(0, gcsPathPrefix.length() - 1)
                 : gcsPathPrefix;
     String fileNamePrefix = testId.substring(0, Math.min(20, testId.length()));
-    configBasePath = configBasePath + "/cassandra/" + fileNamePrefix + "-config.conf";
+    configBasePath = configBasePath + "cassandra/" + fileNamePrefix + "-config.conf";
     String configGcsPath = getGcsPath(configBasePath);
     String configPath = configGcsPath.replace("gs://" + artifactBucketName + "/", "");
+    String outputBasePath =
+        (gcsPathPrefix == null)
+            ? ""
+            : gcsPathPrefix.endsWith("/")
+                ? gcsPathPrefix.substring(0, gcsPathPrefix.length() - 1)
+                : gcsPathPrefix;
+    outputBasePath =
+        outputBasePath + "cassandra/" + testId.substring(0, Math.min(20, testId.length())) + "/";
+    String outputPath = getGcsPath(outputBasePath);
+    LOG.info("OutputPath = {}", outputPath);
 
     gcsClient.copyFileToGcs(tempFile.toAbsolutePath(), configPath);
     LOG.info(
@@ -340,6 +352,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         configFile);
     Files.delete(tempFile);
     params.put("sourceConfigURL", configGcsPath);
+    params.put("outputDirectory", outputPath);
     return params;
   }
 

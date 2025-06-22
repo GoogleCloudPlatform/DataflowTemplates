@@ -290,3 +290,13 @@ CREATE TABLE IF NOT EXISTS tiny_text_pk_table (
   id STRING(20) NOT NULL,
   tiny_text_pk_col STRING(20) NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS date_time_pk_table (
+    id TIMESTAMP NOT NULL,
+    date_time_pk_col TIMESTAMP NOT NULL,
+    ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS timestamp_pk_table (
+                                                  id TIMESTAMP NOT NULL,
+                                                  timestamp_pk_col TIMESTAMP NOT NULL,
+) PRIMARY KEY(id);
