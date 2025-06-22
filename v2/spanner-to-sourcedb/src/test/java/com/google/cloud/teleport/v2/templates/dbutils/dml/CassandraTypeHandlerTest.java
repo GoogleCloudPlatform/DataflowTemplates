@@ -23,13 +23,13 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
 
 import com.datastax.oss.driver.api.core.data.CqlDuration;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import com.google.common.net.InetAddresses;
 import java.math.BigDecimal;
@@ -61,43 +61,59 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class CassandraTypeHandlerTest {
 
+  private static final String TEST_TABLE = "TestTable";
+
   @Test
   public void testGetColumnValueByTypeForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("varchar", null, null);
-    String columnName = "test_column";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    // Create Ddl and get Column
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column("test_column")
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Table spannerTable = ddl.table(TEST_TABLE);
+    Column spannerCol = spannerTable.column("test_column");
+    // Create SourceColumn
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name("test_column")
+            .type("varchar")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put(columnName, "test_value");
+    valuesJson.put("test_column", "test_value");
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
     assertEquals("test_value", castResult);
   }
 
   @Test
   public void testGetColumnValueByType() {
-    String spannerColumnType = "string";
-    String sourceType = "varchar";
-    SpannerColumnType spannerType = new SpannerColumnType(spannerColumnType, false);
-    SourceColumnType sourceColumnType = new SourceColumnType(sourceType, null, null);
-    String columnValue = "é";
     String columnName = "LastName";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    String columnValue = "é";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("varchar").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
@@ -106,20 +122,23 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForNumericToInt() {
-    String spannerColumnName = "NUMERIC";
-    String sourceColumnName = "int";
-    SpannerColumnType spannerType = new SpannerColumnType(spannerColumnName, false);
-    SourceColumnType sourceColumnType = new SourceColumnType(sourceColumnName, null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .numeric()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("int").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, 12345);
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
 
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
@@ -128,65 +147,81 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringUUID() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("uuid", null, null);
     String columnName = "id";
     String columnValue = "123e4567-e89b-12d3-a456-426614174000";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("uuid").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(UUID.fromString(columnValue), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForStringIpAddress() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("inet", null, null);
     String columnValue = "192.168.1.1";
     String columnName = "ipAddress";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("inet").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(InetAddresses.forString(columnValue), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForStringJsonArray() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("set<text>", null, null);
     String columnValue = "[\"apple\", \"banana\", \"cherry\"]";
     String columnName = "fruits";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("set<text>")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
     Set<String> expectedSet = new HashSet<>(Arrays.asList("apple", "banana", "cherry"));
     assertEquals(expectedSet, castResult);
@@ -194,21 +229,29 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringJsonObject() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("map<text, text>", null, null);
     String columnName = "user";
     String columnValue = "{\"name\": \"John\", \"age\": \"30\"}";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("map<text, text>")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     Map<String, String> expectedMap = new HashMap<>();
@@ -219,22 +262,27 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringHex() {
-    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
-    String columnName = "lastName";
+    String columnName = "data";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
     String columnValue = Base64.getEncoder().encodeToString(expectedBytes);
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("blob").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     byte[] actualBytes;
@@ -252,49 +300,52 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testColumnKeyNotPresent() {
-    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
-    byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-    StringBuilder binaryString = new StringBuilder();
-    for (byte b : expectedBytes) {
-      binaryString.append(String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0'));
-    }
-    String columnValue = binaryString.toString();
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("blob").build();
 
     JSONObject valuesJson = new JSONObject();
-    valuesJson.put("random", columnValue);
+    valuesJson.put("random", "someValue");
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     assertEquals("blob", result.dataType());
     assertEquals(CassandraTypeHandler.NullClass.INSTANCE, result.value());
   }
 
   @Test
   public void testGetColumnValueByTypeForStringByteArrayBase64Encode() {
-    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
-
     String columnValue = java.util.Base64.getEncoder().encodeToString(expectedBytes);
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("blob").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     byte[] actualBytes;
@@ -312,22 +363,27 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBlobEncodeInStringHexToBlob() {
-    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("blob", null, null);
     String columnName = "lastName";
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
     String columnValue = Base64.getEncoder().encodeToString(expectedBytes);
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("blob").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     byte[] actualBytes;
@@ -345,43 +401,57 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForStringDuration() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("duration", null, null);
     String columnValue = "P4DT1H";
     String columnName = "total_time";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("duration")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(CqlDuration.from("P4DT1H"), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForDates() {
-    SpannerColumnType spannerType = new SpannerColumnType("date", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("timestamp", null, null);
     String columnValue = "2025-01-01T00:00:00Z";
     String columnName = "created_on";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .date()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("timestamp")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, columnValue);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
 
     ZonedDateTime expectedDate = ZonedDateTime.parse(columnValue).withSecond(0).withNano(0);
@@ -392,215 +462,249 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForBigInt() {
-    SpannerColumnType spannerType = new SpannerColumnType("bigint", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("bigint").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, BigInteger.valueOf(123456789L));
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     Long expectedBigInt = 123456789L;
-
     assertEquals(expectedBigInt, castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForBytesForHexString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("bytes", null, null);
     String columnName = "Name";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("bytes").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "48656c6c6f20576f726c64");
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("48656c6c6f20576f726c64", castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForBigIntForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("bigint").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "123456789");
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     long expectedValue = 123456789L;
     assertEquals(expectedValue, castResult);
   }
 
   @Test
-  public void testGetColumnValueByTypeForBoolentForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
+  public void testGetColumnValueByTypeForBooleanForString() {
     String columnName = "Male";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("boolean").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "1");
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(true, castResult);
   }
 
   @Test
-  public void testGetColumnValueByTypeForBoolent() {
-    SpannerColumnType spannerType = new SpannerColumnType("Boolean", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
+  public void testGetColumnValueByTypeForBoolean() {
     String columnName = "Male";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bool()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("boolean").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, false);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(false, castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForIntegerValue() {
-    SpannerColumnType spannerType = new SpannerColumnType("Integer", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("bigint", null, null);
     String columnName = "Salary";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("bigint").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, 225000);
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     long expectedValue = 225000L;
     assertEquals(expectedValue, castResult);
   }
 
   @Test
-  public void testGetColumnValueByTypeForBoolentSamllCaseForString() {
-    SpannerColumnType spannerType = new SpannerColumnType("String", false);
-    SourceColumnType sourceColumnType = new SourceColumnType("boolean", null, null);
+  public void testGetColumnValueByTypeForBooleanSmallCaseForString() {
     String columnName = "Male";
-    String sourceDbTimezoneOffset = null;
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColumnType);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("boolean").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "f");
 
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, sourceDbTimezoneOffset);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(false, castResult);
   }
 
-  // Revised and Improved Tests
-
   @Test
   public void testGetColumnValueByTypeForInteger() {
-    SpannerColumnType spannerType = new SpannerColumnType("NUMERIC", false);
-    SourceColumnType sourceColType = new SourceColumnType("integer", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .numeric()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("integer").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, BigInteger.valueOf(5));
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(BigInteger.valueOf(5), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForValidBigInteger() {
-    SpannerColumnType spannerType = new SpannerColumnType("integer", false);
-    SourceColumnType sourceColType = new SourceColumnType("int64", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .int64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("int64").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, BigInteger.valueOf(5));
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(BigInteger.valueOf(5), castResult);
   }
 
   @Test
   public void testConvertToCassandraTimestampWithISOInstant() {
     String timestamp = "2025-01-15T10:15:30Z";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     LocalDate expectedValue = Instant.parse(timestamp).atZone(ZoneId.systemDefault()).toLocalDate();
     assertEquals(expectedValue, castResult);
   }
@@ -608,188 +712,233 @@ public class CassandraTypeHandlerTest {
   @Test
   public void testConvertToCassandraTimestampWithISODateTime() {
     String timestamp = "2025-01-15T10:15:30";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("datetime", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("datetime")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("2025-01-15T00:00:00Z", castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithISODate() {
     String timestamp = "2025-01-15";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(timestamp, castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat1() {
     String timestamp = "01/15/2025";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat2() {
     String timestamp = "2025/01/15";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat3() {
     String timestamp = "15-01-2025";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat4() {
     String timestamp = "15/01/2025";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithCustomFormat5() {
     String timestamp = "2025-01-15 10:15:30";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals("2025-01-15", castResult.toString());
   }
 
   @Test
   public void testConvertToCassandraTimestampWithInvalidFormat() {
     String timestamp = "invalid-timestamp";
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, timestamp);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
     assertThrows(
         IllegalArgumentException.class,
         () -> {
           PreparedStatementValueObject result =
-              getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+              getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
           CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
         });
   }
 
   @Test
   public void testConvertToCassandraTimestampWithNull() {
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, " ");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
             () -> {
               PreparedStatementValueObject result =
-                  getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+                  getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
               CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
             });
     assertEquals("Error converting value for cassandraType: date", exception.getMessage());
@@ -797,21 +946,28 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testConvertToCassandraTimestampWithWhitespaceString() {
-    SpannerColumnType spannerType = new SpannerColumnType("timestamp", false);
-    SourceColumnType sourceColType = new SourceColumnType("date", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .timestamp()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("date").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "   ");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
     IllegalArgumentException exception =
         assertThrows(
             IllegalArgumentException.class,
             () -> {
               PreparedStatementValueObject result =
-                  getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+                  getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
               CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
             });
     assertEquals("Error converting value for cassandraType: date", exception.getMessage());
@@ -819,41 +975,52 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForFloat() {
-    SpannerColumnType spannerType = new SpannerColumnType("float", false);
-    SourceColumnType sourceColType = new SourceColumnType("float", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .float64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("float").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, 5.5f);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
-    Object result = getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
-    Object actualValue = ((PreparedStatementValueObject<?>) result).value();
+    Object actualValue = result.value();
     assertEquals(5.5f, actualValue);
   }
 
   @Test
   public void testGetColumnValueByTypeForFloatIllegalArgumentException() {
-    SpannerColumnType spannerType = new SpannerColumnType("date", false);
-    SourceColumnType sourceColType = new SourceColumnType("float", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .date()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("float").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "2024-12-12");
-
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
 
     assertThrows(
         IllegalArgumentException.class,
         () -> {
           PreparedStatementValueObject<?> preparedStatementValueObject =
-              getColumnValueByType(spannerColDef, sourceColDef, valuesJson, null);
+              getColumnValueByType(spannerCol, sourceCol, valuesJson, null);
           castToExpectedType(
               preparedStatementValueObject.dataType(), preparedStatementValueObject.value());
         });
@@ -861,242 +1028,288 @@ public class CassandraTypeHandlerTest {
 
   @Test
   public void testGetColumnValueByTypeForFloat64() {
-    SpannerColumnType spannerType = new SpannerColumnType("float64", false);
-    SourceColumnType sourceColType = new SourceColumnType("double", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .float64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("double").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, new BigDecimal("5.5"));
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(5.5, castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForFloat64FromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("double", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("double").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5.5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(5.5, castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForDecimalFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("decimal", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("decimal").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5.5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(BigDecimal.valueOf(5.5), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForDecimalFromFloat() {
-    SpannerColumnType spannerType = new SpannerColumnType("float", false);
-    SourceColumnType sourceColType = new SourceColumnType("decimal", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .float64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("decimal").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, 5.5);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(BigDecimal.valueOf(5.5), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForDecimalFromFloat64() {
-    SpannerColumnType spannerType = new SpannerColumnType("float64", false);
-    SourceColumnType sourceColType = new SourceColumnType("decimal", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .float64()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("decimal").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, 5.5);
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(BigDecimal.valueOf(5.5), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForFloatFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("float", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("float").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5.5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(5.5f, castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForBigIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("bigint", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("bigint").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(Long.valueOf("5"), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("int", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("int").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(Integer.valueOf("5"), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForSmallIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("smallint", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+            .name(columnName)
+            .type("smallint")
+            .build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
-    assertEquals(Integer.valueOf("5").shortValue(), castResult);
+    assertEquals(Short.valueOf("5"), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForTinyIntFromString() {
-    SpannerColumnType spannerType = new SpannerColumnType("string", false);
-    SourceColumnType sourceColType = new SourceColumnType("tinyint", null, null);
     String columnName = "test_column";
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .string()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("tinyint").build();
 
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, "5");
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
     PreparedStatementValueObject result =
-        getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
     Object castResult = CassandraTypeHandler.castToExpectedType(result.dataType(), result.value());
-
     assertEquals(Byte.valueOf("5"), castResult);
   }
 
   @Test
   public void testGetColumnValueByTypeForBytes() {
-    SpannerColumnType spannerType = new SpannerColumnType("bytes", false);
-    SourceColumnType sourceColType = new SourceColumnType("bytes", null, null);
     String columnName = "test_column";
-
     byte[] expectedBytes = new byte[] {1, 2, 3, 4, 5};
+    Ddl ddl =
+        Ddl.builder()
+            .createTable(TEST_TABLE)
+            .column(columnName)
+            .bytes()
+            .max()
+            .endColumn()
+            .endTable()
+            .build();
+    Column spannerCol = ddl.table(TEST_TABLE).column(columnName);
+    SourceColumn sourceCol =
+        SourceColumn.builder(SourceDatabaseType.CASSANDRA).name(columnName).type("bytes").build();
+
     JSONObject valuesJson = new JSONObject();
     valuesJson.put(columnName, Base64.getEncoder().encodeToString(expectedBytes));
 
-    SpannerColumnDefinition spannerColDef = new SpannerColumnDefinition(columnName, spannerType);
-    SourceColumnDefinition sourceColDef = new SourceColumnDefinition(columnName, sourceColType);
-
-    Object result = getColumnValueByType(spannerColDef, sourceColDef, valuesJson, "UTC");
-
+    PreparedStatementValueObject result =
+        getColumnValueByType(spannerCol, sourceCol, valuesJson, "UTC");
     assertTrue(result instanceof PreparedStatementValueObject);
-
-    Object actualValue = ((PreparedStatementValueObject<?>) result).value();
+    Object actualValue = result.value();
     assertEquals(ByteBuffer.wrap(expectedBytes), actualValue);
   }
 
@@ -1120,7 +1333,6 @@ public class CassandraTypeHandlerTest {
     assertEquals(
         new BigInteger("123456789123456789123456789"),
         castToExpectedType("varint", "123456789123456789123456789"));
-    String timeString = "14:30:45";
     Object localTime1 = castToExpectedType("time", "14:30:45");
     assertTrue(localTime1 instanceof LocalTime);
     assertEquals(
@@ -1148,7 +1360,7 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testCastToExpectedTypeForJSONObjectStringifyToMFrozenMap() {
+  public void testCastToExpectedTypeForJSONObjectStringifyToFrozenMap() {
     String cassandraType = "frozen<map<int, text>>";
     String columnValue = "{\"1\": \"One\", \"2\": \"Two\"}";
     Object castResult = castToExpectedType(cassandraType, columnValue);
@@ -1171,13 +1383,12 @@ public class CassandraTypeHandlerTest {
   }
 
   @Test
-  public void testGetColumnValueByTypeForNullBothColumnDefs() {
-    JSONObject valuesJson = mock(JSONObject.class);
-    String sourceDbTimezoneOffset = null;
+  public void testGetColumnValueByTypeForNullColumnDefs() {
+    JSONObject valuesJson = new JSONObject();
     assertThrows(
-        IllegalArgumentException.class,
+        NullPointerException.class,
         () -> {
-          getColumnValueByType(null, null, valuesJson, sourceDbTimezoneOffset);
+          getColumnValueByType(null, null, valuesJson, null);
         });
   }
 
