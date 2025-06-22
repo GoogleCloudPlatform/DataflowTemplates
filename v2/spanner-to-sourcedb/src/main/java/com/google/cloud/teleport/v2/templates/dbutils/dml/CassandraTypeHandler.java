@@ -16,8 +16,8 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import com.datastax.oss.driver.api.core.data.CqlDuration;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
 import com.google.common.net.InetAddresses;
 import java.math.BigDecimal;
@@ -632,30 +632,29 @@ public class CassandraTypeHandler {
    * <p>This method determines the column type, extracts the value using helper methods, and returns
    * a {@link PreparedStatementValueObject} containing the column value formatted for Cassandra.
    *
-   * @param spannerColDef The Spanner column definition containing column name and type.
-   * @param sourceColDef The source database column definition containing column type.
+   * @param spannerColumn The Spanner column.
+   * @param sourceColumn The source column.
    * @param valuesJson The JSON object containing column values.
    * @param sourceDbTimezoneOffset The timezone offset for date-time columns (if applicable).
    * @return A {@link PreparedStatementValueObject} containing the parsed column value.
    */
   public static PreparedStatementValueObject<?> getColumnValueByType(
-      SpannerColumnDefinition spannerColDef,
-      SourceColumnDefinition sourceColDef,
+      Column spannerColumn,
+      SourceColumn sourceColumn,
       JSONObject valuesJson,
       String sourceDbTimezoneOffset) {
+    String spannerType = spannerColumn != null ? spannerColumn.type().toString() : null;
+    String cassandraType = sourceColumn != null ? sourceColumn.type() : null;
+    String columnName = spannerColumn != null ? spannerColumn.name() : null;
 
-    if (spannerColDef == null || sourceColDef == null) {
-      throw new IllegalArgumentException("Column definitions cannot be null.");
+    if (spannerType == null || cassandraType == null) {
+      throw new IllegalArgumentException("Column types cannot be null.");
     }
 
-    String spannerType = spannerColDef.getType().getName().toLowerCase();
-    String cassandraType = sourceColDef.getType().getName().toLowerCase();
-    String columnName = spannerColDef.getName();
-
-    Object columnValue = handleSpannerColumnType(spannerType, columnName, valuesJson);
+    Object columnValue = handleSpannerColumnType(spannerType.toLowerCase(), columnName, valuesJson);
 
     return PreparedStatementValueObject.create(
-        cassandraType, Objects.requireNonNullElse(columnValue, NullClass.INSTANCE));
+        cassandraType.toLowerCase(), Objects.requireNonNullElse(columnValue, NullClass.INSTANCE));
   }
 
   /**
