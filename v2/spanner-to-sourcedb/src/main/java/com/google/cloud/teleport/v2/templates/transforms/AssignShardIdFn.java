@@ -26,7 +26,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
@@ -42,6 +43,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -68,7 +70,9 @@ public class AssignShardIdFn
   /* The information schema of the Cloud Spanner database */
   private final Ddl ddl;
 
-  private final Schema schema;
+  private final SourceSchema sourceSchema;
+
+  private final ISchemaMapper schemaMapper;
 
   // Jackson Object mapper.
   private transient ObjectMapper mapper;
@@ -91,8 +95,9 @@ public class AssignShardIdFn
 
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Ddl ddl,
+      SourceSchema sourceSchema,
       String shardingMode,
       String shardName,
       String skipDirName,
@@ -101,8 +106,9 @@ public class AssignShardIdFn
       String shardingCustomParameters,
       Long maxConnectionsAcrossAllShards) {
     this.spannerConfig = spannerConfig;
-    this.schema = schema;
+    this.schemaMapper = schemaMapper;
     this.ddl = ddl;
+    this.sourceSchema = sourceSchema;
     this.shardingMode = shardingMode;
     this.shardName = shardName;
     this.skipDirName = skipDirName;
@@ -143,7 +149,7 @@ public class AssignShardIdFn
                 customJarPath,
                 shardingCustomClassName,
                 shardingCustomParameters,
-                schema,
+                schemaMapper,
                 skipDirName);
         retry = false;
       } catch (SpannerException e) {
@@ -186,9 +192,8 @@ public class AssignShardIdFn
         record.setShard(this.shardName);
         qualifiedShard = this.shardName;
       } else {
-        // Skip from processing if table not in session File
-        // TODO: remove dependency on session file when session file is made optional
-        boolean doesTableExist = doesTableExistInSessionFile(tableName);
+        // Skip from processing if table not found at source.
+        boolean doesTableExist = doesTableExistAtSource(tableName);
         if (!doesTableExist) {
           LOG.warn(
               "Writing record for table {} to skipped directory name {} since table not present in"
@@ -198,7 +203,6 @@ public class AssignShardIdFn
           record.setShard(skipDirName);
           qualifiedShard = skipDirName;
         } else {
-
           JsonNode keysJson = mapper.readTree(keysJsonStr);
           String newValueJsonStr = record.getMod().getNewValuesJson();
           JsonNode newValueJson = mapper.readTree(newValueJsonStr);
@@ -228,14 +232,12 @@ public class AssignShardIdFn
           }
         }
       }
-
       record.setShard(qualifiedShard);
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
       Long finalKey =
           finalKeyString.hashCode() % maxConnectionsAcrossAllShards; // The total parallelism is
       // maxConnectionsAcrossAllShards
       c.output(KV.of(finalKey, record));
-
     } catch (Exception e) {
       StringWriter errors = new StringWriter();
       e.printStackTrace(new PrintWriter(errors));
@@ -450,14 +452,22 @@ public class AssignShardIdFn
     }
   }
 
-  private boolean doesTableExistInSessionFile(String tableName) throws IllegalArgumentException {
-    if (schema.getSpannerToID().containsKey(tableName)) {
-      return true;
+  private boolean doesTableExistAtSource(String tableName) {
+    try {
+      String sourceTableName = schemaMapper.getSourceTableName("", tableName);
+      if (sourceTableName == null || sourceTableName.isEmpty()) {
+        return false;
+      }
+      for (com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable table :
+          sourceSchema.tables().values()) {
+        if (table.name().equalsIgnoreCase(sourceTableName)) {
+          return true;
+        }
+      }
+      return false;
+    } catch (NoSuchElementException e) {
+      return false;
     }
-    LOG.warn(
-        "Table {} found in change record but not found in session file. Skipping record",
-        tableName);
-    return false;
   }
 
   private Map<String, Object> getSpannerRecordFromChangeStreamData(

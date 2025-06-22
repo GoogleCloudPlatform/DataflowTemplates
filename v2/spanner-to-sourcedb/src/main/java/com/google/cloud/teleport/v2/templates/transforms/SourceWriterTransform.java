@@ -17,9 +17,10 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.base.Preconditions;
@@ -44,11 +45,12 @@ public class SourceWriterTransform
     extends PTransform<
         PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
 
-  private final Schema schema;
+  private final ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
   private final Ddl ddl;
+  private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
@@ -57,21 +59,23 @@ public class SourceWriterTransform
 
   public SourceWriterTransform(
       List<Shard> shards,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
+      SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
       int maxThreadPerDataflowWorker,
       String source,
       CustomTransformation customTransformation) {
 
-    this.schema = schema;
+    this.schemaMapper = schemaMapper;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
+    this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
@@ -88,10 +92,11 @@ public class SourceWriterTransform
             ParDo.of(
                     new SourceWriterFn(
                         this.shards,
-                        this.schema,
+                        this.schemaMapper,
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
                         this.ddl,
+                        this.sourceSchema,
                         this.shadowTablePrefix,
                         this.skipDirName,
                         this.maxThreadPerDataflowWorker,

@@ -15,24 +15,24 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.NoSuchElementException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Default implementation to get the shard identifier. */
 public class ShardIdFetcherImpl implements IShardIdFetcher {
   private static final Logger LOG = LoggerFactory.getLogger(ShardIdFetcherImpl.class);
-  private final Schema schema;
+  private final ISchemaMapper schemaMapper;
   private final String skipDirName;
 
-  public ShardIdFetcherImpl(Schema schema, String skipDirName) {
-    this.schema = schema;
+  public ShardIdFetcherImpl(ISchemaMapper schemaMapper, String skipDirName) {
+    this.schemaMapper = schemaMapper;
     this.skipDirName = skipDirName;
   }
 
@@ -64,26 +64,19 @@ public class ShardIdFetcherImpl implements IShardIdFetcher {
   }
 
   private String getShardIdColumnForTableName(String tableName) throws IllegalArgumentException {
-    if (!schema.getSpannerToID().containsKey(tableName)) {
-      LOG.warn(
-          "Table {} found in change record but not found in session file. Skipping record",
-          tableName);
+    try {
+      String shardIdColumn = schemaMapper.getShardIdColumnName("", tableName);
+      if (shardIdColumn == null || shardIdColumn.isEmpty()) {
+        LOG.warn(
+            "Table {} found in change record but not found in session file. Skipping record",
+            tableName);
+        return "";
+      }
+      return shardIdColumn;
+    } catch (NoSuchElementException e) {
+      LOG.warn("Table {} not found in session file. Skipping record.", tableName);
       return "";
     }
-    String tableId = schema.getSpannerToID().get(tableName).getName();
-    if (!schema.getSpSchema().containsKey(tableId)) {
-      LOG.warn("Table {} not found in session file. Skipping record.", tableId);
-      return "";
-    }
-    SpannerTable spTable = schema.getSpSchema().get(tableId);
-    String shardColId = spTable.getShardIdColumn();
-    if (!spTable.getColDefs().containsKey(shardColId)) {
-      throw new IllegalArgumentException(
-          "ColumnId "
-              + shardColId
-              + " not found in session file. Please provide a valid session file.");
-    }
-    return spTable.getColDefs().get(shardColId).getName();
   }
 
   @Override

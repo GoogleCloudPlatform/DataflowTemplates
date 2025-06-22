@@ -15,15 +15,19 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.common.collect.ImmutableList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -36,48 +40,29 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDMLGenerator.class);
 
   public DMLGeneratorResponse getDMLStatement(DMLGeneratorRequest dmlGeneratorRequest) {
-
-    if (dmlGeneratorRequest
-            .getSchema()
-            .getSpannerToID()
-            .get(dmlGeneratorRequest.getSpannerTableName())
-        == null) {
-      LOG.warn(
-          "The spanner table {} was not found in session file, dropping the record",
-          dmlGeneratorRequest.getSpannerTableName());
+    ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
+    String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
+    String sourceTableName = "";
+    try {
+      sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
+    } catch (Exception e) {
+      LOG.warn("The table {} was not found in source", spannerTableName);
       return new DMLGeneratorResponse("");
     }
-
-    String spannerTableId =
-        dmlGeneratorRequest
-            .getSchema()
-            .getSpannerToID()
-            .get(dmlGeneratorRequest.getSpannerTableName())
-            .getName();
-    SpannerTable spannerTable = dmlGeneratorRequest.getSchema().getSpSchema().get(spannerTableId);
-
-    if (spannerTable == null) {
-      LOG.warn(
-          "The spanner table {} was not found in session file, dropping the record",
-          dmlGeneratorRequest.getSpannerTableName());
-      return new DMLGeneratorResponse("");
-    }
-
-    SourceTable sourceTable = dmlGeneratorRequest.getSchema().getSrcSchema().get(spannerTableId);
-    if (sourceTable == null) {
-      LOG.warn("The table {} was not found in source", dmlGeneratorRequest.getSpannerTableName());
-      return new DMLGeneratorResponse("");
-    }
-
-    if (sourceTable.getPrimaryKeys() == null || sourceTable.getPrimaryKeys().length == 0) {
+    SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
+    SourceTable sourceTable = sourceSchema.tables().get(sourceTableName);
+    if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
       LOG.warn(
           "Cannot reverse replicate for table {} without primary key, skipping the record",
-          sourceTable.getName());
+          sourceTableName);
       return new DMLGeneratorResponse("");
     }
+    Ddl spannerDdl = dmlGeneratorRequest.getDdl();
+    Table spannerTable = spannerDdl.table(spannerTableName);
 
     Map<String, String> pkcolumnNameValues =
         getPkColumnValues(
+            schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
@@ -87,17 +72,17 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if (pkcolumnNameValues == null) {
       LOG.warn(
           "Cannot reverse replicate for table {} without primary key, skipping the record",
-          sourceTable.getName());
+          sourceTableName);
       return new DMLGeneratorResponse("");
     }
 
     if ("INSERT".equals(dmlGeneratorRequest.getModType())
         || "UPDATE".equals(dmlGeneratorRequest.getModType())) {
       return generateUpsertStatement(
-          spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
+          schemaMapper, spannerTable, sourceTable, dmlGeneratorRequest, pkcolumnNameValues);
 
     } else if ("DELETE".equals(dmlGeneratorRequest.getModType())) {
-      return getDeleteStatement(sourceTable.getName(), pkcolumnNameValues);
+      return getDeleteStatement(sourceTableName, pkcolumnNameValues);
     } else {
       LOG.warn("Unsupported modType: " + dmlGeneratorRequest.getModType());
       return new DMLGeneratorResponse("");
@@ -106,7 +91,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
   private static DMLGeneratorResponse getUpsertStatement(
       String tableName,
-      Set<String> primaryKeys,
+      ImmutableList<String> primaryKeys,
       Map<String, String> columnNameValues,
       Map<String, String> pkcolumnNameValues) {
 
@@ -185,12 +170,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse generateUpsertStatement(
-      SpannerTable spannerTable,
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
       SourceTable sourceTable,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
         getColumnValues(
+            schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
@@ -198,14 +185,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse());
     return getUpsertStatement(
-        sourceTable.getName(),
-        sourceTable.getPrimaryKeySet(),
-        columnNameValues,
-        pkcolumnNameValues);
+        sourceTable.name(), sourceTable.primaryKeyColumns(), columnNameValues, pkcolumnNameValues);
   }
 
   private static Map<String, String> getColumnValues(
-      SpannerTable spannerTable,
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
@@ -226,15 +211,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if the column does not exist in any of the JSON - continue to next,
       as the column will be stored with default/null values
     */
-    Set<String> sourcePKs = sourceTable.getPrimaryKeySet();
+    ImmutableList<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
     if (customTransformationResponse != null) {
       customTransformColumns = customTransformationResponse.keySet();
     }
-    for (Map.Entry<String, SourceColumnDefinition> entry : sourceTable.getColDefs().entrySet()) {
-      SourceColumnDefinition sourceColDef = entry.getValue();
+    for (SourceColumn sourceColumn : sourceTable.columns()) {
 
-      String colName = sourceColDef.getName();
+      String colName = sourceColumn.name();
       if (sourcePKs.contains(colName)) {
         continue; // we only need non-primary keys
       }
@@ -242,44 +226,48 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         response.put(colName, customTransformationResponse.get(colName).toString());
         continue;
       }
-
-      String colId = entry.getKey();
-      SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
-      if (spannerColDef == null) {
+      String spannerColumnName = "";
+      try {
+        spannerColumnName = schemaMapper.getSpannerColumnName("", sourceTable.name(), colName);
+      } catch (NoSuchElementException e) {
         continue;
       }
-      String spannerColumnName = spannerColDef.getName();
+      Column spannerColumn = spannerTable.column(spannerColumnName);
+      if (spannerColumn == null) {
+        continue;
+      }
       String columnValue = "";
       if (keyValuesJson.has(spannerColumnName)) {
         // get the value based on Spanner and Source type
         if (keyValuesJson.isNull(spannerColumnName)) {
-          response.put(sourceColDef.getName(), "NULL");
+          response.put(colName, "NULL");
           continue;
         }
         columnValue =
             getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
+                spannerColumn, sourceColumn, keyValuesJson, sourceDbTimezoneOffset);
       } else if (newValuesJson.has(spannerColumnName)) {
         // get the value based on Spanner and Source type
         if (newValuesJson.isNull(spannerColumnName)) {
-          response.put(sourceColDef.getName(), "NULL");
+          response.put(colName, "NULL");
           continue;
         }
         columnValue =
             getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+                spannerColumn, sourceColumn, newValuesJson, sourceDbTimezoneOffset);
       } else {
         continue;
       }
 
-      response.put(sourceColDef.getName(), columnValue);
+      response.put(colName, columnValue);
     }
 
     return response;
   }
 
   private static Map<String, String> getPkColumnValues(
-      SpannerTable spannerTable,
+      ISchemaMapper schemaMapper,
+      Table spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
       JSONObject keyValuesJson,
@@ -297,75 +285,72 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if so, get the string value
     if the column does not exist in any of the JSON - return null
     */
-    ColumnPK[] sourcePKs = sourceTable.getPrimaryKeys();
+    ImmutableList<String> sourcePKs = sourceTable.primaryKeyColumns();
     Set<String> customTransformColumns = null;
     if (customTransformationResponse != null) {
       customTransformColumns = customTransformationResponse.keySet();
     }
 
-    for (int i = 0; i < sourcePKs.length; i++) {
-      ColumnPK currentSourcePK = sourcePKs[i];
-      String colId = currentSourcePK.getColId();
-      SourceColumnDefinition sourceColDef = sourceTable.getColDefs().get(colId);
-      SpannerColumnDefinition spannerColDef = spannerTable.getColDefs().get(colId);
-      if (spannerColDef == null) {
-        LOG.warn(
-            "The corresponding primary key column {} was not found in Spanner",
-            sourceColDef.getName());
-        return null;
-      }
-      if (customTransformColumns != null
-          && customTransformColumns.contains(sourceColDef.getName())) {
-        response.put(
-            sourceColDef.getName(),
-            customTransformationResponse.get(sourceColDef.getName()).toString());
+    for (int i = 0; i < sourcePKs.size(); i++) {
+      String currentSourcePK = sourcePKs.get(i);
+      String currentSpannerPk =
+          schemaMapper.getSpannerColumnName("", sourceTable.name(), currentSourcePK);
+
+      if (customTransformColumns != null && customTransformColumns.contains(currentSourcePK)) {
+        response.put(currentSourcePK, customTransformationResponse.get(currentSourcePK).toString());
         continue;
       }
-      String spannerColumnName = spannerColDef.getName();
+
       String columnValue = "";
-      if (keyValuesJson.has(spannerColumnName)) {
+      Column spannerColumn = spannerTable.column(currentSpannerPk);
+      SourceColumn sourceColumn =
+          sourceTable.columns().stream()
+              .filter(col -> col.name().equals(currentSourcePK))
+              .findFirst()
+              .orElse(null);
+      if (keyValuesJson.has(currentSpannerPk)) {
         // get the value based on Spanner and Source type
-        if (keyValuesJson.isNull(spannerColumnName)) {
-          response.put(sourceColDef.getName(), "NULL");
+        if (keyValuesJson.isNull(currentSpannerPk)) {
+          response.put(currentSourcePK, "NULL");
           continue;
         }
         columnValue =
             getMappedColumnValue(
-                spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
-      } else if (newValuesJson.has(spannerColumnName)) {
+                spannerColumn, sourceColumn, keyValuesJson, sourceDbTimezoneOffset);
+      } else if (newValuesJson.has(currentSpannerPk)) {
         // get the value based on Spanner and Source type
-        if (newValuesJson.isNull(spannerColumnName)) {
-          response.put(sourceColDef.getName(), "NULL");
+        if (newValuesJson.isNull(currentSpannerPk)) {
+          response.put(currentSourcePK, "NULL");
           continue;
         }
         columnValue =
             getMappedColumnValue(
-                spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
+                spannerColumn, sourceColumn, newValuesJson, sourceDbTimezoneOffset);
       } else {
-        LOG.warn("The column {} was not found in input record", spannerColumnName);
+        LOG.warn("The column {} was not found in input record", currentSpannerPk);
         return null;
       }
 
-      response.put(sourceColDef.getName(), columnValue);
+      response.put(currentSourcePK, columnValue);
     }
 
     return response;
   }
 
   private static String getMappedColumnValue(
-      SpannerColumnDefinition spannerColDef,
-      SourceColumnDefinition sourceColDef,
+      Column spannerColumn,
+      SourceColumn sourceColumn,
       JSONObject valuesJson,
       String sourceDbTimezoneOffset) {
 
     String colInputValue = "";
-    String colType = spannerColDef.getType().getName();
-    String colName = spannerColDef.getName();
+    String colType = spannerColumn.type().toString();
+    String colName = spannerColumn.name();
     if ("FLOAT64".equals(colType)) {
       colInputValue = valuesJson.getBigDecimal(colName).toString();
     } else if ("BOOL".equals(colType)) {
       colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
-    } else if ("STRING".equals(colType) && spannerColDef.getType().getIsArray()) {
+    } else if ("ARRAY<STRING>".equals(colType)) {
       colInputValue =
           valuesJson.getJSONArray(colName).toList().stream()
               .map(String::valueOf)
@@ -376,8 +361,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       colInputValue = valuesJson.getString(colName);
     }
     String response =
-        getColumnValueByType(
-            sourceColDef.getType().getName(), colInputValue, sourceDbTimezoneOffset, colType);
+        getColumnValueByType(sourceColumn.type(), colInputValue, sourceDbTimezoneOffset, colType);
     return response;
   }
 
