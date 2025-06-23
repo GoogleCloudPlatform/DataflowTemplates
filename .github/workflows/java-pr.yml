@@ -48,6 +48,7 @@ concurrency:
 
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+  IT_REGION: us-west2
 
 permissions: read-all
 
@@ -134,10 +135,10 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Smoke Tests
-        run: | 
+        run: |
           ./cicd/run-it-smoke-tests \
           --modules-to-build="DEFAULT" \
-          --it-region="us-central1" \
+          --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1"
@@ -164,10 +165,10 @@ jobs:
         id: setup-env
         uses: ./.github/actions/setup-env
       - name: Run Integration Tests
-        run: | 
+        run: |
           ./cicd/run-it-tests \
           --modules-to-build="DEFAULT" \
-          --it-region="us-central1" \
+          --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1"
@@ -197,7 +198,7 @@ jobs:
     - name: Run Load Tests
       run: |
         ./cicd/run-load-tests \
-        --it-region="us-central1" \
+        --it-region="${{ env.IT_REGION }}" \
         --it-project="cloud-teleport-testing" \
         --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
         --it-private-connectivity="datastream-private-connect-us-central1"
