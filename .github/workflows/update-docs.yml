@@ -45,4 +45,3 @@ jobs:
             This is an automated PR created by the update-docs workflow.
           branch: chore/update-generated-docs
           base: main
-          team-reviewers: GoogleCloudPlatform/dataflow-templates-wg
