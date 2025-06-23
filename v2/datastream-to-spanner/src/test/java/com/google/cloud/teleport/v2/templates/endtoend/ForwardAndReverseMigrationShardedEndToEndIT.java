@@ -263,7 +263,9 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
         pipelineOperator()
             .waitForCondition(
                 createConfig(rrJobInfo, Duration.ofMinutes(10)),
-                () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 5);
+                () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 4);
+    System.out.println(cloudSqlResourceManagerShardA.getRowCount(TABLE));
+    System.out.println(cloudSqlResourceManagerShardB.getRowCount(TABLE));
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManagerShardA.readTable(TABLE);
     assertThat(rows).hasSize(4);
