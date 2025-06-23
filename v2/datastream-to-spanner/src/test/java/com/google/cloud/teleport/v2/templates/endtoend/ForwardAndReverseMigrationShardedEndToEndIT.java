@@ -60,8 +60,6 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/ShardedMigration/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE =
-      "EndToEndTesting/ShardedMigration/session.json";
 
   private static final String TABLE = "Authors";
   private static final HashMap<String, String> AUTHOR_TABLE_COLUMNS =
@@ -131,12 +129,8 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-        gcsResourceManager.createArtifact(
-            "input/session.json",
-            generateSessionFile(
-                cloudSqlResourceManagerShardA.getDatabaseName(),
-                spannerResourceManager.getDatabaseId(),
-                SESSION_FILE_RESOURCE));
+        generateAndUploadSessionFileUsingSMT(
+            jdbcSource, cloudSqlResourceManagerShardA, spannerResourceManager, gcsResourceManager);
 
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();
@@ -264,8 +258,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
             .waitForCondition(
                 createConfig(rrJobInfo, Duration.ofMinutes(10)),
                 () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 4);
-    System.out.println(cloudSqlResourceManagerShardA.getRowCount(TABLE));
-    System.out.println(cloudSqlResourceManagerShardB.getRowCount(TABLE));
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManagerShardA.readTable(TABLE);
     assertThat(rows).hasSize(4);

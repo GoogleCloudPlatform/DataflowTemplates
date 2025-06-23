@@ -627,10 +627,11 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
         .build();
   }
 
-  protected String generateSessionFile(
+  protected void generateAndUploadSessionFileUsingSMT(
       JDBCSource jdbcSourceShard,
       CloudSqlResourceManager cloudSqlResourceManager,
-      SpannerResourceManager spannerResourceManager)
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager)
       throws IOException, InterruptedException {
     String spannerMigrationToolPath = System.getenv("spanner_migration_tool_path");
     if (StringUtils.isBlank(spannerMigrationToolPath)) {
@@ -676,17 +677,16 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
                   new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                  System.out.println("TOOL_STDOUT: " + line); // Log all output
+                  LOG.info("TOOL_STDOUT: " + line); // Log all output
                   capturedOutputLines.add(line);
                   Matcher matcher = sessionFilePattern.matcher(line);
                   if (matcher.find()) {
                     tempCapturedSessionFileName[0] = matcher.group(1);
-                    System.out.println(
-                        ">>>> Captured session filename: " + tempCapturedSessionFileName[0]);
+                    LOG.debug(">>>> Captured session filename: " + tempCapturedSessionFileName[0]);
                   }
                 }
               } catch (IOException e) {
-                System.err.println("Error reading tool stdout: " + e.getMessage());
+                LOG.error("Error reading tool stdout: " + e.getMessage());
               }
             });
 
@@ -698,11 +698,11 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
                   new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                  System.err.println("TOOL_STDERR: " + line); // Log all error output
+                  LOG.error("TOOL_STDERR: " + line); // Log all error output
                   capturedErrorLines.add(line);
                 }
               } catch (IOException e) {
-                System.err.println("Error reading tool stderr: " + e.getMessage());
+                LOG.error("Error reading tool stderr: " + e.getMessage());
               }
             });
 
@@ -713,8 +713,7 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
       stdoutFuture.get(1, TimeUnit.MINUTES); // Timeout for stdout reader
       stderrFuture.get(1, TimeUnit.MINUTES); // Timeout for stderr reader
     } catch (Exception e) {
-      System.err.println(
-          "Timeout or error waiting for stream readers to finish: " + e.getMessage());
+      LOG.error("Timeout or error waiting for stream readers to finish: " + e.getMessage());
     }
     executor.shutdownNow(); // Terminate threads if they are still running
 
@@ -729,10 +728,10 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
                 + String.join("\n", capturedErrorLines));
       }
       if (tempCapturedSessionFileName[0] != null) {
-        return tempCapturedSessionFileName[0];
+        gcsResourceManager.uploadArtifact(
+            "input/session.json", Resources.getResource(tempCapturedSessionFileName[0]).getPath());
       } else {
-        System.out.println("Warning: Session filename was not found in the tool output.");
-        return "";
+        LOG.warn("Warning: Session filename was not found in the tool output.");
       }
     } else {
       process.destroyForcibly();
