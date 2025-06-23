@@ -605,18 +605,25 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   protected JDBCSource createMySqlDatabase(
-      CloudSqlResourceManager cloudSqlResourceManager, Map<String, Map<String, String>> tables) {
-    for (HashMap.Entry<String, Map<String, String>> entry : tables.entrySet()) {
-      cloudSqlResourceManager.createTable(
-          entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
+      List<CloudSqlResourceManager> cloudSqlResourceManagers,
+      Map<String, Map<String, String>> tables) {
+    for (CloudSqlResourceManager cloudSqlResourceManager : cloudSqlResourceManagers) {
+      for (HashMap.Entry<String, Map<String, String>> entry : tables.entrySet()) {
+        cloudSqlResourceManager.createTable(
+            entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
+      }
+    }
+    Map<String, List<String>> allowedTables = new HashMap<>();
+    for (CloudSqlResourceManager cloudSqlResourceManager : cloudSqlResourceManagers) {
+      allowedTables.put(
+          cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList());
     }
     return MySQLSource.builder(
-            cloudSqlResourceManager.getHost(),
-            cloudSqlResourceManager.getUsername(),
-            cloudSqlResourceManager.getPassword(),
-            cloudSqlResourceManager.getPort())
-        .setAllowedTables(
-            Map.of(cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList()))
+            cloudSqlResourceManagers.get(0).getHost(),
+            cloudSqlResourceManagers.get(0).getUsername(),
+            cloudSqlResourceManagers.get(0).getPassword(),
+            cloudSqlResourceManagers.get(0).getPort())
+        .setAllowedTables(allowedTables)
         .build();
   }
 

@@ -21,13 +21,12 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
-import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -39,7 +38,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -115,18 +113,14 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
             CloudMySQLResourceManager.builder(testName + "ShardA").build();
         cloudSqlResourceManagerShardB =
             CloudMySQLResourceManager.builder(testName + "ShardB").build();
-        JDBCSource jdbcSourceShardA =
+        jdbcSource =
             createMySqlDatabase(
-                cloudSqlResourceManagerShardA,
-                new HashMap<>() {
+                new ArrayList<>() {
                   {
-                    put(TABLE, AUTHOR_TABLE_COLUMNS);
+                    add(cloudSqlResourceManagerShardA);
+                    add(cloudSqlResourceManagerShardB);
                   }
-                });
-        jdbcSource = jdbcSourceShardA;
-        JDBCSource jdbcSourceShardB =
-            createMySqlDatabase(
-                cloudSqlResourceManagerShardB,
+                },
                 new HashMap<>() {
                   {
                     put(TABLE, AUTHOR_TABLE_COLUMNS);
@@ -225,27 +219,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     assertRowInMySQL();
   }
 
-  private void readRows() {
-    ImmutableList<Struct> authorSpanner =
-        spannerResourceManager.readTableRecords("Authors", "id", "migration_shard_id");
-    System.out.println("Spanner rows");
-    for (Struct row : authorSpanner) {
-      System.out.println(row.toString());
-    }
-    System.out.println("SQL rows A");
-    List<Map<String, Object>> rowsA = cloudSqlResourceManagerShardA.readTable(TABLE);
-    for (Map<String, Object> row : rowsA) {
-      System.out.println(row.get("id"));
-      System.out.println(row.get("name"));
-    }
-    System.out.println("SQL rows B");
-    List<Map<String, Object>> rowsB = cloudSqlResourceManagerShardB.readTable(TABLE);
-    for (Map<String, Object> row : rowsB) {
-      System.out.println(row.get("id"));
-      System.out.println(row.get("name"));
-    }
-  }
-
   private void writeRowInMySqlAndAssertRows() {
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -259,9 +232,6 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
-    readRows();
-    System.out.println(cloudSqlResourceManagerShardA.getDatabaseName());
-    System.out.println(cloudSqlResourceManagerShardB.getDatabaseName());
     assertThatResult(result).meetsConditions();
   }
 
