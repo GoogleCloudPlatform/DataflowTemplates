@@ -54,7 +54,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
-import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -310,34 +309,49 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
       String jobName,
       SpannerResourceManager spannerResourceManager,
-      GcsResourceManager gcsResourceManager)
+      GcsResourceManager gcsResourceManager,
+      CloudSqlResourceManager cloudSqlResourceManager,
+      Boolean multiSharded)
       throws IOException {
     // launch dataflow template
-    flexTemplateDataflowJobResourceManager =
-        FlexTemplateDataflowJobResourceManager.builder(jobName)
-            .withTemplateName("Sourcedb_to_Spanner_Flex")
-            .withTemplateModulePath("v2/sourcedb-to-spanner")
-            .addParameter("instanceId", spannerResourceManager.getInstanceId())
-            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-            .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName)
-            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
-            .addParameter(
-                "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("disable_runner_v2"))
-            .build();
+    if (multiSharded) {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Sourcedb_to_Spanner_Flex")
+              .withTemplateModulePath("v2/sourcedb-to-spanner")
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("outputDirectory", "gs://" + artifactBucketName)
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter(
+                  "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+              .build();
+    } else {
+      flexTemplateDataflowJobResourceManager =
+          FlexTemplateDataflowJobResourceManager.builder(jobName)
+              .withTemplateName("Sourcedb_to_Spanner_Flex")
+              .withTemplateModulePath("v2/sourcedb-to-spanner")
+              .addParameter("instanceId", spannerResourceManager.getInstanceId())
+              .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+              .addParameter("projectId", PROJECT)
+              .addParameter("outputDirectory", "gs://" + artifactBucketName)
+              .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+              .addParameter("sourceConfigURL", cloudSqlResourceManager.getUri())
+              .addParameter("username", cloudSqlResourceManager.getUsername())
+              .addParameter("password", cloudSqlResourceManager.getPassword())
+              .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
+              .addEnvironmentVariable(
+                  "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+              .build();
+    }
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
-  }
-
-  public String getGcsFullPath(
-      GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
-    return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
   }
 
   public PipelineLauncher.LaunchInfo launchRRDataflowJob(
@@ -584,18 +598,25 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
   }
 
   protected JDBCSource createMySqlDatabase(
-      CloudSqlResourceManager cloudSqlResourceManager, Map<String, Map<String, String>> tables) {
-    for (HashMap.Entry<String, Map<String, String>> entry : tables.entrySet()) {
-      cloudSqlResourceManager.createTable(
-          entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
+      List<CloudSqlResourceManager> cloudSqlResourceManagers,
+      Map<String, Map<String, String>> tables) {
+    for (CloudSqlResourceManager cloudSqlResourceManager : cloudSqlResourceManagers) {
+      for (HashMap.Entry<String, Map<String, String>> entry : tables.entrySet()) {
+        cloudSqlResourceManager.createTable(
+            entry.getKey(), new JDBCResourceManager.JDBCSchema(entry.getValue(), "id"));
+      }
+    }
+    Map<String, List<String>> allowedTables = new HashMap<>();
+    for (CloudSqlResourceManager cloudSqlResourceManager : cloudSqlResourceManagers) {
+      allowedTables.put(
+          cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList());
     }
     return MySQLSource.builder(
-            cloudSqlResourceManager.getHost(),
-            cloudSqlResourceManager.getUsername(),
-            cloudSqlResourceManager.getPassword(),
-            cloudSqlResourceManager.getPort())
-        .setAllowedTables(
-            Map.of(cloudSqlResourceManager.getDatabaseName(), tables.keySet().stream().toList()))
+            cloudSqlResourceManagers.get(0).getHost(),
+            cloudSqlResourceManagers.get(0).getUsername(),
+            cloudSqlResourceManagers.get(0).getPassword(),
+            cloudSqlResourceManagers.get(0).getPort())
+        .setAllowedTables(allowedTables)
         .build();
   }
 

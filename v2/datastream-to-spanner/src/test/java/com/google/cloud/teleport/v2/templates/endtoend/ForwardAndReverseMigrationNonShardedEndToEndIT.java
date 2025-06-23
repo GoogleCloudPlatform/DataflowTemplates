@@ -26,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -111,7 +112,11 @@ public class ForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEndTest
         cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
         jdbcSource =
             createMySqlDatabase(
-                cloudSqlResourceManager,
+                new ArrayList<>() {
+                  {
+                    add(cloudSqlResourceManager);
+                  }
+                },
                 new HashMap<>() {
                   {
                     put(TABLE, AUTHOR_TABLE_COLUMNS);

@@ -38,7 +38,6 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
@@ -115,18 +114,14 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
             CloudMySQLResourceManager.builder(testName + "ShardA").build();
         cloudSqlResourceManagerShardB =
             CloudMySQLResourceManager.builder(testName + "ShardB").build();
-        JDBCSource jdbcSourceShardA =
+        jdbcSource =
             createMySqlDatabase(
-                cloudSqlResourceManagerShardA,
-                new HashMap<>() {
+                new ArrayList<>() {
                   {
-                    put(TABLE, AUTHOR_TABLE_COLUMNS);
+                    add(cloudSqlResourceManagerShardA);
+                    add(cloudSqlResourceManagerShardB);
                   }
-                });
-        jdbcSource = jdbcSourceShardA;
-        JDBCSource jdbcSourceShardB =
-            createMySqlDatabase(
-                cloudSqlResourceManagerShardB,
+                },
                 new HashMap<>() {
                   {
                     put(TABLE, AUTHOR_TABLE_COLUMNS);
@@ -139,10 +134,7 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
                 .build();
 
         generateAndUploadSessionFileUsingSMT(
-            jdbcSourceShardA,
-            cloudSqlResourceManagerShardA,
-            spannerResourceManager,
-            gcsResourceManager);
+            jdbcSource, cloudSqlResourceManagerShardA, spannerResourceManager, gcsResourceManager);
 
         Database databaseA =
             new Database(
@@ -159,10 +151,10 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
         DataShard dataShard =
             new DataShard(
                 "1",
-                jdbcSourceShardA.hostname(),
-                jdbcSourceShardA.username(),
-                jdbcSourceShardA.password(),
-                String.valueOf(jdbcSourceShardA.port()),
+                jdbcSource.hostname(),
+                jdbcSource.username(),
+                jdbcSource.password(),
+                String.valueOf(jdbcSource.port()),
                 "",
                 "",
                 "",
@@ -182,7 +174,9 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
             launchBulkDataflowJob(
                 PipelineUtils.createJobName("bulk" + getClass().getSimpleName()),
                 spannerResourceManager,
-                gcsResourceManager);
+                gcsResourceManager,
+                cloudSqlResourceManagerShardA,
+                true);
 
         // launch forward migration template
         fwdJobInfo =
