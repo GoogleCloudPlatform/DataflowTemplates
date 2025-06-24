@@ -26,6 +26,8 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
@@ -239,9 +241,47 @@ public class PipelineController {
 
   @VisibleForTesting
   static ISchemaMapper getSchemaMapper(SourceDbToSpannerOptions options, Ddl ddl) {
+    // Check if config types are specified
+    boolean hasSessionFile =
+        options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");
+    boolean hasSchemaOverridesFile =
+        options.getSchemaOverridesFilePath() != null
+            && !options.getSchemaOverridesFilePath().equals("");
+    boolean hasStringOverrides =
+        (options.getTableOverrides() != null && !options.getTableOverrides().equals(""))
+            || (options.getColumnOverrides() != null && !options.getColumnOverrides().equals(""));
+
+    int overrideTypesCount = 0;
+    if (hasSessionFile) {
+      overrideTypesCount++;
+    }
+    if (hasSchemaOverridesFile) {
+      overrideTypesCount++;
+    }
+    if (hasStringOverrides) {
+      overrideTypesCount++;
+    }
+
+    if (overrideTypesCount > 1) {
+      throw new IllegalArgumentException(
+          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
+              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
+    }
+
     ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (options.getSessionFilePath() != null && !options.getSessionFilePath().equals("")) {
+    if (hasSessionFile) {
       schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
+    } else if (hasSchemaOverridesFile) {
+      schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
+    } else if (hasStringOverrides) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
     }
     return schemaMapper;
   }
@@ -316,7 +356,8 @@ public class PipelineController {
           options.getMaxConnections(),
           options.getNumPartitions(),
           waitOnSignal,
-          options.getFetchSize());
+          options.getFetchSize(),
+          options.getUniformizationStageCountHint());
     }
 
     @Override

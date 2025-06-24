@@ -55,6 +55,10 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
  */
 public class SourceDbToSpannerITBase extends JDBCBaseIT {
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
+  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  protected static final String VPC_REGION = "us-central1";
+  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   public MySQLResourceManager setUpMySQLResourceManager() {
     return MySQLResourceManager.builder(testName).build();
@@ -201,7 +205,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
    * @param gcsPathPrefix Prefix directory name for this DF job. Data and DLQ directories will be
    *     created under this prefix.
    * @return dataflow jobInfo object
-   * @throws IOException
    */
   protected PipelineLauncher.LaunchInfo launchDataflowJob(
       String identifierSuffix,
@@ -219,14 +222,17 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
-            put("outputDirectory", "gs://" + artifactBucketName);
           }
         };
+    params.putAll(ADDITIONAL_JOB_PARAMS);
     if (sourceResourceManager instanceof JDBCResourceManager) {
       params.putAll(getJdbcParameters((JDBCResourceManager) sourceResourceManager));
     } else if (sourceResourceManager instanceof CassandraResourceManager) {
       params.putAll(
           getCassandraParameters((CassandraResourceManager) sourceResourceManager, gcsPathPrefix));
+    }
+    if (!params.containsKey("outputDirectory")) {
+      params.put("outputDirectory", "gs://" + artifactBucketName);
     }
 
     if (sessionFileResourceName != null) {
@@ -263,6 +269,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     } else {
       options.addEnvironment("numWorkers", 2);
     }
+    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
@@ -322,9 +329,19 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
                 ? gcsPathPrefix.substring(0, gcsPathPrefix.length() - 1)
                 : gcsPathPrefix;
     String fileNamePrefix = testId.substring(0, Math.min(20, testId.length()));
-    configBasePath = configBasePath + "/cassandra/" + fileNamePrefix + "-config.conf";
+    configBasePath = configBasePath + "cassandra/" + fileNamePrefix + "-config.conf";
     String configGcsPath = getGcsPath(configBasePath);
     String configPath = configGcsPath.replace("gs://" + artifactBucketName + "/", "");
+    String outputBasePath =
+        (gcsPathPrefix == null)
+            ? ""
+            : gcsPathPrefix.endsWith("/")
+                ? gcsPathPrefix.substring(0, gcsPathPrefix.length() - 1)
+                : gcsPathPrefix;
+    outputBasePath =
+        outputBasePath + "cassandra/" + testId.substring(0, Math.min(20, testId.length())) + "/";
+    String outputPath = getGcsPath(outputBasePath);
+    LOG.info("OutputPath = {}", outputPath);
 
     gcsClient.copyFileToGcs(tempFile.toAbsolutePath(), configPath);
     LOG.info(
@@ -335,6 +352,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
         configFile);
     Files.delete(tempFile);
     params.put("sourceConfigURL", configGcsPath);
+    params.put("outputDirectory", outputPath);
     return params;
   }
 

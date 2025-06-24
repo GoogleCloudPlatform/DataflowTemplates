@@ -99,4 +99,38 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <profile>
+            <id>useRealSpanner</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+                <property>
+                    <name>!activateFailureInjection</name>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.cloud.teleport.v2</groupId>
+                    <artifactId>real-spanner-service</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>failureInjectionTest</id>
+            <activation>
+                <property>
+                    <name>activateFailureInjection</name>
+                    <value>true</value>
+                </property>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.cloud.teleport.v2</groupId>
+                    <artifactId>failure-injected-spanner-service</artifactId>
+                    <version>${project.version}</version>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 </project>

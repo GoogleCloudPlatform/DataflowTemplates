@@ -1,8 +1,7 @@
 CREATE TABLE IF NOT EXISTS Singers (
   SingerId INT64 NOT NULL,
   FirstName STRING(MAX),
-  migration_shard_id STRING(50),
-) PRIMARY KEY(SingerId, migration_shard_id);
+) PRIMARY KEY(SingerId);
 
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (

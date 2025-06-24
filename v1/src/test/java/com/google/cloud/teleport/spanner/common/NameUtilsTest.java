@@ -37,6 +37,9 @@ class NameUtilsTest {
 
     quoted = NameUtils.quoteIdentifier("Table", Dialect.GOOGLE_STANDARD_SQL);
     assertEquals("`Table`", quoted);
+
+    quoted = NameUtils.quoteIdentifier("`Table`", Dialect.GOOGLE_STANDARD_SQL);
+    assertEquals("`Table`", quoted);
   }
 
   @Test

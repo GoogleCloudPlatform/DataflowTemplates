@@ -40,8 +40,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalType;
@@ -93,6 +95,34 @@ public class GenericRecordTypeConvertor {
     this.customTransformer = customTransformer;
   }
 
+  public static Object getJsonNodeObjectFromGenericRecord(
+      @Nullable GenericRecord record,
+      Schema.Field f,
+      String srcTableName,
+      ISchemaMapper schemaMapper) {
+    String fieldName = f.name();
+    if (record == null) {
+      return null;
+    }
+    Object recordValue = record.get(fieldName);
+    if (recordValue == null) {
+      return null;
+    }
+    Schema fieldSchema = filterNullSchema(f.schema(), fieldName, recordValue);
+    CassandraAnnotations cassandraAnnotations = null;
+    try {
+      cassandraAnnotations =
+          schemaMapper.getSpannerColumnCassandraAnnotations(
+              "",
+              schemaMapper.getSpannerTableName("", srcTableName),
+              schemaMapper.getSpannerColumnName("", srcTableName, fieldName));
+    } catch (NoSuchElementException e) {
+      // For Non-Existant Columns or Tables, we initialize Cassandra Annotations to empty array.
+      cassandraAnnotations = CassandraAnnotations.fromColumnOptions(List.of(), fieldName);
+    }
+    return handleNonPrimitiveAvroTypes(recordValue, fieldSchema, fieldName, cassandraAnnotations);
+  }
+
   /**
    * This method takes in a generic record and returns a map between the Spanner column name and the
    * corresponding Spanner column value. This handles the data conversion logic from a GenericRecord
@@ -114,7 +144,7 @@ public class GenericRecordTypeConvertor {
     }
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
-    // This is null/blank for identity/non-sharded cases.
+    // This is null/blank for identity/override/non-sharded cases.
     String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
       try {
@@ -413,7 +443,8 @@ public class GenericRecordTypeConvertor {
    * not a union, or if it's a union with more than two types or a non-nullable type other than
    * NULL, an IllegalArgumentException is thrown.
    */
-  private Schema filterNullSchema(Schema fieldSchema, String recordColName, Object recordValue) {
+  private static Schema filterNullSchema(
+      Schema fieldSchema, String recordColName, Object recordValue) {
     if (fieldSchema.getType().equals(Schema.Type.UNION)) {
       List<Schema> types = fieldSchema.getTypes();
       LOG.debug("found union type: {}", types);

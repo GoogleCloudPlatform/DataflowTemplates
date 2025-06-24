@@ -200,8 +200,6 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
             .to(singerId)
             .set("FirstName")
             .to(firstName)
-            .set("migration_shard_id")
-            .to(shardId)
             .build();
     spannerResourceManager.write(m);
   }

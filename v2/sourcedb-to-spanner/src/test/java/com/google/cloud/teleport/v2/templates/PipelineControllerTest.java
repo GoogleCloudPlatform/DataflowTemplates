@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -29,11 +30,17 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDi
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.PipelineController.ShardedJdbcDbConfigContainer;
 import com.google.cloud.teleport.v2.templates.PipelineController.SingleInstanceJdbcDbConfigContainer;
 import com.google.common.io.Resources;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
@@ -48,6 +55,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -59,16 +67,17 @@ import org.mockito.quality.Strictness;
 public class PipelineControllerTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private Ddl spannerDdl;
-
   private Ddl shardedDdl;
+  private Path schemaOverridesFile;
 
   private MockedStatic<JdbcIoWrapper> mockedStaticJdbcIoWrapper;
   @Mock private JdbcIoWrapper mockJdbcIoWrapper;
 
   @Before
-  public void setup() {
+  public void setup() throws IOException {
     mockedStaticJdbcIoWrapper = Mockito.mockStatic(JdbcIoWrapper.class);
     spannerDdl =
         Ddl.builder()
@@ -136,29 +145,133 @@ public class PipelineControllerTest {
             .end()
             .endTable()
             .build();
+
+    // Create a dummy schema overrides file for tests that need it
+    schemaOverridesFile = temporaryFolder.newFile("schema_overrides.json").toPath();
+    String overridesJsonContent =
+        "{\n"
+            + "  \"renamedTables\": {\n"
+            + "    \"source_table\": \"spanner_table\"\n"
+            + "  }\n"
+            + "}";
+    try (BufferedWriter writer = Files.newBufferedWriter(schemaOverridesFile)) {
+      writer.write(overridesJsonContent);
+      writer.flush();
+    }
   }
 
   @Test
   public void createIdentitySchemaMapper() {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("", "");
+    SourceDbToSpannerOptions mockOptions = createOptionsHelper(null, null, null, null, null);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     assertTrue(schemaMapper instanceof IdentityMapper);
   }
 
   @Test
   public void createSessionSchemaMapper() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
     SourceDbToSpannerOptions mockOptions =
-        createOptionsHelper(
-            Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
-                .toString(),
-            null);
+        createOptionsHelper(sessionFilePath, null, null, null, null);
     ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
     assertTrue(schemaMapper instanceof SessionBasedMapper);
   }
 
+  @Test
+  public void createSchemaFileOverridesMapper() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, schemaOverridesFile.toString(), null, null, null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaFileOverridesBasedMapper);
+  }
+
+  @Test
+  public void createStringOverridesMapper_tableOnly() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, null, "[{src,dest}]", null, null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaStringOverridesBasedMapper);
+  }
+
+  @Test
+  public void createStringOverridesMapper_columnOnly() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, null, null, "[{src.col,src.spCol}]", null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaStringOverridesBasedMapper);
+  }
+
+  @Test
+  public void createStringOverridesMapper_both() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, null, "[{s,d}]", "[{s.c,s.sc}]", null);
+    ISchemaMapper schemaMapper = PipelineController.getSchemaMapper(mockOptions, spannerDdl);
+    assertTrue(schemaMapper instanceof SchemaStringOverridesBasedMapper);
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_sessionAndFile_throwsException() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(sessionFilePath, schemaOverridesFile.toString(), null, null, null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_sessionAndString_throwsException() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(sessionFilePath, null, "[{s,d}]", null, null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_fileAndString_throwsException() {
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(null, schemaOverridesFile.toString(), "[{s,d}]", null, null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
+  @Test
+  public void createSchemaMapper_multipleOverrides_all_throwsException() {
+    String sessionFilePath =
+        Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
+            .toString();
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper(
+            sessionFilePath, schemaOverridesFile.toString(), "[{s,d}]", "[{s.c,s.sc}]", null);
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> PipelineController.getSchemaMapper(mockOptions, spannerDdl));
+    assertTrue(
+        exception.getMessage().contains("Only one type of schema override can be specified"));
+  }
+
   @Test(expected = Exception.class)
   public void createInvalidSchemaMapper_withException() {
-    SourceDbToSpannerOptions mockOptions = createOptionsHelper("invalid-file", "");
+    SourceDbToSpannerOptions mockOptions =
+        createOptionsHelper("invalid-file", null, null, null, "");
     PipelineController.getSchemaMapper(mockOptions, spannerDdl);
   }
 
@@ -196,16 +309,23 @@ public class PipelineControllerTest {
         schemaMapper, "", List.of("cart")); // Only accepts spanner table names
   }
 
-  private SourceDbToSpannerOptions createOptionsHelper(String sessionFile, String tables) {
-    /*
-     * This mock is used in exception paths where all the stubs don't get used.
-     */
+  private SourceDbToSpannerOptions createOptionsHelper(
+      String sessionFile,
+      String schemaOverridesFile,
+      String tableOverrides,
+      String columnOverrides,
+      String tables) {
     SourceDbToSpannerOptions mockOptions =
         mock(
             SourceDbToSpannerOptions.class,
             Mockito.withSettings().serializable().strictness(Strictness.LENIENT));
-    when(mockOptions.getSessionFilePath()).thenReturn(sessionFile);
-    when(mockOptions.getTables()).thenReturn(tables);
+    when(mockOptions.getSessionFilePath()).thenReturn(sessionFile == null ? "" : sessionFile);
+    when(mockOptions.getSchemaOverridesFilePath())
+        .thenReturn(schemaOverridesFile == null ? "" : schemaOverridesFile);
+    when(mockOptions.getTableOverrides()).thenReturn(tableOverrides == null ? "" : tableOverrides);
+    when(mockOptions.getColumnOverrides())
+        .thenReturn(columnOverrides == null ? "" : columnOverrides);
+    when(mockOptions.getTables()).thenReturn(tables == null ? "" : tables);
     return mockOptions;
   }
 
@@ -230,7 +350,9 @@ public class PipelineControllerTest {
     String sessionFilePath =
         Paths.get(Resources.getResource("session-file-with-dropped-column.json").getPath())
             .toString();
-    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFilePath, spannerDdl);
+    sourceDbToSpannerOptions.setSessionFilePath(sessionFilePath); // Ensure session file is set
+    ISchemaMapper schemaMapper =
+        PipelineController.getSchemaMapper(sourceDbToSpannerOptions, spannerDdl);
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
     pipeline.run();
     SingleInstanceJdbcDbConfigContainer dbConfigContainer =
@@ -246,6 +368,10 @@ public class PipelineControllerTest {
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
     assertThat(config.waitOn()).isNotNull();
     assertEquals(null, dbConfigContainer.getShardId());
+    // Since schemaMapper is now derived from options, it will have the session file context.
+    // The original test expected an empty map, but with a session file, it might not be.
+    // Let's verify based on the actual session file if it defines shard IDs for new_cart.
+    // The "session-file-with-dropped-column.json" does not define shard IDs.
     assertThat(dbConfigContainer.getSrcTableToShardIdColumnMap(schemaMapper, List.of("new_cart")))
         .isEqualTo(new HashMap<>());
   }
@@ -342,7 +468,9 @@ public class PipelineControllerTest {
 
   @After
   public void cleanup() {
-    mockedStaticJdbcIoWrapper.close();
-    mockedStaticJdbcIoWrapper = null;
+    if (mockedStaticJdbcIoWrapper != null) {
+      mockedStaticJdbcIoWrapper.close();
+      mockedStaticJdbcIoWrapper = null;
+    }
   }
 }

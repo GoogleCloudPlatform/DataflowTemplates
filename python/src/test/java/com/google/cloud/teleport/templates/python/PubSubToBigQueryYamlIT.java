@@ -129,7 +129,7 @@ public class PubSubToBigQueryYamlIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 BigQueryRowsCheck.builder(bigQueryResourceManager, table)
                     .setMinRows(MESSAGES_COUNT)

@@ -23,7 +23,7 @@ public class AlwaysFailPolicyTest {
 
   @Test
   public void testShouldInjectError() {
-    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy("");
+    AlwaysFailPolicy alwaysFailPolicy = new AlwaysFailPolicy(null);
     assertTrue(alwaysFailPolicy.shouldInjectionError());
   }
 }

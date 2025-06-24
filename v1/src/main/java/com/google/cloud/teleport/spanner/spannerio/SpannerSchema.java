@@ -21,6 +21,8 @@ import com.google.cloud.spanner.Type;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableListMultimap;
@@ -210,10 +212,20 @@ public abstract class SpannerSchema implements Serializable {
           }
           if (spannerType.startsWith("ARRAY")) {
             // Substring "ARRAY<xxx>"
-            String spannerArrayType =
-                originalSpannerType.substring(6, originalSpannerType.length() - 1);
-            Type itemType = parseSpannerType(spannerArrayType, dialect);
-            return Type.array(itemType);
+            // find 'xxx' in string ARRAY<xxxxx>
+            // Graph DBs may have suffixes, eg ARRAY<FLOAT32>(vector_length=>256)
+            //
+            Pattern pattern = Pattern.compile("ARRAY<([^>]+)>");
+            Matcher matcher = pattern.matcher(originalSpannerType);
+
+            if (matcher.find()) {
+              String spannerArrayType = matcher.group(1).trim();
+              Type itemType = parseSpannerType(spannerArrayType, dialect);
+              return Type.array(itemType);
+            } else {
+              // Handle the case where the regex doesn't match (invalid ARRAY type)
+              throw new IllegalArgumentException("Invalid ARRAY type: " + originalSpannerType);
+            }
           }
           if (spannerType.startsWith("PROTO")) {
             // Substring "PROTO<xxx>"
@@ -229,10 +241,13 @@ public abstract class SpannerSchema implements Serializable {
           }
           throw new IllegalArgumentException("Unknown spanner type " + spannerType);
         case POSTGRESQL:
-          if (spannerType.endsWith("[]")) {
-            // Substring "xxx[]"
+          // Handle vector_length annotation
+          Pattern pattern = Pattern.compile("([^\\[]+)\\[\\]");
+          Matcher m = pattern.matcher(spannerType);
+          if (m.find()) {
+            // Substring "xxx[]" or "xxx[] vector length yyy"
             // Must check array type first
-            String spannerArrayType = spannerType.substring(0, spannerType.length() - 2);
+            String spannerArrayType = m.group(1);
             Type itemType = parseSpannerType(spannerArrayType, dialect);
             return Type.array(itemType);
           }

@@ -1,0 +1,126 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Run IT Tests with Beam Snapshots
+
+on:
+  workflow_dispatch: # Allows manual triggering
+  schedule:
+    - cron: "0 0 * * 2" # Runs every Tuesday at 12:00 AM UTC
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
+
+permissions:
+  contents: write # Required to modify pom.xml and then revert it
+
+jobs:
+  run_it_tests_beam_snapshots:
+    name: Dataflow Templates Integration Tests with Beam Snapshots
+    timeout-minutes: 3600
+    runs-on: [self-hosted, it]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@ee0669bd1cc54295c223e0bb666b733df41de1c5 # v2.7.0
+
+      - name: Setup Environment
+        id: setup-env
+        uses: ./.github/actions/setup-env
+
+      - name: Calculate Next Beam Snapshot Version
+        id: calculate_beam_snapshot
+        run: |
+          CURRENT_BEAM_VERSION=$(mvn help:evaluate -Dexpression=beam.version -q -DforceStdout)
+          echo "Current Beam version from pom.xml: $CURRENT_BEAM_VERSION"
+
+          MAJOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f1)
+          MINOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f2)
+          PATCH_VERSION=0
+
+          NEXT_MINOR_VERSION=$((MINOR_VERSION + 1))
+
+          BEAM_SNAPSHOT_VERSION="${MAJOR_VERSION}.${NEXT_MINOR_VERSION}.${PATCH_VERSION}-SNAPSHOT"
+          echo "Calculated Beam Snapshot version: $BEAM_SNAPSHOT_VERSION"
+
+          echo "beam_snapshot_version=$BEAM_SNAPSHOT_VERSION" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Update pom.xml for Beam Snapshot
+        run: |
+          SNAPSHOT_VERSION="${{ steps.calculate_beam_snapshot.outputs.beam_snapshot_version }}"
+          echo "Updating pom.xml to use Beam version: $SNAPSHOT_VERSION"
+
+          # 1. Update Beam version
+          # Using .bak for sed -i for wider compatibility, though GNU sed on runners doesn't strictly need it.
+          sed -i.bak "s|<beam.version>.*</beam.version>|<beam.version>$SNAPSHOT_VERSION</beam.version>|g" pom.xml
+          echo "Beam version updated in pom.xml."
+
+          # 2. Add snapshot repository
+          # Create the repository block content
+          REPO_XML="    <repositories>\n        <repository>\n            <id>Maven-Snapshot</id>\n            <name>maven snapshot repository</name>\n            <url>https://repository.apache.org/content/groups/snapshots/</url>\n            <releases>\n                <enabled>false</enabled>\n            </releases>\n        </repository>\n    </repositories>"
+
+          # Use awk to insert the repository block after </properties>
+          # A temporary file is used for awk output, then moved to pom.xml
+          awk -v repo_xml="$REPO_XML" '
+          1; # Print current line
+          /<\/properties>/ {
+            print repo_xml;
+          }
+          ' pom.xml > pom.xml.tmp && mv pom.xml.tmp pom.xml
+
+          echo "Snapshot repository added to pom.xml."
+
+          echo "Final pom.xml changes:"
+          git diff pom.xml.bak # Show changes against the original .bak file created by sed
+        shell: bash
+
+      - name: Run Build
+        run: ./cicd/run-build
+
+      - name: Run Unit Tests
+        run: ./cicd/run-unit-tests
+
+      - name: Run Integration Tests with Beam Snapshots
+        run: |
+          ./cicd/run-it-tests \
+          --modules-to-build="DEFAULT" \
+          --it-region="us-central1" \
+          --it-project="cloud-teleport-testing" \
+          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+          --it-private-connectivity="datastream-private-connect-us-central1"
+        shell: bash
+
+      - name: Revert pom.xml changes
+        if: always() # Ensure pom.xml is always reverted
+        run: |
+          echo "Reverting pom.xml to its original state..."
+          git checkout -- pom.xml
+          echo "pom.xml reverted."
+        shell: bash
+
+      - name: Upload Integration Tests Report
+        uses: actions/upload-artifact@v4
+        if: always() # always run even if the previous step fails
+        with:
+          name: surefire-integration-test-results-beam-snapshots
+          path: '**/surefire-reports/TEST-*.xml'
+          retention-days: 7 # Keep reports for a week for scheduled runs
+
+      - name: Cleanup Java Environment
+        uses: ./.github/actions/cleanup-java-env
+        if: always()

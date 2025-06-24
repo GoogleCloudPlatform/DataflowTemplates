@@ -21,6 +21,7 @@ import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
+import java.util.HashMap;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -72,6 +73,14 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     increasePacketSize();
     loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
+    ADDITIONAL_JOB_PARAMS.putAll(
+        new HashMap<>() {
+          {
+            put("network", VPC_NAME);
+            put("subnetwork", SUBNET_NAME);
+            put("workerRegion", VPC_REGION);
+          }
+        });
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),

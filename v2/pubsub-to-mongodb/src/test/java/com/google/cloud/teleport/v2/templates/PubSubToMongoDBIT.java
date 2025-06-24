@@ -162,7 +162,7 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 MongoDBDocumentsCheck.builder(mongoResourceManager, testName)
                     .setMinDocuments(MESSAGES_COUNT)
@@ -270,7 +270,7 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
 
     Result reloadedResult =
         pipelineOperator()
-            .waitForConditionsAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 MongoDBDocumentsCheck.builder(mongoResourceManager, testName)
                     .setMinDocuments(MESSAGES_COUNT * 2)

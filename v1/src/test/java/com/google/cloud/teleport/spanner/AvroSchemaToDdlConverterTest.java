@@ -446,6 +446,11 @@ public class AvroSchemaToDdlConverterTest {
             + "    \"name\" : \"float641\","
             + "    \"type\" : [ \"null\", \"double\" ]"
             + "  }, {"
+            + "    \"name\" : \"Embeddings\","
+            + "    \"type\" : [ \"null\", {"
+            + "    \"type\" : \"array\", \"items\" : [ \"null\", \"float\"]}],"
+            + "    \"sqlType\" : \"real[] vector length 128\""
+            + "  }, {"
             + "    \"name\" : \"uuidColumn\","
             + "    \"type\" : [ \"null\", {\"type\":\"string\", \"logicalType\":\"uuid\"} ],"
             + "    \"sqlType\":\"uuid\""
@@ -461,6 +466,9 @@ public class AvroSchemaToDdlConverterTest {
             + " ASC\",  \"spannerPrimaryKey_1\" : \"\\\"gen_id\\\" ASC\",  \"spannerPrimaryKey_2\""
             + " : \"\\\"last_name\\\" ASC\",  \"spannerIndex_0\" :"
             + "   \"CREATE INDEX \\\"UsersByFirstName\\\" ON \\\"Users\\\" (\\\"first_name\\\")\", "
+            + "  \"spannerIndex_1\" : "
+            + " \"CREATE INDEX \\\"VI\\\" ON \\\"Users\\\" USING ScaNN (\\\"Embeddings\\\") "
+            + "WHERE \\\"Embeddings\\\" IS NOT NULL OPTIONS (distance_type=\'COSINE\')\","
             + " \"spannerForeignKey_0\" :   \"ALTER TABLE \\\"Users\\\" ADD CONSTRAINT \\\"fk\\\""
             + " FOREIGN KEY (\\\"first_name\\\")   REFERENCES \\\"AllowedNames\\\""
             + " (\\\"first_name\\\")\", "
@@ -512,6 +520,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " \"integer1\"        bigint,"
                 + " \"float321\"        real,"
                 + " \"float641\"        double precision,"
+                + " \"Embeddings\"      real[] vector length 128,"
                 + " \"uuidColumn\"      uuid,"
                 + " \"uuidArrayColumn\" uuid[],"
                 + " \"timestamp1\"      timestamp with time zone,"
@@ -519,6 +528,7 @@ public class AvroSchemaToDdlConverterTest {
                 + " PRIMARY KEY (\"id\", \"gen_id\", \"last_name\")"
                 + " )"
                 + " CREATE INDEX \"UsersByFirstName\" ON \"Users\" (\"first_name\")"
+                + " CREATE INDEX \"VI\" ON \"Users\" USING ScaNN (\"Embeddings\") WHERE \"Embeddings\" IS NOT NULL OPTIONS (distance_type=\'COSINE\')"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk\" FOREIGN KEY (\"first_name\")"
                 + " REFERENCES \"AllowedNames\" (\"first_name\")"
                 + " ALTER TABLE \"Users\" ADD CONSTRAINT \"fk_odc\" FOREIGN KEY (\"last_name\")"
@@ -585,7 +595,7 @@ public class AvroSchemaToDdlConverterTest {
             + "EDGE TABLES(\n"
             + "edgeBaseTable AS edgeAlias\n"
             + " KEY (edgePrimaryKey)\n"
-            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable DESTINATION KEY(destEdgeKey) REFERENCES baseTable\n"
+            + "SOURCE KEY(sourceEdgeKey) REFERENCES baseTable(nodeKey) DESTINATION KEY(destEdgeKey) REFERENCES baseTable(otherNodeKey)\n"
             + "LABEL dummyLabelName3 NO PROPERTIES)";
 
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
@@ -713,6 +723,61 @@ public class AvroSchemaToDdlConverterTest {
                 + " CREATE MODEL `ModelStruct`"
                 + " INPUT ( `i1` STRUCT<a BOOL>, )"
                 + " OUTPUT ( `o1` STRUCT<a BOOL, b ARRAY<STRUCT<c STRING(MAX), d ARRAY<FLOAT64>>>, e STRUCT<f STRUCT<g INT64>>>, )"));
+  }
+
+  @Test
+  public void udfSimple() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(), equalToCompressingWhiteSpace("CREATE FUNCTION `Foo`() AS (SELECT 1)"));
+  }
+
+  @Test
+  public void udfAllOptions() {
+    String avroString =
+        "{"
+            + "  \"type\" : \"record\","
+            + "  \"name\" : \"spanner.Foo\","
+            + "  \"spannerEntity\" : \"spannerUdf\", "
+            + "  \"fields\" : [],"
+            + "  \"namespace\" : \"spannertest\","
+            + "  \"googleStorage\" : \"CloudSpanner\","
+            + "  \"googleFormatVersion\" : \"booleans\","
+            + "  \"spannerUdfName\" : \"Foo\","
+            + "  \"spannerUdfType\" : \"STRING\","
+            + "  \"spannerUdfSecurity\" : \"INVOKER\","
+            + "  \"spannerUdfParameter_0\" : \"arg0 STRING\","
+            + "  \"spannerUdfParameter_1\" : \"arg1 STRING DEFAULT \\\"bar\\\"\","
+            + "  \"spannerUdfDefinition\" : \"SELECT 1\""
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.udfs(), hasSize(1));
+    assertThat(
+        ddl.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo`(`arg0` STRING, `arg1` STRING DEFAULT \"bar\")"
+                + " RETURNS STRING SQL SECURITY INVOKER AS (SELECT 1)"));
   }
 
   @Test

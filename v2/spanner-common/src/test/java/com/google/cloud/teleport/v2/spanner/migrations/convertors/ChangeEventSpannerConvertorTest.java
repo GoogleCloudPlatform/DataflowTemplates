@@ -31,6 +31,8 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.constants.Constants;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
+import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.common.truth.Truth;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -354,5 +356,37 @@ public class ChangeEventSpannerConvertorTest {
         ChangeEventSpannerConvertor.changeEventToPrimaryKey(
             "Users2", ddl, ce, /* convertNameToLowerCase= */ true);
     // Expect an exception since the event has invalid timestamp
+  }
+
+  @Test
+  public void arrayConvertedAsNull() throws ChangeEventConvertorException {
+
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Users")
+            .column("first_name")
+            .string()
+            .max()
+            .endColumn()
+            .column("array_col")
+            .type(Type.array(Type.int64()))
+            .endColumn()
+            .primaryKey()
+            .asc("first_name")
+            .end()
+            .endTable()
+            .build();
+
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("first_name", "A");
+    changeEvent.put("array_col", List.of(1L, 2L, 3L).toArray());
+    changeEvent.put(Constants.EVENT_TABLE_NAME_KEY, "Users");
+    JsonNode ce = parseChangeEvent(changeEvent.toString());
+    Mutation mutation =
+        ChangeEventSpannerConvertor.mutationFromEvent(
+            ddl.table("Users"), ce, List.of("first_name", "array_col"), Set.of("first_name"));
+    Map<String, Value> actual = mutation.asMap();
+    Truth.assertThat(actual.get("first_name").getAsString()).isEqualTo("A");
+    Truth.assertThat(actual.get("array_col")).isNull();
   }
 }

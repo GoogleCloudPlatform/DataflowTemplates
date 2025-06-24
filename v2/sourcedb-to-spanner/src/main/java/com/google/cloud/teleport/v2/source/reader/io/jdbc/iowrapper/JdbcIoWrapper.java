@@ -307,14 +307,17 @@ public final class JdbcIoWrapper implements IoWrapper {
       } else {
         ImmutableSet<IndexType> supportedIndexTypes =
             ImmutableSet.of(
-                IndexType.NUMERIC, IndexType.STRING, IndexType.BIG_INT_UNSIGNED, IndexType.BINARY);
+                IndexType.NUMERIC,
+                IndexType.STRING,
+                IndexType.BIG_INT_UNSIGNED,
+                IndexType.BINARY,
+                IndexType.TIME_STAMP);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.
         //        Note: most of the implementation is generic for any unique index.
         //        Need to benchmark and do the end to end implementation.
-        //    2. support for DateTime type
-        //    3. support for composite indexes
+        //    2. support for composite indexes
         //       Note: though we have most of the code for composite index, since we cap the
         // splitting stages to 1, additional indexes will not be considered for splitting as of now.
         tableIndexInfo.stream()
@@ -455,14 +458,14 @@ public final class JdbcIoWrapper implements IoWrapper {
                     sourceTableSchema,
                     config.shardID()))
             .setWaitOn(config.waitOn())
-            /* The following setting limits number of stages provisioned for the split process.
-             * Currently we mostly deal with auto incrementing keys, so we don't need a split depth to make the partition uniform, unless there is a large dataset with a lot of holes.
-             * TODO(vardhanvthigle): if index is not of the type of a single auto incrementing key, don't set this.
-             */
-            .setSplitStageCountHint(0L)
             .setDbParallelizationForSplitProcess(config.dbParallelizationForSplitProcess())
             .setDbParallelizationForReads(config.dbParallelizationForReads())
             .setAdditionalOperationsOnRanges(config.additionalOperationsOnRanges());
+
+    if (config.splitStageCountHint() >= 0) {
+      readWithUniformPartitionsBuilder =
+          readWithUniformPartitionsBuilder.setSplitStageCountHint(config.splitStageCountHint());
+    }
 
     if (tableConfig.maxPartitions() != null) {
       readWithUniformPartitionsBuilder =
