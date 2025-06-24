@@ -12,7 +12,7 @@ The supported databases include PostgreSQL and MySQL.
 * Java 11
 * Maven
 * DataStream stream is created and sending data to storage
-* The SQL DB is accesible via Dataflow workers
+* The SQL DB is accessible via Dataflow workers
 * The SQL DB has schema matched to the Datastream DB.
 
 ### Building Template

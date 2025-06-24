@@ -10,7 +10,7 @@ TODO theres a lot left to add below
 * Java 11
 * Maven
 * DataStream stream is created and sending data to storage
-* Postgres DB is accesible via Dataflow and has schema matched to Oracle.
+* Postgres DB is accessible via Dataflow and has schema matched to Oracle.
 
 ### Building Template
 This is a Flex Template meaning that the pipeline code will be containerized and the container will be

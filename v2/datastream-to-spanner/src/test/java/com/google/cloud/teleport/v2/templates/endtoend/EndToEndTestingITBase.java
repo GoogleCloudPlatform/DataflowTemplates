@@ -54,7 +54,6 @@ import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
-import org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
@@ -353,12 +352,6 @@ public abstract class EndToEndTestingITBase extends TemplateTestBase {
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
-  }
-
-  public String getGcsFullPath(
-      GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
-    return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
   }
 
   public PipelineLauncher.LaunchInfo launchRRDataflowJob(
