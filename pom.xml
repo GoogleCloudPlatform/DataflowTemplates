@@ -372,7 +372,7 @@
             <exclude>**/constants/**</exclude>
             <exclude>**/CustomTransformationImplFetcher.*</exclude>
             <exclude>**/JarFileReader.*</exclude>
-            <exclude>**/CustomTransformationWithShardFor*EndToEndIT.*</exclude>
+            <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
             <exclude>**/CustomTransformationWithCassandraForIT.*</exclude>
             <exclude>**/models/*</exclude>
             <exclude>**/exceptions/*</exclude>
@@ -446,7 +446,7 @@
                 </property>
               </systemProperties>
               <includes>
-                <include>**/*EndToEndIT.java</include>
+                <include>**/*IT.java</include>
               </includes>
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>
@@ -597,7 +597,7 @@
             <version>${surefire.version}</version>
             <configuration combine.self="override">
               <includes>
-                <include>**/*EndToEndIT.java</include>
+                <include>**/*IT.java</include>
               </includes>
               <excludedGroups>
                 com.google.cloud.teleport.metadata.SkipDirectRunnerTest
@@ -644,7 +644,7 @@
             <version>${surefire.version}</version>
             <configuration combine.self="override">
               <includes>
-                <include>**/*EndToEndIT.java</include>
+                <include>**/*IT.java</include>
               </includes>
               <groups>
                 ${direct-runner.tests}
@@ -696,7 +696,7 @@
                 </property>
               </systemProperties>
               <includes>
-                <include>**/*EndToEndIT.java</include>
+                <include>**/*IT.java</include>
               </includes>
               <excludes>
                 <exclude>**/KafkaToKafkaIT.java</exclude>
