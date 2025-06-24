@@ -391,30 +391,30 @@ public class CassandraRowMapperFnTest extends CassandraBaseTest {
     assertEquals(expected, cassandraRowMapper.map(resultSet).next());
   }
 
-@Test
-public void testSetColumn() {
-  Set<Integer> value = new HashSet<>();
-  value.add(1);
-  value.add(2);
-  primeWithType(value, set(INT));
-  ResultSet resultSet = getResultSet();
-  Schema schema =
-      Schema.builder().addNullableField("col", FieldType.array(FieldType.INT32)).build();
+  @Test
+  public void testSetColumn() {
+    Set<Integer> value = new HashSet<>();
+    value.add(1);
+    value.add(2);
+    primeWithType(value, set(INT));
+    ResultSet resultSet = getResultSet();
+    Schema schema =
+        Schema.builder().addNullableField("col", FieldType.array(FieldType.INT32)).build();
   
-  // Get actual result
-  Row actual = cassandraRowMapper.map(resultSet).next();
-  List<Integer> actualList = new ArrayList<>((List<Integer>) actual.getValue(0));
-  Collections.sort(actualList);
+    // Get actual result
+    Row actual = cassandraRowMapper.map(resultSet).next();
+    List<Integer> actualList = new ArrayList<>((List<Integer>) actual.getValue(0));
+    Collections.sort(actualList);
   
-  // Create sorted expected list
-  List<Integer> expectedList = new ArrayList<>(value);
-  Collections.sort(expectedList);
-  Row expected = Row.withSchema(schema).addValue(expectedList).build();
+    // Create sorted expected list
+    List<Integer> expectedList = new ArrayList<>(value);
+    Collections.sort(expectedList);
+    Row expected = Row.withSchema(schema).addValue(expectedList).build();
   
-  // Compare using sorted lists
-  Row sortedActual = Row.withSchema(schema).addValue(actualList).build();
-  assertEquals(expected, sortedActual);
-}
+    // Compare using sorted lists
+    Row sortedActual = Row.withSchema(schema).addValue(actualList).build();
+    assertEquals(expected, sortedActual);
+  }
 
   @Test
   @Ignore
