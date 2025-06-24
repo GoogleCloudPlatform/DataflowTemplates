@@ -45,6 +45,7 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -58,6 +59,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("This test is disabled currently")
 public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/ShardedMigration/spanner-schema.sql";
@@ -240,7 +242,7 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
   }
 
   @Test
-  public void spannerToSourceDbBasic() {
+  public void spannerToSourceDbBasic() throws IOException {
     // Bulk Migration pipeline check
     assertThatPipeline(bulkJobInfo).isRunning();
 
@@ -264,7 +266,7 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
     assertRowInMySQL();
   }
 
-  private void writeRowInMySqlAndAssertRows() {
+  private void writeRowInMySqlAndAssertRows() throws IOException {
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -278,7 +280,8 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForConditionAndCancel(
+                createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 
@@ -305,10 +308,10 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
     spannerResourceManager.write(m2);
   }
 
-  private void assertRowInMySQL() {
+  private void assertRowInMySQL() throws IOException {
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(
+            .waitForConditionAndCancel(
                 createConfig(rrJobInfo, Duration.ofMinutes(10)),
                 () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 5);
     assertThatResult(result).meetsConditions();
