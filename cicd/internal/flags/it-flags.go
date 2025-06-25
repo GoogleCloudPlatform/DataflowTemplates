@@ -40,6 +40,7 @@ var (
 	dOracleHost                         string
 	dCloudOracleSysPassword             string
 	dUnifiedWorkerHarnessContainerImage string
+	dIntegrationTestParallelism         string
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -60,6 +61,7 @@ func RegisterItFlags() {
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
 	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
+	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 }
 
 func Region() string {
@@ -150,4 +152,10 @@ func UnifiedWorkerHarnessContainerImage() string {
 		return "-DunifiedWorkerHarnessContainerImage=" + dUnifiedWorkerHarnessContainerImage
 	}
 	return ""
+}
+
+func IntegrationTestParallelism() int {
+	i := 3
+	fmt.Sscan(dIntegrationTestParallelism, &i)
+	return i
 }

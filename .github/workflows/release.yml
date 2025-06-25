@@ -24,6 +24,8 @@ jobs:
   release:
     name: Create Release
     runs-on: [self-hosted, release]
+    env:
+      IT_REGION: us-west2
     steps:
       - name: Get releaser identity
         run: |
@@ -84,7 +86,7 @@ jobs:
       - name: Run Integration Smoke Tests
         run: |
           ./cicd/run-it-smoke-tests \
-          --it-region="us-central1" \
+          --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1" \
@@ -94,35 +96,38 @@ jobs:
       - name: Run Integration Tests With DEFAULT
         run: |
           ./cicd/run-it-tests \
-          --it-region="us-central1" \
+          --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2 \
+          --it-integration-test-parallelism=6 \
           --modules-to-build="DEFAULT"
       - name: Run Integration Tests With KAFKA
         run: |
           ./cicd/run-it-tests \
-          --it-region="us-central1" \
+          --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2 \
+          --it-integration-test-parallelism=6 \
           --modules-to-build="KAFKA"
       - name: Run Integration Tests With BIGTABLE
         run: |
           ./cicd/run-it-tests \
-          --it-region="us-central1" \
+          --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1" \
           --it-spanner-host="https://batch-spanner.googleapis.com" \
           --it-release=true \
           --it-retry-failures=2 \
+          --it-integration-test-parallelism=6 \
           --modules-to-build="BIGTABLE"
       - name: Upload Site Report
         uses: ./.github/actions/publish-site-report
