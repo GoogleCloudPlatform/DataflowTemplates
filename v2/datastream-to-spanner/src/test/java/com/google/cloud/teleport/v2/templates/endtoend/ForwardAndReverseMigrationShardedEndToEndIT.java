@@ -200,7 +200,7 @@ public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTesting
   }
 
   @Test
-  public void spannerToSourceDbBasic() {
+  public void forwardAndReverseSharded() {
     // Forward Migration pipeline check
     assertThatPipeline(fwdJobInfo).isRunning();
 

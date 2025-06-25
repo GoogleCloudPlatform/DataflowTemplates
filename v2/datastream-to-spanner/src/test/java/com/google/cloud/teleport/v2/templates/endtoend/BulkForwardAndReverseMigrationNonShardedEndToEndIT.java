@@ -199,7 +199,7 @@ public class BulkForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEnd
   }
 
   @Test
-  public void spannerToSourceDbBasic() {
+  public void bulkForwardAndReverseNonSharded() {
     // Bulk Migration pipeline check
     assertThatPipeline(bulkJobInfo).isRunning();
 

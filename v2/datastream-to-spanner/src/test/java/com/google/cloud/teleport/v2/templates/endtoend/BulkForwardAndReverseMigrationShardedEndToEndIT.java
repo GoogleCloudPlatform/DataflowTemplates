@@ -242,7 +242,7 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
   }
 
   @Test
-  public void spannerToSourceDbBasic() throws IOException {
+  public void bulkForwardAndReverseSharded() throws IOException {
     // Bulk Migration pipeline check
     assertThatPipeline(bulkJobInfo).isRunning();
 
