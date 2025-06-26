@@ -536,6 +536,8 @@ public class DataStreamToBigQuery {
 
     WriteResult writeResult;
     if (options.getUseStorageWriteApi()) {
+      // SerializableCoder(com.google.cloud.bigquery.TableId) is not a deterministic key coder.
+      // So we have to convert tableid to a string.
       writeResult =
           mappedStagingRecords
               .apply(
@@ -572,8 +574,7 @@ public class DataStreamToBigQuery {
                       .ignoreInsertIds()
                       .ignoreUnknownValues()
                       .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                      .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                      .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+                      .withWriteDisposition(WriteDisposition.WRITE_APPEND));
     } else {
       writeResult =
           mappedStagingRecords.apply(
