@@ -365,6 +365,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
     options.setParameters(params);
+    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
 
     // Run
     LaunchInfo jobInfo = launchTemplate(options, false);
