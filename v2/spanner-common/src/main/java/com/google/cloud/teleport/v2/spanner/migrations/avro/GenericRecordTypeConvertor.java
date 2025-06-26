@@ -708,13 +708,9 @@ public class GenericRecordTypeConvertor {
           Period.ZERO
               .plusYears(((Number) getOrDefault(element, "years", 0L)).longValue())
               .plusMonths(((Number) getOrDefault(element, "months", 0L)).longValue())
-              .plusDays(((Number) getOrDefault(element, "days", 0L)).longValue());
-      /*
-       * Convert the period to a ISO-8601 period formatted String, such as P6Y3M1D.
-       * A zero period will be represented as zero days, 'P0D'.
-       * Refer to javadoc for Period#toString.
-       */
-      String periodIso8061 = period.toString();
+              .plusDays(((Number) getOrDefault(element, "days", 0L)).longValue())
+              .normalized(); // Normalize years and months
+
       java.time.Duration duration =
           java.time.Duration.ZERO
               .plusHours(((Number) getOrDefault(element, "hours", 0L)).longValue())
@@ -725,13 +721,19 @@ public class GenericRecordTypeConvertor {
        * Convert the duration to a ISO-8601 period formatted String, such as  PT8H6M12.345S
        * refer to javadoc for Duration#toString.
        */
-      String durationIso8610 = duration.toString();
-      // Convert to ISO-8601 period format.
-      if (duration.isZero()) {
-        return periodIso8061;
-      } else {
-        return periodIso8061 + StringUtils.removeStartIgnoreCase(durationIso8610, "P");
+      if (period.isZero() && duration.isZero()) {
+        // Interval of length 0 is represented as P0Y.
+        return "P0Y";
+      } else if (period.isZero()) {
+        // If year-month-day part is 0, get ISO8601 formatted string from duration part.
+        return duration.toString();
+      } else if (duration.isZero()) {
+        // If hour-minute-second part is 0, get ISO8601 formatted string from period part.
+        return period.toString();
       }
+
+      // Combine both non-zero parts into ISO8601 string.
+      return period + StringUtils.removeStartIgnoreCase(duration.toString(), "P");
     } else {
       throw new UnsupportedOperationException(
           String.format(

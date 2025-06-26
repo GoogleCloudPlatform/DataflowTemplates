@@ -596,7 +596,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put(
             "timeuuid_varchar_map_col",
             "{\"00000000-0000-1000-9000-000000000000\":\"abc\",\"ffffffff-ffff-1fff-9fff-ffffffffffff\":\"def\"}")
-        .put("duration_list_col", "[P-10675199DT-2H-48M-5S,P0D,P10675199DT2H48M5S]")
+        .put("duration_list_col", "[P-10675199DT-2H-48M-5S,P0Y,P10675199DT2H48M5S]")
         .put("double_col", "1.7976931348623157E308")
         .put("duration_col", "P10675199DT2H48M5S")
         .put("frozen_ascii_set_col", "[a,b]")
@@ -722,7 +722,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put(
             "timeuuid_varchar_map_col",
             "{\"00000000-0000-1000-9000-000000000000\":\"abc\",\"ffffffff-ffff-1fff-9fff-ffffffffffff\":\"def\"}")
-        .put("duration_list_col", "[P-10675199DT-2H-48M-5S,P0D,P10675199DT2H48M5S]")
+        .put("duration_list_col", "[P-10675199DT-2H-48M-5S,P0Y,P10675199DT2H48M5S]")
         .put("double_col", "1.7976931348623157E308")
         .put("duration_col", "P10675199DT2H48M5S")
         .put("frozen_ascii_set_col", "[a,b]")
