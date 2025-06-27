@@ -132,7 +132,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       }
       ImmutableList<String> tables = tablesBuilder.build();
       logger.info(
-          String.format("Discovered tables for DataSource: %s, tables: %s", dataSource, tables));
+          String.format(
+              "Discovered %d tables for DataSource: %s, tables: %s",
+              tables.stream().count(), dataSource, tables));
       return tables;
     } catch (SQLTransientConnectionException e) {
       logger.warn(

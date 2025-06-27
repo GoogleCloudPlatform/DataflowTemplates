@@ -108,7 +108,8 @@ public class PipelineController {
     SQLDialect sqlDialect = SQLDialect.valueOf(options.getSourceDbDialect());
 
     LOG.info(
-        "running migration for shards: {}",
+        "running migration for {} shards: {}",
+        shards.stream().count(),
         shards.stream().map(Shard::getHost).collect(Collectors.toList()));
     for (Shard shard : shards) {
       for (Map.Entry<String, String> entry : shard.getDbNameToLogicalShardIdMap().entrySet()) {
