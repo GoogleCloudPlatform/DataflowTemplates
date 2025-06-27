@@ -96,10 +96,11 @@ jobs:
         run: ./cicd/run-unit-tests
 
       - name: Run Integration Tests with Beam Snapshots
+        timeout-minutes: 300
         run: |
           ./cicd/run-it-tests \
           --modules-to-build="DEFAULT" \
-          --it-region="us-central1" \
+          --it-region="us-west2" \
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1"
