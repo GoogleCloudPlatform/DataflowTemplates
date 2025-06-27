@@ -171,7 +171,7 @@ jobs:
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-integration-test-parallelism=6 \
-          --it-thread-count=8 \
+          --it-thread-count=6 \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-private-connect-us-central1"
       - name: Upload Integration Tests Report
