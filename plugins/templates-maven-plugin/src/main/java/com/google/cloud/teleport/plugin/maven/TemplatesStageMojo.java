@@ -1122,11 +1122,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             cloudBuildLogs);
 
     int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
     if (retval != 0) {
-      throw new RuntimeException(
-          String.format(
-              "Error building Python image using gcloud. Code %d. Check logs for details. %s",
-              retval, cloudBuildLogs));
+      LOG.warn(
+          "Building Python image nonzero return code {}. This does not necessarily mean an error. "
+              + "Check logs for details. {}",
+          retval,
+          cloudBuildLogs);
     }
   }
 
@@ -1206,11 +1209,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             cloudBuildLogs);
 
     int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
     if (retval != 0) {
-      throw new RuntimeException(
-          String.format(
-              "Possible error building Flex image using gcloud. Code %d. Check logs for details. %s",
-              retval, cloudBuildLogs));
+      LOG.warn(
+          "Build Flex image nonzero return code {}.  This does not necessarily mean an error. "
+              + "Check logs for details. {}",
+          retval,
+          cloudBuildLogs);
     }
   }
 
@@ -1282,11 +1288,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             cloudBuildLogs);
 
     int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
     if (retval != 0) {
-      throw new RuntimeException(
-          String.format(
-              "Possible error building Xlang image using gcloud. Code %d. Check logs for details. %s",
-              retval, cloudBuildLogs));
+      LOG.warn(
+          "Building Xlang image nonzero return code {}. This does not necessarily mean an error. "
+              + "Check logs for details. {}",
+          retval,
+          cloudBuildLogs);
     }
   }
 
@@ -1361,7 +1370,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  args:\n"
               + "  - --image="
               + imagePath
-              + ":latest");
+              + ":latest\n"
+              + "options:\n"
+              + "  logging: CLOUD_LOGGING_ONLY\n");
     }
 
     LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
@@ -1380,13 +1391,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             buildDir,
             cloudBuildLogs);
 
-    // Ideally this should raise an exception, but this returns NZE even for
-    // successful runs.
-    if (stageProcess.waitFor() != 0) {
+    int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
+    if (retval != 0) {
       LOG.warn(
-          "Scanning container nonzero return code. This does not necessarily mean an error. "
-              + "Check logs for details. "
-              + cloudBuildLogs);
+          "Scanning container nonzero return code {}. This does not necessarily mean an error. Check logs for details. {}",
+          retval,
+          cloudBuildLogs);
     }
   }
 
