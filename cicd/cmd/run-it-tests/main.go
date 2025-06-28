@@ -56,7 +56,7 @@ func main() {
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
 		mvnFlags.RunIntegrationTests(flags.UnifiedWorkerHarnessContainerImage() != ""),
-		mvnFlags.ThreadCount(4),
+		mvnFlags.ThreadCount(flags.ThreadCount()),
 		mvnFlags.IntegrationTestParallelism(flags.IntegrationTestParallelism()),
 		mvnFlags.StaticBigtableInstance("teleport"),
 		mvnFlags.StaticSpannerInstance("teleport"),
