@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -15,22 +15,19 @@
  */
 package com.google.cloud.teleport.v2.kafka.transforms;
 
+import java.io.IOException;
 import java.io.OutputStream;
 import org.apache.avro.Schema;
 import org.apache.avro.io.Encoder;
 import org.apache.avro.io.EncoderFactory;
 
-public class BinaryAvroSerializer extends AbstractAvroSerializer {
-  public BinaryAvroSerializer() {
+public class JsonAvroSerializer extends AbstractAvroSerializer {
+  public JsonAvroSerializer() {
     super(null);
   }
 
-  public BinaryAvroSerializer(Schema schema) {
-    super(schema);
-  }
-
   @Override
-  protected Encoder getEncoder(Schema ignored, OutputStream outputStream) {
-    return EncoderFactory.get().binaryEncoder(outputStream, null);
+  protected Encoder getEncoder(Schema schema, OutputStream outputStream) throws IOException {
+    return EncoderFactory.get().jsonEncoder(schema, outputStream, false);
   }
 }
