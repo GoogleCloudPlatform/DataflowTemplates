@@ -15,7 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.utils;
 
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +47,7 @@ public class ShardingLogicImplFetcher {
       String customJarPath,
       String shardingCustomClassName,
       String shardingCustomParameters,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       String skipDirName) {
 
     if (shardIdFetcher == null) {
@@ -56,7 +56,7 @@ public class ShardingLogicImplFetcher {
               customJarPath,
               shardingCustomClassName,
               shardingCustomParameters,
-              schema,
+              schemaMapper,
               skipDirName);
     }
     return shardIdFetcher;
@@ -66,7 +66,7 @@ public class ShardingLogicImplFetcher {
       String customJarPath,
       String shardingCustomClassName,
       String shardingCustomParameters,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       String skipDirName) {
     if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
       LOG.info(
@@ -106,7 +106,9 @@ public class ShardingLogicImplFetcher {
       }
     }
     // else return the core implementation
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schema, skipDirName);
+    // TODO: for override based mappers, custom jars are a must. Fail this if no custom jar is
+    // provided.
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, skipDirName);
     return shardIdFetcher;
   }
 
