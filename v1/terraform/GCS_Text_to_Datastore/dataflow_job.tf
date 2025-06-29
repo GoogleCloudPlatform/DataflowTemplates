@@ -35,37 +35,37 @@ variable "region" {
 
 variable "textReadPattern" {
   type        = string
-  description = "The input file pattern Dataflow reads from. Ex: gs://your-bucket/.../*.json"
+  description = "A Cloud Storage path pattern that specifies the location of your text data files. For example, `gs://mybucket/somepath/*.json`."
 
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions."
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`."
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
 variable "datastoreWriteProjectId" {
   type        = string
-  description = "The Google Cloud project ID of where to write Datastore entities"
+  description = "The ID of the Google Cloud project to write the Datastore entities to."
 
 }
 
 variable "datastoreHintNumWorkers" {
-  type        = string
-  description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to: 500."
+  type        = number
+  description = "Hint for the expected number of workers in the Datastore ramp-up throttling step. Defaults to `500`."
   default     = null
 }
 
 variable "errorWritePath" {
   type        = string
-  description = "The error log output folder to use for write failures that occur during processing. (Example: gs://your-bucket/errors/)"
+  description = "The error log output file to use for write failures that occur during processing. For example, `gs://your-bucket/errors/`"
 
 }
 
@@ -170,7 +170,7 @@ resource "google_dataflow_job" "generated" {
     javascriptTextTransformGcsPath      = var.javascriptTextTransformGcsPath
     javascriptTextTransformFunctionName = var.javascriptTextTransformFunctionName
     datastoreWriteProjectId             = var.datastoreWriteProjectId
-    datastoreHintNumWorkers             = var.datastoreHintNumWorkers
+    datastoreHintNumWorkers             = tostring(var.datastoreHintNumWorkers)
     errorWritePath                      = var.errorWritePath
   }
 
@@ -183,6 +183,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork
