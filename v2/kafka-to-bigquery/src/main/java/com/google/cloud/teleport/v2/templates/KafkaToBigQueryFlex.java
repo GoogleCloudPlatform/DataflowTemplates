@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.coders.ByteArrayCoder;
@@ -241,7 +242,7 @@ public class KafkaToBigQueryFlex {
       List<String> bootstrapServerAndTopicList =
           KafkaTopicUtils.getBootstrapServerAndTopic(
               options.getReadBootstrapServerAndTopic(), options.getProject());
-      topicsList = List.of(bootstrapServerAndTopicList.get(1));
+      topicsList = bootstrapServerAndTopicList.stream().skip(1).collect(Collectors.toList());
       bootstrapServers = bootstrapServerAndTopicList.get(0);
     } else {
       throw new IllegalArgumentException(
@@ -313,6 +314,7 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
+              options.getPersistKafkaTopic(),
               options.getUseAutoSharding(),
               errorHandler);
     } else {
@@ -325,6 +327,7 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
+              options.getPersistKafkaTopic(),
               options.getUseAutoSharding());
     }
     writeResult =
@@ -369,6 +372,7 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
+              options.getPersistKafkaTopic(),
               options.getUseAutoSharding(),
               errorHandler);
     } else {
@@ -381,6 +385,7 @@ public class KafkaToBigQueryFlex {
               options.getNumStorageWriteApiStreams(),
               options.getStorageWriteApiTriggeringFrequencySec(),
               options.getPersistKafkaKey(),
+              options.getPersistKafkaTopic(),
               options.getUseAutoSharding());
     }
     writeResult =
