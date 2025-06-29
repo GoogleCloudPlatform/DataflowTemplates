@@ -47,7 +47,7 @@ public abstract class SourceRowToMutationDoFn extends DoFn<SourceRow, RowContext
 
   private static final Logger LOG = LoggerFactory.getLogger(SourceRowToMutationDoFn.class);
 
-  private ISpannerMigrationTransformer sourceDbToSpannerTransformer;
+  private transient ISpannerMigrationTransformer sourceDbToSpannerTransformer;
 
   public void setSourceDbToSpannerTransformer(
       ISpannerMigrationTransformer sourceDbToSpannerTransformer) {
