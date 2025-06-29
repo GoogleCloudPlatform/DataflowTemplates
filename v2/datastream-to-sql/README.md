@@ -2,7 +2,7 @@
 
 The [DataStreamToSQL](src/main/java/com/google/cloud/teleport/v2/templates/DataStreamToSQL.java)
 pipeline ingests data supplied by DataStream and writes the
-data to a SQL Database va JDBC.
+data to a SQL Database via JDBC.
 The supported databases include PostgreSQL and MySQL.
 
 ## Getting Started
