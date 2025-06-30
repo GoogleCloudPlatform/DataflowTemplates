@@ -625,7 +625,7 @@ public abstract class TemplateTestBase {
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
   protected PipelineOperator.Config createConfig(LaunchInfo info) {
-    return createConfig(info, null);
+    return createConfig(info, Duration.ofMinutes(45));
   }
 
   /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
