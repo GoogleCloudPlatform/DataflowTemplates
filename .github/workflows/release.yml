@@ -104,6 +104,7 @@ jobs:
           --it-release=true \
           --it-retry-failures=2 \
           --it-integration-test-parallelism=6 \
+          --it-thread-count=6 \
           --modules-to-build="DEFAULT"
       - name: Run Integration Tests With KAFKA
         run: |
