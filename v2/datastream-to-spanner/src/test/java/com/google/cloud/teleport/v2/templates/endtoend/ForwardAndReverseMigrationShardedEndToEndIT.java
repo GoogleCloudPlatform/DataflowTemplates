@@ -41,7 +41,6 @@ import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
-import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -60,7 +59,7 @@ import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 @TemplateIntegrationTest(DataStreamToSpanner.class)
 @RunWith(JUnit4.class)
 @Ignore("This test is disabled currently")
-public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTestingITBase {
+public class ForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTestingITBase {
   private static final String SPANNER_DDL_RESOURCE =
       "EndToEndTesting/ShardedMigration/spanner-schema.sql";
 
@@ -72,9 +71,8 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
           put("name", "VARCHAR(200)");
         }
       };
-  private static final HashSet<BulkForwardAndReverseMigrationShardedEndToEndIT> testInstances =
+  private static final HashSet<ForwardAndReverseMigrationShardedEndToEndIT> testInstances =
       new HashSet<>();
-  private static PipelineLauncher.LaunchInfo bulkJobInfo;
   private static PipelineLauncher.LaunchInfo rrJobInfo;
   private static PipelineLauncher.LaunchInfo fwdJobInfo;
   public static SpannerResourceManager spannerResourceManager;
@@ -102,13 +100,12 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
   @Before
   public void setUp() throws IOException, InterruptedException {
     skipBaseCleanup = true;
-    synchronized (BulkForwardAndReverseMigrationShardedEndToEndIT.class) {
+    synchronized (ForwardAndReverseMigrationShardedEndToEndIT.class) {
       testInstances.add(this);
       if (rrJobInfo == null || fwdJobInfo == null) {
         // create Spanner Resources
         spannerResourceManager =
-            createSpannerDatabase(
-                BulkForwardAndReverseMigrationShardedEndToEndIT.SPANNER_DDL_RESOURCE);
+            createSpannerDatabase(ForwardAndReverseMigrationShardedEndToEndIT.SPANNER_DDL_RESOURCE);
         spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
         // Create MySql Resource
@@ -134,51 +131,14 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
         gcsResourceManager =
             GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
                 .build();
-
         generateAndUploadSessionFileUsingSMT(
             jdbcSource, cloudSqlResourceManagerShardA, spannerResourceManager, gcsResourceManager);
-
-        Database databaseA =
-            new Database(
-                cloudSqlResourceManagerShardA.getDatabaseName(),
-                cloudSqlResourceManagerShardA.getDatabaseName(),
-                "ref1");
-        Database databaseB =
-            new Database(
-                cloudSqlResourceManagerShardB.getDatabaseName(),
-                cloudSqlResourceManagerShardB.getDatabaseName(),
-                "ref2");
-
-        ArrayList<Database> databases = new ArrayList<>(List.of(databaseA, databaseB));
-        DataShard dataShard =
-            new DataShard(
-                "1",
-                jdbcSource.hostname(),
-                jdbcSource.username(),
-                jdbcSource.password(),
-                String.valueOf(jdbcSource.port()),
-                "",
-                "",
-                "",
-                databases);
-        createAndUploadBulkShardConfigToGcs(
-            new ArrayList<>(List.of(dataShard)), gcsResourceManager);
 
         // create pubsub manager
         pubsubResourceManager = setUpPubSubResourceManager();
 
-        // Write backfill data
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 0, cloudSqlResourceManagerShardA);
         writeRows(TABLE, NUM_EVENTS, COLUMNS, new HashMap<>(), 2, cloudSqlResourceManagerShardB);
-
-        // launch bulk migration template
-        bulkJobInfo =
-            launchBulkDataflowJob(
-                PipelineUtils.createJobName("bulk" + getClass().getSimpleName()),
-                spannerResourceManager,
-                gcsResourceManager,
-                cloudSqlResourceManagerShardA,
-                true);
 
         // launch forward migration template
         fwdJobInfo =
@@ -198,7 +158,7 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
                         cloudSqlResourceManagerShardB.getDatabaseName());
                   }
                 },
-                false);
+                true);
 
         // launch reverse migration template
         createAndUploadReverseMultiShardConfigToGcs(
@@ -228,35 +188,24 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
    */
   @AfterClass
   public static void cleanUp() throws IOException {
-    for (BulkForwardAndReverseMigrationShardedEndToEndIT instance : testInstances) {
+    for (ForwardAndReverseMigrationShardedEndToEndIT instance : testInstances) {
       instance.tearDownBase();
     }
     ResourceManagerUtils.cleanResources(
         spannerResourceManager,
         spannerMetadataResourceManager,
-        gcsResourceManager,
         pubsubResourceManager,
         cloudSqlResourceManagerShardA,
-        cloudSqlResourceManagerShardB,
-        datastreamResourceManager);
+        cloudSqlResourceManagerShardB);
   }
 
   @Test
-  public void bulkForwardAndReverseSharded() throws IOException {
-    // Bulk Migration pipeline check
-    assertThatPipeline(bulkJobInfo).isRunning();
-
+  public void forwardAndReverseSharded() {
     // Forward Migration pipeline check
     assertThatPipeline(fwdJobInfo).isRunning();
 
     // Reverse Migration pipeline check
     assertThatPipeline(rrJobInfo).isRunning();
-
-    // Bulk Migration check condition
-    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(bulkJobInfo));
-    assertThatResult(result).isLaunchFinished();
-    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE, "id"))
-        .hasRows(4);
 
     // Forward Migration check condition
     writeRowInMySqlAndAssertRows();
@@ -266,22 +215,19 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
     assertRowInMySQL();
   }
 
-  private void writeRowInMySqlAndAssertRows() throws IOException {
-    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+  private void writeRowInMySqlAndAssertRows() {
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writeJdbcData(TABLE, 1, COLUMNS, cdcEvents, 8, cloudSqlResourceManagerShardA),
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE)
-                        .setMinRows(5)
-                        .setMaxRows(5)
+                        .setMinRows(4)
+                        .setMaxRows(4)
                         .build()))
             .build();
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(
-                createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
+            .waitForCondition(createConfig(fwdJobInfo, Duration.ofMinutes(8)), conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 
@@ -308,15 +254,15 @@ public class BulkForwardAndReverseMigrationShardedEndToEndIT extends EndToEndTes
     spannerResourceManager.write(m2);
   }
 
-  private void assertRowInMySQL() throws IOException {
+  private void assertRowInMySQL() {
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(
+            .waitForCondition(
                 createConfig(rrJobInfo, Duration.ofMinutes(10)),
-                () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 5);
+                () -> cloudSqlResourceManagerShardA.getRowCount(TABLE) == 4);
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = cloudSqlResourceManagerShardA.readTable(TABLE);
-    assertThat(rows).hasSize(5);
+    assertThat(rows).hasSize(4);
     assertThat(rows.get(2).get("id")).isEqualTo(2);
     assertThat(rows.get(2).get("name")).isEqualTo("FF");
   }

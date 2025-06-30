@@ -184,7 +184,7 @@ public class ForwardAndReverseMigrationNonShardedEndToEndIT extends EndToEndTest
   }
 
   @Test
-  public void spannerToSourceDbBasic() throws IOException {
+  public void forwardAndReverseNonSharded() throws IOException {
     // Forward Migration pipeline check
     assertThatPipeline(fwdJobInfo).isRunning();
 
