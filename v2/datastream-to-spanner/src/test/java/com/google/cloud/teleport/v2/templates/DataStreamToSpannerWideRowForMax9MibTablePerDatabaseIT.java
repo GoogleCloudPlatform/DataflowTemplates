@@ -103,7 +103,7 @@ public class DataStreamToSpannerWideRowForMax9MibTablePerDatabaseIT
         datastreamResourceManager =
             DatastreamResourceManager.builder(testName, PROJECT, REGION)
                 .setCredentialsProvider(credentialsProvider)
-                //.setPrivateConnectivity("datastream-private-connect-us-central1")
+                // .setPrivateConnectivity("datastream-private-connect-us-central1")
                 .build();
         spannerResourceManager = setUpSpannerResourceManager();
         pubsubResourceManager = setUpPubSubResourceManager();
