@@ -146,8 +146,7 @@ jobs:
         --modules-to-build="SPANNER" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
     - name: Upload Smoke Tests Report
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
@@ -175,8 +174,7 @@ jobs:
         --modules-to-build="SPANNER" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
     - name: Upload Integration Tests Report
       uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
@@ -205,7 +203,6 @@ jobs:
         --modules-to-build="SPANNER" \
         --it-region="us-central1" \
         --it-project="cloud-teleport-testing" \
-        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-        --it-private-connectivity="datastream-private-connect-us-central1"
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions"
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
