@@ -179,7 +179,7 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-private-connect-us-central1")
+            .setPrivateConnectivity("datastream-connect-2")
             .build();
     Stream stream =
         createDataStreamResources(
