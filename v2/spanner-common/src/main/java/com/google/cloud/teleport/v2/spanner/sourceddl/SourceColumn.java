@@ -35,7 +35,7 @@ public abstract class SourceColumn implements Serializable {
   public abstract boolean isPrimaryKey();
 
   @Nullable
-  public abstract Integer size();
+  public abstract Long size();
 
   @Nullable
   public abstract Integer precision();
@@ -68,7 +68,7 @@ public abstract class SourceColumn implements Serializable {
 
     public abstract Builder isPrimaryKey(boolean isPrimaryKey);
 
-    public abstract Builder size(Integer size);
+    public abstract Builder size(Long size);
 
     public abstract Builder precision(Integer precision);
 

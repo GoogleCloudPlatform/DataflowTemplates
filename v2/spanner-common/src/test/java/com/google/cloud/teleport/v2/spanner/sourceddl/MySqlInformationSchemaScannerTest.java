@@ -91,7 +91,7 @@ public class MySqlInformationSchemaScannerTest {
     assertEquals("INT", column.type());
     assertEquals(false, column.isNullable());
     assertEquals(true, column.isPrimaryKey());
-    assertEquals(Integer.valueOf(10), column.size());
+    assertEquals(Long.valueOf(10L), column.size());
     assertEquals(1, table.primaryKeyColumns().size());
     assertEquals("id", table.primaryKeyColumns().get(0));
   }

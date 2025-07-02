@@ -1,17 +1,17 @@
 /*
  * Copyright (C) 2024 Google LLC
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 package com.google.cloud.teleport.v2.templates;
 
@@ -24,6 +24,7 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,11 +91,15 @@ public class SpannerToSourceDbStringOverridesSchemaMapperIT extends SpannerToSou
                 getGcsPath("dlq", gcsResourceManager)
                     .replace("gs://" + gcsResourceManager.getBucket(), ""),
                 gcsResourceManager);
-        ADDITIONAL_JOB_PARAMS.clear();
-        ADDITIONAL_JOB_PARAMS.put("tableOverrides", "[{source_table1, Target_Table_1}]");
-        ADDITIONAL_JOB_PARAMS.put(
-            "columnOverrides",
-            "[{source_table1.name_col1, source_table1.Target_Name_Col_1}, {source_table2.category_col2, source_table2.Target_Category_Col_2}]");
+        Map<String, String> jobParameters =
+            new HashMap<>() {
+              {
+                put("tableOverrides", "[{source_table1, Target_Table_1}]");
+                put(
+                    "columnOverrides",
+                    "[{source_table1.name_col1, source_table1.Target_Name_Col_1}, {source_table2.category_col2, source_table2.Target_Category_Col_2}]");
+              }
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -106,7 +111,8 @@ public class SpannerToSourceDbStringOverridesSchemaMapperIT extends SpannerToSou
                 null,
                 null,
                 null,
-                MYSQL_SOURCE_TYPE);
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }

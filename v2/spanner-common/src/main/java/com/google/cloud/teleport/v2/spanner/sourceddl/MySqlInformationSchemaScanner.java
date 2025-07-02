@@ -69,7 +69,7 @@ public class MySqlInformationSchemaScanner extends AbstractSourceInformationSche
         // Handle size/precision/scale
         String maxLength = rs.getString("character_maximum_length");
         if (maxLength != null) {
-          columnBuilder.size(Integer.parseInt(maxLength));
+          columnBuilder.size(Long.parseLong(maxLength));
         }
 
         String precision = rs.getString("numeric_precision");

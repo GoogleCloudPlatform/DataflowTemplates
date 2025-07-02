@@ -31,7 +31,7 @@ public class SourceColumnTest {
             .type("INT")
             .isNullable(false)
             .isPrimaryKey(true)
-            .size(10)
+            .size(10L)
             .precision(5)
             .scale(0)
             .columnOptions(ImmutableList.of("AUTO_INCREMENT"))
@@ -40,7 +40,7 @@ public class SourceColumnTest {
     assertEquals("INT", column.type());
     assertEquals(false, column.isNullable());
     assertEquals(true, column.isPrimaryKey());
-    assertEquals(Integer.valueOf(10), column.size());
+    assertEquals(Long.valueOf(10L), column.size());
     assertEquals(Integer.valueOf(5), column.precision());
     assertEquals(Integer.valueOf(0), column.scale());
     assertEquals(ImmutableList.of("AUTO_INCREMENT"), column.columnOptions());

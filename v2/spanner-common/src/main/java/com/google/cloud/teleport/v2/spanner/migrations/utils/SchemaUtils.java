@@ -122,9 +122,9 @@ public class SchemaUtils {
               Map<String, Object> colMap = (Map<String, Object>) colDefs.get(colId);
               Map<String, Object> typeMap = (Map<String, Object>) colMap.get("Type");
               String typeName = (String) typeMap.get("Name");
-              Integer size = null;
+              Long size = null;
               if (typeMap.get("Len") instanceof Number) {
-                size = ((Number) typeMap.get("Len")).intValue();
+                size = ((Number) typeMap.get("Len")).longValue();
               }
               SourceColumn.Builder colBuilder =
                   SourceColumn.builder(dbType)

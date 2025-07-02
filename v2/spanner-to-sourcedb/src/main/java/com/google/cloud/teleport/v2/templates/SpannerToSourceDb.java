@@ -600,6 +600,8 @@ public class SpannerToSourceDb {
     }
     SourceInformationSchemaScanner scanner = null;
     try {
+      SourceProcessorFactory.initializeConnectionHelper(
+          options.getSourceType(), shards, connectionPoolSizePerWorker);
       if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
         Connection connection =
             (Connection)

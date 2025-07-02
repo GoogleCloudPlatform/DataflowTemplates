@@ -952,21 +952,21 @@ public class AssignShardIdFnTest {
                         .type("VARCHAR")
                         .isNullable(false)
                         .isPrimaryKey(true)
-                        .size(255)
+                        .size(255L)
                         .build(),
                     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
                             SourceDatabaseType.MYSQL)
                         .name("accountName")
                         .type("VARCHAR")
                         .isNullable(true)
-                        .size(255)
+                        .size(255L)
                         .build(),
                     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
                             SourceDatabaseType.MYSQL)
                         .name("migration_shard_id")
                         .type("VARCHAR")
                         .isNullable(true)
-                        .size(255)
+                        .size(255L)
                         .build(),
                     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
                             SourceDatabaseType.MYSQL)
@@ -998,7 +998,7 @@ public class AssignShardIdFnTest {
                         .type("VARCHAR")
                         .isNullable(false)
                         .isPrimaryKey(true)
-                        .size(255)
+                        .size(255L)
                         .build(),
                     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
                             SourceDatabaseType.MYSQL)
@@ -1006,7 +1006,7 @@ public class AssignShardIdFnTest {
                         .type("VARCHAR")
                         .isNullable(false)
                         .isPrimaryKey(true)
-                        .size(50)
+                        .size(50L)
                         .build(),
                     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
                             SourceDatabaseType.MYSQL)
@@ -1042,7 +1042,7 @@ public class AssignShardIdFnTest {
                         .type("VARCHAR")
                         .isNullable(false)
                         .isPrimaryKey(true)
-                        .size(255)
+                        .size(255L)
                         .build(),
                     com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
                             SourceDatabaseType.MYSQL)
@@ -1089,7 +1089,7 @@ public class AssignShardIdFnTest {
                         .type("VARCHAR")
                         .isNullable(false)
                         .isPrimaryKey(true)
-                        .size(50)
+                        .size(50L)
                         .build()))
             .primaryKeyColumns(
                 ImmutableList.of(
