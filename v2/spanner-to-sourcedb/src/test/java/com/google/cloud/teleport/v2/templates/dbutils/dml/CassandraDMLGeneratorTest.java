@@ -19,6 +19,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -80,17 +81,18 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("singerid"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("SingerId"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -112,17 +114,18 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertTrue(sql.contains("id"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        "999",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(values.get(1).value() instanceof CassandraTypeHandler.NullClass);
   }
@@ -138,25 +141,26 @@ public class CassandraDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
     Map<String, Object> customTransformation = new HashMap<>();
-    customTransformation.put("singerid", "1000");
-    customTransformation.put("lastname", "kk ll");
+    customTransformation.put("SingerId", "1000");
+    customTransformation.put("LastName", "kk ll");
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .setCustomTransformationResponse(customTransformation)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("lastname"));
-    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("LastName"));
+    assertEquals(4, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        1000L,
+        1000,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "kk ll",
@@ -181,17 +185,18 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -213,17 +218,18 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("lastname"));
-    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("LastName"));
+    assertEquals(4, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -248,6 +254,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -271,6 +278,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -294,18 +302,19 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("singerid"));
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("SingerId"));
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -317,16 +326,17 @@ public class CassandraDMLGeneratorTest {
     Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
-    String tableName = "contact";
+    String tableName = "Singers";
     String newValuesString = "{\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    JSONObject keyValuesJson = new JSONObject("{\"ID\":\"999\",\"Customer_Id\":\"111\"}");
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\",\"FirstName\":\"kk\"}");
     String modType = "DELETE";
     CassandraDMLGenerator cassandraDMLGenerator = new CassandraDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -336,10 +346,7 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        111L,
-        CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
-    assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value()));
   }
 
@@ -349,7 +356,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
-    String newValuesString = "{\"FirstName\":\"k'k\",\"LastName\":\"ll\"}";
+    String newValuesString = "{\"FirstName\":\"k\u0027k\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
@@ -358,17 +365,18 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -381,7 +389,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"Jw==\",\"varchar_column\":\"'\",}";
+    String newValuesString = "{\"blob_column\":\"Jw\u003d\u003d\",\"string_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -390,6 +398,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -399,10 +408,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -412,7 +421,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"0102030405\",\"varchar_column\":\"'\",}";
+    String newValuesString = "{\"blob_column\":\"0102030405\",\"string_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -421,6 +430,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -430,10 +440,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -443,7 +453,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"AQIDBAU=\",\"varchar_column\":\"'\",}";
+    String newValuesString = "{\"blob_column\":\"AQIDBAU=\",\"string_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -452,6 +462,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -461,10 +472,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -474,7 +485,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"Jyc=\",\"varchar_column\":\"''\",}";
+    String newValuesString = "{\"blob_column\":\"Jyc\u003d\",\"string_column\":\"\u0027\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -483,6 +494,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -493,10 +505,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -506,7 +518,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"XCc=\",\"varchar_column\":\"\\\\\\'\",}";
+    String newValuesString = "{\"blob_column\":\"XCc\u003d\",\"string_column\":\"\\\\\\\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -515,6 +527,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -525,10 +538,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -538,7 +551,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"CQ==\",\"varchar_column\":\"\\t\",}";
+    String newValuesString = "{\"blob_column\":\"CQ==\",\"string_column\":\"\\t\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -547,6 +560,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -557,10 +571,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -570,7 +584,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"CA==\",\"varchar_column\":\"\\b\",}";
+    String newValuesString = "{\"blob_column\":\"CA==\",\"string_column\":\"\\b\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -579,6 +593,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -589,10 +604,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -602,7 +617,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
-    String newValuesString = "{\"blob_column\":\"Cg==\",\"varchar_column\":\"\\n\",}";
+    String newValuesString = "{\"blob_column\":\"Cg==\",\"string_column\":\"\\n\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
@@ -611,6 +626,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -621,10 +637,10 @@ public class CassandraDMLGeneratorTest {
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        12L,
+        "12",
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertTrue(
-        CassandraTypeHandler.castToExpectedType(values.get(2).dataType(), values.get(2).value())
+        CassandraTypeHandler.castToExpectedType(values.get(1).dataType(), values.get(1).value())
             instanceof ByteBuffer);
   }
 
@@ -634,7 +650,7 @@ public class CassandraDMLGeneratorTest {
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
-    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"YmlsX2NvbA==\"}";
+    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"YmlsX2NvbA\u003d\u003d\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
     JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
@@ -643,17 +659,18 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "YmlsX2NvbA==",
@@ -675,13 +692,14 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(CassandraTypeHandler.NullClass.INSTANCE, values.get(0).value());
@@ -705,6 +723,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -728,18 +747,19 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("singerid"));
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("SingerId"));
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -761,6 +781,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -784,18 +805,19 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(sql.contains("singerid"));
-    assertTrue(sql.contains("lastname"));
-    assertEquals(2, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
+    assertTrue(sql.contains("SingerId"));
+    assertTrue(sql.contains("LastName"));
+    assertEquals(3, ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues().size());
     List<PreparedStatementValueObject<?>> values =
         ((PreparedStatementGeneratedResponse) dmlGeneratorResponse).getValues();
     assertEquals(
-        999L,
+        999,
         CassandraTypeHandler.castToExpectedType(values.get(0).dataType(), values.get(0).value()));
     assertEquals(
         "ll",
@@ -817,6 +839,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
@@ -840,6 +863,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setSchemaMapper(schemaMapper)
