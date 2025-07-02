@@ -189,6 +189,15 @@ public class DatastreamRow {
       return Arrays.asList("_metadata_timestamp", "_metadata_log_file", "_metadata_log_position");
     } else if (this.getSourceType().equals("postgresql")) {
       return Arrays.asList("_metadata_timestamp", "_metadata_lsn", "_metadata_uuid");
+    } else if (this.getSourceType().equals("backfill") || this.getSourceType().equals("cdc")) {
+      // Check if it's SQL Server by looking for replication_index in source metadata
+      String sourceMetadata = getStringValue("_metadata_source");
+      if (sourceMetadata != null && sourceMetadata.contains("replication_index")) {
+        // SQL Server detected - same sort fields as PostgreSQL
+        return Arrays.asList("_metadata_timestamp", "_metadata_lsn", "_metadata_uuid");
+      }
+      // Default for non-SQL Server backfill/cdc (e.g., MongoDB)
+      return Arrays.asList("_metadata_timestamp");
     } else {
       // Current default is oracle.
       return Arrays.asList(
