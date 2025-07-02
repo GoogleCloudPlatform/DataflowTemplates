@@ -34,6 +34,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -109,6 +110,12 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
                 getGcsPath("dlq", gcsResourceManager)
                     .replace("gs://" + gcsResourceManager.getBucket(), ""),
                 gcsResourceManager);
+        Map<String, String> jobParameters =
+            new HashMap<>() {
+              {
+                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
+              }
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -120,7 +127,8 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                MYSQL_SOURCE_TYPE);
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }

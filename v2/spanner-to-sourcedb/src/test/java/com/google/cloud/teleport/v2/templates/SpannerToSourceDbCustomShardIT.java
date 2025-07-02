@@ -125,7 +125,8 @@ public class SpannerToSourceDbCustomShardIT extends SpannerToSourceDbITBase {
                 "com.custom.CustomShardIdFetcherForIT",
                 null,
                 null,
-                MYSQL_SOURCE_TYPE);
+                MYSQL_SOURCE_TYPE,
+                null);
       }
     }
   }

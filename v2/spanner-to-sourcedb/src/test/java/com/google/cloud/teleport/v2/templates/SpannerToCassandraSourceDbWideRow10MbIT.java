@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
@@ -106,14 +107,14 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
                 gcsResourceManager);
-        ADDITIONAL_JOB_PARAMS.putAll(
+        Map<String, String> jobParameters =
             new HashMap<>() {
               {
                 put("network", VPC_NAME);
                 put("subnetwork", SUBNET_NAME);
                 put("workerRegion", VPC_REGION);
               }
-            });
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -125,7 +126,8 @@ public class SpannerToCassandraSourceDbWideRow10MbIT extends SpannerToSourceDbIT
                 null,
                 null,
                 null,
-                CASSANDRA_SOURCE_TYPE);
+                CASSANDRA_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }

@@ -140,7 +140,7 @@ public class SourceProcessorFactory {
                     "Invalid source type for connection helper: " + source));
   }
 
-  private static void initializeConnectionHelper(
+  public static void initializeConnectionHelper(
       String source, List<Shard> shards, int maxConnections) throws UnsupportedSourceException {
     IConnectionHelper connectionHelper = getConnectionHelper(source);
     if (!connectionHelper.isConnectionPoolInitialized()) {
