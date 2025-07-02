@@ -1386,7 +1386,7 @@ public class CassandraTypeHandlerTest {
   public void testGetColumnValueByTypeForNullColumnDefs() {
     JSONObject valuesJson = new JSONObject();
     assertThrows(
-        NullPointerException.class,
+        IllegalArgumentException.class,
         () -> {
           getColumnValueByType(null, null, valuesJson, null);
         });
