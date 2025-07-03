@@ -35,7 +35,7 @@ public class FilterRecordsFn extends DoFn<DataChangeRecord, DataChangeRecord> {
   public void processElement(ProcessContext c) {
     DataChangeRecord record = c.element();
     Metrics.counter(FilterRecordsFn.class, "data_record_count_per_record")
-            .inc(record.getMods().size());
+        .inc(record.getMods().size());
 
     // In this mode, filter no records.
     if (filtrationMode.equals(Constants.FILTRATION_MODE_NONE)) {
@@ -49,6 +49,6 @@ public class FilterRecordsFn extends DoFn<DataChangeRecord, DataChangeRecord> {
       return;
     }
     Metrics.counter(FilterRecordsFn.class, "fwd_migration_filtered_record_count")
-            .inc(record.getMods().size());
+        .inc(record.getMods().size());
   }
 }
