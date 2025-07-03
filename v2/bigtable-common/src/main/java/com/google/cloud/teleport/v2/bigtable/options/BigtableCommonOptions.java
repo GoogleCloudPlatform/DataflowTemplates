@@ -300,5 +300,14 @@ public interface BigtableCommonOptions extends GcpOptions {
     Boolean getBigtableChangeStreamResume();
 
     void setBigtableChangeStreamResume(Boolean useBase64Value);
+
+    @TemplateParameter.Integer(
+        order = 10,
+        optional = true,
+        description = "The timeout for ReadChangeStream requests in milliseconds",
+        helpText = "The timeout for Bigtable ReadChangeStream requests in milliseconds.")
+    Integer getBigtableReadChangeStreamTimeoutMs();
+
+    void setBigtableReadChangeStreamTimeoutMs(Integer value);
   }
 }
