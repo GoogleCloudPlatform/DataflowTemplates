@@ -147,6 +147,11 @@ public final class BigtableChangeStreamsToPubSub {
     if (options.getDlqMaxRetries() < 0) {
       throw new IllegalArgumentException("dlqMaxRetries cannot be negative.");
     }
+    if (options.getBigtableReadChangeStreamTimeoutMs() != null
+        && options.getBigtableReadChangeStreamTimeoutMs() <= 0) {
+      throw new IllegalArgumentException(
+          "bigtableReadChangeStreamTimeoutMs must be greater than 0.");
+    }
   }
 
   private static void setOptions(BigtableChangeStreamsToPubSubOptions options) {
