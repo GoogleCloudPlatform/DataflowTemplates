@@ -92,9 +92,18 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadataAsLong(record, "log_position"));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
-      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
-      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
-      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      // SQL Server (has replication_index) or MongoDB
+      JsonNode sourceMetadata = getSourceMetadata(record);
+      if (sourceMetadata != null && sourceMetadata.has("replication_index")) {
+        // SQL Server Specific Metadata
+        outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
+        outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+        outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+      } else {
+        // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
+        outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+        outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      }
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
@@ -224,6 +233,10 @@ public final class FormatDatastreamJsonToJson
       return null;
     }
 
+    // For SQL Server, primary keys are in replication_index
+    if (md.has("replication_index")) {
+      return md.get("replication_index");
+    }
     return md.get("primary_keys");
   }
 
