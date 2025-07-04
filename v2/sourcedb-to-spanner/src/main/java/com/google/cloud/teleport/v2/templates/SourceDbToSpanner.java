@@ -120,11 +120,16 @@ public class SourceDbToSpanner {
 
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
-    return SpannerConfig.create()
-        .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
-        .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
-        .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+    SpannerConfig spannerConfig =
+        SpannerConfig.create()
+            .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
+            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
+            .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+    if (options.getMaxCommitDelay() >= 0) {
+      spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
+    }
+    return spannerConfig;
   }
 }
