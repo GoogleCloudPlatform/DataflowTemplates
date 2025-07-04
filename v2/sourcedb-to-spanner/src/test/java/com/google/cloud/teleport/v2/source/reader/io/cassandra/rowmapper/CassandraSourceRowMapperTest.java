@@ -38,6 +38,7 @@ import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraConnector;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSourceOss;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -108,12 +109,13 @@ public class CassandraSourceRowMapperTest {
 
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .build()));
 
     SourceTableSchema.Builder sourceTableSchemaBuilder =
         SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
@@ -134,12 +136,12 @@ public class CassandraSourceRowMapperTest {
         SimpleStatement.newInstance(query);
     Cluster cluster =
         Cluster.builder()
-            .addContactPointsWithPorts(dataSource.cassandra().contactPoints())
-            .withClusterName(dataSource.cassandra().clusterName())
+            .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
+            .withClusterName(dataSource.cassandra().oss().clusterName())
             .withoutJMXReporting()
             .withLoadBalancingPolicy(
                 new DCAwareRoundRobinPolicy.Builder()
-                    .withLocalDc(dataSource.cassandra().localDataCenter())
+                    .withLocalDc(dataSource.cassandra().oss().localDataCenter())
                     .build())
             .build();
     try (CassandraConnector cassandraConnectorWithSchemaReference =

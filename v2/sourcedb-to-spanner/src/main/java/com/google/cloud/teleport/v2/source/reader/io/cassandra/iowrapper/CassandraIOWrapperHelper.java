@@ -45,15 +45,25 @@ class CassandraIOWrapperHelper {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraIOWrapperHelper.class);
 
-  static DataSource buildDataSource(String gcsPath, Integer numPartitions) {
+  static DataSource buildDataSource(
+      String gcsPath,
+      Integer numPartitions,
+      CassandraDataSource.CassandraDialect cassandraDialect) {
     DataSource dataSource;
     try {
       dataSource =
-          DataSource.ofCassandra(
-              CassandraDataSource.builder()
-                  .setOptionsMapFromGcsFile(gcsPath)
-                  .setNumPartitions(numPartitions)
-                  .build());
+          switch (cassandraDialect) {
+            case ASTRA -> DataSource.ofCassandra(
+                // TODO: Astra: Build from Pipeline Options.
+                CassandraDataSource.ofAstra(AstraDbDataSource.builder().build()));
+
+            default -> DataSource.ofCassandra(
+                CassandraDataSource.ofOss(
+                    CassandraDataSourceOss.builder()
+                        .setOptionsMapFromGcsFile(gcsPath)
+                        .setNumPartitions(numPartitions)
+                        .build()));
+          };
     } catch (FileNotFoundException e) {
       LOG.error("Unable to find driver config file in {}. Cause ", gcsPath, e);
       throw (new SchemaDiscoveryException(e));

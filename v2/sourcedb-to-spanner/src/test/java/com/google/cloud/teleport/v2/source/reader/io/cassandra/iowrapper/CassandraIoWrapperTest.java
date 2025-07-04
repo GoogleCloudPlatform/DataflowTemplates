@@ -23,6 +23,7 @@ import static org.mockito.Mockito.mockStatic;
 
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
@@ -54,13 +55,14 @@ public class CassandraIoWrapperTest {
     String testLocalDC = "datacenter1";
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(testClusterName)
-                .setContactPoints(ImmutableList.of(testHost))
-                .setLocalDataCenter(testLocalDC)
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(testClusterName)
+                    .setContactPoints(ImmutableList.of(testHost))
+                    .setLocalDataCenter(testLocalDC)
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .build()));
 
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(
@@ -79,7 +81,9 @@ public class CassandraIoWrapperTest {
 
     try (MockedStatic mockCassandraIoWrapperHelper = mockStatic(CassandraIOWrapperHelper.class)) {
       mockCassandraIoWrapperHelper
-          .when(() -> CassandraIOWrapperHelper.buildDataSource(testGcsPath, null))
+          .when(
+              () ->
+                  CassandraIOWrapperHelper.buildDataSource(testGcsPath, null, CassandraDialect.OSS))
           .thenReturn(dataSource);
       mockCassandraIoWrapperHelper
           .when(() -> CassandraIOWrapperHelper.buildSchemaDiscovery())
@@ -101,7 +105,7 @@ public class CassandraIoWrapperTest {
           .thenReturn(mockTableReaders);
 
       CassandraIoWrapper cassandraIoWrapper =
-          new CassandraIoWrapper(testGcsPath, tablesToRead, null);
+          new CassandraIoWrapper(testGcsPath, tablesToRead, null, CassandraDialect.OSS);
       assertThat(cassandraIoWrapper.discoverTableSchema()).isEqualTo(mockSourceSchema);
       assertThat(cassandraIoWrapper.getTableReaders()).isEqualTo(mockTableReaders);
     }
