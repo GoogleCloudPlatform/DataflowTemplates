@@ -24,8 +24,12 @@ import org.apache.avro.Schema;
 public abstract class CassandraFieldMapper<T> implements Serializable {
 
   public static CassandraFieldMapper<?> create(
-      CassandraRowValueExtractor<?> rowValueExtractor, CassandraRowValueMapper<?> rowValueMapper) {
-    return new AutoValue_CassandraFieldMapper(rowValueExtractor, rowValueMapper);
+      CassandraRowValueExtractor<?> rowValueExtractor,
+      CassandraRowValueExtractorV4<?> rowValueExtractorV4,
+      CassandraRowValueMapper<?> rowValueMapper,
+      CassandraRowValueMapper<?> rowValueMapperV4) {
+    return new AutoValue_CassandraFieldMapper(
+        rowValueExtractor, rowValueExtractorV4, rowValueMapper, rowValueMapperV4);
   }
 
   public Object mapValue(Row row, String fieldName, Schema fieldSchema) {
@@ -37,7 +41,21 @@ public abstract class CassandraFieldMapper<T> implements Serializable {
     return avroValue;
   }
 
+  public Object mapValueV4(
+      com.datastax.oss.driver.api.core.cql.Row row, String fieldName, Schema fieldSchema) {
+    T extractedValue = rowValueExtractorV4().extract(row, fieldName);
+    if (extractedValue == null) {
+      return null;
+    }
+    Object avroValue = rowValueMapperV4().map(extractedValue, fieldSchema);
+    return avroValue;
+  }
+
   public abstract CassandraRowValueExtractor<T> rowValueExtractor();
 
+  public abstract CassandraRowValueExtractorV4<T> rowValueExtractorV4();
+
   public abstract CassandraRowValueMapper<T> rowValueMapper();
+
+  public abstract CassandraRowValueMapper<T> rowValueMapperV4();
 }
