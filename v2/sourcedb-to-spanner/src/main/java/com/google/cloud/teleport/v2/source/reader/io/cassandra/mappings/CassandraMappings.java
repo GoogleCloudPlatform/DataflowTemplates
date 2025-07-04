@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueArrayMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractorV4;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapping;
@@ -66,6 +67,7 @@ public abstract class CassandraMappings {
         String cassandraType,
         UnifiedMappingProvider.Type type,
         CassandraRowValueExtractor<T> rowValueExtractor,
+        CassandraRowValueExtractorV4<T> rowValueExtractorV4,
         CassandraRowValueMapper<T> rowValueMapper,
         Class<T> typeClass) {
       // typeClass is Null for "UNSUPPORTED" type.
@@ -77,7 +79,7 @@ public abstract class CassandraMappings {
       this.fieldMappingBuilder()
           .put(
               cassandraType.toUpperCase(),
-              CassandraFieldMapper.create(rowValueExtractor, rowValueMapper));
+              CassandraFieldMapper.create(rowValueExtractor, rowValueExtractorV4, rowValueMapper));
       if (!type.equals(UnifiedMappingProvider.Type.UNSUPPORTED)) {
         putList(cassandraType, type, rowValueExtractor, rowValueMapper, typeClass);
         putSet(cassandraType, type, rowValueExtractor, rowValueMapper, typeClass);
@@ -99,6 +101,7 @@ public abstract class CassandraMappings {
               listType,
               CassandraFieldMapper.create(
                   (row, name) -> row.getList(name, typeToken),
+                  (row, name) -> row.getList(name, typeClass),
                   CassandraRowValueArrayMapper.create(rowValueMapper)));
     }
 
@@ -116,6 +119,7 @@ public abstract class CassandraMappings {
               setType,
               CassandraFieldMapper.create(
                   (row, name) -> row.getSet(name, typeToken),
+                  (row, name) -> row.getSet(name, typeClass),
                   CassandraRowValueArrayMapper.create(rowValueMapper)));
     }
 
@@ -154,6 +158,7 @@ public abstract class CassandraMappings {
               .put(
                   mapType,
                   CassandraFieldMapper.create(
+                      (row, name) -> row.getMap(name, keyClass, valueClass),
                       (row, name) -> row.getMap(name, keyClass, valueClass),
                       CassandraRowValueMapMapper.create(
                           keyValueMapper, valueValueMapper, keySchema, valueSchema)));

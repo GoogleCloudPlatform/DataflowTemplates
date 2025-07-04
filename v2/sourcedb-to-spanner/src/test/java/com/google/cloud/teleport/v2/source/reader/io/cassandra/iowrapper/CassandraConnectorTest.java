@@ -60,12 +60,13 @@ public class CassandraConnectorTest {
         CassandraSchemaReference.builder().build();
 
     CassandraDataSource cassandraDataSource =
-        CassandraDataSource.builder()
-            .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-            .setOptionsMap(OptionsMap.driverDefaults())
-            .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-            .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-            .build();
+        CassandraDataSource.ofOss(
+            CassandraDataSourceOss.builder()
+                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                .setOptionsMap(OptionsMap.driverDefaults())
+                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                .build());
 
     try (CassandraConnector cassandraConnectorWithSchemaReference =
         new CassandraConnector(cassandraDataSource, testSchemaReference)) {

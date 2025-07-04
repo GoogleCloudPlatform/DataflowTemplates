@@ -15,13 +15,13 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.mappings;
 
-import com.datastax.driver.core.Duration;
-import com.datastax.driver.core.LocalDate;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.TypeCodec;
 import com.datastax.driver.core.utils.Bytes;
+import com.datastax.oss.driver.api.core.data.CqlDuration;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraFieldMapper;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractor;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueExtractorV4;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.rowmapper.CassandraRowValueMapper;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedTypeMapping;
 import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.unified.CustomSchema.IntervalNano;
@@ -31,7 +31,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
-import java.util.Date;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.apache.avro.LogicalTypes;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -63,12 +64,21 @@ public class CassandraMappingsProvider {
    * for additional information on date type.
    */
   private static final CassandraRowValueMapper<LocalDate> localDateToAvroLogicalDate =
-      (value, schema) -> value.getDaysSinceEpoch();
+      (value, schema) -> value.toEpochDay();
 
-  private static final CassandraRowValueExtractor<Duration> getDuration =
-      (row, name) -> row.get(name, TypeCodec.duration());
+  private static final CassandraRowValueExtractor<CqlDuration> getDuration =
+      (row, name) -> CqlDuration.from(row.get(name, TypeCodec.duration()).toString());
 
-  private static final CassandraRowValueMapper<Duration> durationToAvro =
+  private static final CassandraRowValueExtractor<java.time.LocalDate> getLocalDate =
+      (row, name) -> java.time.LocalDate.ofEpochDay(row.getDate(name).getDaysSinceEpoch());
+
+  private static final CassandraRowValueExtractorV4<Long> getTime =
+      (row, name) -> row.getLocalTime(name).toNanoOfDay();
+
+  private static final CassandraRowValueExtractor<Instant> getInstant =
+      (row, name) -> row.getTimestamp(name).toInstant();
+
+  private static final CassandraRowValueMapper<CqlDuration> durationToAvro =
       (value, schema) ->
           new GenericRecordBuilder(IntervalNano.SCHEMA)
               .set(IntervalNano.MONTHS_FIELD_NAME, value.getMonths())
@@ -88,8 +98,8 @@ public class CassandraMappingsProvider {
               .set(IntervalNano.NANOS_FIELD_NAME, value)
               .build();
 
-  private static final CassandraRowValueMapper<Date> dateToAvro =
-      (value, schema) -> value.getTime() * 1000L;
+  private static final CassandraRowValueMapper<Instant> InstantToAvroMicros =
+      (value, schema) -> value.getEpochSecond() * 1000_000L + value.getNano() / 1000L;
 
   private static final CassandraMappings CASSANDRA_MAPPINGS =
       CassandraMappings.builder()
@@ -97,36 +107,42 @@ public class CassandraMappingsProvider {
               "ASCII",
               UnifiedMappingProvider.Type.STRING,
               Row::getString,
+              com.datastax.oss.driver.api.core.cql.Row::getString,
               valuePassThrough,
               String.class)
           .put(
               "BIGINT",
               UnifiedMappingProvider.Type.LONG,
               Row::getLong,
+              com.datastax.oss.driver.api.core.cql.Row::getLong,
               valuePassThrough,
               Long.class)
           .put(
               "BLOB",
               UnifiedMappingProvider.Type.STRING,
               Row::getBytes,
+              com.datastax.oss.driver.api.core.cql.Row::getByteBuffer,
               ByteBufferToHexString,
               ByteBuffer.class)
           .put(
               "BOOLEAN",
               UnifiedMappingProvider.Type.BOOLEAN,
               Row::getBool,
+              com.datastax.oss.driver.api.core.cql.Row::getBool,
               valuePassThrough,
               Boolean.class)
           .put(
               "COUNTER",
               UnifiedMappingProvider.Type.LONG,
               Row::getLong,
+              com.datastax.oss.driver.api.core.cql.Row::getLong,
               valuePassThrough,
               Long.class)
           .put(
               "DATE",
               UnifiedMappingProvider.Type.DATE,
-              Row::getDate,
+              getLocalDate,
+              com.datastax.oss.driver.api.core.cql.Row::getLocalDate,
               localDateToAvroLogicalDate,
               LocalDate.class)
           // The Cassandra decimal does not have precision and scale fixed in the
@@ -135,71 +151,111 @@ public class CassandraMappingsProvider {
               "DECIMAL",
               UnifiedMappingProvider.Type.STRING,
               Row::getDecimal,
+              com.datastax.oss.driver.api.core.cql.Row::getBigDecimal,
               toString,
               BigDecimal.class)
           .put(
               "DOUBLE",
               UnifiedMappingProvider.Type.DOUBLE,
               Row::getDouble,
+              com.datastax.oss.driver.api.core.cql.Row::getDouble,
               valuePassThrough,
               Double.class)
           .put(
               "DURATION",
               UnifiedMappingProvider.Type.INTERVAL_NANO,
               getDuration,
+              com.datastax.oss.driver.api.core.cql.Row::getCqlDuration,
               durationToAvro,
-              Duration.class)
+              CqlDuration.class)
           .put(
               "FLOAT",
               UnifiedMappingProvider.Type.FLOAT,
               Row::getFloat,
+              com.datastax.oss.driver.api.core.cql.Row::getFloat,
               valuePassThrough,
               Float.class)
           .put(
-              "INET", UnifiedMappingProvider.Type.STRING, Row::getInet, toString, InetAddress.class)
+              "INET",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getInet,
+              com.datastax.oss.driver.api.core.cql.Row::getInetAddress,
+              toString,
+              InetAddress.class)
           .put(
               "INT",
               UnifiedMappingProvider.Type.INTEGER,
               Row::getInt,
+              com.datastax.oss.driver.api.core.cql.Row::getInt,
               valuePassThrough,
               Integer.class)
           .put(
               "SMALLINT",
               UnifiedMappingProvider.Type.INTEGER,
               Row::getShort,
+              com.datastax.oss.driver.api.core.cql.Row::getShort,
               shortToInt,
               Short.class)
           .put(
               "TEXT",
               UnifiedMappingProvider.Type.STRING,
               Row::getString,
+              com.datastax.oss.driver.api.core.cql.Row::getString,
               valuePassThrough,
               String.class)
-          .put("TIME", UnifiedMappingProvider.Type.LONG, Row::getTime, valuePassThrough, Long.class)
+          .put(
+              "TIME",
+              UnifiedMappingProvider.Type.LONG,
+              Row::getTime,
+              getTime,
+              valuePassThrough,
+              Long.class)
           .put(
               "TIMESTAMP",
               UnifiedMappingProvider.Type.TIMESTAMP,
-              Row::getTimestamp,
-              dateToAvro,
-              Date.class)
-          .put("TIMEUUID", UnifiedMappingProvider.Type.STRING, Row::getUUID, toString, UUID.class)
-          .put("TINYINT", UnifiedMappingProvider.Type.INTEGER, Row::getByte, byteToInt, Byte.class)
-          .put("UUID", UnifiedMappingProvider.Type.STRING, Row::getUUID, toString, UUID.class)
+              getInstant,
+              com.datastax.oss.driver.api.core.cql.Row::getInstant,
+              InstantToAvroMicros,
+              Instant.class)
+          .put(
+              "TIMEUUID",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getUUID,
+              com.datastax.oss.driver.api.core.cql.Row::getUuid,
+              toString,
+              UUID.class)
+          .put(
+              "TINYINT",
+              UnifiedMappingProvider.Type.INTEGER,
+              Row::getByte,
+              com.datastax.oss.driver.api.core.cql.Row::getByte,
+              byteToInt,
+              Byte.class)
+          .put(
+              "UUID",
+              UnifiedMappingProvider.Type.STRING,
+              Row::getUUID,
+              com.datastax.oss.driver.api.core.cql.Row::getUuid,
+              toString,
+              UUID.class)
           .put(
               "VARCHAR",
               UnifiedMappingProvider.Type.STRING,
               Row::getString,
+              com.datastax.oss.driver.api.core.cql.Row::getString,
               valuePassThrough,
               String.class)
           .put(
               "VARINT",
               UnifiedMappingProvider.Type.NUMBER,
               Row::getVarint,
+              com.datastax.oss.driver.api.core.cql.Row::getBigInteger,
               toString,
               BigInteger.class)
           .put(
               "UNSUPPORTED",
               UnifiedMappingProvider.Type.UNSUPPORTED,
+              (row, name) -> null,
               (row, name) -> null,
               (value, schema) -> null,
               null)
