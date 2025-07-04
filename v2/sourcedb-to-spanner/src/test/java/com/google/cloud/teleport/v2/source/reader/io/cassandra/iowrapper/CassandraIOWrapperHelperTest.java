@@ -43,6 +43,8 @@ import static org.mockito.Mockito.mockStatic;
 
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -108,16 +110,42 @@ public class CassandraIOWrapperHelperTest {
           /* Empty URL List to test FileNotFoundException handling. */
           .thenReturn(new URL[] {});
 
-      DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(testGcsPath, null);
-      assertThat(dataSource.cassandra().loggedKeySpace()).isEqualTo("test-keyspace");
-      assertThat(dataSource.cassandra().localDataCenter()).isEqualTo("datacenter1");
-      assertThat(dataSource.cassandra().numPartitions()).isEqualTo(null);
+      DataSource dataSource =
+          CassandraIOWrapperHelper.buildDataSource(
+              testGcsPath,
+              null,
+              CassandraDialect.OSS,
+              GuardedStringValueProvider.create(""),
+              "",
+              "",
+              "");
+      assertThat(dataSource.cassandra().oss().loggedKeySpace()).isEqualTo("test-keyspace");
+      assertThat(dataSource.cassandra().oss().localDataCenter()).isEqualTo("datacenter1");
+      assertThat(dataSource.cassandra().oss().numPartitions()).isEqualTo(null);
       assertThat(
-              CassandraIOWrapperHelper.buildDataSource(testGcsPath, 42).cassandra().numPartitions())
+              CassandraIOWrapperHelper.buildDataSource(
+                      testGcsPath,
+                      42,
+                      CassandraDialect.OSS,
+                      GuardedStringValueProvider.create(""),
+                      "",
+                      "",
+                      "")
+                  .cassandra()
+                  .oss()
+                  .numPartitions())
           .isEqualTo(42);
       assertThrows(
           SchemaDiscoveryException.class,
-          () -> CassandraIOWrapperHelper.buildDataSource(testGcsPath, null));
+          () ->
+              CassandraIOWrapperHelper.buildDataSource(
+                  testGcsPath,
+                  null,
+                  CassandraDialect.OSS,
+                  GuardedStringValueProvider.create(""),
+                  "",
+                  "",
+                  ""));
     }
   }
 
@@ -130,13 +158,14 @@ public class CassandraIOWrapperHelperTest {
 
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .build()));
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     assertThat(
             CassandraIOWrapperHelper.getTablesToRead(
@@ -171,13 +200,14 @@ public class CassandraIOWrapperHelperTest {
 
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .build()));
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     SourceSchema sourceSchema =
         CassandraIOWrapperHelper.getSourceSchema(
@@ -198,13 +228,14 @@ public class CassandraIOWrapperHelperTest {
 
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .build()));
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     SourceSchema sourceSchema =
         CassandraIOWrapperHelper.getSourceSchema(

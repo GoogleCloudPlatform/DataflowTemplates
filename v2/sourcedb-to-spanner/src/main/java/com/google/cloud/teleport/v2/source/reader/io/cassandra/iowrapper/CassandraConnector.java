@@ -21,6 +21,8 @@ import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.datastax.oss.driver.api.core.session.Session;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
+import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,31 +34,53 @@ import org.slf4j.LoggerFactory;
  * Optionally allow driver config from GCS file.
  */
 public final class CassandraConnector implements AutoCloseable {
-  private final CqlSession session;
+  private CqlSession session = null;
   private static final Logger LOG = LoggerFactory.getLogger(CassandraConnector.class);
 
   public CassandraConnector(
-      CassandraDataSource dataSource, CassandraSchemaReference schemaReference) {
+      CassandraDataSource cassandraDataSource, CassandraSchemaReference schemaReference) {
+    this.session =
+        switch (cassandraDataSource.getDialect()) {
+          case ASTRA -> getSessionAstra(cassandraDataSource.astra(), schemaReference);
+          default -> getSessionOss(cassandraDataSource.oss(), schemaReference);
+        };
     Log.info(
-        "Connecting to Cassandra Source dataSource = {}, schemaReference = {}",
-        dataSource,
+        "Connected to Cassandra Source dataSource = {}, schemaReference = {}",
+        cassandraDataSource,
+        schemaReference);
+  }
+
+  private CqlSession getSessionOss(
+      CassandraDataSourceOss dataSourceOss, CassandraSchemaReference schemaReference) {
+    Log.info(
+        "Connecting to Cassandra OSS Source dataSource = {}, schemaReference = {}",
+        dataSourceOss,
         schemaReference);
     CqlSessionBuilder builder =
-        CqlSession.builder().withConfigLoader(getDriverConfigLoader(dataSource));
+        CqlSession.builder().withConfigLoader(getDriverConfigLoader(dataSourceOss));
     if (schemaReference.keyspaceName() != null) {
       builder.withKeyspace(schemaReference.keyspaceName());
     }
 
-    this.session = builder.build();
+    return builder.build();
+  }
+
+  private CqlSession getSessionAstra(
+      AstraDbDataSource astraDbDataSource, CassandraSchemaReference schemaReference) {
     Log.info(
-        "Connected to Cassandra Source dataSource = {}, schemaReference = {}",
-        dataSource,
+        "Connecting to Cassandra Astra Source dataSource = {}, schemaReference = {}",
+        astraDbDataSource,
         schemaReference);
+
+    return CqlSessionHolder.getCqlSession(
+        astraDbDataSource.astraToken(),
+        StaticValueProvider.of(astraDbDataSource.secureConnectBundle()),
+        StaticValueProvider.of(astraDbDataSource.keySpace()));
   }
 
   @VisibleForTesting
-  protected static DriverConfigLoader getDriverConfigLoader(CassandraDataSource dataSource) {
-    return dataSource.driverConfigLoader();
+  protected static DriverConfigLoader getDriverConfigLoader(CassandraDataSourceOss dataSourceOss) {
+    return dataSourceOss.driverConfigLoader();
   }
 
   public Session getSession() {

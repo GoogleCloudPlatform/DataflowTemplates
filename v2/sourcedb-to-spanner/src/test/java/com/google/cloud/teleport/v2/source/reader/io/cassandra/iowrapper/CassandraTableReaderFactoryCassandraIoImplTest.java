@@ -99,13 +99,14 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
 
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .build()));
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> discoverTableSchema =
         cassandraSchemaDiscovery.discoverTableSchema(
@@ -152,11 +153,16 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
       when(mockCassandraIORead.withPassword(testPassword)).thenReturn(mockCassandraIORead);
 
       CassandraDataSource cassandraDataSource =
-          CassandraDataSource.builder().setOptionsMapFromGcsFile(testGcsPath).build();
+          CassandraDataSource.ofOss(
+              CassandraDataSourceOss.builder().setOptionsMapFromGcsFile(testGcsPath).build());
       new CassandraTableReaderFactoryCassandraIoImpl()
           .setCredentials(
               mockCassandraIORead,
-              cassandraDataSource.driverConfigLoader().getInitialConfig().getDefaultProfile());
+              cassandraDataSource
+                  .oss()
+                  .driverConfigLoader()
+                  .getInitialConfig()
+                  .getDefaultProfile());
       verify(mockCassandraIORead, times(1)).withUsername(testUserName);
       verify(mockCassandraIORead, times(1)).withPassword(testPassword);
     }
@@ -168,26 +174,30 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
     final String testConsistency = "ONE";
     DataSource dataSourceWithoutDefaults =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .overrideOptionInOptionsMap(
-                    TypedDriverOption.CONNECTION_CONNECT_TIMEOUT, testTimeout)
-                .overrideOptionInOptionsMap(TypedDriverOption.REQUEST_TIMEOUT, testTimeout)
-                .overrideOptionInOptionsMap(TypedDriverOption.REQUEST_CONSISTENCY, testConsistency)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .overrideOptionInOptionsMap(
+                        TypedDriverOption.CONNECTION_CONNECT_TIMEOUT, testTimeout)
+                    .overrideOptionInOptionsMap(TypedDriverOption.REQUEST_TIMEOUT, testTimeout)
+                    .overrideOptionInOptionsMap(
+                        TypedDriverOption.REQUEST_CONSISTENCY, testConsistency)
+                    .build()));
     DriverExecutionProfile profileWithoutDefaults =
         dataSourceWithoutDefaults
             .cassandra()
+            .oss()
             .driverConfigLoader()
             .getInitialConfig()
             .getDefaultProfile();
     DriverExecutionProfile profileWithDefaults =
         dataSourceWithoutDefaults
             .cassandra()
+            .oss()
             .driverConfigLoader()
             .getInitialConfig()
             .getDefaultProfile()
@@ -220,18 +230,19 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
         .thenReturn(mockCassandraIORead);
 
     CassandraDataSource cassandraDataSource =
-        CassandraDataSource.builder()
-            .setClusterName("testCluster")
-            .setOptionsMap(OptionsMap.driverDefaults())
-            .build();
+        CassandraDataSource.ofOss(
+            CassandraDataSourceOss.builder()
+                .setClusterName("testCluster")
+                .setOptionsMap(OptionsMap.driverDefaults())
+                .build());
     Read<SourceRow> retWithoutPartitions =
         CassandraTableReaderFactoryCassandraIoImpl.setNumPartitions(
-            mockCassandraIORead, cassandraDataSource, "testTable");
+            mockCassandraIORead, cassandraDataSource.oss(), "testTable");
     assertThat(retWithoutPartitions).isEqualTo(mockCassandraIORead);
     Read<SourceRow> retWithPartitions =
         CassandraTableReaderFactoryCassandraIoImpl.setNumPartitions(
             mockCassandraIORead,
-            cassandraDataSource.toBuilder().setNumPartitions(testNumberOfSplits).build(),
+            cassandraDataSource.oss().toBuilder().setNumPartitions(testNumberOfSplits).build(),
             "testTable");
     assertThat(retWithPartitions).isEqualTo(mockCassandraIORead);
     verify(mockCassandraIORead, times(1)).withMinNumberOfSplits(testNumberOfSplits);
