@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.IoWrapper;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
@@ -38,8 +40,23 @@ public final class CassandraIoWrapper implements IoWrapper {
       tableReaders;
 
   public CassandraIoWrapper(
-      String gcsPath, List<String> sourceTables, @Nullable Integer numPartitions) {
-    DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(gcsPath, numPartitions);
+      String gcsPath,
+      List<String> sourceTables,
+      @Nullable Integer numPartitions,
+      CassandraDialect cassandraDialect,
+      GuardedStringValueProvider astraDBToken,
+      String astraDBDatabaseId,
+      String astraDBKeyspace,
+      String astraDBRegion) {
+    DataSource dataSource =
+        CassandraIOWrapperHelper.buildDataSource(
+            gcsPath,
+            numPartitions,
+            cassandraDialect,
+            astraDBToken,
+            astraDBDatabaseId,
+            astraDBKeyspace,
+            astraDBRegion);
     SchemaDiscovery schemaDiscovery = CassandraIOWrapperHelper.buildSchemaDiscovery();
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(

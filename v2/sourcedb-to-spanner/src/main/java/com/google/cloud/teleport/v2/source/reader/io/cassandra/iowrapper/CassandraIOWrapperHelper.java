@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDefaults.DEFAULT_CASSANDRA_SCHEMA_DISCOVERY_BACKOFF;
 
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
@@ -45,15 +46,35 @@ class CassandraIOWrapperHelper {
 
   private static final Logger LOG = LoggerFactory.getLogger(CassandraIOWrapperHelper.class);
 
-  static DataSource buildDataSource(String gcsPath, Integer numPartitions) {
+  static DataSource buildDataSource(
+      String gcsPath,
+      Integer numPartitions,
+      CassandraDataSource.CassandraDialect cassandraDialect,
+      GuardedStringValueProvider astraDBToken,
+      String astraDBDatabaseId,
+      String astraDBKeyspace,
+      String astraDBRegion) {
     DataSource dataSource;
     try {
       dataSource =
-          DataSource.ofCassandra(
-              CassandraDataSource.builder()
-                  .setOptionsMapFromGcsFile(gcsPath)
-                  .setNumPartitions(numPartitions)
-                  .build());
+          switch (cassandraDialect) {
+            case ASTRA -> DataSource.ofCassandra(
+                // TODO: Astra: Build from Pipeline Options.
+                CassandraDataSource.ofAstra(
+                    AstraDbDataSource.builder()
+                        .setAstraToken(astraDBToken)
+                        .setDatabaseId(astraDBDatabaseId)
+                        .setKeySpace(astraDBKeyspace)
+                        .setAstraDbRegion(astraDBRegion)
+                        .build()));
+
+            default -> DataSource.ofCassandra(
+                CassandraDataSource.ofOss(
+                    CassandraDataSourceOss.builder()
+                        .setOptionsMapFromGcsFile(gcsPath)
+                        .setNumPartitions(numPartitions)
+                        .build()));
+          };
     } catch (FileNotFoundException e) {
       LOG.error("Unable to find driver config file in {}. Cause ", gcsPath, e);
       throw (new SchemaDiscoveryException(e));

@@ -74,18 +74,11 @@
       <artifactId>postgresql</artifactId>
       <version>${postgresql.version}</version>
     </dependency>
-
-    <!-- https://mvnrepository.com/artifact/com.datastax.oss/java-driver-core -->
+    <!-- https://mvnrepository.com/artifact/org.apache.cassandra/java-driver-core -->
     <dependency>
-      <groupId>com.datastax.oss</groupId>
+      <groupId>org.apache.cassandra</groupId>
       <artifactId>java-driver-core</artifactId>
-      <version>4.17.0</version>
-      <exclusions>
-        <exclusion>
-          <groupId>org.slf4j</groupId>
-          <artifactId>slf4j-api</artifactId>
-        </exclusion>
-      </exclusions>
+      <version>4.18.1</version>
     </dependency>
 
     <!-- Needed for Beam CassandraIO -->
@@ -210,6 +203,17 @@
       <version>1.19.0</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.datastax.astra</groupId>
+      <artifactId>beam-sdks-java-io-astra</artifactId>
+      <version>4.18.1</version>
+    </dependency>
+    <!-- Downloading Secure Bundle -->
+    <dependency>
+      <groupId>com.datastax.astra</groupId>
+      <artifactId>astra-sdk-devops</artifactId>
+      <version>0.6.3</version>
+    </dependency>
 
     <!-- test dependencies for localCassandraIO end -->
 
@@ -226,4 +230,5 @@
       <scope>test</scope>
     </dependency>
   </dependencies>
+
 </project>
