@@ -157,6 +157,23 @@ public class InformationSchemaScannerTest {
   }
 
   @Test
+  public void testListUdfsSQL() {
+    assertThat(
+        googleSQLInfoScanner.listUdfsSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT r.routine_schema, r.routine_name, r.specific_schema, r.specific_name, "
+                + "r.data_type, r.routine_definition, r.security_type"
+                + " FROM information_schema.routines AS r"
+                + " WHERE r.routine_schema NOT IN"
+                + " ('INFORMATION_SCHEMA', 'SPANNER_SYS')"
+                + " AND r.routine_type = 'FUNCTION'"
+                + " AND r.routine_body = 'SQL'"));
+
+    assertThrows(
+        IllegalArgumentException.class, () -> postgresSQLInfoScanner.listUdfsSQL().getSql());
+  }
+
+  @Test
   public void testListFunctionParametersSQL() {
     assertThat(
         googleSQLInfoScanner.listFunctionParametersSQL().getSql(),
