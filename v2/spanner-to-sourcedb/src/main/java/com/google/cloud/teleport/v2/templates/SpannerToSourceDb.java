@@ -635,6 +635,7 @@ public class SpannerToSourceDb {
       }
     }
     ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+    LOG.info("schemaMapper : " + schemaMapper);
 
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
@@ -706,6 +707,8 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
+    LOG.info("custom transformation builder created");
+
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
             .apply(
@@ -746,6 +749,7 @@ public class SpannerToSourceDb {
                     connectionPoolSizePerWorker,
                     options.getSourceType(),
                     customTransformation));
+    LOG.info("SourceWriterTransform builder created");
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -830,6 +834,7 @@ public class SpannerToSourceDb {
                 .withTmpDirectory(options.getDeadLetterQueueDirectory() + "/tmp_skip/")
                 .setIncludePaneInfo(true)
                 .build());
+    LOG.info("Starting pipeline run");
 
     return pipeline.run();
   }
