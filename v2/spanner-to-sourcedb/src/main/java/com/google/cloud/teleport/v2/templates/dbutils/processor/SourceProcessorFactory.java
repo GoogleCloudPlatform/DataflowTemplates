@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -27,8 +28,10 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.CassandraDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.models.ConnectionHelperRequest;
+import java.sql.Connection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -137,7 +140,7 @@ public class SourceProcessorFactory {
                     "Invalid source type for connection helper: " + source));
   }
 
-  private static void initializeConnectionHelper(
+  public static void initializeConnectionHelper(
       String source, List<Shard> shards, int maxConnections) throws UnsupportedSourceException {
     IConnectionHelper connectionHelper = getConnectionHelper(source);
     if (!connectionHelper.isConnectionPoolInitialized()) {
@@ -176,5 +179,34 @@ public class SourceProcessorFactory {
       sourceDaoMap.put(shard.getLogicalShardId(), sqlDao);
     }
     return sourceDaoMap;
+  }
+
+  /**
+   * Returns a connection for the specified shard.
+   *
+   * @param source The source database type (e.g. "mysql", "cassandra")
+   * @param shard The shard to get a connection for
+   * @return The connection object for the specified shard
+   * @throws UnsupportedSourceException If the source type is not supported
+   * @throws ConnectionException If there is an error getting the connection
+   */
+  public static Object getConnectionToShard(String source, Shard shard)
+      throws UnsupportedSourceException, ConnectionException {
+    IConnectionHelper connectionHelper = getConnectionHelper(source);
+    Function<Shard, String> urlGenerator =
+        Optional.ofNullable(connectionUrl.get(source))
+            .orElseThrow(
+                () ->
+                    new UnsupportedSourceException(
+                        "Invalid source type for URL generation: " + source));
+    String sqlURL = urlGenerator.apply(shard);
+
+    if (source.equals(Constants.SOURCE_MYSQL)) {
+      return (Connection) connectionHelper.getConnection(sqlURL + "/" + shard.getUserName());
+    } else if (source.equals(Constants.SOURCE_CASSANDRA)) {
+      return (CqlSession) connectionHelper.getConnection(sqlURL);
+    } else {
+      throw new UnsupportedSourceException("Unsupported source type: " + source);
+    }
   }
 }

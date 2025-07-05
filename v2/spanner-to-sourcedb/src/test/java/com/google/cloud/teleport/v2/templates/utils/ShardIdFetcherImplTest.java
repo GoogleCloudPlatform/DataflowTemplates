@@ -19,8 +19,10 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
@@ -39,7 +41,8 @@ public final class ShardIdFetcherImplTest {
 
   @Test
   public void testSucessShardIdentification() {
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(getSchemaObject(), "skip");
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), null);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     Map<String, Object> spannerRecord = new HashMap<String, Object>();
     spannerRecord.put("accountId", 12345);
     spannerRecord.put("accountName", "test");
@@ -52,7 +55,8 @@ public final class ShardIdFetcherImplTest {
 
   @Test(expected = RuntimeException.class)
   public void testFailedShardIdentificationWrongTableName() {
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(getSchemaObject(), "skip");
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), null);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     Map<String, Object> spannerRecord = new HashMap<String, Object>();
     spannerRecord.put("accountId", 12345);
     spannerRecord.put("accountName", "test");
@@ -64,7 +68,8 @@ public final class ShardIdFetcherImplTest {
 
   @Test(expected = RuntimeException.class)
   public void testFailedShardIdentificationMissingShardColumn() {
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(getSchemaObject(), "skip");
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), null);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     Map<String, Object> spannerRecord = new HashMap<String, Object>();
     spannerRecord.put("accountId", 12345);
     spannerRecord.put("accountName", "test");
@@ -75,8 +80,9 @@ public final class ShardIdFetcherImplTest {
 
   @Test(expected = RuntimeException.class)
   public void testFailedShardIdentificationSpannerToOidMismatch() {
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getBotchedSchemaObjectForInvalidSpannerToOid(), "skip");
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getBotchedSchemaObjectForInvalidSpannerToOid(), null);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     Map<String, Object> spannerRecord = new HashMap<String, Object>();
     spannerRecord.put("accountId", 12345);
     spannerRecord.put("accountName", "test");
@@ -89,8 +95,9 @@ public final class ShardIdFetcherImplTest {
 
   @Test(expected = RuntimeException.class)
   public void testFailedShardIdentificationSpannerInvalidSpSchema() {
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getBotchedSchemaObjectForInvalidSpSchema(), "skip");
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getBotchedSchemaObjectForInvalidSpSchema(), null);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     Map<String, Object> spannerRecord = new HashMap<String, Object>();
     spannerRecord.put("accountId", 12345);
     spannerRecord.put("accountName", "test");
@@ -103,8 +110,9 @@ public final class ShardIdFetcherImplTest {
 
   @Test(expected = RuntimeException.class)
   public void testFailedShardIdentificationMissingShardColumnFromSchema() {
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getBotchedSchemaObjectForMissingShardColumn(), "skip");
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getBotchedSchemaObjectForMissingShardColumn(), null);
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     Map<String, Object> spannerRecord = new HashMap<String, Object>();
     spannerRecord.put("accountId", 12345);
     spannerRecord.put("accountName", "test");

@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
@@ -102,14 +103,14 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
                 gcsResourceManager);
-        ADDITIONAL_JOB_PARAMS.putAll(
+        Map<String, String> jobParameters =
             new HashMap<>() {
               {
                 put("network", VPC_NAME);
                 put("subnetwork", SUBNET_NAME);
                 put("workerRegion", VPC_REGION);
               }
-            });
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -121,7 +122,8 @@ public class SpannerToCassandraSourceDbMaxColumnsIT extends SpannerToSourceDbITB
                 null,
                 null,
                 null,
-                CASSANDRA_SOURCE_TYPE);
+                CASSANDRA_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }

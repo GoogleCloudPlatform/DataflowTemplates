@@ -114,7 +114,8 @@ public class SpannerToCassandraSourceDBCustomTransformationIT extends SpannerToS
                 null,
                 null,
                 customTransformation,
-                CASSANDRA_SOURCE_TYPE);
+                CASSANDRA_SOURCE_TYPE,
+                null);
       }
     }
   }
