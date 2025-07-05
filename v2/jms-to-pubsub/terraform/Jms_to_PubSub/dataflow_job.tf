@@ -35,37 +35,37 @@ variable "region" {
 
 variable "jmsServer" {
   type        = string
-  description = "Server IP for JMS Host (Example: host:5672)"
+  description = "The JMS (ActiveMQ) Server IP. For example, `tcp://10.0.0.1:61616`"
   default     = null
 }
 
 variable "inputName" {
   type        = string
-  description = "JMS Queue/Topic Name to read the input from. (Example: queue)"
+  description = "The name of the JMS topic or queue that data is read from. For example, `queue`"
 
 }
 
 variable "inputType" {
   type        = string
-  description = "JMS Destination Type to read the input from. (Example: queue)"
+  description = "The JMS destination type to read data from. Can be a queue or a topic. For example, `queue`"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The name of the Pub/Sub topic to publish data to. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`"
 
 }
 
 variable "username" {
   type        = string
-  description = "JMS username for authentication with JMS server (Example: sampleusername)"
+  description = "The username to use for authentication on the JMS server. For example, `sampleusername`"
 
 }
 
 variable "password" {
   type        = string
-  description = "Password for username provided for authentication with JMS server (Example: samplepassword)"
+  description = "The password associated with the provided username. For example, `samplepassword`"
 
 }
 
@@ -133,7 +133,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -214,6 +215,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
