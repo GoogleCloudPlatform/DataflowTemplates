@@ -136,16 +136,16 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
       BigDecimal doubleColumn = (BigDecimal) requestRow.get("double_column");
-      responseRow.put("tinyint_column", tinyIntColumn.toString());
-      responseRow.put("text_column", "\'" + requestRow.get("text_column") + " append\'");
-      responseRow.put("int_column", intColumn.toString());
-      responseRow.put("bigint_column", bigIntColumn.toString());
-      responseRow.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
-      responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
+      responseRow.put("tinyint_column", tinyIntColumn);
+      responseRow.put("text_column", requestRow.get("text_column") + " append");
+      responseRow.put("int_column", intColumn);
+      responseRow.put("bigint_column", bigIntColumn);
+      responseRow.put("float_column", floatColumn.add(BigDecimal.ONE));
+      responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE));
       Double value = Double.parseDouble((String) requestRow.get("decimal_column"));
-      responseRow.put("decimal_column", String.valueOf(value - 1));
-      responseRow.put("bool_column", "false");
-      responseRow.put("enum_column", "\'3\'");
+      responseRow.put("decimal_column", value - 1);
+      responseRow.put("bool_column", false);
+      responseRow.put("enum_column", "3");
       responseRow.put(
           "blob_column",
           "from_base64(\'"
@@ -163,7 +163,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
           "binary(from_base64(\'"
               + Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))
               + "\'))");
-      responseRow.put("year_column", "\'" + yearColumn + "\'");
+      responseRow.put("year_column", yearColumn);
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
@@ -172,7 +172,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(date);
         calendar.add(Calendar.DAY_OF_MONTH, 1);
-        responseRow.put("date_column", "\'" + dateFormat.format(calendar.getTime()) + "\'");
+        responseRow.put("date_column", dateFormat.format(calendar.getTime()));
         Date dateTime = dateTimeFormat.parse((String) requestRow.get("datetime_column"));
         calendar.setTime(dateTime);
         calendar.add(Calendar.SECOND, -1);
@@ -195,7 +195,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
         LocalTime time = LocalTime.parse((String) requestRow.get("time_column"), formatter);
 
         LocalTime newTime = time.plusMinutes(10);
-        responseRow.put("time_column", "\'" + newTime.format(formatter) + "\'");
+        responseRow.put("time_column", newTime.format(formatter));
 
       } catch (Exception e) {
         throw new InvalidTransformationException(e);
