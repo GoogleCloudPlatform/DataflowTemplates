@@ -1098,8 +1098,8 @@ public final class MySQLDMLGeneratorTest {
     JSONObject keyValuesJson = new JSONObject(keyValueString);
     String modType = "INSERT";
     Map<String, Object> customTransformation = new HashMap<>();
-    customTransformation.put("FullName", "\'kk ll\'");
-    customTransformation.put("SingerId", "1");
+    customTransformation.put("FullName", "kk ll");
+    customTransformation.put("SingerId", 1);
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
