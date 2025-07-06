@@ -35,16 +35,16 @@ public class ManagedIOToManagedIOTest {
   @Test
   public void testValidSourceConnectorTypes() {
     Options options = PipelineOptionsFactory.create().as(Options.class);
-    
+
     // Test valid source connector types
     String[] validSources = {"ICEBERG", "ICEBERG_CDC", "KAFKA", "BIGQUERY"};
-    
+
     for (String source : validSources) {
       options.setSourceConnectorType(source);
       options.setSinkConnectorType("ICEBERG");
       options.setSourceConfig("{}");
       options.setSinkConfig("{}");
-      
+
       // Should not throw exception for valid connector types
       assertThat(options.getSourceConnectorType()).isEqualTo(source);
     }
@@ -53,16 +53,16 @@ public class ManagedIOToManagedIOTest {
   @Test
   public void testValidSinkConnectorTypes() {
     Options options = PipelineOptionsFactory.create().as(Options.class);
-    
+
     // Test valid sink connector types (note: ICEBERG_CDC is not available for sinks)
     String[] validSinks = {"ICEBERG", "KAFKA", "BIGQUERY"};
-    
+
     for (String sink : validSinks) {
       options.setSourceConnectorType("KAFKA");
       options.setSinkConnectorType(sink);
       options.setSourceConfig("{}");
       options.setSinkConfig("{}");
-      
+
       // Should not throw exception for valid connector types
       assertThat(options.getSinkConnectorType()).isEqualTo(sink);
     }
@@ -71,16 +71,17 @@ public class ManagedIOToManagedIOTest {
   @Test
   public void testJsonConfigParsing() {
     Options options = PipelineOptionsFactory.create().as(Options.class);
-    
+
     // Test valid JSON configurations
-    String kafkaSourceConfig = "{\"bootstrap_servers\": \"localhost:9092\", \"topic\": \"input-topic\", \"format\": \"JSON\"}";
+    String kafkaSourceConfig =
+        "{\"bootstrap_servers\": \"localhost:9092\", \"topic\": \"input-topic\", \"format\": \"JSON\"}";
     String bigquerySinkConfig = "{\"table\": \"project:dataset.table\"}";
-    
+
     options.setSourceConnectorType("KAFKA");
     options.setSinkConnectorType("BIGQUERY");
     options.setSourceConfig(kafkaSourceConfig);
     options.setSinkConfig(bigquerySinkConfig);
-    
+
     assertThat(options.getSourceConfig()).isEqualTo(kafkaSourceConfig);
     assertThat(options.getSinkConfig()).isEqualTo(bigquerySinkConfig);
   }
@@ -88,7 +89,7 @@ public class ManagedIOToManagedIOTest {
   @Test
   public void testDefaultStreamingMode() {
     Options options = PipelineOptionsFactory.create().as(Options.class);
-    
+
     // Default streaming should be false
     assertThat(options.isStreaming()).isFalse();
   }
@@ -96,7 +97,7 @@ public class ManagedIOToManagedIOTest {
   @Test
   public void testStreamingModeConfiguration() {
     Options options = PipelineOptionsFactory.create().as(Options.class);
-    
+
     options.setStreaming(true);
     assertThat(options.isStreaming()).isTrue();
     options.setStreaming(false);
@@ -106,11 +107,11 @@ public class ManagedIOToManagedIOTest {
   @Test
   public void testEmptyJsonConfig() {
     Options options = PipelineOptionsFactory.create().as(Options.class);
-    
+
     // Empty JSON should be handled gracefully
     options.setSourceConfig("");
     options.setSinkConfig("{}");
-    
+
     assertThat(options.getSourceConfig()).isEmpty();
     assertThat(options.getSinkConfig()).isEqualTo("{}");
   }

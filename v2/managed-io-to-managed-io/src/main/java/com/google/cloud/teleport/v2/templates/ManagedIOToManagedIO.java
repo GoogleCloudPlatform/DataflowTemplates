@@ -36,9 +36,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The {@link ManagedIOToManagedIO} pipeline is a flexible template that can read from any
- * Managed I/O source and write to any Managed I/O sink. This template supports all available
- * Managed I/O connectors including ICEBERG, ICEBERG_CDC, KAFKA, and BIGQUERY.
+ * The {@link ManagedIOToManagedIO} pipeline is a flexible template that can read from any Managed
+ * I/O source and write to any Managed I/O sink. This template supports all available Managed I/O
+ * connectors including ICEBERG, ICEBERG_CDC, KAFKA, and BIGQUERY.
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -167,7 +167,7 @@ public class ManagedIOToManagedIO {
 
     // Parse source configuration
     Map<String, Object> sourceConfig = parseJsonConfig(options.getSourceConfig());
-    
+
     // Parse sink configuration
     Map<String, Object> sinkConfig = parseJsonConfig(options.getSinkConfig());
 
@@ -182,10 +182,10 @@ public class ManagedIOToManagedIO {
     PCollection<Row> rows = sourceOutput.get("output");
 
     // Write to sink using Managed I/O
-    PCollectionRowTuple.of("input", rows).apply(
-        "Write to " + options.getSinkConnectorType(),
-        Managed.write(getSinkConnector(options.getSinkConnectorType()))
-            .withConfig(sinkConfig));
+    PCollectionRowTuple.of("input", rows)
+        .apply(
+            "Write to " + options.getSinkConnectorType(),
+            Managed.write(getSinkConnector(options.getSinkConnectorType())).withConfig(sinkConfig));
 
     return pipeline.run();
   }
@@ -226,7 +226,10 @@ public class ManagedIOToManagedIO {
       case "BIGQUERY":
         return "BIGQUERY";
       default:
-        throw new IllegalArgumentException("Unsupported sink connector type: " + connectorType + ". Note: ICEBERG_CDC is only available for reading.");
+        throw new IllegalArgumentException(
+            "Unsupported sink connector type: "
+                + connectorType
+                + ". Note: ICEBERG_CDC is only available for reading.");
     }
   }
 
@@ -241,9 +244,9 @@ public class ManagedIOToManagedIO {
       if (jsonConfig == null || jsonConfig.trim().isEmpty()) {
         return new HashMap<>();
       }
-      
+
       Gson gson = new Gson();
-      Type type = new TypeToken<Map<String, Object>>(){}.getType();
+      Type type = new TypeToken<Map<String, Object>>() {}.getType();
       return gson.fromJson(jsonConfig, type);
     } catch (Exception e) {
       throw new RuntimeException("Failed to parse JSON configuration: " + jsonConfig, e);
