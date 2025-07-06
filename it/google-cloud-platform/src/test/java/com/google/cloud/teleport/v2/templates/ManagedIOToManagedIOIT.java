@@ -109,6 +109,7 @@ public final class ManagedIOToManagedIOIT extends TemplateTestBase {
                     .build());
 
     assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
-    assertThat(bigQueryResourceManager.getRowCount(sinkTable.getTable())).isEqualTo(testData.size());
+    assertThat(bigQueryResourceManager.getRowCount(sinkTable.getTable()))
+        .isEqualTo(testData.size());
   }
 }
