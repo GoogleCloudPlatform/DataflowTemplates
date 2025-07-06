@@ -183,5 +183,17 @@
             <artifactId>spotbugs-annotations</artifactId>
             <version>3.1.12</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport.v2</groupId>
+            <artifactId>managed-io-to-managed-io</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>structured-logging</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
