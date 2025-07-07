@@ -254,18 +254,15 @@ public class AssignShardIdFn
       JsonNode keysJson)
       throws Exception {
 
-    java.time.Instant instant = java.time.Instant.ofEpochSecond(
-        commitTimestamp.getSeconds(),
-        commitTimestamp.getNanos()
-    );
+    java.time.Instant instant =
+        java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
 
     java.time.Duration lookback = java.time.Duration.ofNanos(1000);
     java.time.Instant staleInstant = instant.minus(lookback);
 
-    com.google.cloud.Timestamp staleReadTs = com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-        staleInstant.getEpochSecond(),
-        staleInstant.getNano()
-    );
+    com.google.cloud.Timestamp staleReadTs =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+            staleInstant.getEpochSecond(), staleInstant.getNano());
     List<String> columns =
         ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
     // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
