@@ -34,13 +34,13 @@
       <groupId>org.apache.beam</groupId>
       <artifactId>beam-sdks-java-managed</artifactId>
     </dependency>
-    
+
     <!-- JSON parsing -->
     <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
     </dependency>
-    
+
     <!-- Additional dependencies for testing -->
     <dependency>
       <groupId>com.google.truth</groupId>
