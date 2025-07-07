@@ -60,6 +60,8 @@ public class AssignShardIdFn
     extends DoFn<TrimmedShardedDataChangeRecord, KV<Long, TrimmedShardedDataChangeRecord>> {
   private static final Logger LOG = LoggerFactory.getLogger(AssignShardIdFn.class);
 
+  private static final java.time.Duration LOOKBACK_FOR_DELETE = java.time.Duration.ofNanos(1000);
+
   private final SpannerConfig spannerConfig;
 
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
@@ -257,8 +259,7 @@ public class AssignShardIdFn
     java.time.Instant instant =
         java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
 
-    java.time.Duration lookback = java.time.Duration.ofNanos(1000);
-    java.time.Instant staleInstant = instant.minus(lookback);
+    java.time.Instant staleInstant = instant.minus(LOOKBACK_FOR_DELETE);
 
     com.google.cloud.Timestamp staleReadTs =
         com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
