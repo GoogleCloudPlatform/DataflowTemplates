@@ -64,6 +64,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -535,6 +536,61 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+  }
+
+  @Test
+  public void testProcessElementDeleteModUsesCorrectStaleReadTimestamp() throws Exception {
+    // Define a precise commit timestamp for the test record.
+    com.google.cloud.Timestamp commitTimestamp =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(1678886400, 5000);
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            commitTimestamp,
+            "serverTxnId",
+            "recordSeq",
+            "tableName",
+            new Mod("{\"accountId\": \"Id1\"}", "{}", "{}"),
+            ModType.valueOf("DELETE"),
+            1,
+            "");
+    when(processContext.element()).thenReturn(record);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            getSchemaObject(),
+            getTestDdl(),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L);
+
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+
+    // Triggers the stale read.
+    assignShardIdFn.processElement(processContext);
+
+    ArgumentCaptor<TimestampBound> timestampBoundCaptor =
+        ArgumentCaptor.forClass(TimestampBound.class);
+    verify(mockDatabaseClient).singleUse(timestampBoundCaptor.capture());
+
+    com.google.cloud.Timestamp expectedStaleTimestamp =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+            commitTimestamp.getSeconds(), commitTimestamp.getNanos() - 1000);
+
+    // Extract the actual timestamp from the captured bound and verify it is a microsecond older
+    TimestampBound capturedBound = timestampBoundCaptor.getValue();
+    com.google.cloud.Timestamp actualStaleTimestamp = capturedBound.getReadTimestamp();
+
+    assertEquals(expectedStaleTimestamp, actualStaleTimestamp);
   }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {

@@ -255,11 +255,11 @@ public class AssignShardIdFn
       throws Exception {
     com.google.cloud.Timestamp staleReadTs =
         com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-            commitTimestamp.getSeconds() - 1, commitTimestamp.getNanos());
+            commitTimestamp.getSeconds(), commitTimestamp.getNanos() - 1000);
     List<String> columns =
         ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
-    // Stale read the spanner row for all the columns for timestamp 1 second less than the DELETE
-    // event
+    // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
+    // DELETE event
     Struct row =
         spannerAccessor
             .getDatabaseClient()
