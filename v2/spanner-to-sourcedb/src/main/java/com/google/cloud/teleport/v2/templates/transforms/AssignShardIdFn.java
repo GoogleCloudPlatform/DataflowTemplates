@@ -60,7 +60,8 @@ public class AssignShardIdFn
     extends DoFn<TrimmedShardedDataChangeRecord, KV<Long, TrimmedShardedDataChangeRecord>> {
   private static final Logger LOG = LoggerFactory.getLogger(AssignShardIdFn.class);
 
-  private static final java.time.Duration LOOKBACK_FOR_DELETE = java.time.Duration.ofNanos(1000);
+  private static final java.time.Duration LOOKBACK_DURATION_FOR_DELETE =
+      java.time.Duration.ofNanos(1000);
 
   private final SpannerConfig spannerConfig;
 
@@ -256,18 +257,18 @@ public class AssignShardIdFn
       JsonNode keysJson)
       throws Exception {
 
-    java.time.Instant instant =
+    // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
+    // DELETE event
+    java.time.Instant commitInstant =
         java.time.Instant.ofEpochSecond(commitTimestamp.getSeconds(), commitTimestamp.getNanos());
 
-    java.time.Instant staleInstant = instant.minus(LOOKBACK_FOR_DELETE);
+    java.time.Instant staleInstant = commitInstant.minus(LOOKBACK_DURATION_FOR_DELETE);
 
     com.google.cloud.Timestamp staleReadTs =
         com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
             staleInstant.getEpochSecond(), staleInstant.getNano());
     List<String> columns =
         ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
-    // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
-    // DELETE event
     Struct row =
         spannerAccessor
             .getDatabaseClient()
