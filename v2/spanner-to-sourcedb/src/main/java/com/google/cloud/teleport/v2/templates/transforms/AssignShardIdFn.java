@@ -239,7 +239,7 @@ public class AssignShardIdFn
     } catch (Exception e) {
       StringWriter errors = new StringWriter();
       e.printStackTrace(new PrintWriter(errors));
-      LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString());
+      LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString(), e);
       // The record has no shard hence will be sent to DLQ in subsequent steps
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
@@ -253,9 +253,19 @@ public class AssignShardIdFn
       String serverTxnId,
       JsonNode keysJson)
       throws Exception {
-    com.google.cloud.Timestamp staleReadTs =
-        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
-            commitTimestamp.getSeconds(), commitTimestamp.getNanos() - 1000);
+
+    java.time.Instant instant = java.time.Instant.ofEpochSecond(
+        commitTimestamp.getSeconds(),
+        commitTimestamp.getNanos()
+    );
+
+    java.time.Duration lookback = java.time.Duration.ofNanos(1000);
+    java.time.Instant staleInstant = instant.minus(lookback);
+
+    com.google.cloud.Timestamp staleReadTs = com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+        staleInstant.getEpochSecond(),
+        staleInstant.getNano()
+    );
     List<String> columns =
         ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
     // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
