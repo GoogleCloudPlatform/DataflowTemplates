@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -25,6 +26,7 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -178,7 +180,14 @@ public class SpannerToSourceDbFileOverridesSchemaMapperIT extends SpannerToSourc
             .to("Value Beta")
             .build());
 
-    PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () ->
+                    (mySQLResourceManager.getRowCount("Target_Table_1") == 2
+                        && mySQLResourceManager.getRowCount("source_table2") == 2));
+    assertThatResult(result).meetsConditions();
 
     // Assert MySQL table1 (should be source_table1, with column name_col1 renamed)
     List<Map<String, Object>> mysqlTable1 =
