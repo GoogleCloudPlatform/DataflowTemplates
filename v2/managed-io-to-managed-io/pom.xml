@@ -18,15 +18,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-  <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>com.google.cloud.teleport.v2</groupId>
     <artifactId>dynamic-templates</artifactId>
+    <groupId>com.google.cloud.teleport.v2</groupId>
     <version>1.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>managed-io-to-managed-io</artifactId>
+  <modelVersion>4.0.0</modelVersion>
+
+  <properties>
+    <activemq.version>5.17.7</activemq.version>
+    <testcontainers.version>1.17.5</testcontainers.version>
+  </properties>
 
   <dependencies>
     <!-- Beam Managed I/O -->
@@ -41,11 +46,41 @@
       <artifactId>gson</artifactId>
     </dependency>
 
-    <!-- Additional dependencies for testing -->
+   <dependency>
+    <groupId>com.google.cloud.teleport.v2</groupId>
+    <artifactId>common</artifactId>
+    <version>${project.version}</version>
+    </dependency>
     <dependency>
-      <groupId>com.google.truth</groupId>
-      <artifactId>truth</artifactId>
-      <version>${truth.version}</version>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers</artifactId>
+        <version>${testcontainers.version}</version>
+        <scope>test</scope>
+    </dependency>
+
+    <dependency>
+        <groupId>junit</groupId>
+        <artifactId>junit</artifactId>
+        <version>${junit.version}</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+        <groupId>com.google.cloud.teleport</groupId>
+        <artifactId>it-google-cloud-platform</artifactId>
+        <version>${project.version}</version>
+        <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-runners-direct-java</artifactId>
+      <version>${beam.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.beam</groupId>
+      <artifactId>beam-sdks-java-core</artifactId>
+      <version>${beam.version}</version>
+      <type>test-jar</type>
       <scope>test</scope>
     </dependency>
   </dependencies>
