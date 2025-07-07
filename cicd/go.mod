@@ -4,7 +4,7 @@ go 1.22.0
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/hashicorp/go-version v1.6.0
+	github.com/hashicorp/go-version v1.7.0
 	github.com/hashicorp/hc-install v0.6.2
 	github.com/hashicorp/hcl/v2 v2.19.1
 	github.com/hashicorp/terraform-exec v0.20.0
