@@ -64,8 +64,7 @@ import org.apache.beam.sdk.values.Row;
             + "configuring different I/O connectors through simple configuration maps.",
     optionsClass = Options.class,
     flexContainerName = "managed-io-to-managed-io",
-    documentation =
-        "https://cloud.google.com/dataflow/docs/guides/managed-io",
+    documentation = "https://cloud.google.com/dataflow/docs/guides/managed-io",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The source and sink configurations must be valid for the specified connector types.",
