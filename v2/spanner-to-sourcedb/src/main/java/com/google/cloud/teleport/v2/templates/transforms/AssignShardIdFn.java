@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
@@ -36,6 +37,7 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.HashMap;
@@ -45,11 +47,13 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.jetbrains.annotations.NotNull;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
@@ -92,6 +96,8 @@ public class AssignShardIdFn
 
   private final Long maxConnectionsAcrossAllShards;
 
+  private final String sourceType;
+
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
       Schema schema,
@@ -102,7 +108,8 @@ public class AssignShardIdFn
       String customJarPath,
       String shardingCustomClassName,
       String shardingCustomParameters,
-      Long maxConnectionsAcrossAllShards) {
+      Long maxConnectionsAcrossAllShards,
+      String sourceTyoe) {
     this.spannerConfig = spannerConfig;
     this.schema = schema;
     this.ddl = ddl;
@@ -113,6 +120,7 @@ public class AssignShardIdFn
     this.shardingCustomClassName = shardingCustomClassName;
     this.shardingCustomParameters = shardingCustomParameters;
     this.maxConnectionsAcrossAllShards = maxConnectionsAcrossAllShards;
+    this.sourceType = sourceTyoe;
   }
 
   // setSpannerAccessor is added to be used by unit tests
@@ -185,6 +193,9 @@ public class AssignShardIdFn
     String keysJsonStr = record.getMod().getKeysJson();
 
     try {
+      Map<String, Object> spannerRecord =
+          getSpannerRecordMapAndUpdateDeletedValue(record, tableName, keysJsonStr);
+
       if (shardingMode.equals(Constants.SHARDING_MODE_SINGLE_SHARD)) {
         record.setShard(this.shardName);
         qualifiedShard = this.shardName;
@@ -202,21 +213,6 @@ public class AssignShardIdFn
           qualifiedShard = skipDirName;
         } else {
 
-          JsonNode keysJson = mapper.readTree(keysJsonStr);
-          String newValueJsonStr = record.getMod().getNewValuesJson();
-          JsonNode newValueJson = mapper.readTree(newValueJsonStr);
-          Map<String, Object> spannerRecord = new HashMap<>();
-          // Query the spanner database in case of a DELETE event
-          if (record.getModType() == ModType.DELETE) {
-            spannerRecord =
-                fetchSpannerRecord(
-                    tableName,
-                    record.getCommitTimestamp(),
-                    record.getServerTransactionId(),
-                    keysJson);
-          } else {
-            spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson);
-          }
           ShardIdRequest shardIdRequest = new ShardIdRequest(tableName, spannerRecord);
 
           ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest);
@@ -250,11 +246,37 @@ public class AssignShardIdFn
     }
   }
 
+  @NotNull
+  private Map<String, Object> getSpannerRecordMapAndUpdateDeletedValue(
+      TrimmedShardedDataChangeRecord record, String tableName, String keysJsonStr)
+      throws Exception {
+    JsonNode keysJson = mapper.readTree(keysJsonStr);
+    String newValueJsonStr = record.getMod().getNewValuesJson();
+    JsonNode newValueJson = mapper.readTree(newValueJsonStr);
+    Map<String, Object> spannerRecord = new HashMap<>();
+    // Query the spanner database in case of a DELETE event
+    if (record.getModType() == ModType.DELETE) {
+      spannerRecord =
+          fetchSpannerRecord(
+              tableName,
+              record.getCommitTimestamp(),
+              record.getServerTransactionId(),
+              keysJson,
+              record,
+              record.getModType());
+    } else {
+      spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson);
+    }
+    return spannerRecord;
+  }
+
   private Map<String, Object> fetchSpannerRecord(
       String tableName,
       com.google.cloud.Timestamp commitTimestamp,
       String serverTxnId,
-      JsonNode keysJson)
+      JsonNode keysJson,
+      TrimmedShardedDataChangeRecord record,
+      ModType modType)
       throws Exception {
 
     // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
@@ -283,7 +305,25 @@ public class AssignShardIdFn
               + " and serverTxnId:"
               + serverTxnId);
     }
-    return getRowAsMap(row, columns, tableName);
+    Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName);
+    // TODO find a way to not make a special case from Cassandra.
+    if (modType == ModType.DELETE && sourceType != Constants.SOURCE_CASSANDRA) {
+
+      Table table = ddl.table(tableName);
+      ImmutableSet<String> keyColumns =
+          table.primaryKeys().stream().map(k -> k.name()).collect(ImmutableSet.toImmutableSet());
+      Mod newMod;
+      ObjectNode newValuesJsonNode =
+          (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
+      rowAsMap.keySet().stream()
+          .filter(k -> !keyColumns.contains(k))
+          .forEach(colName -> newValuesJsonNode.put(colName, row.getValue(colName).toString()));
+      String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
+      record.setMod(
+          new Mod(
+              record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
+    }
+    return rowAsMap;
   }
 
   public Map<String, Object> getRowAsMap(Struct row, List<String> columns, String tableName)

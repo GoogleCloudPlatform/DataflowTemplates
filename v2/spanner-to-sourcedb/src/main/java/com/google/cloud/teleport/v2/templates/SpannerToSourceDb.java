@@ -674,8 +674,9 @@ public class SpannerToSourceDb {
                         options.getShardingCustomJarPath(),
                         options.getShardingCustomClassName(),
                         options.getShardingCustomParameters(),
-                        options.getMaxShardConnections()
-                            * shards.size()))) // currently assuming that all shards accept the same
+                        options.getMaxShardConnections() * shards.size(),
+                        options.getSourceType()))) // currently assuming that all shards accept the
+            // same
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
