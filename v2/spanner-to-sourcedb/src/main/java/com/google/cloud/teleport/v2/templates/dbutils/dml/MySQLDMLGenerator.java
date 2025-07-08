@@ -239,7 +239,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         continue; // we only need non-primary keys
       }
       if (customTransformColumns != null && customTransformColumns.contains(colName)) {
-        response.put(colName, customTransformationResponse.get(colName).toString());
+        response.put(
+            colName,
+            getQuotedColumnValue(
+                sourceColDef.getType().getName(),
+                customTransformationResponse.get(colName).toString()));
         continue;
       }
 
@@ -318,7 +322,9 @@ public class MySQLDMLGenerator implements IDMLGenerator {
           && customTransformColumns.contains(sourceColDef.getName())) {
         response.put(
             sourceColDef.getName(),
-            customTransformationResponse.get(sourceColDef.getName()).toString());
+            getQuotedColumnValue(
+                sourceColDef.getType().getName(),
+                customTransformationResponse.get(sourceColDef.getName()).toString()));
         continue;
       }
       String spannerColumnName = spannerColDef.getName();
@@ -435,6 +441,41 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     return response;
   }
 
+  private static String getQuotedColumnValue(String columnType, String colValue) {
+    String response = "";
+    switch (columnType) {
+      case "varchar":
+      case "char":
+      case "text":
+      case "tinytext":
+      case "mediumtext":
+      case "longtext":
+      case "enum":
+      case "date":
+      case "time":
+      case "year":
+      case "set":
+      case "json":
+      case "geometry":
+      case "geometrycollection":
+      case "point":
+      case "multipoint":
+      case "linestring":
+      case "multilinestring":
+      case "polygon":
+      case "multipolygon":
+      case "tinyblob":
+      case "mediumblob":
+      case "blob":
+      case "longblob":
+        response = getQuotedEscapedString(colValue, null);
+        break;
+      default:
+        response = colValue;
+    }
+    return response;
+  }
+
   private static String escapeString(String input) {
     String cleanedNullBytes = StringUtils.replace(input, "\u0000", "");
     cleanedNullBytes = StringUtils.replace(cleanedNullBytes, "'", "''");
@@ -443,7 +484,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static String getQuotedEscapedString(String input, String spannerColType) {
-    if ("BYTES".equals(spannerColType)) {
+    if (spannerColType != null && "BYTES".equals(spannerColType)) {
       return input;
     }
     String cleanedString = escapeString(input);
