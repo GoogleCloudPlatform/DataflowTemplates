@@ -22,8 +22,11 @@ import com.google.cloud.teleport.v2.templates.ManagedIOToManagedIO.Options;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.managed.Managed;
@@ -32,8 +35,6 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionRowTuple;
 import org.apache.beam.sdk.values.Row;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The {@link ManagedIOToManagedIO} pipeline is a flexible template that can read from any Managed
@@ -64,7 +65,7 @@ import org.slf4j.LoggerFactory;
     optionsClass = Options.class,
     flexContainerName = "managed-io-to-managed-io",
     documentation =
-        "https://cloud.google.com/dataflow/docs/guides/templates/provided/managed-io-to-managed-io",
+        "https://cloud.google.com/dataflow/docs/guides/managed-io",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The source and sink configurations must be valid for the specified connector types.",
@@ -72,8 +73,6 @@ import org.slf4j.LoggerFactory;
     },
     streaming = false)
 public class ManagedIOToManagedIO {
-
-  private static final Logger LOG = LoggerFactory.getLogger(ManagedIOToManagedIO.class);
 
   /**
    * The {@link Options} class provides the custom execution options passed by the executor at the
@@ -149,6 +148,17 @@ public class ManagedIOToManagedIO {
     // UncaughtExceptionLogger.register();
 
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+
+    // Always enable runner v2
+    DataflowPipelineOptions dataflowOptions = options.as(DataflowPipelineOptions.class);
+    List<String> experiments = new ArrayList<>();
+    if (dataflowOptions.getExperiments() != null) {
+      experiments.addAll(dataflowOptions.getExperiments());
+    }
+    if (!experiments.contains("use_runner_v2")) {
+      experiments.add("use_runner_v2");
+    }
+    dataflowOptions.setExperiments(experiments);
 
     run(options);
   }
