@@ -35,31 +35,31 @@ variable "region" {
 
 variable "brokerServer" {
   type        = string
-  description = "Server IP for MQTT broker (Example: tcp://host:1883)"
+  description = "The MQTT broker server IP or host. For example, `tcp://host:1883`"
   default     = null
 }
 
 variable "inputTopic" {
   type        = string
-  description = "MQTT topic(s) to read the input from. (Example: topic)"
+  description = "The name of the MQTT topic that data is read from. For example, `topic`"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The name of the output Pub/Sub topic that data is written to. For example, `projects/your-project-id/topics/your-topic-name`"
 
 }
 
 variable "username" {
   type        = string
-  description = "MQTT username for authentication with MQTT server (Example: sampleusername)"
+  description = "The username to use for authentication on the MQTT server. For example, `sampleusername`"
 
 }
 
 variable "password" {
   type        = string
-  description = "Password for username provided for authentication with MQTT server (Example: samplepassword)"
+  description = "The password associated with the provided username. For example, `samplepassword`"
 
 }
 
@@ -127,7 +127,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -207,6 +208,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

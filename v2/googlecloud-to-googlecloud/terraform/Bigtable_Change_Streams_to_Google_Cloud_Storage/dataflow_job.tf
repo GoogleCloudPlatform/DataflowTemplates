@@ -41,7 +41,7 @@ variable "outputFileFormat" {
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 1h). Defaults to: 1h."
+  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `1h`. Defaults to: 1h."
   default     = null
 }
 
@@ -59,14 +59,14 @@ variable "schemaOutputFormat" {
 
 variable "gcsOutputDirectory" {
   type        = string
-  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path)"
+  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path`"
 
 }
 
 variable "outputFilenamePrefix" {
   type        = string
   description = <<EOT
-The prefix to place on each windowed file. Defaults to "changelog-" (Example: changelog-)
+The prefix to place on each windowed file. Defaults to "changelog-" For example, `changelog-`
 EOT
   default     = null
 }
@@ -103,73 +103,75 @@ variable "useBase64Values" {
 
 variable "bigtableChangeStreamMetadataInstanceId" {
   type        = string
-  description = "The Cloud Bigtable instance to use for the change streams connector metadata table. Defaults to empty."
+  description = "The Bigtable change streams metadata instance ID. Defaults to empty."
   default     = null
 }
 
 variable "bigtableChangeStreamMetadataTableTableId" {
   type        = string
-  description = "The Cloud Bigtable change streams connector metadata table ID to use. If not provided, a Cloud Bigtable change streams connector metadata table will automatically be created during the pipeline flow. Defaults to empty."
+  description = "The ID of the Bigtable change streams connector metadata table. If not provided, a Bigtable change streams connector metadata table is automatically created during pipeline execution. Defaults to empty."
   default     = null
 }
 
 variable "bigtableChangeStreamAppProfile" {
   type        = string
-  description = "The application profile is used to distinguish workload in Cloud Bigtable"
+  description = "The Bigtable application profile ID. The application profile must use single-cluster routing and allow single-row transactions."
 
 }
 
 variable "bigtableChangeStreamCharset" {
   type        = string
-  description = "Bigtable change streams charset name when reading values and column qualifiers. Default is UTF-8"
+  description = "The Bigtable change streams charset name. Defaults to: UTF-8."
   default     = null
 }
 
 variable "bigtableChangeStreamStartTimestamp" {
   type        = string
-  description = "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts."
+  description = "The starting timestamp (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, `2022-05-05T07:59:59Z`. Defaults to the timestamp of the pipeline start time."
   default     = null
 }
 
 variable "bigtableChangeStreamIgnoreColumnFamilies" {
   type        = string
-  description = "A comma-separated list of column family names changes to which won't be captured. Defaults to empty."
+  description = "A comma-separated list of column family name changes to ignore. Defaults to empty."
   default     = null
 }
 
 variable "bigtableChangeStreamIgnoreColumns" {
   type        = string
-  description = "A comma-separated list of column names changes to which won't be captured. Defaults to empty."
+  description = <<EOT
+A comma-separated list of column name changes to ignore. Example: "cf1:col1,cf2:col2". Defaults to empty.
+EOT
   default     = null
 }
 
 variable "bigtableChangeStreamName" {
   type        = string
-  description = "Allows to resume processing from the point where a previously running pipeline stopped"
+  description = "A unique name for the client pipeline. Lets you resume processing from the point at which a previously running pipeline stopped. Defaults to an automatically generated name. See the Dataflow job logs for the value used."
   default     = null
 }
 
 variable "bigtableChangeStreamResume" {
   type        = bool
-  description = "When set to true< a new pipeline will resume processing from the point at which a previously running pipeline with the same bigtableChangeStreamName stopped. If pipeline with the given bigtableChangeStreamName never ran in the past, a new pipeline will fail to start. When set to false a new pipeline will be started. If pipeline with the same bigtableChangeStreamName already ran in the past for the given source, a new pipeline will fail to start. Defaults to false"
+  description = "When set to `true`, a new pipeline resumes processing from the point at which a previously running pipeline with the same `bigtableChangeStreamName` value stopped. If the pipeline with the given `bigtableChangeStreamName` value has never run, a new pipeline doesn't start. When set to `false`, a new pipeline starts. If a pipeline with the same `bigtableChangeStreamName` value has already run for the given source, a new pipeline doesn't start. Defaults to `false`."
   default     = null
 }
 
 variable "bigtableReadInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The source Bigtable instance ID."
 
 }
 
 variable "bigtableReadTableId" {
   type        = string
-  description = "The Cloud Bigtable table to read from."
+  description = "The source Bigtable table ID."
 
 }
 
 variable "bigtableReadProjectId" {
   type        = string
-  description = "Project to read Cloud Bigtable data from. The default for this parameter is the project where the Dataflow pipeline is running."
+  description = "The Bigtable project ID. The default is the project for the Dataflow job."
   default     = null
 }
 
@@ -237,7 +239,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -335,6 +338,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
