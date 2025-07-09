@@ -23,6 +23,7 @@ import com.google.cloud.bigquery.storage.v1beta1.ReadOptions.TableReadOptions;
 import com.google.cloud.bigquery.storage.v1beta1.Storage.ReadSession;
 import com.google.cloud.teleport.v2.templates.BigQueryToParquet.ReadSessionFactory;
 import org.apache.avro.Schema;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -48,8 +49,11 @@ public class BigQueryToParquetTest {
     // Test input
     final String badTableRef = "fantasmic-999999;great_data.table";
     final TableReadOptions tableReadOptions = TableReadOptions.newBuilder().build();
+    BigQueryToParquet.BigQueryToParquetOptions options =
+        PipelineOptionsFactory.create().as(BigQueryToParquet.BigQueryToParquetOptions.class);
+    options.setTableRef(badTableRef);
     ReadSessionFactory trsf = new ReadSessionFactory();
-    ReadSession trs = trsf.create(client, badTableRef, tableReadOptions);
+    ReadSession trs = trsf.create(client, options, tableReadOptions);
   }
 
   /** Test Schema Parser is working as expected. */
