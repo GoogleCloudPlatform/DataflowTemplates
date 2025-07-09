@@ -54,4 +54,8 @@ public abstract class SourceSchema implements Serializable {
 
     public abstract SourceSchema build();
   }
+
+  public SourceTable table(String tableName) {
+    return tables().get(tableName);
+  }
 }

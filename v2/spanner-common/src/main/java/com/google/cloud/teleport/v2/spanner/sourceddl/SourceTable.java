@@ -66,4 +66,13 @@ public abstract class SourceTable implements Serializable {
 
     public abstract SourceTable build();
   }
+
+  public SourceColumn column(String name) {
+    for (SourceColumn c : columns()) {
+      if (c.name().equals(name)) {
+        return c;
+      }
+    }
+    return null;
+  }
 }
