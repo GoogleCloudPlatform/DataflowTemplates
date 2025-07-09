@@ -40,6 +40,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -291,6 +293,7 @@ public class AssignShardIdFn
             staleInstant.getEpochSecond(), staleInstant.getNano());
     List<String> columns =
         ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
+
     Struct row =
         spannerAccessor
             .getDatabaseClient()
@@ -317,13 +320,51 @@ public class AssignShardIdFn
           (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
       rowAsMap.keySet().stream()
           .filter(k -> !keyColumns.contains(k))
-          .forEach(colName -> newValuesJsonNode.put(colName, row.getValue(colName).toString()));
+          .forEach(colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row));
       String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
       record.setMod(
           new Mod(
               record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     }
     return rowAsMap;
+  }
+
+  /*
+   * Marshals Spanner's read row values to match CDC stream's representation.
+   */
+  private void marshalSpannerValues(
+      ObjectNode newValuesJsonNode, String tableName, String colName, Struct row) {
+    // TODO(b/430495490): Add support for string arrays on Spanner side.
+    switch (ddl.table(tableName).column(colName).type().getCode()) {
+      case FLOAT64:
+        double val = row.getDouble(colName);
+        if (Double.isNaN(val) || !Double.isFinite(val)) {
+          newValuesJsonNode.put(colName, val);
+
+        } else {
+          newValuesJsonNode.put(colName, new BigDecimal(val));
+        }
+        break;
+      case BOOL:
+        newValuesJsonNode.put(colName, row.getBoolean(colName));
+        break;
+      case BYTES:
+        // We need to trim the base64 string to remove newlines added at the end.
+        // Older version of Base64 lik e(MIME) or Privacy-Enhanced Mail (PEM), often included line
+        // breaks.
+        // MySql adheres to RFC 4648 (the standard MySQL uses) which states that implementations
+        // MUST
+        // NOT add line feeds to base-encoded data unless explicitly directed by a referring
+        // specification.
+        newValuesJsonNode.put(
+            colName,
+            Base64.getEncoder()
+                .encodeToString(row.getValue(colName).getBytes().toByteArray())
+                .trim());
+        break;
+      default:
+        newValuesJsonNode.put(colName, row.getValue(colName).toString());
+    }
   }
 
   public Map<String, Object> getRowAsMap(Struct row, List<String> columns, String tableName)

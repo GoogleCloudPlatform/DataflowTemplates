@@ -100,6 +100,20 @@ public class AssignShardIdFnTest {
     when(mockRow.getValue("accountName")).thenReturn(Value.string("xyz"));
     when(mockRow.getValue("migration_shard_id")).thenReturn(Value.string("shard1"));
     when(mockRow.getValue("accountNumber")).thenReturn(Value.int64(1));
+    when(mockRow.getValue("bytesCol"))
+        .thenReturn(Value.bytes(ByteArray.copyFrom("GOOGLE".getBytes())));
+    when(mockRow.getDouble("float_64_col")).thenReturn(0.5);
+    when(mockRow.getValue("float_64_col")).thenReturn(Value.float64(0.5));
+    when(mockRow.getDouble("float_64_col_nan")).thenReturn(Double.NaN);
+    when(mockRow.getValue("float_64_col_nan")).thenReturn(Value.float64(Double.NaN));
+    when(mockRow.getDouble("float_64_col_infinity")).thenReturn(Double.POSITIVE_INFINITY);
+    when(mockRow.getValue("float_64_col_infinity"))
+        .thenReturn(Value.float64(Double.POSITIVE_INFINITY));
+    when(mockRow.getDouble("float_64_col_neg_infinity")).thenReturn(Double.NEGATIVE_INFINITY);
+    when(mockRow.getValue("float_64_col_neg_infinity"))
+        .thenReturn(Value.float64(Double.NEGATIVE_INFINITY));
+    when(mockRow.getBoolean("bool_col")).thenReturn(true);
+    when(mockRow.getValue("bool_col")).thenReturn(Value.bool(true));
 
     // Mock readRow
     when(mockReadOnlyTransaction.readRow(eq("tableName"), any(Key.class), any(Iterable.class)))
@@ -151,6 +165,7 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
+
     assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
   }
 
@@ -184,8 +199,10 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
+
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_infinity\":\"Infinity\",\"float_64_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"float_64_col_nan\":\"NaN\",\"bytesCol\":\"R09PR0xF\"}";
+
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -220,8 +237,10 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
+
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_infinity\":\"Infinity\",\"float_64_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"float_64_col_nan\":\"NaN\",\"bytesCol\":\"R09PR0xF\"}";
+
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -246,9 +265,8 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
-    //
     String newValuesJson =
-        "{\"accountName\": \"abc\", \"migration_shard_id\": \"shard1\", \"accountNumber\": 1}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0,\"bool_col\":false,\"accountName\":\"xyz\",\"float_64_col_infinity\":0,\"float_64_col_neg_infinity\":0,\"accountNumber\":\"1\",\"float_64_col_nan\":0,\"bytesCol\":\"R09PR0xF\"}";
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -759,6 +777,24 @@ public class AssignShardIdFnTest {
             .endColumn()
             .column("accountNumber")
             .int64()
+            .endColumn()
+            .column("bytesCol")
+            .bytes()
+            .endColumn()
+            .column("float_64_col")
+            .float64()
+            .endColumn()
+            .column("float_64_col_nan")
+            .float64()
+            .endColumn()
+            .column("float_64_col_infinity")
+            .float64()
+            .endColumn()
+            .column("float_64_col_neg_infinity")
+            .float64()
+            .endColumn()
+            .column("bool_col")
+            .bool()
             .endColumn()
             .endTable()
             .build();
