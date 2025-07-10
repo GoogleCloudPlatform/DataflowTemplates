@@ -203,21 +203,23 @@ The progress of the Dataflow jobs can be tracked via the Dataflow UI. Refer the 
 In addition, there are following application metrics exposed by the job:
 
 
-| Metric Name                           | Description                                                                                                                      |
-|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| custom_shard_id_impl_latency_ms | Time taken for the execution of custom shard identifier logic. |
-| data_record_count | The number of change stream records read. |
-| element_requeued_for_retry_count | Relevant for retryDLQ run mode, when the record gets enqueded back to severe folder for retry. |
-| elementsReconsumedFromDeadLetterQueue | The number of records read from the retry folder of DLQ directory. |
-| records_written_to_source_\<logical shard name\> | Number of records successfully written for the shard. |
-| replication_lag_in_seconds_\<logical shard name\>| Replication lag min,max and count value for the shard.|
-| retryable_record_count | The number of records that are up for retry. |
-| severe_error_count | The number of permanent errors. |
-| skipped_record_count | The count of records that were skipped from reverse replication. |
+| Metric Name                           | Description                                                                                                                                              |
+|---------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| custom_shard_id_impl_latency_ms | Time taken for the execution of custom shard identifier logic.                                                                                           |
+| data_record_count | The number of change stream transactions read.                                                                                                           |
+| data_record_count_per_record | The number of change stream records read.                                                                                                                |
+| element_requeued_for_retry_count | Relevant for retryDLQ run mode, when the record gets enqueded back to severe folder for retry.                                                           |
+| elementsReconsumedFromDeadLetterQueue | The number of records read from the retry folder of DLQ directory.                                                                                       |
+| records_written_to_source_\<logical shard name\> | Number of records successfully written for the shard.                                                                                                    |
+| replication_lag_in_seconds_\<logical shard name\>| Replication lag min,max and count value for the shard.                                                                                                   |
+| fwd_migration_filtered_record_count | The number of records filtered during reverse replication due to forward transaction tag.                                                                |
+| retryable_record_count | The number of records that are up for retry.                                                                                                             |
+| severe_error_count | The number of permanent errors.                                                                                                                          |
+| skipped_record_count | The count of records that were skipped from reverse replication.                                                                                         |
 | success_record_count	| The number of successfully processed records. This also accounts for the records that were not written to source if the source already had updated data. |
-| custom_transformation_exception | Number of exception encountered in the custom transformation jar |
-| filtered_events_\<logical shard name\> | Number of events filtered via custom transformation per shard |
-| apply_custom_transformation_impl_latency_ms | Time taken for the execution of custom transformation logic. |
+| custom_transformation_exception | Number of exception encountered in the custom transformation jar                                                                                         |
+| filtered_events_\<logical shard name\> | Number of events filtered via custom transformation per shard                                                                                            |
+| apply_custom_transformation_impl_latency_ms | Time taken for the execution of custom transformation logic.                                                                                             |
 
 
 These can be used to track the pipeline progress.
@@ -361,9 +363,15 @@ In the event that cut-back is needed to start serving from the original database
 1. Ensure that there is a validation solution to place to validate the Spanner and source database records.
 2. There should bo no severe errors.
 3. There should be no retryable errors.
-4. The success_record_count which reflects the total successful records should match the data_record_count metric which reflects the count of data records read by SpannerIO. If these match - it is an indication that all records have been successfully reverse replicated.
-Note that for these metrics to be reliable - there should be no Dataflow worker restarts. If there are worker restarts, there is a possibility that the same record was re-processed by a certain stage.
-To check if there are worker restarts - in the Dataflow UI, navigate to the Job metrics -> CPU utilization.
+4. The success_record_count should ideally match the value of data_record_count_per_record minus fwd_migration_filtered_record_count. This indicates that the total number of successful records aligns with the data records read by SpannerIO, less any records filtered due to a forward migration transaction tag.
+
+It's important to note that these metrics are approximate and should be treated as indicators, not absolute guarantees of 100% accuracy.
+
+**Important Considerations for Metric Reliability**
+
+For these metrics to be reliable, ensure there are no Dataflow worker restarts. If workers restart, there's a chance the same record might be re-processed by a specific stage, skewing your counts. You can check for worker restarts in the Dataflow UI by navigating to Job metrics -> CPU utilization.
+
+Additionally, to determine an approximate downtime during cutover, rely on the replication_lag_in_seconds metric.
 
 ### What to do when there are worker restarts or the metrics do not match
 
