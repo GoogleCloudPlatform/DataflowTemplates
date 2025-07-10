@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -39,6 +41,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
@@ -600,20 +603,19 @@ public class SpannerToSourceDb {
     }
     SourceInformationSchemaScanner scanner = null;
     try {
-      SourceProcessorFactory.initializeConnectionHelper(
-          options.getSourceType(), shards, connectionPoolSizePerWorker);
       if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
+        SourceProcessorFactory.initializeConnectionHelper(
+            options.getSourceType(), shards, connectionPoolSizePerWorker);
         Connection connection =
             (Connection)
                 SourceProcessorFactory.getConnectionToShard(options.getSourceType(), shards.get(0));
         scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
       } else {
-        CqlSession session =
-            (CqlSession)
-                SourceProcessorFactory.getConnectionToShard(options.getSourceType(), shards.get(0));
-        scanner =
-            new CassandraInformationSchemaScanner(
-                session, ((CassandraShard) shards.get(0)).getKeySpaceName());
+        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
+          scanner =
+              new CassandraInformationSchemaScanner(
+                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
+        }
       }
     } catch (UnsupportedSourceException e) {
       LOG.error("Unsupported source type: {}", options.getSourceType());
@@ -923,5 +925,19 @@ public class SpannerToSourceDb {
       schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
     }
     return schemaMapper;
+  }
+
+  /**
+   * Creates a {@link CqlSession} for the given {@link CassandraShard}.
+   *
+   * @param cassandraShard The shard containing connection details.
+   * @return A {@link CqlSession} instance.
+   */
+  private static CqlSession createCqlSession(CassandraShard cassandraShard) {
+    CqlSessionBuilder builder = CqlSession.builder();
+    DriverConfigLoader configLoader =
+        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
+    builder.withConfigLoader(configLoader);
+    return builder.build();
   }
 }
