@@ -71,7 +71,7 @@ jobs:
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 20
     - name: Integration Test report on GitHub
-      uses: dorny/test-reporter@v1
+      uses: dorny/test-reporter@v2
       if: always()
       with:
         name: Integration Test report on GitHub
