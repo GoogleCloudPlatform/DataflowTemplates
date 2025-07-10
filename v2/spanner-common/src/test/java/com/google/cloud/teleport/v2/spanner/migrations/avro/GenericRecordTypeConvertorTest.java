@@ -601,12 +601,12 @@ public class GenericRecordTypeConvertorTest {
                 "intervalNanoCol",
                 Type.string(),
                 getTestCassandraAnnotationNone()))
-        .isEqualTo(Value.string("P1000Y1000M3890DT30H31M12.000000009S"));
+        .isEqualTo(Value.string("P1083Y4M3890DT30H31M12.000000009S"));
     // Test Handling for DLQ path.
     assertThat(
             GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
                 payload, payloadSchema.getField("intervalNanoCol"), tableName, schemaMapper))
-        .isEqualTo("P1000Y1000M3890DT30H31M12.000000009S");
+        .isEqualTo("P1083Y4M3890DT30H31M12.000000009S");
 
     assertThat(
             genericRecordTypeConvertor.getSpannerValue(
@@ -646,18 +646,18 @@ public class GenericRecordTypeConvertorTest {
         .isEqualTo(
             Value.stringArray(
                 ImmutableList.of(
-                    "P1000Y1000M3890DT30H31M12.000000009S",
-                    "P1000Y1000M3890DT30H31M12.000000009S",
-                    "P1000Y1000M3890DT25H12.000000009S")));
+                    "P1083Y4M3890DT30H31M12.000000009S",
+                    "P1083Y4M3890DT30H31M12.000000009S",
+                    "P1083Y4M3890DT25H12.000000009S")));
     // Test Handling for DLQ path.
     assertThat(
             GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
                 payload, payloadSchema.getField("intervalNanoArrayCol"), tableName, schemaMapper))
         .isEqualTo(
             ImmutableList.of(
-                    "P1000Y1000M3890DT30H31M12.000000009S",
-                    "P1000Y1000M3890DT30H31M12.000000009S",
-                    "P1000Y1000M3890DT25H12.000000009S")
+                    "P1083Y4M3890DT30H31M12.000000009S",
+                    "P1083Y4M3890DT30H31M12.000000009S",
+                    "P1083Y4M3890DT25H12.000000009S")
                 .toArray());
 
     assertThat(
@@ -688,16 +688,16 @@ public class GenericRecordTypeConvertorTest {
         .isEqualTo(
             Map.of(
                 "booleanCol", Value.bool(true),
-                "intervalNanoCol", Value.string("P1000Y1000M3890DT30H31M12.000000009S"),
+                "intervalNanoCol", Value.string("P1083Y4M3890DT30H31M12.000000009S"),
                 "timeStampCol",
                     Value.timestamp(Timestamp.parseTimestamp("2020-10-13T14:30:00.056000000Z")),
                 "booleanArrayCol", Value.boolArray(ImmutableList.of(true, false)),
                 "intervalNanoArrayCol",
                     Value.stringArray(
                         ImmutableList.of(
-                            "P1000Y1000M3890DT30H31M12.000000009S",
-                            "P1000Y1000M3890DT30H31M12.000000009S",
-                            "P1000Y1000M3890DT25H12.000000009S")),
+                            "P1083Y4M3890DT30H31M12.000000009S",
+                            "P1083Y4M3890DT30H31M12.000000009S",
+                            "P1083Y4M3890DT25H12.000000009S")),
                 "timeStampArrayCol", Value.timestampArray(expectedTimeStampArray)));
   }
 
@@ -712,10 +712,9 @@ public class GenericRecordTypeConvertorTest {
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(
             "interval_nanos_column",
-            AvroTestingHelper.createIntervalNanosRecord(1000L, 1000L, 3890L, 25L, 331L, 12L, 9L),
+            AvroTestingHelper.createIntervalNanosRecord(1000L, 1000L, 3890L, 25L, 331L, 3672L, 9L),
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
-    assertEquals(
-        "Test #1 interval nano conversion:", "P1000Y1000M3890DT30H31M12.000000009S", result);
+    assertEquals("Test #1 interval nano conversion:", "P1083Y4M3890DT31H32M12.000000009S", result);
 
     /* Test with any field set as null gets treated as 0. */
     result =
@@ -725,7 +724,7 @@ public class GenericRecordTypeConvertorTest {
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
     assertEquals(
         "Test #2 interval nano conversion with null minutes:",
-        "P1000Y1000M3890DT25H12.000000009S",
+        "P1083Y4M3890DT25H12.000000009S",
         result);
 
     /* Basic test for negative field. */
@@ -736,8 +735,18 @@ public class GenericRecordTypeConvertorTest {
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
     assertEquals(
         "Test #3 interval nano conversion with negative months:",
-        "P1000Y-1000M3890DT25H31M12.000000009S",
+        "P916Y8M3890DT25H31M12.000000009S",
         result);
+
+    /* Test all negative */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(
+                -1000L, -1000L, -3890L, -2L, -31L, -12L, -90L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals(
+        "Test #4 all fields are negative:", "P-1083Y-4M-3890DT-2H-31M-12.00000009S", result);
 
     /* Test that negative nanos subtract from the fractional seconds, for example 12 Seconds -1 Nanos becomes 11.999999991s. */
     result =
@@ -746,8 +755,8 @@ public class GenericRecordTypeConvertorTest {
             AvroTestingHelper.createIntervalNanosRecord(1000L, 31L, 3890L, 25L, 31L, 12L, -9L),
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
     assertEquals(
-        "Test #4 interval nano conversion with negative nanos:",
-        "P1000Y31M3890DT25H31M11.999999991S",
+        "Test #5 interval nano conversion with negative nanos:",
+        "P1002Y7M3890DT25H31M11.999999991S",
         result);
 
     /* Test 0 interval. */
@@ -756,7 +765,7 @@ public class GenericRecordTypeConvertorTest {
             "interval_nanos_column",
             AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 0L),
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
-    assertEquals("Test #5 interval nano conversion with all zeros", "P0D", result);
+    assertEquals("Test #6 interval nano conversion with all zeros", "P0Y", result);
 
     /* Test almost zero interval with only nanos set. */
     result =
@@ -764,7 +773,7 @@ public class GenericRecordTypeConvertorTest {
             "interval_nanos_column",
             AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 1L),
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
-    assertEquals("Test #6 interval nano conversion with only nanos", "P0DT0.000000001S", result);
+    assertEquals("Test #7 interval nano conversion with only nanos", "PT0.000000001S", result);
     /* Test with large values. */
     result =
         GenericRecordTypeConvertor.handleRecordFieldType(
@@ -773,7 +782,7 @@ public class GenericRecordTypeConvertorTest {
                 2147483647L, 11L, 2147483647L, 2147483647L, 2147483647L, 2147483647L, 999999999L),
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
     assertEquals(
-        "Test #6 interval nano conversion with INT.MAX values",
+        "Test #8 interval nano conversion with INT.MAX values",
         "P2147483647Y11M2147483647DT2183871564H21M7.999999999S",
         result);
 
@@ -791,9 +800,65 @@ public class GenericRecordTypeConvertorTest {
                 -999999999L),
             AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
     assertEquals(
-        "Test #6 interval nano conversion with -INT.MAX values",
+        "Test #9 interval nano conversion with -INT.MAX values",
         "P-2147483647Y-11M-2147483647DT-2183871564H-21M-7.999999999S",
         result);
+
+    /* Test with only year part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(1L, 0L, 0L, 0L, 0L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #10 interval nano conversion with only years", "P1Y", result);
+
+    /* Test with only month part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, -1L, 0L, 0L, 0L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #11 interval nano conversion with only months", "P-1M", result);
+
+    /* Test with only days part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 1L, 0L, 0L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #12 interval nano conversion with only days", "P1D", result);
+
+    /* Test with only hours part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, -1L, 0L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #13 interval nano conversion with only hours", "PT-1H", result);
+
+    /* Test with only minutes part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 12L, 0L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #14 interval nano conversion with only minutes", "PT12M", result);
+
+    /* Test with only seconds part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 1L, 0L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #15 interval nano conversion with only seconds", "PT1S", result);
+
+    /* Test with only nanos part */
+    result =
+        GenericRecordTypeConvertor.handleRecordFieldType(
+            "interval_nanos_column",
+            AvroTestingHelper.createIntervalNanosRecord(0L, 0L, 0L, 0L, 0L, 0L, 100L),
+            AvroTestingHelper.INTERVAL_NANOS_SCHEMA);
+    assertEquals("Test #16 interval nano conversion with only nanos", "PT0.0000001S", result);
   }
 
   @Test
