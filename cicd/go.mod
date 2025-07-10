@@ -8,7 +8,7 @@ require (
 	github.com/hashicorp/hc-install v0.6.2
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/hashicorp/terraform-exec v0.20.0
-	github.com/hashicorp/terraform-json v0.20.0
+	github.com/hashicorp/terraform-json v0.25.0
 	github.com/spf13/cobra v1.8.0
 	github.com/zclconf/go-cty v1.16.3
 )
