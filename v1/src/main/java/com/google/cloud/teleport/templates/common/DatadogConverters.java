@@ -112,8 +112,7 @@ public class DatadogConverters {
         order = 3,
         optional = true,
         description = "Batch size for sending multiple events to Datadog Logs API.",
-        helpText =
-            "The batch size for sending multiple events to Datadog. The default is `100`.")
+        helpText = "The batch size for sending multiple events to Datadog. The default is `100`.")
     ValueProvider<Integer> getBatchCount();
 
     void setBatchCount(ValueProvider<Integer> batchCount);
