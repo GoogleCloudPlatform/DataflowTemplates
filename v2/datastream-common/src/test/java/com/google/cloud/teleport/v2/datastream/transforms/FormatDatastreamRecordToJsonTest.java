@@ -235,6 +235,36 @@ public class FormatDatastreamRecordToJsonTest {
   }
 
   @Test
+  public void testParseSqlServerRecords() throws IOException, URISyntaxException {
+    URL resource =
+        getClass()
+            .getClassLoader()
+            .getResource("FormatDatastreamRecordToJsonTest/sqlserver_test.avro");
+    File file = new File(resource.toURI());
+    DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(file, datumReader);
+
+    // Test INSERT record (backfill)
+    GenericRecord record = dataFileReader.next();
+    String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode changeEvent = mapper.readTree(jsonData);
+
+    // Verify SQL Server metadata fields
+    assertEquals("dbo", changeEvent.get("_metadata_schema").asText());
+    assertEquals("test_table", changeEvent.get("_metadata_table").asText());
+    assertEquals("00000027:00000130:0001", changeEvent.get("_metadata_lsn").asText());
+    assertEquals("", changeEvent.get("_metadata_tx_id").asText());
+    assertEquals("backfill", changeEvent.get("_metadata_read_method").asText());
+
+    // Verify payload
+    assertEquals(1, changeEvent.get("id").asInt());
+    assertEquals("Test User 1", changeEvent.get("name").asText());
+
+    dataFileReader.close();
+  }
+
+  @Test
   public void testIntervalNano() throws JsonProcessingException {
 
     ObjectNode objectNode = new ObjectNode(new JsonNodeFactory(true));
