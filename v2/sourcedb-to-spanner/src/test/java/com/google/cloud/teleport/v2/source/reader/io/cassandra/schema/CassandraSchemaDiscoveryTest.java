@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mockStatic;
 
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSourceOss;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.exception.RetriableSchemaDiscoveryException;
@@ -82,12 +83,13 @@ public class CassandraSchemaDiscoveryTest {
 
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .build()));
 
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     ImmutableList<String> tables =
@@ -114,11 +116,12 @@ public class CassandraSchemaDiscoveryTest {
 
       DataSource cassandraDataSource =
           DataSource.ofCassandra(
-              CassandraDataSource.builder()
-                  .setOptionsMapFromGcsFile(testGcsPath)
-                  /* We need to override the contact points since the embedded cassandra ports are dynamic */
-                  .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                  .build());
+              CassandraDataSource.ofOss(
+                  CassandraDataSourceOss.builder()
+                      .setOptionsMapFromGcsFile(testGcsPath)
+                      /* We need to override the contact points since the embedded cassandra ports are dynamic */
+                      .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                      .build()));
 
       CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
       ImmutableList<String> tables =
@@ -157,12 +160,13 @@ public class CassandraSchemaDiscoveryTest {
 
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .build()));
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     ImmutableMap<String, ImmutableMap<String, SourceColumnType>> schema =
         cassandraSchemaDiscovery.discoverTableSchema(
@@ -182,16 +186,18 @@ public class CassandraSchemaDiscoveryTest {
     /** Using reserved port throws connectionTimeout Exception from Cassandra Layer. */
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(
-                    sharedEmbeddedCassandra.getInstance().getContactPoints().stream()
-                        .map(
-                            addr -> new InetSocketAddress(addr.getAddress(), /* Reserved Port */ 0))
-                        .collect(ImmutableList.toImmutableList()))
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(
+                        sharedEmbeddedCassandra.getInstance().getContactPoints().stream()
+                            .map(
+                                addr ->
+                                    new InetSocketAddress(addr.getAddress(), /* Reserved Port */ 0))
+                            .collect(ImmutableList.toImmutableList()))
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .build()));
 
     CassandraSchemaDiscovery cassandraSchemaDiscovery = new CassandraSchemaDiscovery();
     assertThrows(
@@ -216,12 +222,13 @@ public class CassandraSchemaDiscoveryTest {
 
     DataSource cassandraDataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
-                .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
-                .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .build()));
     JdbcDataSource mockJdbcDataSource = Mockito.mock(JdbcDataSource.class);
     DataSource jdbcDataSource = DataSource.ofJdbc(mockJdbcDataSource);
 

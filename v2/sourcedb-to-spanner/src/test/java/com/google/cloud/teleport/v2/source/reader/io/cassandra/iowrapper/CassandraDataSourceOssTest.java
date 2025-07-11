@@ -32,42 +32,42 @@ import org.mockito.MockedStatic;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
-/** Test class for {@link CassandraDataSource}. */
+/** Test class for {@link CassandraDataSourceOss}. */
 @RunWith(MockitoJUnitRunner.class)
-public class CassandraDataSourceTest {
+public class CassandraDataSourceOssTest {
 
   @Test
-  public void testCassandraDataSourceBasic() {
+  public void testCassandraDataSourceOssBasic() {
     String testCluster = "testCluster";
     String testHost = "127.0.0.1";
     int testPort = 9042;
-    CassandraDataSource cassandraDataSource =
-        CassandraDataSource.builder()
+    CassandraDataSourceOss cassandraDataSourceOss =
+        CassandraDataSourceOss.builder()
             .setClusterName(testCluster)
             .setOptionsMap(OptionsMap.driverDefaults())
             .setContactPoints(List.of(new InetSocketAddress(testHost, testPort)))
             .overrideOptionInOptionsMap(TypedDriverOption.AUTH_PROVIDER_USER_NAME, "test-user-name")
             .overrideOptionInOptionsMap(TypedDriverOption.AUTH_PROVIDER_PASSWORD, "test")
             .build();
-    assertThat(cassandraDataSource.clusterName()).isEqualTo(testCluster);
-    assertThat(cassandraDataSource.contactPoints())
+    assertThat(cassandraDataSourceOss.clusterName()).isEqualTo(testCluster);
+    assertThat(cassandraDataSourceOss.contactPoints())
         .isEqualTo(ImmutableList.of(new InetSocketAddress(testHost, testPort)));
     assertThat(
-            cassandraDataSource
+            cassandraDataSourceOss
                 .driverConfigLoader()
                 .getInitialConfig()
                 .getDefaultProfile()
                 .getString(TypedDriverOption.AUTH_PROVIDER_USER_NAME.getRawOption()))
         .isEqualTo("test-user-name");
     assertThat(
-            cassandraDataSource
+            cassandraDataSourceOss
                 .driverConfigLoader()
                 .getInitialConfig()
                 .getDefaultProfile()
                 .getString(TypedDriverOption.AUTH_PROVIDER_PASSWORD.getRawOption()))
         .isEqualTo("test");
-    assertThat(cassandraDataSource.numPartitions()).isNull();
-    assertThat(cassandraDataSource.toBuilder().setNumPartitions(42).build().numPartitions())
+    assertThat(cassandraDataSourceOss.numPartitions()).isNull();
+    assertThat(cassandraDataSourceOss.toBuilder().setNumPartitions(42).build().numPartitions())
         .isEqualTo(42);
   }
 
@@ -79,12 +79,12 @@ public class CassandraDataSourceTest {
       mockFileReader
           .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
           .thenReturn(new URL[] {testUrl});
-      CassandraDataSource cassandraDataSource =
-          CassandraDataSource.builder().setOptionsMapFromGcsFile(testGcsPath).build();
+      CassandraDataSourceOss cassandraDataSourceOss =
+          CassandraDataSourceOss.builder().setOptionsMapFromGcsFile(testGcsPath).build();
 
-      assertThat(cassandraDataSource.loggedKeySpace()).isEqualTo("test-keyspace");
-      assertThat(cassandraDataSource.localDataCenter()).isEqualTo("datacenter1");
-      assertThat(cassandraDataSource.contactPoints())
+      assertThat(cassandraDataSourceOss.loggedKeySpace()).isEqualTo("test-keyspace");
+      assertThat(cassandraDataSourceOss.localDataCenter()).isEqualTo("datacenter1");
+      assertThat(cassandraDataSourceOss.contactPoints())
           .isEqualTo(
               ImmutableList.of(
                   new InetSocketAddress("127.0.0.1", 9042),
