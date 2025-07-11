@@ -41,7 +41,9 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
@@ -88,6 +90,7 @@ public class SourceWriterFnTest {
   private Shard testShard;
   private Schema testSchema;
   private Ddl testDdl;
+  private SourceSchema testSourceSchema;
   private String testSourceDbTimezoneOffset;
 
   private SourceProcessor sourceProcessor;
@@ -132,7 +135,10 @@ public class SourceWriterFnTest {
 
     testSchema = SessionFileReader.read("src/test/resources/sourceWriterUTSession.json");
     testSourceDbTimezoneOffset = "+00:00";
-    testDdl = getTestDdl();
+    testDdl = SchemaUtils.buildDdlFromSessionFile("src/test/resources/sourceWriterUTSession.json");
+    testSourceSchema =
+        SchemaUtils.buildSourceSchemaFromSessionFile(
+            "src/test/resources/sourceWriterUTSession.json");
     sourceProcessor =
         SourceProcessor.builder()
             .dmlGenerator(new MySQLDMLGenerator())
@@ -152,6 +158,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -180,6 +187,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -207,6 +215,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -239,6 +248,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -278,6 +288,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -313,6 +324,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -346,6 +358,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -377,6 +390,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -406,6 +420,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -439,6 +454,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -468,6 +484,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -499,6 +516,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -530,6 +548,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -561,6 +580,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -591,6 +611,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdlForNullDML(),
+            testSourceSchema,
             "shadow_",
             "skip",
             500,
@@ -602,89 +623,6 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     verify(mockSqlDao, never()).write(contains("567890"));
-  }
-
-  static Ddl getTestDdl() {
-    Ddl ddl =
-        Ddl.builder()
-            .createTable("parent1")
-            .column("id")
-            .int64()
-            .endColumn()
-            .column("update_ts")
-            .timestamp()
-            .endColumn()
-            .column("in_ts")
-            .timestamp()
-            .endColumn()
-            .column("migration_shard_id")
-            .string()
-            .max()
-            .endColumn()
-            .primaryKey()
-            .asc("id")
-            .end()
-            .endTable()
-            .createTable("child11")
-            .column("child_id")
-            .int64()
-            .endColumn()
-            .column("parent_id")
-            .int64()
-            .endColumn()
-            .column("update_ts")
-            .timestamp()
-            .endColumn()
-            .column("in_ts")
-            .timestamp()
-            .endColumn()
-            .column("migration_shard_id")
-            .string()
-            .max()
-            .endColumn()
-            .endTable()
-            .createTable("parent2")
-            .column("id")
-            .int64()
-            .endColumn()
-            .column("update_ts")
-            .timestamp()
-            .endColumn()
-            .column("in_ts")
-            .timestamp()
-            .endColumn()
-            .column("migration_shard_id")
-            .string()
-            .max()
-            .endColumn()
-            .primaryKey()
-            .asc("id")
-            .end()
-            .endTable()
-            .createTable("child21")
-            .column("child_id")
-            .int64()
-            .endColumn()
-            .column("parent_id")
-            .int64()
-            .endColumn()
-            .column("update_ts")
-            .timestamp()
-            .endColumn()
-            .column("in_ts")
-            .timestamp()
-            .endColumn()
-            .column("migration_shard_id")
-            .string()
-            .max()
-            .endColumn()
-            .primaryKey()
-            .asc("child_id")
-            .asc("parent_id")
-            .end()
-            .endTable()
-            .build();
-    return ddl;
   }
 
   private TrimmedShardedDataChangeRecord getChild11TrimmedDataChangeRecord(String shardId) {

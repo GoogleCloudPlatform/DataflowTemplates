@@ -321,6 +321,10 @@ public abstract class Column implements Serializable {
     }
 
     public abstract Builder columnOptions(ImmutableList<String> options);
+
+    public Builder array(Type t) {
+      return type(Type.array(t));
+    }
   }
 
   private static class SizedType {
