@@ -53,7 +53,7 @@
     <scassandra.version>1.1.2</scassandra.version>
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
     <datastax.query.builder.version>4.16.0</datastax.query.builder.version>
-    <jacoco.version>0.8.8</jacoco.version>
+    <jacoco.version>0.8.13</jacoco.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
   </properties>
 
