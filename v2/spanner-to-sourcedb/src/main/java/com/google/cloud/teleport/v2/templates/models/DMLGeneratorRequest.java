@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.templates.models;
 
 import com.google.cloud.Timestamp;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import java.util.Map;
 import org.json.JSONObject;
 
@@ -41,9 +43,6 @@ public class DMLGeneratorRequest {
   // The name of the Spanner table associated with the DML operation.
   private final String spannerTableName;
 
-  // The schema of the source and spanner table, providing details about the table's structure.
-  private final Schema schema;
-
   // JSON object containing the new values for the operation (e.g., updated or inserted values).
   private final JSONObject newValuesJson;
 
@@ -55,16 +54,21 @@ public class DMLGeneratorRequest {
 
   private Map<String, Object> customTransformationResponse;
   private final Timestamp commitTimestamp;
+  private final Ddl ddl;
+  private final SourceSchema sourceSchema;
+  private final ISchemaMapper schemaMapper;
 
   public DMLGeneratorRequest(Builder builder) {
     this.modType = builder.modType;
     this.spannerTableName = builder.spannerTableName;
-    this.schema = builder.schema;
     this.newValuesJson = builder.newValuesJson;
     this.keyValuesJson = builder.keyValuesJson;
     this.sourceDbTimezoneOffset = builder.sourceDbTimezoneOffset;
     this.customTransformationResponse = builder.customTransformationResponse;
     this.commitTimestamp = builder.commitTimestamp;
+    this.ddl = builder.ddl;
+    this.sourceSchema = builder.sourceSchema;
+    this.schemaMapper = builder.schemaMapper;
   }
 
   public Timestamp getCommitTimestamp() {
@@ -77,10 +81,6 @@ public class DMLGeneratorRequest {
 
   public String getSpannerTableName() {
     return spannerTableName;
-  }
-
-  public Schema getSchema() {
-    return schema;
   }
 
   public JSONObject getNewValuesJson() {
@@ -99,15 +99,29 @@ public class DMLGeneratorRequest {
     return customTransformationResponse;
   }
 
+  public Ddl getDdl() {
+    return ddl;
+  }
+
+  public SourceSchema getSourceSchema() {
+    return sourceSchema;
+  }
+
+  public ISchemaMapper getSchemaMapper() {
+    return schemaMapper;
+  }
+
   public static class Builder {
     private final String modType;
     private final String spannerTableName;
     private final JSONObject newValuesJson;
     private final JSONObject keyValuesJson;
     private final String sourceDbTimezoneOffset;
-    private Schema schema;
     private Map<String, Object> customTransformationResponse;
     private Timestamp commitTimestamp;
+    private Ddl ddl;
+    private SourceSchema sourceSchema;
+    private ISchemaMapper schemaMapper;
 
     public Builder(
         String modType,
@@ -122,11 +136,6 @@ public class DMLGeneratorRequest {
       this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     }
 
-    public Builder setSchema(Schema schema) {
-      this.schema = schema;
-      return this;
-    }
-
     public Builder setCommitTimestamp(Timestamp commitTimestamp) {
       this.commitTimestamp = commitTimestamp;
       return this;
@@ -135,6 +144,21 @@ public class DMLGeneratorRequest {
     public Builder setCustomTransformationResponse(
         Map<String, Object> customTransformationResponse) {
       this.customTransformationResponse = customTransformationResponse;
+      return this;
+    }
+
+    public Builder setDdl(Ddl ddl) {
+      this.ddl = ddl;
+      return this;
+    }
+
+    public Builder setSourceSchema(SourceSchema sourceSchema) {
+      this.sourceSchema = sourceSchema;
+      return this;
+    }
+
+    public Builder setSchemaMapper(ISchemaMapper schemaMapper) {
+      this.schemaMapper = schemaMapper;
       return this;
     }
 

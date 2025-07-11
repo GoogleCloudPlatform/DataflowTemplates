@@ -70,15 +70,13 @@ public class SessionBasedMapper implements ISchemaMapper, Serializable {
       throws InputMismatchException {
     this.schema = schema;
     this.ddl = ddl;
-    try {
-      validateSchemaAndDdl(schema, ddl);
-      LOG.info("schema matches between session file and spanner");
-    } catch (InputMismatchException e) {
-      if (strictCheckSchema) {
+    if (strictCheckSchema) {
+      try {
+        validateSchemaAndDdl(schema, ddl);
+        LOG.info("schema matches between session file and spanner");
+      } catch (InputMismatchException e) {
         LOG.warn("schema does not match between session and spanner: {}", e.getMessage());
         throw e;
-      } else {
-        LOG.warn("proceeding without schema match between session and spanner");
       }
     }
   }

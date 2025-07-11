@@ -15,9 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.CASSANDRA_SOURCE_TYPE;
 import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
@@ -29,21 +31,29 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.metadata.CassandraSourceMetadata;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
+import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.MySqlInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceInformationSchemaScanner;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
+import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
+import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.transforms.AssignShardIdFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertChangeStreamErrorRecordToFailsafeElementFn;
 import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimmedShardedDataChangeRecordFn;
@@ -51,13 +61,14 @@ import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
-import com.google.cloud.teleport.v2.templates.utils.CassandraSourceSchemaReader;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
 import com.google.common.base.Strings;
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
@@ -418,6 +429,51 @@ public class SpannerToSourceDb {
     @TemplateParameter.Text(
         order = 28,
         optional = true,
+        description = "Table name overrides from spanner to source",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example = "[{Singers, Vocalists}, {Albums, Records}]",
+        helpText =
+            "These are the table name overrides from spanner to source. They are written in the"
+                + "following format: [{SpannerTableName1, SourceTableName1}, {SpannerTableName2, SourceTableName2}]"
+                + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+    @Default.String("")
+    String getTableOverrides();
+
+    void setTableOverrides(String value);
+
+    @TemplateParameter.Text(
+        order = 29,
+        optional = true,
+        description = "Column name overrides from spanner to source",
+        regexes =
+            "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+        example =
+            "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+        helpText =
+            "These are the column name overrides from spanner to source. They are written in the"
+                + "following format: [{SpannerTableName1.SpannerColumnName1, SpannerTableName1.SourceColumnName1}, {SpannerTableName2.SpannerColumnName1, SpannerTableName2.SourceColumnName1}]"
+                + "Note that the SpannerTableName should remain the same in both the spanner and source pair. To override table names, use tableOverrides."
+                + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+    @Default.String("")
+    String getColumnOverrides();
+
+    void setColumnOverrides(String value);
+
+    @TemplateParameter.GcsReadFile(
+        order = 30,
+        optional = true,
+        description = "File based overrides from spanner to source",
+        helpText =
+            "A file which specifies the table and the column name overrides from spanner to source.")
+    @Default.String("")
+    String getSchemaOverridesFilePath();
+
+    void setSchemaOverridesFilePath(String value);
+
+    @TemplateParameter.Text(
+        order = 31,
+        optional = true,
         description = "Directory name for holding filtered records",
         helpText =
             "Records skipped from reverse replication are written to this directory. Default"
@@ -428,7 +484,7 @@ public class SpannerToSourceDb {
     void setFilterEventsDirectoryName(String value);
 
     @TemplateParameter.Boolean(
-        order = 29,
+        order = 32,
         optional = true,
         description = "Boolean setting if reverse migration is sharded",
         helpText =
@@ -495,13 +551,6 @@ public class SpannerToSourceDb {
               + " incease the max shard connections");
     }
 
-    // Read the session file for Mysql Only
-    Schema schema =
-        MYSQL_SOURCE_TYPE.equals(options.getSourceType())
-            ? SessionFileReader.read(
-                options.getSessionFilePath()) // Read from session file for MYSQL source type
-            : new Schema();
-
     // Prepare Spanner config
     SpannerConfig spannerConfig =
         SpannerConfig.create()
@@ -540,17 +589,44 @@ public class SpannerToSourceDb {
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     List<Shard> shards;
     String shardingMode;
+
+    // Create appropriate schema mapper based on source type
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
       ShardFileReader shardFileReader = new ShardFileReader(new SecretManagerAccessorImpl());
       shards = shardFileReader.getOrderedShardDetails(options.getSourceShardsFilePath());
       shardingMode = Constants.SHARDING_MODE_MULTI_SHARD;
-
     } else {
       CassandraConfigFileReader cassandraConfigFileReader = new CassandraConfigFileReader();
       shards = cassandraConfigFileReader.getCassandraShard(options.getSourceShardsFilePath());
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
+    SourceInformationSchemaScanner scanner = null;
+    try {
+      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
+        SourceProcessorFactory.initializeConnectionHelper(
+            options.getSourceType(), shards, connectionPoolSizePerWorker);
+        Connection connection =
+            (Connection)
+                SourceProcessorFactory.getConnectionToShard(options.getSourceType(), shards.get(0));
+        scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
+      } else {
+        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
+          scanner =
+              new CassandraInformationSchemaScanner(
+                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
+        }
+      }
+    } catch (UnsupportedSourceException e) {
+      LOG.error("Unsupported source type: {}", options.getSourceType());
+      throw new IllegalArgumentException(e);
+    } catch (ConnectionException e) {
+      LOG.error("Error getting connection to shard: {}", shards.get(0));
+      throw new IllegalArgumentException(e);
+    }
+    SourceSchema sourceSchema = scanner.scan();
+    LOG.info("Source schema: {}", sourceSchema);
+
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
       Shard shard = shards.get(0);
@@ -560,30 +636,7 @@ public class SpannerToSourceDb {
             "Logical shard id was not found, hence setting it to : " + Constants.DEFAULT_SHARD_ID);
       }
     }
-
-    if (options.getSourceType().equals(CASSANDRA_SOURCE_TYPE)) {
-      Map<String, SpannerTable> spannerTableMap =
-          SpannerSchema.convertDDLTableToSpannerTable(ddl.allTables());
-      Map<String, NameAndCols> spannerTableNameColsMap =
-          SpannerSchema.convertDDLTableToSpannerNameAndColsTable(ddl.allTables());
-      try {
-        CassandraSourceMetadata cassandraSourceMetadata =
-            new CassandraSourceMetadata.Builder()
-                .setResultSet(
-                    CassandraSourceSchemaReader.getInformationSchemaAsResultSet(
-                        (CassandraShard) shards.get(0)))
-                .build();
-        schema =
-            new Schema(
-                spannerTableMap,
-                null,
-                cassandraSourceMetadata.getSourceTableMap(),
-                spannerTableNameColsMap,
-                cassandraSourceMetadata.getNameAndColsMap());
-      } catch (Exception e) {
-        throw new IllegalArgumentException(e);
-      }
-    }
+    ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
 
     boolean isRegularMode = "regular".equals(options.getRunMode());
     PCollectionTuple reconsumedElements = null;
@@ -666,8 +719,9 @@ public class SpannerToSourceDb {
                 ParDo.of(
                     new AssignShardIdFn(
                         spannerConfig,
-                        schema,
+                        schemaMapper,
                         ddl,
+                        sourceSchema,
                         shardingMode,
                         shards.get(0).getLogicalShardId(),
                         options.getSkipDirectoryName(),
@@ -685,10 +739,11 @@ public class SpannerToSourceDb {
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    schema,
+                    schemaMapper,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
                     ddl,
+                    sourceSchema,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
                     connectionPoolSizePerWorker,
@@ -824,5 +879,65 @@ public class SpannerToSourceDb {
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
       return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
     }
+  }
+
+  private static ISchemaMapper getSchemaMapper(Options options, Ddl ddl) {
+    // Check if config types are specified
+    boolean hasSessionFile =
+        options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");
+    boolean hasSchemaOverridesFile =
+        options.getSchemaOverridesFilePath() != null
+            && !options.getSchemaOverridesFilePath().equals("");
+    boolean hasStringOverrides =
+        (options.getTableOverrides() != null && !options.getTableOverrides().equals(""))
+            || (options.getColumnOverrides() != null && !options.getColumnOverrides().equals(""));
+
+    int overrideTypesCount = 0;
+    if (hasSessionFile) {
+      overrideTypesCount++;
+    }
+    if (hasSchemaOverridesFile) {
+      overrideTypesCount++;
+    }
+    if (hasStringOverrides) {
+      overrideTypesCount++;
+    }
+
+    if (overrideTypesCount > 1) {
+      throw new IllegalArgumentException(
+          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
+              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
+    }
+
+    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+    if (hasSessionFile) {
+      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
+    } else if (hasSchemaOverridesFile) {
+      schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
+    } else if (hasStringOverrides) {
+      Map<String, String> userOptionsOverrides = new HashMap<>();
+      if (!options.getTableOverrides().isEmpty()) {
+        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
+      }
+      if (!options.getColumnOverrides().isEmpty()) {
+        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
+      }
+      schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
+    }
+    return schemaMapper;
+  }
+
+  /**
+   * Creates a {@link CqlSession} for the given {@link CassandraShard}.
+   *
+   * @param cassandraShard The shard containing connection details.
+   * @return A {@link CqlSession} instance.
+   */
+  private static CqlSession createCqlSession(CassandraShard cassandraShard) {
+    CqlSessionBuilder builder = CqlSession.builder();
+    DriverConfigLoader configLoader =
+        CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
+    builder.withConfigLoader(configLoader);
+    return builder.build();
   }
 }
