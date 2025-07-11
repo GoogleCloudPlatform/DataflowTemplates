@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.templates.models;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import java.util.Map;
 import org.json.JSONObject;
 
@@ -55,6 +57,8 @@ public class DMLGeneratorRequest {
 
   private Map<String, Object> customTransformationResponse;
   private final Timestamp commitTimestamp;
+  private final Ddl ddl;
+  private final SourceSchema sourceSchema;
 
   public DMLGeneratorRequest(Builder builder) {
     this.modType = builder.modType;
@@ -65,6 +69,8 @@ public class DMLGeneratorRequest {
     this.sourceDbTimezoneOffset = builder.sourceDbTimezoneOffset;
     this.customTransformationResponse = builder.customTransformationResponse;
     this.commitTimestamp = builder.commitTimestamp;
+    this.ddl = builder.ddl;
+    this.sourceSchema = builder.sourceSchema;
   }
 
   public Timestamp getCommitTimestamp() {
@@ -99,6 +105,14 @@ public class DMLGeneratorRequest {
     return customTransformationResponse;
   }
 
+  public Ddl getDdl() {
+    return ddl;
+  }
+
+  public SourceSchema getSourceSchema() {
+    return sourceSchema;
+  }
+
   public static class Builder {
     private final String modType;
     private final String spannerTableName;
@@ -108,6 +122,8 @@ public class DMLGeneratorRequest {
     private Schema schema;
     private Map<String, Object> customTransformationResponse;
     private Timestamp commitTimestamp;
+    private Ddl ddl;
+    private SourceSchema sourceSchema;
 
     public Builder(
         String modType,
@@ -135,6 +151,16 @@ public class DMLGeneratorRequest {
     public Builder setCustomTransformationResponse(
         Map<String, Object> customTransformationResponse) {
       this.customTransformationResponse = customTransformationResponse;
+      return this;
+    }
+
+    public Builder setDdl(Ddl ddl) {
+      this.ddl = ddl;
+      return this;
+    }
+
+    public Builder setSourceSchema(SourceSchema sourceSchema) {
+      this.sourceSchema = sourceSchema;
       return this;
     }
 
