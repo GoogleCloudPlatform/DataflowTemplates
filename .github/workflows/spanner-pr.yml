@@ -119,7 +119,7 @@ jobs:
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 1
     - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
+      uses: codecov/codecov-action@v5.4.3
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
