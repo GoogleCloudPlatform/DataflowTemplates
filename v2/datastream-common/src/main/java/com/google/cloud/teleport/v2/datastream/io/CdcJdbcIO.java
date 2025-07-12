@@ -326,11 +326,22 @@ public class CdcJdbcIO {
           basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());
         }
         if (getLoginTimeout() != null && getLoginTimeout().get() != null) {
-          try {
-            basicDataSource.setLoginTimeout(getLoginTimeout().get().intValue());
-          } catch (SQLException e) {
-            throw new RuntimeException("Failed to set login timeout", e);
-          }
+          // BasicDataSource.setLoginTimeout() is not supported and throws
+          // UnsupportedOperationException.
+          // Instead, we append the loginTimeout as a connection property to the existing
+          // properties.
+          String existingProperties =
+              getConnectionProperties() != null && getConnectionProperties().get() != null
+                  ? getConnectionProperties().get()
+                  : "";
+          String loginTimeoutProperty = "loginTimeout=" + getLoginTimeout().get().toString();
+          String updatedProperties =
+              existingProperties.isEmpty()
+                  ? loginTimeoutProperty
+                  : existingProperties + ";" + loginTimeoutProperty;
+          basicDataSource.setConnectionProperties(updatedProperties);
+        } else if (getConnectionProperties() != null && getConnectionProperties().get() != null) {
+          basicDataSource.setConnectionProperties(getConnectionProperties().get());
         }
 
         return basicDataSource;

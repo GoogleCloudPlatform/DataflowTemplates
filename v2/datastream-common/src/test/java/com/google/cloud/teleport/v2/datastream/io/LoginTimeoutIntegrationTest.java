@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.datastream.io;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
+import java.lang.reflect.Field;
 import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.apache.commons.dbcp2.BasicDataSource;
@@ -50,10 +51,22 @@ public class LoginTimeoutIntegrationTest {
     assertEquals(
         "DataSource should be a BasicDataSource", BasicDataSource.class, dataSource.getClass());
 
-    // Verify that the loginTimeout is set correctly
+    // Verify that the loginTimeout is set correctly in connection properties
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
-    assertEquals(
-        "Login timeout should be set to 45 seconds", 45, basicDataSource.getLoginTimeout());
+    try {
+      Field connectionPropertiesField =
+          BasicDataSource.class.getDeclaredField("connectionProperties");
+      connectionPropertiesField.setAccessible(true);
+      java.util.Properties connectionProperties =
+          (java.util.Properties) connectionPropertiesField.get(basicDataSource);
+      assertNotNull("Connection properties should not be null", connectionProperties);
+      assertEquals(
+          "Login timeout should be set to 45 seconds in connection properties",
+          "45",
+          connectionProperties.getProperty("loginTimeout"));
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to access connectionProperties field", e);
+    }
   }
 
   @Test
@@ -72,8 +85,22 @@ public class LoginTimeoutIntegrationTest {
     assertNotNull("DataSource should not be null", dataSource);
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
 
-    // Verify that the default loginTimeout is used (0 means no timeout)
-    assertEquals(
-        "Default login timeout should be 0 (no timeout)", 0, basicDataSource.getLoginTimeout());
+    // Verify that no loginTimeout is set in connection properties when not specified
+    try {
+      Field connectionPropertiesField =
+          BasicDataSource.class.getDeclaredField("connectionProperties");
+      connectionPropertiesField.setAccessible(true);
+      java.util.Properties connectionProperties =
+          (java.util.Properties) connectionPropertiesField.get(basicDataSource);
+      // Connection properties should be null or empty when no loginTimeout is set
+      if (connectionProperties != null) {
+        assertEquals(
+            "Connection properties should be empty when no loginTimeout is set",
+            0,
+            connectionProperties.size());
+      }
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to access connectionProperties field", e);
+    }
   }
 }
