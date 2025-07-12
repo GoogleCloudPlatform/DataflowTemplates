@@ -26,8 +26,8 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Integration test to verify loginTimeout functionality in CdcJdbcIO.DataSourceConfiguration.
- * This test validates that the loginTimeout parameter is properly set on the DataSource.
+ * Integration test to verify loginTimeout functionality in CdcJdbcIO.DataSourceConfiguration. This
+ * test validates that the loginTimeout parameter is properly set on the DataSource.
  */
 @RunWith(JUnit4.class)
 public class LoginTimeoutIntegrationTest {
@@ -48,9 +48,7 @@ public class LoginTimeoutIntegrationTest {
     // Verify that the DataSource is created and is a BasicDataSource
     assertNotNull("DataSource should not be null", dataSource);
     assertEquals(
-        "DataSource should be a BasicDataSource",
-        BasicDataSource.class,
-        dataSource.getClass());
+        "DataSource should be a BasicDataSource", BasicDataSource.class, dataSource.getClass());
 
     // Verify that the loginTimeout is set correctly
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
@@ -76,8 +74,6 @@ public class LoginTimeoutIntegrationTest {
 
     // Verify that the default loginTimeout is used (0 means no timeout)
     assertEquals(
-        "Default login timeout should be 0 (no timeout)",
-        0,
-        basicDataSource.getLoginTimeout());
+        "Default login timeout should be 0 (no timeout)", 0, basicDataSource.getLoginTimeout());
   }
 }

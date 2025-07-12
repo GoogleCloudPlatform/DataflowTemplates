@@ -50,8 +50,9 @@ public final class CdcJdbcIOTest {
 
   @Test
   public void testDataSourceConfiguration_withLoginTimeout_valueProvider() {
-    ValueProvider<Integer> loginTimeoutProvider = ValueProvider.StaticValueProvider.of(LOGIN_TIMEOUT);
-    
+    ValueProvider<Integer> loginTimeoutProvider =
+        ValueProvider.StaticValueProvider.of(LOGIN_TIMEOUT);
+
     CdcJdbcIO.DataSourceConfiguration config =
         CdcJdbcIO.DataSourceConfiguration.create(DRIVER_CLASS_NAME, URL)
             .withUsername(USERNAME)
@@ -71,10 +72,10 @@ public final class CdcJdbcIOTest {
             .withLoginTimeout(LOGIN_TIMEOUT);
 
     DataSource dataSource = config.buildDatasource();
-    
+
     assertNotNull(dataSource);
     assertEquals(BasicDataSource.class, dataSource.getClass());
-    
+
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
     assertEquals(LOGIN_TIMEOUT.intValue(), basicDataSource.getLoginTimeout());
     assertEquals(DRIVER_CLASS_NAME, basicDataSource.getDriverClassName());
@@ -84,17 +85,18 @@ public final class CdcJdbcIOTest {
   }
 
   @Test
-  public void testDataSourceConfiguration_buildDatasource_withoutLoginTimeout() throws SQLException {
+  public void testDataSourceConfiguration_buildDatasource_withoutLoginTimeout()
+      throws SQLException {
     CdcJdbcIO.DataSourceConfiguration config =
         CdcJdbcIO.DataSourceConfiguration.create(DRIVER_CLASS_NAME, URL)
             .withUsername(USERNAME)
             .withPassword(PASSWORD);
 
     DataSource dataSource = config.buildDatasource();
-    
+
     assertNotNull(dataSource);
     assertEquals(BasicDataSource.class, dataSource.getClass());
-    
+
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
     // Default login timeout should be 0 (no timeout)
     assertEquals(0, basicDataSource.getLoginTimeout());
@@ -113,16 +115,16 @@ public final class CdcJdbcIOTest {
   @Test
   public void testDataSourceConfiguration_withLoginTimeout_nullValueProvider() throws SQLException {
     ValueProvider<Integer> nullProvider = ValueProvider.StaticValueProvider.of(null);
-    
+
     CdcJdbcIO.DataSourceConfiguration config =
         CdcJdbcIO.DataSourceConfiguration.create(DRIVER_CLASS_NAME, URL)
             .withLoginTimeout(nullProvider);
 
     DataSource dataSource = config.buildDatasource();
-    
+
     assertNotNull(dataSource);
     assertEquals(BasicDataSource.class, dataSource.getClass());
-    
+
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
     // Should use default login timeout when null value is provided
     assertEquals(0, basicDataSource.getLoginTimeout());
