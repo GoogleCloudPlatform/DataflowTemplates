@@ -73,7 +73,7 @@
     <log4j-2.version>2.24.3</log4j-2.version>
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
-    <json.version>20231013</json.version>
+    <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>2.0.16</slf4j.version>
