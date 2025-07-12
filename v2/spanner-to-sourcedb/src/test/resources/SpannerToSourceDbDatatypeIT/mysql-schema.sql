@@ -30,3 +30,38 @@ CREATE TABLE `AllDatatypeColumns` (
     `bit_column` bit(7),                   
     PRIMARY KEY (`varchar_column`)
 );
+
+CREATE TABLE `AllDatatypePkColumns1` (
+                                         `varchar_column` varchar(20) NOT NULL,
+                                         `tinyint_column` tinyint,
+                                         `text_column` text,
+                                         `date_column` date,
+                                         `smallint_column` smallint,
+                                         `mediumint_column` mediumint,
+                                         `int_column` int,
+                                         `bigint_column` bigint,
+                                         `float_column` float(10,2),
+    `double_column` double,
+    `decimal_column` decimal(10,2),
+    `datetime_column` datetime,
+    `timestamp_column` timestamp,
+    `time_column` time,
+    `year_column` year,
+PRIMARY KEY (`varchar_column`,`tinyint_column`,`text_column`(10),`date_column`,`smallint_column`,`mediumint_column`,`int_column`,`bigint_column`,`float_column`,`double_column`,`decimal_column`,`datetime_column`,`timestamp_column`,`time_column`,`year_column`));
+
+CREATE TABLE `AllDatatypePkColumns2` (
+                                         `char_column` char(10),
+                                         `tinyblob_column` tinyblob,
+                                         `tinytext_column` tinytext,
+                                         `blob_column` blob(10),
+                                         `mediumblob_column` mediumblob,
+                                         `mediumtext_column` mediumtext,
+                                         `longblob_column` longblob,
+                                         `longtext_column` longtext,
+                                         `enum_column` enum('1','2','3'),
+                                         `bool_column` tinyint(1),
+                                         `other_bool_column` tinyint(1),
+                                         `binary_column` binary(10),
+                                         `varbinary_column` varbinary(20),
+                                         `bit_column` bit(7),
+                                         PRIMARY KEY (`char_column`,`tinyblob_column`(10),`tinytext_column`(10),`blob_column`(10),`mediumblob_column`(10),`mediumtext_column`(10),`longblob_column`(10),`longtext_column`(10),`enum_column`,`bool_column`,`other_bool_column`,`binary_column`,`varbinary_column`,`bit_column`));

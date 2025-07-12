@@ -100,6 +100,8 @@ public class AssignShardIdFnTest {
     when(mockRow.getValue("accountName")).thenReturn(Value.string("xyz"));
     when(mockRow.getValue("migration_shard_id")).thenReturn(Value.string("shard1"));
     when(mockRow.getValue("accountNumber")).thenReturn(Value.int64(1));
+    when(mockRow.getValue("bytesCol"))
+        .thenReturn(Value.bytes(ByteArray.copyFrom("GOOGLE".getBytes())));
 
     // Mock readRow
     when(mockReadOnlyTransaction.readRow(eq("tableName"), any(Key.class), any(Iterable.class)))
@@ -151,6 +153,7 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
+
     assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
   }
 
@@ -184,8 +187,9 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
+
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\"}";
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -221,7 +225,7 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\"}";
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -759,6 +763,9 @@ public class AssignShardIdFnTest {
             .endColumn()
             .column("accountNumber")
             .int64()
+            .endColumn()
+            .column("bytesCol")
+            .bytes()
             .endColumn()
             .endTable()
             .build();
