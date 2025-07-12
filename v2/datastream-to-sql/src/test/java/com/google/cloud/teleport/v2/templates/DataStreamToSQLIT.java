@@ -144,6 +144,12 @@ public class DataStreamToSQLIT extends TemplateTestBase {
   }
 
   @Test
+  public void testDataStreamWithLoginTimeout() throws IOException {
+    simpleOracleToJdbcTest(
+        JDBCType.POSTGRES, config -> config.addParameter("databaseLoginTimeout", "30"));
+  }
+
+  @Test
   @Ignore("Consolidate feature matrix for expensive tests")
   public void testDataStreamOracleToMySqlJsonGCSNotifications() throws IOException {
     // Set up pubsub notifications
