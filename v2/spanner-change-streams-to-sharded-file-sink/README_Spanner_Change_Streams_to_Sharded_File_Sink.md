@@ -1,8 +1,9 @@
 
-Spanner Change Streams to Sharded File Sink template
+Spanner Change Streams to Sharded File Sink [Deprecated] template
 ---
 Streaming pipeline. Ingests data from Spanner Change Streams, splits them into
-shards and intervals , and writes them to a file sink.
+shards and intervals , and writes them to a file sink. [Deprecated: Please use
+Spanner Change Streams to Source Database template instead].
 
 
 :memo: This is a Google-provided template! Please

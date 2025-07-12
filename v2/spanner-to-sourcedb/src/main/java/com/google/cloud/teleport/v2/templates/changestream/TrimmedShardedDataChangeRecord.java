@@ -91,6 +91,10 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     return mod;
   }
 
+  public void setMod(Mod mod) {
+    this.mod = mod;
+  }
+
   public ModType getModType() {
     return modType;
   }

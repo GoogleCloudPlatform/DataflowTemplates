@@ -11,7 +11,7 @@ how to review/merge code, or other info, see the
 ## Prerequisites
 
 If you are not already familiar with Dataflow, Dataflow Templates (especially
-flex templates), and Apache Beam it is recommended that you familarize yourself
+flex templates), and Apache Beam it is recommended that you familiarize yourself
 with each of these at a high level before contributing. Information on each of
 these can be found in the following locations:
 

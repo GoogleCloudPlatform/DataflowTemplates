@@ -108,7 +108,7 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-private-connect-us-central1")
+            .setPrivateConnectivity("datastream-connect-2")
             .build();
 
     bigQueryResourceManager =
@@ -217,6 +217,25 @@ public class DataStreamToBigQueryIT extends TemplateTestBase {
                 .addParameter("inputFileFormat", "avro")
                 .addParameter("gcsPubSubSubscription", subscriptionName.toString())
                 .addEnvironment("additionalExperiments", experiments)
+                .addEnvironment("enableStreamingEngine", true));
+  }
+
+  @Test
+  public void testDataStreamToBigQueryUsingStorageWriteApi() throws IOException {
+    // Set up pubsub notifications
+    SubscriptionName subscriptionName = createGcsNotifications();
+
+    simpleJdbcToBigQueryTest(
+        JDBCType.MYSQL,
+        DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT,
+        config ->
+            config
+                .addParameter("inputFileFormat", "avro")
+                .addParameter("gcsPubSubSubscription", subscriptionName.toString())
+                .addParameter("useStorageWriteApi", "true")
+                .addParameter("useStorageWriteApiAtLeastOnce", "true")
+                .addParameter("numStorageWriteApiStreams", "1")
+                .addParameter("storageWriteApiTriggeringFrequencySec", "1")
                 .addEnvironment("enableStreamingEngine", true));
   }
 

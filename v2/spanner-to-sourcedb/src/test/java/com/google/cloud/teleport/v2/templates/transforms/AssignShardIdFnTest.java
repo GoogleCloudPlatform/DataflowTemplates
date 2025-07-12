@@ -64,6 +64,7 @@ import org.junit.FixMethodOrder;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -120,7 +121,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
     Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
@@ -145,7 +147,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
     assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
@@ -166,7 +169,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -180,6 +184,10 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
+    String newValuesJson =
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+    record.setMod(
+        new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
@@ -198,7 +206,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -211,7 +220,10 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
-
+    String newValuesJson =
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+    record.setMod(
+        new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
@@ -230,11 +242,18 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
-    record.setShard("test");
-    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "test";
+    record.setShard("shard1");
+    //
+    String newValuesJson =
+        "{\"accountName\": \"abc\", \"migration_shard_id\": \"shard1\", \"accountNumber\": 1}";
+    record.setMod(
+        new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
+    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
+    key = 7554L;
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
@@ -256,7 +275,8 @@ public class AssignShardIdFnTest {
             customJarPath,
             shardingCustomClassName,
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     assignShardIdFn.setShardIdFetcher(
         ShardingLogicImplFetcher.getShardingLogicImpl(
             customJarPath, shardingCustomClassName, "", getSchemaObject(), "skip"));
@@ -310,7 +330,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -325,7 +346,10 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
-
+    String newValuesJson =
+        "{\"json_field\":\"{\\\"a\\\": \\\"b\\\"}\",\"date_field2\":\"2020-12-30\",\"timestamp_field2\":\"2023-05-18T12:01:13.088397258Z\"}";
+    record.setMod(
+        new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
@@ -344,7 +368,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -378,7 +403,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     record.setShard("skip");
@@ -405,7 +431,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     ShardIdFetcherImpl shardIdFetcher =
@@ -431,7 +458,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     ShardIdFetcherImpl shardIdFetcher =
@@ -457,7 +485,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     ShardIdFetcherImpl shardIdFetcher =
@@ -482,7 +511,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -519,7 +549,8 @@ public class AssignShardIdFnTest {
             "",
             "",
             "",
-            10000L);
+            10000L,
+            Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -535,6 +566,62 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+  }
+
+  @Test
+  public void testProcessElementDeleteModUsesCorrectStaleReadTimestamp() throws Exception {
+    // Define a precise commit timestamp for the test record.
+    com.google.cloud.Timestamp commitTimestamp =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(1678886400, 5000);
+    TrimmedShardedDataChangeRecord record =
+        new TrimmedShardedDataChangeRecord(
+            commitTimestamp,
+            "serverTxnId",
+            "recordSeq",
+            "tableName",
+            new Mod("{\"accountId\": \"Id1\"}", "{}", "{}"),
+            ModType.valueOf("DELETE"),
+            1,
+            "");
+    when(processContext.element()).thenReturn(record);
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            getSchemaObject(),
+            getTestDdl(),
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL);
+
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+
+    // Triggers the stale read.
+    assignShardIdFn.processElement(processContext);
+
+    ArgumentCaptor<TimestampBound> timestampBoundCaptor =
+        ArgumentCaptor.forClass(TimestampBound.class);
+    verify(mockDatabaseClient).singleUse(timestampBoundCaptor.capture());
+
+    com.google.cloud.Timestamp expectedStaleTimestamp =
+        com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
+            commitTimestamp.getSeconds(), commitTimestamp.getNanos() - 1000);
+
+    // Extract the actual timestamp from the captured bound and verify it is a microsecond older
+    TimestampBound capturedBound = timestampBoundCaptor.getValue();
+    com.google.cloud.Timestamp actualStaleTimestamp = capturedBound.getReadTimestamp();
+
+    assertEquals(expectedStaleTimestamp, actualStaleTimestamp);
   }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {

@@ -1,8 +1,9 @@
 
-GCS to Source DB template
+GCS to Source DB [Deprecated] template
 ---
 Streaming pipeline. Reads Spanner change stream messages from GCS, orders them,
-transforms them, and writes them to a Source Database like MySQL.
+transforms them, and writes them to a Source Database like MySQL. [Deprecated:
+Please use Spanner Change Streams to Source Database template instead].
 
 
 :memo: This is a Google-provided template! Please
