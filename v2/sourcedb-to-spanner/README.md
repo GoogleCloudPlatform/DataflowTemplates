@@ -99,11 +99,13 @@ gcloud  dataflow flex-template run <jobname> \
 --region=<the region where the dataflow job must run> \
 --template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
 --additional-experiments=use_runner_v2 \
---parameters inputFilePattern=<GCS location of the input file pattern>,streamName="ignore", \
---datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>\
-instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>, \
+--parameters inputFilePattern=<GCS location of the input file pattern>,streamName="ignore",\
+datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>,\
+instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
 deadLetterQueueDirectory=<outputDirectory/dlq>,runMode="retryDLQ"
 ```
+For DLQ Replay for Cassandra source, set the `datastreamSourceType` as `mysql`.
+
 ##### Checking if all DLQ entries are applied.
 To check if all DLQ entries have been applied to spanner, you could count the DLQ files in GCS and wait for it to go to 0.
 ```bash

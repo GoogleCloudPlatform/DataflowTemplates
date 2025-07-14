@@ -26,7 +26,7 @@
     <artifactId>it-jdbc</artifactId>
 
     <properties>
-        <parquet-avro.version>1.12.0</parquet-avro.version>
+        <parquet-avro.version>1.15.1</parquet-avro.version>
     </properties>
     <dependencies>
         <dependency>

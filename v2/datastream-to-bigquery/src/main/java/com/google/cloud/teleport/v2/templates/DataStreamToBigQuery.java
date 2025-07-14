@@ -55,6 +55,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.CreateDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.Write.WriteDisposition;
 import org.apache.beam.sdk.io.gcp.bigquery.InsertRetryPolicy;
+import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.io.gcp.bigquery.WriteResult;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -65,11 +66,14 @@ import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.apache.beam.sdk.transforms.SimpleFunction;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.ValueInSingleWindow;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -223,7 +227,7 @@ public class DataStreamToBigQuery {
         groupName = "Target",
         description = "Name or template for the dataset to contain staging tables.",
         helpText =
-            "The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.")
+            "The name of the dataset that contains staging tables. This parameter supports templates, for example `{_metadata_dataset}_log` or `my_dataset_log`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.")
     @Default.String("{_metadata_dataset}")
     String getOutputStagingDatasetTemplate();
 
@@ -246,7 +250,7 @@ public class DataStreamToBigQuery {
         groupName = "Target",
         description = "Template for the dataset to contain replica tables.",
         helpText =
-            "The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`.")
+            "The name of the dataset that contains the replica tables. This parameter supports templates, for example `{_metadata_dataset}` or `my_dataset`. Normally, this parameter is a dataset name. Defaults to `{_metadata_dataset}`. Note: For MySQL sources, the database name is mapped to `{_metadata_schema}` instead of `{_metadata_dataset}`.")
     @Default.String("{_metadata_dataset}")
     String getOutputDatasetTemplate();
 
@@ -517,32 +521,77 @@ public class DataStreamToBigQuery {
     // TODO(beam 2.23): InsertRetryPolicy should be CDC compliant
     Set<String> fieldsToIgnore = getFieldsToIgnore(options.getIgnoreFields());
 
-    WriteResult writeResult =
-        shuffledTableRows
-            .apply(
-                "Map to Staging Tables",
-                new DataStreamMapper(
-                        options.as(GcpOptions.class),
-                        options.getOutputProjectId(),
-                        options.getOutputStagingDatasetTemplate(),
-                        options.getOutputStagingTableNameTemplate())
-                    .withDataStreamRootUrl(options.getDataStreamRootUrl())
-                    .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
-                    .withDayPartitioning(true)
-                    .withIgnoreFields(fieldsToIgnore))
-            .apply(
-                "Write Successful Records",
-                BigQueryIO.<KV<TableId, TableRow>>write()
-                    .to(new BigQueryDynamicConverters().bigQueryDynamicDestination())
-                    .withFormatFunction(
-                        element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
-                    .withFormatRecordOnFailureFunction(element -> element.getValue())
-                    .withoutValidation()
-                    .ignoreInsertIds()
-                    .withCreateDisposition(CreateDisposition.CREATE_NEVER)
-                    .withWriteDisposition(WriteDisposition.WRITE_APPEND)
-                    .withExtendedErrorInfo() // takes effect only when Storage Write API is off
-                    .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    PCollection<KV<TableId, TableRow>> mappedStagingRecords =
+        shuffledTableRows.apply(
+            "Map to Staging Tables",
+            new DataStreamMapper(
+                    options.as(GcpOptions.class),
+                    options.getOutputProjectId(),
+                    options.getOutputStagingDatasetTemplate(),
+                    options.getOutputStagingTableNameTemplate())
+                .withDataStreamRootUrl(options.getDataStreamRootUrl())
+                .withDefaultSchema(BigQueryDefaultSchemas.DATASTREAM_METADATA_SCHEMA)
+                .withDayPartitioning(true)
+                .withIgnoreFields(fieldsToIgnore));
+
+    WriteResult writeResult;
+    if (options.getUseStorageWriteApi()) {
+      // SerializableCoder(com.google.cloud.bigquery.TableId) is not a deterministic key coder.
+      // So we have to convert tableid to a string.
+      writeResult =
+          mappedStagingRecords
+              .apply(
+                  "TableId to String",
+                  MapElements.via(
+                      new SimpleFunction<KV<TableId, TableRow>, KV<String, TableRow>>() {
+                        @Override
+                        public KV<String, TableRow> apply(KV<TableId, TableRow> input) {
+                          TableId tableId = input.getKey();
+                          String projectId = tableId.getProject();
+                          if (projectId == null) {
+                            projectId = bigqueryProjectId;
+                          }
+                          return KV.of(
+                              String.format(
+                                  "%s:%s.%s", projectId, tableId.getDataset(), tableId.getTable()),
+                              input.getValue());
+                        }
+                      }))
+              .apply(
+                  "Write Successful Records",
+                  BigQueryIO.<KV<String, TableRow>>write()
+                      .to(
+                          (SerializableFunction<
+                                  ValueInSingleWindow<KV<String, TableRow>>, TableDestination>)
+                              value -> {
+                                String tableSpec = value.getValue().getKey();
+                                return new TableDestination(tableSpec, "Table for " + tableSpec);
+                              })
+                      .withFormatFunction(
+                          element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
+                      .withFormatRecordOnFailureFunction(element -> element.getValue())
+                      .withoutValidation()
+                      .ignoreInsertIds()
+                      .ignoreUnknownValues()
+                      .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                      .withWriteDisposition(WriteDisposition.WRITE_APPEND));
+    } else {
+      writeResult =
+          mappedStagingRecords.apply(
+              "Write Successful Records",
+              BigQueryIO.<KV<TableId, TableRow>>write()
+                  .to(new BigQueryDynamicConverters().bigQueryDynamicDestination())
+                  .withFormatFunction(
+                      element -> removeTableRowFields(element.getValue(), fieldsToIgnore))
+                  .withFormatRecordOnFailureFunction(element -> element.getValue())
+                  .withoutValidation()
+                  .ignoreInsertIds()
+                  .ignoreUnknownValues()
+                  .withCreateDisposition(CreateDisposition.CREATE_NEVER)
+                  .withWriteDisposition(WriteDisposition.WRITE_APPEND)
+                  .withExtendedErrorInfo() // takes effect only when Storage Write API is off
+                  .withFailedInsertRetryPolicy(InsertRetryPolicy.retryTransientErrors()));
+    }
 
     if (options.getApplyMerge()) {
       shuffledTableRows

@@ -100,7 +100,8 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection),
-            null);
+            null,
+            0L);
 
     JdbcIOWrapperConfig configWithoutConnectionProperties =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
@@ -120,7 +121,8 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection),
-            null);
+            null,
+            0L);
 
     assertThat(configWithConnectionProperties.sourceDbURL())
         .isEqualTo(
@@ -185,7 +187,8 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection),
-            null);
+            null,
+            0L);
     JdbcIOWrapperConfig configWithoutConnectionParameters =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
@@ -204,11 +207,14 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection),
-            null);
+            null,
+            -1L);
     assertThat(configWithoutConnectionParameters.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public");
     assertThat(configWithConnectionParameters.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=public&testParam=testValue");
+    assertThat(configWithConnectionParameters.splitStageCountHint()).isEqualTo(0L);
+    assertThat(configWithoutConnectionParameters.splitStageCountHint()).isEqualTo(-1L);
   }
 
   @Test
@@ -233,7 +239,8 @@ public class OptionsToConfigBuilderTest {
             10,
             0,
             Wait.on(dummyPCollection),
-            null);
+            null,
+            0L);
     assertThat(configWithNamespace.sourceDbURL())
         .isEqualTo("jdbc:postgresql://myhost:5432/mydb?currentSchema=mynamespace");
   }

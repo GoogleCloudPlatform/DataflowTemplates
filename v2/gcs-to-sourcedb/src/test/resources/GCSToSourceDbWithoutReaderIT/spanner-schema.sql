@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS Users (
     name STRING(25),
 ) PRIMARY KEY(id);
 
-CREATE TABLE AllDatatypeTransformation (
+CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (
 	varchar_column STRING(20) NOT NULL,
 	tinyint_column INT64,
 	text_column STRING(MAX),

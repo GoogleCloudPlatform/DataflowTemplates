@@ -40,7 +40,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional parameters
 
 * **apiKey**: The Datadog API key. You must provide this value if the `apiKeySource` is set to `PLAINTEXT` or `KMS`. For more information, see API and Application Keys (https://docs.datadoghq.com/account_management/api-app-keys/) in the Datadog documentation.
-* **batchCount**: The batch size for sending multiple events to Datadog. The default is `1` (no batching).
+* **batchCount**: The batch size for sending multiple events to Datadog. The default is `100`.
 * **parallelism**: The maximum number of parallel requests. The default is `1` (no parallelism).
 * **includePubsubMessage**: Whether to include the full Pub/Sub message in the payload. The default is `true` (all elements, including the data element, are included in the payload).
 * **apiKeyKMSEncryptionKey**: The Cloud KMS key to use to decrypt the API Key. You must provide this parameter if the `apiKeySource` is set to `KMS`. If the Cloud KMS key is provided, you must pass in an encrypted API Key. For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`.
@@ -66,7 +66,7 @@ for more information about how to create and test those functions.
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:

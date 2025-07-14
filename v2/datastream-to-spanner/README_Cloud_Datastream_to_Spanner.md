@@ -47,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **inputFilePattern**: The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled.
+* **inputFilePattern**: The Cloud Storage file location that contains the Datastream files to replicate. Typically, this is the root path for a stream. Support for this feature has been disabled. Please use this feature only for retrying entries that land in severe DLQ.
 * **inputFileFormat**: The format of the output file produced by Datastream. For example `avro,json`. Defaults to `avro`.
 * **sessionFilePath**: Session file path in Cloud Storage that contains mapping information from HarbourBridge.
 * **projectId**: The Spanner project ID.
@@ -77,6 +77,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **tableOverrides**: These are the table name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
 * **columnOverrides**: These are the column name overrides from source to spanner. They are written in thefollowing format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
 * **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from source to spanner. Defaults to empty.
+* **shadowTableSpannerDatabaseId**: Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well. Defaults to empty.
+* **shadowTableSpannerInstanceId**: Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well. Defaults to empty.
+* **failureInjectionParameter**: Failure injection parameter. Only used for testing. Defaults to empty.
 
 
 
@@ -84,7 +87,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -189,6 +192,9 @@ export SHARDING_CONTEXT_FILE_PATH=<shardingContextFilePath>
 export TABLE_OVERRIDES=""
 export COLUMN_OVERRIDES=""
 export SCHEMA_OVERRIDES_FILE_PATH=""
+export SHADOW_TABLE_SPANNER_DATABASE_ID=""
+export SHADOW_TABLE_SPANNER_INSTANCE_ID=""
+export FAILURE_INJECTION_PARAMETER=""
 
 gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --project "$PROJECT" \
@@ -225,7 +231,10 @@ gcloud dataflow flex-template run "cloud-datastream-to-spanner-job" \
   --parameters "shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH" \
   --parameters "tableOverrides=$TABLE_OVERRIDES" \
   --parameters "columnOverrides=$COLUMN_OVERRIDES" \
-  --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH"
+  --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
+  --parameters "shadowTableSpannerDatabaseId=$SHADOW_TABLE_SPANNER_DATABASE_ID" \
+  --parameters "shadowTableSpannerInstanceId=$SHADOW_TABLE_SPANNER_INSTANCE_ID" \
+  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER"
 ```
 
 For more information about the command, please check:
@@ -278,6 +287,9 @@ export SHARDING_CONTEXT_FILE_PATH=<shardingContextFilePath>
 export TABLE_OVERRIDES=""
 export COLUMN_OVERRIDES=""
 export SCHEMA_OVERRIDES_FILE_PATH=""
+export SHADOW_TABLE_SPANNER_DATABASE_ID=""
+export SHADOW_TABLE_SPANNER_INSTANCE_ID=""
+export FAILURE_INJECTION_PARAMETER=""
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -286,7 +298,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-spanner-job" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY,shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,inputFileFormat=$INPUT_FILE_FORMAT,sessionFilePath=$SESSION_FILE_PATH,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,streamName=$STREAM_NAME,shadowTablePrefix=$SHADOW_TABLE_PREFIX,shouldCreateShadowTables=$SHOULD_CREATE_SHADOW_TABLES,rfcStartDateTime=$RFC_START_DATE_TIME,fileReadConcurrency=$FILE_READ_CONCURRENCY,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqRetryMinutes=$DLQ_RETRY_MINUTES,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,datastreamSourceType=$DATASTREAM_SOURCE_TYPE,roundJsonDecimals=$ROUND_JSON_DECIMALS,runMode=$RUN_MODE,transformationContextFilePath=$TRANSFORMATION_CONTEXT_FILE_PATH,directoryWatchDurationInMinutes=$DIRECTORY_WATCH_DURATION_IN_MINUTES,spannerPriority=$SPANNER_PRIORITY,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filteredEventsDirectory=$FILTERED_EVENTS_DIRECTORY,shardingContextFilePath=$SHARDING_CONTEXT_FILE_PATH,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,shadowTableSpannerDatabaseId=$SHADOW_TABLE_SPANNER_DATABASE_ID,shadowTableSpannerInstanceId=$SHADOW_TABLE_SPANNER_INSTANCE_ID,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
 -f v2/datastream-to-spanner
 ```
 
@@ -363,6 +375,9 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_spanner" {
     # tableOverrides = ""
     # columnOverrides = ""
     # schemaOverridesFilePath = ""
+    # shadowTableSpannerDatabaseId = ""
+    # shadowTableSpannerInstanceId = ""
+    # failureInjectionParameter = ""
   }
 }
 ```

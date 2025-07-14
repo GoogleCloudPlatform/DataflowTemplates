@@ -88,6 +88,9 @@ public final class UnifiedTypeMapper {
         : SchemaBuilder.builder().unionOf().nullType().and().type(schema).endUnion();
   }
 
+  /*
+   * TODO(vardhanvthigle): Handle Nested collections.
+   */
   private Schema getBasicSchema(SourceColumnType columnType) {
     return mappers
         .get(this.mapperType)

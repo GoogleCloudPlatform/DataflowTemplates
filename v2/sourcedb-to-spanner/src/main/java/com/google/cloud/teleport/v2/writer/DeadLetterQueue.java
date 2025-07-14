@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.constants.MetricCounters;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.avro.GenericRecordTypeConvertor;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.templates.datastream.DatastreamConstants;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
@@ -65,6 +67,8 @@ public class DeadLetterQueue implements Serializable {
 
   private final SQLDialect sqlDialect;
 
+  private final ISchemaMapper schemaMapper;
+
   public static final Counter FAILED_MUTATION_COUNTER =
       Metrics.counter(SpannerWriter.class, MetricCounters.FAILED_MUTATION_ERRORS);
 
@@ -72,8 +76,10 @@ public class DeadLetterQueue implements Serializable {
       String dlqDirectory,
       Ddl ddl,
       Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect) {
-    return new DeadLetterQueue(dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect);
+      SQLDialect sqlDialect,
+      ISchemaMapper iSchemaMapper) {
+    return new DeadLetterQueue(
+        dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, iSchemaMapper);
   }
 
   public String getDlqDirectory() {
@@ -88,12 +94,14 @@ public class DeadLetterQueue implements Serializable {
       String dlqDirectory,
       Ddl ddl,
       Map<String, String> srcTableToShardIdColumnMap,
-      SQLDialect sqlDialect) {
+      SQLDialect sqlDialect,
+      ISchemaMapper iSchemaMapper) {
     this.dlqDirectory = dlqDirectory;
     this.dlqTransform = createDLQTransform(dlqDirectory);
     this.ddl = ddl;
     this.srcTableToShardIdColumnMap = srcTableToShardIdColumnMap;
     this.sqlDialect = sqlDialect;
+    this.schemaMapper = iSchemaMapper;
   }
 
   @VisibleForTesting
@@ -188,6 +196,23 @@ public class DeadLetterQueue implements Serializable {
 
     for (Field f : record.getSchema().getFields()) {
       Object value = record.get(f.name());
+      /*
+       * We take special care that if GenericRecordTypeConvertor throws an exception,
+       * we would still preserve the original record in DLQ.
+       * Also note that here we are calling a static utility from GenericRecordTypeConvertor
+       * Which just marshals types like logical, record etc. It does not pass the data via custom transform.
+       */
+      try {
+        value =
+            GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
+                record, f, r.row().tableName(), schemaMapper);
+      } catch (Exception e) {
+        LOG.error(
+            "Error in mapping DLQ record field to Json Node, record, record = {}, field = {}. Unmapped record would be emitted to DLQ.",
+            record,
+            f,
+            e);
+      }
       json.put(f.name(), value == null ? null : value.toString());
     }
     if (r.row().shardId() != null) {
@@ -257,6 +282,8 @@ public class DeadLetterQueue implements Serializable {
     json.put(DatastreamConstants.EVENT_CHANGE_TYPE_KEY, DatastreamConstants.UPDATE_INSERT_EVENT);
     json.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, tableName);
     json.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, timeStamp);
+    json.put("_metadata_read_timestamp", timeStamp);
+    json.put("_metadata_dataflow_timestamp", timeStamp);
     switch (this.sqlDialect) {
       case POSTGRESQL:
         json.put(

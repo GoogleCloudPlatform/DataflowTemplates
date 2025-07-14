@@ -31,6 +31,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PLACEMEN
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_PROPERTY_GRAPH;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_FOREIGN_KEY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INDEX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_INTERLEAVE_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_LABEL;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NAMED_SCHEMA;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_NODE_TABLE;
@@ -46,6 +47,12 @@ import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_OPTION;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_DEFINITION;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_NAME;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_PARAMETER;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_SECURITY;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_UDF_TYPE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_QUERY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_VIEW_SECURITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SQL_TYPE;
@@ -55,6 +62,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.unpackNullable;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.common.NumericUtils;
+import com.google.cloud.teleport.spanner.common.SizedType;
 import com.google.cloud.teleport.spanner.common.Type;
 import com.google.cloud.teleport.spanner.ddl.ChangeStream;
 import com.google.cloud.teleport.spanner.ddl.Column;
@@ -68,6 +76,9 @@ import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph.PropertyDeclaration;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
+import com.google.cloud.teleport.spanner.ddl.Udf;
+import com.google.cloud.teleport.spanner.ddl.UdfParameter;
 import com.google.cloud.teleport.spanner.ddl.View;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
@@ -98,6 +109,8 @@ public class AvroSchemaToDdlConverter {
     for (Schema schema : avroSchemas) {
       if (schema.getProp(SPANNER_VIEW_QUERY) != null) {
         builder.addView(toView(null, schema));
+      } else if (SPANNER_UDF.equals(schema.getProp(SPANNER_ENTITY))) {
+        builder.addUdf(toUdf(null, schema));
       } else if (SPANNER_ENTITY_MODEL.equals(schema.getProp(SPANNER_ENTITY))) {
         builder.addModel(toModel(null, schema));
       } else if (schema.getProp(SPANNER_CHANGE_STREAM_FOR_CLAUSE) != null) {
@@ -136,6 +149,31 @@ public class AvroSchemaToDdlConverter {
         View.builder(dialect).name(viewName).query(schema.getProp(SPANNER_VIEW_QUERY));
     if (schema.getProp(SPANNER_VIEW_SECURITY) != null) {
       builder.security(View.SqlSecurity.valueOf(schema.getProp(SPANNER_VIEW_SECURITY)));
+    }
+    return builder.build();
+  }
+
+  public Udf toUdf(String functionSpecificName, Schema schema) {
+    if (functionSpecificName == null) {
+      functionSpecificName = getSpannerObjectName(schema);
+    }
+    LOG.debug("Converting to Ddl functionSpecificName {}", functionSpecificName);
+
+    Udf.Builder builder =
+        Udf.builder(dialect)
+            .specificName(functionSpecificName)
+            .name(schema.getProp(SPANNER_UDF_NAME))
+            .type(schema.getProp(SPANNER_UDF_TYPE))
+            .definition(schema.getProp(SPANNER_UDF_DEFINITION));
+    if (schema.getProp(SPANNER_UDF_SECURITY) != null) {
+      builder.security(Udf.SqlSecurity.valueOf(schema.getProp(SPANNER_UDF_SECURITY)));
+    }
+    for (int i = 0; ; i++) {
+      String parameter = schema.getProp(SPANNER_UDF_PARAMETER + i);
+      if (parameter == null) {
+        break;
+      }
+      builder.addParameter(UdfParameter.parse(parameter, functionSpecificName, dialect));
     }
     return builder.build();
   }
@@ -469,7 +507,7 @@ public class AvroSchemaToDdlConverter {
     ImmutableList.Builder<String> sequenceOptions = ImmutableList.builder();
     for (int i = 0; schema.getProp(SPANNER_SEQUENCE_OPTION + i) != null; i++) {
       String prop = schema.getProp(SPANNER_SEQUENCE_OPTION + i);
-      if (prop.equals("sequence_kind=default")) {
+      if (prop.equals("sequence_kind=\"default\"")) {
         // Specify no sequence kind by using the default_sequence_kind database option.
         continue;
       }
@@ -561,7 +599,7 @@ public class AvroSchemaToDdlConverter {
         }
         if (Strings.isNullOrEmpty(sqlType)) {
           Type spannerType = inferType(avroType, true);
-          sqlType = toString(spannerType, true);
+          sqlType = SizedType.typeString(spannerType, -1, true);
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
@@ -612,6 +650,16 @@ public class AvroSchemaToDdlConverter {
     String spannerParent = schema.getProp(SPANNER_PARENT);
     if (!Strings.isNullOrEmpty(spannerParent)) {
       table.interleaveInParent(spannerParent);
+
+      // Process the interleave type.
+      String spannerInterleaveType = schema.getProp(SPANNER_INTERLEAVE_TYPE);
+      if (!Strings.isNullOrEmpty(spannerInterleaveType)) {
+        table.interleaveType(
+            spannerInterleaveType.equals("IN") ? InterleaveType.IN : InterleaveType.IN_PARENT);
+      } else {
+        // Default to IN_PARENT for backwards compatibility with older exports.
+        table.interleaveType(InterleaveType.IN_PARENT);
+      }
 
       // Process the on delete action.
       String onDeleteAction = schema.getProp(SPANNER_ON_DELETE_ACTION);
@@ -685,6 +733,11 @@ public class AvroSchemaToDdlConverter {
             ? com.google.cloud.teleport.spanner.common.Type.float64()
             : com.google.cloud.teleport.spanner.common.Type.pgFloat8();
       case STRING:
+        if (LogicalTypes.uuid().equals(logicalType)) {
+          return (dialect == Dialect.GOOGLE_STANDARD_SQL)
+              ? com.google.cloud.teleport.spanner.common.Type.uuid()
+              : com.google.cloud.teleport.spanner.common.Type.pgUuid();
+        }
         return (dialect == Dialect.GOOGLE_STANDARD_SQL)
             ? com.google.cloud.teleport.spanner.common.Type.string()
             : com.google.cloud.teleport.spanner.common.Type.pgVarchar();
@@ -726,80 +779,5 @@ public class AvroSchemaToDdlConverter {
         }
     }
     throw new IllegalArgumentException("Cannot infer a type " + f);
-  }
-
-  private String toString(
-      com.google.cloud.teleport.spanner.common.Type spannerType, boolean supportArray) {
-    switch (spannerType.getCode()) {
-      case BOOL:
-        return "BOOL";
-      case PG_BOOL:
-        return "boolean";
-      case INT64:
-        return "INT64";
-      case PG_INT8:
-        return "bigint";
-      case FLOAT32:
-        return "FLOAT32";
-      case PG_FLOAT4:
-        return "real";
-      case FLOAT64:
-        return "FLOAT64";
-      case PG_FLOAT8:
-        return "double precision";
-      case STRING:
-        return "STRING(MAX)";
-      case PG_TEXT:
-        return "text";
-      case PG_VARCHAR:
-        return "character varying";
-      case BYTES:
-        return "BYTES(MAX)";
-      case PG_BYTEA:
-        return "bytea";
-      case TIMESTAMP:
-        return "TIMESTAMP";
-      case PG_TIMESTAMPTZ:
-        return "timestamp with time zone";
-      case PG_SPANNER_COMMIT_TIMESTAMP:
-        return "spanner.commit_timestamp";
-      case DATE:
-        return "DATE";
-      case PG_DATE:
-        return "date";
-      case NUMERIC:
-        return "NUMERIC";
-      case PG_NUMERIC:
-        return "numeric";
-      case JSON:
-        return "JSON";
-      case PROTO:
-        return "PROTO<" + spannerType.getProtoTypeFqn() + ">";
-      case ENUM:
-        return "ENUM<" + spannerType.getProtoTypeFqn() + ">";
-      case ARRAY:
-        {
-          if (supportArray) {
-            com.google.cloud.teleport.spanner.common.Type element =
-                spannerType.getArrayElementType();
-            String elementStr = toString(element, false);
-            return "ARRAY<" + elementStr + ">";
-          }
-          // otherwise fall through and throw an error.
-          break;
-        }
-      case PG_ARRAY:
-        {
-          if (supportArray) {
-            com.google.cloud.teleport.spanner.common.Type element =
-                spannerType.getArrayElementType();
-            String elementStr = toString(element, false);
-            return elementStr + "[]";
-          }
-          // otherwise fall through and throw an error.
-          break;
-        }
-    }
-    throw new IllegalArgumentException("Cannot to string the type " + spannerType);
   }
 }

@@ -90,7 +90,8 @@ public class CassandraIOWrapperFactoryTest {
         mockTableReaders = ImmutableMap.of(mockSourceTableReference, mockTableReader);
 
     mockCassandraIoWrapperHelper
-        .when(() -> CassandraIOWrapperHelper.buildDataSource(TEST_BUCKET_CASSANDRA_CONFIG_CONF))
+        .when(
+            () -> CassandraIOWrapperHelper.buildDataSource(TEST_BUCKET_CASSANDRA_CONFIG_CONF, null))
         .thenReturn(dataSource);
     mockCassandraIoWrapperHelper
         .when(() -> CassandraIOWrapperHelper.buildSchemaDiscovery())
@@ -125,6 +126,7 @@ public class CassandraIOWrapperFactoryTest {
         mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
     when(mockOptions.getSourceDbDialect()).thenReturn("CASSANDRA");
     when(mockOptions.getSourceConfigURL()).thenReturn(testConfigPath);
+    when(mockOptions.getNumPartitions()).thenReturn(null);
     CassandraIOWrapperFactory cassandraIOWrapperFactory =
         CassandraIOWrapperFactory.fromPipelineOptions(mockOptions);
     assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);

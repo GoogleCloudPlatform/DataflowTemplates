@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -28,6 +29,7 @@ import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -65,6 +67,8 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
 
   private static final String TABLE = "Users";
+  private static final String BOUNDARY_CHECK_TABLE =
+      "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO";
   private static final HashSet<SpannerToSourceDbIT> testInstances = new HashSet<>();
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
@@ -92,9 +96,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
         createMySQLSchema(jdbcResourceManager, SpannerToSourceDbIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
-        gcsResourceManager =
-            GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
-                .build();
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
         createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
         gcsResourceManager.uploadArtifact(
             "input/session.json", Resources.getResource(SESSION_FILE_RESOURCE).getPath());
@@ -103,7 +105,9 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
             createPubsubResources(
                 getClass().getSimpleName(),
                 pubsubResourceManager,
-                getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""));
+                getGcsPath("dlq", gcsResourceManager)
+                    .replace("gs://" + gcsResourceManager.getBucket(), ""),
+                gcsResourceManager);
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -114,7 +118,8 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                null);
+                null,
+                MYSQL_SOURCE_TYPE);
       }
     }
   }
@@ -203,5 +208,37 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     assertThat(rows.get(0).get("id")).isEqualTo(1);
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
     assertThat(rows.get(0).get("from")).isEqualTo("AA");
+  }
+
+  @Test
+  public void spannerToMySQLSourceDbMaxColAndTableNameTest()
+      throws IOException, InterruptedException {
+    assertThatPipeline(jobInfo).isRunning();
+    // Write row in Spanner
+    writeMaxColRowsInSpanner();
+    // Assert events on Mysql
+    assertBoundaryRowInMySQL();
+  }
+
+  private void writeMaxColRowsInSpanner() {
+    List<Mutation> mutations = new ArrayList<>();
+    Mutation.WriteBuilder mutationBuilder =
+        Mutation.newInsertOrUpdateBuilder(BOUNDARY_CHECK_TABLE).set("id").to(1);
+    mutationBuilder
+        .set("col_qcbF69RmXTRe3B_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvY")
+        .to("SampleTestValue");
+
+    mutations.add(mutationBuilder.build());
+    spannerResourceManager.write(mutations);
+    LOG.info("Inserted row into Spanner using Mutations");
+  }
+
+  private void assertBoundaryRowInMySQL() throws InterruptedException {
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> jdbcResourceManager.getRowCount(BOUNDARY_CHECK_TABLE) == 1);
+    assertThatResult(result).meetsConditions();
   }
 }

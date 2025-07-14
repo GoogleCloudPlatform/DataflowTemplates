@@ -41,6 +41,7 @@ import org.mockito.junit.MockitoRule;
 import org.neo4j.driver.Driver;
 import org.neo4j.driver.Result;
 import org.neo4j.driver.Session;
+import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.Value;
 import org.neo4j.driver.Values;
 import org.neo4j.driver.internal.InternalRecord;
@@ -59,7 +60,7 @@ public class Neo4jConnectionTest {
   @Before
   public void setUp() {
     when(session.run(anyString(), anyMap(), any())).thenReturn(result);
-    when(driver.session(any())).thenReturn(session);
+    when(driver.session(any(SessionConfig.class))).thenReturn(session);
     neo4jConnection = new Neo4jConnection("a-database", () -> driver);
   }
 
@@ -116,6 +117,7 @@ public class Neo4jConnectionTest {
     inOrder
         .verify(session)
         .run(eq("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS"), eq(Map.of()), any());
+    inOrder.verify(session).run(eq("SHOW CONSTRAINTS YIELD name"), eq(Map.of()), any());
     inOrder
         .verify(session)
         .run(
@@ -124,8 +126,6 @@ public class Neo4jConnectionTest {
             any());
     inOrder.verify(session).run(eq("DROP INDEX `c`"), eq(Map.of()), any());
     inOrder.verify(session).run(eq("DROP INDEX `d`"), eq(Map.of()), any());
-
-    verify(session, never()).run(contains("CONSTRAINT"), anyMap(), any());
   }
 
   @Test

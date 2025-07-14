@@ -28,9 +28,15 @@ import com.google.cloud.teleport.spanner.ddl.Placement;
 import com.google.cloud.teleport.spanner.ddl.PropertyGraph;
 import com.google.cloud.teleport.spanner.ddl.Sequence;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.ddl.Udf;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.ProtoDialect;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.TableManifest;
+import com.google.cloud.teleport.spanner.spannerio.SpannerAccessor;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.SpannerWriteResult;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.common.base.Verify;
@@ -66,11 +72,6 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.EmptyMatchTreatment;
 import org.apache.beam.sdk.io.fs.MatchResult;
 import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerIO;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.Combine;
@@ -173,7 +174,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         schemas.apply("Build avro DDL", Combine.globally(AsList.fn()));
 
     PCollectionView<Transaction> tx =
-        begin.apply(LocalSpannerIO.createTransaction().withSpannerConfig(spannerConfig));
+        begin.apply(SpannerIO.createTransaction().withSpannerConfig(spannerConfig));
 
     PCollection<Ddl> informationSchemaDdl =
         begin.apply(
@@ -273,7 +274,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       SpannerWriteResult result =
           mutations.apply(
               "Write mutations " + depth,
-              LocalSpannerIO.write()
+              SpannerIO.write()
                   .withSchemaReadySignal(ddl)
                   .withSpannerConfig(spannerConfig)
                   .withCommitDeadline(Duration.standardMinutes(1))
@@ -408,7 +409,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
     private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
 
-    private transient LocalSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
     private static final Logger LOG = LoggerFactory.getLogger(CreateTables.class);
 
     /* If the schema has a lot of DDL changes after data load, it's preferable to create
@@ -464,7 +465,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
 
                         @Setup
                         public void setup() {
-                          spannerAccessor = LocalSpannerAccessor.getOrCreate(spannerConfig);
+                          spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
                         }
 
                         @Teardown
@@ -490,6 +491,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           List<KV<String, Schema>> missingViews = new ArrayList<>();
                           List<KV<String, Schema>> missingChangeStreams = new ArrayList<>();
                           List<KV<String, Schema>> missingSequences = new ArrayList<>();
+                          List<KV<String, Schema>> missingUdfs = new ArrayList<>();
                           List<KV<String, Schema>> missingPlacements = new ArrayList<>();
                           List<KV<String, Schema>> missingPropertyGraphs = new ArrayList<>();
                           for (KV<String, String> kv : avroSchemas) {
@@ -498,6 +500,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                                 && informationSchemaDdl.model(kv.getKey()) == null
                                 && informationSchemaDdl.view(kv.getKey()) == null
                                 && informationSchemaDdl.changeStream(kv.getKey()) == null
+                                && informationSchemaDdl.udf(kv.getKey()) == null
                                 && informationSchemaDdl.sequence(kv.getKey()) == null
                                 && informationSchemaDdl.placement(kv.getKey()) == null
                                 && informationSchemaDdl.propertyGraph(kv.getKey()) == null) {
@@ -512,6 +515,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                               } else if (schema.getProp("sequenceOption_0") != null
                                   || schema.getProp(AvroUtil.SPANNER_SEQUENCE_KIND) != null) {
                                 missingSequences.add(KV.of(kv.getKey(), schema));
+                              } else if ("spannerUdf".equals(schema.getProp("spannerEntity"))) {
+                                missingUdfs.add(KV.of(kv.getKey(), schema));
                               } else if ("spannerNamedSchema"
                                   .equals(schema.getProp("spannerEntity"))) {
                                 missingNamedSchemas.add(KV.of(kv.getKey(), schema));
@@ -581,6 +586,20 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             }
                             Ddl newDdl = builder.build();
                             ddlStatements.addAll(newDdl.createSequenceStatements());
+                          }
+
+                          // This will need to be revisited when UDFs are more generally supported
+                          // since UDFs with select statements that reference objects like tables
+                          // and views will need to be added later.
+                          if (!missingUdfs.isEmpty()) {
+                            Ddl.Builder builder = Ddl.builder(dialect);
+                            for (KV<String, Schema> kv : missingUdfs) {
+                              Udf udf = converter.toUdf(kv.getKey(), kv.getValue());
+                              builder.addUdf(udf);
+                              mergedDdl.addUdf(udf);
+                            }
+                            Ddl newDdl = builder.build();
+                            ddlStatements.addAll(newDdl.createUdfStatements());
                           }
 
                           if (!missingPlacements.isEmpty()) {
@@ -798,6 +817,12 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                           c.output(KV.of(sequence.getName(), fullPath));
                         }
                       }
+                      for (Export.Table udf : proto.getUdfsList()) {
+                        for (String f : udf.getDataFilesList()) {
+                          String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
+                          c.output(KV.of(udf.getName(), fullPath));
+                        }
+                      }
                       for (Export.Table placement : proto.getPlacementsList()) {
                         for (String f : placement.getDataFilesList()) {
                           String fullPath = GcsUtil.joinPath(importDirectory.get(), f);
@@ -829,6 +854,11 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                       for (Export.Table sequence : proto.getSequencesList()) {
                         if (!Strings.isNullOrEmpty(sequence.getManifestFile())) {
                           c.output(KV.of(sequence.getName(), sequence.getManifestFile()));
+                        }
+                      }
+                      for (Export.Table udf : proto.getUdfsList()) {
+                        if (!Strings.isNullOrEmpty(udf.getManifestFile())) {
+                          c.output(KV.of(udf.getName(), udf.getManifestFile()));
                         }
                       }
                       for (Export.Table placement : proto.getPlacementsList()) {

@@ -36,9 +36,7 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
-
-    <!-- TODO - remove line when repo is upgraded to Beam 2.59.0 -->
-    <beam-python.version>2.57.0</beam-python.version>
+    <postgresql.version>42.6.1</postgresql.version>
   </properties>
 
   <dependencies>
@@ -54,6 +52,19 @@
       <groupId>com.google.cloud.teleport</groupId>
       <artifactId>it-google-cloud-platform</artifactId>
       <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.postgresql</groupId>
+      <artifactId>postgresql</artifactId>
+      <version>${postgresql.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

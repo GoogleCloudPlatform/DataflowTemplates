@@ -15,22 +15,40 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.avro.AvroToValueMapper.avroArrayFieldToSpannerArray;
+import static com.google.cloud.teleport.v2.spanner.migrations.avro.AvroToValueMapper.getGsqlMap;
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.AvroTypeConvertorException;
+import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.type.Type.Code;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
+import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.junit.MockitoJUnitRunner;
 
+@RunWith(MockitoJUnitRunner.class)
 public class AvroToValueMapperTest {
 
   @Test
@@ -169,10 +187,82 @@ public class AvroToValueMapperTest {
   }
 
   @Test
+  public void testAvroFieldToFloat_ValidFloat32Input() {
+    Float inputValue = 5.75f;
+    Float result =
+        AvroToValueMapper.avroFieldToFloat32(inputValue, SchemaBuilder.builder().doubleType());
+    assertEquals(inputValue, result);
+
+    /* Test a valid double to float mapping */
+    result =
+        AvroToValueMapper.avroFieldToFloat32((Double) 3.14, SchemaBuilder.builder().floatType());
+    assertEquals("Test float input", (Float) 3.14f, result);
+
+    Value value =
+        getGsqlMap().get(Type.float32()).apply(3.14f, SchemaBuilder.builder().floatType());
+    assertEquals("Test float input", Value.float32(3.14f), value);
+
+    result = AvroToValueMapper.avroFieldToFloat32("456.346", SchemaBuilder.builder().doubleType());
+    assertEquals("Test string input", (Float) 456.346f, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(Float.MAX_VALUE, SchemaBuilder.builder().doubleType());
+    assertEquals("Test max Float", (Float) Float.MAX_VALUE, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(Float.MIN_VALUE, SchemaBuilder.builder().doubleType());
+    assertEquals("Test min Float", (Float) Float.MIN_VALUE, result);
+
+    result = AvroToValueMapper.avroFieldToFloat32(Float.NaN, SchemaBuilder.builder().doubleType());
+    assertEquals("Test nan Float", (Float) Float.NaN, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(
+            Float.POSITIVE_INFINITY, SchemaBuilder.builder().doubleType());
+    assertEquals("Test positive infinity Float", (Float) Float.POSITIVE_INFINITY, result);
+
+    result =
+        AvroToValueMapper.avroFieldToFloat32(
+            Float.NEGATIVE_INFINITY, SchemaBuilder.builder().doubleType());
+    assertEquals("Test negetive infinity Float", (Float) Float.NEGATIVE_INFINITY, result);
+
+    result = AvroToValueMapper.avroFieldToFloat32(10, SchemaBuilder.builder().intType());
+    assertEquals("Test int input", Float.valueOf(10), result);
+  }
+
+  @Test
+  public void testAvroFieldToFloat32_NullInput() {
+    Object inputValue = null;
+    Float result =
+        AvroToValueMapper.avroFieldToFloat32(inputValue, SchemaBuilder.builder().floatType());
+    assertNull(result);
+  }
+
+  @Test(expected = AvroTypeConvertorException.class)
+  public void testAvroFieldToFloat32_UnsupportedType() {
+    Boolean inputValue = true;
+    AvroToValueMapper.avroFieldToFloat32(inputValue, SchemaBuilder.builder().booleanType());
+  }
+
+  @Test
   public void testAvroFieldToString_valid() {
     String result =
         AvroToValueMapper.avroFieldToString("Hello", SchemaBuilder.builder().stringType());
     assertEquals("Hello", result);
+
+    Value value =
+        getGsqlMap().get(Type.string()).apply("Hello", SchemaBuilder.builder().stringType());
+    assertEquals("Test String input", Value.string("Hello"), value);
+
+    final String fruitJson =
+        "{\n"
+            + "    \"fruit\": \"Apple\",\n"
+            + "    \"size\": \"Large\",\n"
+            + "    \"color\": \"Red\"\n"
+            + "}";
+    Value valueJson =
+        getGsqlMap().get(Type.json()).apply(fruitJson, SchemaBuilder.builder().stringType());
+    assertEquals("Test json input", Value.string(fruitJson), valueJson);
 
     result = AvroToValueMapper.avroFieldToString("", SchemaBuilder.builder().stringType());
     assertEquals("", result);
@@ -420,5 +510,364 @@ public class AvroToValueMapperTest {
   public void cannotConvertBooleanToDate() {
     Schema schema = SchemaBuilder.builder().stringType();
     AvroToValueMapper.avroFieldToDate(true, schema);
+  }
+
+  @Test
+  public void testAvroValueToArrayBasic() {
+    long[] values = {
+      Long.MIN_VALUE, 0L, 42L, Long.MAX_VALUE,
+    };
+    Schema schema = SchemaBuilder.array().items(SchemaBuilder.builder().longType());
+    GenericRecord genericRecord =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schema)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    /* Test equivalent type mapping */
+    assertThat(
+            Value.int64Array(
+                avroArrayFieldToSpannerArray(
+                    genericRecord.get("arrayField"), schema, AvroToValueMapper::avroFieldToLong)))
+        .isEqualTo(Value.int64Array(values));
+
+    assertThat(avroArrayFieldToSpannerArray(null, schema, AvroToValueMapper::avroFieldToLong))
+        .isEqualTo(null);
+
+    /*
+     * Test cross type mapping.
+     */
+    assertThat(
+            Value.stringArray(
+                avroArrayFieldToSpannerArray(
+                    genericRecord.get("arrayField"), schema, AvroToValueMapper::avroFieldToString)))
+        .isEqualTo(
+            Value.stringArray(
+                Arrays.stream(values).boxed().map(Object::toString).collect(Collectors.toList())));
+    /*
+     * Test that every spanner primitive has an array defined.
+     */
+    assertThat(
+            AvroToValueMapper.getGsqlMap().keySet().stream()
+                .filter(t -> !t.getCode().equals(Code.ARRAY))
+                .map(t -> t.toString())
+                .sorted()
+                .collect(Collectors.toList()))
+        .isEqualTo(
+            AvroToValueMapper.getGsqlMap().keySet().stream()
+                .filter(t -> t.getCode().equals(Code.ARRAY))
+                .map(t -> t.getArrayElementType())
+                .map(t -> t.toString())
+                .sorted()
+                .collect(Collectors.toList()));
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeBool() {
+    boolean[] values = {true, false, true};
+    Schema schemaBoolArray = SchemaBuilder.array().items(SchemaBuilder.builder().booleanType());
+    GenericRecord genericRecordBool =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaBoolArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.bool()))
+                .apply(
+                    genericRecordBool.get("arrayField"),
+                    genericRecordBool.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.boolArray(values));
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeFloat32() {
+    float[] values = {Float.MIN_VALUE, 0.0f, 3.14f, Float.MAX_VALUE};
+    Schema schemaFloat32Array = SchemaBuilder.array().items(SchemaBuilder.builder().floatType());
+    GenericRecord genericRecordFloat32 =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaFloat32Array)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.float32()))
+                .apply(
+                    genericRecordFloat32.get("arrayField"),
+                    genericRecordFloat32.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.float32Array(values));
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeFloat64() {
+    double[] values = {Double.MIN_VALUE, 0.0, 3.14, Double.MAX_VALUE};
+    Schema schemaFloat64Array = SchemaBuilder.array().items(SchemaBuilder.builder().doubleType());
+    GenericRecord genericRecordFloat64 =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaFloat64Array)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.float64()))
+                .apply(
+                    genericRecordFloat64.get("arrayField"),
+                    genericRecordFloat64.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.float64Array(values));
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeString() {
+    String[] values = {"hello", "world", "spanner", null};
+    Schema schemaStringArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    GenericRecord genericRecordString =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaStringArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.string()))
+                .apply(
+                    genericRecordString.get("arrayField"),
+                    genericRecordString.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.stringArray(java.util.Arrays.asList(values)));
+  }
+
+  @Test
+  public void testAvroValueToJsonArrayOfMaps() {
+    JSONArray jsonArray = new JSONArray();
+
+    JSONObject map1 = new JSONObject();
+    map1.put("key1", "value1");
+    map1.put("key2", "value2");
+    jsonArray.put(map1);
+
+    JSONObject map2 = new JSONObject();
+    map2.put("keyA", "valueA");
+    map2.put("keyB", "valueB");
+    jsonArray.put(map2);
+
+    String[] values = new String[] {map1.toString(), map2.toString()};
+
+    Schema schemaStringArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    GenericRecord genericRecordJsonArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaStringArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+
+    java.util.List<String> expectedJsonStrings = new java.util.ArrayList<>();
+    for (int i = 0; i < jsonArray.length(); i++) {
+      expectedJsonStrings.add(jsonArray.get(i).toString());
+    }
+
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.json()))
+                .apply(
+                    genericRecordJsonArray.get("arrayField"),
+                    genericRecordJsonArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.jsonArray(expectedJsonStrings));
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeBytes() {
+    java.nio.ByteBuffer[] values = {
+      java.nio.ByteBuffer.wrap(new byte[] {1, 2, 3}), java.nio.ByteBuffer.wrap(new byte[] {4, 5, 6})
+    };
+    Schema schemaBytes = SchemaBuilder.array().items(SchemaBuilder.builder().bytesType());
+    GenericRecord genericRecordBytes =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaBytes)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    var converted =
+        AvroToValueMapper.getGsqlMap()
+            .get(Type.array(Type.bytes()))
+            .apply(
+                genericRecordBytes.get("arrayField"),
+                genericRecordBytes.getSchema().getField("arrayField").schema());
+    var expected =
+        Value.bytesArray(
+            Arrays.stream(values).map(b -> ByteArray.copyFrom(b)).collect(Collectors.toList()));
+    assertThat(converted).isEqualTo(expected);
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeDate() {
+    java.time.LocalDate[] values = {
+      java.time.LocalDate.of(2023, 10, 26), java.time.LocalDate.of(2024, 1, 1)
+    };
+    Schema schemaDate = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    GenericRecord genericRecordDate =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaDate)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.date()))
+                .apply(
+                    genericRecordDate.get("arrayField"),
+                    genericRecordDate.getSchema().getField("arrayField").schema()))
+        .isEqualTo(
+            Value.dateArray(
+                Arrays.stream(values)
+                    .map(
+                        d ->
+                            Date.fromYearMonthDay(
+                                d.getYear(), d.getMonthValue(), d.getDayOfMonth()))
+                    .collect(Collectors.toList())));
+  }
+
+  @Test
+  public void testAvroValueToNumericArray() {
+    BigDecimal[] numericValues =
+        new BigDecimal[] {
+          new BigDecimal("123.456000000"), new BigDecimal("-789.012000000"), new BigDecimal("0E-9"),
+        };
+
+    Schema schemaNumericArray = SchemaBuilder.array().items(SchemaBuilder.builder().bytesType());
+
+    GenericRecord genericRecordNumericArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaNumericArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", numericValues)
+            .build();
+
+    List<BigDecimal> expectedNumericList = Arrays.asList(numericValues);
+
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.numeric()))
+                .apply(
+                    genericRecordNumericArray.get("arrayField"),
+                    genericRecordNumericArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.numericArray(expectedNumericList));
+  }
+
+  @Test
+  public void testAvroValueToArrayTypeLong() {
+    long[] values = {Long.MIN_VALUE, 0L, 42L, Long.MAX_VALUE};
+    Schema schemaLong = SchemaBuilder.array().items(SchemaBuilder.builder().longType());
+    GenericRecord genericRecordLong =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaLong)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    /* Test equivalent type mapping */
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.int64()))
+                .apply(
+                    genericRecordLong.get("arrayField"),
+                    genericRecordLong.getSchema().getField("arrayField").schema()))
+        .isEqualTo(Value.int64Array(values));
+  }
+
+  @Test
+  public void testAvroValueToTimestampArray() {
+    Instant[] timestampValues =
+        new Instant[] {
+          Instant.parse("2023-10-26T10:00:00Z"),
+          Instant.parse("2024-01-01T00:00:00Z"),
+          Instant.parse("2023-11-15T15:30:45Z")
+        };
+
+    Schema schemaTimestampArray = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+
+    GenericRecord genericRecordTimestampArray =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schemaTimestampArray)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", timestampValues)
+            .build();
+
+    assertThat(
+            AvroToValueMapper.getGsqlMap()
+                .get(Type.array(Type.timestamp()))
+                .apply(
+                    genericRecordTimestampArray.get("arrayField"),
+                    genericRecordTimestampArray.getSchema().getField("arrayField").schema()))
+        .isEqualTo(
+            Value.timestampArray(
+                Arrays.stream(timestampValues)
+                    .map(i -> Timestamp.ofTimeSecondsAndNanos(i.getEpochSecond(), i.getNano()))
+                    .collect(Collectors.toList())));
+  }
+
+  @Test
+  public void testAvroValueToArrayException() {
+    String[] values = {"ABC"};
+    Schema schema = SchemaBuilder.array().items(SchemaBuilder.builder().stringType());
+    GenericRecord genericRecord =
+        new GenericRecordBuilder(
+                SchemaBuilder.record("payload")
+                    .fields()
+                    .name("arrayField")
+                    .type(schema)
+                    .noDefault()
+                    .endRecord())
+            .set("arrayField", values)
+            .build();
+    assertThrows(
+        AvroTypeConvertorException.class,
+        () ->
+            avroArrayFieldToSpannerArray(
+                genericRecord.get("arrayField"), schema, AvroToValueMapper::avroFieldToLong));
   }
 }

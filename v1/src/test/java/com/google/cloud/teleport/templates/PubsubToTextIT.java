@@ -115,7 +115,7 @@ public final class PubsubToTextIT extends TemplateTestBase {
 
     Result result =
         pipelineOperator()
-            .waitForConditionAndFinish(
+            .waitForConditionAndCancel(
                 createConfig(info),
                 () -> {
 

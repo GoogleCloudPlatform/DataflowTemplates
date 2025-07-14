@@ -41,7 +41,10 @@ public abstract class TableConfig {
   public abstract Long approxRowCount();
 
   public static Builder builder(String tableName) {
-    return new AutoValue_TableConfig.Builder().setTableName(tableName).setMaxPartitions(null);
+    return new AutoValue_TableConfig.Builder()
+        .setTableName(tableName)
+        .setMaxPartitions(null)
+        .setApproxRowCount(0L);
   }
 
   @AutoValue.Builder

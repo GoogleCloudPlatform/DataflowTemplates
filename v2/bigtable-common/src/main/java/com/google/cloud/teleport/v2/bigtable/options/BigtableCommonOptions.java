@@ -266,7 +266,8 @@ public interface BigtableCommonOptions extends GcpOptions {
         order = 7,
         optional = true,
         description = "Cloud Bigtable change streams columns to ignore",
-        helpText = "A comma-separated list of column name changes to ignore.")
+        helpText =
+            "A comma-separated list of column name changes to ignore. Example: \"cf1:col1,cf2:col2\".")
     @Default.String("")
     String getBigtableChangeStreamIgnoreColumns();
 
@@ -299,5 +300,14 @@ public interface BigtableCommonOptions extends GcpOptions {
     Boolean getBigtableChangeStreamResume();
 
     void setBigtableChangeStreamResume(Boolean useBase64Value);
+
+    @TemplateParameter.Integer(
+        order = 10,
+        optional = true,
+        description = "The timeout for ReadChangeStream requests in milliseconds",
+        helpText = "The timeout for Bigtable ReadChangeStream requests in milliseconds.")
+    Integer getBigtableReadChangeStreamTimeoutMs();
+
+    void setBigtableReadChangeStreamTimeoutMs(Integer value);
   }
 }

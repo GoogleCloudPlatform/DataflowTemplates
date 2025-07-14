@@ -20,7 +20,9 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType.Kind;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.common.collect.ImmutableList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -54,6 +56,7 @@ public class IdentityMapperTest {
             .endTable()
             .createTable("Account")
             .column("id")
+            .columnOptions(ImmutableList.of("CASSANDRA_TYPE=\"bigint\""))
             .int64()
             .notNull()
             .endColumn()
@@ -68,11 +71,21 @@ public class IdentityMapperTest {
             .primaryKey()
             .asc("id")
             .end()
-            .interleaveInParent("Users")
+            .interleavingParent("Users")
             .onDeleteCascade()
             .endTable()
             .build();
     this.mapper = new IdentityMapper(ddl);
+  }
+
+  @Test
+  public void testCassandraAnnotations() {
+    assertEquals(
+        mapper.getSpannerColumnCassandraAnnotations("", "Users", "id").cassandraType().getKind(),
+        Kind.NONE);
+    assertEquals(
+        mapper.getSpannerColumnCassandraAnnotations("", "Account", "id").cassandraType().getKind(),
+        Kind.PRIMITIVE);
   }
 
   @Test

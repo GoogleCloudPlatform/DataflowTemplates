@@ -18,39 +18,58 @@ package com.google.cloud.teleport.plugin;
 import com.google.cloud.teleport.metadata.MultiTemplate;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
+import java.io.File;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.reflections.Reflections;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Utility class that will be used to scan for {@link Template} or {@link MultiTemplate} classes in
  * the classpath.
  */
 public final class TemplateDefinitionsParser {
+  private static final Logger LOG = LoggerFactory.getLogger(TemplateDefinitionsParser.class);
 
   private TemplateDefinitionsParser() {}
 
   /**
    * Given a ClassLoader, this method will scan look for every class that is annotated with {@link
-   * Template} or {@link MultiTemplate}, by using {@link Reflections}. It then wraps all the
-   * annotations and class name in a {@link TemplateDefinitions} instance, puts them in a list and
-   * returns to the caller.
+   * Template} or {@link MultiTemplate} from {@code outputDir}, by using {@link Reflections}. It
+   * then wraps all the annotations and class name in a {@link TemplateDefinitions} instance, puts
+   * them in a list and returns to the caller.
    *
    * @param classLoader ClassLoader that should be used to scan for the annotations.
+   * @param outputDir dir of target class.
    * @return Listed with all definitions that could be found in the classpath.
    */
-  public static List<TemplateDefinitions> scanDefinitions(ClassLoader classLoader) {
-
+  public static List<TemplateDefinitions> scanDefinitions(ClassLoader classLoader, File outputDir) {
     List<TemplateDefinitions> allDefinitions = new ArrayList<>();
 
     // Scan every @Template class
     Set<Class<?>> templates = new Reflections(classLoader).getTypesAnnotatedWith(Template.class);
     for (Class<?> templateClass : templates) {
       Template templateAnnotation = templateClass.getAnnotation(Template.class);
-      if (!templateAnnotation.testOnly()) {
-        allDefinitions.add(new TemplateDefinitions(templateClass, templateAnnotation));
+      if (templateAnnotation.testOnly()) {
+        continue;
       }
+
+      URI loc;
+      try {
+        loc = templateClass.getProtectionDomain().getCodeSource().getLocation().toURI();
+      } catch (URISyntaxException e) {
+        throw new RuntimeException(e);
+      }
+      if (!loc.getPath().startsWith(outputDir.getPath())) {
+        LOG.info("Skip " + templateClass.getName() + " from dependency module " + loc);
+        continue;
+      }
+
+      allDefinitions.add(new TemplateDefinitions(templateClass, templateAnnotation));
     }
 
     // Scan every @MultiTemplate class

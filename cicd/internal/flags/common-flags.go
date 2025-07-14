@@ -22,10 +22,12 @@ import (
 )
 
 const (
-	ALL     = "ALL"     // All modules
-	DEFAULT = "DEFAULT" // Modules other than those excluded
-	KAFKA   = "KAFKA"
-	SPANNER = "SPANNER"
+	ALL        = "ALL"     // All modules
+	DEFAULT    = "DEFAULT" // Modules other than those excluded
+	KAFKA      = "KAFKA"
+	SPANNER    = "SPANNER"
+	BIGTABLE   = "BIGTABLE"
+	DATASTREAM = "DATASTREAM"
 )
 
 // Avoid making these vars public.
@@ -39,6 +41,7 @@ var (
 			"v2/kafka-to-gcs/",
 			"v2/kafka-to-kafka/",
 			"v2/kafka-to-pubsub/",
+			"v2/pubsub-to-kafka/",
 			"plugins/templates-maven-plugin",
 		},
 		SPANNER: {"v2/datastream-to-spanner/",
@@ -46,8 +49,27 @@ var (
 			"v2/gcs-to-sourcedb/",
 			"v2/sourcedb-to-spanner/",
 			"v2/spanner-to-sourcedb/",
-			"v2/spanner-custom-shard",
+			"v2/spanner-custom-shard/",
 			"plugins/templates-maven-plugin"},
+		BIGTABLE: {"v2/bigtable-common/",
+			"v2/bigquery-to-bigtable/",
+			"v2/bigtable-changestreams-to-hbase/",
+			"plugins/templates-maven-plugin",
+		},
+		DATASTREAM: {"v2/datastream-to-spanner/",
+			"v2/spanner-change-streams-to-sharded-file-sink/",
+			"v2/gcs-to-sourcedb/",
+			"v2/sourcedb-to-spanner/",
+			"v2/spanner-to-sourcedb/",
+			"v2/spanner-custom-shard/",
+			"plugins/templates-maven-plugin",
+			"v2/datastream-common/",
+			"v2/datastream-mongodb-to-firestore/",
+			"v2/datastream-to-bigquery/",
+			"v2/datastream-to-mongodb/",
+			"v2/datastream-to-postgres/",
+			"v2/datastream-to-sql/",
+		},
 	}
 )
 

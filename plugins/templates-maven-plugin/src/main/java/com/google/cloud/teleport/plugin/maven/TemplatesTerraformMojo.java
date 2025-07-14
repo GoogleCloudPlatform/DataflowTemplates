@@ -92,7 +92,7 @@ public class TemplatesTerraformMojo extends TemplatesBaseMojo {
 
     LOG.info("Generating Template Specs, saving at target: {}", targetDirectory);
 
-    return TemplateDefinitionsParser.scanDefinitions(loader);
+    return TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
   }
 
   private File modulePath(TemplateDefinitions definition) {

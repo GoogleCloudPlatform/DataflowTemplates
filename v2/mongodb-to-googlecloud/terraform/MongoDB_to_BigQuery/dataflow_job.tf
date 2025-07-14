@@ -35,63 +35,75 @@ variable "region" {
 
 variable "mongoDbUri" {
   type        = string
-  description = "MongoDB connection URI in the format `mongodb+srv://:@`."
+  description = "The MongoDB connection URI in the format `mongodb+srv://:@.`"
 
 }
 
 variable "database" {
   type        = string
-  description = "Database in MongoDB to read the collection from. (Example: my-db)"
+  description = "Database in MongoDB to read the collection from. For example, `my-db`"
 
 }
 
 variable "collection" {
   type        = string
-  description = "Name of the collection inside MongoDB database. (Example: my-collection)"
+  description = "Name of the collection inside MongoDB database. For example, `my-collection`"
 
 }
 
 variable "userOption" {
   type        = string
-  description = "User option: `FLATTEN` or `NONE`. `FLATTEN` flattens the documents to the single level. `NONE` stores the whole document as a JSON string. Defaults to: NONE."
+  description = "`FLATTEN`, `JSON`, or `NONE`. `FLATTEN` flattens the documents to the single level. `JSON` stores document in BigQuery JSON format. `NONE` stores the whole document as a JSON-formatted STRING. Defaults to: NONE."
   default     = "NONE"
 }
 
 variable "KMSEncryptionKey" {
   type        = string
-  description = "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key)"
+  description = "Cloud KMS Encryption Key to decrypt the mongodb uri connection string. If Cloud KMS key is passed in, the mongodb uri connection string must all be passed in encrypted. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`"
+  default     = null
+}
+
+variable "filter" {
+  type        = string
+  description = <<EOT
+Bson filter in json format. For example, `{ "val": { $gt: 0, $lt: 9 }}`
+EOT
   default     = null
 }
 
 variable "useStorageWriteApi" {
   type        = bool
-  description = "If enabled (set to true) the pipeline will use Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). Defaults to: false."
+  description = "If `true`, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "useStorageWriteApiAtLeastOnce" {
   type        = bool
-  description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-EOT
+  description = "When using the Storage Write API, specifies the write semantics. To use at-least-once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`."
   default     = null
 }
 
 variable "outputTableSpec" {
   type        = string
-  description = "BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects."
+  description = "The BigQuery table to write to. For example, `bigquery-project:dataset.output_table`."
 
+}
+
+variable "bigQuerySchemaPath" {
+  type        = string
+  description = "The Cloud Storage path for the BigQuery JSON schema. For example, `gs://your-bucket/your-schema.json`"
+  default     = null
 }
 
 variable "javascriptDocumentTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.js)"
+  description = "The Cloud Storage URI of the `.js` file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://your-bucket/your-transforms/*.js`"
   default     = null
 }
 
 variable "javascriptDocumentTransformFunctionName" {
   type        = string
-  description = "The function name should only contain letters, digits and underscores. Example: 'transform' or 'transform_udf1'. (Example: transform)"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is myTransform. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples). For example, `transform`"
   default     = null
 }
 
@@ -225,9 +237,11 @@ resource "google_dataflow_flex_template_job" "generated" {
     collection                              = var.collection
     userOption                              = var.userOption
     KMSEncryptionKey                        = var.KMSEncryptionKey
+    filter                                  = var.filter
     useStorageWriteApi                      = tostring(var.useStorageWriteApi)
     useStorageWriteApiAtLeastOnce           = tostring(var.useStorageWriteApiAtLeastOnce)
     outputTableSpec                         = var.outputTableSpec
+    bigQuerySchemaPath                      = var.bigQuerySchemaPath
     javascriptDocumentTransformGcsPath      = var.javascriptDocumentTransformGcsPath
     javascriptDocumentTransformFunctionName = var.javascriptDocumentTransformFunctionName
   }

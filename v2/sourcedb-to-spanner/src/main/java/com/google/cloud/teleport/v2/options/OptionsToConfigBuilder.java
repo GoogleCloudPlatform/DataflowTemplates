@@ -78,7 +78,8 @@ public final class OptionsToConfigBuilder {
         maxConnections,
         numPartitions,
         waitOn,
-        options.getFetchSize());
+        options.getFetchSize(),
+        options.getUniformizationStageCountHint());
   }
 
   public static JdbcIOWrapperConfig getJdbcIOWrapperConfig(
@@ -98,7 +99,8 @@ public final class OptionsToConfigBuilder {
       long maxConnections,
       Integer numPartitions,
       Wait.OnSignal<?> waitOn,
-      Integer fetchSize) {
+      Integer fetchSize,
+      Long uniformizationStageCountHint) {
     JdbcIOWrapperConfig.Builder builder = builderWithDefaultsFor(sqlDialect);
     SourceSchemaReference sourceSchemaReference =
         sourceSchemaReferenceFrom(sqlDialect, dbName, namespace);
@@ -154,6 +156,7 @@ public final class OptionsToConfigBuilder {
     builder.setMaxPartitions(numPartitions);
     builder = builder.setTables(ImmutableList.copyOf(tables));
     builder = builder.setMaxFetchSize(fetchSize);
+    builder = builder.setSplitStageCountHint(uniformizationStageCountHint);
     return builder.build();
   }
 

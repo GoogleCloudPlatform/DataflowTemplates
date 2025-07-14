@@ -50,7 +50,7 @@ public class TemplatesValidateMojo extends TemplatesBaseMojo {
       LOG.info("Validating Templates...");
 
       List<TemplateDefinitions> templateDefinitions =
-          TemplateDefinitionsParser.scanDefinitions(loader);
+          TemplateDefinitionsParser.scanDefinitions(loader, outputDirectory);
       for (TemplateDefinitions definition : templateDefinitions) {
         ImageSpec imageSpec = definition.buildSpecModel(true);
         imageSpec.validate();

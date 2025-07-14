@@ -1,4 +1,4 @@
-CREATE TABLE person (
+CREATE TABLE IF NOT EXISTS person (
     ID STRING(500) NOT NULL,
     first_name1 STRING(500),
     last_name1 STRING(500),

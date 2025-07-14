@@ -26,6 +26,7 @@
     <artifactId>datastream-common</artifactId>
 
     <properties>
+        <skipShade>true</skipShade>
     </properties>
 
     <dependencies>

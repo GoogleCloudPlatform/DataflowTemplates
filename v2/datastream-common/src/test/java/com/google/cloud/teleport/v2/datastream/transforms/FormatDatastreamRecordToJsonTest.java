@@ -96,7 +96,7 @@ public class FormatDatastreamRecordToJsonTest {
           + "\"created_at\":\"2020-02-12T00:00:00Z\","
           + "\"datetime_at\":\"2020-02-12T00:00:00Z\","
           + "\"_0col\":1,"
-          + "\"timestamp_with_tz\":\"2022-10-13T14:30:00Z\","
+          + "\"timestamp_with_tz\":\"2020-10-13T14:30:00.056483Z\","
           + "\"_metadata_stream\":"
           + "\"projects/269744978479/locations/us-central1/streams/datastream-test-fbefaf33\","
           + "\"_metadata_timestamp\":1623459160,"
@@ -140,6 +140,7 @@ public class FormatDatastreamRecordToJsonTest {
     }
   }
 
+  @Test
   public void testParseMySQLPeoplePrimaryKeys() throws IOException, URISyntaxException {
     URL resource =
         getClass()
@@ -163,6 +164,7 @@ public class FormatDatastreamRecordToJsonTest {
     }
   }
 
+  @Test
   public void testParseMySQLNumbers() throws IOException, URISyntaxException {
     URL resource =
         getClass()
@@ -180,6 +182,22 @@ public class FormatDatastreamRecordToJsonTest {
     ((ObjectNode) changeEvent).remove(EVENT_UUID_KEY);
     ((ObjectNode) changeEvent).remove(EVENT_DATAFLOW_TIMESTAMP_KEY);
     assertEquals(EXPECTED_NUMERIC_RECORD, changeEvent.toString());
+  }
+
+  @Test
+  public void testPostgresByteArray() throws IOException, URISyntaxException {
+    URL resource =
+        getClass().getClassLoader().getResource("FormatDatastreamRecordToJsonTest/bytearray.avro");
+    File file = new File(resource.toURI());
+    DatumReader<GenericRecord> datumReader = new GenericDatumReader<>();
+    DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(file, datumReader);
+    GenericRecord record = dataFileReader.next();
+    String jsonData = FormatDatastreamRecordToJson.create().apply(record).getOriginalPayload();
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode changeEvent = mapper.readTree(jsonData);
+    // The avro file contains binary_content: b'\xde\xad\xbe\xef', which is converted to
+    // base64 encoded string by Jackson library.
+    assertEquals("3q2+7w==", changeEvent.get("binary_content").textValue());
   }
 
   @Test

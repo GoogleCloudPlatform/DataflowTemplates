@@ -91,6 +91,10 @@ public final class FormatDatastreamJsonToJson
       outputObject.put("_metadata_schema", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_log_file", getSourceMetadata(record, "log_file"));
       outputObject.put("_metadata_log_position", getSourceMetadataAsLong(record, "log_position"));
+    } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
+      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
+      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
@@ -178,6 +182,22 @@ public final class FormatDatastreamJsonToJson
     }
     String timestamp = record.get("source_timestamp").textValue();
     return convertTimestampStringToSeconds(timestamp);
+  }
+
+  private String getSecondsFromMongoSortKeys(JsonNode record) {
+    if (record.get("sort_keys") != null) {
+      return (record.get("sort_keys")).get(0).toString();
+    }
+
+    return null;
+  }
+
+  private String getNanosFromMongoSortKeys(JsonNode record) {
+    if (record.get("sort_keys") != null) {
+      return (record.get("sort_keys")).get(1).toString();
+    }
+
+    return null;
   }
 
   private JsonNode getSourceMetadata(JsonNode record) {

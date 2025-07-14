@@ -251,6 +251,28 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("char_pk", createRows("char_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("varchar_pk", createRows("varchar_pk", "AA==", "gAAAAAAAAAA="));
     expectedData.put("tiny_text_pk", createRows("tiny_text_pk", "AA==", "gAAAAAAAAAA="));
+    expectedData.put(
+        "date_time_pk",
+        createRows(
+            "date_time_pk",
+            "1000-01-01T00:00:00Z",
+            "1000-01-01T00:00:01Z",
+            "2001-01-01T00:01:54.123456000Z",
+            /* DateTime does not depend on time zone. */
+            "2005-01-01T05:31:54.123456000Z",
+            "9999-12-30T23:59:59Z",
+            "9999-12-31T23:59:59Z"));
+    expectedData.put(
+        "timestamp_pk",
+        createRows(
+            "timestamp_pk",
+            "1970-01-01T00:00:01Z",
+            "1970-01-01T00:00:02Z",
+            "2001-01-01T00:01:54.123456000Z",
+            /* Timestamp offsets by time zone. We always read in UTC. */
+            "2005-01-01T00:01:54.123456000Z",
+            "2037-12-30T23:59:59Z",
+            "2038-01-18T23:59:59Z"));
     return expectedData;
   }
 

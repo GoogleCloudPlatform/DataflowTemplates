@@ -31,6 +31,7 @@ import com.google.cloud.teleport.v2.templates.spannerchangestreamstobigquery.sch
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.utils.BigQueryIOUtils;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -293,11 +294,14 @@ public final class SpannerChangeStreamsToBigQuery {
 
     SpannerConfig spannerConfig =
         SpannerConfig.create()
-            .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
             .withProjectId(spannerProjectId)
             .withInstanceId(options.getSpannerInstanceId())
             .withDatabaseId(options.getSpannerDatabase())
             .withRpcPriority(options.getRpcPriority());
+    if (!Strings.isNullOrEmpty(options.getSpannerHost())) {
+      spannerConfig =
+          spannerConfig.withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()));
+    }
     // Propagate database role for fine-grained access control on change stream.
     if (options.getSpannerDatabaseRole() != null) {
       spannerConfig =
@@ -475,7 +479,7 @@ public final class SpannerChangeStreamsToBigQuery {
             : options.as(DataflowPipelineOptions.class).getTempLocation() + "/";
     String dlqDirectory =
         options.getDeadLetterQueueDirectory().isEmpty()
-            ? tempLocation + "dlq/"
+            ? tempLocation + "dlq/" + options.getJobName() + "/"
             : options.getDeadLetterQueueDirectory();
 
     LOG.info("Dead letter queue directory: {}", dlqDirectory);

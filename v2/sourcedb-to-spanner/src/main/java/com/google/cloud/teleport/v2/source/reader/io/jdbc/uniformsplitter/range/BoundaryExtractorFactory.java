@@ -20,6 +20,9 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.Calendar;
+import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -28,25 +31,32 @@ public class BoundaryExtractorFactory {
 
   public static final Class BYTE_ARRAY_CLASS = (new byte[] {}).getClass();
   private static final ImmutableMap<Class, BoundaryExtractor<?>> extractorMap =
-      ImmutableMap.of(
-          Integer.class,
-          (BoundaryExtractor<Integer>)
-              (partitionColumn, resultSet, boundaryTypeMapper) ->
-                  fromIntegers(partitionColumn, resultSet, boundaryTypeMapper),
-          Long.class,
-          (BoundaryExtractor<Long>)
-              (partitionColumn, resultSet, boundaryTypeMapper) ->
-                  fromLongs(partitionColumn, resultSet, boundaryTypeMapper),
-          String.class,
-          (BoundaryExtractor<String>) BoundaryExtractorFactory::fromStrings,
-          BigDecimal.class,
-          (BoundaryExtractor<BigDecimal>)
-              (partitionColumn, resultSet, boundaryTypeMapper) ->
-                  fromBigDecimals(partitionColumn, resultSet, boundaryTypeMapper),
-          BYTE_ARRAY_CLASS,
-          (BoundaryExtractor<byte[]>)
-              (partitionColumn, resultSet, boundaryTypeMapper) ->
-                  fromBinary(partitionColumn, resultSet, boundaryTypeMapper));
+      ImmutableMap.<Class, BoundaryExtractor<?>>builder()
+          .put(
+              Integer.class,
+              (BoundaryExtractor<Integer>)
+                  (partitionColumn, resultSet, boundaryTypeMapper) ->
+                      fromIntegers(partitionColumn, resultSet, boundaryTypeMapper))
+          .put(
+              Long.class,
+              (BoundaryExtractor<Long>)
+                  (partitionColumn, resultSet, boundaryTypeMapper) ->
+                      fromLongs(partitionColumn, resultSet, boundaryTypeMapper))
+          .put(String.class, (BoundaryExtractor<String>) BoundaryExtractorFactory::fromStrings)
+          .put(
+              BigDecimal.class,
+              (BoundaryExtractor<BigDecimal>)
+                  (partitionColumn, resultSet, boundaryTypeMapper) ->
+                      fromBigDecimals(partitionColumn, resultSet, boundaryTypeMapper))
+          .put(
+              BYTE_ARRAY_CLASS,
+              (BoundaryExtractor<byte[]>)
+                  (partitionColumn, resultSet, boundaryTypeMapper) ->
+                      fromBinary(partitionColumn, resultSet, boundaryTypeMapper))
+          .put(
+              Timestamp.class,
+              (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
+          .build();
 
   /**
    * Create a {@link BoundaryExtractor} for the required class.
@@ -146,6 +156,24 @@ public class BoundaryExtractorFactory {
         .setStart(resultSet.getString(1))
         .setEnd(resultSet.getString(2))
         .setBoundarySplitter(BoundarySplitterFactory.create(String.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static final Calendar utcCalendar = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+
+  private static Boundary<Timestamp> fromTimestamps(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Timestamp.class));
+    resultSet.next();
+    return Boundary.<Timestamp>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getTimestamp(1, utcCalendar))
+        .setEnd(resultSet.getTimestamp(2, utcCalendar))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Timestamp.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

@@ -221,6 +221,7 @@ public abstract class ChangeEventTransformerDoFn
             }
           }
         } catch (Exception e) {
+          LOG.error("Invalid Transformation Exception", e);
           throw new InvalidTransformationException(e);
         }
       }
@@ -235,10 +236,12 @@ public abstract class ChangeEventTransformerDoFn
     } catch (DroppedTableException e) {
       // Errors when table exists in source but was dropped during conversion. We do not output any
       // errors to dlq for this.
-      LOG.warn(e.getMessage());
+      // Note that this message is not added to DLQ!!
+      LOG.error("Dropped Table for changeEventMessage {}", msg, e.getMessage());
       droppedTableExceptions.inc();
     } catch (InvalidTransformationException e) {
       // Errors that result from the custom JAR during transformation are not retryable.
+      LOG.error("Error in Transformation.", e);
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       customTransformationException.inc();
       if (migrationShardId != null) {
@@ -247,10 +250,12 @@ public abstract class ChangeEventTransformerDoFn
       }
     } catch (InvalidChangeEventException e) {
       // Errors that result from invalid change events.
+      LOG.error("Error in Change Event Conversion post transformation.", e);
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       invalidEvents.inc();
     } catch (Exception e) {
       // Any other errors are considered severe and not retryable.
+      LOG.error("Unhandled Exception in ChangeEventTransformer", e);
       outputWithErrorTag(c, msg, e, DatastreamToSpannerConstants.PERMANENT_ERROR_TAG);
       failedEvents.inc();
       if (migrationShardId != null) {

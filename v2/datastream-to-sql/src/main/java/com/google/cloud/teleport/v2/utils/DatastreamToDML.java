@@ -97,7 +97,6 @@ public abstract class DatastreamToDML
   public void processElement(ProcessContext context) {
     FailsafeElement<String, String> element = context.element();
     String jsonString = element.getPayload();
-
     ObjectMapper mapper = new ObjectMapper();
     JsonNode rowObj;
 
@@ -226,7 +225,9 @@ public abstract class DatastreamToDML
           getSqlTemplateValues(
               rowObj, catalogName, schemaName, tableName, primaryKeys, tableSchema);
 
-      String dmlSql = StringSubstitutor.replace(dmlSqlTemplate, sqlTemplateValues, "{", "}");
+      StringSubstitutor stringSubstitutor = new StringSubstitutor(sqlTemplateValues, "{", "}");
+      String dmlSql =
+          stringSubstitutor.setDisableSubstitutionInValues(true).replace(dmlSqlTemplate);
       return DmlInfo.of(
           failsafeValue,
           dmlSql,
@@ -284,7 +285,6 @@ public abstract class DatastreamToDML
 
   public String getValueSql(JsonNode rowObj, String columnName, Map<String, String> tableSchema) {
     String columnValue;
-
     JsonNode columnObj = rowObj.get(columnName);
     if (columnObj == null) {
       LOG.warn("Missing Required Value: {} in {}", columnName, rowObj.toString());
@@ -295,7 +295,6 @@ public abstract class DatastreamToDML
     } else {
       columnValue = columnObj.toString();
     }
-
     return cleanDataTypeValueSql(columnValue, columnName, tableSchema);
   }
 

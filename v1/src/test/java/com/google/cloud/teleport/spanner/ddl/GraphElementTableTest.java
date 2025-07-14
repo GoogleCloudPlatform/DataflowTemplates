@@ -78,7 +78,7 @@ public class GraphElementTableTest {
     assertEquals(ImmutableList.of("nodeKey1", "nodeKey2"), graphNodeTableReference.nodeKeyColumns);
     assertEquals(ImmutableList.of("edgeKey"), graphNodeTableReference.edgeKeyColumns);
 
-    String expectedPrettyPrint = "KEY(edgeKey) REFERENCES nodeTable";
+    String expectedPrettyPrint = "KEY(edgeKey) REFERENCES nodeTable(nodeKey1,nodeKey2)";
     assertEquals(expectedPrettyPrint, graphNodeTableReference.prettyPrint());
   }
 
@@ -117,7 +117,7 @@ public class GraphElementTableTest {
     String expectedPrettyPrint =
         "baseEdgeTable AS edgeTable\n"
             + " KEY (edgeKey1, edgeKey2)\n"
-            + "SOURCE KEY(edgeKey1) REFERENCES sourceNodeTable DESTINATION KEY(edgeKey2) REFERENCES targetNodeTable\n"
+            + "SOURCE KEY(edgeKey1) REFERENCES sourceNodeTable(sourceNodeKey) DESTINATION KEY(edgeKey2) REFERENCES targetNodeTable(targetNodeKey)\n"
             + "LABEL label1 PROPERTIES(valueA AS propertyA)";
     assertEquals(expectedPrettyPrint, graphElementTable.prettyPrint());
 

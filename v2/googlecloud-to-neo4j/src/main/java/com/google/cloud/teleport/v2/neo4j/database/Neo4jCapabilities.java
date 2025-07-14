@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.neo4j.database;
 
 import java.io.Serializable;
 import java.util.Locale;
+import java.util.Objects;
 
 public final class Neo4jCapabilities implements Serializable {
 
@@ -30,44 +31,44 @@ public final class Neo4jCapabilities implements Serializable {
     this.versionString = String.format("Neo4j %s %s", version, edition);
   }
 
-  public boolean hasVectorIndexes() {
-    return version == Neo4jVersion.V5;
+  public Neo4jEdition edition() {
+    return edition;
   }
 
-  public boolean hasConstraints() {
-    return edition != Neo4jEdition.COMMUNITY;
+  public boolean hasVectorIndexes() {
+    return edition != Neo4jEdition.COMMUNITY && version.compareTo(Neo4jVersion.V5_13_0) >= 0;
   }
 
   public boolean hasNodeTypeConstraints() {
-    return hasConstraints() && version == Neo4jVersion.V5;
-  }
-
-  public boolean hasNodeKeyConstraints() {
-    return hasConstraints();
-  }
-
-  public boolean hasNodeUniqueConstraints() {
-    return hasConstraints();
+    return edition != Neo4jEdition.COMMUNITY && version.compareTo(Neo4jVersion.V5_11_0) >= 0;
   }
 
   public boolean hasRelationshipTypeConstraints() {
-    return hasConstraints() && version == Neo4jVersion.V5;
+    return edition != Neo4jEdition.COMMUNITY && version.compareTo(Neo4jVersion.V5_11_0) >= 0;
+  }
+
+  public boolean hasNodeKeyConstraints() {
+    return edition != Neo4jEdition.COMMUNITY;
   }
 
   public boolean hasRelationshipKeyConstraints() {
-    return hasConstraints() && version == Neo4jVersion.V5;
+    return edition != Neo4jEdition.COMMUNITY && version.compareTo(Neo4jVersion.V5_7_0) >= 0;
+  }
+
+  public boolean hasNodeUniqueConstraints() {
+    return true;
   }
 
   public boolean hasRelationshipUniqueConstraints() {
-    return hasRelationshipKeyConstraints();
+    return version.compareTo(Neo4jVersion.V5_7_0) >= 0;
   }
 
   public boolean hasNodeExistenceConstraints() {
-    return hasConstraints();
+    return edition != Neo4jEdition.COMMUNITY;
   }
 
   public boolean hasRelationshipExistenceConstraints() {
-    return hasConstraints();
+    return edition != Neo4jEdition.COMMUNITY;
   }
 
   public boolean hasCreateOrReplaceDatabase() {
@@ -93,19 +94,113 @@ public final class Neo4jCapabilities implements Serializable {
     }
   }
 
-  enum Neo4jVersion {
-    UNKNOWN,
-    V4_4,
-    V5;
+  static class Neo4jVersion implements Comparable<Neo4jVersion> {
+
+    public static final Neo4jVersion V5_7_0 = new Neo4jVersion(5, 7, 0);
+    public static final Neo4jVersion V5_11_0 = new Neo4jVersion(5, 11, 0);
+    public static final Neo4jVersion V5_13_0 = new Neo4jVersion(5, 13, 0);
+
+    private final int major;
+    private final int minor;
+    private final int patch;
+
+    Neo4jVersion(int major, int minor) {
+      this(major, minor, Integer.MAX_VALUE);
+    }
+
+    Neo4jVersion(int major, int minor, int patch) {
+      this.major = major;
+      this.minor = minor;
+      this.patch = patch;
+    }
 
     public static Neo4jVersion of(String version) {
-      if (version.startsWith("4.4")) {
-        return V4_4;
-      } else if (version.startsWith("5.")) {
-        return V5;
-      } else {
-        return UNKNOWN;
+      int major = -1;
+      int minor = -1;
+      int patch = -1;
+      String buffer = "";
+      for (char c : version.toCharArray()) {
+        if (c != '.') {
+          buffer += c;
+          continue;
+        }
+        if (major == -1) {
+          major = Integer.parseInt(buffer, 10);
+        } else if (minor == -1) {
+          minor = parseMinor(buffer);
+        } else {
+          throw invalidVersion(version);
+        }
+        buffer = "";
       }
+      if (buffer.isEmpty()) {
+        throw invalidVersion(version);
+      }
+      if (minor == -1) {
+        minor = parseMinor(buffer);
+      } else {
+        patch = parsePatch(buffer);
+      }
+
+      if (major == -1 || minor == -1) {
+        throw invalidVersion(version);
+      }
+      if (patch == -1) {
+        return new Neo4jVersion(major, minor);
+      }
+      return new Neo4jVersion(major, minor, patch);
+    }
+
+    @Override
+    public int compareTo(Neo4jVersion other) {
+      if (major != other.major) {
+        return signum(major - other.major);
+      }
+      if (minor != other.minor) {
+        return signum(minor - other.minor);
+      }
+      return signum(patch - other.patch);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof Neo4jVersion that)) {
+        return false;
+      }
+      return major == that.major && minor == that.minor && patch == that.patch;
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(major, minor, patch);
+    }
+
+    @Override
+    public String toString() {
+      if (patch == Integer.MAX_VALUE) {
+        return String.format("%d.%d", major, minor);
+      }
+      return String.format("%d.%d.%d", major, minor, patch);
+    }
+
+    private static int parseMinor(String buffer) {
+      return Integer.parseInt(buffer.replace("-aura", ""), 10);
+    }
+
+    private static int parsePatch(String buffer) {
+      int end = buffer.indexOf('-');
+      if (end == -1) {
+        end = buffer.length();
+      }
+      return Integer.parseInt(buffer.substring(0, end), 10);
+    }
+
+    private static int signum(int result) {
+      return (int) Math.signum(result);
+    }
+
+    private static IllegalArgumentException invalidVersion(String version) {
+      return new IllegalArgumentException(String.format("Invalid Neo4j version: %s", version));
     }
   }
 }

@@ -28,6 +28,9 @@ v2/datastream-to-postgres/ @GoogleCloudPlatform/datastream
 v2/datastream-to-mongodb/ @GoogleCloudPlatform/datastream
 v2/datastream-common/ @GoogleCloudPlatform/datastream @GoogleCloudPlatform/spanner-migrations-team
 
+# Datastream MongoDB To Firestore Templates
+v2/datastream-mongodb-to-firestore/ @GoogleCloudPlatform/FirestoreMigrationTool
+
 # Spanner Bulk migration template
 v2/sourcedb-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
 

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.schema.typemapping;
 
+import java.io.Serializable;
 import javax.annotation.Nullable;
 import org.apache.avro.Schema;
 
@@ -24,7 +25,7 @@ import org.apache.avro.Schema;
  * com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.provider.MysqlMappingProvider
  * MysqlMappingProvider}.
  */
-public interface UnifiedTypeMapping {
+public interface UnifiedTypeMapping extends Serializable {
 
   /**
    * Convert the Source Schema.

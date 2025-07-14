@@ -83,8 +83,6 @@ dataflow_params = {
     network = "default"
     # Number of workers for the Dataflow job
     num_workers = 10
-    # Optional SDK container image for the Dataflow job
-    sdk_container_image = "gcr.io/dataflow-templates/spanner-to-sourcedb:latest"
     # Optional service account email for the Dataflow job
     service_account_email = "dataflow-sa@<YOUR_PROJECT_ID>.iam.gserviceaccount.com" # Replace with your project ID
     # Optional flag to skip waiting on job termination (defaults to false)

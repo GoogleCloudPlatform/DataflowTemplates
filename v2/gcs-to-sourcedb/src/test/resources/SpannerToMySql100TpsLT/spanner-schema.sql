@@ -1,4 +1,4 @@
-CREATE TABLE `Person` (
+CREATE TABLE IF NOT EXISTS `Person` (
     `first_name1` STRING(500),
     `last_name1` STRING(500),
     `first_name2` STRING(500),

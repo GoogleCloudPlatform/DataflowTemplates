@@ -35,6 +35,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_TABLES;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.mock;
@@ -103,15 +104,20 @@ public class CassandraIOWrapperHelperTest {
       mockFileReader
           .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
           .thenReturn(new URL[] {testUrl})
+          .thenReturn(new URL[] {testUrl})
           /* Empty URL List to test FileNotFoundException handling. */
           .thenReturn(new URL[] {});
 
-      DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(testGcsPath);
+      DataSource dataSource = CassandraIOWrapperHelper.buildDataSource(testGcsPath, null);
       assertThat(dataSource.cassandra().loggedKeySpace()).isEqualTo("test-keyspace");
       assertThat(dataSource.cassandra().localDataCenter()).isEqualTo("datacenter1");
+      assertThat(dataSource.cassandra().numPartitions()).isEqualTo(null);
+      assertThat(
+              CassandraIOWrapperHelper.buildDataSource(testGcsPath, 42).cassandra().numPartitions())
+          .isEqualTo(42);
       assertThrows(
           SchemaDiscoveryException.class,
-          () -> CassandraIOWrapperHelper.buildDataSource(testGcsPath));
+          () -> CassandraIOWrapperHelper.buildDataSource(testGcsPath, null));
     }
   }
 
@@ -138,10 +144,18 @@ public class CassandraIOWrapperHelperTest {
                 dataSource,
                 CassandraIOWrapperHelper.buildSchemaDiscovery(),
                 cassandraSchemaReference))
-        .isEqualTo(List.of(BASIC_TEST_TABLE, PRIMITIVE_TYPES_TABLE));
+        .isEqualTo(TEST_TABLES);
     assertThat(
             CassandraIOWrapperHelper.getTablesToRead(
                 List.of(BASIC_TEST_TABLE),
+                dataSource,
+                CassandraIOWrapperHelper.buildSchemaDiscovery(),
+                cassandraSchemaReference))
+        .isEqualTo(List.of(BASIC_TEST_TABLE));
+
+    assertThat(
+            CassandraIOWrapperHelper.getTablesToRead(
+                List.of(BASIC_TEST_TABLE, "Non-existing-table"),
                 dataSource,
                 CassandraIOWrapperHelper.buildSchemaDiscovery(),
                 cassandraSchemaReference))

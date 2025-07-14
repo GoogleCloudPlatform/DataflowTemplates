@@ -15,6 +15,10 @@
  */
 package com.google.cloud.teleport.spanner.ddl;
 
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_COUNTER_START;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_KIND;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MAX;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_SEQUENCE_SKIP_RANGE_MIN;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
@@ -31,6 +35,7 @@ import com.google.cloud.spanner.BatchClient;
 import com.google.cloud.spanner.BatchReadOnlyTransaction;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
+import com.google.cloud.teleport.spanner.DdlToAvroSchemaConverter;
 import com.google.cloud.teleport.spanner.IntegrationTest;
 import com.google.cloud.teleport.spanner.SpannerServerResource;
 import com.google.cloud.teleport.spanner.common.Type;
@@ -39,8 +44,11 @@ import com.google.protobuf.ByteString;
 import com.google.protobuf.DescriptorProtos.FileDescriptorSet;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import org.apache.avro.Schema;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -531,6 +539,71 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void simpleUdf() throws Exception {
+    String namedSchemaDef = "CREATE SCHEMA s1";
+    String udfDef1 = "CREATE FUNCTION s1.foo() AS (1)";
+    String udfDef2 =
+        "CREATE FUNCTION s1.default_values("
+            + "A STRING, "
+            + "B STRING DEFAULT NULL, "
+            + "C STRING DEFAULT 'NULL', "
+            + "D STRING DEFAULT '') "
+            + "RETURNS STRING AS (CONCAT(A, '::', B, '::', C, '::', D))";
+
+    SPANNER_SERVER.createDatabase(dbId, Arrays.asList(namedSchemaDef, udfDef1, udfDef2));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.schemas(), hasSize(1));
+    assertThat(ddl.schema("s1"), notNullValue());
+
+    assertThat(ddl.udfs(), hasSize(2));
+    Udf udf1 = ddl.udf("s1.foo");
+    assertThat(udf1, notNullValue());
+    assertThat(ddl.udf("S1.FOO"), sameInstance(udf1));
+
+    Udf udf2 = ddl.udf("s1.default_values");
+    assertThat(udf2, notNullValue());
+    assertThat(ddl.udf("S1.DEFault_values"), sameInstance(udf2));
+
+    assertThat(udf1.name(), equalTo("s1.foo"));
+    assertThat(udf1.type(), equalTo("INT64"));
+    assertThat(udf1.definition(), equalTo("1"));
+    assertEquals(udf1.security(), Udf.SqlSecurity.INVOKER);
+
+    assertThat(udf2.name(), equalTo("s1.default_values"));
+    assertThat(udf2.type(), equalTo("STRING"));
+    assertThat(udf2.definition(), equalTo("CONCAT(A, '::', B, '::', C, '::', D)"));
+    assertEquals(udf2.security(), Udf.SqlSecurity.INVOKER);
+    assertThat(
+        udf2.parameters(),
+        hasItems(
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("A")
+                .type("STRING")
+                .defaultExpression(null)
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("B")
+                .type("STRING")
+                .defaultExpression("NULL")
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("C")
+                .type("STRING")
+                .defaultExpression("'NULL'")
+                .autoBuild(),
+            UdfParameter.builder()
+                .functionSpecificName("s1.default_values")
+                .name("D")
+                .type("STRING")
+                .defaultExpression("''")
+                .autoBuild()));
+  }
+
+  @Test
   public void interleavedIn() throws Exception {
     List<String> statements =
         Arrays.asList(
@@ -728,6 +801,39 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
+  public void pgSearchIndexes() throws Exception {
+    // Prefix indexes to ensure ordering.
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Users\" ("
+                + "  \"userid\"                              bigint NOT NULL,"
+                + "  PRIMARY KEY (\"userid\")"
+                + " )",
+            " CREATE TABLE \"Messages\" ("
+                + "  \"userid\"                              bigint NOT NULL,"
+                + "  \"messageid\"                           bigint NOT NULL,"
+                + "  \"orderid\"                             bigint NOT NULL,"
+                + "  \"orderid_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_number(orderid)) VIRTUAL HIDDEN,"
+                + "  \"subject\"                             character varying,"
+                + "  \"subject_tokens\"                      spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(subject)) STORED HIDDEN,"
+                + "  \"body\"                                character varying,"
+                + "  \"body_tokens\"                         spanner.tokenlist GENERATED ALWAYS AS (spanner.tokenize_fulltext(body)) STORED HIDDEN,"
+                + "  \"data\"                                character varying,"
+                + "   PRIMARY KEY (\"userid\", \"messageid\")"
+                + " ) INTERLEAVE IN PARENT \"Users\"",
+            " CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " INCLUDE (\"data\")"
+                + " PARTITION BY \"userid\""
+                + " ORDER BY \"orderid\""
+                + " INTERLEAVE IN \"Users\""
+                + " WITH (sort_order_sharding=TRUE)");
+
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
   public void vectorIndexes() throws Exception {
     List<String> statements =
         Arrays.asList(
@@ -741,6 +847,27 @@ public class InformationSchemaScannerIT {
 
     SPANNER_SERVER.createDatabase(dbId, statements);
     Ddl ddl = getDatabaseDdl();
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  // CREATE INDEX vector_index ON Base USING ScaNN (embedding_column)
+  // INCLUDE (v1, v2) WITH (distance_type = 'COSINE', tree_depth = 3)
+  // WHERE (embedding_column IS NOT NULL);
+  @Test
+  public void pgVectorIndexes() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE TABLE \"Base\" ("
+                + " \"K\"                                     bigint NOT NULL,"
+                + " \"V\"                                     bigint,"
+                + " \"Embeddings\"                            double precision[] vector length 128,"
+                + " PRIMARY KEY (\"K\")"
+                + " )",
+            " CREATE INDEX \"VI\" ON \"Base\" USING ScaNN (\"Embeddings\" )"
+                + " WITH (distance_type='COSINE') WHERE \"Embeddings\" IS NOT NULL");
+
+    SPANNER_SERVER.createPgDatabase(dbId, statements);
+    Ddl ddl = getPgDatabaseDdl();
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }
 
@@ -939,7 +1066,8 @@ public class InformationSchemaScannerIT {
   public void pgGeneratedColumns() throws Exception {
     String statement =
         "CREATE TABLE \"T\" ( \"id\"                     bigint NOT NULL,"
-            + " \"generated\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_stored\" bigint NOT NULL GENERATED ALWAYS AS ((id / '1'::bigint)) STORED, "
+            + " \"generated_virtual\" bigint GENERATED ALWAYS AS ((id / '1'::bigint)) VIRTUAL, "
             + " PRIMARY KEY (\"id\") )";
 
     SPANNER_SERVER.createPgDatabase(dbId, Collections.singleton(statement));
@@ -1112,6 +1240,8 @@ public class InformationSchemaScannerIT {
 
   @Test
   public void sequences() throws Exception {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
     List<String> statements =
         Arrays.asList(
             "ALTER DATABASE `"
@@ -1159,6 +1289,46 @@ public class InformationSchemaScannerIT {
             + "\n\t`balanceId`                             INT64 NOT NULL,"
             + "\n) PRIMARY KEY (`id` ASC)\n\n";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(6));
+    Iterator<Schema> it = result.iterator();
+    Schema avroSchema1 = it.next();
+    assertThat(avroSchema1.getName(), equalTo("MySequence"));
+    assertThat(
+        avroSchema1.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+    assertThat(avroSchema1.getProp("sequenceOption_1"), equalTo(null));
+
+    Schema avroSchema2 = it.next();
+    assertThat(avroSchema2.getName(), equalTo("MySequence2"));
+    assertThat(
+        avroSchema2.getProp("sequenceOption_0"),
+        equalTo("sequence_kind=\"bit_reversed_positive\""));
+    assertThat(avroSchema2.getProp("sequenceOption_1"), equalTo("skip_range_max=1000"));
+    assertThat(avroSchema2.getProp("sequenceOption_2"), equalTo("skip_range_min=1"));
+    assertThat(avroSchema2.getProp("sequenceOption_3"), equalTo("start_with_counter=100"));
+    assertThat(avroSchema2.getProp("sequenceOption_4"), equalTo(null));
+
+    Schema avroSchema3 = it.next();
+    assertThat(avroSchema3.getName(), equalTo("MySequence3"));
+    assertThat(avroSchema3.getProp("sequenceOption_0"), equalTo("skip_range_max=1000"));
+    assertThat(avroSchema3.getProp("sequenceOption_1"), equalTo("skip_range_min=1"));
+    assertThat(avroSchema3.getProp("sequenceOption_2"), equalTo("start_with_counter=100"));
+    assertThat(avroSchema3.getProp("sequenceOption_3"), equalTo("sequence_kind=\"default\""));
+    assertThat(avroSchema3.getProp("sequenceOption_4"), equalTo(null));
+
+    Schema avroSchema4 = it.next();
+    assertThat(avroSchema4.getName(), equalTo("MySequence4"));
+    assertThat(avroSchema4.getProp("sequenceOption_0"), equalTo("sequence_kind=\"default\""));
+    assertThat(avroSchema4.getProp("sequenceOption_1"), equalTo(null));
+
+    Schema avroSchema5 = it.next();
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_KIND), equalTo("bit_reversed_positive"));
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MIN), equalTo("1"));
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_SKIP_RANGE_MAX), equalTo("1000"));
+    assertThat(avroSchema5.getProp(SPANNER_SEQUENCE_COUNTER_START), equalTo("100"));
+    assertThat(avroSchema5.getProp("sequenceOption_0"), equalTo(null));
   }
 
   @Test
@@ -1272,6 +1442,29 @@ public class InformationSchemaScannerIT {
     // Validate the PLACEMENT KEY constraint is available in placement tables.
     SPANNER_SERVER.createPgDatabase(dbId, statements);
     Ddl ddl = getPgDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void defaultTimeZone() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "ALTER DATABASE `" + dbId + "` SET OPTIONS ( default_time_zone = \"UTC\" )\n\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
+  }
+
+  @Test
+  public void pgDefaultTimeZone() throws Exception {
+    List<String> statements =
+        Arrays.asList("ALTER DATABASE \"" + dbId + "\" SET spanner.default_time_zone = 'UTC'\n");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
     statements.set(0, statements.get(0).replace(dbId, "%db_name%"));
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(String.join("", statements)));
   }

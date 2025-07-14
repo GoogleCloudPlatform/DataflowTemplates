@@ -26,7 +26,9 @@
     </parent>
 
     <artifactId>spanner-common</artifactId>
-
+    <properties>
+        <skipShade>true</skipShade>
+    </properties>
     <dependencies>
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
@@ -49,6 +51,12 @@
         <artifactId>java-driver-core</artifactId>
         <version>4.17.0</version>
         <scope>compile</scope>
+        <exclusions>
+          <exclusion>
+              <groupId>org.slf4j</groupId>
+              <artifactId>slf4j-api</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
         <dependency>
             <groupId>org.mockito</groupId>

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.options;
 
+import com.google.cloud.spanner.Options;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
 
@@ -252,4 +253,106 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getNamespace();
 
   void setNamespace(String value);
+
+  @TemplateParameter.Text(
+      order = 21,
+      optional = true,
+      description = "Use Inserts instead of Upserts for spanner mutations.",
+      helpText =
+          "By default the pipeline uses Upserts to write rows to spanner. Which means existing rows would get overwritten. If InsertOnly mode is enabled, inserts would be used instead of upserts and existing rows won't be overwritten.")
+  @Default.Boolean(false)
+  Boolean getInsertOnlyModeForSpannerMutations();
+
+  void setInsertOnlyModeForSpannerMutations(Boolean value);
+
+  @TemplateParameter.Text(
+      order = 22,
+      optional = true,
+      description = "BatchSize for Spanner Mutation.",
+      helpText =
+          "BatchSize in bytes for Spanner Mutations. if set less than 0, default of Apache Beam's SpannerIO is used, which is 1MB. Set this to 0 or 10, to disable batching mutations.")
+  @Default.Long(-1)
+  Long getBatchSizeForSpannerMutations();
+
+  void setBatchSizeForSpannerMutations(Long value);
+
+  @TemplateParameter.Enum(
+      order = 23,
+      enumOptions = {
+        @TemplateParameter.TemplateEnumOption("LOW"),
+        @TemplateParameter.TemplateEnumOption("MEDIUM"),
+        @TemplateParameter.TemplateEnumOption("HIGH")
+      },
+      optional = true,
+      description = "Priority for Spanner RPC invocations",
+      helpText =
+          "The request priority for Cloud Spanner calls. The value must be one of:"
+              + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `MEDIUM`.")
+  @Default.Enum("MEDIUM")
+  Options.RpcPriority getSpannerPriority();
+
+  void setSpannerPriority(Options.RpcPriority value);
+
+  @TemplateParameter.Text(
+      order = 24,
+      optional = true,
+      description = "Table name overrides from source to spanner",
+      regexes =
+          "^\\[([[:space:]]*\\{[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+      example = "[{Singers, Vocalists}, {Albums, Records}]",
+      helpText =
+          "These are the table name overrides from source to spanner. They are written in the"
+              + "following format: [{SourceTableName1, SpannerTableName1}, {SourceTableName2, SpannerTableName2}]"
+              + "This example shows mapping Singers table to Vocalists and Albums table to Records.")
+  @Default.String("")
+  String getTableOverrides();
+
+  void setTableOverrides(String value);
+
+  @TemplateParameter.Text(
+      order = 25,
+      optional = true,
+      regexes =
+          "^\\[([[:space:]]*\\{[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*,[[:space:]]*[[:graph:]]+\\.[[:graph:]]+[[:space:]]*\\}[[:space:]]*(,[[:space:]]*)*)*\\]$",
+      description = "Column name overrides from source to spanner",
+      example = "[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]",
+      helpText =
+          "These are the column name overrides from source to spanner. They are written in the"
+              + "following format: [{SourceTableName1.SourceColumnName1, SourceTableName1.SpannerColumnName1}, {SourceTableName2.SourceColumnName1, SourceTableName2.SpannerColumnName1}]"
+              + "Note that the SourceTableName should remain the same in both the source and spanner pair. To override table names, use tableOverrides."
+              + "The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively.")
+  @Default.String("")
+  String getColumnOverrides();
+
+  void setColumnOverrides(String value);
+
+  @TemplateParameter.Text(
+      order = 26,
+      optional = true,
+      description = "File based overrides from source to spanner",
+      helpText =
+          "A file which specifies the table and the column name overrides from source to spanner.")
+  @Default.String("")
+  String getSchemaOverridesFilePath();
+
+  void setSchemaOverridesFilePath(String value);
+
+  @TemplateParameter.Text(
+      order = 27,
+      optional = true,
+      description =
+          "Hint for number of uniformization stages. Currently Applicable only for jdc based sources like MySql or PG. Leave 0 or default to disable uniformization. Set to -1 for a log(numPartition) number of stages.",
+      helpText =
+          "Hint for number of uniformization stages."
+              + " Currently Applicable only for jdbc based sources like MySQL or PostgreSQL."
+              + " Leave 0 or default to disable uniformization."
+              + " Set to -1 for a log(numPartition) number of stages."
+              + " If your source primary key space is uniformly distributed (for example an auto-incrementing key with sparse holes), it's based to leave it disabled."
+              + " If your keyspace is not uniform, you might encounter a laggard VM in your dataflow run."
+              + " In such a case, you can set it to -1 to enable uniformization."
+              + " Manually setting it to values other than 0 or -1 would help you fine tune the tradeoff of the overhead added by uniformization stages and the  performance improvement due to better distribution of work.")
+  @Default.Long(0)
+  Long getUniformizationStageCountHint();
+
+  void setUniformizationStageCountHint(Long value);
 }

@@ -37,7 +37,7 @@ public abstract class CassandraFieldMapper<T> implements Serializable {
     return avroValue;
   }
 
-  abstract CassandraRowValueExtractor<T> rowValueExtractor();
+  public abstract CassandraRowValueExtractor<T> rowValueExtractor();
 
-  abstract CassandraRowValueMapper<T> rowValueMapper();
+  public abstract CassandraRowValueMapper<T> rowValueMapper();
 }

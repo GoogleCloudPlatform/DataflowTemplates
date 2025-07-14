@@ -36,6 +36,9 @@ abstract class CassandraRowMapper implements Transformer<Row, SourceRow>, Serial
   public static final ImmutableMap<String, CassandraFieldMapper<?>> MAPPINGS =
       CassandraMappingsProvider.getFieldMapping();
 
+  /*
+   * TODO(vardhanvthigle): support nested collections.
+   */
   public static CassandraRowMapper create(
       SourceSchemaReference sourceSchemaReference, SourceTableSchema sourceTableSchema) {
     return new AutoValue_CassandraRowMapper(sourceSchemaReference, sourceTableSchema);
@@ -57,7 +60,7 @@ abstract class CassandraRowMapper implements Transformer<Row, SourceRow>, Serial
     long time = getCurrentTimeMicros();
 
     SourceRow.Builder sourceRowBuilder =
-        SourceRow.builder(sourceSchemaReference(), sourceTableSchema(), "", time);
+        SourceRow.builder(sourceSchemaReference(), sourceTableSchema(), null, time);
 
     sourceTableSchema()
         .sourceColumnNameToSourceColumnType()

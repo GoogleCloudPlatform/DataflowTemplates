@@ -64,6 +64,7 @@ import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.TextIO;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -157,7 +158,8 @@ public class DataStreamToSpanner {
             "File location for Datastream file output in Cloud Storage. Support for this feature has been disabled.",
         helpText =
             "The Cloud Storage file location that contains the Datastream files to replicate. Typically, "
-                + "this is the root path for a stream. Support for this feature has been disabled.")
+                + "this is the root path for a stream. Support for this feature has been disabled."
+                + " Please use this feature only for retrying entries that land in severe DLQ.")
     String getInputFilePattern();
 
     void setInputFilePattern(String value);
@@ -542,7 +544,7 @@ public class DataStreamToSpanner {
         groupName = "Target",
         description = "Cloud Spanner Shadow Table Instance Id.",
         helpText =
-            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance.")
+            "Optional separate instance for shadow tables. If not specified, shadow tables will be created in the main instance. If specified, ensure shadowTableSpannerDatabaseId is specified as well.")
     @Default.String("")
     String getShadowTableSpannerInstanceId();
 
@@ -554,11 +556,21 @@ public class DataStreamToSpanner {
         groupName = "Target",
         description = "Cloud Spanner Shadow Table Database Id.",
         helpText =
-            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database.")
+            "Optional separate database for shadow tables. If not specified, shadow tables will be created in the main database. If specified, ensure shadowTableSpannerInstanceId is specified as well.")
     @Default.String("")
     String getShadowTableSpannerDatabaseId();
 
     void setShadowTableSpannerDatabaseId(String value);
+
+    @TemplateParameter.Text(
+        order = 34,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
   }
 
   private static void validateSourceType(Options options) {
@@ -813,6 +825,9 @@ public class DataStreamToSpanner {
             "Write Filtered Events To GCS",
             TextIO.write().to(filterEventsDirectory).withSuffix(".json").withWindowedWrites());
 
+    spannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            spannerConfig, options.getFailureInjectionParameter());
     /*
      * Stage 4: Write transformed records to Cloud Spanner
      */
@@ -894,8 +909,9 @@ public class DataStreamToSpanner {
       throw new IllegalArgumentException(
           "Both shadowTableSpannerInstanceId and shadowTableSpannerDatabaseId must be specified together");
     }
-    // If not specified, use main instance and database values. The shadow table database stores the
-    // shadow tables and by default, is the same as he main database for backwards compatibility.
+    // If not specified, use main instance and main database values. The shadow table database
+    // stores the shadow tables and by default, is the same as the main database for backward
+    // compatibility.
     if (Strings.isNullOrEmpty(shadowTableSpannerInstanceId)
         && Strings.isNullOrEmpty(shadowTableSpannerDatabaseId)) {
       shadowTableSpannerInstanceId = options.getInstanceId();

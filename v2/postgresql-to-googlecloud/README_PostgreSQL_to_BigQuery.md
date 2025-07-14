@@ -36,11 +36,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **KMSEncryptionKey**: The Cloud KMS encryption key to use to decrypt the username, password, and connection string. If you  pass in a Cloud KMS key, you must also encrypt the username, password, and connection string. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`.
 * **useColumnAlias**: If set to `true`, the pipeline uses the column alias (`AS`) instead of the column name to map the rows to BigQuery. Defaults to `false`.
 * **isTruncate**: If set to `true`, the pipeline truncates before loading data into BigQuery. Defaults to `false`, which causes the pipeline to append data.
-* **partitionColumn**: If this parameter is provided with the name of the `table` defined as an optional parameter, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, only supports `Long` partition columns.
+* **partitionColumn**: If `partitionColumn` is specified along with the `table`, JdbcIO reads the table in parallel by executing multiple instances of the query on the same table (subquery) using ranges. Currently, supports `Long` and `DateTime` partition columns. Pass the column type through `partitionColumnType`.
+* **partitionColumnType**: The type of the `partitionColumn`, accepts either `long` or `datetime`. Defaults to: long.
 * **table**: The table to read from when using partitions. This parameter also accepts a subquery in parentheses. For example, `(select id, name from Person) as subq`.
 * **numPartitions**: The number of partitions. With the lower and upper bound, this value forms partition strides for generated `WHERE` clause expressions that are used to split the partition column evenly. When the input is less than `1`, the number is set to `1`.
-* **lowerBound**: The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.
-* **upperBound**: The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types.
+* **lowerBound**: The lower bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` partitionColumnType accepts lower bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`.
+* **upperBound**: The upper bound to use in the partition scheme. If not provided, this value is automatically inferred by Apache Beam for the supported types. `datetime` partitionColumnType accepts upper bound in the format `yyyy-MM-dd HH:mm:ss.SSSZ`. For example, `2024-02-20 07:55:45.000+03:30`.
 * **fetchSize**: The number of rows to be fetched from database at a time. Not used for partitioned reads. Defaults to: 50000.
 * **createDisposition**: The BigQuery CreateDisposition to use. For example, `CREATE_IF_NEEDED` or `CREATE_NEVER`. Defaults to: CREATE_NEVER.
 * **bigQuerySchemaPath**: The Cloud Storage path for the BigQuery JSON schema. If `createDisposition` is set to `CREATE_IF_NEEDED`, this parameter must be specified. For example, `gs://your-bucket/your-schema.json`.
@@ -56,7 +57,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -140,6 +141,7 @@ export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export USE_COLUMN_ALIAS=false
 export IS_TRUNCATE=false
 export PARTITION_COLUMN=<partitionColumn>
+export PARTITION_COLUMN_TYPE=long
 export TABLE=<table>
 export NUM_PARTITIONS=<numPartitions>
 export LOWER_BOUND=<lowerBound>
@@ -168,6 +170,7 @@ gcloud dataflow flex-template run "postgresql-to-bigquery-job" \
   --parameters "useColumnAlias=$USE_COLUMN_ALIAS" \
   --parameters "isTruncate=$IS_TRUNCATE" \
   --parameters "partitionColumn=$PARTITION_COLUMN" \
+  --parameters "partitionColumnType=$PARTITION_COLUMN_TYPE" \
   --parameters "table=$TABLE" \
   --parameters "numPartitions=$NUM_PARTITIONS" \
   --parameters "lowerBound=$LOWER_BOUND" \
@@ -211,6 +214,7 @@ export KMSENCRYPTION_KEY=<KMSEncryptionKey>
 export USE_COLUMN_ALIAS=false
 export IS_TRUNCATE=false
 export PARTITION_COLUMN=<partitionColumn>
+export PARTITION_COLUMN_TYPE=long
 export TABLE=<table>
 export NUM_PARTITIONS=<numPartitions>
 export LOWER_BOUND=<lowerBound>
@@ -231,7 +235,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="postgresql-to-bigquery-job" \
 -DtemplateName="PostgreSQL_to_BigQuery" \
--Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
+-Dparameters="connectionURL=$CONNECTION_URL,connectionProperties=$CONNECTION_PROPERTIES,username=$USERNAME,password=$PASSWORD,query=$QUERY,outputTable=$OUTPUT_TABLE,bigQueryLoadingTemporaryDirectory=$BIG_QUERY_LOADING_TEMPORARY_DIRECTORY,KMSEncryptionKey=$KMSENCRYPTION_KEY,useColumnAlias=$USE_COLUMN_ALIAS,isTruncate=$IS_TRUNCATE,partitionColumn=$PARTITION_COLUMN,partitionColumnType=$PARTITION_COLUMN_TYPE,table=$TABLE,numPartitions=$NUM_PARTITIONS,lowerBound=$LOWER_BOUND,upperBound=$UPPER_BOUND,fetchSize=$FETCH_SIZE,createDisposition=$CREATE_DISPOSITION,bigQuerySchemaPath=$BIG_QUERY_SCHEMA_PATH,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE,useStorageWriteApi=$USE_STORAGE_WRITE_API,useStorageWriteApiAtLeastOnce=$USE_STORAGE_WRITE_API_AT_LEAST_ONCE" \
 -f v2/postgresql-to-googlecloud
 ```
 
@@ -287,6 +291,7 @@ resource "google_dataflow_flex_template_job" "postgresql_to_bigquery" {
     # useColumnAlias = "false"
     # isTruncate = "false"
     # partitionColumn = "<partitionColumn>"
+    # partitionColumnType = "long"
     # table = "<table>"
     # numPartitions = "<numPartitions>"
     # lowerBound = "<lowerBound>"

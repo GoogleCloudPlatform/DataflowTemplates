@@ -18,6 +18,9 @@ package com.google.cloud.teleport.v2.utils;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -25,12 +28,14 @@ import org.joda.time.Instant;
 
 /** Descriptor of the Cloud Bigtable source table where changes are captured from. */
 public class BigtableSource implements Serializable {
+  public static final String ANY_COLUMN_FAMILY = "*";
 
   private final String instanceId;
   private final String tableId;
   private final String charset;
   private final Set<String> columnFamiliesToIgnore;
   private final Set<String> columnsToIgnore;
+  private final Map<String, Set<String>> ignoredColumnsMap;
 
   private final Instant startTimestamp;
 
@@ -60,6 +65,24 @@ public class BigtableSource implements Serializable {
       this.columnsToIgnore =
           Arrays.stream(ignoreColumns.trim().split("[\\s]*,[\\s]*")).collect(Collectors.toSet());
     }
+
+    ignoredColumnsMap = new HashMap<>();
+    for (String columnFamilyAndColumn : columnsToIgnore) {
+      String[] parts = columnFamilyAndColumn.split(":", 2);
+      String columnFamily = ANY_COLUMN_FAMILY;
+      String columnName = columnFamilyAndColumn;
+      if (parts.length == 2) {
+        columnFamily = parts[0];
+        if (StringUtils.isBlank(columnFamily)) {
+          columnFamily = ANY_COLUMN_FAMILY;
+        }
+        columnName = parts[1];
+      }
+
+      Set<String> appliedToColumnFamilies =
+          ignoredColumnsMap.computeIfAbsent(columnName, k -> new HashSet<>());
+      appliedToColumnFamilies.add(columnFamily);
+    }
   }
 
   public String getInstanceId() {
@@ -84,5 +107,17 @@ public class BigtableSource implements Serializable {
 
   public Instant getStartTimestamp() {
     return startTimestamp;
+  }
+
+  public Boolean isIgnoredColumnFamily(String columnFamily) {
+    return columnFamiliesToIgnore.contains(columnFamily);
+  }
+
+  public Boolean isIgnoredColumn(String columnFamily, String column) {
+    Set<String> columnFamilies = ignoredColumnsMap.get(column);
+    if (columnFamilies == null) {
+      return false;
+    }
+    return columnFamilies.contains(columnFamily) || columnFamilies.contains(ANY_COLUMN_FAMILY);
   }
 }

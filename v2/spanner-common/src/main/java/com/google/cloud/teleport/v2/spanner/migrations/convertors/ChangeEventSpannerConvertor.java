@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.spanner.type.Type.Code;
 import com.google.common.collect.ImmutableList;
 import java.util.HashSet;
 import java.util.List;
@@ -120,6 +121,10 @@ public class ChangeEventSpannerConvertor {
           columnValue =
               Value.date(ChangeEventTypeConvertor.toDate(changeEvent, colName, requiredField));
           break;
+        case ARRAY:
+          // TODO(b/422928714): Add support for Array types.
+          columnValue = null;
+          break;
           // TODO(b/179070999) - Add support for other data types.
         default:
           throw new IllegalArgumentException(
@@ -129,7 +134,10 @@ public class ChangeEventSpannerConvertor {
                   + columnType.getCode()
                   + ")");
       }
-      builder.set(columnName).to(columnValue);
+      // TODO(b/422928714): Add support for Array types.
+      if (columnType.getCode() != Code.ARRAY) {
+        builder.set(columnName).to(columnValue);
+      }
     }
     return builder;
   }

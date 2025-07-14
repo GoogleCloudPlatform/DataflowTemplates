@@ -6,22 +6,25 @@ on:
   - cron: '0 0 * * 6'
   workflow_dispatch:
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   load_tests:
     name: Dataflow Templates Load tests
-    timeout-minutes: 2880 # 2 days
+    timeout-minutes: 4320 # 3 days
     # Run on any runner that matches all the specified runs-on values.
     runs-on: [ self-hosted, perf ]
     steps:
     - name: Checkout code
-      uses: actions/checkout@c85c95e3d7251135ab7dc9ce3241c5835cc595a9 # v3.5.3
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         fetch-depth: 0
     - name: Setup Environment
       id: setup-java-env
       uses: ./.github/actions/setup-java-env
+    - name: Get current date
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
     - name: Get Host IP
       id: variables
       run: echo "hostIP=$(gcloud compute instances list | grep $(hostname) | awk '{print $4; exit}' )" >> $GITHUB_OUTPUT
@@ -31,14 +34,23 @@ jobs:
         -Dproject=cloud-teleport-testing \
         -DartifactBucket=gs://cloud-teleport-testing-it-gitactions \
         -DhostIp=${HOST_IP} \
-        -DprivateConnectivity="datastream-private-connect-us-central1" \
+        -DprivateConnectivity="datastream-connect-2" \
         -DexportProject=cloud-teleport-testing \
         -DexportDataset=performance_tests \
         -DexportTable=template_performance_metrics -e -fae
       env:
         HOST_IP: ${{ steps.variables.outputs.hostIP }}
+    - name: Create Github issue on failure
+      if: failure()
+      uses: JasonEtco/create-an-issue@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        DATE: ${{ steps.date.outputs.date }}
+      with:
+        filename: .github/ISSUE_TEMPLATE/load-test-failure-issue-template.md
     - name: Upload Load Tests Report
-      uses: actions/upload-artifact@0b7f8abb1508181956e8e162db84b466c27e18ce # v3.1.2
+      uses: actions/upload-artifact@v4
       if: always() # always run even if the previous step fails
       with:
         name: surefire-test-results

@@ -36,6 +36,7 @@ import com.google.cloud.teleport.spanner.ddl.GraphElementTable.LabelToPropertyDe
 import com.google.cloud.teleport.spanner.ddl.GraphElementTable.PropertyDefinition;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn.IndexColumnsBuilder;
 import com.google.cloud.teleport.spanner.ddl.IndexColumn.Order;
+import com.google.cloud.teleport.spanner.ddl.Udf.SqlSecurity;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.base.Optional;
 import com.google.common.collect.HashMultimap;
@@ -261,6 +262,11 @@ public class DdlTest {
         .generatedAs("MOD(id+1, 64)")
         .stored()
         .endColumn()
+        .column("gen_id_virtual")
+        .pgInt8()
+        .notNull()
+        .generatedAs("MOD(id+1, 64)")
+        .endColumn()
         .column("first_name")
         .pgVarchar()
         .size(10)
@@ -336,6 +342,7 @@ public class DdlTest {
                 + " CREATE TABLE \"Users\" ("
                 + " \"id\" bigint NOT NULL,"
                 + " \"gen_id\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) STORED,"
+                + " \"gen_id_virtual\" bigint NOT NULL GENERATED ALWAYS AS (MOD(id+1, 64)) VIRTUAL,"
                 + " \"first_name\" character varying(10) DEFAULT John,"
                 + " \"last_name\" character varying DEFAULT Lennon,"
                 + " \"full_name\" character varying GENERATED ALWAYS AS"
@@ -680,6 +687,40 @@ public class DdlTest {
   }
 
   @Test
+  public void testpgSearchIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("SearchIndex")
+            .type("SEARCH")
+            .table("Messages")
+            .interleaveIn("Users")
+            .partitionBy(ImmutableList.of("userid"))
+            .orderBy(ImmutableList.of("orderid"))
+            .options(ImmutableList.of("sort_order_sharding=TRUE"));
+    builder
+        .columns()
+        .create()
+        .name("subject_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("body_tokens")
+        .none()
+        .endIndexColumn()
+        .create()
+        .name("data")
+        .storing()
+        .endIndexColumn()
+        .end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE SEARCH INDEX \"SearchIndex\" ON \"Messages\"(\"subject_tokens\" , \"body_tokens\" )"
+                + " INCLUDE (\"data\") PARTITION BY \"userid\" ORDER BY \"orderid\" INTERLEAVE IN \"Users\" WITH (sort_order_sharding=TRUE)"));
+  }
+
+  @Test
   public void testVectorIndex() {
     Index.Builder builder =
         Index.builder(Dialect.GOOGLE_STANDARD_SQL)
@@ -693,6 +734,22 @@ public class DdlTest {
         index.prettyPrint(),
         equalToCompressingWhiteSpace(
             "CREATE VECTOR INDEX `VectorIndex` ON `Base`(`Embeddings` ) OPTIONS (distance_type=\"COSINE\")"));
+  }
+
+  @Test
+  public void testpgVectorIndex() {
+    Index.Builder builder =
+        Index.builder(Dialect.POSTGRESQL)
+            .name("VectorIndex")
+            .type("ScaNN")
+            .table("Base")
+            .options(ImmutableList.of("distance_type='COSINE'"));
+    builder.columns().create().name("Embeddings").none().endIndexColumn().end();
+    Index index = builder.build();
+    assertThat(
+        index.prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE INDEX \"VectorIndex\" ON \"Base\" USING ScaNN (\"Embeddings\" ) WITH (distance_type='COSINE')"));
   }
 
   @Test
@@ -968,7 +1025,7 @@ public class DdlTest {
                 + "EDGE TABLES(\n"
                 + "edge-base-table AS edge-alias\n"
                 + " KEY (edge-primary-key)\n"
-                + "SOURCE KEY(source-edge-key) REFERENCES base-table DESTINATION KEY(dest-edge-key) REFERENCES base-table\n"
+                + "SOURCE KEY(source-edge-key) REFERENCES base-table(node-key) DESTINATION KEY(dest-edge-key) REFERENCES base-table(other-node-key)\n"
                 + "LABEL dummy-label-name3 NO PROPERTIES"
                 + ")"));
   }
@@ -1093,6 +1150,53 @@ public class DdlTest {
             " CREATE CHANGE STREAM \"ChangeStreamTableColumns\""
                 + " FOR \"T1\", \"T2\"(\"c1\", \"c2\"), \"T3\"()"));
     assertNotNull(ddl.hashCode());
+  }
+
+  @Test
+  public void udfs() {
+    Ddl.Builder ddlBuilder =
+        Ddl.builder()
+            .createUdf("spanner.Foo1")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("Foo1")
+            .definition("(SELECT 'bar')")
+            .endUdf()
+            .createUdf("spanner.Foo2")
+            .dialect(Dialect.GOOGLE_STANDARD_SQL)
+            .name("Foo2")
+            .definition("(SELECT 'bar')")
+            .security(SqlSecurity.INVOKER)
+            .type("STRING")
+            .addParameter(
+                UdfParameter.parse("arg0 STRING", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
+            .addParameter(
+                UdfParameter.parse(
+                    "arg1 STRING DEFAULT 'bar'", "spanner.Foo", Dialect.GOOGLE_STANDARD_SQL))
+            .endUdf();
+    assertThat(ddlBuilder.hasUdf("spanner.Foo1"));
+    assertThat(ddlBuilder.createUdf("spanner.Foo1").name().equals("Foo1"));
+    Ddl ddl = ddlBuilder.build();
+
+    String expectedDdlString =
+        "\nCREATE FUNCTION `Foo1`() AS ((SELECT 'bar'))\n"
+            + "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
+            + " RETURNS STRING SQL SECURITY INVOKER AS ((SELECT 'bar'))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
+
+    List<String> statements = ddl.statements();
+    assertEquals(2, statements.size());
+    assertThat(
+        statements.get(0),
+        equalToCompressingWhiteSpace("CREATE FUNCTION `Foo1`() AS ((SELECT 'bar'))"));
+    assertThat(
+        statements.get(1),
+        equalToCompressingWhiteSpace(
+            "CREATE FUNCTION `Foo2`(`arg0` STRING, `arg1` STRING DEFAULT 'bar')"
+                + " RETURNS STRING SQL SECURITY INVOKER AS ((SELECT 'bar'))"));
+    assertNotNull(ddl.hashCode());
+
+    assertThat(
+        ddl.toBuilder().build().prettyPrint(), equalToCompressingWhiteSpace(expectedDdlString));
   }
 
   @Test

@@ -1,0 +1,768 @@
+DROP TABLE IF EXISTS all_data_types;
+CREATE TABLE all_data_types (
+    primary_key UUID PRIMARY KEY,
+    ascii_col ASCII,
+    bigint_col BIGINT,
+    blob_col BLOB,
+    boolean_col BOOLEAN,
+    date_col DATE,
+    decimal_col DECIMAL,
+    double_col DOUBLE,
+    duration_col DURATION,
+    float_col FLOAT,
+    inet_col INET,
+    int_col INT,
+    smallint_col SMALLINT,
+    text_col TEXT,
+    time_col TIME,
+    timestamp_col TIMESTAMP,
+    timeuuid_col TIMEUUID,
+    tinyint_col TINYINT,
+    uuid_col UUID,
+    varchar_col VARCHAR,
+    varint_col VARINT,
+    ascii_list_col LIST<ASCII>,
+    frozen_ascii_list_col FROZEN<LIST<ASCII>>,
+    bigint_list_col LIST<BIGINT>,
+    blob_list_col LIST<BLOB>,
+    boolean_list_col LIST<BOOLEAN>,
+    date_list_col LIST<DATE>,
+    decimal_list_col LIST<DECIMAL>,
+    double_list_col LIST<DOUBLE>,
+    duration_list_col LIST<DURATION>,
+    float_list_col LIST<FLOAT>,
+    inet_list_col LIST<INET>,
+    int_list_col LIST<INT>,
+    smallint_list_col LIST<SMALLINT>,
+    text_list_col LIST<TEXT>,
+    time_list_col LIST<TIME>,
+    timestamp_list_col LIST<TIMESTAMP>,
+    timeuuid_list_col LIST<TIMEUUID>,
+    tinyint_list_col LIST<TINYINT>,
+    uuid_list_col LIST<UUID>,
+    varchar_list_col LIST<VARCHAR>,
+    varint_list_col LIST<VARINT>,
+    ascii_set_col SET<ASCII>,
+    frozen_ascii_set_col FROZEN<SET<ASCII>>,
+    bigint_set_col SET<BIGINT>,
+    blob_set_col SET<BLOB>,
+    boolean_set_col SET<BOOLEAN>,
+    date_set_col SET<DATE>,
+    decimal_set_col SET<DECIMAL>,
+    double_set_col SET<DOUBLE>,
+    -- duration can not be added as a type set in cassandra.
+    float_set_col SET<FLOAT>,
+    inet_set_col SET<INET>,
+    int_set_col SET<INT>,
+    smallint_set_col SET<SMALLINT>,
+    text_set_col SET<TEXT>,
+    time_set_col SET<TIME>,
+    timestamp_set_col SET<TIMESTAMP>,
+    timeuuid_set_col SET<TIMEUUID>,
+    tinyint_set_col SET<TINYINT>,
+    uuid_set_col SET<UUID>,
+    varchar_set_col SET<VARCHAR>,
+    varint_set_col SET<VARINT>,
+    ascii_text_map_col MAP<ASCII, TEXT>,
+    bigint_boolean_map_col MAP<BIGINT, BOOLEAN>,
+    blob_int_map_col MAP<BLOB, INT>,
+    boolean_decimal_map_col MAP<BOOLEAN, DECIMAL>,
+    date_double_map_col MAP<DATE, DOUBLE>,
+    decimal_duration_map_col MAP<DECIMAL, DURATION>,
+    double_float_map_col MAP<DOUBLE, FLOAT>,
+    -- duration is not allowed to be a map key.
+    double_inet_map_col MAP<DOUBLE, INET>,
+    float_smallint_map_col MAP<FLOAT, SMALLINT>,
+    inet_text_map_col MAP<INET, TEXT>,
+    int_time_map_col MAP<INT, TIME>,
+    smallint_timestamp_map_col MAP<SMALLINT, TIMESTAMP>,
+    text_timeuuid_map_col MAP<TEXT, TIMEUUID>,
+    time_tinyint_map_col MAP<TIME, TINYINT>,
+    timestamp_uuid_map_col MAP<TIMESTAMP, UUID>,
+    timeuuid_varchar_map_col MAP<TIMEUUID, VARCHAR>,
+    tinyint_varint_map_col MAP<TINYINT, VARINT>,
+    uuid_ascii_map_col MAP<UUID, ASCII>,
+    varchar_bigint_map_col MAP<VARCHAR, BIGINT>,
+    varint_blob_map_col MAP<VARINT, BLOB>
+);
+
+INSERT INTO all_data_types
+(
+    primary_key,
+    ascii_col,
+    bigint_col,
+    blob_col,
+    boolean_col,
+    date_col,
+    decimal_col,
+    double_col,
+    duration_col,
+    float_col,
+    inet_col,
+    int_col,
+    smallint_col,
+    text_col,
+    time_col,
+    timestamp_col,
+    timeuuid_col,
+    tinyint_col,
+    uuid_col,
+    varchar_col,
+    varint_col,
+    ascii_list_col,
+    frozen_ascii_list_col,
+    bigint_list_col,
+    blob_list_col,
+    boolean_list_col,
+    date_list_col,
+    decimal_list_col,
+    double_list_col,
+    duration_list_col,
+    float_list_col,
+    inet_list_col,
+    int_list_col,
+    smallint_list_col,
+    text_list_col,
+    time_list_col,
+    timestamp_list_col,
+    timeuuid_list_col,
+    tinyint_list_col,
+    uuid_list_col,
+    varchar_list_col,
+    varint_list_col,
+    ascii_set_col,
+    frozen_ascii_set_col,
+    bigint_set_col,
+    blob_set_col,
+    boolean_set_col,
+    date_set_col,
+    decimal_set_col,
+    double_set_col,
+    float_set_col,
+    inet_set_col,
+    int_set_col,
+    smallint_set_col,
+    text_set_col,
+    time_set_col,
+    timestamp_set_col,
+    timeuuid_set_col,
+    tinyint_set_col,
+    uuid_set_col,
+    varchar_set_col,
+    varint_set_col,
+    ascii_text_map_col,
+    bigint_boolean_map_col,
+    blob_int_map_col,
+    boolean_decimal_map_col,
+    date_double_map_col,
+    decimal_duration_map_col,
+    double_float_map_col,
+    double_inet_map_col,
+    float_smallint_map_col,
+    inet_text_map_col,
+    int_time_map_col,
+    smallint_timestamp_map_col,
+    text_timeuuid_map_col,
+    time_tinyint_map_col,
+    timestamp_uuid_map_col,
+    timeuuid_varchar_map_col,
+    tinyint_varint_map_col,
+    uuid_ascii_map_col,
+    varchar_bigint_map_col,
+    varint_blob_map_col
+)
+VALUES (
+    a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d, -- null primary_key
+    null, -- null ascii_col
+    null, -- null bigint_col
+    null, -- null blob_col
+    null, -- null boolean_col
+    null, -- null date_col
+    null, -- null decimal_col
+    null, -- null double_col
+    null, -- null duration_col
+    null, -- null float_col
+    null, -- null inet_col
+    null, -- null int_col
+    null, -- null smallint_col
+    null, -- null text_col
+    null, -- null time_col
+    null, -- null timestamp_col
+    null, -- null timeuuid_col
+    null, -- null tinyint_col
+    null, -- null uuid_col
+    null, -- null varchar_col
+    null, -- null varint_col
+    null, -- null ascii_list_col
+    null, -- null frozen_ascii_list_col
+    null, -- null bigint_list_col
+    null, -- null blob_list_col
+    null, -- null boolean_list_col
+    null, -- null date_list_col
+    null, -- null decimal_list_col
+    null, -- null double_list_col
+    null, -- null duration_list_col
+    null, -- null float_list_col
+    null, -- null inet_list_col
+    null, -- null int_list_col
+    null, -- null smallint_list_col
+    null, -- null text_list_col
+    null, -- null time_list_col
+    null, -- null timestamp_list_col
+    null, -- null timeuuid_list_col
+    null, -- null tinyint_list_col
+    null, -- null uuid_list_col
+    null, -- null varchar_list_col
+    null, -- null varint_list_col
+    null, -- null ascii_set_col
+    null, -- null frozen_ascii_set_col
+    null, -- null bigint_set_col
+    null, -- null blob_set_col
+    null, -- null boolean_set_col
+    null, -- null date_set_col
+    null, -- null decimal_set_col
+    null, -- null double_set_col
+    null, -- null float_set_col
+    null, -- null inet_set_col
+    null, -- null int_set_col
+    null, -- null smallint_set_col
+    null, -- null text_set_col
+    null, -- null time_set_col
+    null, -- null timestamp_set_col
+    null, -- null timeuuid_set_col
+    null, -- null tinyint_set_col
+    null, -- null uuid_set_col
+    null, -- null varchar_set_col
+    null, -- null varint_set_col
+    null, -- null ascii_text_map_col
+    null, -- null bigint_boolean_map_col
+    null, -- null blob_int_map_col
+    null, -- null boolean_decimal_map_col
+    null, -- null date_double_map_col
+    null, -- null decimal_duration_map_col
+    null, -- null double_float_map_col
+    null, -- null double_inet_map_col
+    null, -- null float_smallint_map_col
+    null, -- null inet_text_map_col
+    null, -- null int_time_map_col
+    null, -- null smallint_timestamp_map_col
+    null, -- null text_timeuuid_map_col
+    null, -- null time_tinyint_map_col
+    null, -- null timestamp_uuid_map_col
+    null, -- null timeuuid_varchar_map_col
+    null, -- null tinyint_varint_map_col
+    null, -- null uuid_ascii_map_col
+    null, -- null varchar_bigint_map_col
+    null -- null varint_blob_map_col
+);
+INSERT INTO all_data_types
+(
+    primary_key,
+    ascii_col,
+    bigint_col,
+    blob_col,
+    boolean_col,
+    date_col,
+    decimal_col,
+    double_col,
+    duration_col,
+    float_col,
+    inet_col,
+    int_col,
+    smallint_col,
+    text_col,
+    time_col,
+    timestamp_col,
+    timeuuid_col,
+    tinyint_col,
+    uuid_col,
+    varchar_col,
+    varint_col,
+    ascii_list_col,
+    frozen_ascii_list_col,
+    bigint_list_col,
+    blob_list_col,
+    boolean_list_col,
+    date_list_col,
+    decimal_list_col,
+    double_list_col,
+    duration_list_col,
+    float_list_col,
+    inet_list_col,
+    int_list_col,
+    smallint_list_col,
+    text_list_col,
+    time_list_col,
+    timestamp_list_col,
+    timeuuid_list_col,
+    tinyint_list_col,
+    uuid_list_col,
+    varchar_list_col,
+    varint_list_col,
+    ascii_set_col,
+    frozen_ascii_set_col,
+    bigint_set_col,
+    blob_set_col,
+    boolean_set_col,
+    date_set_col,
+    decimal_set_col,
+    double_set_col,
+    float_set_col,
+    inet_set_col,
+    int_set_col,
+    smallint_set_col,
+    text_set_col,
+    time_set_col,
+    timestamp_set_col,
+    timeuuid_set_col,
+    tinyint_set_col,
+    uuid_set_col,
+    varchar_set_col,
+    varint_set_col,
+    ascii_text_map_col,
+    bigint_boolean_map_col,
+    blob_int_map_col,
+    boolean_decimal_map_col,
+    date_double_map_col,
+    decimal_duration_map_col,
+    double_float_map_col,
+    double_inet_map_col,
+    float_smallint_map_col,
+    inet_text_map_col,
+    int_time_map_col,
+    smallint_timestamp_map_col,
+    text_timeuuid_map_col,
+    time_tinyint_map_col,
+    timestamp_uuid_map_col,
+    timeuuid_varchar_map_col,
+    tinyint_varint_map_col,
+    uuid_ascii_map_col,
+    varchar_bigint_map_col,
+    varint_blob_map_col
+)
+VALUES (
+    fe3263a0-1577-4851-95f8-3af47628baa4, --primary_key
+    '', -- min ascii_col
+    -9223372036854775808, -- min bigint_col
+    BigintAsBlob(0), -- min blob_col
+    false, -- min boolean_col
+    '1901-12-13', -- min date_col
+    -99999999999999999999999999999.999999999  , -- min decimal_col (min numeric for spanenr)
+    -1.7976931348623157E308, -- min double_col
+    -P10675199DT2H48M5S, -- min duration_col
+    -3.4028235E38, -- min float_col
+    '0.0.0.0', -- min inet_col
+    -2147483648, -- min int_col
+    -32768, -- min smallint_col
+    '', -- min text_col
+    0, -- min time_col (nanos since mid night)
+     -9223372036854775808, -- min timestamp_col
+    00000000-0000-1000-9000-000000000000, -- min timeuuid_col
+    -128, -- min tinyint_col
+    00000000-0000-0000-0000-000000000000, -- min uuid_col
+    '', -- min varchar_col
+    -9223372036854775808, -- small varint_col
+    [], -- empty ascii_list_col
+    [], -- empty frozen_ascii_list_col
+    [], -- empty bigint_list_col
+    [], -- empty blob_list_col
+    [], -- empty boolean_list_col
+    [], -- empty date_list_col
+    [], -- empty decimal_list_col
+    [], -- empty double_list_col
+    [], -- empty duration_list_col
+    [], -- empty float_list_col
+    [], -- empty inet_list_col
+    [], -- empty int_list_col
+    [], -- empty smallint_list_col
+    [], -- empty text_list_col
+    [], -- empty time_list_col
+    [], -- empty timestamp_list_col
+    [], -- empty timeuuid_list_col
+    [], -- empty tinyint_list_col
+    [], -- empty uuid_list_col
+    [], -- empty varchar_list_col
+    [], -- empty varint_list_col
+    {}, -- empty ascii_set_col
+    {}, -- empty frozen_ascii_set_col
+    {}, -- empty bigint_set_col
+    {}, -- empty blob_set_col
+    {}, -- empty boolean_set_col
+    {}, -- empty date_set_col
+    {}, -- empty decimal_set_col
+    {}, -- empty double_set_col
+    {}, -- empty float_set_col
+    {}, -- empty inet_set_col
+    {}, -- empty int_set_col
+    {}, -- empty smallint_set_col
+    {}, -- empty text_set_col
+    {}, -- empty time_set_col
+    {}, -- empty timestamp_set_col
+    {}, -- empty timeuuid_set_col
+    {}, -- empty tinyint_set_col
+    {}, -- empty uuid_set_col
+    {}, -- empty varchar_set_col
+    {}, -- empty varint_set_col
+    {}, -- empty ascii_text_map_col
+    {}, -- empty bigint_boolean_map_col
+    {}, -- empty blob_int_map_col
+    {}, -- empty boolean_decimal_map_col
+    {}, -- empty date_double_map_col
+    {}, -- empty decimal_duration_map_col
+    {}, -- empty double_float_map_col
+    {}, -- empty double_inet_map_col
+    {}, -- empty float_smallint_map_col
+    {}, -- empty inet_text_map_col
+    {}, -- empty int_time_map_col
+    {}, -- empty smallint_timestamp_map_col
+    {}, -- empty text_timeuuid_map_col
+    {}, -- empty time_tinyint_map_col
+    {}, -- empty timestamp_uuid_map_col
+    {}, -- empty timeuuid_varchar_map_col
+    {}, -- empty tinyint_varint_map_col
+    {}, -- empty uuid_ascii_map_col
+    {}, -- empty varchar_bigint_map_col
+    {}  -- empty varint_blob_map_col
+);
+INSERT INTO all_data_types
+(
+    primary_key,
+    ascii_col,
+    bigint_col,
+    blob_col,
+    boolean_col,
+    date_col,
+    decimal_col,
+    double_col,
+    duration_col,
+    float_col,
+    inet_col,
+    int_col,
+    smallint_col,
+    text_col,
+    time_col,
+    timestamp_col,
+    timeuuid_col,
+    tinyint_col,
+    uuid_col,
+    varchar_col,
+    varint_col,
+    ascii_list_col,
+    frozen_ascii_list_col,
+    bigint_list_col,
+    blob_list_col,
+    boolean_list_col,
+    date_list_col,
+    decimal_list_col,
+    double_list_col,
+    duration_list_col,
+    float_list_col,
+    inet_list_col,
+    int_list_col,
+    smallint_list_col,
+    text_list_col,
+    time_list_col,
+    timestamp_list_col,
+    timeuuid_list_col,
+    tinyint_list_col,
+    uuid_list_col,
+    varchar_list_col,
+    varint_list_col,
+    ascii_set_col,
+    frozen_ascii_set_col,
+    bigint_set_col,
+    blob_set_col,
+    boolean_set_col,
+    date_set_col,
+    decimal_set_col,
+    double_set_col,
+    float_set_col,
+    inet_set_col,
+    int_set_col,
+    smallint_set_col,
+    text_set_col,
+    time_set_col,
+    timestamp_set_col,
+    timeuuid_set_col,
+    tinyint_set_col,
+    uuid_set_col,
+    varchar_set_col,
+    varint_set_col,
+    ascii_text_map_col,
+    bigint_boolean_map_col,
+    blob_int_map_col,
+    boolean_decimal_map_col,
+    date_double_map_col,
+    decimal_duration_map_col,
+    double_float_map_col,
+    double_inet_map_col,
+    float_smallint_map_col,
+    inet_text_map_col,
+    int_time_map_col,
+    smallint_timestamp_map_col,
+    text_timeuuid_map_col,
+    time_tinyint_map_col,
+    timestamp_uuid_map_col,
+    timeuuid_varchar_map_col,
+    tinyint_varint_map_col,
+    uuid_ascii_map_col,
+    varchar_bigint_map_col,
+    varint_blob_map_col
+)
+VALUES (
+    e6bc8562-2575-420f-9344-9fedc4945f61, -- primary_key
+    '~~~~~~~', -- ascii_col with max ascii character.
+    9223372036854775807, -- max bigint_col
+    0xFFFFFFFFFFFF, -- max blob_col
+    true, -- max boolean_col
+    -- < 5.0, Cassandra has Y38 issue.
+    -- https://github.com/apache/cassandra/blob/trunk/NEWS.txt
+    '2038-01-19', -- max date_col
+    99999999999999999999999999999.999999999, -- max decimal_col. max Numeric on spanner.
+    1.7976931348623157E308, -- max double_col
+    P10675199DT2H48M5S, -- max duration_col
+    3.4028235E38, -- max float_col
+    '255.255.255.255', -- max inet_col
+    2147483647, -- max int_col
+    32767, -- max smallint_col
+    null, -- max text_col
+    86399999999999, -- max time_col (nanos since mid night)
+    9223372036854775807, -- max timestamp_col
+    ffffffff-ffff-1fff-9fff-ffffffffffff, -- max timeuuid_col (version1)
+    127, -- max tinyint_col
+    ffffffff-ffff-4fff-9fff-ffffffffffff, -- max uuid_col
+    '~~~~~~~', -- varchar_col
+    9223372036854775808, -- large varint_col
+    ['a', '~'], -- ascii_list_col
+    ['a', 'b'], -- frozen_ascii_list_col
+    [-9223372036854775808, 0, 9223372036854775807], -- bigint_list_col
+    [BigintAsBlob(0), 0xFFFFFFFFFFFF], -- blob_list_col
+    [true, false], -- boolean_list_col
+    ['1901-12-13', '1970-01-01', '2038-01-19'], -- date_list_col
+    [-99999999999999999999999999999.999999999, 0.0, 99999999999999999999999999999.999999999], -- decimal_list_col
+    [NAN, -1 * INFINITY, -1.7976931348623157E308, 0.0, 3.1415926, INFINITY], -- double_list_col
+    [-P10675199DT2H48M5S, P0DT0S, P10675199DT2H48M5S], -- duration_list_col
+    [NAN, -1 * INFINITY, -3.4028235E38, 0.0, 3.4028235E38, INFINITY], -- float_list_col
+    ['0.0.0.0', '172.16.0.0', '255.255.255.255'], -- inet_list_col
+    [-2147483648,0,2147483647], -- int_list_col
+    [-32768, 0, 32767], -- smallint_list_col
+    ['G', 'O', 'OG', 'LER', 'KNOWS', 'LEONARDO', 'MATHEMATICIAN'], -- text_list_col
+    [0, 86399999999999], -- time_list_col
+    [-9223372036854775808, 0, 9223372036854775807], -- timestamp_list_col
+    [00000000-0000-1000-9000-000000000000, 88888888-8888-1888-9888-888888888888, ffffffff-ffff-1fff-9fff-ffffffffffff], -- timeuuid_list_col
+    [-128, 0, 127], -- tinyint_list_col
+    [00000000-0000-4000-9000-900000000000, 88888888-8888-4888-9888-888888888888 ,ffffffff-ffff-4fff-9fff-ffffffffffff], -- uuid_list_col
+    ['a', '~'], -- varchar_list_col
+    [-9223372036854775808, 0, 9223372036854775808], -- varint_list_col
+    {'a', '~'}, -- ascii_set_col
+    {'a', 'b'}, -- frozen_ascii_set_col
+    {-9223372036854775808, 0, 9223372036854775807}, -- bigint_set_col
+    {BigintAsBlob(0), 0xFFFFFFFFFFFF}, -- blob_set_col
+    {true, false}, -- boolean_set_col
+    {'1901-12-13', '1970-01-01', '2038-01-19'}, -- date_set_col
+    {-99999999999999999999999999999.999999999, 0.0, 99999999999999999999999999999.999999999}, -- decimal_set_col
+    {NAN, -1 * INFINITY, -1.7976931348623157E308, 0.0, 3.1415926, INFINITY}, -- double_set_col
+    {NAN, -1 * INFINITY, -3.4028235E38, 0.0, 3.4028235E38, INFINITY}, -- float_set_col
+    {'0.0.0.0', '172.16.0.0', '255.255.255.255'}, -- inet_set_col
+    {-2147483648,0,2147483647}, -- int_set_col
+    {-32768, 0, 32767}, -- smallint_set_col
+    {'G', 'O', 'OG', 'LER', 'KNOWS', 'LEONARDO', 'MATHEMATICIAN'}, -- text_set_col
+    {0, 86399999999999}, -- time_set_col
+    {-9223372036854775808, 0, 9223372036854775807}, -- timestamp_set_col
+    {00000000-0000-1000-9000-000000000000, 88888888-8888-1888-9888-888888888888, ffffffff-ffff-1fff-9fff-ffffffffffff}, -- timeuuid_set_col
+    {-128, 0, 127}, -- tinyint_set_col
+    {00000000-0000-4000-9000-900000000000, 88888888-8888-4888-9888-888888888888 ,ffffffff-ffff-4fff-9fff-ffffffffffff}, -- uuid_set_col
+    {'a', '~'}, -- varchar_set_col
+    {-9223372036854775808, 0, 9223372036854775808}, -- varint_set_col
+    {'a':'z', 'z':'a'}, -- ascii_text_map_col
+    {42:true, 84:false}, -- bigint_boolean_map_col
+    {BigintAsBlob(1):1, BigintAsBlob(42):42}, -- blob_int_map_col
+    {true:0.1, false:0.0}, -- boolean_decimal_map_col
+    {'1970-01-01':NAN, '1990-01-01':-INFINITY, '2970-01-01':0.0,'1970-11-01':3.14,'1971-01-01':INFINITY}, --  date_double_map_col
+    {12.34:-P10675199DT2H48M5S, 34.45:P10675199DT2H48M5S}, -- max decimal_duration_map_col
+    {INFINITY:NAN, 3.14:-INFINITY, -INFINITY:0.0,NAN:3.14, 1.7976931348623157E308:INFINITY}, --  double_float_map_col
+    {INFINITY:'0.0.0.0', 3.14:'255.255.255.255'}, --  double_inet_map_col
+    {INFINITY:-32768, 3.14:32767}, --  float_smallint_map_col
+    {'0.0.0.0':'test-text'}, -- inet_text_map_col
+    {1:0, 42:2400}, -- int_time_map_col
+    {-128:-9223372036854775808, 127:9223372036854775807}, -- smallint_timestamp_map_col
+    {'a':00000000-0000-1000-9000-000000000000, '~':ffffffff-ffff-1fff-9fff-ffffffffffff}, -- text_timeuuid_map_col
+    {86399999999999:-128, 0:127}, -- time_tinyint_map_col
+    {-9223372036854775808:00000000-0000-1000-9000-000000000000, 9223372036854775807:ffffffff-ffff-1fff-9fff-ffffffffffff}, -- timestamp_uuid_map_col
+    {00000000-0000-1000-9000-000000000000:'abc', ffffffff-ffff-1fff-9fff-ffffffffffff:'def'}, -- timeuuid_varchar_map_col
+    {-128:184467440000000000000,127:-184467440000000000000}, -- tinyint_varint_map_col
+    {00000000-0000-1000-9000-000000000000:'abc', ffffffff-ffff-1fff-9fff-ffffffffffff:'def'}, -- uuid_ascii_map_col
+    {'abcd':-9223372036854775808,'efgh':9223372036854775807}, -- varchar_bigint_map_col
+    {184467440000000000000:BigIntAsBlob(9223372036854775807), -184467440000000000000:BigintAsBlob(-9223372036854775808)} -- varint_blob_map_col
+);
+INSERT INTO all_data_types
+(
+    primary_key,
+    ascii_col,
+    bigint_col,
+    blob_col,
+    boolean_col,
+    date_col,
+    decimal_col,
+    double_col,
+    duration_col,
+    float_col,
+    inet_col,
+    int_col,
+    smallint_col,
+    text_col,
+    time_col,
+    timestamp_col,
+    timeuuid_col,
+    tinyint_col,
+    uuid_col,
+    varchar_col,
+    varint_col,
+    ascii_list_col,
+    frozen_ascii_list_col,
+    bigint_list_col,
+    blob_list_col,
+    boolean_list_col,
+    date_list_col,
+    decimal_list_col,
+    double_list_col,
+    duration_list_col,
+    float_list_col,
+    inet_list_col,
+    int_list_col,
+    smallint_list_col,
+    text_list_col,
+    time_list_col,
+    timestamp_list_col,
+    timeuuid_list_col,
+    tinyint_list_col,
+    uuid_list_col,
+    varchar_list_col,
+    varint_list_col,
+    ascii_set_col,
+    frozen_ascii_set_col,
+    bigint_set_col,
+    blob_set_col,
+    boolean_set_col,
+    date_set_col,
+    decimal_set_col,
+    double_set_col,
+    float_set_col,
+    inet_set_col,
+    int_set_col,
+    smallint_set_col,
+    text_set_col,
+    time_set_col,
+    timestamp_set_col,
+    timeuuid_set_col,
+    tinyint_set_col,
+    uuid_set_col,
+    varchar_set_col,
+    varint_set_col,
+    ascii_text_map_col,
+    bigint_boolean_map_col,
+    blob_int_map_col,
+    boolean_decimal_map_col,
+    date_double_map_col,
+    decimal_duration_map_col,
+    double_float_map_col,
+    double_inet_map_col,
+    float_smallint_map_col,
+    inet_text_map_col,
+    int_time_map_col,
+    smallint_timestamp_map_col,
+    text_timeuuid_map_col,
+    time_tinyint_map_col,
+    timestamp_uuid_map_col,
+    timeuuid_varchar_map_col,
+    tinyint_varint_map_col,
+    uuid_ascii_map_col,
+    varchar_bigint_map_col,
+    varint_blob_map_col
+)
+VALUES (
+    d19c8562-2575-420f-9344-9fedc4945f61, -- primary_key
+    '~~~~~~~', -- ascii_col with max ascii character.
+    9223372036854775807, -- max bigint_col
+    0xFFFFFFFFFFFF, -- max blob_col
+    true, -- max boolean_col
+    -- < 5.0, Cassandra has Y38 issue.
+    -- https://github.com/apache/cassandra/blob/trunk/NEWS.txt
+    '2038-01-19', -- max date_col
+    31415926535897932384626433832795028841971, -- pi*10^41, does not fit in spanner, should land in DLQ.
+    1.7976931348623157E308, -- max double_col
+    P10675199DT2H48M5S, -- max duration_col
+    3.4028235E38, -- max float_col
+    '255.255.255.255', -- max inet_col
+    2147483647, -- max int_col
+    32767, -- max smallint_col
+    null, -- max text_col
+    86399999999999, -- max time_col (nanos since mid night)
+    9223372036854775807, -- max timestamp_col
+    ffffffff-ffff-1fff-9fff-ffffffffffff, -- max timeuuid_col (version1)
+    127, -- max tinyint_col
+    ffffffff-ffff-4fff-9fff-ffffffffffff, -- max uuid_col
+    '~~~~~~~', -- varchar_col
+    9223372036854775808, -- large varint_col
+    ['a', '~'], -- ascii_list_col
+    ['a', 'b'], -- frozen_ascii_list_col
+    [-9223372036854775808, 0, 9223372036854775807], -- bigint_list_col
+    [BigintAsBlob(0), 0xFFFFFFFFFFFF], -- blob_list_col
+    [true, false], -- boolean_list_col
+    ['1901-12-13', '1970-01-01', '2038-01-19'], -- date_list_col
+    [-99999999999999999999999999999.999999999, 0.0, 99999999999999999999999999999.999999999], -- decimal_list_col
+    [NAN, -1 * INFINITY, -1.7976931348623157E308, 0.0, 3.1415926, INFINITY], -- double_list_col
+    [-P10675199DT2H48M5S, P0DT0S, P10675199DT2H48M5S], -- duration_list_col
+    [NAN, -1 * INFINITY, -3.4028235E38, 0.0, 3.4028235E38, INFINITY], -- float_list_col
+    ['0.0.0.0', '172.16.0.0', '255.255.255.255'], -- inet_list_col
+    [-2147483648,0,2147483647], -- int_list_col
+    [-32768, 0, 32767], -- smallint_list_col
+    ['G', 'O', 'OG', 'LER', 'KNOWS', 'LEONARDO', 'MATHEMATICIAN'], -- text_list_col
+    [0, 86399999999999], -- time_list_col
+    [-9223372036854775808, 0, 9223372036854775807], -- timestamp_list_col
+    [00000000-0000-1000-9000-000000000000, 88888888-8888-1888-9888-888888888888, ffffffff-ffff-1fff-9fff-ffffffffffff], -- timeuuid_list_col
+    [-128, 0, 127], -- tinyint_list_col
+    [00000000-0000-4000-9000-900000000000, 88888888-8888-4888-9888-888888888888 ,ffffffff-ffff-4fff-9fff-ffffffffffff], -- uuid_list_col
+    ['a', '~'], -- varchar_list_col
+    [-9223372036854775808, 0, 9223372036854775808], -- varint_list_col
+    {'a', '~'}, -- ascii_set_col
+    {'a', 'b'}, -- frozen_ascii_set_col
+    {-9223372036854775808, 0, 9223372036854775807}, -- bigint_set_col
+    {BigintAsBlob(0), 0xFFFFFFFFFFFF}, -- blob_set_col
+    {true, false}, -- boolean_set_col
+    {'1901-12-13', '1970-01-01', '2038-01-19'}, -- date_set_col
+    {-99999999999999999999999999999.999999999, 0.0, 99999999999999999999999999999.999999999}, -- decimal_set_col
+    {NAN, -1 * INFINITY, -1.7976931348623157E308, 0.0, 3.1415926, INFINITY}, -- double_set_col
+    {NAN, -1 * INFINITY, -3.4028235E38, 0.0, 3.4028235E38, INFINITY}, -- float_set_col
+    {'0.0.0.0', '172.16.0.0', '255.255.255.255'}, -- inet_set_col
+    {-2147483648,0,2147483647}, -- int_set_col
+    {-32768, 0, 32767}, -- smallint_set_col
+    {'G', 'O', 'OG', 'LER', 'KNOWS', 'LEONARDO', 'MATHEMATICIAN'}, -- text_set_col
+    {0, 86399999999999}, -- time_set_col
+    {-9223372036854775808, 0, 9223372036854775807}, -- timestamp_set_col
+    {00000000-0000-1000-9000-000000000000, 88888888-8888-1888-9888-888888888888, ffffffff-ffff-1fff-9fff-ffffffffffff}, -- timeuuid_set_col
+    {-128, 0, 127}, -- tinyint_set_col
+    {00000000-0000-4000-9000-900000000000, 88888888-8888-4888-9888-888888888888 ,ffffffff-ffff-4fff-9fff-ffffffffffff}, -- uuid_set_col
+    {'a', '~'}, -- varchar_set_col
+    {-9223372036854775808, 0, 9223372036854775808}, -- varint_set_col
+    {'a':'z', 'z':'a'}, -- ascii_text_map_col
+    {42:true, 84:false}, -- bigint_boolean_map_col
+    {BigintAsBlob(1):1, BigintAsBlob(42):42}, -- blob_int_map_col
+    {true:0.1, false:0.0}, -- boolean_decimal_map_col
+    {'1970-01-01':NAN, '1990-01-01':-INFINITY, '2970-01-01':0.0,'1970-11-01':3.14,'1971-01-01':INFINITY}, --  date_double_map_col
+    {12.34:-P10675199DT2H48M5S, 34.45:P10675199DT2H48M5S}, -- max decimal_duration_map_col
+    {INFINITY:NAN, 3.14:-INFINITY, -INFINITY:0.0,NAN:3.14, 1.7976931348623157E308:INFINITY}, --  double_float_map_col
+    {INFINITY:'0.0.0.0', 3.14:'255.255.255.255'}, --  double_inet_map_col
+    {INFINITY:-32768, 3.14:32767}, --  float_smallint_map_col
+    {'0.0.0.0':'test-text'}, -- inet_text_map_col
+    {1:0, 42:2400}, -- int_time_map_col
+    {-128:-9223372036854775808, 127:9223372036854775807}, -- smallint_timestamp_map_col
+    {'a':00000000-0000-1000-9000-000000000000, '~':ffffffff-ffff-1fff-9fff-ffffffffffff}, -- text_timeuuid_map_col
+    {86399999999999:-128, 0:127}, -- time_tinyint_map_col
+    {-9223372036854775808:00000000-0000-1000-9000-000000000000, 9223372036854775807:ffffffff-ffff-1fff-9fff-ffffffffffff}, -- timestamp_uuid_map_col
+    {00000000-0000-1000-9000-000000000000:'abc', ffffffff-ffff-1fff-9fff-ffffffffffff:'def'}, -- timeuuid_varchar_map_col
+    {-128:184467440000000000000,127:-184467440000000000000}, -- tinyint_varint_map_col
+    {00000000-0000-1000-9000-000000000000:'abc', ffffffff-ffff-1fff-9fff-ffffffffffff:'def'}, -- uuid_ascii_map_col
+    {'abcd':-9223372036854775808,'efgh':9223372036854775807}, -- varchar_bigint_map_col
+    {184467440000000000000:BigIntAsBlob(9223372036854775807), -184467440000000000000:BigintAsBlob(-9223372036854775808)} -- varint_blob_map_col
+);

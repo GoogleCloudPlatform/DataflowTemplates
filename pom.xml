@@ -42,14 +42,14 @@
     <extra.enforcer.rules.version>1.8.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
     <maven-javadoc-plugin.version>3.0.0-M1</maven-javadoc-plugin.version>
-    <maven-shade-plugin.version>3.0.0</maven-shade-plugin.version>
+    <maven-shade-plugin.version>3.3.0</maven-shade-plugin.version>
     <maven-source-plugin.version>3.3.0</maven-source-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
-    <jacoco.version>0.8.8</jacoco.version>
+    <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.61.0</beam.version>
-    <beam-python.version>2.61.0</beam-python.version>
+    <beam.version>2.66.0</beam.version>
+    <beam-python.version>2.66.0</beam-python.version>
     <beam-maven-repo></beam-maven-repo>
 
     <!-- Common dependency versions -->
@@ -64,27 +64,25 @@
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <failsafe.version>3.3.0</failsafe.version>
-    <grpc.gen.version>1.13.1</grpc.gen.version>
+    <grpc.gen.version>1.70.0</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.4.0</hadoop.version>
+    <hadoop.version>3.4.1</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
-    <log4j-2.version>2.20.0</log4j-2.version>
+    <log4j-2.version>2.24.3</log4j-2.version>
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
-    <json.version>20231013</json.version>
+    <json.version>20250517</json.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
-    <slf4j.version>1.7.36</slf4j.version>
-    <snakeyaml.version>2.0</snakeyaml.version>
+    <slf4j.version>2.0.17</slf4j.version>
+    <snakeyaml.version>2.2</snakeyaml.version>
     <snappy.version>1.1.10.4</snappy.version>
     <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.1.5</truth.version>
-
-    <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-    <gax.version>2.48.0</gax.version>
+    <gax.version>2.68.1</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -146,6 +144,12 @@
         <groupId>org.apache.avro</groupId>
         <artifactId>avro</artifactId>
         <version>${avro.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+          </exclusion>
+        </exclusions>
       </dependency>
 
       <!-- If any module uses log4j 2.x, enforce patched versions -->
@@ -369,6 +373,7 @@
             <exclude>**/CustomTransformationImplFetcher.*</exclude>
             <exclude>**/JarFileReader.*</exclude>
             <exclude>**/CustomTransformationWithShardFor*IT.*</exclude>
+            <exclude>**/CustomTransformationWithCassandraForIT.*</exclude>
             <exclude>**/models/*</exclude>
             <exclude>**/exceptions/*</exclude>
           </excludes>
@@ -697,7 +702,7 @@
                 <exclude>**/KafkaToKafkaIT.java</exclude>
               </excludes>
               <excludedGroups>
-                ${direct-runner.tests}
+                ${direct-runner.tests},
                 com.google.cloud.teleport.metadata.SkipRunnerV2Test
               </excludedGroups>
               <groups>
@@ -758,17 +763,7 @@
           <name>Splunk Releases</name>
           <url>https://splunk.jfrog.io/splunk/ext-releases-local</url>
         </repository>
-        <repository>
-          <id>ossrh</id>
-          <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </repository>
       </repositories>
-      <pluginRepositories>
-        <pluginRepository>
-          <id>ossrh</id>
-          <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </pluginRepository>
-      </pluginRepositories>
     </profile>
     <profile>
       <id>confluentDeps</id>
@@ -785,40 +780,8 @@
         </repository>
       </repositories>
     </profile>
-    <profile>
-      <!-- mvn clean deploy -Prelease -pl plugins/templates-maven-plugin -pl v2/common -am -->
-      <id>release</id>
-      <activation>
-        <activeByDefault>false</activeByDefault>
-      </activation>
-      <build>
-        <plugins>
-          <plugin>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.6.13</version>
-            <extensions>true</extensions>
-            <configuration>
-              <serverId>ossrh</serverId>
-              <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-              <autoReleaseAfterClose>true</autoReleaseAfterClose>
-            </configuration>
-          </plugin>
-        </plugins>
-      </build>
-    </profile>
   </profiles>
 
-  <distributionManagement>
-    <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-    </repository>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-  </distributionManagement>
   <modules>
     <module>metadata</module>
     <module>plugins</module>

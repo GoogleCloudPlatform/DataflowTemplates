@@ -419,6 +419,7 @@ public class CypherGeneratorTest {
     assertThat(statements)
         .isEqualTo(
             Set.of(
+                "CREATE CONSTRAINT `unique-constraint-1` IF NOT EXISTS FOR (n:`Placeholder`) REQUIRE (n.`prop3`) IS UNIQUE",
                 "CREATE INDEX `range-index-1` IF NOT EXISTS FOR (n:`Placeholder`) ON (n.`prop5`)",
                 "CREATE TEXT INDEX `text-index-1` IF NOT EXISTS FOR (n:`Placeholder`) ON (n.`prop6`) OPTIONS {`indexProvider`: 'text-2.0'}",
                 "CREATE POINT INDEX `point-index-1` IF NOT EXISTS FOR (n:`Placeholder`) ON (n.`prop7`) OPTIONS {`indexConfig`: {`spatial.cartesian.min`: [-100.0,100.0]}}",

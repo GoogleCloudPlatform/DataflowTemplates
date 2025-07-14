@@ -1,4 +1,4 @@
-CREATE TABLE SingleShardWithTransformationTable (
+CREATE TABLE IF NOT EXISTS SingleShardWithTransformationTable (
 	pkid INT64 NOT NULL,
 	name STRING(20),
 	status STRING(20),

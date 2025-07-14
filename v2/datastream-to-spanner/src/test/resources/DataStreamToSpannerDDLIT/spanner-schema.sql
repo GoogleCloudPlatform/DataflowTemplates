@@ -83,7 +83,7 @@ CREATE TABLE IF NOT EXISTS DatatypeColumnsReducedSizes (
     bit_column BYTES(MAX),
 ) PRIMARY KEY(varchar_column);
 
-CREATE TABLE Users (
+CREATE TABLE IF NOT EXISTS Users (
    user_id INT64 NOT NULL,
    first_name STRING(50),
    last_name STRING(50),
@@ -91,12 +91,12 @@ CREATE TABLE Users (
    full_name STRING(100) AS (ARRAY_TO_STRING([first_name, last_name], " ")) STORED,
 ) PRIMARY KEY (user_id);
 
-CREATE TABLE Authors (
+CREATE TABLE IF NOT EXISTS Authors (
    id INT64 NOT NULL,
    name STRING(200),
 ) PRIMARY KEY (id);
 
-CREATE TABLE AllDatatypeTransformation (
+CREATE TABLE IF NOT EXISTS AllDatatypeTransformation (
 	varchar_column STRING(20) NOT NULL,
 	tinyint_column INT64,
 	text_column STRING(MAX),
@@ -119,7 +119,7 @@ CREATE TABLE AllDatatypeTransformation (
 
 CREATE SEQUENCE sequence_id OPTIONS (sequence_kind='bit_reversed_positive', skip_range_min = 0, skip_range_max = 3);
 
-CREATE TABLE Singers (
+CREATE TABLE IF NOT EXISTS Singers (
     singer_id INT64 NOT NULL  DEFAULT (GET_NEXT_SEQUENCE_VALUE(SEQUENCE sequence_id)) ,
     first_name STRING(1024),
     last_name STRING(1024),

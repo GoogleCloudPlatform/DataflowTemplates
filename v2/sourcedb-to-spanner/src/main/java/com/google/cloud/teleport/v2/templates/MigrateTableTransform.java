@@ -89,7 +89,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
     // Transform source data to Spanner Compatible Data
     SourceRowToMutationDoFn transformDoFn =
-        SourceRowToMutationDoFn.create(schemaMapper, customTransformation);
+        SourceRowToMutationDoFn.create(
+            schemaMapper, customTransformation, options.getInsertOnlyModeForSpannerMutations());
     PCollectionTuple transformationResult =
         sourceRows.apply(
             "Transform",
@@ -102,7 +103,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
                             SourceDbToSpannerConstants.FILTERED_EVENT_TAG))));
 
     // Write to Spanner
-    SpannerWriter writer = new SpannerWriter(spannerConfig);
+    SpannerWriter writer =
+        new SpannerWriter(spannerConfig, options.getBatchSizeForSpannerMutations());
     SpannerWriteResult spannerWriteResult =
         writer.writeToSpanner(
             transformationResult
@@ -119,7 +121,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     String dlqDirectory = outputDirectory + "dlq/severe/" + shardId;
     LOG.info("DLQ directory: {}", dlqDirectory);
     DeadLetterQueue dlq =
-        DeadLetterQueue.create(dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect);
+        DeadLetterQueue.create(
+            dlqDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, this.schemaMapper);
     dlq.failedMutationsToDLQ(failedMutations);
     dlq.failedTransformsToDLQ(
         transformationResult
@@ -132,7 +135,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
     String filterEventsDirectory = outputDirectory + "filteredEvents/" + shardId;
     LOG.info("Filtered events directory: {}", filterEventsDirectory);
     DeadLetterQueue filteredEventsQueue =
-        DeadLetterQueue.create(filterEventsDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect);
+        DeadLetterQueue.create(
+            filterEventsDirectory, ddl, srcTableToShardIdColumnMap, sqlDialect, this.schemaMapper);
     filteredEventsQueue.filteredEventsToDLQ(
         transformationResult
             .get(SourceDbToSpannerConstants.FILTERED_EVENT_TAG)

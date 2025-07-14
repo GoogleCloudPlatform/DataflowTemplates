@@ -29,7 +29,7 @@
     <artifactId>google-ads-to-googlecloud</artifactId>
 
     <properties>
-        <google-ads.version>33.0.0</google-ads.version>
+        <google-ads.version>36.0.0</google-ads.version>
     </properties>
 
     <dependencies>
@@ -46,6 +46,12 @@
             <groupId>com.google.api-ads</groupId>
             <artifactId>google-ads</artifactId>
             <version>${google-ads.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>

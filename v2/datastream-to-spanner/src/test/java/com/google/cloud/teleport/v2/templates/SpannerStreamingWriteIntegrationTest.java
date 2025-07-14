@@ -114,7 +114,7 @@ public class SpannerStreamingWriteIntegrationTest {
             .asc("id")
             .desc("id2")
             .end()
-            .interleaveInParent("Table1")
+            .interleavingParent("Table1")
             .endTable()
             .build();
     spannerServer.createDatabase(testDb, ddl.statements());

@@ -82,7 +82,7 @@ public class SpannerChangeStreamToGcsITBase extends TemplateTestBase {
   }
 
   public void createSpannerMetadataDatabase(SpannerResourceManager spannerMetadataResourceManager) {
-    String dummy = "create table t1(id INT64 ) primary key(id)";
+    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     // needed to create separate metadata database
     spannerMetadataDatabaseName = spannerMetadataResourceManager.getDatabaseId();

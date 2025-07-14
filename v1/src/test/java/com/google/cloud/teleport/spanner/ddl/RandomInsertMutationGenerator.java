@@ -23,6 +23,7 @@ import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.spanner.spannerio.MutationGroup;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,7 +39,6 @@ import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 
 /**
  * Given a {@link Ddl} Generates a stream of random Cloud Spanner mutations for the specified table.

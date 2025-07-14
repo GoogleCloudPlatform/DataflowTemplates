@@ -1,4 +1,4 @@
-CREATE TABLE reserved_keywords (
+CREATE TABLE IF NOT EXISTS reserved_keywords (
   id INT64 NOT NULL,
   `ALL` STRING(MAX),
   `ANALYSE` STRING(MAX),
@@ -139,7 +139,7 @@ CREATE TABLE reserved_keywords (
   `WITHIN` STRING(MAX)
 ) PRIMARY KEY (id);
 
-CREATE TABLE reserved_keywords_pk (
+CREATE TABLE IF NOT EXISTS reserved_keywords_pk (
   id INT64 NOT NULL,
   `COLUMN` STRING(MAX) NOT NULL,
   `TABLE` STRING(MAX) NOT NULL,

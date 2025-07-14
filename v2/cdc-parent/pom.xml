@@ -90,7 +90,6 @@
     <module>cdc-common</module>
     <module>cdc-change-applier</module>
     <module>cdc-embedded-connector</module>
-    <module>cdc-agg</module>
   </modules>
 
   <dependencyManagement>

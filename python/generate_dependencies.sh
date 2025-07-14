@@ -36,7 +36,7 @@ source "$ENV_PATH"/bin/activate
 # allow one-off executions of pip to generate requirements locally without alarming automation
 alias pip_automation="pip"
 
-pip_automation install --upgrade pip setuptools wheel
+pip_automation install --upgrade pip==25.0.1 setuptools wheel
 pip_automation install pip-tools
 
 # Install requirements from base file

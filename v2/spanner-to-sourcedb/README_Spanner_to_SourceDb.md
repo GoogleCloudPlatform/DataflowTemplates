@@ -45,6 +45,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
 * **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
+* **isShardedMigration**: Sets the template to a sharded migration. If source shard template contains more than one shard, the value will be set to true. This value defaults to false.
 
 
 
@@ -52,7 +53,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Requirements
 
-* Java 11
+* Java 17
 * Maven
 * [gcloud CLI](https://cloud.google.com/sdk/gcloud), and execution of the
   following commands:
@@ -134,7 +135,7 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SHADOW_TABLE_PREFIX=shadow_
+export SHADOW_TABLE_PREFIX=rev_shadow_
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -153,6 +154,7 @@ export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
+export IS_SHARDED_MIGRATION=false
 
 gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -185,7 +187,8 @@ gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
   --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
-  --parameters "filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME"
+  --parameters "filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME" \
+  --parameters "isShardedMigration=$IS_SHARDED_MIGRATION"
 ```
 
 For more information about the command, please check:
@@ -215,7 +218,7 @@ export SOURCE_SHARDS_FILE_PATH=<sourceShardsFilePath>
 ### Optional
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SHADOW_TABLE_PREFIX=shadow_
+export SHADOW_TABLE_PREFIX=rev_shadow_
 export SESSION_FILE_PATH=<sessionFilePath>
 export FILTRATION_MODE=forward_migration
 export SHARDING_CUSTOM_JAR_PATH=""
@@ -234,6 +237,7 @@ export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
 export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
+export IS_SHARDED_MIGRATION=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -242,7 +246,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-sourcedb-job" \
 -DtemplateName="Spanner_to_SourceDb" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION" \
 -f v2/spanner-to-sourcedb
 ```
 
@@ -296,7 +300,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     sourceShardsFilePath = "<sourceShardsFilePath>"
     # startTimestamp = ""
     # endTimestamp = ""
-    # shadowTablePrefix = "shadow_"
+    # shadowTablePrefix = "rev_shadow_"
     # sessionFilePath = "<sessionFilePath>"
     # filtrationMode = "forward_migration"
     # shardingCustomJarPath = ""
@@ -315,6 +319,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     # transformationClassName = ""
     # transformationCustomParameters = ""
     # filterEventsDirectoryName = "filteredEvents"
+    # isShardedMigration = "false"
   }
 }
 ```

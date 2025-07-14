@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
@@ -25,11 +26,18 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.pubsub.v1.SubscriptionName;
 import com.google.pubsub.v1.TopicName;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+import org.apache.beam.it.cassandra.CassandraResourceManager;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.utils.IORedirectUtil;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -46,6 +54,10 @@ import org.slf4j.LoggerFactory;
 public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbITBase.class);
+  protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
+  protected static final String VPC_REGION = "us-central1";
+  protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
+  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -53,14 +65,27 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String ddl =
-        String.join(
-            " ",
-            Resources.readLines(Resources.getResource(spannerSchemaFile), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    String[] ddls = ddl.split(";");
+
+    String ddl;
+    try (InputStream inputStream =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(spannerSchemaFile)) {
+      if (inputStream == null) {
+        throw new FileNotFoundException("Resource file not found: " + spannerSchemaFile);
+      }
+      try (BufferedReader reader =
+          new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+        ddl = reader.lines().collect(Collectors.joining("\n"));
+      }
+    }
+
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL file is empty: " + spannerSchemaFile);
+    }
+
+    String[] ddls = ddl.trim().split(";");
     for (String d : ddls) {
-      if (!d.isBlank()) {
+      d = d.trim();
+      if (!d.isEmpty()) {
         spannerResourceManager.executeDdlStatement(d);
       }
     }
@@ -72,7 +97,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
             .maybeUseStaticInstance()
             .build();
-    String dummy = "create table t1(id INT64 ) primary key(id)";
+    String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     return spannerMetadataResourceManager;
   }
@@ -82,7 +107,10 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   }
 
   public SubscriptionName createPubsubResources(
-      String identifierSuffix, PubsubResourceManager pubsubResourceManager, String gcsPrefix) {
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
     String topicNameSuffix = "rr-it" + identifierSuffix;
     String subscriptionNameSuffix = "rr-it-sub" + identifierSuffix;
     TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
@@ -93,7 +121,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       prefix = prefix.substring(1);
     }
     prefix += "/retry/";
-    gcsClient.createNotification(topic.toString(), prefix);
+    gcsResourceManager.createNotification(topic.toString(), prefix);
     return subscription;
   }
 
@@ -116,6 +144,60 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
   }
 
+  protected CassandraResourceManager generateKeyspaceAndBuildCassandraResource() {
+    /* The default is Cassandra 4.1 image. TODO: Explore testing with non 4.1 tags. */
+
+    /* Max Cassandra Keyspace is 48 characters. Base Resource Manager adds 24 characters of date-time at the end.
+     * That's why we need to take a smaller subsequence of the testId.
+     */
+    String uniqueId = testId.substring(0, Math.min(20, testId.length()));
+    return CassandraResourceManager.builder(uniqueId).build();
+  }
+
+  protected void createCassandraSchema(
+      CassandraResourceManager cassandraResourceManager, String cassandraSchemaFile)
+      throws IOException {
+    String ddl =
+        String.join(
+            " ",
+            Resources.readLines(
+                Resources.getResource(cassandraSchemaFile), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    String[] ddls = ddl.split(";");
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        cassandraResourceManager.executeStatement(d);
+      }
+    }
+  }
+
+  public void createAndUploadCassandraConfigToGcs(
+      GcsResourceManager gcsResourceManager,
+      CassandraResourceManager cassandraResourceManagers,
+      String cassandraConfigFile)
+      throws IOException {
+
+    String host = cassandraResourceManagers.getHost();
+    int port = cassandraResourceManagers.getPort();
+    String keyspaceName = cassandraResourceManagers.getKeyspaceName();
+    String cassandraConfigContents;
+    try (InputStream inputStream =
+        Thread.currentThread().getContextClassLoader().getResourceAsStream(cassandraConfigFile)) {
+      if (inputStream == null) {
+        throw new FileNotFoundException("Resource file not found: " + cassandraConfigFile);
+      }
+      cassandraConfigContents = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    cassandraConfigContents =
+        cassandraConfigContents
+            .replace("##host##", host)
+            .replace("##port##", Integer.toString(port))
+            .replace("##keyspace##", keyspaceName);
+
+    gcsResourceManager.createArtifact("input/cassandra-config.conf", cassandraConfigContents);
+  }
+
   public PipelineLauncher.LaunchInfo launchDataflowJob(
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerResourceManager,
@@ -125,9 +207,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String shardingCustomJarPath,
       String shardingCustomClassName,
       String sourceDbTimezoneOffset,
-      CustomTransformation customTransformation)
+      CustomTransformation customTransformation,
+      String sourceType)
       throws IOException {
-    // default parameters
 
     Map<String, String> params =
         new HashMap<>() {
@@ -138,15 +220,24 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("spannerProjectId", PROJECT);
             put("metadataDatabase", spannerMetadataResourceManager.getDatabaseId());
             put("metadataInstance", spannerMetadataResourceManager.getInstanceId());
-            put("sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager));
+            put(
+                "sourceShardsFilePath",
+                getGcsPath(
+                    !Objects.equals(sourceType, MYSQL_SOURCE_TYPE)
+                        ? "input/cassandra-config.conf"
+                        : "input/shard.json",
+                    gcsResourceManager));
             put("changeStreamName", "allstream");
             put("dlqGcsPubSubSubscription", subscriptionName);
             put("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager));
             put("maxShardConnections", "5");
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
+            put("sourceType", sourceType);
           }
         };
+
+    params.putAll(ADDITIONAL_JOB_PARAMS);
 
     if (shardingCustomJarPath != null) {
       params.put(
@@ -174,6 +265,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
         PipelineLauncher.LaunchConfig.builder(jobName, specPath);
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", Collections.singletonList("use_runner_v2"));
+    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
@@ -205,7 +297,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   public String getGcsFullPath(
       GcsResourceManager gcsResourceManager, String artifactId, String identifierSuffix) {
     return ArtifactUtils.getFullGcsPath(
-        artifactBucketName, identifierSuffix, gcsResourceManager.runId(), artifactId);
+        gcsResourceManager.getBucket(), identifierSuffix, gcsResourceManager.runId(), artifactId);
   }
 
   protected void createAndUploadJarToGcs(GcsResourceManager gcsResourceManager)
@@ -223,5 +315,133 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
     gcsResourceManager.uploadArtifact(
         "input/customShard.jar",
         "../spanner-custom-shard/target/spanner-custom-shard-1.0-SNAPSHOT.jar");
+  }
+
+  protected SpannerResourceManager createSpannerDBAndTableWithNColumns(
+      String tableName, int n, String stringSize) throws Exception {
+    // Validate the table name
+    if (tableName == null || tableName.isBlank()) {
+      throw new IllegalArgumentException("Table name must be specified and non-blank");
+    }
+
+    if (n < 1) {
+      throw new IllegalArgumentException("Number of columns must be at least 1");
+    }
+
+    if (stringSize == null || stringSize.isBlank()) {
+      throw new IllegalArgumentException("String size must be specified and non-blank");
+    }
+
+    SpannerResourceManager spannerResourceManager =
+        SpannerResourceManager.builder("rr-main-table-per-columns-" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
+
+    StringBuilder ddlBuilder = new StringBuilder();
+    ddlBuilder.append("CREATE TABLE ").append(tableName).append(" (\n");
+    ddlBuilder.append("    id STRING(100) NOT NULL,\n");
+    for (int i = 1; i <= n; i++) {
+      ddlBuilder.append("    col_").append(i).append(" STRING(").append(stringSize).append("),\n");
+    }
+
+    ddlBuilder.setLength(ddlBuilder.length() - 2);
+    ddlBuilder.append("\n) PRIMARY KEY (id)");
+
+    String ddl = ddlBuilder.toString().trim();
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL generation failed for column count: " + n);
+    }
+
+    try {
+      spannerResourceManager.executeDdlStatement(ddl);
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing DDL statement: " + ddl, e);
+    }
+
+    String ddlStream =
+        "CREATE CHANGE STREAM allstream FOR ALL OPTIONS (value_capture_type = 'NEW_ROW', retention_period = '7d')";
+    try {
+      spannerResourceManager.executeDdlStatement(ddlStream);
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing CREATE CHANGE STREAM statement: " + ddlStream, e);
+    }
+
+    return spannerResourceManager;
+  }
+
+  protected void createCassandraTableWithNColumns(
+      CassandraResourceManager cassandraResourceManager, String tableName, int n) throws Exception {
+
+    if (tableName == null || tableName.isBlank()) {
+      throw new IllegalArgumentException("Table name must be specified and non-blank");
+    }
+    if (n < 1) {
+      throw new IllegalArgumentException("Number of columns must be at least 1");
+    }
+
+    StringBuilder ddlBuilder = new StringBuilder();
+    ddlBuilder
+        .append("CREATE TABLE IF NOT EXISTS ")
+        .append(cassandraResourceManager.getKeyspaceName())
+        .append(".")
+        .append(tableName)
+        .append(" (\n");
+    ddlBuilder.append("    id TEXT PRIMARY KEY,\n");
+    for (int i = 1; i <= n; i++) {
+      ddlBuilder.append("    col_").append(i).append(" TEXT,\n");
+    }
+
+    ddlBuilder.setLength(ddlBuilder.length() - 2);
+    ddlBuilder.append("\n);");
+
+    String ddl = ddlBuilder.toString().trim();
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL generation failed for column count: " + n);
+    }
+
+    try {
+      cassandraResourceManager.executeStatement(ddl);
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing DDL statement: " + ddl, e);
+    }
+  }
+
+  protected void createMySQLTableWithNColumns(
+      MySQLResourceManager jdbcResourceManager, String tableName, int n, String stringSize)
+      throws Exception {
+    // Validate the table name
+    if (tableName == null || tableName.isBlank()) {
+      throw new IllegalArgumentException("Table name must be specified and non-blank");
+    }
+
+    if (n < 1) {
+      throw new IllegalArgumentException("Number of columns must be at least 1");
+    }
+
+    if (stringSize == null || stringSize.isBlank()) {
+      throw new IllegalArgumentException("String size must be specified and non-blank");
+    }
+
+    StringBuilder ddlBuilder = new StringBuilder();
+    ddlBuilder.append("CREATE TABLE ").append(tableName).append(" (\n");
+    ddlBuilder.append("    id VARCHAR(20) NOT NULL PRIMARY KEY,\n");
+
+    for (int i = 1; i <= n; i++) {
+      ddlBuilder.append("    col_").append(i).append(" VARCHAR(").append(stringSize).append("),\n");
+    }
+
+    ddlBuilder.setLength(ddlBuilder.length() - 2);
+    ddlBuilder.append("\n);");
+
+    String ddl = ddlBuilder.toString().trim();
+    if (ddl.isBlank()) {
+      throw new IllegalStateException("DDL generation failed for column count: " + n);
+    }
+
+    try {
+      jdbcResourceManager.runSQLUpdate(ddl);
+    } catch (Exception e) {
+      throw new RuntimeException("Error executing DDL statement: " + ddl, e);
+    }
   }
 }

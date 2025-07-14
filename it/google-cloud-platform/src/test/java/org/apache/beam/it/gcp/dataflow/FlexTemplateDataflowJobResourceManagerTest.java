@@ -17,6 +17,7 @@ package org.apache.beam.it.gcp.dataflow;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -38,18 +39,62 @@ public class FlexTemplateDataflowJobResourceManagerTest {
 
     FlexTemplateDataflowJobResourceManager manager =
         mock(FlexTemplateDataflowJobResourceManager.class);
-    when(manager.buildMavenStageCommand(any(), any(), any(), any())).thenCallRealMethod();
+    when(manager.buildMavenStageCommand(any(), any(), any(), any(), any())).thenCallRealMethod();
 
     String[] actual =
         manager.buildMavenStageCommand(
             "TestClassName",
             "TestBucketName",
             "Spanner_Change_Streams_to_Sharded_File_Sink",
-            "v2/spanner-change-streams-to-sharded-file-sink");
+            "v2/spanner-change-streams-to-sharded-file-sink",
+            null);
     assertThat(String.join(" ", Arrays.copyOfRange(actual, 0, 5)))
         .isEqualTo("mvn compile package -q -f");
     String expected =
         "-pl metadata,v2/common,v2/spanner-change-streams-to-sharded-file-sink -am -PtemplatesStage,pluginOutputDir -DskipShade=true -DskipTests -Dmaven.test.skip -Dcheckstyle.skip -Dmdep.analyze.skip -Dspotless.check.skip -Denforcer.skip -DprojectId=testProject -Dregion=us-central1 -DbucketName=TestBucketName -DgcpTempLocation=TestBucketName -DstagePrefix=TestClassName -DtemplateName=Spanner_Change_Streams_to_Sharded_File_Sink -DunifiedWorker=true -e";
+    assertThat(String.join(" ", Arrays.copyOfRange(actual, 6, 25))).isEqualTo(expected);
+    assertThat(actual[5]).endsWith("pom.xml");
+    assertThat(actual[25]).isNotEmpty();
+
+    actual =
+        manager.buildMavenStageCommand(
+            "TestClassName",
+            "TestBucketName",
+            "Spanner_Change_Streams_to_Sharded_File_Sink",
+            "v2/spanner-change-streams-to-sharded-file-sink",
+            "");
+    assertThat(String.join(" ", Arrays.copyOfRange(actual, 0, 5)))
+        .isEqualTo("mvn compile package -q -f");
+    expected =
+        "-pl metadata,v2/common,v2/spanner-change-streams-to-sharded-file-sink -am -PtemplatesStage,pluginOutputDir -DskipShade=true -DskipTests -Dmaven.test.skip -Dcheckstyle.skip -Dmdep.analyze.skip -Dspotless.check.skip -Denforcer.skip -DprojectId=testProject -Dregion=us-central1 -DbucketName=TestBucketName -DgcpTempLocation=TestBucketName -DstagePrefix=TestClassName -DtemplateName=Spanner_Change_Streams_to_Sharded_File_Sink -DunifiedWorker=true -e";
+    assertThat(String.join(" ", Arrays.copyOfRange(actual, 6, 25))).isEqualTo(expected);
+    assertThat(actual[5]).endsWith("pom.xml");
+    assertThat(actual[25]).isNotEmpty();
+  }
+
+  @Test
+  public void testBuildMavenStageCommandWithAdditionalProfile() {
+    System.setProperty("project", "testProject");
+    System.setProperty("region", "us-central1");
+    System.setProperty("unifiedWorker", "true");
+    System.setProperty("stageBucket", "testStageBucket");
+
+    FlexTemplateDataflowJobResourceManager manager =
+        mock(FlexTemplateDataflowJobResourceManager.class);
+    when(manager.buildMavenStageCommand(any(), any(), any(), any(), eq("customProfile")))
+        .thenCallRealMethod();
+
+    String[] actual =
+        manager.buildMavenStageCommand(
+            "TestClassName",
+            "TestBucketName",
+            "Spanner_Change_Streams_to_Sharded_File_Sink",
+            "v2/spanner-change-streams-to-sharded-file-sink",
+            "customProfile");
+    assertThat(String.join(" ", Arrays.copyOfRange(actual, 0, 5)))
+        .isEqualTo("mvn compile package -q -f");
+    String expected =
+        "-pl metadata,v2/common,v2/spanner-change-streams-to-sharded-file-sink -am -PtemplatesStage,pluginOutputDir,customProfile -DskipShade=true -DskipTests -Dmaven.test.skip -Dcheckstyle.skip -Dmdep.analyze.skip -Dspotless.check.skip -Denforcer.skip -DprojectId=testProject -Dregion=us-central1 -DbucketName=TestBucketName -DgcpTempLocation=TestBucketName -DstagePrefix=TestClassName -DtemplateName=Spanner_Change_Streams_to_Sharded_File_Sink -DunifiedWorker=true -e";
     assertThat(String.join(" ", Arrays.copyOfRange(actual, 6, 25))).isEqualTo(expected);
     assertThat(actual[5]).endsWith("pom.xml");
     assertThat(actual[25]).isNotEmpty();

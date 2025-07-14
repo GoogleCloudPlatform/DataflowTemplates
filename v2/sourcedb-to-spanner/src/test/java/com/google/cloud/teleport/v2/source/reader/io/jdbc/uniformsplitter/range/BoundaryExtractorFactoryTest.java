@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 import static com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundaryExtractorFactory.BYTE_ARRAY_CLASS;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
@@ -27,10 +29,12 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.Mock;
@@ -128,7 +132,6 @@ public class BoundaryExtractorFactoryTest {
 
   @Test
   public void testFromBigIntegersEmptyTable() throws SQLException {
-    final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
         PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
     BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
@@ -236,6 +239,43 @@ public class BoundaryExtractorFactoryTest {
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
                 mockResultSet,
                 null));
+  }
+
+  @Test
+  public void testFromTimestamp() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Timestamp.class).build();
+    BoundaryExtractor<Timestamp> extractor = BoundaryExtractorFactory.create(Timestamp.class);
+    Timestamp start = Timestamp.valueOf("0000-01-01 00:00:00.000000000");
+    Timestamp end = Timestamp.valueOf("2041-01-31 23:59:59.999999999");
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(start);
+    when(mockResultSet.getTimestamp(eq(2), any())).thenReturn(end);
+    Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<Timestamp>, Boundary<Timestamp>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(Timestamp.valueOf("1020-07-10 23:59:59.999999999"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+  }
+
+  @Test
+  public void testFromTimestampsEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Timestamp.class).build();
+    BoundaryExtractor<Timestamp> extractor = BoundaryExtractorFactory.create(Timestamp.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBigDecimal(1)).thenReturn(null);
+    // BigInt Unsigned Max in MySQL
+    when(mockResultSet.getBigDecimal(2)).thenReturn(null);
+    Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isNull();
+    assertThat(boundary.end()).isNull();
+    assertThat(boundary.split(null).getLeft().end()).isNull();
   }
 
   @Test

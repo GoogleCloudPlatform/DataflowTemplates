@@ -26,8 +26,6 @@ import java.io.FileNotFoundException;
 import java.net.InetSocketAddress;
 import java.net.URL;
 import java.util.List;
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.MockedStatic;
@@ -37,12 +35,6 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 /** Test class for {@link CassandraDataSource}. */
 @RunWith(MockitoJUnitRunner.class)
 public class CassandraDataSourceTest {
-  MockedStatic mockFileReader;
-
-  @Before
-  public void initialize() {
-    mockFileReader = mockStatic(JarFileReader.class);
-  }
 
   @Test
   public void testCassandraDataSourceBasic() {
@@ -74,29 +66,29 @@ public class CassandraDataSourceTest {
                 .getDefaultProfile()
                 .getString(TypedDriverOption.AUTH_PROVIDER_PASSWORD.getRawOption()))
         .isEqualTo("test");
+    assertThat(cassandraDataSource.numPartitions()).isNull();
+    assertThat(cassandraDataSource.toBuilder().setNumPartitions(42).build().numPartitions())
+        .isEqualTo(42);
   }
 
   @Test
   public void testLoadFromGCS() throws FileNotFoundException {
     String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
     URL testUrl = Resources.getResource("CassandraUT/test-cassandra-config.conf");
-    mockFileReader
-        .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
-        .thenReturn(new URL[] {testUrl});
-    CassandraDataSource cassandraDataSource =
-        CassandraDataSource.builder().setOptionsMapFromGcsFile(testGcsPath).build();
+    try (MockedStatic mockFileReader = mockStatic(JarFileReader.class)) {
+      mockFileReader
+          .when(() -> JarFileReader.saveFilesLocally(testGcsPath))
+          .thenReturn(new URL[] {testUrl});
+      CassandraDataSource cassandraDataSource =
+          CassandraDataSource.builder().setOptionsMapFromGcsFile(testGcsPath).build();
 
-    assertThat(cassandraDataSource.loggedKeySpace()).isEqualTo("test-keyspace");
-    assertThat(cassandraDataSource.localDataCenter()).isEqualTo("datacenter1");
-    assertThat(cassandraDataSource.contactPoints())
-        .isEqualTo(
-            ImmutableList.of(
-                new InetSocketAddress("127.0.0.1", 9042),
-                new InetSocketAddress("127.0.0.1", 9043)));
-  }
-
-  @After
-  public void cleanup() {
-    mockFileReader.close();
+      assertThat(cassandraDataSource.loggedKeySpace()).isEqualTo("test-keyspace");
+      assertThat(cassandraDataSource.localDataCenter()).isEqualTo("datacenter1");
+      assertThat(cassandraDataSource.contactPoints())
+          .isEqualTo(
+              ImmutableList.of(
+                  new InetSocketAddress("127.0.0.1", 9042),
+                  new InetSocketAddress("127.0.0.1", 9043)));
+    }
   }
 }

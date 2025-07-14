@@ -13,6 +13,17 @@ their functionality.
 
 [![Open in Cloud Shell](http://gstatic.com/cloudssh/images/open-btn.svg)](https://console.cloud.google.com/cloudshell/editor?cloudshell_git_repo=https%3A%2F%2Fgithub.com%2FGoogleCloudPlatform%2FDataflowTemplates.git)
 
+## Status
+
+[![Bigtable PR](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/bigtable-pr.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Bigtable+PR%22+branch%3Amain+event%3Aschedule)
+[![Datastream PR](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/datastream-pr.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Datastream+PR%22+branch%3Amain+event%3Aschedule)
+[![Java PR](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/java-pr.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Java+PR%22+branch%3Amain+event%3Aschedule)
+[![Kafka PR](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/kafka-pr.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Kafka+PR%22+branch%3Amain+event%3Aschedule)
+[![Load Tests](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/load-tests.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Load+Tests%22+branch%3Amain+event%3Aschedule)
+[![Run IT Tests with Beam Snapshots](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/run-it-tests-beam-snapshots.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Run+IT+Tests+with+Beam+Snapshots%22+branch%3Amain+event%3Aschedule)
+[![Spanner Load Tests](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/spanner-load-tests.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Spanner+Load+Tests%22+branch%3Amain+event%3Aschedule)
+[![Spanner PR](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions/workflows/spanner-pr.yml/badge.svg?event=schedule&&?branch=main)](https://github.com/GoogleCloudPlatform/DataflowTemplates/actions?query=workflow%3A%22Spanner+PR%22+branch%3Amain+event%3Aschedule)
+
 ## Note on Default Branch
 
 As of November 18, 2021, our default branch is now named `main`. This does not

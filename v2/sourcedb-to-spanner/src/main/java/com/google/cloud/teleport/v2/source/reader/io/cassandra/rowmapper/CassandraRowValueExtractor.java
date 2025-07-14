@@ -20,7 +20,7 @@ import com.datastax.oss.driver.api.core.cql.ResultSet;
 import java.io.Serializable;
 import javax.annotation.Nullable;
 
-public interface CassandraRowValueExtractor<T extends Object> extends Serializable {
+public interface CassandraRowValueExtractor<T> extends Serializable {
 
   /**
    * Extract the requested field from the result set.

@@ -17,6 +17,7 @@ package com.google.cloud.teleport.spanner.ddl;
 
 import static org.hamcrest.text.IsEqualCompressingWhiteSpace.equalToCompressingWhiteSpace;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.spanner.Dialect;
 import org.junit.Test;
@@ -73,7 +74,7 @@ public class InformationSchemaScannerTest {
                 + " SELECT c.table_schema, c.table_name, c.column_name, c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
                 + " c.is_identity, c.identity_kind, c.identity_start_with_counter,"
-                + " c.identity_skip_range_min, c.identity_skip_range_max,"
+                + " c.identity_skip_range_min, c.identity_skip_range_max, c.is_hidden,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"
@@ -100,10 +101,11 @@ public class InformationSchemaScannerTest {
         postgresSQLInfoScanner.listIndexesSQL().getSql(),
         equalToCompressingWhiteSpace(
             "SELECT t.table_schema, t.table_name, t.index_name, t.parent_table_name, t.is_unique,"
-                + " t.is_null_filtered, t.filter FROM information_schema.indexes AS t "
+                + " t.is_null_filtered, t.filter, t.index_type, t.search_partition_by, t.search_order_by"
+                + " FROM information_schema.indexes AS t "
                 + " WHERE t.table_schema NOT IN "
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
-                + " AND t.index_type='INDEX' AND t.spanner_is_managed = 'NO' "
+                + " AND (t.index_type='INDEX' OR t.index_type='SEARCH' OR t.index_type='ScaNN') AND t.spanner_is_managed = 'NO' "
                 + " ORDER BY t.table_name, t.index_name"));
   }
 
@@ -122,7 +124,8 @@ public class InformationSchemaScannerTest {
     assertThat(
         postgresSQLInfoScanner.listIndexColumnsSQL().getSql(),
         equalToCompressingWhiteSpace(
-            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name "
+            "SELECT t.table_schema, t.table_name, t.column_name, t.column_ordering, t.index_name, "
+                + "t.index_type, t.spanner_type "
                 + "FROM information_schema.index_columns AS t "
                 + "WHERE t.table_schema NOT IN "
                 + "('information_schema', 'spanner_sys', 'pg_catalog') "
@@ -151,5 +154,21 @@ public class InformationSchemaScannerTest {
                 + " ('information_schema', 'spanner_sys', 'pg_catalog')"
                 + " AND t.option_name NOT IN ('allow_commit_timestamp')"
                 + " ORDER BY t.table_name, t.column_name"));
+  }
+
+  @Test
+  public void testListFunctionParametersSQL() {
+    assertThat(
+        googleSQLInfoScanner.listFunctionParametersSQL().getSql(),
+        equalToCompressingWhiteSpace(
+            "SELECT p.specific_schema, p.specific_name, p.parameter_name, p.data_type,"
+                + " p.parameter_default  FROM information_schema.parameters AS p, information_schema.routines AS r"
+                + " WHERE p.specific_schema NOT IN ('INFORMATION_SCHEMA', 'SPANNER_SYS') and p.specific_name ="
+                + " r.specific_name and r.routine_type = 'FUNCTION' and r.routine_body = 'SQL' ORDER BY p.specific_schema,"
+                + " p.specific_name, p.ordinal_position"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> postgresSQLInfoScanner.listFunctionParametersSQL().getSql());
   }
 }

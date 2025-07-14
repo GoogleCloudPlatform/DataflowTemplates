@@ -43,11 +43,33 @@ func TestModulesToBuild(t *testing.T) {
 		},
 		{
 			input:    "KAFKA",
-			expected: []string{"v2/kafka-common/", "v2/kafka-to-bigquery/", "v2/kafka-to-gcs/", "v2/kafka-to-kafka/", "v2/kafka-to-pubsub/", "plugins/templates-maven-plugin"},
+			expected: []string{"v2/kafka-common/", "v2/kafka-to-bigquery/", "v2/kafka-to-gcs/", "v2/kafka-to-kafka/", "v2/kafka-to-pubsub/", "v2/pubsub-to-kafka/", "plugins/templates-maven-plugin"},
 		},
 		{
 			input:    "SPANNER",
-			expected: []string{"v2/datastream-to-spanner/", "v2/spanner-change-streams-to-sharded-file-sink/", "v2/gcs-to-sourcedb/", "v2/sourcedb-to-spanner/", "v2/spanner-to-sourcedb/", "v2/spanner-custom-shard", "plugins/templates-maven-plugin"},
+			expected: []string{"v2/datastream-to-spanner/", "v2/spanner-change-streams-to-sharded-file-sink/", "v2/gcs-to-sourcedb/", "v2/sourcedb-to-spanner/", "v2/spanner-to-sourcedb/", "v2/spanner-custom-shard/", "plugins/templates-maven-plugin"},
+		},
+		{
+			input:    "BIGTABLE",
+			expected: []string{"v2/bigtable-common/", "v2/bigquery-to-bigtable/", "v2/bigtable-changestreams-to-hbase/", "plugins/templates-maven-plugin"},
+		},
+		{
+			input: "DATASTREAM",
+			expected: []string{
+				"v2/datastream-to-spanner/",
+				"v2/spanner-change-streams-to-sharded-file-sink/",
+				"v2/gcs-to-sourcedb/",
+				"v2/sourcedb-to-spanner/",
+				"v2/spanner-to-sourcedb/",
+				"v2/spanner-custom-shard/",
+				"plugins/templates-maven-plugin",
+				"v2/datastream-common/",
+				"v2/datastream-mongodb-to-firestore/",
+				"v2/datastream-to-bigquery/",
+				"v2/datastream-to-mongodb/",
+				"v2/datastream-to-postgres/",
+				"v2/datastream-to-sql/",
+			},
 		},
 	}
 
@@ -65,7 +87,7 @@ func TestDefaultExcludedSubModules(t *testing.T) {
 	modulesToBuild = "DEFAULT"
 	defaults := ModulesToBuild()
 	// these are modules appended to moduleMap
-	excluded := map[string]int{"plugins/templates-maven-plugin": 0, "metadata/": 0, "v2/kafka-common/": 0}
+	excluded := map[string]int{"plugins/templates-maven-plugin": 0, "metadata/": 0, "v2/kafka-common/": 0, "v2/bigtable-common/": 0, "v2/datastream-common/": 0}
 	var s []string
 	for m, _ := range moduleMap {
 		if m == "ALL" || m == "DEFAULT" {

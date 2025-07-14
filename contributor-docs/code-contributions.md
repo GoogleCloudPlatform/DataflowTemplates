@@ -11,7 +11,7 @@ how to review/merge code, or other info, see the
 ## Prerequisites
 
 If you are not already familiar with Dataflow, Dataflow Templates (especially
-flex templates), and Apache Beam it is recommended that you familarize yourself
+flex templates), and Apache Beam it is recommended that you familiarize yourself
 with each of these at a high level before contributing. Information on each of
 these can be found in the following locations:
 
@@ -133,6 +133,13 @@ gcloud auth application-default login
 ```
 
 After authenticated, install the plugin into your local repository:
+
+```shell
+mvn clean install -pl plugins/templates-maven-plugin -am
+```
+
+WARNING: After any changes to the plugin itself, those changes may be cached 
+and prevent any future changes from being observed.  Please reissue:
 
 ```shell
 mvn clean install -pl plugins/templates-maven-plugin -am

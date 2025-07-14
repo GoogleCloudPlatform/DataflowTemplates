@@ -36,7 +36,7 @@
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
-      <artifactId>jdbc-to-googlecloud</artifactId>
+      <artifactId>jdbc-and-googlecloud</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>

@@ -23,12 +23,12 @@ import com.google.cloud.spanner.PartitionOptions;
 import com.google.cloud.teleport.spanner.ddl.Column;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.Table;
+import com.google.cloud.teleport.spanner.spannerio.ReadOperation;
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -164,8 +164,28 @@ class BuildReadFromTableOperations
               + ") AS element), []) END AS "
               + col.name();
         }
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
+        if (col.typeString().equals("UUID")) {
+          return String.format("CAST(t.`%s` AS STRING) AS %s", col.name(), col.name());
+        }
+        if (col.typeString().equals("ARRAY<UUID>")) {
+          return String.format(
+              "CASE WHEN t.`%s` IS NULL THEN NULL ELSE "
+                  + "ARRAY(SELECT CAST(e AS STRING) FROM UNNEST(%s) AS e) END AS %s",
+              col.name(), col.name(), col.name());
+        }
         return "t.`" + col.name() + "`";
       case POSTGRESQL:
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
+        if (col.typeString().equals("uuid")) {
+          return String.format("t.\"%s\"::text AS \"%s\"", col.name(), col.name());
+        }
+        if (col.typeString().equals("uuid[]")) {
+          return String.format(
+              "CASE WHEN t.\"%s\" IS NULL THEN NULL ELSE "
+                  + "ARRAY(SELECT e::text FROM UNNEST(t.\"%s\") AS e) END AS \"%s\"",
+              col.name(), col.name(), col.name());
+        }
         return "t.\"" + col.name() + "\"";
       default:
         throw new IllegalArgumentException(

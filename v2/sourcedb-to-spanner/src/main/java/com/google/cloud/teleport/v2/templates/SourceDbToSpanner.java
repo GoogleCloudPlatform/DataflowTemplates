@@ -29,8 +29,6 @@ import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -49,12 +47,6 @@ import org.slf4j.LoggerFactory;
           + " database into an existing Spanner database. This pipeline uses JDBC to connect to"
           + " the relational database. You can use this template to copy data from any relational"
           + " database with available JDBC drivers into Spanner. This currently only supports a limited set of types of MySQL",
-      "For an extra layer of protection, you can also pass in a Cloud KMS key along with a"
-          + " Base64-encoded username, password, and connection string parameters encrypted with"
-          + " the Cloud KMS key. See the <a"
-          + " href=\"https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt\">Cloud"
-          + " KMS API encryption endpoint</a> for additional details on encrypting your username,"
-          + " password, and connection string parameters."
     },
     optionsClass = SourceDbToSpannerOptions.class,
     flexContainerName = "source-db-to-spanner",
@@ -69,8 +61,6 @@ import org.slf4j.LoggerFactory;
       "The relational database must be accessible from the subnet where Dataflow runs."
     })
 public class SourceDbToSpanner {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpanner.class);
 
   /**
    * Main entry point for executing the pipeline. This will run the pipeline asynchronously. If
@@ -134,6 +124,7 @@ public class SourceDbToSpanner {
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+        .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+        .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
   }
 }

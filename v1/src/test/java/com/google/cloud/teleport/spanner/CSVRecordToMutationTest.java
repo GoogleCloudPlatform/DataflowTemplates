@@ -97,7 +97,8 @@ public final class CSVRecordToMutationTest {
         CSVParser.parse(
                 "123,a string,`another"
                     + " string`,1.23,True,2019-01-01,2018-12-31T23:59:59Z,1567637083,aGk=,"
-                    + "-439.25335679,`{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}`",
+                    + "-439.25335679,`{\"a\":[1,null,true],"
+                    + "\"b\":{\"a\":\"\\\"hello\\\"\"}}`,11111111-1111-1111-1111-111111111111",
                 csvFormat.withQuote('`').withTrailingDelimiter(true))
             .getRecords()
             .get(0);
@@ -144,6 +145,8 @@ public final class CSVRecordToMutationTest {
                 .to("-439.25335679")
                 .set("json_col")
                 .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                .set("uuid_col")
+                .to("11111111-1111-1111-1111-111111111111")
                 .build());
 
     pipeline.run();
@@ -661,7 +664,7 @@ public final class CSVRecordToMutationTest {
                             ListCoder.of(ProtoCoder.of(TableManifest.Column.class)))))
             .apply("Map as view", View.asSingleton());
     CSVRecord csvRecord =
-        CSVParser.parse("123,a string,yet another string,1.23,True,,,,,,,", csvFormat)
+        CSVParser.parse("123,a string,yet another string,1.23,True,,,,,,,,", csvFormat)
             .getRecords()
             .get(0);
     PCollection<KV<String, CSVRecord>> input =
@@ -776,7 +779,7 @@ public final class CSVRecordToMutationTest {
         CSVParser.parse(
                 "123,a string,'another string',1.23,True,2018-12-31T23:59:59Z,1567637083"
                     + ",aGk=,-439.25335679,'{\"a\": null, \"b\": [true, false, 14.234"
-                    + ", \"dsafaaf\"]}',1910-01-01,2017-10-28T12:59:59Z",
+                    + ", \"dsafaaf\"]}',1910-01-01,2017-10-28T12:59:59Z,11111111-1111-1111-1111-111111111111",
                 csvFormat.withQuote('\'').withTrailingDelimiter(true))
             .getRecords()
             .get(0);
@@ -826,6 +829,8 @@ public final class CSVRecordToMutationTest {
                 .to(Value.date(Date.parseDate("1910-01-01")))
                 .set("commit_timestamp_col")
                 .to(Value.timestamp(Timestamp.parseTimestamp("2017-10-28T12:59:59Z")))
+                .set("uuid_col")
+                .to("11111111-1111-1111-1111-111111111111")
                 .build());
 
     pipeline.run();
@@ -1061,6 +1066,9 @@ public final class CSVRecordToMutationTest {
             .column("json_col")
             .json()
             .endColumn()
+            .column("uuid_col")
+            .uuid()
+            .endColumn()
             .primaryKey()
             .asc("int_col")
             .end()
@@ -1111,6 +1119,9 @@ public final class CSVRecordToMutationTest {
             .endColumn()
             .column("commit_timestamp_col")
             .pgSpannerCommitTimestamp()
+            .endColumn()
+            .column("uuid_col")
+            .pgUuid()
             .endColumn()
             .primaryKey()
             .asc("int_col")

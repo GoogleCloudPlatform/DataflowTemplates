@@ -132,7 +132,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       }
       ImmutableList<String> tables = tablesBuilder.build();
       logger.info(
-          String.format("Discovered tables for DataSource: %s, tables: %s", dataSource, tables));
+          String.format(
+              "Discovered %d tables for DataSource: %s, tables: %s",
+              tables.stream().count(), dataSource, tables));
       return tables;
     } catch (SQLTransientConnectionException e) {
       logger.warn(
@@ -357,7 +359,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
           .put("BIGINT UNSIGNED", IndexType.BIG_INT_UNSIGNED)
           .put("BIGINT", IndexType.NUMERIC)
-          .put("DATETIME", IndexType.DATE_TIME)
           .put("INTEGER", IndexType.NUMERIC)
           .put("INTEGER UNSIGNED", IndexType.NUMERIC)
           .put("MEDIUMINT", IndexType.NUMERIC)
@@ -372,6 +373,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("VARBINARY", IndexType.BINARY)
           .put("TINYBLOB", IndexType.BINARY)
           .put("TINYTEXT", IndexType.STRING)
+          .put("DATETIME", IndexType.TIME_STAMP)
+          .put("TIMESTAMP", IndexType.TIME_STAMP)
           .build();
 
   /**

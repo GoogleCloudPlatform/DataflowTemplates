@@ -77,6 +77,8 @@ public class Schema implements Serializable {
     this.srcSchema = srcSchema;
     this.toSpanner = toSpanner;
     this.toSource = toSource;
+    this.srcToID = toSource;
+    this.spannerToID = toSpanner;
     this.empty = (spSchema == null || srcSchema == null);
   }
 
@@ -87,6 +89,10 @@ public class Schema implements Serializable {
     this.spSchema = spSchema;
     this.syntheticPKeys = syntheticPKeys;
     this.srcSchema = srcSchema;
+    this.toSpanner = new HashMap<String, NameAndCols>();
+    this.toSource = new HashMap<String, NameAndCols>();
+    this.srcToID = new HashMap<String, NameAndCols>();
+    this.spannerToID = new HashMap<String, NameAndCols>();
     this.empty = (spSchema == null || srcSchema == null);
   }
 

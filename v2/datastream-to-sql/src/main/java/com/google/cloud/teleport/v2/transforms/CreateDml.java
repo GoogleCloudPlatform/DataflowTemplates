@@ -41,7 +41,7 @@ public class CreateDml
 
   private static final Logger LOG = LoggerFactory.getLogger(CreateDml.class);
   private static final String WINDOW_DURATION = "1s";
-  private static final Integer NUM_THREADS = new Integer(100);
+  private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
   private static Map<String, String> schemaMap = new HashMap<String, String>();
 
@@ -55,6 +55,11 @@ public class CreateDml
 
   public CreateDml withSchemaMap(Map<String, String> schemaMap) {
     this.schemaMap = schemaMap;
+    return this;
+  }
+
+  public CreateDml withNumThreads(Integer numThreads) {
+    CreateDml.numThreads = numThreads;
     return this;
   }
 
@@ -85,7 +90,7 @@ public class CreateDml
     return input
         .apply(
             "Reshuffle Into Buckets",
-            Reshuffle.<FailsafeElement<String, String>>viaRandomKey().withNumBuckets(NUM_THREADS))
+            Reshuffle.<FailsafeElement<String, String>>viaRandomKey().withNumBuckets(numThreads))
         .apply("Format to Postgres DML", ParDo.of(datastreamToDML));
   }
 }

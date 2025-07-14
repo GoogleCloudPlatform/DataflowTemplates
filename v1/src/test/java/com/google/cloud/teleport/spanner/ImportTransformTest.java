@@ -273,6 +273,66 @@ public class ImportTransformTest {
   }
 
   @Test
+  public void testReadUdfManifestFiles() throws Exception {
+    String testManifest =
+        "{\n"
+            + "  \"udfs\":[\n"
+            + "    {\n"
+            + "       \"name\": \"func1\",\n"
+            + "       \"manifestFile\": \"Func1-manifest.json\""
+            + "    }\n"
+            + "  ]\n"
+            + "}";
+    Path path = tmpFolder.newFile("spanner-export.json").toPath();
+    Files.write(path, testManifest.getBytes());
+
+    path = tmpFolder.newFile("func1.avro-00000-of-00005").toPath();
+    Files.write(path, new byte[20]);
+
+    String testFuncManifest =
+        "{\n"
+            + "  \"files\": [{\n"
+            + "    \"name\": \"func1.avro-00000-of-00005\",\n"
+            + "    \"md5\": \""
+            + FileChecksum.getLocalFileChecksum(path)
+            + "\"\n"
+            + "  }]"
+            + "}";
+    path = tmpFolder.newFile("Func1-manifest.json").toPath();
+    Files.write(path, testFuncManifest.getBytes());
+
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("Dialect", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+    PCollection<Export> manifest =
+        pipeline.apply(
+            "Read manifest",
+            new ReadExportManifestFile(
+                ValueProvider.StaticValueProvider.of(tmpFolder.getRoot().getAbsolutePath()),
+                dialectView));
+
+    PCollection<KV<String, String>> allFiles =
+        manifest.apply(
+            "Read all manifest files",
+            new ReadManifestFiles(
+                ValueProvider.StaticValueProvider.of(tmpFolder.getRoot().getAbsolutePath())));
+
+    PAssert.that(allFiles)
+        .satisfies(
+            input -> {
+              LinkedList<KV<String, String>> manifests = Lists.newLinkedList(input);
+              assertEquals(1, manifests.size());
+              for (KV<String, String> file : manifests) {
+                assertEquals("func1", file.getKey());
+                assertTrue(file.getValue().contains("func1.avro-00000-of-00005"));
+              }
+              return null;
+            });
+    pipeline.run();
+  }
+
+  @Test
   public void testReadAvroSchema() throws Exception {
     Schema schema =
         SchemaBuilder.builder().record("record").fields().requiredLong("id").endRecord();

@@ -30,6 +30,8 @@ import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.spanner.admin.instance.v1.InstanceAdminClient;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.ddl.RandomInsertMutationGenerator;
+import com.google.cloud.teleport.spanner.spannerio.MutationGroup;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import com.google.protobuf.ByteString;
 import com.google.spanner.admin.database.v1.GetDatabaseDdlResponse;
 import com.google.spanner.admin.instance.v1.CreateInstancePartitionRequest;
@@ -40,8 +42,6 @@ import com.google.spanner.admin.instance.v1.InstancePartitionName;
 import java.util.Arrays;
 import java.util.Iterator;
 import javax.annotation.Nullable;
-import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.rules.ExternalResource;
 
@@ -85,6 +85,9 @@ public class SpannerServerResource extends ExternalResource {
   protected void after() {
     if (!client.isClosed()) {
       client.close();
+    }
+    if (!instanceAdminClient.isShutdown()) {
+      instanceAdminClient.shutdown();
     }
   }
 

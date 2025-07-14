@@ -42,6 +42,7 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryHelpers;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO.TypedRead.Method;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.io.parquet.ParquetIO;
 import org.apache.beam.sdk.options.Default;
@@ -108,14 +109,22 @@ public class BigQueryToParquet {
      * Creates ReadSession for schema extraction.
      *
      * @param client BigQueryStorage client used to create ReadSession.
-     * @param tableString String that represents table to export from.
+     * @param options BigQueryToParquetOptions options.
      * @param tableReadOptions TableReadOptions that specify any fields in the table to filter on.
      * @return session ReadSession object that contains the schema for the export.
      */
     static ReadSession create(
-        BigQueryStorageClient client, String tableString, TableReadOptions tableReadOptions) {
+        BigQueryStorageClient client,
+        BigQueryToParquetOptions options,
+        TableReadOptions tableReadOptions) {
+      String tableString = options.getTableRef();
       TableReference tableReference = BigQueryHelpers.parseTableSpec(tableString);
-      String parentProjectId = "projects/" + tableReference.getProjectId();
+      BigQueryOptions bigQueryOptions = options.as(BigQueryOptions.class);
+      String parentProjectId =
+          bigQueryOptions.getBigQueryProject() == null
+              ? bigQueryOptions.getProject()
+              : bigQueryOptions.getBigQueryProject();
+      String parentProjectIdResource = "projects/" + parentProjectId;
 
       TableReferenceProto.TableReference storageTableRef =
           TableReferenceProto.TableReference.newBuilder()
@@ -126,7 +135,7 @@ public class BigQueryToParquet {
 
       CreateReadSessionRequest.Builder builder =
           CreateReadSessionRequest.newBuilder()
-              .setParent(parentProjectId)
+              .setParent(parentProjectIdResource)
               .setReadOptions(tableReadOptions)
               .setTableReference(storageTableRef);
       try {
@@ -247,10 +256,14 @@ public class BigQueryToParquet {
       builder.addAllSelectedFields(Arrays.asList(options.getFields().split(",\\s*")));
     }
 
+    // Add row restrictions/filter if any.
+    if (!Strings.isNullOrEmpty(options.getRowRestriction())) {
+      builder.setRowRestriction(options.getRowRestriction());
+    }
+
     TableReadOptions tableReadOptions = builder.build();
     BigQueryStorageClient client = BigQueryStorageClientFactory.create();
-    ReadSession session =
-        ReadSessionFactory.create(client, options.getTableRef(), tableReadOptions);
+    ReadSession session = ReadSessionFactory.create(client, options, tableReadOptions);
 
     // Extract schema from ReadSession
     Schema schema = getTableSchema(session);

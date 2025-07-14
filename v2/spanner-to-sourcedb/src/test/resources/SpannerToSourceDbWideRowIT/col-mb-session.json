@@ -1,0 +1,235 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "mysql_10mb",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t157": {
+      "Name": "large_data",
+      "ColIds": [
+        "c158",
+        "c159",
+        "c162"
+      ],
+      "ShardIdColumn": "c162",
+      "ColDefs": {
+        "c158": {
+          "Name": "id",
+          "T": {
+            "Name": "STRING",
+            "Len": 36,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id varchar(36)",
+          "Id": "c158",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c159": {
+          "Name": "large_blob",
+          "T": {
+            "Name": "BYTES",
+            "Len": 9223372036854775807,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: large_data longblob(4294967295)",
+          "Id": "c159",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c162": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c162",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c158",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c162",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table large_data",
+      "Id": "t157"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t157": {
+      "Name": "large_data",
+      "Schema": "mysql_10mb",
+      "ColIds": [
+        "c158",
+        "c159"
+      ],
+      "ColDefs": {
+        "c158": {
+          "Name": "id",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              36
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c158",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c159": {
+          "Name": "large_blob",
+          "Type": {
+            "Name": "longblob",
+            "Mods": [
+              4294967295
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c159",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c158",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t157"
+    }
+  },
+  "SchemaIssues": {
+    "t157": {
+      "ColumnLevelIssues": {
+        "c162": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [
+    {
+      "Id": "r163",
+      "Name": "r163",
+      "Type": "add_shard_id_primary_key",
+      "ObjectType": "",
+      "AssociatedObjects": "All Tables",
+      "Enabled": true,
+      "Data": {
+        "AddedAtTheStart": true
+      },
+      "AddedOn": {
+        "TimeOffset": null
+      }
+    }
+  ],
+  "IsSharded": true,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "daring-fiber-439305-v4",
+  "SpInstanceId": "rr-demo",
+  "Source": "mysql"
+}

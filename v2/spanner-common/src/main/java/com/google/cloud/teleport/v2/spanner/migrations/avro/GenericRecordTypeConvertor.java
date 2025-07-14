@@ -17,12 +17,15 @@ package com.google.cloud.teleport.v2.spanner.migrations.avro;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.Value;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraType.Kind;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import java.lang.reflect.Array;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
 import java.time.Instant;
@@ -33,11 +36,14 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import org.apache.arrow.util.VisibleForTesting;
 import org.apache.avro.Conversions;
 import org.apache.avro.LogicalType;
@@ -71,7 +77,7 @@ public class GenericRecordTypeConvertor {
 
   static final String LOGICAL_TYPE = "logicalType";
 
-  private static final Schema CUSTOM_TRANSFORMATION_AVRO_SCHEMA =
+  static final Schema CUSTOM_TRANSFORMATION_AVRO_SCHEMA =
       new LogicalType("custom_transform").addToSchema(SchemaBuilder.builder().stringType());
 
   private final Distribution applyCustomTransformationResponseTimeMetric =
@@ -87,6 +93,34 @@ public class GenericRecordTypeConvertor {
     this.namespace = namespace;
     this.shardId = shardId;
     this.customTransformer = customTransformer;
+  }
+
+  public static Object getJsonNodeObjectFromGenericRecord(
+      @Nullable GenericRecord record,
+      Schema.Field f,
+      String srcTableName,
+      ISchemaMapper schemaMapper) {
+    String fieldName = f.name();
+    if (record == null) {
+      return null;
+    }
+    Object recordValue = record.get(fieldName);
+    if (recordValue == null) {
+      return null;
+    }
+    Schema fieldSchema = filterNullSchema(f.schema(), fieldName, recordValue);
+    CassandraAnnotations cassandraAnnotations = null;
+    try {
+      cassandraAnnotations =
+          schemaMapper.getSpannerColumnCassandraAnnotations(
+              "",
+              schemaMapper.getSpannerTableName("", srcTableName),
+              schemaMapper.getSpannerColumnName("", srcTableName, fieldName));
+    } catch (NoSuchElementException e) {
+      // For Non-Existant Columns or Tables, we initialize Cassandra Annotations to empty array.
+      cassandraAnnotations = CassandraAnnotations.fromColumnOptions(List.of(), fieldName);
+    }
+    return handleNonPrimitiveAvroTypes(recordValue, fieldSchema, fieldName, cassandraAnnotations);
   }
 
   /**
@@ -110,7 +144,7 @@ public class GenericRecordTypeConvertor {
     }
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     List<String> spannerColNames = schemaMapper.getSpannerColumns(namespace, spannerTableName);
-    // This is null/blank for identity/non-sharded cases.
+    // This is null/blank for identity/override/non-sharded cases.
     String shardIdCol = schemaMapper.getShardIdColumnName(namespace, spannerTableName);
     for (String spannerColName : spannerColNames) {
       try {
@@ -153,6 +187,10 @@ public class GenericRecordTypeConvertor {
             schemaMapper.getSourceColumnName(namespace, spannerTableName, spannerColName);
         Type spannerColumnType =
             schemaMapper.getSpannerColumnType(namespace, spannerTableName, spannerColName);
+
+        final CassandraAnnotations cassandraAnnotations =
+            schemaMapper.getSpannerColumnCassandraAnnotations(
+                namespace, spannerTableName, spannerColName);
         LOG.debug(
             "Transformer processing srcCol: {} spannerColumnType:{}",
             srcColName,
@@ -163,7 +201,8 @@ public class GenericRecordTypeConvertor {
                 record.get(srcColName),
                 record.getSchema().getField(srcColName).schema(),
                 srcColName,
-                spannerColumnType);
+                spannerColumnType,
+                cassandraAnnotations);
         result.put(spannerColName, value);
       } catch (NullPointerException e) {
         throw e;
@@ -208,7 +247,7 @@ public class GenericRecordTypeConvertor {
     String spannerTableName = schemaMapper.getSpannerTableName(namespace, srcTableName);
     // TODO: verify if direct to object (Current) works the same as Object -> JsonNode-> Object
     // (Live).
-    Map<String, Object> sourceRowMap = genericRecordToMap(record);
+    Map<String, Object> sourceRowMap = genericRecordToMap(record, srcTableName);
     MigrationTransformationResponse migrationTransformationResponse =
         getCustomTransformationResponse(sourceRowMap, srcTableName, shardId);
     if (migrationTransformationResponse.isEventFiltered()) {
@@ -231,7 +270,7 @@ public class GenericRecordTypeConvertor {
   }
 
   /** Converts a generic record to a Map. */
-  private Map<String, Object> genericRecordToMap(GenericRecord record) {
+  private Map<String, Object> genericRecordToMap(GenericRecord record, String srcTableName) {
     Map<String, Object> map = new HashMap<>();
     Schema schema = record.getSchema();
 
@@ -244,35 +283,99 @@ public class GenericRecordTypeConvertor {
       }
       Schema fieldSchema = filterNullSchema(field.schema(), fieldName, fieldValue);
       // Handle logical/record types.
-      fieldValue = handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName);
+      final CassandraAnnotations cassandraAnnotations =
+          schemaMapper.getSpannerColumnCassandraAnnotations(
+              namespace,
+              schemaMapper.getSpannerTableName(namespace, srcTableName),
+              schemaMapper.getSpannerColumnName(namespace, srcTableName, fieldName));
+      fieldValue =
+          handleNonPrimitiveAvroTypes(fieldValue, fieldSchema, fieldName, cassandraAnnotations);
       // Standardizing the types for custom jar input.
       if (fieldSchema.getProp(LOGICAL_TYPE) != null
           || fieldSchema.getType() == Schema.Type.RECORD) {
         map.put(fieldName, fieldValue);
         continue;
       }
-      Schema.Type fieldType = fieldSchema.getType();
-      switch (fieldType) {
-        case INT:
-        case LONG:
-          fieldValue = Long.valueOf(fieldValue.toString());
-          break;
-        case BOOLEAN:
-          fieldValue = Boolean.valueOf(fieldValue.toString());
-          break;
-        case FLOAT:
-        case DOUBLE:
-          fieldValue = Double.valueOf(fieldValue.toString());
-          break;
-        case BYTES:
-          fieldValue = Hex.encode(((ByteBuffer) fieldValue).array());
-          break;
-        default:
-          fieldValue = fieldValue.toString();
+      if (fieldSchema.getType().equals(Schema.Type.ARRAY)) {
+        fieldValue =
+            getObjectMapValueForArrayFieldValue(
+                fieldValue, fieldSchema, fieldName, cassandraAnnotations);
+        map.put(fieldName, fieldValue);
+        continue;
       }
+      fieldValue = getObjectMapValueForPrimitiveFieldValue(fieldValue, fieldSchema);
       map.put(fieldName, fieldValue);
     }
     return map;
+  }
+
+  /**
+   * Handles Arrays of complex Avro types (logical types or records) within a GenericRecord to be
+   * inserted in the CustomTransformationMap.
+   *
+   * @param fieldValue The original value of the field in the GenericRecord.
+   * @param fieldSchema The Avro schema describing the field's type.
+   * @param fieldName The name of the column (field) in the record.
+   * @return The processed value of the field, potentially transformed according to its complex
+   *     type. Note: Implementation Detail, This method is slightly different from {@link
+   *     GenericRecordTypeConvertor#handleArrayAvroTypes} due to subtle difference in the way
+   *     primitives are handled in both the code flows.
+   */
+  static Object getObjectMapValueForArrayFieldValue(
+      Object fieldValue,
+      Schema fieldSchema,
+      String fieldName,
+      CassandraAnnotations cassandraAnnotations) {
+
+    if (fieldValue instanceof List) {
+      fieldValue = ((List<Object>) fieldValue).toArray();
+    }
+
+    List<Object> recordArrayList = new ArrayList<Object>();
+    Schema elementSchema = fieldSchema.getElementType();
+    if (fieldValue == null) {
+      return null;
+    }
+
+    for (int i = 0; i < Array.getLength(fieldValue); i++) {
+
+      Object curValue = Array.get(fieldValue, i);
+      curValue =
+          handleNonPrimitiveAvroTypes(curValue, elementSchema, fieldName, cassandraAnnotations);
+      // Standardizing the types for custom jar input.
+      if (elementSchema.getProp(LOGICAL_TYPE) != null
+          || elementSchema.getType() == Schema.Type.RECORD) {
+        recordArrayList.add(curValue);
+        continue;
+      }
+      curValue = getObjectMapValueForPrimitiveFieldValue(curValue, elementSchema);
+      recordArrayList.add(curValue);
+    }
+    return recordArrayList.toArray();
+  }
+
+  private static Object getObjectMapValueForPrimitiveFieldValue(
+      Object fieldValue, Schema fieldSchema) {
+    Schema.Type fieldType = fieldSchema.getType();
+    switch (fieldType) {
+      case INT:
+      case LONG:
+        fieldValue = Long.valueOf(fieldValue.toString());
+        break;
+      case BOOLEAN:
+        fieldValue = Boolean.valueOf(fieldValue.toString());
+        break;
+      case FLOAT:
+      case DOUBLE:
+        fieldValue = Double.valueOf(fieldValue.toString());
+        break;
+      case BYTES:
+        fieldValue = Hex.encode(((ByteBuffer) fieldValue).array());
+        break;
+      default:
+        fieldValue = fieldValue.toString();
+    }
+    return fieldValue;
   }
 
   @VisibleForTesting
@@ -313,7 +416,11 @@ public class GenericRecordTypeConvertor {
 
   /** Extract the field value from Generic Record and try to convert it to @spannerType. */
   public Value getSpannerValue(
-      Object recordValue, Schema fieldSchema, String recordColName, Type spannerType) {
+      Object recordValue,
+      Schema fieldSchema,
+      String recordColName,
+      Type spannerType,
+      CassandraAnnotations cassandraAnnotations) {
     // Logical and record types should be converted to string.
     LOG.debug(
         "gettingSpannerValue for recordValue: {}, fieldSchema: {}, recordColName: {}, spannerType: {}",
@@ -322,7 +429,9 @@ public class GenericRecordTypeConvertor {
         fieldSchema,
         spannerType);
     fieldSchema = filterNullSchema(fieldSchema, recordColName, recordValue);
-    recordValue = handleNonPrimitiveAvroTypes(recordValue, fieldSchema, recordColName);
+
+    recordValue =
+        handleNonPrimitiveAvroTypes(recordValue, fieldSchema, recordColName, cassandraAnnotations);
     return getSpannerValueFromObject(recordValue, fieldSchema, recordColName, spannerType);
   }
 
@@ -334,7 +443,8 @@ public class GenericRecordTypeConvertor {
    * not a union, or if it's a union with more than two types or a non-nullable type other than
    * NULL, an IllegalArgumentException is thrown.
    */
-  private Schema filterNullSchema(Schema fieldSchema, String recordColName, Object recordValue) {
+  private static Schema filterNullSchema(
+      Schema fieldSchema, String recordColName, Object recordValue) {
     if (fieldSchema.getType().equals(Schema.Type.UNION)) {
       List<Schema> types = fieldSchema.getTypes();
       LOG.debug("found union type: {}", types);
@@ -364,16 +474,66 @@ public class GenericRecordTypeConvertor {
    * @return The processed value of the field, potentially transformed according to its complex
    *     type.
    */
-  private Object handleNonPrimitiveAvroTypes(
-      Object recordValue, Schema fieldSchema, String recordColName) {
+  private static Object handleNonPrimitiveAvroTypes(
+      Object recordValue,
+      Schema fieldSchema,
+      String recordColName,
+      CassandraAnnotations cassandraAnnotations) {
     if (fieldSchema.getLogicalType() != null || fieldSchema.getProp(LOGICAL_TYPE) != null) {
-      recordValue = handleLogicalFieldType(recordColName, recordValue, fieldSchema);
+      recordValue =
+          handleLogicalFieldType(recordColName, recordValue, fieldSchema, cassandraAnnotations);
     } else if (fieldSchema.getType().equals(Schema.Type.RECORD)) {
       // Get the avro field of type record from the whole record.
       recordValue = handleRecordFieldType(recordColName, (GenericRecord) recordValue, fieldSchema);
+    } else if (fieldSchema.getType().equals(Schema.Type.ARRAY)) {
+      // Get the avro field of type record from the Array.
+      recordValue =
+          handleArrayAvroTypes(recordValue, fieldSchema, recordColName, cassandraAnnotations);
     }
     LOG.debug("Updated record value is {} for recordColName {}", recordValue, recordColName);
     return recordValue;
+  }
+
+  /**
+   * Handles Arrays of complex Avro types (logical types or records) within a GenericRecord.
+   *
+   * @param recordValue The original value of the field in the GenericRecord.
+   * @param fieldSchema The Avro schema describing the field's type.
+   * @param recordColName The name of the column (field) in the record.
+   * @return The processed value of the field, potentially transformed according to its complex
+   *     type.
+   */
+  static Object handleArrayAvroTypes(
+      Object recordValue,
+      Schema fieldSchema,
+      String recordColName,
+      CassandraAnnotations cassandraAnnotations) {
+    if (recordValue instanceof List) {
+      recordValue = ((List<Object>) recordValue).toArray();
+    }
+
+    if (!fieldSchema.getType().equals(Schema.Type.ARRAY)) {
+      return recordValue;
+    }
+    if (recordValue == null) {
+      return null;
+    }
+
+    List<Object> recordArrayList = new ArrayList<Object>();
+    Schema elementSchema = fieldSchema.getElementType();
+    for (int i = 0; i < Array.getLength(recordValue); i++) {
+      Object curValue = Array.get(recordValue, i);
+      curValue =
+          handleNonPrimitiveAvroTypes(curValue, elementSchema, recordColName, cassandraAnnotations);
+      // Standardizing the types for custom jar input.
+      if (elementSchema.getProp(LOGICAL_TYPE) != null
+          || elementSchema.getType() == Schema.Type.RECORD) {
+        recordArrayList.add(curValue);
+        continue;
+      }
+      recordArrayList.add(curValue);
+    }
+    return recordArrayList.toArray();
   }
 
   /** Converts an avro object to Spanner Value of the specified type. */
@@ -410,7 +570,11 @@ public class GenericRecordTypeConvertor {
   }
 
   /** Avro logical types are converted to an equivalent string type. */
-  static String handleLogicalFieldType(String fieldName, Object recordValue, Schema fieldSchema) {
+  static String handleLogicalFieldType(
+      String fieldName,
+      Object recordValue,
+      Schema fieldSchema,
+      CassandraAnnotations cassandraAnnotations) {
     LOG.debug("found logical type for col {} with schema {}", fieldName, fieldSchema);
     if (recordValue == null) {
       return null;
@@ -446,7 +610,12 @@ public class GenericRecordTypeConvertor {
       return timestamp.atOffset(ZoneOffset.UTC).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
     } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
         && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.JSON)) {
-      return recordValue.toString();
+      if (cassandraAnnotations.cassandraType().getKind().equals(Kind.MAP)) {
+        return AvroJsonToCassandraMapConvertor.handleJsonToMap(
+            recordValue, cassandraAnnotations, fieldName, fieldSchema);
+      } else {
+        return recordValue.toString();
+      }
     } else if (fieldSchema.getProp(LOGICAL_TYPE) != null
         && fieldSchema.getProp(LOGICAL_TYPE).equals(CustomAvroTypes.NUMBER)) {
       return recordValue.toString();
@@ -539,13 +708,9 @@ public class GenericRecordTypeConvertor {
           Period.ZERO
               .plusYears(((Number) getOrDefault(element, "years", 0L)).longValue())
               .plusMonths(((Number) getOrDefault(element, "months", 0L)).longValue())
-              .plusDays(((Number) getOrDefault(element, "days", 0L)).longValue());
-      /*
-       * Convert the period to a ISO-8601 period formatted String, such as P6Y3M1D.
-       * A zero period will be represented as zero days, 'P0D'.
-       * Refer to javadoc for Period#toString.
-       */
-      String periodIso8061 = period.toString();
+              .plusDays(((Number) getOrDefault(element, "days", 0L)).longValue())
+              .normalized(); // Normalize years and months
+
       java.time.Duration duration =
           java.time.Duration.ZERO
               .plusHours(((Number) getOrDefault(element, "hours", 0L)).longValue())
@@ -556,13 +721,19 @@ public class GenericRecordTypeConvertor {
        * Convert the duration to a ISO-8601 period formatted String, such as  PT8H6M12.345S
        * refer to javadoc for Duration#toString.
        */
-      String durationIso8610 = duration.toString();
-      // Convert to ISO-8601 period format.
-      if (duration.isZero()) {
-        return periodIso8061;
-      } else {
-        return periodIso8061 + StringUtils.removeStartIgnoreCase(durationIso8610, "P");
+      if (period.isZero() && duration.isZero()) {
+        // Interval of length 0 is represented as P0Y.
+        return "P0Y";
+      } else if (period.isZero()) {
+        // If year-month-day part is 0, get ISO8601 formatted string from duration part.
+        return duration.toString();
+      } else if (duration.isZero()) {
+        // If hour-minute-second part is 0, get ISO8601 formatted string from period part.
+        return period.toString();
       }
+
+      // Combine both non-zero parts into ISO8601 string.
+      return period + StringUtils.removeStartIgnoreCase(duration.toString(), "P");
     } else {
       throw new UnsupportedOperationException(
           String.format(

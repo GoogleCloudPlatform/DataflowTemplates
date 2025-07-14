@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.migrations.schema;
 
 import com.google.cloud.spanner.Dialect;
+import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.io.Serializable;
 import java.util.List;
@@ -70,6 +71,14 @@ public interface ISchemaMapper extends Serializable {
    */
   Type getSpannerColumnType(String namespace, String spannerTable, String spannerColumn)
       throws NoSuchElementException;
+
+  /**
+   * Retrieves the Spanner column's Cassandra annotation given a spanner table and spanner column.
+   *
+   * @param namespace is currently not operational.
+   */
+  CassandraAnnotations getSpannerColumnCassandraAnnotations(
+      String namespace, String spannerTable, String spannerColumn) throws NoSuchElementException;
 
   /**
    * Retrieves a list of all column names within a Spanner table.

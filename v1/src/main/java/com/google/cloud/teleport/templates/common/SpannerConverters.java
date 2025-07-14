@@ -35,6 +35,10 @@ import com.google.cloud.spanner.Type;
 import com.google.cloud.spanner.Type.Code;
 import com.google.cloud.spanner.Type.StructField;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.spanner.spannerio.ReadOperation;
+import com.google.cloud.teleport.spanner.spannerio.SpannerAccessor;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
@@ -56,10 +60,6 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import kotlin.Pair;
 import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.gcp.spanner.LocalSpannerAccessor;
-import org.apache.beam.sdk.io.gcp.spanner.ReadOperation;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
-import org.apache.beam.sdk.io.gcp.spanner.Transaction;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.ValueProvider;
@@ -261,16 +261,16 @@ public class SpannerConverters {
       return new AutoValue_SpannerConverters_ExportTransform.Builder();
     }
 
-    private LocalSpannerAccessor spannerAccessor;
+    private SpannerAccessor spannerAccessor;
     private DatabaseClient databaseClient;
 
-    // LocalSpannerAccessor is not serializable, thus can't be passed as a mock so we need to pass
+    // SpannerAccessor is not serializable, thus can't be passed as a mock so we need to pass
     // mocked database client directly instead. We can't generate stub of ExportTransform because
     // AutoValue generates a final class.
-    // TODO make LocalSpannerAccessor serializable
+    // TODO make SpannerAccessor serializable
     DatabaseClient getDatabaseClient(SpannerConfig spannerConfig) {
       if (databaseClient == null) {
-        this.spannerAccessor = LocalSpannerAccessor.getOrCreate(spannerConfig);
+        this.spannerAccessor = SpannerAccessor.getOrCreate(spannerConfig);
         return this.spannerAccessor.getDatabaseClient();
       } else {
         return this.databaseClient;
@@ -376,6 +376,16 @@ public class SpannerConverters {
 
       private String createColumnExpression(String columnName, String columnType, Dialect dialect) {
         if (dialect == Dialect.POSTGRESQL) {
+          // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
+          if (columnType.equals("uuid")) {
+            return String.format("\"%s\"::text AS \"%s\"", columnName, columnName);
+          }
+          if (columnType.equals("uuid[]")) {
+            return String.format(
+                "CASE WHEN \"%s\" IS NULL THEN NULL ELSE "
+                    + "ARRAY(SELECT e::text FROM UNNEST(\"%s\") AS e) END AS \"%s\"",
+                columnName, columnName, columnName);
+          }
           return "\"" + columnName + "\"";
         }
         if (columnType.equals("NUMERIC")) {
@@ -384,7 +394,16 @@ public class SpannerConverters {
         if (columnType.equals("JSON")) {
           return "`" + columnName + "`";
         }
-
+        // TODO(b/394493438): Remove casting once google-cloud-spanner supports UUID type
+        if (columnType.equals("UUID")) {
+          return String.format("CAST(`%s` AS STRING) AS %s", columnName, columnName);
+        }
+        if (columnType.equals("ARRAY<UUID>")) {
+          return String.format(
+              "CASE WHEN `%s` IS NULL THEN NULL ELSE "
+                  + "ARRAY(SELECT CAST(e AS STRING) FROM UNNEST(%s) AS e) END AS %s",
+              columnName, columnName, columnName);
+        }
         if (columnType.equals("ARRAY<NUMERIC>")) {
           return "(SELECT ARRAY_AGG(CAST(num AS STRING)) FROM UNNEST(`"
               + columnName
@@ -798,11 +817,11 @@ public class SpannerConverters {
       this.spannerSnapshotTime = spannerSnapshotTime;
     }
 
-    private transient LocalSpannerAccessor spannerAccessor;
+    private transient SpannerAccessor spannerAccessor;
 
     @DoFn.Setup
     public void setup() throws Exception {
-      spannerAccessor = LocalSpannerAccessor.getOrCreate(config);
+      spannerAccessor = SpannerAccessor.getOrCreate(config);
     }
 
     @Teardown

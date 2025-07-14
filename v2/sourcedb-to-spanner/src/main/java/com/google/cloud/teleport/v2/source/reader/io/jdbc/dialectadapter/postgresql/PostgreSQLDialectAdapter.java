@@ -413,15 +413,16 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
    * @param tableName name of the table to read.
    * @param partitionColumns partition columns.
    * @param timeoutMillis timeout of the count query in milliseconds. Set to 0 to disable timeout.
+   *     Note that PG does not have an easy way of adding a server level timeout hint in the single
+   *     statement. The client side prepared statement timeout which is set by {@link
+   *     com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms.ReadWithUniformPartitions
+   *     ReadWithUniformPartitions} will help in capping the time query spends in counting the rows.
    * @return Query Statement.
    */
   @Override
   public String getCountQuery(
       String tableName, ImmutableList<String> partitionColumns, long timeoutMillis) {
-    return addWhereClause(
-        String.format(
-            "SET statement_timeout = %s; SELECT COUNT(*) FROM %s", timeoutMillis, tableName),
-        partitionColumns);
+    return addWhereClause(String.format("SELECT COUNT(*) FROM %s", tableName), partitionColumns);
   }
 
   /**
@@ -507,7 +508,7 @@ public class PostgreSQLDialectAdapter implements DialectAdapter {
       case "N":
         return SourceColumnIndexInfo.IndexType.NUMERIC;
       case "D":
-        return SourceColumnIndexInfo.IndexType.DATE_TIME;
+        return SourceColumnIndexInfo.IndexType.TIME_STAMP;
       case "S":
         return SourceColumnIndexInfo.IndexType.STRING;
       default:

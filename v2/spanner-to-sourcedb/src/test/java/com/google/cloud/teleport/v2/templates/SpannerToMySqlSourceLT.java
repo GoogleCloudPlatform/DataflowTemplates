@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
 import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -76,7 +77,14 @@ public class SpannerToMySqlSourceLT extends SpannerToSourceDbLTBase {
                 .name());
 
     createMySQLSchema(jdbcResourceManagers);
-    jobInfo = launchDataflowJob(artifactBucket, numWorkers, maxWorkers);
+    jobInfo =
+        launchDataflowJob(
+            artifactBucket,
+            numWorkers,
+            maxWorkers,
+            null,
+            MYSQL_SOURCE_TYPE,
+            SOURCE_SHARDS_FILE_NAME);
   }
 
   @After

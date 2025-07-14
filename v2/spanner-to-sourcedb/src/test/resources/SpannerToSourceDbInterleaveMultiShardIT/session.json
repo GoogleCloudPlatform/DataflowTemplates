@@ -416,6 +416,126 @@
     "ParentId": "",
     "Comment": "Spanner schema for source table parent2",
     "Id": "t4"
+   },
+   "t5": {
+    "Name": "child31",
+    "ColIds": [
+     "c27",
+     "c28",
+     "c29",
+     "c30",
+     "c31"
+    ],
+    "ShardIdColumn": "c31",
+    "ColDefs": {
+     "c31": {
+      "Name": "migration_shard_id",
+      "T": {
+       "Name": "STRING",
+       "Len": 50,
+       "IsArray": false
+      },
+      "NotNull": false,
+      "Comment": "",
+      "Id": "c31",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c27": {
+      "Name": "child_id",
+      "T": {
+       "Name": "INT64",
+       "Len": 0,
+       "IsArray": false
+      },
+      "NotNull": true,
+      "Comment": "From: child_id int(10)",
+      "Id": "c27",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c28": {
+      "Name": "id",
+      "T": {
+       "Name": "INT64",
+       "Len": 0,
+       "IsArray": false
+      },
+      "NotNull": true,
+      "Comment": "From: parent_id int(10)",
+      "Id": "c28",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c29": {
+      "Name": "update_ts",
+      "T": {
+       "Name": "TIMESTAMP",
+       "Len": 0,
+       "IsArray": false
+      },
+      "NotNull": false,
+      "Comment": "From: update_ts timestamp",
+      "Id": "c29",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c30": {
+      "Name": "in_ts",
+      "T": {
+       "Name": "TIMESTAMP",
+       "Len": 0,
+       "IsArray": false
+      },
+      "NotNull": false,
+      "Comment": "From: in_ts timestamp",
+      "Id": "c30",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     }
+    },
+    "PrimaryKeys": [
+     {
+      "ColId": "c27",
+      "Desc": false,
+      "Order": 2
+     },
+     {
+      "ColId": "c28",
+      "Desc": false,
+      "Order": 1
+     }
+    ],
+    "ForeignKeys": [],
+    "Indexes": [
+     {
+      "Name": "par_ind_6",
+      "TableId": "t5",
+      "Unique": false,
+      "Keys": [
+       {
+        "ColId": "c28",
+        "Desc": false,
+        "Order": 1
+       }
+      ],
+      "Id": "i12",
+      "StoredColumnIds": null
+     }
+    ],
+    "ParentId": "",
+    "Comment": "Spanner schema for source table child21",
+    "Id": "t5"
    }
   },
   "SyntheticPKeys": {},
@@ -881,6 +1001,148 @@
     "ForeignKeys": null,
     "Indexes": null,
     "Id": "t4"
+   },
+   "t5": {
+    "Name": "child31",
+    "Schema": "itfk",
+    "ColIds": [
+     "c27",
+     "c28",
+     "c29",
+     "c30"
+    ],
+    "ColDefs": {
+     "c27": {
+      "Name": "child_id",
+      "Type": {
+       "Name": "int",
+       "Mods": [
+        10
+       ],
+       "ArrayBounds": null
+      },
+      "NotNull": true,
+      "Ignored": {
+       "Check": false,
+       "Identity": false,
+       "Default": false,
+       "Exclusion": false,
+       "ForeignKey": false,
+       "AutoIncrement": false
+      },
+      "Id": "c27",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c28": {
+      "Name": "parent_id",
+      "Type": {
+       "Name": "int",
+       "Mods": [
+        10
+       ],
+       "ArrayBounds": null
+      },
+      "NotNull": false,
+      "Ignored": {
+       "Check": false,
+       "Identity": false,
+       "Default": false,
+       "Exclusion": false,
+       "ForeignKey": false,
+       "AutoIncrement": false
+      },
+      "Id": "c28",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c29": {
+      "Name": "update_ts",
+      "Type": {
+       "Name": "timestamp",
+       "Mods": null,
+       "ArrayBounds": null
+      },
+      "NotNull": false,
+      "Ignored": {
+       "Check": false,
+       "Identity": false,
+       "Default": false,
+       "Exclusion": false,
+       "ForeignKey": false,
+       "AutoIncrement": false
+      },
+      "Id": "c29",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     },
+     "c30": {
+      "Name": "in_ts",
+      "Type": {
+       "Name": "timestamp",
+       "Mods": null,
+       "ArrayBounds": null
+      },
+      "NotNull": false,
+      "Ignored": {
+       "Check": false,
+       "Identity": false,
+       "Default": true,
+       "Exclusion": false,
+       "ForeignKey": false,
+       "AutoIncrement": false
+      },
+      "Id": "c30",
+      "AutoGen": {
+       "Name": "",
+       "GenerationType": ""
+      }
+     }
+    },
+    "PrimaryKeys": [
+     {
+      "ColId": "c27",
+      "Desc": false,
+      "Order": 1
+     }
+    ],
+    "ForeignKeys": [
+     {
+      "Name": "child31_ibfk_1",
+      "ColIds": [
+       "c28"
+      ],
+      "ReferTableId": "t4",
+      "ReferColumnIds": [
+       "c19"
+      ],
+      "OnDelete": "",
+      "OnUpdate": "",
+      "Id": "f6"
+     }
+    ],
+    "Indexes": [
+     {
+      "Name": "par_ind2",
+      "Unique": false,
+      "Keys": [
+       {
+        "ColId": "c28",
+        "Desc": false,
+        "Order": 1
+       }
+      ],
+      "Id": "i12",
+      "StoredColumnIds": null
+     }
+    ],
+    "Id": "t5"
    }
   },
   "SchemaIssues": {
@@ -961,6 +1223,35 @@
      "c25": [
       29,
       30
+     ]
+    },
+    "TableLevelIssues": null
+   },
+   "t5": {
+    "ColumnLevelIssues": {
+     "c31": [
+      29,
+      30
+     ],
+     "c27": [
+      14
+     ],
+     "c28": [
+      14,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19,
+      19
+     ],
+     "c29": [],
+     "c30": [
+      0
      ]
     },
     "TableLevelIssues": null

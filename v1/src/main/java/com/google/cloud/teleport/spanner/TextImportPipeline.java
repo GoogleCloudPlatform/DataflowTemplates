@@ -23,10 +23,10 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.TextImportPipeline.Options;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -51,7 +51,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
  *
  * <p>Schema file must have all column and type definition in one line. Schema file must use the
  * data type names of Cloud Spanner. We currently support the following Cloud Spanner data types: -
- * BOOL - DATE - FLOAT32 - FLOAT64 - INT64 - STRING - TIMESTAMP
+ * BOOL - DATE - FLOAT32 - FLOAT64 - INT64 - STRING - TIMESTAMP - UUID
  *
  * <p>Input format properties: - \\N in the source column will be considered as NULL value when
  * writing to Cloud Spanner. - If you need to escape characters, you can use the "fieldQualifier"

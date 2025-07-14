@@ -15,9 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub;
 
-import com.google.auto.value.AutoValue;
 import com.google.cloud.pubsub.v1.Publisher;
-import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
+import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.InvalidModException;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.MessageFormat;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.model.Mod;
 import com.google.cloud.teleport.v2.templates.bigtablechangestreamstopubsub.schemautils.PubSubUtils;
@@ -32,6 +31,9 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,43 +48,51 @@ public final class FailsafePublisher {
    * PubsubMessage}.
    */
   public static class PublishModJsonToTopic
-      extends PTransform<
-          PCollection<FailsafeElement<String, String>>,
-          PCollection<FailsafeElement<String, String>>> {
+      extends PTransform<PCollection<FailsafeElement<String, String>>, PCollectionTuple> {
 
     private final PubSubUtils pubSubUtils;
+    private final TupleTag<FailsafeElement<String, String>> invalidModsTag;
+    private final TupleTag<FailsafeElement<String, String>> validModsTag;
 
     private static final Logger LOG = LoggerFactory.getLogger(PublishModJsonToTopic.class);
 
-    private final FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubMessageOptions;
-
     public PublishModJsonToTopic(
         PubSubUtils pubSubUtils,
-        FailsafeModJsonToPubsubMessageOptions failsafeModJsonToPubsubMessageOptions) {
+        TupleTag<FailsafeElement<String, String>> validModsTag,
+        TupleTag<FailsafeElement<String, String>> invalidModsTag) {
       this.pubSubUtils = pubSubUtils;
-      this.failsafeModJsonToPubsubMessageOptions = failsafeModJsonToPubsubMessageOptions;
+      this.invalidModsTag = invalidModsTag;
+      this.validModsTag = validModsTag;
     }
 
-    public PCollection<FailsafeElement<String, String>> expand(
-        PCollection<FailsafeElement<String, String>> input) {
-      return input
-          .apply(ParDo.of(new PublishModJsonToTopicFn(pubSubUtils)))
-          .setCoder(failsafeModJsonToPubsubMessageOptions.getCoder());
+    public PCollectionTuple expand(PCollection<FailsafeElement<String, String>> input) {
+
+      return input.apply(
+          ParDo.of(new PublishModJsonToTopicFn(pubSubUtils, validModsTag, invalidModsTag))
+              .withOutputTags(validModsTag, TupleTagList.of(invalidModsTag)));
     }
 
     /**
      * The {@link PublishModJsonToTopicFn} converts a JSON string wrapped in {@link FailsafeElement}
-     * to a {@link PubsubMessage} and publishes it to the topic.
+     * to a {@link PubsubMessage} and publishes it to the topic. Invalid mods are sent to
+     * invalidModsTag output stream, so they are not retried.
      */
     public static class PublishModJsonToTopicFn
         extends DoFn<FailsafeElement<String, String>, FailsafeElement<String, String>> {
       private final PubSubUtils pubSubUtils;
       private final ThrottledLogger throttled;
+      private final TupleTag<FailsafeElement<String, String>> invalidModsTag;
+      private final TupleTag<FailsafeElement<String, String>> validModsTag;
 
       private transient Publisher publisher;
 
-      public PublishModJsonToTopicFn(PubSubUtils pubSubUtils) {
+      public PublishModJsonToTopicFn(
+          PubSubUtils pubSubUtils,
+          TupleTag<FailsafeElement<String, String>> validModsTag,
+          TupleTag<FailsafeElement<String, String>> invalidModsTag) {
         this.pubSubUtils = pubSubUtils;
+        this.invalidModsTag = invalidModsTag;
+        this.validModsTag = validModsTag;
         this.throttled = new ThrottledLogger();
       }
 
@@ -118,16 +128,24 @@ public final class FailsafePublisher {
         try {
           PubsubMessage pubSubMessage = newPubsubMessage(failsafeModJsonString.getPayload());
           throttled.success(LOG, publisher.publish(pubSubMessage).get());
+        } catch (InvalidModException e) {
+          throttled.failure(LOG, e);
+          context.output(
+              invalidModsTag,
+              FailsafeElement.of(failsafeModJsonString)
+                  .setErrorMessage(e.getMessage())
+                  .setStacktrace(Throwables.getStackTraceAsString(e)));
         } catch (Exception e) {
           throttled.failure(LOG, e);
           context.output(
+              validModsTag,
               FailsafeElement.of(failsafeModJsonString)
                   .setErrorMessage(e.getMessage())
                   .setStacktrace(Throwables.getStackTraceAsString(e)));
         }
       }
 
-      /* Schema Details:  */
+      /* Schema Details: */
       private PubsubMessage newPubsubMessage(String modJsonString) throws Exception {
         String changeJsonString = Mod.fromJson(modJsonString).getChangeJson();
         MessageFormat messageFormat = pubSubUtils.getDestination().getMessageFormat();
@@ -148,28 +166,6 @@ public final class FailsafePublisher {
             throw new IllegalArgumentException(errorMessage);
         }
       }
-    }
-  }
-
-  /**
-   * {@link FailsafeModJsonToPubsubMessageOptions} provides options to initialize {@link
-   * FailsafePublisher}.
-   */
-  @AutoValue
-  public abstract static class FailsafeModJsonToPubsubMessageOptions implements Serializable {
-
-    public abstract FailsafeElementCoder<String, String> getCoder();
-
-    static Builder builder() {
-      return new AutoValue_FailsafePublisher_FailsafeModJsonToPubsubMessageOptions.Builder();
-    }
-
-    @AutoValue.Builder
-    abstract static class Builder {
-
-      abstract Builder setCoder(FailsafeElementCoder<String, String> coder);
-
-      abstract FailsafeModJsonToPubsubMessageOptions build();
     }
   }
 

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
@@ -41,6 +42,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests a basic migration on
@@ -123,5 +125,47 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
         .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
     SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE2, ID, NAME))
         .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+
+    /* Test insertOnly Mode */
+    mySQLResourceManager.runSQLUpdate("TRUNCATE TABLE " + TABLE2);
+    List<Map<String, Object>> updatedMySQLData = getMySQLData();
+    /* Every call gives a new random data which is central assumption here */
+    assertThat(updatedMySQLData).isNotEqualTo(mySQLData);
+    mySQLResourceManager.write(TABLE2, updatedMySQLData);
+
+    /* Check that the upserts have not happened and records still match the old data.*/
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            mySQLResourceManager,
+            spannerResourceManager,
+            ImmutableMap.of("insertOnlyModeForSpannerMutations", "true"),
+            null);
+    PipelineOperator.Result resultInsertsOnly =
+        pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    assertThatResult(resultInsertsOnly).isLaunchFinished();
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE1, ID, NAME))
+        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE2, ID, NAME))
+        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+
+    /* Again run in upsert mode and check that the records get updated */
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            mySQLResourceManager,
+            spannerResourceManager,
+            ImmutableMap.of("insertOnlyModeForSpannerMutations", "false"),
+            null);
+    PipelineOperator.Result resultUpserts = pipelineOperator().waitUntilDone(createConfig(jobInfo));
+    assertThatResult(resultUpserts).isLaunchFinished();
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE1, ID, NAME))
+        .hasRecordsUnorderedCaseInsensitiveColumns(mySQLData);
+    SpannerAsserts.assertThatStructs(spannerResourceManager.readTableRecords(TABLE2, ID, NAME))
+        .hasRecordsUnorderedCaseInsensitiveColumns(updatedMySQLData);
   }
 }

@@ -69,16 +69,22 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
   protected final int numWorkers = 50;
   public PubsubResourceManager pubsubResourceManager;
   public SpannerResourceManager spannerResourceManager;
+  protected SpannerResourceManager shadowTableSpannerResourceManager = null;
   protected GcsResourceManager gcsResourceManager;
   public DatastreamResourceManager datastreamResourceManager;
   protected SecretManagerResourceManager secretClient;
+
+  public void setUpResourceManagers(String spannerDdlResource) throws IOException {
+    setUpResourceManagers(spannerDdlResource, false);
+  }
 
   /**
    * Setup resource managers.
    *
    * @throws IOException
    */
-  public void setUpResourceManagers(String spannerDdlResource) throws IOException {
+  public void setUpResourceManagers(String spannerDdlResource, boolean separateShadowTableDb)
+      throws IOException {
     testRootDir = getClass().getSimpleName();
     spannerResourceManager =
         SpannerResourceManager.builder(testName, project, region)
@@ -98,6 +104,18 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             .setCredentialsProvider(CREDENTIALS_PROVIDER)
             .build();
     secretClient = SecretManagerResourceManager.builder(project, CREDENTIALS_PROVIDER).build();
+
+    // Initialize shadowTableSpannerResourceManager only if separateShadowTableDb is true
+    if (separateShadowTableDb) {
+      shadowTableSpannerResourceManager =
+          SpannerResourceManager.builder("shadow_" + testName, project, region)
+              .maybeUseStaticInstance()
+              .setNodeCount(10)
+              .setMonitoringClient(monitoringClient)
+              .build();
+      shadowTableSpannerResourceManager.ensureUsableAndCreateResources();
+    }
+
     createSpannerDDL(spannerResourceManager, spannerDdlResource);
   }
 
@@ -148,6 +166,21 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             put("inputFileFormat", "avro");
           }
         };
+
+    // Add shadow table parameters if shadowTableSpannerResourceManager is not null
+    if (shadowTableSpannerResourceManager != null) {
+      params.putAll(
+          new HashMap<>() {
+            {
+              put(
+                  "shadowTableSpannerInstanceId",
+                  shadowTableSpannerResourceManager.getInstanceId());
+              put(
+                  "shadowTableSpannerDatabaseId",
+                  shadowTableSpannerResourceManager.getDatabaseId());
+            }
+          });
+    }
     // Add all parameters for the template
     params.putAll(templateParameters);
 
@@ -206,6 +239,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     ResourceManagerUtils.cleanResources(
         secretClient,
         spannerResourceManager,
+        shadowTableSpannerResourceManager,
         pubsubResourceManager,
         gcsResourceManager,
         datastreamResourceManager);

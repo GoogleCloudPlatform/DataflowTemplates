@@ -117,7 +117,7 @@ public class PropertyGraphTest {
             + "EDGE TABLES(\n"
             + "baseEdgeTable AS edgeTable\n"
             + " KEY (edgeKey1, edgeKey2)\n"
-            + "SOURCE KEY(edgeKey1) REFERENCES nodeTable DESTINATION KEY(edgeKey2) REFERENCES nodeTable\n"
+            + "SOURCE KEY(edgeKey1) REFERENCES nodeTable(nodeKey) DESTINATION KEY(edgeKey2) REFERENCES nodeTable(nodeKey)\n"
             + "LABEL edgeLabel PROPERTIES(valueB AS propertyB)"
             + ")";
     assertEquals(expectedPrettyPrint, propertyGraph.prettyPrint());
