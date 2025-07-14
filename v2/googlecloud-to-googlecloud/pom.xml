@@ -30,7 +30,7 @@
 
   <properties>
     <dataplex.api.version>v1-rev20230308-2.0.0</dataplex.api.version>
-    <dlp.version>2.1.0</dlp.version>
+    <dlp.version>3.71.0</dlp.version>
   </properties>
 
   <build>
