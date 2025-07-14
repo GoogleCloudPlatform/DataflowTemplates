@@ -22,6 +22,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefin
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.common.annotations.VisibleForTesting;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -362,6 +364,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     String colType = spannerColDef.getType().getName();
     String colName = spannerColDef.getName();
     if ("FLOAT64".equals(colType)) {
+      // TODO Test and Handle NAN/Infinity.
       colInputValue = valuesJson.getBigDecimal(colName).toString();
     } else if ("BOOL".equals(colType)) {
       colInputValue = (new Boolean(valuesJson.getBoolean(colName))).toString();
@@ -371,7 +374,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
               .map(String::valueOf)
               .collect(Collectors.joining(","));
     } else if ("BYTES".equals(colType)) {
-      colInputValue = "FROM_BASE64('" + valuesJson.getString(colName) + "')";
+      if (sourceColDef.getType().getName().toLowerCase().equals("bit")) {
+        colInputValue = convertBase64ToHex(valuesJson.getString(colName));
+      } else {
+        colInputValue = "FROM_BASE64('" + valuesJson.getString(colName) + "')";
+      }
     } else {
       colInputValue = valuesJson.getString(colName);
     }
@@ -379,6 +386,48 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         getColumnValueByType(
             sourceColDef.getType().getName(), colInputValue, sourceDbTimezoneOffset, colType);
     return response;
+  }
+
+  /**
+   * Decodes a Base64 encoded string and formats the resulting bytes into a hexadecimal string
+   * prefixed with 'x'.
+   *
+   * @param base64EncodedString The Base64 encoded string to decode.
+   * @return A string in the format x'&lt;hex representation of the bytes$gt;', or x'' if the input
+   *     is null or empty after decoding.
+   * @throws IllegalArgumentException If the input string is not a valid Base64 encoding.
+   */
+  @VisibleForTesting
+  protected static String convertBase64ToHex(String base64EncodedString) {
+    if (base64EncodedString == null) {
+      return null;
+    }
+    if (StringUtils.isEmpty(base64EncodedString)) {
+      return "x''";
+    }
+
+    try {
+      // 1. Decode the Base64 string into bytes
+      byte[] decodedBytes = Base64.getDecoder().decode(base64EncodedString);
+
+      // 2. Convert the bytes to a hexadecimal string
+      StringBuilder hexStringBuilder = new StringBuilder(decodedBytes.length * 2);
+      for (byte b : decodedBytes) {
+        // Use Integer.toHexString to get the hex representation of each byte.
+        // & 0xFF ensures that the byte is treated as an unsigned value
+        // (otherwise, negative bytes would get a longer hex string like "ffffffxx").
+        // We then format it to always be two characters, padding with '0' if necessary.
+        hexStringBuilder.append(String.format("%02x", b & 0xFF));
+      }
+
+      // 3. Prefix with x' and suffix with '
+      return "x'" + hexStringBuilder.toString() + "'";
+
+    } catch (IllegalArgumentException e) {
+      // Re-throw or wrap the exception if Base64 decoding fails.
+      throw new IllegalArgumentException(
+          "Invalid Base64 encoded string provided: " + e.getMessage(), e);
+    }
   }
 
   private static String getColumnValueByType(
@@ -426,7 +475,6 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         break;
       case "binary":
       case "varbinary":
-      case "bit":
         response = getBinaryString(colValue, spannerColType);
         break;
       default:

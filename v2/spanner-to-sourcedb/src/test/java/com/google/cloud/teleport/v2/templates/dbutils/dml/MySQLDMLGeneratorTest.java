@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -794,7 +796,10 @@ public final class MySQLDMLGeneratorTest {
     /*The expected sql is:
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES"
         + " (999,'kk',BINARY(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
-        + " 'kk', LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"; */
+        + " 'kk', LastName = x'62696c5f636f6c'))";
+     Base64 decode of `YmlsX2NvbA==` is `bil_col`
+     Char to Hex for `bil_col` is `62 69 6C 5F 63 6F 6C`
+        */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
@@ -804,7 +809,7 @@ public final class MySQLDMLGeneratorTest {
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
-    assertTrue(sql.contains("`LastName` = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
+    assertTrue(sql.contains("`LastName` = x'62696c5f636f6c'"));
   }
 
   @Test
@@ -1147,6 +1152,18 @@ public final class MySQLDMLGeneratorTest {
             new ColumnPK[] {new ColumnPK("c1", 1)},
             "c3"));
     return spSchema;
+  }
+
+  @Test
+  public void testConvertBase64ToXHex() {
+    assertThat(MySQLDMLGenerator.convertBase64ToHex(null)).isNull();
+    assertThat(MySQLDMLGenerator.convertBase64ToHex("")).isEqualTo("x''");
+    assertThat(MySQLDMLGenerator.convertBase64ToHex("AA==")).isEqualTo("x'00'");
+    assertThat(MySQLDMLGenerator.convertBase64ToHex("R09PR0xF")).isEqualTo("x'474f4f474c45'");
+    // Invalid Base64 string.
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> MySQLDMLGenerator.convertBase64ToHex("####GOOGLE####"));
   }
 
   public static Map<String, NameAndCols> getSampleSpannerToId() {
