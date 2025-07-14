@@ -29,15 +29,16 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Scanner for reading Cassandra database schema information. Implements
- * SourceInformationSchemaScanner to provide schema scanning functionality for Cassandra.
+ * Scanner for reading Cassandra database schema information. Implements SourceSchemaScanner to
+ * provide schema scanning functionality for Cassandra.
  */
-public class CassandraInformationSchemaScanner implements SourceInformationSchemaScanner {
+public class CassandraInformationSchemaScanner implements SourceSchemaScanner {
   private static final Logger LOG =
       LoggerFactory.getLogger(CassandraInformationSchemaScanner.class);
 
   private final CqlSession session;
   private final String keyspaceName;
+  private final SourceDatabaseType sourceType = SourceDatabaseType.CASSANDRA;
 
   public CassandraInformationSchemaScanner(CqlSession session, String keyspaceName) {
     this.session = session;
@@ -47,7 +48,7 @@ public class CassandraInformationSchemaScanner implements SourceInformationSchem
   @Override
   public SourceSchema scan() {
     SourceSchema.Builder schemaBuilder =
-        SourceSchema.builder(SourceDatabaseType.CASSANDRA).databaseName(keyspaceName);
+        SourceSchema.builder(sourceType).databaseName(keyspaceName);
 
     try {
       Map<String, SourceTable> tables = scanTables();
@@ -71,6 +72,9 @@ public class CassandraInformationSchemaScanner implements SourceInformationSchem
     // For each table, get its columns
     while (tableResult.iterator().hasNext()) {
       String tableName = tableResult.iterator().next().getString("table_name");
+      if (tableName == null) {
+        continue;
+      }
       tables.put(tableName, scanTableColumns(tableName));
     }
 
@@ -97,7 +101,7 @@ public class CassandraInformationSchemaScanner implements SourceInformationSchem
 
       // Create SourceColumn with appropriate type information
       SourceColumn.Builder columnBuilder =
-          SourceColumn.builder(SourceDatabaseType.CASSANDRA)
+          SourceColumn.builder(sourceType)
               .name(columnName)
               .type(type.toUpperCase().replaceAll("\\s+", "")) // Normalize type name
               .isNullable(true) // Cassandra columns are nullable by default
@@ -110,7 +114,7 @@ public class CassandraInformationSchemaScanner implements SourceInformationSchem
       columns.add(columnBuilder.build());
     }
 
-    return SourceTable.builder(SourceDatabaseType.CASSANDRA)
+    return SourceTable.builder(sourceType)
         .name(tableName)
         .schema(keyspaceName)
         .columns(ImmutableList.copyOf(columns))

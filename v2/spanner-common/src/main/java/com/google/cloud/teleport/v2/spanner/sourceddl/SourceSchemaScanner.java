@@ -19,7 +19,7 @@ package com.google.cloud.teleport.v2.spanner.sourceddl;
  * Interface for scanning information schema of source databases. Different implementations will
  * handle different source database types.
  */
-public interface SourceInformationSchemaScanner {
+public interface SourceSchemaScanner {
 
   /**
    * Scans the source database's information schema and builds a {@link SourceSchema}.

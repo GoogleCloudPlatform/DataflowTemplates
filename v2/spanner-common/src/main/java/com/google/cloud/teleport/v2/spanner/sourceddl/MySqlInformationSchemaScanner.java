@@ -22,20 +22,72 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** MySQL implementation of {@link SourceInformationSchemaScanner}. */
-public class MySqlInformationSchemaScanner extends AbstractSourceInformationSchemaScanner {
+/** MySQL implementation of {@link SourceSchemaScanner}. */
+public class MySqlInformationSchemaScanner implements SourceSchemaScanner {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySqlInformationSchemaScanner.class);
 
+  private final Connection connection;
+  private final String databaseName;
+  private final SourceDatabaseType sourceType = SourceDatabaseType.MYSQL;
+
   public MySqlInformationSchemaScanner(Connection connection, String databaseName) {
-    super(connection, databaseName, SourceDatabaseType.MYSQL);
+    this.connection = connection;
+    this.databaseName = databaseName;
   }
 
   @Override
-  protected String getTablesQuery() {
+  public SourceSchema scan() {
+    SourceSchema.Builder schemaBuilder =
+        SourceSchema.builder(sourceType).databaseName(databaseName);
+
+    try {
+      Map<String, SourceTable> tables = scanTables();
+      schemaBuilder.tables(com.google.common.collect.ImmutableMap.copyOf(tables));
+    } catch (SQLException e) {
+      throw new RuntimeException("Error scanning database schema", e);
+    }
+
+    return schemaBuilder.build();
+  }
+
+  private Map<String, SourceTable> scanTables() throws SQLException {
+    Map<String, SourceTable> tables = new java.util.HashMap<>();
+    try (Statement stmt = connection.createStatement();
+        ResultSet rs = stmt.executeQuery(getTablesQuery())) {
+      while (rs.next()) {
+        String tableName = rs.getString(1);
+        String schema = rs.getString(2);
+        if (tableName == null) {
+          continue;
+        }
+        SourceTable table = scanTable(tableName, schema);
+        tables.put(tableName, table);
+      }
+    }
+    return tables;
+  }
+
+  private SourceTable scanTable(String tableName, String schema) throws SQLException {
+    SourceTable.Builder tableBuilder =
+        SourceTable.builder(sourceType).name(tableName).schema(schema);
+
+    // Scan columns
+    List<SourceColumn> columns = scanColumns(tableName, schema);
+    tableBuilder.columns(com.google.common.collect.ImmutableList.copyOf(columns));
+
+    // Scan primary keys
+    List<String> primaryKeys = scanPrimaryKeys(tableName, schema);
+    tableBuilder.primaryKeyColumns(com.google.common.collect.ImmutableList.copyOf(primaryKeys));
+
+    return tableBuilder.build();
+  }
+
+  private String getTablesQuery() {
     return String.format(
         "SELECT table_name, table_schema "
             + "FROM information_schema.tables "
@@ -44,8 +96,7 @@ public class MySqlInformationSchemaScanner extends AbstractSourceInformationSche
         databaseName);
   }
 
-  @Override
-  protected List<SourceColumn> scanColumns(String tableName, String schema) throws SQLException {
+  private List<SourceColumn> scanColumns(String tableName, String schema) throws SQLException {
     List<SourceColumn> columns = new ArrayList<>();
     String query =
         String.format(
@@ -89,8 +140,7 @@ public class MySqlInformationSchemaScanner extends AbstractSourceInformationSche
     return columns;
   }
 
-  @Override
-  protected List<String> scanPrimaryKeys(String tableName, String schema) throws SQLException {
+  private List<String> scanPrimaryKeys(String tableName, String schema) throws SQLException {
     List<String> primaryKeys = new ArrayList<>();
     String query =
         String.format(
