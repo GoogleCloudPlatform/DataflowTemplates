@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.neo4j.telemetry;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
 import java.util.Properties;
@@ -53,13 +52,19 @@ public class Neo4jTelemetry {
     var props = new Properties();
     try (InputStream input = Neo4jTelemetry.class.getResourceAsStream("versions.properties")) {
       if (input == null) {
-        throw new IOException("versions.properties resource not found");
+        throw new IllegalStateException("Missing required resource: versions.properties ");
       }
 
       props.load(input);
-      return props.getProperty("neo4j-java-driver");
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to load");
+
+      var driverVersion = props.getProperty("neo4j-java-driver");
+      if (driverVersion == null) {
+        throw new IllegalStateException("Missing required property: neo4j-java-driver");
+      }
+
+      return driverVersion;
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to load neo4j driver version", e);
     }
   }
 
