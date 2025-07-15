@@ -57,7 +57,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   protected static final String VPC_NAME = "spanner-wide-row-pr-test-vpc";
   protected static final String VPC_REGION = "us-central1";
   protected static final String SUBNET_NAME = "regions/" + VPC_REGION + "/subnetworks/" + VPC_NAME;
-  protected static final Map<String, String> ADDITIONAL_JOB_PARAMS = new HashMap<>();
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
@@ -208,13 +207,13 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       String shardingCustomClassName,
       String sourceDbTimezoneOffset,
       CustomTransformation customTransformation,
-      String sourceType)
+      String sourceType,
+      Map<String, String> jobParameters)
       throws IOException {
 
     Map<String, String> params =
         new HashMap<>() {
           {
-            put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
             put("spannerProjectId", PROJECT);
@@ -236,9 +235,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("sourceType", sourceType);
           }
         };
-
-    params.putAll(ADDITIONAL_JOB_PARAMS);
-
+    if (jobParameters != null) {
+      params.putAll(jobParameters);
+    }
     if (shardingCustomJarPath != null) {
       params.put(
           "shardingCustomJarPath",
