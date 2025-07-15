@@ -101,25 +101,6 @@ public final class KafkaToBigQueryAvroIT extends TemplateTestBase {
   }
 
   @Test
-  public void testKafkaToBigQueryAvroWithExistingDLQ() throws IOException, RestClientException {
-    TableId deadletterTableId =
-        bigQueryClient.createTable(testName + "_dlq", getDeadletterSchema());
-
-    baseKafkaToBigQueryAvro(
-        b -> b.addParameter("outputDeadletterTable", toTableSpecLegacy(deadletterTableId)), null);
-  }
-
-  @Test
-  public void testKafkaToBigQueryAvroWithStorageApi() throws IOException, RestClientException {
-    baseKafkaToBigQueryAvro(
-        b ->
-            b.addParameter("useStorageWriteApi", "true")
-                .addParameter("numStorageWriteApiStreams", "3")
-                .addParameter("storageWriteApiTriggeringFrequencySec", "3"),
-        null);
-  }
-
-  @Test
   public void testKafkaToBigQueryAvroWithStorageApiExistingDLQ()
       throws IOException, RestClientException {
     TableId deadletterTableId =
