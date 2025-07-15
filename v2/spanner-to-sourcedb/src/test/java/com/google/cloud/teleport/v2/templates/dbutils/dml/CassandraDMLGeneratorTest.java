@@ -21,8 +21,8 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
@@ -60,25 +60,8 @@ public class CassandraDMLGeneratorTest {
   @Test
   public void testGetDMLStatement_InvalidSchema() {
     DMLGeneratorRequest dmlGeneratorRequest =
-        new DMLGeneratorRequest.Builder("insert", "text", null, null, null)
-            .setSchema(null)
-            .setDdl(null)
-            .setSourceSchema(null)
-            .build();
+        new DMLGeneratorRequest.Builder("insert", "text", null, null, null).build();
 
-    DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(dmlGeneratorRequest);
-    assertNotNull(response);
-    assertEquals("", response.getDmlStatement());
-  }
-
-  @Test
-  public void testGetDMLStatement_MissingTableMapping() {
-    Schema schema = new Schema();
-    schema.setSpannerToID(null);
-    DMLGeneratorRequest dmlGeneratorRequest =
-        new DMLGeneratorRequest.Builder("insert", "text", null, null, null)
-            .setSchema(schema)
-            .build();
     DMLGeneratorResponse response = cassandraDMLGenerator.getDMLStatement(dmlGeneratorRequest);
     assertNotNull(response);
     assertEquals("", response.getDmlStatement());
@@ -88,7 +71,7 @@ public class CassandraDMLGeneratorTest {
   public void tableAndAllColumnNameTypesMatch() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -99,7 +82,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -121,7 +104,7 @@ public class CassandraDMLGeneratorTest {
   public void tableAndAllColumnNameTypesForNullValueMatch() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValueStr = "{\"date_column\":null}";
     JSONObject newValuesJson = new JSONObject(newValueStr);
@@ -132,7 +115,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -152,7 +135,7 @@ public class CassandraDMLGeneratorTest {
   public void tableAndAllColumnNameTypesForCustomTransformation() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"Bday\":\"1995-12-12\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -166,7 +149,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -192,7 +175,7 @@ public class CassandraDMLGeneratorTest {
   public void tableNameMatchSourceColumnNotPresentInSpanner() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -203,7 +186,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -225,7 +208,7 @@ public class CassandraDMLGeneratorTest {
   public void tableNameMatchSpannerColumnNotPresentInSource() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"hb_shardId\":\"shardA\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -236,7 +219,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -261,7 +244,7 @@ public class CassandraDMLGeneratorTest {
   public void primaryKeyNotFoundInJson() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -272,7 +255,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -285,7 +268,7 @@ public class CassandraDMLGeneratorTest {
   public void primaryKeyNotPresentInSourceSchema() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -296,7 +279,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -309,7 +292,7 @@ public class CassandraDMLGeneratorTest {
   public void primaryKeyMismatch() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -320,7 +303,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -343,7 +326,7 @@ public class CassandraDMLGeneratorTest {
   public void deleteMultiplePKColumns() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -354,7 +337,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -372,7 +355,7 @@ public class CassandraDMLGeneratorTest {
   public void testSingleQuoteMatch() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"k\u0027k\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -383,7 +366,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -405,7 +388,7 @@ public class CassandraDMLGeneratorTest {
   public void singleQuoteBytesDML() throws Exception {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Jw\u003d\u003d\",\"string_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -416,7 +399,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -437,7 +420,7 @@ public class CassandraDMLGeneratorTest {
   public void testParseBlobType_hexString() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"0102030405\",\"string_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -448,7 +431,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -469,7 +452,7 @@ public class CassandraDMLGeneratorTest {
   public void testParseBlobType_base64String() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"AQIDBAU=\",\"string_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -480,7 +463,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -501,7 +484,7 @@ public class CassandraDMLGeneratorTest {
   public void twoSingleEscapedQuoteDML() throws Exception {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Jyc\u003d\",\"string_column\":\"\u0027\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -512,7 +495,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -534,7 +517,7 @@ public class CassandraDMLGeneratorTest {
   public void threeEscapesAndSingleQuoteDML() throws Exception {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"XCc\u003d\",\"string_column\":\"\\\\\\\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -545,7 +528,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -567,7 +550,7 @@ public class CassandraDMLGeneratorTest {
   public void tabEscapeDML() throws Exception {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"CQ==\",\"string_column\":\"\\t\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -578,7 +561,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -600,7 +583,7 @@ public class CassandraDMLGeneratorTest {
   public void backSpaceEscapeDML() throws Exception {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"CA==\",\"string_column\":\"\\b\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -611,7 +594,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -633,7 +616,7 @@ public class CassandraDMLGeneratorTest {
   public void newLineEscapeDML() throws Exception {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Cg==\",\"string_column\":\"\\n\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -644,7 +627,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -666,7 +649,7 @@ public class CassandraDMLGeneratorTest {
   public void bitColumnSql() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"YmlsX2NvbA\u003d\u003d\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -677,7 +660,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -699,7 +682,7 @@ public class CassandraDMLGeneratorTest {
   public void testSpannerKeyIsNull() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -710,7 +693,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -730,7 +713,7 @@ public class CassandraDMLGeneratorTest {
   public void testSourcePKNotInSpanner() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "customer";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -741,7 +724,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -754,7 +737,7 @@ public class CassandraDMLGeneratorTest {
   public void primaryKeyMismatchSpannerNull() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -765,7 +748,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -788,7 +771,7 @@ public class CassandraDMLGeneratorTest {
   public void testUnsupportedModType() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -799,7 +782,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -812,7 +795,7 @@ public class CassandraDMLGeneratorTest {
   public void testUpdateModType() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -823,7 +806,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -846,7 +829,7 @@ public class CassandraDMLGeneratorTest {
   public void testSpannerTableIdMismatch() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Random";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -857,7 +840,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
@@ -870,7 +853,7 @@ public class CassandraDMLGeneratorTest {
   public void testSourcePkNull() {
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
-    Schema schema = SessionFileReader.read(SESSION_FILE);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(SESSION_FILE, ddl);
     String tableName = "Persons";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -881,7 +864,7 @@ public class CassandraDMLGeneratorTest {
         cassandraDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setCommitTimestamp(Timestamp.now())
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
