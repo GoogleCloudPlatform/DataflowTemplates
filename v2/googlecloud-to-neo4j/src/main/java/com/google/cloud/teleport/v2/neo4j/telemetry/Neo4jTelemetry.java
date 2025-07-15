@@ -15,10 +15,14 @@
  */
 package com.google.cloud.teleport.v2.neo4j.telemetry;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Map;
-import org.neo4j.driver.Config;
+import java.util.Properties;
 
 public class Neo4jTelemetry {
+
+  private static String neo4jDriverVersion = null;
 
   public static String userAgent(String templateVersion) {
     return String.format(
@@ -39,7 +43,24 @@ public class Neo4jTelemetry {
   }
 
   private static String neo4jDriverVersion() {
-    return Config.defaultConfig().userAgent();
+    if (neo4jDriverVersion == null) {
+      neo4jDriverVersion = loadNeo4jDriverVersion();
+    }
+    return neo4jDriverVersion;
+  }
+
+  private static String loadNeo4jDriverVersion() {
+    var props = new Properties();
+    try (InputStream input = Neo4jTelemetry.class.getResourceAsStream("versions.properties")) {
+      if (input == null) {
+        throw new IOException("versions.properties resource not found");
+      }
+
+      props.load(input);
+      return props.getProperty("neo4j-java-driver");
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to load");
+    }
   }
 
   private static String jreInformation() {
