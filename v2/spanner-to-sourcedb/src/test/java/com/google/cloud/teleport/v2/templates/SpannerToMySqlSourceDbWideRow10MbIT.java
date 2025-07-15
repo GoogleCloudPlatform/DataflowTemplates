@@ -109,14 +109,15 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
                 pubsubResourceManager,
                 getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
                 gcsResourceManager);
-        ADDITIONAL_JOB_PARAMS.putAll(
+        Map<String, String> jobParameters =
             new HashMap<>() {
               {
                 put("network", VPC_NAME);
                 put("subnetwork", SUBNET_NAME);
                 put("workerRegion", VPC_REGION);
+                put("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager));
               }
-            });
+            };
         jobInfo =
             launchDataflowJob(
                 gcsResourceManager,
@@ -128,7 +129,8 @@ public class SpannerToMySqlSourceDbWideRow10MbIT extends SpannerToSourceDbITBase
                 null,
                 null,
                 null,
-                MYSQL_SOURCE_TYPE);
+                MYSQL_SOURCE_TYPE,
+                jobParameters);
       }
     }
   }
