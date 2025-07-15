@@ -17,7 +17,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
@@ -45,7 +45,7 @@ public class SourceWriterTransform
     extends PTransform<
         PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
 
-  private final Schema schema;
+  private final ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
@@ -59,7 +59,7 @@ public class SourceWriterTransform
 
   public SourceWriterTransform(
       List<Shard> shards,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
@@ -70,7 +70,7 @@ public class SourceWriterTransform
       String source,
       CustomTransformation customTransformation) {
 
-    this.schema = schema;
+    this.schemaMapper = schemaMapper;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
@@ -92,7 +92,7 @@ public class SourceWriterTransform
             ParDo.of(
                     new SourceWriterFn(
                         this.shards,
-                        this.schema,
+                        this.schemaMapper,
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
                         this.ddl,

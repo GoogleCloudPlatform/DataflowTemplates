@@ -20,7 +20,7 @@ import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
@@ -52,7 +52,7 @@ public class InputRecordProcessor {
 
   public static boolean processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Ddl ddl,
       SourceSchema sourceSchema,
       IDao dao,
@@ -100,7 +100,7 @@ public class InputRecordProcessor {
       DMLGeneratorRequest dmlGeneratorRequest =
           new DMLGeneratorRequest.Builder(
                   modType, tableName, newValuesJson, keysJson, sourceDbTimezoneOffset)
-              .setSchema(schema)
+              .setSchemaMapper(schemaMapper)
               .setCustomTransformationResponse(customTransformationResponse)
               .setCommitTimestamp(spannerRecord.getCommitTimestamp())
               .setDdl(ddl)
