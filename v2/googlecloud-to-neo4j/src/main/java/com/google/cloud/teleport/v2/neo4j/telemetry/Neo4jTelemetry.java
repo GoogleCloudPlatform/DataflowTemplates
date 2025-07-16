@@ -15,10 +15,18 @@
  */
 package com.google.cloud.teleport.v2.neo4j.telemetry;
 
+import java.io.InputStream;
 import java.util.Map;
-import org.neo4j.driver.Config;
+import java.util.Properties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Neo4jTelemetry {
+
+  private static final Logger LOG = LoggerFactory.getLogger(Neo4jTelemetry.class);
+
+  private static String neo4jDriverVersion = null;
+  private static final String DEFAULT_NEO4J_DRIVER_VERSION = "dev";
 
   public static String userAgent(String templateVersion) {
     return String.format(
@@ -39,7 +47,24 @@ public class Neo4jTelemetry {
   }
 
   private static String neo4jDriverVersion() {
-    return Config.defaultConfig().userAgent();
+    if (neo4jDriverVersion == null) {
+      neo4jDriverVersion = loadNeo4jDriverVersion();
+    }
+    return neo4jDriverVersion;
+  }
+
+  private static String loadNeo4jDriverVersion() {
+    try (InputStream input = Neo4jTelemetry.class.getResourceAsStream("/versions.properties")) {
+      var props = new Properties();
+      props.load(input);
+      return props.getProperty("neo4j-java-driver", DEFAULT_NEO4J_DRIVER_VERSION);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to load neo4j-java-driver version. Returning the default value: "
+              + DEFAULT_NEO4J_DRIVER_VERSION,
+          e);
+      return DEFAULT_NEO4J_DRIVER_VERSION;
+    }
   }
 
   private static String jreInformation() {
