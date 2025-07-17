@@ -145,7 +145,7 @@ public final class FormatDatastreamJsonToJson
     String sourceType = record.get("read_method").textValue().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
     if (sourceType == "postgres" || sourceType == "postgresql") {
-        return "postgresql";
+      return "postgresql";
     }
     return sourceType;
   }
