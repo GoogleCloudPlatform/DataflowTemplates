@@ -35,7 +35,7 @@ variable "region" {
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' For example, `projects/your-project-id/subscriptions/your-subscription-name`"
 
 }
 
@@ -54,7 +54,7 @@ variable "schemaFilePath" {
 variable "outputDatasetTemplate" {
   type        = string
   description = "The name for the dataset to contain the replica table. Defaults to: {_metadata_dataset}."
-  default     = "{_metadata_dataset}"
+  default     = null
 }
 
 variable "outputTableNameTemplate" {
@@ -72,50 +72,50 @@ variable "outputTableSpec" {
 variable "outputDeadletterTable" {
   type        = string
   description = <<EOT
-BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. (Example: your-project-id:your-dataset.your-table-name)
+BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`
 EOT
   default     = null
 }
 
 variable "deadLetterQueueDirectory" {
   type        = string
-  description = "The name of the directory on Cloud Storage you want to write dead letters messages to. Defaults to empty."
+  description = "The name of the directory on Cloud Storage you want to write dead letters messages to"
   default     = null
 }
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 5m). Defaults to: 5s."
+  description = "The window duration/size in which DLQ data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `5m`. Defaults to: 5s."
   default     = null
 }
 
 variable "threadCount" {
-  type        = string
+  type        = number
   description = "The number of parallel threads you want to split your data into. Defaults to: 100."
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
 variable "javascriptTextTransformReloadIntervalMinutes" {
   type        = number
-  description = "Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0."
+  description = "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`."
   default     = null
 }
 
 variable "pythonTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the Python code containing your user-defined functions. (Example: gs://your-bucket/your-transforms/*.py)"
+  description = "The Cloud Storage path pattern for the Python code containing your user-defined functions. For example, `gs://your-bucket/your-transforms/*.py`"
   default     = null
 }
 
@@ -127,7 +127,7 @@ variable "pythonRuntimeVersion" {
 
 variable "pythonTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: transform_udf1)"
+  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. For example, `transform_udf1`"
   default     = null
 }
 
@@ -139,29 +139,25 @@ variable "runtimeRetries" {
 
 variable "useStorageWriteApi" {
   type        = bool
-  description = <<EOT
-If true, the pipeline uses the Storage Write API when writing the data to BigQuery (see https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api). The default value is false. When using Storage Write API in exactly-once mode, you must set the following parameters: "Number of streams for BigQuery Storage Write API" and "Triggering frequency in seconds for BigQuery Storage Write API". If you enable Dataflow at-least-once mode or set the useStorageWriteApiAtLeastOnce parameter to true, then you don't need to set the number of streams or the triggering frequency.
-EOT
+  description = "If true, the pipeline uses the BigQuery Storage Write API (https://cloud.google.com/bigquery/docs/write-api). The default value is `false`. For more information, see Using the Storage Write API (https://beam.apache.org/documentation/io/built-in/google-bigquery/#storage-write-api)."
   default     = null
 }
 
 variable "useStorageWriteApiAtLeastOnce" {
   type        = bool
-  description = <<EOT
-This parameter takes effect only if "Use BigQuery Storage Write API" is enabled. If enabled the at-least-once semantics will be used for Storage Write API, otherwise exactly-once semantics will be used. Defaults to: false.
-EOT
+  description = " When using the Storage Write API, specifies the write semantics. To use at-least once semantics (https://beam.apache.org/documentation/io/built-in/google-bigquery/#at-least-once-semantics), set this parameter to `true`. To use exactly-once semantics, set the parameter to `false`. This parameter applies only when `useStorageWriteApi` is `true`. The default value is `false`."
   default     = null
 }
 
 variable "numStorageWriteApiStreams" {
   type        = number
-  description = "Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 0."
+  description = "When using the Storage Write API, specifies the number of write streams. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter. Defaults to: 0."
   default     = null
 }
 
 variable "storageWriteApiTriggeringFrequencySec" {
   type        = number
-  description = "Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values."
+  description = "When using the Storage Write API, specifies the triggering frequency, in seconds. If `useStorageWriteApi` is `true` and `useStorageWriteApiAtLeastOnce` is `false`, then you must set this parameter."
   default     = null
 }
 
@@ -229,7 +225,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -299,7 +296,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     outputDeadletterTable                        = var.outputDeadletterTable
     deadLetterQueueDirectory                     = var.deadLetterQueueDirectory
     windowDuration                               = var.windowDuration
-    threadCount                                  = var.threadCount
+    threadCount                                  = tostring(var.threadCount)
     javascriptTextTransformGcsPath               = var.javascriptTextTransformGcsPath
     javascriptTextTransformFunctionName          = var.javascriptTextTransformFunctionName
     javascriptTextTransformReloadIntervalMinutes = tostring(var.javascriptTextTransformReloadIntervalMinutes)
@@ -325,6 +322,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

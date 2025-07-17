@@ -57,7 +57,7 @@ variable "sourceDbTimezoneOffset" {
   default     = null
 }
 
-variable "timerInterval" {
+variable "timerIntervalInMilliSec" {
   type        = number
   description = "Controls the time between successive polls to buffer and processing of the resultant records. Defaults to: 1."
   default     = null
@@ -71,7 +71,7 @@ variable "startTimestamp" {
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. (Example: 5m)"
+  description = "The window duration/size in which data is written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). If not provided, the value is taken from spanner_to_gcs_metadata. If provided, this takes precedence. To be given when running in regular run mode. For example, `5m`"
   default     = null
 }
 
@@ -115,6 +115,30 @@ variable "runIdentifier" {
   type        = string
   description = "The identifier to distinguish between different runs of reverse replication flows."
 
+}
+
+variable "transformationJarPath" {
+  type        = string
+  description = "Custom JAR file location in Cloud Storage for the file that contains the custom transformation logic for processing records in reverse replication. Defaults to empty."
+  default     = null
+}
+
+variable "transformationClassName" {
+  type        = string
+  description = "Fully qualified class name for the class that contains the custom transformation logic.  When `transformationJarPath` is specified, this field is required. Defaults to empty."
+  default     = null
+}
+
+variable "transformationCustomParameters" {
+  type        = string
+  description = "The string that contains any custom parameters to pass to the custom transformation class. Defaults to empty."
+  default     = null
+}
+
+variable "writeFilteredEventsToGcs" {
+  type        = bool
+  description = "When set to `true`, writes filtered events from custom transformation to Cloud Storage. Defaults to: false."
+  default     = null
 }
 
 
@@ -181,7 +205,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -242,20 +267,24 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/GCS_to_Sourcedb"
   parameters = {
-    sourceShardsFilePath   = var.sourceShardsFilePath
-    sessionFilePath        = var.sessionFilePath
-    sourceType             = var.sourceType
-    sourceDbTimezoneOffset = var.sourceDbTimezoneOffset
-    timerInterval          = tostring(var.timerInterval)
-    startTimestamp         = var.startTimestamp
-    windowDuration         = var.windowDuration
-    GCSInputDirectoryPath  = var.GCSInputDirectoryPath
-    spannerProjectId       = var.spannerProjectId
-    metadataInstance       = var.metadataInstance
-    metadataDatabase       = var.metadataDatabase
-    runMode                = var.runMode
-    metadataTableSuffix    = var.metadataTableSuffix
-    runIdentifier          = var.runIdentifier
+    sourceShardsFilePath           = var.sourceShardsFilePath
+    sessionFilePath                = var.sessionFilePath
+    sourceType                     = var.sourceType
+    sourceDbTimezoneOffset         = var.sourceDbTimezoneOffset
+    timerIntervalInMilliSec        = tostring(var.timerIntervalInMilliSec)
+    startTimestamp                 = var.startTimestamp
+    windowDuration                 = var.windowDuration
+    GCSInputDirectoryPath          = var.GCSInputDirectoryPath
+    spannerProjectId               = var.spannerProjectId
+    metadataInstance               = var.metadataInstance
+    metadataDatabase               = var.metadataDatabase
+    runMode                        = var.runMode
+    metadataTableSuffix            = var.metadataTableSuffix
+    runIdentifier                  = var.runIdentifier
+    transformationJarPath          = var.transformationJarPath
+    transformationClassName        = var.transformationClassName
+    transformationCustomParameters = var.transformationCustomParameters
+    writeFilteredEventsToGcs       = tostring(var.writeFilteredEventsToGcs)
   }
 
   additional_experiments       = var.additional_experiments
@@ -270,6 +299,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
