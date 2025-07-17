@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.bigtable.transforms;
 import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.auto.value.AutoValue;
 import java.util.List;
+import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.io.gcp.bigquery.SchemaAndRecord;
 import org.apache.beam.sdk.transforms.SerializableFunction;
@@ -61,7 +62,9 @@ public class BigtableConverters {
     }
 
     public static Builder newBuilder() {
-      return new AutoValue_BigtableConverters_AvroToMutation.Builder();
+      return new AutoValue_BigtableConverters_AvroToMutation.Builder()
+          .setTimestampColumn("")
+          .setSkipNullValues(false);
     }
 
     public Mutation apply(SchemaAndRecord record) {
@@ -70,10 +73,11 @@ public class BigtableConverters {
       Put put = new Put(Bytes.toBytes(rowkey));
 
       List<TableFieldSchema> columns = record.getTableSchema().getFields();
-      Long columnTs = getTimestampColumnMs(row, timestampColumn());
+      Long columnTs = getAndVerifySchemaFields(rowkey, row, timestampColumn());
 
       for (TableFieldSchema column : columns) {
         String columnName = column.getName();
+
         if ((columnName.equals(rowkey()))
             || (columnTs != null && columnName.equals(timestampColumn()))) {
           continue;
@@ -83,9 +87,9 @@ public class BigtableConverters {
         byte[] columnValue = columnObj == null ? null : Bytes.toBytes(columnObj.toString());
         // TODO(billyjacobson): handle other types and column families
 
-        // Check if null values should be skipped and if the columnValue is null.
-        // If both are true, the column will not be added.
-        if (!skipNullValues() || null != columnValue) {
+        // If skipNullValues is true and columnValue is null, we skip adding the column.
+        // Otherwise, we proceed to add the column.
+        if (!(skipNullValues() && columnValue == null)) {
 
           // set cell timestamp if specified and exists
           if (columnTs != null) {
@@ -100,26 +104,61 @@ public class BigtableConverters {
     }
 
     /**
-     * Get column that represents the timestamp of the cell in bigtable. The value is expected to be
-     * milliseconds precision with hbase client handling to micros granularity, e.g.
-     * UNIX_MILLIS(timestamp)
+     * Verification of schema field expected with timestampColumnName Get column that represents the
+     * timestamp of the cell in bigtable. The value is expected to be milliseconds precision with
+     * hbase client handling to micros granularity, e.g. UNIX_MILLIS(timestamp) Retrieves the
+     * timestamp value from a {@link GenericRecord} that represents the timestamp of the cell in
+     * bigtable. The value is expected to be milliseconds precision with hbase client handling to
+     * micros granularity, e.g. UNIX_MILLIS(timestamp). This method also performs basic verification
+     * checks to avoid inadvertent schema or data issues. If the field is missing (null), it logs a
+     * warning and the default timestamp on write will be used. If the field is present, it then
+     * attempts to cast it to a {@link Long}.
      *
-     * @param row
-     * @param timestampColumnName
-     * @return
+     * @param rowkey The unique identifier for the row being processed. Used for clearer
+     *     error/warning messages.
+     * @param row The {@link GenericRecord} from which to extract the timestamp.
+     * @param timestampColumnName The name of the column expected to contain the timestamp value.
+     * @return The timestamp value as a {@link Long} if successfully retrieved and castable; returns
+     *     {@code null} if the timestamp column is not found in the row (a warning will be logged).
+     * @throws IllegalArgumentException If the timestamp column is found but cannot be cast to a
+     *     {@link Long}, or if an {@link AvroRuntimeException} occurs during field access.
      */
-    private Long getTimestampColumnMs(GenericRecord row, String timestampColumnName) {
+    private Long getAndVerifySchemaFields(
+        String rowkey, GenericRecord row, String timestampColumnName) {
       Long columnTs = null;
 
-      if (timestampColumn() != null && timestampColumn().length() > 0) {
-        columnTs = (Long) row.get(timestampColumnName);
+      // timestamp column is optional, if it's specified, retrieve the field value
+      if (timestampColumnName != null && timestampColumnName.length() > 0) {
+        try {
+          // Attempt to retrieve the timestamp column value
+          Object timestampValue = row.get(timestampColumnName);
 
-        if (columnTs == null) {
-          LOG.debug(
-              "Ignoring TimestampColumn configuration. Invalid "
-                  + timestampColumnName
-                  + ", value: "
-                  + columnTs);
+          // If the value is null, the field is missing, log warn and use default timestamp on write
+          if (timestampValue == null) {
+            String errorMessage =
+                String.format(
+                    "Timestamp column '%s' not found in row with key: '%s'.",
+                    timestampColumnName, rowkey);
+            LOG.warn(errorMessage);
+          }
+
+          try {
+            // Add a cast check
+            columnTs = (Long) row.get(timestampColumnName);
+          } catch (ClassCastException e) {
+            String errorMessage =
+                String.format(
+                    "Timestamp column '%s' for row with key '%s' is of unexpected type %s. Expected Long.",
+                    timestampColumnName, rowkey, timestampValue.getClass().getSimpleName());
+            throw new IllegalArgumentException(errorMessage, e);
+          }
+        } catch (AvroRuntimeException e) {
+          // Catch AvroRuntimeException specifically for field access issues
+          String errorMessage =
+              String.format(
+                  "Avro error accessing timestamp column '%s' for row with key: '%s'. Details: %s",
+                  timestampColumnName, rowkey, e.getMessage());
+          throw new IllegalArgumentException(errorMessage, e);
         }
       }
 
