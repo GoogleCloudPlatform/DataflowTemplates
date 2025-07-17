@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.utils.DurationUtils;
-import java.lang.Math;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
