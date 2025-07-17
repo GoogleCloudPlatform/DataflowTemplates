@@ -260,6 +260,17 @@ public class DataStreamToSQL {
     int getNumThreads();
 
     void setNumThreads(int value);
+
+    @TemplateParameter.Integer(
+        order = 16,
+        groupName = "Target",
+        optional = true,
+        description = "Database login timeout in seconds.",
+        helpText =
+            "The timeout in seconds for database login attempts. This helps prevent connection hangs when multiple workers try to connect simultaneously.")
+    Integer getDatabaseLoginTimeout();
+
+    void setDatabaseLoginTimeout(Integer value);
   }
 
   /**
@@ -315,7 +326,8 @@ public class DataStreamToSQL {
         CdcJdbcIO.DataSourceConfiguration.create(jdbcDriverName, jdbcDriverConnectionString)
             .withUsername(options.getDatabaseUser())
             .withPassword(options.getDatabasePassword())
-            .withMaxIdleConnections(new Integer(0));
+            .withMaxIdleConnections(new Integer(0))
+            .withLoginTimeout(options.getDatabaseLoginTimeout());
 
     return dataSourceConfiguration;
   }
