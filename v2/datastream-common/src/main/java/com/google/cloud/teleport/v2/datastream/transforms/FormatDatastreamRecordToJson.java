@@ -148,9 +148,18 @@ public class FormatDatastreamRecordToJson
       outputObject.put("_metadata_lsn", getPostgresLsn(record));
       outputObject.put("_metadata_tx_id", getPostgresTxId(record));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
-      // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
-      outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
-      outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      // SQL Server (has replication_index) or MongoDB
+      JsonNode sourceMetadata = getSourceMetadataJson(record);
+      if (sourceMetadata != null && sourceMetadata.has("replication_index")) {
+        // SQL Server Specific Metadata
+        outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
+        outputObject.put("_metadata_lsn", getSourceMetadata(record, "lsn"));
+        outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
+      } else {
+        // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
+        outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
+        outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      }
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
@@ -272,6 +281,11 @@ public class FormatDatastreamRecordToJson
     }
 
     JsonNode dataInput = getSourceMetadataJson(record);
+    // For SQL Server, primary keys are in replication_index
+    if (sourceMetadata.getSchema().getField("replication_index") != null) {
+      return dataInput.get("replication_index");
+    }
+
     return dataInput.get("primary_keys");
   }
 
@@ -662,6 +676,22 @@ public class FormatDatastreamRecordToJson
                 periodIso8061 + StringUtils.removeStartIgnoreCase(durationIso8610, "P");
           }
           jsonObject.put(fieldName, convertedIntervalNano);
+          break;
+        case "datetime":
+          // Handle SQL Server datetime type - similar to MySQL datetime
+          // Convert to timestamp string using date (days since epoch) and time (microseconds since
+          // midnight)
+          Long totalMicros = TimeUnit.DAYS.toMicros(Long.valueOf(element.get("date").toString()));
+          totalMicros += Long.valueOf(element.get("time").toString());
+          Instant timestampInstant =
+              Instant.ofEpochSecond(
+                  TimeUnit.MICROSECONDS.toSeconds(totalMicros),
+                  TimeUnit.MICROSECONDS.toNanos(totalMicros % TimeUnit.SECONDS.toMicros(1)));
+          jsonObject.put(
+              fieldName,
+              timestampInstant
+                  .atOffset(ZoneOffset.UTC)
+                  .format(DEFAULT_TIMESTAMP_WITH_TZ_FORMATTER));
           break;
         default:
           ObjectMapper mapper = new ObjectMapper();
