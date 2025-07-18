@@ -126,7 +126,7 @@ public class BigtableConverters {
       Long columnTs = null;
 
       // timestamp column is optional, if it's specified, retrieve the field value
-      if (timestampColumnName != null && timestampColumnName.length() > 0) {
+      if (!timestampColumnName.isEmpty()) {
         try {
           // Attempt to retrieve the timestamp column value
           Object timestampValue = row.get(timestampColumnName);
