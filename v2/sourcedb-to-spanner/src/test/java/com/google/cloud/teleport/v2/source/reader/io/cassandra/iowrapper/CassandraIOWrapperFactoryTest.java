@@ -27,6 +27,8 @@ import static org.mockito.Mockito.when;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
 import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource.CassandraDialect;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.datasource.DataSource;
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
@@ -69,13 +71,14 @@ public class CassandraIOWrapperFactoryTest {
     String testLocalDC = "datacenter1";
     DataSource dataSource =
         DataSource.ofCassandra(
-            CassandraDataSource.builder()
-                .setOptionsMap(OptionsMap.driverDefaults())
-                .setClusterName(testClusterName)
-                .setContactPoints(ImmutableList.of(testHost))
-                .setLocalDataCenter(testLocalDC)
-                .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
-                .build());
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setClusterName(testClusterName)
+                    .setContactPoints(ImmutableList.of(testHost))
+                    .setLocalDataCenter(testLocalDC)
+                    .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
+                    .build()));
 
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(
@@ -91,7 +94,15 @@ public class CassandraIOWrapperFactoryTest {
 
     mockCassandraIoWrapperHelper
         .when(
-            () -> CassandraIOWrapperHelper.buildDataSource(TEST_BUCKET_CASSANDRA_CONFIG_CONF, null))
+            () ->
+                CassandraIOWrapperHelper.buildDataSource(
+                    TEST_BUCKET_CASSANDRA_CONFIG_CONF,
+                    null,
+                    CassandraDialect.OSS,
+                    GuardedStringValueProvider.create(""),
+                    "",
+                    "",
+                    ""))
         .thenReturn(dataSource);
     mockCassandraIoWrapperHelper
         .when(() -> CassandraIOWrapperHelper.buildSchemaDiscovery())
@@ -127,6 +138,10 @@ public class CassandraIOWrapperFactoryTest {
     when(mockOptions.getSourceDbDialect()).thenReturn("CASSANDRA");
     when(mockOptions.getSourceConfigURL()).thenReturn(testConfigPath);
     when(mockOptions.getNumPartitions()).thenReturn(null);
+    when(mockOptions.getAstraDBToken()).thenReturn("");
+    when(mockOptions.getAstraDBDatabaseId()).thenReturn("");
+    when(mockOptions.getAstraDBRegion()).thenReturn("");
+    when(mockOptions.getAstraDBKeySpace()).thenReturn("");
     CassandraIOWrapperFactory cassandraIOWrapperFactory =
         CassandraIOWrapperFactory.fromPipelineOptions(mockOptions);
     assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);

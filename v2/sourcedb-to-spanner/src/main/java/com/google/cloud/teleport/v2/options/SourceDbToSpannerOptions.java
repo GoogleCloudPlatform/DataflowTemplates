@@ -22,6 +22,7 @@ import org.apache.beam.sdk.options.Default;
 /** Interface used by the SourcedbToSpanner pipeline to accept user input. */
 public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String CASSANDRA_SOURCE_DIALECT = "CASSANDRA";
+  String ASTRA_DB_SOURCE_DIALECT = "ASTRA_DB";
   String MYSQL_SOURCE_DIALECT = "MYSQL";
   String PG_SOURCE_DIALECT = "POSTGRESQL";
 
@@ -29,6 +30,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       order = 1,
       optional = true,
       enumOptions = {
+        @TemplateParameter.TemplateEnumOption(ASTRA_DB_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(CASSANDRA_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(MYSQL_SOURCE_DIALECT),
         @TemplateParameter.TemplateEnumOption(PG_SOURCE_DIALECT)
@@ -66,14 +68,16 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   @TemplateParameter.Text(
       order = 4,
-      regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*)"},
+      optional = true,
+      regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*|^$)"},
       groupName = "Source",
       description =
           "URL to connect to the source database host. It can be either of "
               + "1. The JDBC connection URL - which must contain the host, port and source db name and can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`"
               + "2. The shard config path",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config")
+          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config. This parameter is required except for ASTRA_DB source.")
+  @Default.String("")
   String getSourceConfigURL();
 
   void setSourceConfigURL(String url);
@@ -355,4 +359,45 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Long getUniformizationStageCountHint();
 
   void setUniformizationStageCountHint(Long value);
+
+  @TemplateParameter.Text(
+      order = 28,
+      optional = true,
+      description = "Astra DB token",
+      helpText =
+          "AstraDB token, ignored for non-AstraDB dialects. This token is used to automatically download the securebundle by the tempalte.")
+  @Default.String("")
+  String getAstraDBToken();
+
+  void setAstraDBToken(String value);
+
+  @TemplateParameter.Text(
+      order = 29,
+      optional = true,
+      description = "Astra DB databaseID",
+      helpText = "AstraDB databaseID, ignored for non-AstraDB dialects")
+  @Default.String("")
+  String getAstraDBDatabaseId();
+
+  void setAstraDBDatabaseId(String value);
+
+  @TemplateParameter.Text(
+      order = 30,
+      optional = true,
+      description = "Astra DB keySpace",
+      helpText = "AstraDB keySpace, ignored for non-AstraDB dialects")
+  @Default.String("")
+  String getAstraDBKeySpace();
+
+  void setAstraDBKeySpace(String value);
+
+  @TemplateParameter.Text(
+      order = 31,
+      optional = true,
+      description = "Astra DB Region",
+      helpText = "AstraDB region, ignored for non-AstraDB dialects")
+  @Default.String("")
+  String getAstraDBRegion();
+
+  void setAstraDBRegion(String value);
 }

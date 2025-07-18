@@ -23,12 +23,14 @@ import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Preconditions;
 import java.util.List;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * A template that copies data from a relational database using JDBC to an existing Spanner
@@ -95,10 +97,19 @@ public class SourceDbToSpanner {
     // TODO(vardhanvthigle): Move this within pipelineController.
     switch (options.getSourceDbDialect()) {
       case SourceDbToSpannerOptions.CASSANDRA_SOURCE_DIALECT:
+        Preconditions.checkArgument(
+            StringUtils.isNotEmpty(options.getSourceConfigURL()),
+            "Cassandra Dialect needs sourceConfigURL to be set.");
         return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
+      case SourceDbToSpannerOptions.ASTRA_DB_SOURCE_DIALECT:
+        return PipelineController.executeCassandraMigration(options, pipeline, spannerConfig);
+
       default:
         /* Implementation detail, not having a default leads to failure in compile time checks enforced here */
         /* Making jdbc as default case which includes MYSQL and PG. */
+        Preconditions.checkArgument(
+            StringUtils.isNotEmpty(options.getSourceConfigURL()),
+            "JDBC based source needs sourceConfigURL to be set.");
         return executeJdbcMigration(options, pipeline, spannerConfig);
     }
   }
