@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.transforms.BigQueryConverters;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.hadoop.hbase.client.Mutation;
@@ -54,7 +55,7 @@ import org.apache.hadoop.hbase.client.Mutation;
       BigtableCommonOptions.class,
       BigtableCommonOptions.WriteOptions.class
     },
-    optionalOptions = {"inputTableSpec"},
+    optionalOptions = {"inputTableSpec", "timestampColumn", "skipNullValues"},
     flexContainerName = "bigquery-to-bigtable",
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/bigquery-to-bigtable",
@@ -86,6 +87,32 @@ public class BigQueryToBigtable {
     String getReadIdColumn();
 
     void setReadIdColumn(String value);
+
+    @TemplateParameter.Text(
+        order = 2,
+        optional = true,
+        regexes = {"[A-Za-z_][A-Za-z_0-9]*"},
+        description = "Timestamp column identifier",
+        helpText =
+            "The name of the BigQuery column to be used as the timestamp for the column's cell in Bigtable. The value"
+                + " must be millisecond precision, e.g. INT64 / Long. If a row does not contain the field, the default write"
+                + " timestamp will be used. The column specified will not be included as part of the row in Bigtable as"
+                + " a separate column.")
+    @Default.String("")
+    String getTimestampColumn();
+
+    void setTimestampColumn(String value);
+
+    @TemplateParameter.Boolean(
+        order = 3,
+        optional = true,
+        description = "Flag to skip null values",
+        helpText =
+            "Flag to indicate whether nulls may propagate as an empty value or column skipped completely to adhere to Bigtable sparse table format.")
+    @Default.Boolean(false)
+    Boolean getSkipNullValues();
+
+    void setSkipNullValues(Boolean value);
   }
 
   /**
@@ -114,6 +141,8 @@ public class BigQueryToBigtable {
                         BigtableConverters.AvroToMutation.newBuilder()
                             .setColumnFamily(options.getBigtableWriteColumnFamily())
                             .setRowkey(options.getReadIdColumn())
+                            .setSkipNullValues(options.getSkipNullValues())
+                            .setTimestampColumn(options.getTimestampColumn())
                             .build()))
                 .build())
         .apply("WriteToTable", CloudBigtableIO.writeToTable(bigtableTableConfig));
