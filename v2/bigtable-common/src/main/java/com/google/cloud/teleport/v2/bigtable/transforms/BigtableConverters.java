@@ -104,15 +104,13 @@ public class BigtableConverters {
     }
 
     /**
-     * Verification of schema field expected with timestampColumnName Get column that represents the
-     * timestamp of the cell in bigtable. The value is expected to be milliseconds precision with
-     * hbase client handling to micros granularity, e.g. UNIX_MILLIS(timestamp) Retrieves the
-     * timestamp value from a {@link GenericRecord} that represents the timestamp of the cell in
-     * bigtable. The value is expected to be milliseconds precision with hbase client handling to
-     * micros granularity, e.g. UNIX_MILLIS(timestamp). This method also performs basic verification
-     * checks to avoid inadvertent schema or data issues. If the field is missing (null), it logs a
-     * warning and the default timestamp on write will be used. If the field is present, it then
-     * attempts to cast it to a {@link Long}.
+     * If TimestampColumn is configured, retrieve timestamp value from a {@link GenericRecord} that
+     * represents the timestamp of the cell in bigtable. The value is expected to be milliseconds
+     * precision with hbase client handling to micros granularity, e.g. UNIX_MILLIS(timestamp). This
+     * method also performs basic verification checks to avoid inadvertent schema or data issues,
+     * including: 1) If the field is missing (null), it logs a warning and the default timestamp on
+     * write will be used, 2) If the field is present, it then attempts to cast it to a {@link
+     * Long}.
      *
      * @param rowkey The unique identifier for the row being processed. Used for clearer
      *     error/warning messages.
@@ -133,18 +131,17 @@ public class BigtableConverters {
           // Attempt to retrieve the timestamp column value
           Object timestampValue = row.get(timestampColumnName);
 
-          // If the value is null, the field is missing, log warn and use default timestamp on write
-          if (timestampValue == null) {
-            String errorMessage =
-                String.format(
-                    "Timestamp column '%s' not found in row with key: '%s'.",
-                    timestampColumnName, rowkey);
-            LOG.warn(errorMessage);
-          }
-
           try {
-            // Add a cast check
             columnTs = (Long) row.get(timestampColumnName);
+
+            // If the value is null, log warn and use default timestamp on write
+            if (columnTs == null) {
+              String errorMessage =
+                  String.format(
+                      "Timestamp column '%s' value is null, row key: '%s'. Will fallback to default write timestamp.",
+                      timestampColumnName, rowkey);
+              LOG.warn(errorMessage);
+            }
           } catch (ClassCastException e) {
             String errorMessage =
                 String.format(
@@ -153,7 +150,7 @@ public class BigtableConverters {
             throw new IllegalArgumentException(errorMessage, e);
           }
         } catch (AvroRuntimeException e) {
-          // Catch AvroRuntimeException specifically for field access issues
+          // Catch AvroRuntimeException for field access issues -- Not a valid schema field
           String errorMessage =
               String.format(
                   "Avro error accessing timestamp column '%s' for row with key: '%s'. Details: %s",

@@ -94,10 +94,10 @@ public class BigQueryToBigtable {
         regexes = {"[A-Za-z_][A-Za-z_0-9]*"},
         description = "Timestamp column identifier",
         helpText =
-            "The name of the BigQuery column to be used as the timestamp of the column's cell in Bigtable. The TimestampColumn"
-                + " values must be millisecond precision. If a row does not contain the field then the default write time"
-                + " will be used. Lastly, the TimestampColumn specified will not be included as part of the row in Bigtable as a"
-                + " separate column.")
+            "The name of the BigQuery column to be used as the timestamp for the column's cell in Bigtable. The value"
+                + " must be millisecond precision, e.g. INT64 / Long. If a row does not contain the field, the default write"
+                + " timestamp will be used. The column specified will not be included as part of the row in Bigtable as"
+                + " a separate column.")
     @Default.String("")
     String getTimestampColumn();
 
