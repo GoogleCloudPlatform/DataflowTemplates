@@ -796,6 +796,13 @@ public class AssignShardIdFnTest {
             .column("bool_col")
             .bool()
             .endColumn()
+            // Non-stored Generated Column should not affect any flows
+            .column("non_stored_gen_column")
+            .int64()
+            .generatedAs("accountNumber + 1")
+            .isGenerated(true)
+            .isStored(false)
+            .endColumn()
             .endTable()
             .build();
     return ddl;
