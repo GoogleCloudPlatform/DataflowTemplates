@@ -22,13 +22,13 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementGeneratedResponse;
 import com.google.cloud.teleport.v2.templates.models.PreparedStatementValueObject;
+import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import java.nio.ByteBuffer;
 import java.time.Instant;
 import java.util.HashMap;
@@ -86,7 +86,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -119,7 +119,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void tableAndAllColumnNameTypesForNullValueMatch() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -150,7 +150,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void tableAndAllColumnNameTypesForCustomTransformation() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -190,7 +190,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void tableNameMatchSourceColumnNotPresentInSpanner() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -223,7 +223,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void tableNameMatchSpannerColumnNotPresentInSource() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -259,7 +259,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void primaryKeyNotFoundInJson() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -283,7 +283,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void primaryKeyNotPresentInSourceSchema() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -307,7 +307,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void primaryKeyMismatch() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -341,7 +341,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void deleteMultiplePKColumns() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -370,7 +370,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testSingleQuoteMatch() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -403,7 +403,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void singleQuoteBytesDML() throws Exception {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -435,7 +435,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testParseBlobType_hexString() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -467,7 +467,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testParseBlobType_base64String() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -499,7 +499,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void twoSingleEscapedQuoteDML() throws Exception {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -532,7 +532,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void threeEscapesAndSingleQuoteDML() throws Exception {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -565,7 +565,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void tabEscapeDML() throws Exception {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -598,7 +598,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void backSpaceEscapeDML() throws Exception {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -631,7 +631,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void newLineEscapeDML() throws Exception {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "sample_table";
@@ -664,7 +664,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void bitColumnSql() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -697,7 +697,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testSpannerKeyIsNull() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -728,7 +728,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testSourcePKNotInSpanner() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "customer";
@@ -752,7 +752,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void primaryKeyMismatchSpannerNull() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -786,7 +786,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testUnsupportedModType() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -810,7 +810,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testUpdateModType() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Singers";
@@ -844,7 +844,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testSpannerTableIdMismatch() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Random";
@@ -868,7 +868,7 @@ public class CassandraDMLGeneratorTest {
 
   @Test
   public void testSourcePkNull() {
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(SESSION_FILE);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE);
     Schema schema = SessionFileReader.read(SESSION_FILE);
     String tableName = "Persons";

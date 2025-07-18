@@ -105,7 +105,7 @@ public class DMLGeneratorRequest {
     return customTransformationResponse;
   }
 
-  public Ddl getDdl() {
+  public Ddl getSpannerDdl() {
     return ddl;
   }
 

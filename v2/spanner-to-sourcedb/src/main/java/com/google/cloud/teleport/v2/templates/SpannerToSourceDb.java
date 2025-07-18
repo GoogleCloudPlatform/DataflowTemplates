@@ -563,25 +563,7 @@ public class SpannerToSourceDb {
       LOG.info("Cassandra config is: {}", shards.get(0));
       shardingMode = Constants.SHARDING_MODE_SINGLE_SHARD;
     }
-    SourceSchemaScanner scanner = null;
-    SourceSchema sourceSchema = null;
-    try {
-      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
-        Connection connection = createJdbcConnection(shards.get(0));
-        scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
-        sourceSchema = scanner.scan();
-        connection.close();
-      } else {
-        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
-          scanner =
-              new CassandraInformationSchemaScanner(
-                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
-          sourceSchema = scanner.scan();
-        }
-      }
-    } catch (SQLException e) {
-      throw new RuntimeException("Unable to discover jdbc schema", e);
-    }
+    SourceSchema sourceSchema = fetchSourceSchema(options, shards);
     LOG.info("Source schema: {}", sourceSchema);
 
     if (shards.size() == 1 && !options.getIsShardedMigration()) {
@@ -891,5 +873,28 @@ public class SpannerToSourceDb {
         CassandraDriverConfigLoader.fromOptionsMap(cassandraShard.getOptionsMap());
     builder.withConfigLoader(configLoader);
     return builder.build();
+  }
+
+  private static SourceSchema fetchSourceSchema(Options options, List<Shard> shards) {
+    SourceSchemaScanner scanner = null;
+    SourceSchema sourceSchema = null;
+    try {
+      if (options.getSourceType().equals(MYSQL_SOURCE_TYPE)) {
+        Connection connection = createJdbcConnection(shards.get(0));
+        scanner = new MySqlInformationSchemaScanner(connection, shards.get(0).getDbName());
+        sourceSchema = scanner.scan();
+        connection.close();
+      } else {
+        try (CqlSession session = createCqlSession((CassandraShard) shards.get(0))) {
+          scanner =
+              new CassandraInformationSchemaScanner(
+                  session, ((CassandraShard) shards.get(0)).getKeySpaceName());
+          sourceSchema = scanner.scan();
+        }
+      }
+    } catch (SQLException e) {
+      throw new RuntimeException("Unable to discover jdbc schema", e);
+    }
+    return sourceSchema;
   }
 }

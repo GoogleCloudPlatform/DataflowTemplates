@@ -23,12 +23,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.InputStream;
@@ -49,7 +49,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void tableAndAllColumnNameTypesMatch() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -79,7 +79,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void tableNameMismatchAllColumnNameTypesMatch() {
     String sessionFile = "src/test/resources/tableNameMismatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "leChanteur";
@@ -109,7 +109,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void tableNameMatchColumnNameTypeMismatch() {
     String sessionFile = "src/test/resources/coulmnNameTypeMismatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -138,7 +138,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void tableNameMatchSourceColumnNotPresentInSpanner() {
     String sessionFile = "src/test/resources/sourceColumnAbsentInSpannerSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -168,7 +168,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void tableNameMatchSpannerColumnNotPresentInSource() {
     String sessionFile = "src/test/resources/spannerColumnAbsentInSourceSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -198,7 +198,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void primaryKeyNotFoundInJson() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -225,7 +225,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void primaryKeyNotPresentInSourceSchema() {
     String sessionFile = "src/test/resources/sourceNoPkSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -252,7 +252,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void timezoneOffsetMismatch() {
     String sessionFile = "src/test/resources/timeZoneSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -283,7 +283,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void primaryKeyMismatch() {
     String sessionFile = "src/test/resources/primarykeyMismatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -313,7 +313,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void allDataypesDML() throws Exception {
     String sessionFile = "src/test/resources/allDatatypeSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -415,7 +415,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void updateToNull() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -445,7 +445,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void deleteMultiplePKColumns() {
     String sessionFile = "src/test/resources/MultiColmPKSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -475,7 +475,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSingleQuoteMatch() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -505,7 +505,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void singleQuoteBytesDML() throws Exception {
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     /*
@@ -544,7 +544,7 @@ public final class MySQLDMLGeneratorTest {
     Eventual insert is '' but mysql synatx escapes each ' with another '*/
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -580,7 +580,7 @@ public final class MySQLDMLGeneratorTest {
     Eventual insert is \' but mysql synatx escapes each ' with another ' and \ with another \*/
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -617,7 +617,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -654,7 +654,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -691,7 +691,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -728,7 +728,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -765,7 +765,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -802,7 +802,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -839,7 +839,7 @@ public final class MySQLDMLGeneratorTest {
     */
 
     String sessionFile = "src/test/resources/quotesSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
 
@@ -871,7 +871,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void bitColumnSql() {
     String sessionFile = "src/test/resources/bitSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -904,7 +904,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSpannerTableNotInSchema() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "SomeRandomTableNotInSchema";
@@ -930,7 +930,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSpannerKeyIsNull() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -958,7 +958,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testKeyInNewValuesJson() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -985,7 +985,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSourcePKNotInSpanner() {
     String sessionFile = "src/test/resources/errorSchemaSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "customer";
@@ -1011,7 +1011,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void primaryKeyMismatchSpannerNull() {
     String sessionFile = "src/test/resources/primarykeyMismatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -1040,7 +1040,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testUnsupportedModType() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -1066,7 +1066,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testUpdateModType() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -1096,7 +1096,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSpannerTableIdMismatch() {
     String sessionFile = "src/test/resources/errorSchemaSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
@@ -1122,7 +1122,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSourcePkNull() {
     String sessionFile = "src/test/resources/errorSchemaSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Persons";
@@ -1148,7 +1148,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSourceTableNotInSchema() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "contacts";
@@ -1174,7 +1174,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void testSpannerTableNotInSchemaObject() {
     String sessionFile = "src/test/resources/allMatchSession.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "randomname";
@@ -1200,7 +1200,7 @@ public final class MySQLDMLGeneratorTest {
   @Test
   public void customTransformationMatch() {
     String sessionFile = "src/test/resources/customTransformation.json";
-    Ddl ddl = SchemaUtils.buildDdlFromSessionFile(sessionFile);
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
     Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";

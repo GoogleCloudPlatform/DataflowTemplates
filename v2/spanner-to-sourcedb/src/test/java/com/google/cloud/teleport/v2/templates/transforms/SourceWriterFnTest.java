@@ -41,7 +41,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
@@ -54,6 +53,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.source.JdbcDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.MySQLDMLGenerator;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
+import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
@@ -135,7 +135,8 @@ public class SourceWriterFnTest {
 
     testSchema = SessionFileReader.read("src/test/resources/sourceWriterUTSession.json");
     testSourceDbTimezoneOffset = "+00:00";
-    testDdl = SchemaUtils.buildDdlFromSessionFile("src/test/resources/sourceWriterUTSession.json");
+    testDdl =
+        SchemaUtils.buildSpannerDdlFromSessionFile("src/test/resources/sourceWriterUTSession.json");
     testSourceSchema =
         SchemaUtils.buildSourceSchemaFromSessionFile(
             "src/test/resources/sourceWriterUTSession.json");

@@ -47,22 +47,22 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     }
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
     Schema schema = dmlGeneratorRequest.getSchema();
-    Ddl ddl = dmlGeneratorRequest.getDdl();
+    Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
-    if (schema == null || ddl == null || sourceSchema == null) {
+    if (schema == null || spannerDdl == null || sourceSchema == null) {
       LOG.warn(
           "Schema, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
           schema,
-          ddl,
+          spannerDdl,
           sourceSchema);
       return new DMLGeneratorResponse("");
     }
-    Table spannerTable = ddl.table(spannerTableName);
+    Table spannerTable = spannerDdl.table(spannerTableName);
     if (spannerTable == null) {
       LOG.warn(
           "The spanner table {} was not found in ddl found on spanner. Ddl: {}",
           spannerTableName,
-          ddl);
+          spannerDdl);
       return new DMLGeneratorResponse("");
     }
 
