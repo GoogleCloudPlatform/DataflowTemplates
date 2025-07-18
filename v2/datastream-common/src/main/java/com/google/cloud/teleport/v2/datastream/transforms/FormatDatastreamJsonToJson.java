@@ -81,7 +81,10 @@ public final class FormatDatastreamJsonToJson
     outputObject.put("_metadata_source_type", sourceType);
 
     outputObject.put("_metadata_deleted", getMetadataIsDeleted(record));
+    outputObject.put("_metadata_database", getSourceMetadata(record, "database"));
+    outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
     outputObject.put("_metadata_table", getSourceMetadata(record, "table"));
+
     outputObject.put("_metadata_change_type", getSourceMetadata(record, "change_type"));
     outputObject.put("_metadata_primary_keys", getPrimaryKeys(record));
     outputObject.put("_metadata_uuid", record.get("uuid").textValue());
@@ -95,14 +98,15 @@ public final class FormatDatastreamJsonToJson
     } else if (sourceType.equals("postgresql")) {
       outputObject.put("_metadata_lsn", getSourceMetadata(record, "database"));
       outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
-      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
+    } else if (sourceType.equals("sqlserver")) {
+      outputObject.put("_metadata_lsn", getSourceMetadata(record, "database"));
+      outputObject.put("_metadata_tx_id", getSourceMetadata(record, "tx_id"));
     } else if (sourceType.equals("backfill") || sourceType.equals("cdc")) {
       // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
       outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
       outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
     } else {
       // Oracle Specific Metadata
-      outputObject.put("_metadata_schema", getSourceMetadata(record, "schema"));
       setOracleRowIdValue(outputObject, getSourceMetadata(record, "row_id"));
       outputObject.put("_metadata_scn", getSourceMetadataAsLong(record, "scn"));
       outputObject.put("_metadata_ssn", getSourceMetadataAsLong(record, "ssn"));
