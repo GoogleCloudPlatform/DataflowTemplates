@@ -150,6 +150,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.GcsReadFile(
         order = 1,
+        optional = true,
         groupName = "Source",
         description = "File location for Datastream file output in Cloud Storage.",
         helpText =
@@ -171,6 +172,7 @@ public class DataStreamToBigQuery {
 
     @TemplateParameter.PubsubSubscription(
         order = 3,
+        optional = true,
         description = "The Pub/Sub subscription on the Cloud Storage bucket.",
         helpText =
             "The Pub/Sub subscription used by Cloud Storage to notify Dataflow of new files available for processing, in the format: `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_NAME>`.")
