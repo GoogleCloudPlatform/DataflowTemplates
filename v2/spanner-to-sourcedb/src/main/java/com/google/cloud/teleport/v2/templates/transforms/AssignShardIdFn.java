@@ -292,7 +292,10 @@ public class AssignShardIdFn
         com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
             staleInstant.getEpochSecond(), staleInstant.getNano());
     List<String> columns =
-        ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
+        ddl.table(tableName).columns().stream()
+            .filter(column -> (!column.isGenerated() || column.isStored()))
+            .map(Column::name)
+            .collect(Collectors.toList());
 
     Struct row =
         spannerAccessor
