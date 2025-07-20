@@ -35,25 +35,25 @@ variable "region" {
 
 variable "mongoDbUri" {
   type        = string
-  description = "URI to connect to MongoDB Atlas."
+  description = "The MongoDB connection URI in the format `mongodb+srv://:@`."
 
 }
 
 variable "database" {
   type        = string
-  description = "Database in MongoDB to store the collection. (Example: my-db)"
+  description = "Database in MongoDB to store the collection. For example, `my-db`"
 
 }
 
 variable "collection" {
   type        = string
-  description = "Name of the collection inside MongoDB database. (Example: my-collection)"
+  description = "The name of the collection in the MongoDB database. For example, `my-collection`"
 
 }
 
 variable "inputTableSpec" {
   type        = string
-  description = "BigQuery source table spec. (Example: bigquery-project:dataset.input_table)"
+  description = "The BigQuery table to read from. For example, `bigquery-project:dataset.input_table`"
 
 }
 
@@ -121,7 +121,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -200,6 +201,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

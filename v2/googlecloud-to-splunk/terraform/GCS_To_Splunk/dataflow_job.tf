@@ -35,13 +35,13 @@ variable "region" {
 
 variable "invalidOutputPath" {
   type        = string
-  description = "Cloud Storage path where to write objects that could not be converted to Splunk objects or pushed to Splunk. (Example: gs://your-bucket/your-path)"
+  description = "Cloud Storage path where to write objects that could not be converted to Splunk objects or pushed to Splunk. For example, `gs://your-bucket/your-path`"
 
 }
 
 variable "inputFileSpec" {
   type        = string
-  description = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv"
+  description = "The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`."
 
 }
 
@@ -53,43 +53,43 @@ variable "containsHeaders" {
 
 variable "deadletterTable" {
   type        = string
-  description = "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name)"
+  description = "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. For example, `your-project:your-dataset.your-table-name`"
 
 }
 
 variable "delimiter" {
   type        = string
-  description = "The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,)"
+  description = "The column delimiter of the input text files. Default: `,` For example, `,`"
   default     = null
 }
 
 variable "csvFormat" {
   type        = string
-  description = "CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
+  description = "CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
   default     = null
 }
 
 variable "jsonSchemaPath" {
   type        = string
-  description = "Path to JSON schema. Default: null. (Example: gs://path/to/schema)"
+  description = "The path to the JSON schema. Defaults to `null`. For example, `gs://path/to/schema`"
   default     = null
 }
 
 variable "largeNumFiles" {
   type        = bool
-  description = "Set to true if number of files is in the tens of thousands. Defaults to: false."
+  description = "Set to true if number of files is in the tens of thousands. Defaults to `false`."
   default     = null
 }
 
 variable "csvFileEncoding" {
   type        = string
-  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  description = "The CSV file character encoding format. Allowed values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8."
   default     = null
 }
 
 variable "logDetailedCsvConversionErrors" {
   type        = bool
-  description = "Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false."
+  description = "Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`."
   default     = null
 }
 
@@ -101,7 +101,7 @@ variable "token" {
 
 variable "url" {
   type        = string
-  description = "Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. (Example: https://splunk-hec-host:8088)"
+  description = "Splunk Http Event Collector (HEC) url. This should be routable from the VPC in which the pipeline runs. For example, `https://splunk-hec-host:8088`"
 
 }
 
@@ -131,19 +131,19 @@ variable "tokenSource" {
 
 variable "tokenKMSEncryptionKey" {
   type        = string
-  description = "The Cloud KMS key to decrypt the HEC token string. This parameter must be provided if the tokenSource is set to KMS. If this parameter is provided, token string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name)"
+  description = "The Cloud KMS key to decrypt the HEC token string. This parameter must be provided if the tokenSource is set to KMS. If this parameter is provided, token string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`"
   default     = null
 }
 
 variable "tokenSecretId" {
   type        = string
-  description = "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version)"
+  description = "Secret Manager secret ID for the token. This parameter should be provided if the tokenSource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. For example, `projects/your-project-id/secrets/your-secret/versions/your-secret-version`"
   default     = null
 }
 
 variable "rootCaCertificatePath" {
   type        = string
-  description = "The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. (Example: gs://mybucket/mycerts/privateCA.crt)"
+  description = "The full URL to root CA certificate in Cloud Storage. The certificate provided in Cloud Storage must be DER-encoded and may be supplied in binary or printable (Base64) encoding. If the certificate is provided in Base64 encoding, it must be bounded at the beginning by -----BEGIN CERTIFICATE-----, and must be bounded at the end by -----END CERTIFICATE-----. If this parameter is provided, this private CA certificate file will be fetched and added to Dataflow worker's trust store in order to verify Splunk HEC endpoint's SSL certificate which is signed by that private CA. If this parameter is not provided, the default trust store is used. For example, `gs://mybucket/mycerts/privateCA.crt`"
   default     = null
 }
 
@@ -161,13 +161,13 @@ variable "enableGzipHttpCompression" {
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
@@ -235,7 +235,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -333,6 +334,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

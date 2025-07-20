@@ -35,87 +35,91 @@ variable "region" {
 
 variable "bigtableProjectId" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to read data from"
+  description = "The ID for the Google Cloud project that contains the Bigtable instance that you want to read data from."
 
 }
 
 variable "bigtableInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Bigtable instance that contains the table."
 
 }
 
 variable "bigtableTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to read"
+  description = "The ID of the Bigtable table to read from."
 
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "The Cloud Storage path where the output JSON files can be stored. (Example: gs://your-bucket/your-path/)"
-  default     = null
+  description = "The Cloud Storage path where the output JSON files are stored. For example, `gs://your-bucket/your-path/`"
+
 }
 
 variable "filenamePrefix" {
   type        = string
-  description = <<EOT
-The prefix of the JSON file name. For example, "table1-". Defaults to: part.
-EOT
-  default     = "part"
+  description = "The prefix of the JSON filename. For example: `table1-`. If no value is provided, defaults to `part`."
+  default     = null
 }
 
 variable "idColumn" {
   type        = string
-  description = "The fully qualified column name where the ID is stored. In the format cf:col or _key."
+  description = "The fully qualified column name where the ID is stored. In the format `cf:col` or `_key`."
 
 }
 
 variable "embeddingColumn" {
   type        = string
-  description = "The fully qualified column name where the embeddings are stored. In the format cf:col or _key."
+  description = "The fully qualified column name where the embeddings are stored. In the format `cf:col` or `_key`."
 
 }
 
 variable "crowdingTagColumn" {
   type        = string
-  description = "The fully qualified column name where the crowding tag is stored. In the format cf:col or _key."
+  description = "The fully qualified column name where the crowding tag is stored. In the format `cf:col` or `_key`."
   default     = null
 }
 
 variable "embeddingByteSize" {
   type        = number
-  description = "The byte size of each entry in the embeddings array. Use 4 for Float, and 8 for Double. Defaults to: 4."
+  description = "The byte size of each entry in the embeddings array. For float, use the value `4`. For double, use the value `8`. Defaults to `4`."
   default     = null
 }
 
 variable "allowRestrictsMappings" {
   type        = string
-  description = "The comma separated fully qualified column names of the columns that should be used as the `allow` restricts, with their alias. In the format cf:col->alias."
+  description = "The comma-separated, fully qualified column names for the columns to use as the allow restricts, with their aliases. In the format `cf:col->alias`."
   default     = null
 }
 
 variable "denyRestrictsMappings" {
   type        = string
-  description = "The comma separated fully qualified column names of the columns that should be used as the `deny` restricts, with their alias. In the format cf:col->alias."
+  description = "The comma-separated, fully qualified column names for the columns to use as the deny restricts, with their aliases. In the format `cf:col->alias`."
   default     = null
 }
 
 variable "intNumericRestrictsMappings" {
   type        = string
-  description = "The comma separated fully qualified column names of the columns that should be used as integer `numeric_restricts`, with their alias. In the format cf:col->alias."
+  description = "The comma-separated, fully qualified column names of the columns to use as integer numeric_restricts, with their aliases. In the format `cf:col->alias`."
   default     = null
 }
 
 variable "floatNumericRestrictsMappings" {
   type        = string
-  description = "The comma separated fully qualified column names of the columns that should be used as float (4 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias."
+  description = "The comma-separated, fully qualified column names of the columns to use as float (4 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`."
   default     = null
 }
 
 variable "doubleNumericRestrictsMappings" {
   type        = string
-  description = "The comma separated fully qualified column names of the columns that should be used as double (8 bytes) `numeric_restricts`, with their alias. In the format cf:col->alias."
+  description = "The comma-separated, fully qualified column names of the columns to use as double (8 bytes) numeric_restricts, with their aliases. In the format `cf:col->alias`."
+  default     = null
+}
+
+variable "bigtableAppProfileId" {
+  type        = string
+  description = "The ID of the Cloud Bigtable app profile to be used for the export. Defaults to: default."
   default     = null
 }
 
@@ -230,6 +234,7 @@ resource "google_dataflow_job" "generated" {
     intNumericRestrictsMappings    = var.intNumericRestrictsMappings
     floatNumericRestrictsMappings  = var.floatNumericRestrictsMappings
     doubleNumericRestrictsMappings = var.doubleNumericRestrictsMappings
+    bigtableAppProfileId           = var.bigtableAppProfileId
   }
 
   additional_experiments       = var.additional_experiments
@@ -241,6 +246,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

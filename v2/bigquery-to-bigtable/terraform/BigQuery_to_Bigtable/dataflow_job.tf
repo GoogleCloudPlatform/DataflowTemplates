@@ -35,103 +35,115 @@ variable "region" {
 
 variable "readIdColumn" {
   type        = string
-  description = "Name of the BigQuery column storing the unique identifier of the row"
+  description = "The name of the BigQuery column storing the unique identifier of the row."
 
 }
 
 variable "inputTableSpec" {
   type        = string
-  description = "BigQuery source table spec. (Example: bigquery-project:dataset.input_table)"
+  description = "The BigQuery table to read from. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage). For information about limitations in the Storage Read API, see https://cloud.google.com/bigquery/docs/reference/storage#limitations. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `<BIGQUERY_PROJECT>:<DATASET_NAME>.<INPUT_TABLE>`"
   default     = null
 }
 
 variable "outputDeadletterTable" {
   type        = string
-  description = "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name)"
+  description = "The BigQuery table for messages that failed to reach the output table. If a table doesn't exist, it is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. For example, `<PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>`"
   default     = null
 }
 
 variable "query" {
   type        = string
-  description = "Query to be executed on the source to extract the data. (Example: select * from sampledb.sample_table)"
+  description = "The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `select * from sampledb.sample_table`"
   default     = null
 }
 
 variable "useLegacySql" {
   type        = bool
-  description = "Set to true to use legacy SQL (only applicable if supplying query). Defaults to: false."
+  description = "Set to `true` to use legacy SQL. This parameter only applies when using the `query` parameter. Defaults to `false`."
   default     = null
 }
 
 variable "queryLocation" {
   type        = string
-  description = "Needed when reading from an authorized view without underlying table's permission. (Example: US)"
+  description = "Needed when reading from an authorized view without underlying table's permission. For example, `US`"
+  default     = null
+}
+
+variable "queryTempDataset" {
+  type        = string
+  description = "With this option, you can set an existing dataset to create the temporary table to store the results of the query. For example, `temp_dataset`"
+  default     = null
+}
+
+variable "KMSEncryptionKey" {
+  type        = string
+  description = "If reading from BigQuery using query source, use this Cloud KMS key to encrypt any temporary tables created. For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`"
   default     = null
 }
 
 variable "bigtableRpcAttemptTimeoutMs" {
   type        = number
-  description = "This sets the timeout for an RPC attempt in milliseconds"
+  description = "The timeout for each Bigtable RPC attempt in milliseconds."
   default     = null
 }
 
 variable "bigtableRpcTimeoutMs" {
   type        = number
-  description = "This sets the total timeout for an RPC operation in milliseconds"
+  description = "The total timeout for a Bigtable RPC operation in milliseconds."
   default     = null
 }
 
 variable "bigtableAdditionalRetryCodes" {
   type        = string
-  description = "This sets the additional retry codes, separated by ',' (Example: RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED)"
+  description = "The additional retry codes. For example, `RESOURCE_EXHAUSTED,DEADLINE_EXCEEDED`"
   default     = null
 }
 
 variable "bigtableWriteInstanceId" {
   type        = string
-  description = "The ID of the Cloud Bigtable instance that contains the table"
+  description = "The ID of the Bigtable instance that contains the table."
 
 }
 
 variable "bigtableWriteTableId" {
   type        = string
-  description = "The ID of the Cloud Bigtable table to write"
+  description = "The ID of the Bigtable table to write to."
 
 }
 
 variable "bigtableWriteColumnFamily" {
   type        = string
-  description = "This specifies the column family to write data into"
+  description = "The name of the column family of the Bigtable table to write data into."
 
 }
 
 variable "bigtableWriteAppProfile" {
   type        = string
-  description = "Bigtable App Profile to use for the export. The default for this parameter is the Bigtable instance's default app profile"
+  description = "The ID of the Bigtable application profile to use for the export. If you do not specify an app profile, Bigtable uses the default app profile (https://cloud.google.com/bigtable/docs/app-profiles#default-app-profile) of the instance."
   default     = null
 }
 
 variable "bigtableWriteProjectId" {
   type        = string
-  description = "The ID of the Google Cloud project of the Cloud Bigtable instance that you want to write data to."
+  description = "The ID of the Google Cloud project that contains the Bigtable instanceto write data to."
   default     = null
 }
 
 variable "bigtableBulkWriteLatencyTargetMs" {
   type        = number
-  description = "This enables latency-based throttling and specifies the target latency"
+  description = "The latency target of Bigtable in milliseconds for latency-based throttling."
   default     = null
 }
 
 variable "bigtableBulkWriteMaxRowKeyCount" {
   type        = number
-  description = "This sets the max number of row keys in a Bigtable batch write operation"
+  description = "The maximum number of row keys in a Bigtable batch write operation."
   default     = null
 }
 
 variable "bigtableBulkWriteMaxRequestSizeBytes" {
   type        = number
-  description = "This sets the max amount of bytes in a Bigtable batch write operation"
+  description = "The maximum bytes to include per Bigtable batch write operation."
   default     = null
 }
 
@@ -199,7 +211,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -266,6 +279,8 @@ resource "google_dataflow_flex_template_job" "generated" {
     query                                = var.query
     useLegacySql                         = tostring(var.useLegacySql)
     queryLocation                        = var.queryLocation
+    queryTempDataset                     = var.queryTempDataset
+    KMSEncryptionKey                     = var.KMSEncryptionKey
     bigtableRpcAttemptTimeoutMs          = tostring(var.bigtableRpcAttemptTimeoutMs)
     bigtableRpcTimeoutMs                 = tostring(var.bigtableRpcTimeoutMs)
     bigtableAdditionalRetryCodes         = var.bigtableAdditionalRetryCodes
@@ -291,6 +306,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

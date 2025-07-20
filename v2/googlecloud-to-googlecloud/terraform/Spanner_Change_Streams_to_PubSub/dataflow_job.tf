@@ -35,7 +35,7 @@ variable "region" {
 
 variable "spannerProjectId" {
   type        = string
-  description = "Project to read change streams from. The default for this parameter is the project where the Dataflow pipeline is running."
+  description = "The project to read change streams from. This project is also where the change streams connector metadata table is created. The default for this parameter is the project where the Dataflow pipeline is running."
   default     = null
 }
 
@@ -53,7 +53,7 @@ variable "spannerDatabase" {
 
 variable "spannerDatabaseRole" {
   type        = string
-  description = "Database role user assumes while reading from the change stream. The database role should have required privileges to read from change stream. If a database role is not specified, the user should have required IAM permissions to read from the database."
+  description = "The Spanner database role to use when running the template. This parameter is required only when the IAM principal who is running the template is a fine-grained access control user. The database role must have the `SELECT` privilege on the change stream and the `EXECUTE` privilege on the change stream's read function. For more information, see Fine-grained access control for change streams (https://cloud.google.com/spanner/docs/fgac-change-streams)."
   default     = null
 }
 
@@ -65,13 +65,13 @@ variable "spannerMetadataInstanceId" {
 
 variable "spannerMetadataDatabase" {
   type        = string
-  description = "The Spanner database to use for the change streams connector metadata table. For change streams tracking all tables in a database, we recommend putting the metadata table in a separate database."
+  description = "The Spanner database to use for the change streams connector metadata table."
 
 }
 
 variable "spannerMetadataTableName" {
   type        = string
-  description = "The Cloud Spanner change streams connector metadata table name to use. If not provided, a Cloud Spanner change streams connector metadata table will automatically be created during the pipeline flow. This parameter must be provided when updating an existing pipeline and should not be provided otherwise."
+  description = "The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline. Don't use this parameter for other cases."
   default     = null
 }
 
@@ -83,31 +83,31 @@ variable "spannerChangeStreamName" {
 
 variable "startTimestamp" {
   type        = string
-  description = "The starting DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). For example, 2022-05-05T07:59:59Z. Defaults to the timestamp when the pipeline starts."
+  description = "The starting DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time."
   default     = null
 }
 
 variable "endTimestamp" {
   type        = string
-  description = "The ending DateTime, inclusive, to use for reading change streams (https://tools.ietf.org/html/rfc3339). Ex-2022-05-05T07:59:59Z. Defaults to an infinite time in the future."
+  description = "The ending DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future."
   default     = null
 }
 
 variable "spannerHost" {
   type        = string
-  description = "The Cloud Spanner endpoint to call in the template. Only used for testing. (Example: https://spanner.googleapis.com). Defaults to: https://spanner.googleapis.com."
+  description = "The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://spanner.googleapis.com`. Defaults to: https://spanner.googleapis.com."
   default     = null
 }
 
 variable "outputDataFormat" {
   type        = string
-  description = "The format of the output to Pub/Sub. Allowed formats are JSON, AVRO. Default is JSON."
+  description = "The format of the output. Output is wrapped in many PubsubMessages and sent to a Pub/Sub topic. Allowed formats are JSON and AVRO. Default is JSON."
   default     = null
 }
 
 variable "pubsubAPI" {
   type        = string
-  description = "Pub/Sub API used to implement the pipeline. Allowed APIs are pubsubio and native_client. Default is pubsubio. For a small QPS, native_client can achieve a smaller latency than pubsubio. For a large QPS, pubsubio has better and more stable performance."
+  description = "The Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`. For a small number of queries per second (QPS), `native_client` has less latency. For a large number of QPS, `pubsubio` provides better and more stable performance. The default is `pubsubio`."
   default     = null
 }
 
@@ -119,13 +119,25 @@ variable "pubsubProjectId" {
 
 variable "pubsubTopic" {
   type        = string
-  description = "The Pub/Sub topic to publish PubsubMessage."
+  description = "The Pub/Sub topic for change streams output."
 
 }
 
 variable "rpcPriority" {
   type        = string
-  description = "The request priority for Cloud Spanner calls. The value must be one of: [HIGH,MEDIUM,LOW]. Defaults to: HIGH."
+  description = "The request priority for Spanner calls. Allowed values are HIGH, MEDIUM, and LOW. Defaults to: HIGH)"
+  default     = null
+}
+
+variable "includeSpannerSource" {
+  type        = bool
+  description = "Whether or not to include the spanner database id and instance id to read the change stream from in the output message data. Defaults to: false"
+  default     = null
+}
+
+variable "outputMessageMetadata" {
+  type        = string
+  description = "The string value for the custom field outputMessageMetadata in output pub/sub message. Defaults to empty and the field outputMessageMetadata is only populated if this value is non-empty. Please escape any special characters when entering the value here(ie: double quotes)."
   default     = null
 }
 
@@ -193,7 +205,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -270,6 +283,8 @@ resource "google_dataflow_flex_template_job" "generated" {
     pubsubProjectId           = var.pubsubProjectId
     pubsubTopic               = var.pubsubTopic
     rpcPriority               = var.rpcPriority
+    includeSpannerSource      = tostring(var.includeSpannerSource)
+    outputMessageMetadata     = var.outputMessageMetadata
   }
 
   additional_experiments       = var.additional_experiments
@@ -284,6 +299,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

@@ -35,19 +35,19 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "The Cloud Storage location of the files you'd like to process. (Example: gs://your-bucket/your-files/*.gz)"
+  description = "The Cloud Storage location of the files you'd like to process. For example, `gs://your-bucket/your-files/*.gz`"
 
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/decompressed/)"
+  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/decompressed/`"
 
 }
 
 variable "outputFailureFile" {
   type        = string
-  description = "The output file to write failures to during the decompression process. If there are no failures, the file will still be created but will be empty. The contents will be one line for each file which failed decompression in CSV format (Filename, Error). Note that this parameter will allow the pipeline to continue processing in the event of a failure. (Example: gs://your-bucket/decompressed/failed.csv)"
+  description = "The output file to write failures to during the decompression process. If there are no failures, the file will still be created but will be empty. The contents will be one line for each file which failed decompression in CSV format (Filename, Error). Note that this parameter will allow the pipeline to continue processing in the event of a failure. For example, `gs://your-bucket/decompressed/failed.csv`"
 
 }
 
@@ -162,6 +162,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

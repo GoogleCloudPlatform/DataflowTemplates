@@ -35,67 +35,67 @@ variable "region" {
 
 variable "inputSubscription" {
   type        = string
-  description = "Pub/Sub subscription to read the input from, in the format of 'projects/your-project-id/subscriptions/your-subscription-name' (Example: projects/your-project-id/subscriptions/your-subscription-name)"
+  description = "The Pub/Sub subscription to read the input from. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`"
 
 }
 
 variable "redisHost" {
   type        = string
-  description = "Redis database host. (Example: your.cloud.db.redislabs.com). Defaults to: 127.0.0.1."
+  description = "The Redis database host. For example, `your.cloud.db.redislabs.com`. Defaults to: 127.0.0.1."
   default     = "127.0.0.1"
 }
 
 variable "redisPort" {
   type        = number
-  description = "Redis database port. (Example: 12345). Defaults to: 6379."
+  description = "The Redis database port. For example, `12345`. Defaults to: 6379."
   default     = 6379
 }
 
 variable "redisPassword" {
   type        = string
-  description = "Redis database password. Defaults to empty."
+  description = "The Redis database password. Defaults to `empty`."
   default     = ""
 }
 
 variable "sslEnabled" {
   type        = bool
-  description = "Redis database ssl parameter. Defaults to: false."
+  description = "The Redis database SSL parameter. Defaults to: false."
   default     = null
 }
 
 variable "redisSinkType" {
   type        = string
-  description = "Supported Redis sinks are STRING_SINK, HASH_SINK, STREAMS_SINK and LOGGING_SINK (Example: STRING_SINK). Defaults to: STRING_SINK."
+  description = "The Redis sink. Supported values are `STRING_SINK, HASH_SINK, STREAMS_SINK, and LOGGING_SINK`. For example, `STRING_SINK`. Defaults to: STRING_SINK."
   default     = null
 }
 
 variable "connectionTimeout" {
   type        = number
-  description = "Redis connection timeout in milliseconds. (Example: 2000). Defaults to: 2000."
+  description = "The Redis connection timeout in milliseconds.  For example, `2000`. Defaults to: 2000."
   default     = null
 }
 
 variable "ttl" {
   type        = number
-  description = "Key expiration time in sec (ttl, default for HASH_SINK is -1 i.e. no expiration)"
+  description = "The key expiration time in seconds. The `ttl` default for `HASH_SINK` is -1, which means it never expires."
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
 variable "javascriptTextTransformReloadIntervalMinutes" {
   type        = number
-  description = "Define the interval that workers may check for JavaScript UDF changes to reload the files. Defaults to: 0."
+  description = "Specifies how frequently to reload the UDF, in minutes. If the value is greater than 0, Dataflow periodically checks the UDF file in Cloud Storage, and reloads the UDF if the file is modified. This parameter allows you to update the UDF while the pipeline is running, without needing to restart the job. If the value is `0`, UDF reloading is disabled. The default value is `0`."
   default     = null
 }
 
@@ -163,7 +163,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -249,6 +250,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

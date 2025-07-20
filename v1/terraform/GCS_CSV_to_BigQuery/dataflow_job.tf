@@ -35,80 +35,55 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.csv)"
+  description = "The Cloud Storage path to the CSV file that contains the text to process. For example, `gs://your-bucket/path/*.csv`"
 
 }
 
 variable "schemaJSONPath" {
   type        = string
-  description = <<EOT
-JSON file with BigQuery Schema description. JSON Example: {
-	"BigQuery Schema": [
-		{
-			"name": "location",
-			"type": "STRING"
-		},
-		{
-			"name": "name",
-			"type": "STRING"
-		},
-		{
-			"name": "age",
-			"type": "STRING"
-		},
-		{
-			"name": "color",
-			"type": "STRING"
-		},
-		{
-			"name": "coffee",
-			"type": "STRING"
-		}
-	]
-}
-EOT
+  description = "The Cloud Storage path to the JSON file that defines your BigQuery schema."
 
 }
 
 variable "outputTable" {
   type        = string
-  description = "BigQuery table location to write the output to. The table's schema must match the input objects."
+  description = "The name of the BigQuery table that stores your processed data. If you reuse an existing BigQuery table, the data is appended to the destination table."
 
 }
 
 variable "bigQueryLoadingTemporaryDirectory" {
   type        = string
-  description = "Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)"
+  description = "The temporary directory to use during the BigQuery loading process. For example, `gs://your-bucket/your-files/temp_dir`"
 
 }
 
 variable "badRecordsOutputTable" {
   type        = string
-  description = "BigQuery table location to write the bad record. The table's schema must match the {RawContent: STRING, ErrorMsg:STRING}"
+  description = "The name of the BigQuery table to use to store the rejected data when processing the CSV files. If you reuse an existing BigQuery table, the data is appended to the destination table. The schema of this table must match the error table schema (https://cloud.google.com/dataflow/docs/guides/templates/provided/cloud-storage-csv-to-bigquery#GcsCSVToBigQueryBadRecordsSchema)."
 
 }
 
 variable "containsHeaders" {
   type        = bool
-  description = "Input CSV files contain a header record (true/false). Defaults to: false."
+  description = "Whether headers are included in the CSV file. Defaults to: `false`."
   default     = null
 }
 
 variable "delimiter" {
   type        = string
-  description = "The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,)"
+  description = "The column delimiter that the CSV file uses. For example, `,`"
 
 }
 
 variable "csvFormat" {
   type        = string
-  description = "CSV format specification to use for parsing records. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
+  description = "The CSV format according to Apache Commons CSV format. Defaults to: `Default`."
 
 }
 
 variable "csvFileEncoding" {
   type        = string
-  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  description = "The CSV file character encoding format. Allowed Values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8."
   default     = null
 }
 
@@ -229,6 +204,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

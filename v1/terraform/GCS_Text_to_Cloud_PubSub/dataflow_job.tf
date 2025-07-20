@@ -35,13 +35,13 @@ variable "region" {
 
 variable "inputFilePattern" {
   type        = string
-  description = "Path of the file pattern glob to read from. (Example: gs://your-bucket/path/*.txt)"
+  description = "The input file pattern to read from. For example, `gs://bucket-name/files/*.json`"
 
 }
 
 variable "outputTopic" {
   type        = string
-  description = "The name of the topic to which data should published, in the format of 'projects/your-project-id/topics/your-topic-name' (Example: projects/your-project-id/topics/your-topic-name)"
+  description = "The Pub/Sub input topic to write to. The name must be in the format `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`. For example, `projects/your-project-id/topics/your-topic-name`"
 
 }
 
@@ -155,6 +155,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork

@@ -35,19 +35,19 @@ variable "region" {
 
 variable "deadletterTable" {
   type        = string
-  description = "Messages failed to reach the target for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. (Example: your-project:your-dataset.your-table-name)"
+  description = "The BigQuery dead-letter table to send failed inserts to. For example, `your-project:your-dataset.your-table-name`"
 
 }
 
 variable "inputFormat" {
   type        = string
-  description = "Input file format. Default is: CSV"
+  description = "The input file format. Defaults to `CSV`."
   default     = null
 }
 
 variable "inputFileSpec" {
   type        = string
-  description = "Cloud storage file pattern glob to read from. ex: gs://your-bucket/path/*.csv"
+  description = "The Cloud Storage file pattern to search for CSV files. For example, `gs://mybucket/test-*.csv`."
 
 }
 
@@ -59,209 +59,211 @@ variable "containsHeaders" {
 
 variable "delimiter" {
   type        = string
-  description = "The column delimiter of the input text files. Default: use delimiter provided in csvFormat (Example: ,)"
+  description = "The column delimiter of the input text files. Default: `,` For example, `,`"
   default     = null
 }
 
 variable "csvFormat" {
   type        = string
-  description = "CSV format specification to use for parsing records. Default is: Default. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
+  description = "CSV format specification to use for parsing records. Default is: `Default`. See https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.html for more details. Must match format names exactly found at: https://commons.apache.org/proper/commons-csv/apidocs/org/apache/commons/csv/CSVFormat.Predefined.html"
   default     = null
 }
 
 variable "jsonSchemaPath" {
   type        = string
-  description = "Path to JSON schema. Default: null. (Example: gs://path/to/schema)"
+  description = "The path to the JSON schema. Defaults to `null`. For example, `gs://path/to/schema`"
   default     = null
 }
 
 variable "largeNumFiles" {
   type        = bool
-  description = "Set to true if number of files is in the tens of thousands. Defaults to: false."
+  description = "Set to true if number of files is in the tens of thousands. Defaults to `false`."
   default     = null
 }
 
 variable "csvFileEncoding" {
   type        = string
-  description = "CSV file character encoding format. Allowed Values are US-ASCII, ISO-8859-1, UTF-8, UTF-16. Defaults to: UTF-8."
+  description = "The CSV file character encoding format. Allowed values are `US-ASCII`, `ISO-8859-1`, `UTF-8`, and `UTF-16`. Defaults to: UTF-8."
   default     = null
 }
 
 variable "logDetailedCsvConversionErrors" {
   type        = bool
-  description = "Set to true to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: false."
+  description = "Set to `true` to enable detailed error logging when CSV parsing fails. Note that this may expose sensitive data in the logs (e.g., if the CSV file contains passwords). Default: `false`."
   default     = null
 }
 
 variable "connectionUrl" {
   type        = string
-  description = "Elasticsearch URL in the format https://hostname:[port] or specify CloudID if using Elastic Cloud (Example: https://elasticsearch-host:9200)"
+  description = "The Elasticsearch URL in the format `https://hostname:[port]`. If using Elastic Cloud, specify the CloudID. For example, `https://elasticsearch-host:9200`"
 
 }
 
 variable "apiKey" {
   type        = string
-  description = "Base64 Encoded API Key for access without requiring basic authentication. Refer to: https://www.elastic.co/guide/en/elasticsearch/reference/current/security-api-create-api-key.html#security-api-create-api-key-request"
+  description = "The Base64-encoded API key to use for authentication."
 
 }
 
 variable "elasticsearchUsername" {
   type        = string
-  description = "Username for Elasticsearch endpoint. Overrides ApiKey option if specified"
+  description = "The Elasticsearch username to authenticate with. If specified, the value of `apiKey` is ignored"
   default     = null
 }
 
 variable "elasticsearchPassword" {
   type        = string
-  description = "Password for Elasticsearch endpoint. Overrides ApiKey option if specified"
+  description = "The Elasticsearch password to authenticate with. If specified, the value of `apiKey` is ignored."
   default     = null
 }
 
 variable "index" {
   type        = string
-  description = "The index toward which the requests will be issued (Example: my-index)"
+  description = "The Elasticsearch index that the requests are issued to. For example, `my-index`"
 
 }
 
 variable "batchSize" {
   type        = number
-  description = "Batch Size used for batch insertion of messages into Elasticsearch. Defaults to: 1000."
+  description = "The batch size in number of documents. Defaults to `1000`."
   default     = null
 }
 
 variable "batchSizeBytes" {
   type        = number
-  description = "Batch Size in bytes used for batch insertion of messages into elasticsearch. Default: 5242880 (5mb)"
+  description = "The batch size in number of bytes. Defaults to `5242880` (5mb)."
   default     = null
 }
 
 variable "maxRetryAttempts" {
   type        = number
-  description = "Max retry attempts, must be > 0. Default: no retries"
+  description = "The maximum number of retry attempts. Must be greater than zero. Defaults to `no retries`."
   default     = null
 }
 
 variable "maxRetryDuration" {
   type        = number
-  description = "Max retry duration in milliseconds, must be > 0. Default: no retries"
+  description = "The maximum retry duration in milliseconds. Must be greater than zero. Defaults to `no retries`."
   default     = null
 }
 
 variable "propertyAsIndex" {
   type        = string
-  description = "A property in the document being indexed whose value will specify _index metadata to be included with document in bulk request (takes precedence over an _index UDF)."
+  description = "The property in the document being indexed whose value specifies `_index` metadata to include with the document in bulk requests. Takes precedence over an `_index` UDF. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptIndexFnGcsPath" {
   type        = string
-  description = "Cloud Storage path to JavaScript UDF source for function that will specify _index metadata to be included with document in bulk request."
+  description = "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptIndexFnName" {
   type        = string
-  description = "UDF JavaScript Function Name for function that will specify _index metadata to be included with document in bulk request"
+  description = "The name of the UDF JavaScript function that specifies `_index` metadata to include with the document in bulk requests. Defaults to `none`."
   default     = null
 }
 
 variable "propertyAsId" {
   type        = string
-  description = "A property in the document being indexed whose value will specify _id metadata to be included with document in bulk request (takes precedence over an _id UDF)."
+  description = "A property in the document being indexed whose value specifies `_id` metadata to include with the document in bulk requests. Takes precedence over an `_id` UDF. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptIdFnGcsPath" {
   type        = string
-  description = "Cloud Storage path to JavaScript UDF source for function that will specify _id metadata to be included with document in bulk request."
+  description = "The Cloud Storage path to the JavaScript UDF source for the function that specifies `_id` metadata to include with the document in bulk requests. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptIdFnName" {
   type        = string
-  description = "UDF JavaScript Function Name for function that will specify _id metadata to be included with document in bulk request."
+  description = "The name of the UDF JavaScript function that specifies the `_id` metadata to include with the document in bulk requests. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptTypeFnGcsPath" {
   type        = string
-  description = "Cloud Storage path to JavaScript UDF source for function that will specify _type metadata to be included with document in bulk request."
+  description = "The Cloud Storage path to the JavaScript UDF source for a function that specifies `_type` metadata to include with documents in bulk requests. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptTypeFnName" {
   type        = string
-  description = "UDF JavaScript Function Name for function that will specify _type metadata to be included with document in bulk request"
+  description = "The name of the UDF JavaScript function that specifies the `_type` metadata to include with the document in bulk requests. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptIsDeleteFnGcsPath" {
   type        = string
-  description = <<EOT
-Cloud Storage path to JavaScript UDF source for function that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false".
-EOT
+  description = "The Cloud Storage path to the JavaScript UDF source for the function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`."
   default     = null
 }
 
 variable "javaScriptIsDeleteFnName" {
   type        = string
-  description = <<EOT
-UDF JavaScript Function Name for function that will determine if document should be deleted rather than inserted or updated, function should return string value "true" or "false".
-EOT
+  description = "The name of the UDF JavaScript function that determines whether to delete the document instead of inserting or updating it. The function returns a string value of `true` or `false`. Defaults to `none`."
   default     = null
 }
 
 variable "usePartialUpdate" {
   type        = bool
-  description = "Whether to use partial updates (update rather than create or index, allowing partial docs) with Elasticsearch requests. Defaults to: false."
+  description = "Whether to use partial updates (update rather than create or index, allowing partial documents) with Elasticsearch requests. Defaults to `false`."
   default     = null
 }
 
 variable "bulkInsertMethod" {
   type        = string
-  description = "Whether to use INDEX (index, allows upsert) or CREATE (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to: CREATE."
+  description = "Whether to use `INDEX` (index, allows upserts) or `CREATE` (create, errors on duplicate _id) with Elasticsearch bulk requests. Defaults to `CREATE`."
   default     = null
 }
 
 variable "trustSelfSignedCerts" {
   type        = bool
-  description = "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to True to by-pass the validation on SSL certificate. (default is False)"
+  description = "Whether to trust self-signed certificate or not. An Elasticsearch instance installed might have a self-signed certificate, Enable this to true to by-pass the validation on SSL certificate. (Defaults to: `false`)"
   default     = null
 }
 
 variable "disableCertificateValidation" {
   type        = bool
-  description = "Disable SSL certificate validation (true/false). Default false (validation enabled). If true, all certificates are considered trusted."
+  description = "If `true`, trust the self-signed SSL certificate. An Elasticsearch instance might have a self-signed certificate. To bypass validation for the certificate, set this parameter to `true`. Defaults to `false`."
   default     = null
 }
 
 variable "apiKeyKMSEncryptionKey" {
   type        = string
-  description = "The Cloud KMS key to decrypt the API key. This parameter must be provided if the apiKeySource is set to KMS. If this parameter is provided, apiKey string should be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. The Key should be in the format projects/{gcp_project}/locations/{key_region}/keyRings/{key_ring}/cryptoKeys/{kms_key_name}. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  (Example: projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name)"
+  description = "The Cloud KMS key to decrypt the API key. This parameter is required if the `apiKeySource` is set to `KMS`. If this parameter is provided, pass in an encrypted `apiKey` string. Encrypt parameters using the KMS API encrypt endpoint. For the key, use the format `projects/<PROJECT_ID>/locations/<KEY_REGION>/keyRings/<KEY_RING>/cryptoKeys/<KMS_KEY_NAME>`. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt  For example, `projects/your-project-id/locations/global/keyRings/your-keyring/cryptoKeys/your-key-name`"
   default     = null
 }
 
 variable "apiKeySecretId" {
   type        = string
-  description = "Secret Manager secret ID for the apiKey. This parameter should be provided if the apiKeySource is set to SECRET_MANAGER. Should be in the format projects/{project}/secrets/{secret}/versions/{secret_version}. (Example: projects/your-project-id/secrets/your-secret/versions/your-secret-version)"
+  description = "The Secret Manager secret ID for the apiKey. If the `apiKeySource` is set to `SECRET_MANAGER`, provide this parameter. Use the format `projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<SECRET_VERSION>. For example, `projects/your-project-id/secrets/your-secret/versions/your-secret-version`"
   default     = null
 }
 
 variable "apiKeySource" {
   type        = string
-  description = "Source of the API key. One of PLAINTEXT, KMS or SECRET_MANAGER. This parameter must be provided if secret manager or KMS is used. If apiKeySource is set to KMS, apiKeyKMSEncryptionKey and encrypted apiKey must be provided. If apiKeySource is set to SECRET_MANAGER, apiKeySecretId must be provided. If apiKeySource is set to PLAINTEXT, apiKey must be provided. Defaults to: PLAINTEXT."
+  description = "The source of the API key. Allowed values are `PLAINTEXT`, `KMS` orand `SECRET_MANAGER`. This parameter is required when you use Secret Manager or KMS. If `apiKeySource` is set to `KMS`, `apiKeyKMSEncryptionKey` and encrypted apiKey must be provided. If `apiKeySource` is set to `SECRET_MANAGER`, `apiKeySecretId` must be provided. If `apiKeySource` is set to `PLAINTEXT`, `apiKey` must be provided. Defaults to: PLAINTEXT."
+  default     = null
+}
+
+variable "socketTimeout" {
+  type        = number
+  description = "If set, overwrites the default max retry timeout and default socket timeout (30000ms) in the Elastic RestClient"
   default     = null
 }
 
 variable "javascriptTextTransformGcsPath" {
   type        = string
-  description = "The Cloud Storage path pattern for the JavaScript code containing your user-defined functions. (Example: gs://your-bucket/your-function.js)"
+  description = "The Cloud Storage URI of the .js file that defines the JavaScript user-defined function (UDF) to use. For example, `gs://my-bucket/my-udfs/my_file.js`"
   default     = null
 }
 
 variable "javascriptTextTransformFunctionName" {
   type        = string
-  description = "The name of the function to call from your JavaScript file. Use only letters, digits, and underscores. (Example: 'transform' or 'transform_udf1')"
+  description = "The name of the JavaScript user-defined function (UDF) to use. For example, if your JavaScript function code is `myTransform(inJson) { /*...do stuff...*/ }`, then the function name is `myTransform`. For sample JavaScript UDFs, see UDF Examples (https://github.com/GoogleCloudPlatform/DataflowTemplates#udf-examples)."
   default     = null
 }
 
@@ -329,7 +331,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -426,6 +429,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     apiKeyKMSEncryptionKey              = var.apiKeyKMSEncryptionKey
     apiKeySecretId                      = var.apiKeySecretId
     apiKeySource                        = var.apiKeySource
+    socketTimeout                       = tostring(var.socketTimeout)
     javascriptTextTransformGcsPath      = var.javascriptTextTransformGcsPath
     javascriptTextTransformFunctionName = var.javascriptTextTransformFunctionName
   }
@@ -442,6 +446,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

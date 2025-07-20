@@ -34,7 +34,7 @@ variable "region" {
 }
 
 variable "qps" {
-  type        = string
+  type        = number
   description = "Indicates rate of messages per second to be published to Pub/Sub"
 
 }
@@ -47,13 +47,13 @@ variable "schemaTemplate" {
 
 variable "schemaLocation" {
   type        = string
-  description = "Cloud Storage path of schema location. (Example: gs://<bucket-name>/prefix)"
+  description = "Cloud Storage path of schema location. For example, `gs://<bucket-name>/prefix`"
   default     = null
 }
 
 variable "topic" {
   type        = string
-  description = "The name of the topic to which the pipeline should publish data. (Example: projects/<project-id>/topics/<topic-name>)"
+  description = "The name of the topic to which the pipeline should publish data. For example, `projects/<project-id>/topics/<topic-name>`"
   default     = null
 }
 
@@ -71,7 +71,7 @@ variable "outputType" {
 
 variable "avroSchemaLocation" {
   type        = string
-  description = "Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or PARQUET. (Example: gs://your-bucket/your-path/schema.avsc)"
+  description = "Cloud Storage path of Avro schema location. Mandatory when output type is AVRO or PARQUET. For example, `gs://your-bucket/your-path/schema.avsc`"
   default     = null
 }
 
@@ -83,7 +83,7 @@ variable "sinkType" {
 
 variable "outputTableSpec" {
   type        = string
-  description = "Output BigQuery table. Mandatory when sinkType is BIGQUERY (Example: <project>:<dataset>.<table_name>)"
+  description = "Output BigQuery table. Mandatory when sinkType is BIGQUERY For example, `<project>:<dataset>.<table_name>`"
   default     = null
 }
 
@@ -95,25 +95,25 @@ variable "writeDisposition" {
 
 variable "outputDeadletterTable" {
   type        = string
-  description = "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. (Example: your-project-id:your-dataset.your-table-name)"
+  description = "Messages failed to reach the output table for all kind of reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. For example, `your-project-id:your-dataset.your-table-name`"
   default     = null
 }
 
 variable "windowDuration" {
   type        = string
-  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). (Example: 1m). Defaults to: 1m."
+  description = "The window duration/size in which data will be written to Cloud Storage. Allowed formats are: Ns (for seconds, example: 5s), Nm (for minutes, example: 12m), Nh (for hours, example: 2h). For example, `1m`. Defaults to: 1m."
   default     = null
 }
 
 variable "outputDirectory" {
   type        = string
-  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. (Example: gs://your-bucket/your-path/)"
+  description = "The path and filename prefix for writing output files. Must end with a slash. DateTime formatting is used to parse directory path for date & time formatters. For example, `gs://your-bucket/your-path/`"
   default     = null
 }
 
 variable "outputFilenamePrefix" {
   type        = string
-  description = "The prefix to place on each windowed file. (Example: output-). Defaults to: output-."
+  description = "The prefix to place on each windowed file. For example, `output-`. Defaults to: output-."
   default     = null
 }
 
@@ -125,13 +125,13 @@ variable "numShards" {
 
 variable "driverClassName" {
   type        = string
-  description = "JDBC driver class name to use. (Example: com.mysql.jdbc.Driver)"
+  description = "JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`"
   default     = null
 }
 
 variable "connectionUrl" {
   type        = string
-  description = "Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb)"
+  description = "Url connection string to connect to the JDBC source. For example, `jdbc:mysql://some-host:3306/sampledb`"
   default     = null
 }
 
@@ -149,13 +149,13 @@ variable "password" {
 
 variable "connectionProperties" {
   type        = string
-  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
+  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`"
   default     = null
 }
 
 variable "statement" {
   type        = string
-  description = "SQL statement which will be executed to write to the database. The statement must specify the column names of the table in any order. Only the values of the specified column names will be read from the json and added to the statement. (Example: INSERT INTO tableName (column1, column2) VALUES (?,?))"
+  description = "SQL statement which will be executed to write to the database. The statement must specify the column names of the table in any order. Only the values of the specified column names will be read from the json and added to the statement. For example, `INSERT INTO tableName (column1, column2) VALUES (?,?)`"
   default     = null
 }
 
@@ -184,38 +184,38 @@ variable "spannerTableName" {
 }
 
 variable "maxNumMutations" {
-  type        = string
+  type        = number
   description = "Specifies the cell mutation limit (maximum number of mutated cells per batch). Default value is 5000"
   default     = null
 }
 
 variable "maxNumRows" {
-  type        = string
+  type        = number
   description = "Specifies the row mutation limit (maximum number of mutated rows per batch). Default value is 1000"
   default     = null
 }
 
 variable "batchSizeBytes" {
-  type        = string
+  type        = number
   description = "Specifies the batch size limit (max number of bytes mutated per batch). Default value is 1MB"
   default     = null
 }
 
 variable "commitDeadlineSeconds" {
-  type        = string
+  type        = number
   description = "Specifies the deadline in seconds for the Commit API call."
   default     = null
 }
 
 variable "bootstrapServer" {
   type        = string
-  description = "Kafka Bootstrap Server  (Example: localhost:9092)"
+  description = "Kafka Bootstrap Server  For example, `localhost:9092`"
   default     = null
 }
 
 variable "kafkaTopic" {
   type        = string
-  description = "Kafka topic to write to. (Example: topic)"
+  description = "Kafka topic to write to. For example, `topic`"
   default     = null
 }
 
@@ -283,7 +283,8 @@ variable "max_workers" {
 }
 
 variable "name" {
-  type = string
+  type        = string
+  description = "A unique name for the resource, required by Dataflow."
 }
 
 variable "network" {
@@ -344,7 +345,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   provider                = google-beta
   container_spec_gcs_path = "gs://dataflow-templates-${var.region}/latest/flex/Streaming_Data_Generator"
   parameters = {
-    qps                   = var.qps
+    qps                   = tostring(var.qps)
     schemaTemplate        = var.schemaTemplate
     schemaLocation        = var.schemaLocation
     topic                 = var.topic
@@ -369,10 +370,10 @@ resource "google_dataflow_flex_template_job" "generated" {
     spannerInstanceName   = var.spannerInstanceName
     spannerDatabaseName   = var.spannerDatabaseName
     spannerTableName      = var.spannerTableName
-    maxNumMutations       = var.maxNumMutations
-    maxNumRows            = var.maxNumRows
-    batchSizeBytes        = var.batchSizeBytes
-    commitDeadlineSeconds = var.commitDeadlineSeconds
+    maxNumMutations       = tostring(var.maxNumMutations)
+    maxNumRows            = tostring(var.maxNumRows)
+    batchSizeBytes        = tostring(var.batchSizeBytes)
+    commitDeadlineSeconds = tostring(var.commitDeadlineSeconds)
     bootstrapServer       = var.bootstrapServer
     kafkaTopic            = var.kafkaTopic
   }
@@ -389,6 +390,7 @@ resource "google_dataflow_flex_template_job" "generated" {
   name                         = var.name
   network                      = var.network
   num_workers                  = var.num_workers
+  on_delete                    = var.on_delete
   sdk_container_image          = var.sdk_container_image
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination

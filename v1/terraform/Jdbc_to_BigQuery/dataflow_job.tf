@@ -35,25 +35,25 @@ variable "region" {
 
 variable "driverJars" {
   type        = string
-  description = "Comma separate Cloud Storage paths for JDBC drivers. (Example: gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar)"
+  description = "Comma separate Cloud Storage paths for JDBC drivers. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`"
 
 }
 
 variable "driverClassName" {
   type        = string
-  description = "JDBC driver class name to use. (Example: com.mysql.jdbc.Driver)"
+  description = "JDBC driver class name to use. For example, `com.mysql.jdbc.Driver`"
 
 }
 
 variable "connectionURL" {
   type        = string
-  description = "Url connection string to connect to the JDBC source. (Example: jdbc:mysql://some-host:3306/sampledb)"
+  description = "Url connection string to connect to the JDBC source. For example, `jdbc:mysql://some-host:3306/sampledb`"
 
 }
 
 variable "connectionProperties" {
   type        = string
-  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. (Example: unicode=true;characterEncoding=UTF-8)"
+  description = "Properties string to use for the JDBC connection. Format of the string must be [propertyName=property;]*. For example, `unicode=true;characterEncoding=UTF-8`"
   default     = null
 }
 
@@ -71,7 +71,7 @@ variable "password" {
 
 variable "query" {
   type        = string
-  description = "Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. (Example: select * from sampledb.sample_table)"
+  description = "Query to be executed on the source to extract the data. If a Cloud Storage path is given (gs://...), the query will be fetched from that file. For example, `select * from sampledb.sample_table`"
 
 }
 
@@ -83,13 +83,13 @@ variable "outputTable" {
 
 variable "bigQueryLoadingTemporaryDirectory" {
   type        = string
-  description = "Temporary directory for BigQuery loading process (Example: gs://your-bucket/your-files/temp_dir)"
+  description = "Temporary directory for BigQuery loading process For example, `gs://your-bucket/your-files/temp_dir`"
 
 }
 
 variable "KMSEncryptionKey" {
   type        = string
-  description = "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt (Example: projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key)"
+  description = "If this parameter is provided, password, user name and connection string should all be passed in encrypted. Encrypt parameters using the KMS API encrypt endpoint. See: https://cloud.google.com/kms/docs/reference/rest/v1/projects.locations.keyRings.cryptoKeys/encrypt For example, `projects/your-project/locations/global/keyRings/your-keyring/cryptoKeys/your-key`"
   default     = null
 }
 
@@ -103,13 +103,13 @@ EOT
 
 variable "disabledAlgorithms" {
   type        = string
-  description = "Comma-separated algorithms to disable. If this value is set to `none` then no algorithm is disabled. Use with care, because the algorithms that are disabled by default are known to have either vulnerabilities or performance issues. (Example: SSLv3, RC4)"
+  description = "Comma-separated list of algorithms to disable. If this value is set to none, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`"
   default     = null
 }
 
 variable "extraFilesToStage" {
   type        = string
-  description = "Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files will be saved under the `/extra_files` directory in each worker. (Example: gs://your-bucket/file.txt,projects/project-id/secrets/secret-id/versions/version-id)"
+  description = "Comma-separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`"
   default     = null
 }
 
@@ -234,6 +234,7 @@ resource "google_dataflow_job" "generated" {
   max_workers                  = var.max_workers
   name                         = var.name
   network                      = var.network
+  on_delete                    = var.on_delete
   service_account_email        = var.service_account_email
   skip_wait_on_job_termination = var.skip_wait_on_job_termination
   subnetwork                   = var.subnetwork
