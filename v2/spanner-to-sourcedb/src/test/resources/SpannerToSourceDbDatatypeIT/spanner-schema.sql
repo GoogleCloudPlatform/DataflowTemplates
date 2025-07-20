@@ -28,7 +28,6 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
     binary_column BYTES(MAX),
     varbinary_column BYTES(20),
     bit_column BYTES(MAX),
-    res_always_generated_virtual_column INT64 as (tinyint_column + smallint_column),
 ) PRIMARY KEY(varchar_column);
 
 
