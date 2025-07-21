@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.TransactionRunner.TransactionCallable;
@@ -68,6 +69,8 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
 
   private static final String TABLE = "Users";
+  private static final String TABLE_WITH_VIRTUAL_GEN_COL = "TableWithVirtualGeneratedColumn";
+  private static final String TABLE_WITH_STORED_GEN_COL = "TableWithStoredGeneratedColumn";
   private static final String BOUNDARY_CHECK_TABLE =
       "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO";
   private static final HashSet<SpannerToSourceDbIT> testInstances = new HashSet<>();
@@ -219,6 +222,44 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   }
 
   @Test
+  public void spannerToSourceDbWithGeneratedColumns() {
+    assertThatPipeline(jobInfo).isRunning();
+    // INSERT
+    writeRowsWithGenColInSpanner();
+
+    assertThatPipeline(jobInfo).isRunning();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () ->
+                    (jdbcResourceManager.getRowCount(TABLE_WITH_STORED_GEN_COL) == 2)
+                        && (jdbcResourceManager.getRowCount(TABLE_WITH_VIRTUAL_GEN_COL)
+                            == 2)); // only two rows is inserted
+    assertThatResult(result).meetsConditions();
+    assertGenColRowsInMySQLAfterInsert();
+
+    updateRowsWithGenColsInSpanner();
+    result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                this::checkGenColRowsInMySQLAfterUpdate);
+    assertThatResult(result).meetsConditions();
+
+    // Delete rows in spanner.
+    deleteGenColRowsInSpanner();
+
+    PipelineOperator.Result deleteResult =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofMinutes(10)),
+                () -> allGenColRowsDeleted()); // all rows should be deleted
+    assertThatResult(deleteResult).meetsConditions();
+  }
+
+  @Test
   public void spannerToMySQLSourceDbMaxColAndTableNameTest()
       throws IOException, InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
@@ -241,12 +282,131 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     LOG.info("Inserted row into Spanner using Mutations");
   }
 
-  private void assertBoundaryRowInMySQL() throws InterruptedException {
+  private void assertBoundaryRowInMySQL() {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(10)),
                 () -> jdbcResourceManager.getRowCount(BOUNDARY_CHECK_TABLE) == 1);
     assertThatResult(result).meetsConditions();
+  }
+
+  private void writeRowsWithGenColInSpanner() {
+    List<Mutation> mutations = new ArrayList<>();
+    mutations.add(
+        Mutation.newInsertBuilder(TABLE_WITH_STORED_GEN_COL)
+            .set("id")
+            .to(1)
+            .set("column1")
+            .to(1)
+            .build());
+    mutations.add(
+        Mutation.newInsertBuilder(TABLE_WITH_STORED_GEN_COL)
+            .set("id")
+            .to(2)
+            .set("column1")
+            .to(2)
+            .build());
+    mutations.add(
+        Mutation.newInsertBuilder(TABLE_WITH_VIRTUAL_GEN_COL)
+            .set("id")
+            .to(1)
+            .set("column1")
+            .to(1)
+            .build());
+    mutations.add(
+        Mutation.newInsertBuilder(TABLE_WITH_VIRTUAL_GEN_COL)
+            .set("id")
+            .to(2)
+            .set("column1")
+            .to(2)
+            .build());
+
+    spannerResourceManager.write(mutations);
+  }
+
+  private void assertGenColRowsInMySQLAfterInsert() {
+    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE_WITH_VIRTUAL_GEN_COL);
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(0).get("id")).isEqualTo(1);
+    assertThat(rows.get(0).get("column1")).isEqualTo(1);
+    assertThat(rows.get(0).get("virtual_generated_column")).isEqualTo(2);
+    assertThat(rows.get(1).get("id")).isEqualTo(2);
+    assertThat(rows.get(1).get("column1")).isEqualTo(2);
+    assertThat(rows.get(1).get("virtual_generated_column")).isEqualTo(4);
+
+    rows = jdbcResourceManager.readTable(TABLE_WITH_STORED_GEN_COL);
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(0).get("id")).isEqualTo(1);
+    assertThat(rows.get(0).get("column1")).isEqualTo(1);
+    assertThat(rows.get(0).get("stored_generated_column")).isEqualTo(2);
+    assertThat(rows.get(1).get("id")).isEqualTo(2);
+    assertThat(rows.get(1).get("column1")).isEqualTo(2);
+    assertThat(rows.get(1).get("stored_generated_column")).isEqualTo(4);
+  }
+
+  private void updateRowsWithGenColsInSpanner() {
+    List<Mutation> mutations = new ArrayList<>();
+    mutations.add(
+        Mutation.newUpdateBuilder(TABLE_WITH_STORED_GEN_COL)
+            .set("id")
+            .to(1)
+            .set("column1")
+            .to(3)
+            .build());
+    mutations.add(
+        Mutation.newUpdateBuilder(TABLE_WITH_VIRTUAL_GEN_COL)
+            .set("id")
+            .to(1)
+            .set("column1")
+            .to(4)
+            .build());
+
+    spannerResourceManager.write(mutations);
+  }
+
+  private boolean checkGenColRowsInMySQLAfterUpdate() {
+    List<Map<String, Object>> rows =
+        jdbcResourceManager.runSQLQuery("select * from TableWithVirtualGeneratedColumn where id=1");
+    if (rows.size() != 1) {
+      return false;
+    }
+    if (!rows.get(0).get("id").equals(1)) {
+      return false;
+    }
+    if (!rows.get(0).get("column1").equals(4)) {
+      return false;
+    }
+
+    rows =
+        jdbcResourceManager.runSQLQuery("select * from TableWithStoredGeneratedColumn where id=1");
+    if (rows.size() != 1) {
+      return false;
+    }
+    if (!rows.get(0).get("id").equals(1)) {
+      return false;
+    }
+    if (!rows.get(0).get("column1").equals(3)) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private void deleteGenColRowsInSpanner() {
+    Mutation m1 = Mutation.delete(TABLE_WITH_VIRTUAL_GEN_COL, Key.newBuilder().append(1).build());
+    spannerResourceManager.write(m1);
+    Mutation m2 = Mutation.delete(TABLE_WITH_VIRTUAL_GEN_COL, Key.newBuilder().append(2).build());
+    spannerResourceManager.write(m2);
+    Mutation m3 = Mutation.delete(TABLE_WITH_STORED_GEN_COL, Key.newBuilder().append(1).build());
+    spannerResourceManager.write(m3);
+    Mutation m4 = Mutation.delete(TABLE_WITH_STORED_GEN_COL, Key.newBuilder().append(2).build());
+    spannerResourceManager.write(m4);
+  }
+
+  private boolean allGenColRowsDeleted() {
+    long rowCountTable1 = jdbcResourceManager.getRowCount(TABLE_WITH_STORED_GEN_COL);
+    long rowCountTable2 = jdbcResourceManager.getRowCount(TABLE_WITH_VIRTUAL_GEN_COL);
+    return (rowCountTable1 == 0) && (rowCountTable2 == 0);
   }
 }
