@@ -96,7 +96,7 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
             .withMapperFactoryFn(AstraDbSourceRowMapperFactoryFn.create(astraDbSourceRowMapper))
             .withCoder(SerializableCoder.of(SourceRow.class))
             .withEntity(SourceRow.class);
-    return astraSource;
+    return setNumPartitionsAstra(astraSource, astraDbDataSource, sourceTableSchema.tableName());
   }
 
   private PTransform<PBegin, PCollection<SourceRow>> getTableReaderOss(
@@ -125,17 +125,37 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
             .withCoder(SerializableCoder.of(SourceRow.class))
             .withMapperFactoryFn(
                 CassandraSourceRowMapperFactoryFn.create(cassandraSourceRowMapper));
-    return setNumPartitions(
+    return setNumPartitionsOss(
         setCredentials(tableReader, profile),
         cassandraDataSourceOss,
         sourceTableSchema.tableName());
   }
 
   @VisibleForTesting
-  protected static CassandraIO.Read<SourceRow> setNumPartitions(
+  protected static CassandraIO.Read<SourceRow> setNumPartitionsOss(
       CassandraIO.Read<SourceRow> tableReader,
       CassandraDataSourceOss dataSource,
       String tableName) {
+    Integer numPartitions = dataSource.numPartitions();
+    if (numPartitions != null && numPartitions > 0) {
+      LOG.info(
+          "Setting numPartitions as {} for DataSource {}, tableName {}",
+          numPartitions,
+          dataSource,
+          tableName);
+      return tableReader.withMinNumberOfSplits(numPartitions);
+    } else {
+      LOG.info(
+          "numPartitions would be auto Inferred to number of hosts, for DataSource {}, tableName {}",
+          dataSource,
+          tableName);
+      return tableReader;
+    }
+  }
+
+  @VisibleForTesting
+  protected static AstraDbIO.Read<SourceRow> setNumPartitionsAstra(
+      AstraDbIO.Read<SourceRow> tableReader, AstraDbDataSource dataSource, String tableName) {
     Integer numPartitions = dataSource.numPartitions();
     if (numPartitions != null && numPartitions > 0) {
       LOG.info(

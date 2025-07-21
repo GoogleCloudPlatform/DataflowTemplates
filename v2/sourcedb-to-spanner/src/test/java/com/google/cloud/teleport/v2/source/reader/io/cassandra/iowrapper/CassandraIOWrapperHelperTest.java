@@ -63,6 +63,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.cassandra.CassandraIO;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.values.PBegin;
 import org.apache.beam.sdk.values.PCollection;
@@ -250,5 +251,36 @@ public class CassandraIOWrapperHelperTest {
                 .map(t -> t.sourceTableName())
                 .collect(Collectors.toList()))
         .isEqualTo(List.of(BASIC_TEST_TABLE, PRIMITIVE_TYPES_TABLE));
+  }
+
+  @Test
+  public void testAstra() {
+    GuardedStringValueProvider testAstraDbToken =
+        GuardedStringValueProvider.create("AstraCS:testToken");
+    ValueProvider<byte[]> testAstraDbSecureBundle =
+        ValueProvider.StaticValueProvider.of(new byte[] {});
+    ValueProvider<String> testAstraDbKeySpace =
+        ValueProvider.StaticValueProvider.of("testKeySpace");
+    String testAstraDbRegion = "testRegion";
+    String testAstraDBID = "testID";
+    CassandraDataSource cassandraDataSource =
+        CassandraDataSource.ofAstra(
+            AstraDbDataSource.builder()
+                .setAstraDbRegion(testAstraDbRegion)
+                .setKeySpace(testAstraDbKeySpace.get())
+                .setDatabaseId(testAstraDBID)
+                .setAstraToken(testAstraDbToken.get())
+                .build());
+
+    DataSource dataSource =
+        CassandraIOWrapperHelper.buildDataSource(
+            "",
+            null,
+            CassandraDialect.ASTRA,
+            testAstraDbToken,
+            testAstraDBID,
+            testAstraDbKeySpace.get(),
+            testAstraDbRegion);
+    assertThat(dataSource.cassandra()).isEqualTo(cassandraDataSource);
   }
 }

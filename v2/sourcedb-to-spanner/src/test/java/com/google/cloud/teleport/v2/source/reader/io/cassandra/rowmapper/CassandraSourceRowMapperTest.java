@@ -35,6 +35,8 @@ import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
+import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraConnector;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
@@ -51,7 +53,9 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.typemapping.UnifiedT
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -88,16 +92,19 @@ public class CassandraSourceRowMapperTest {
   @Test
   public void testCassandraSourceRowMapperList() throws RetriableSchemaDiscoveryException {
     cassandraSourceRowMapperTestHelper(LIST_TYPES_TABLE, LIST_TYPES_TABLE_AVRO_ROWS);
+    astraDbSourceRowMapperTestHelper(LIST_TYPES_TABLE, LIST_TYPES_TABLE_AVRO_ROWS);
   }
 
   @Test
   public void testCassandraSourceRowMapperSet() throws RetriableSchemaDiscoveryException {
     cassandraSourceRowMapperTestHelper(SET_TYPES_TABLE, SET_TYPES_TABLE_AVRO_ROWS);
+    astraDbSourceRowMapperTestHelper(SET_TYPES_TABLE, SET_TYPES_TABLE_AVRO_ROWS);
   }
 
   @Test
   public void testCassandraSourceRowMapperMap() throws RetriableSchemaDiscoveryException {
     cassandraSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
+    astraDbSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
   }
 
   private void cassandraSourceRowMapperTestHelper(String tableName, List<String> expectedRows)
@@ -171,6 +178,67 @@ public class CassandraSourceRowMapperTest {
     }
   }
 
+  private void astraDbSourceRowMapperTestHelper(String tableName, List<String> expectedRows)
+      throws RetriableSchemaDiscoveryException {
+
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
+    DataSource dataSource =
+        DataSource.ofCassandra(
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setClusterName(sharedEmbeddedCassandra.getInstance().getClusterName())
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setContactPoints(sharedEmbeddedCassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(sharedEmbeddedCassandra.getInstance().getLocalDataCenter())
+                    .build()));
+
+    SourceTableSchema.Builder sourceTableSchemaBuilder =
+        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
+    new CassandraSchemaDiscovery()
+        .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
+        .get(tableName)
+        .forEach(sourceTableSchemaBuilder::addSourceColumnNameToSourceColumnType);
+
+    AstraDbSourceRowMapper astraDbSourceRowMapper =
+        AstraDbSourceRowMapper.builder()
+            .setSourceSchemaReference(sourceSchemaReference)
+            .setSourceTableSchema(sourceTableSchemaBuilder.build())
+            .build();
+    com.datastax.oss.driver.api.core.cql.ResultSet resultSet;
+    String query = "SELECT * FROM " + tableName;
+    var statement = SimpleStatement.newInstance(query);
+    try (CassandraConnector cassandraConnectorWithSchemaReference =
+        new CassandraConnector(dataSource.cassandra(), sourceSchemaReference.cassandra())) {
+      resultSet = cassandraConnectorWithSchemaReference.getSession().execute(statement);
+      ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
+      resultSet
+          .iterator()
+          .forEachRemaining(row -> readRowsBuilder.add((astraDbSourceRowMapper.mapRow(row))));
+      ImmutableList<SourceRow> readRows = readRowsBuilder.build();
+
+      readRows.forEach(r -> assertThat(r.tableName() == tableName));
+      readRows.forEach(r -> assertThat(r.sourceSchemaReference() == sourceSchemaReference));
+      assertThat(
+              readRows.stream()
+                  .map(r -> r.getPayload().toString())
+                  .sorted()
+                  .collect(ImmutableList.toImmutableList()))
+          .isEqualTo(expectedRows.stream().sorted().collect(ImmutableList.toImmutableList()));
+
+      // Since we will use CassandraIO only for reads, we don't need to support the `deleteAsync`
+      // and `saveAsync` functions of the CassandraIO mapper interface.
+      assertThrows(
+          UnsupportedOperationException.class,
+          () -> astraDbSourceRowMapper.deleteAsync(readRows.get(0)));
+      assertThrows(
+          UnsupportedOperationException.class,
+          () -> astraDbSourceRowMapper.saveAsync(readRows.get(0)));
+    }
+  }
+
   @Test
   public void testCassandraSourceRowForUnsupportedType() {
     ResultSet mockResultSet = Mockito.mock(ResultSet.class);
@@ -212,5 +280,95 @@ public class CassandraSourceRowMapperTest {
         .isEqualTo(
             ImmutableList.of(
                 "{\"testIntCol\": 42, \"UnSupportedCol1\": null, \"UnSupportedCol2\": null}"));
+  }
+
+  @Test
+  public void testAstraDbSourceRowForUnsupportedType() {
+    com.datastax.oss.driver.api.core.cql.Row mockRow =
+        Mockito.mock(com.datastax.oss.driver.api.core.cql.Row.class);
+    com.datastax.oss.driver.api.core.cql.ResultSet mockResultSet =
+        new MockV4Resultset(ImmutableList.of(mockRow));
+    final String testIntCol = "testIntCol";
+    when(mockRow.getInt(testIntCol)).thenReturn(42);
+
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
+    SourceTableSchema sourceTableSchema =
+        SourceTableSchema.builder(MapperType.CASSANDRA)
+            .setTableName("testTable")
+            .addSourceColumnNameToSourceColumnType(
+                testIntCol, new SourceColumnType("int", null, null))
+            .addSourceColumnNameToSourceColumnType(
+                "UnSupportedCol1", new SourceColumnType("UnseenColumnType", null, null))
+            .addSourceColumnNameToSourceColumnType(
+                "UnSupportedCol2", new SourceColumnType("UNSUPPORTED", null, null))
+            .build();
+
+    AstraDbSourceRowMapper astraDbSourceRowMapper =
+        AstraDbSourceRowMapper.builder()
+            .setSourceSchemaReference(sourceSchemaReference)
+            .setSourceTableSchema(sourceTableSchema)
+            .build();
+
+    ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
+    astraDbSourceRowMapper.map(mockResultSet).forEachRemaining(row -> readRowsBuilder.add(row));
+    ImmutableList<SourceRow> readRows = readRowsBuilder.build();
+
+    assertThat(
+            readRows.stream()
+                .map(r -> r.getPayload().toString())
+                .sorted()
+                .collect(ImmutableList.toImmutableList()))
+        .isEqualTo(
+            ImmutableList.of(
+                "{\"testIntCol\": 42, \"UnSupportedCol1\": null, \"UnSupportedCol2\": null}"));
+  }
+
+  private class MockV4Resultset implements com.datastax.oss.driver.api.core.cql.ResultSet {
+    private ImmutableList<com.datastax.oss.driver.api.core.cql.Row> mockRows;
+
+    private MockV4Resultset(ImmutableList<com.datastax.oss.driver.api.core.cql.Row> mockRows) {
+      this.mockRows = mockRows;
+    }
+
+    @NotNull
+    @Override
+    public ColumnDefinitions getColumnDefinitions() {
+      return null;
+    }
+
+    @NotNull
+    @Override
+    public List<ExecutionInfo> getExecutionInfos() {
+      return null;
+    }
+
+    @Override
+    public boolean isFullyFetched() {
+      return false;
+    }
+
+    @Override
+    public int getAvailableWithoutFetching() {
+      return 0;
+    }
+
+    @Override
+    public boolean wasApplied() {
+      return false;
+    }
+
+    /**
+     * Returns an iterator over elements of type {@code T}.
+     *
+     * @return an Iterator.
+     */
+    @NotNull
+    @Override
+    public Iterator<com.datastax.oss.driver.api.core.cql.Row> iterator() {
+      return this.mockRows.iterator();
+    }
   }
 }

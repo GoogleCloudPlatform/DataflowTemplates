@@ -74,20 +74,8 @@ public class CassandraMappingsProvider {
   private static final CassandraRowValueExtractor<Duration> getDuration =
       (row, name) -> row.get(name, TypeCodec.duration());
 
-  private static final CassandraRowValueExtractor<java.time.LocalDate> getLocalDate =
-      (row, name) -> {
-        var d = row.getDate(name);
-        return (d == null) ? null : java.time.LocalDate.ofEpochDay(d.getDaysSinceEpoch());
-      };
-
   private static final CassandraRowValueMapper<LocalTime> mapLocalTime =
       (value, schema) -> value.toNanoOfDay();
-
-  private static final CassandraRowValueExtractor<Instant> getInstant =
-      (row, name) -> {
-        var i = row.getTimestamp(name);
-        return (i == null) ? null : i.toInstant();
-      };
 
   private static final CassandraRowValueMapper<Duration> durationToAvro =
       (value, schema) ->

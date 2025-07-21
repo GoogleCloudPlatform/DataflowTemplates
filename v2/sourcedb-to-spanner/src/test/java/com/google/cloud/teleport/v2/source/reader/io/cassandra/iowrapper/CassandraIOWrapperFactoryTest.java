@@ -131,7 +131,7 @@ public class CassandraIOWrapperFactoryTest {
   }
 
   @Test
-  public void testCassandraIoWrapperFactoryBasic() {
+  public void testCassandraIoWrapperFactoryOssBasic() {
     String testConfigPath = TEST_BUCKET_CASSANDRA_CONFIG_CONF;
     SourceDbToSpannerOptions mockOptions =
         mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
@@ -147,6 +147,35 @@ public class CassandraIOWrapperFactoryTest {
     assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);
     assertThat(cassandraIOWrapperFactory.getIOWrapper(TABLES_TO_READ, null).discoverTableSchema())
         .isEqualTo(mockSourceSchema);
+    assertThat(cassandraIOWrapperFactory.cassandraDialect()).isEqualTo(CassandraDialect.OSS);
+    assertThat(cassandraIOWrapperFactory.astraDBKeyspace()).isEqualTo("");
+    assertThat(cassandraIOWrapperFactory.astraDBRegion()).isEqualTo("");
+    assertThat(cassandraIOWrapperFactory.astraDBDatabaseId()).isEqualTo("");
+    assertThat(cassandraIOWrapperFactory.astraDBToken())
+        .isEqualTo(GuardedStringValueProvider.create(""));
+  }
+
+  @Test
+  public void testCassandraIoWrapperFactoryAstraBasic() {
+    String testConfigPath = "";
+    SourceDbToSpannerOptions mockOptions =
+        mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
+    when(mockOptions.getSourceDbDialect()).thenReturn("ASTRA_DB");
+    when(mockOptions.getSourceConfigURL()).thenReturn(testConfigPath);
+    when(mockOptions.getNumPartitions()).thenReturn(null);
+    when(mockOptions.getAstraDBToken()).thenReturn("AstraCS:testToken");
+    when(mockOptions.getAstraDBDatabaseId()).thenReturn("testId");
+    when(mockOptions.getAstraDBRegion()).thenReturn("testRegion");
+    when(mockOptions.getAstraDBKeySpace()).thenReturn("testKeyspace");
+    CassandraIOWrapperFactory cassandraIOWrapperFactory =
+        CassandraIOWrapperFactory.fromPipelineOptions(mockOptions);
+    assertThat(cassandraIOWrapperFactory.gcsConfigPath()).isEqualTo(testConfigPath);
+    assertThat(cassandraIOWrapperFactory.cassandraDialect()).isEqualTo(CassandraDialect.ASTRA);
+    assertThat(cassandraIOWrapperFactory.astraDBKeyspace()).isEqualTo("testKeyspace");
+    assertThat(cassandraIOWrapperFactory.astraDBRegion()).isEqualTo("testRegion");
+    assertThat(cassandraIOWrapperFactory.astraDBDatabaseId()).isEqualTo("testId");
+    assertThat(cassandraIOWrapperFactory.astraDBToken())
+        .isEqualTo(GuardedStringValueProvider.create("AstraCS:testToken"));
   }
 
   @Test

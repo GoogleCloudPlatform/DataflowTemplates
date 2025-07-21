@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
-import com.datastax.oss.driver.api.core.session.Session;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.common.annotations.VisibleForTesting;
 import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
@@ -83,7 +82,7 @@ public final class CassandraConnector implements AutoCloseable {
     return dataSourceOss.driverConfigLoader();
   }
 
-  public Session getSession() {
+  public CqlSession getSession() {
     return this.session;
   }
 

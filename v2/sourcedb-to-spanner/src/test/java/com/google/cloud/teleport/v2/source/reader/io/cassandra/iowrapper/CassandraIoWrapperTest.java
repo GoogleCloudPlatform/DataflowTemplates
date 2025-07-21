@@ -54,7 +54,7 @@ public class CassandraIoWrapperTest {
     String testClusterName = "testCluster";
     InetSocketAddress testHost = new InetSocketAddress("127.0.0.1", 9042);
     String testLocalDC = "datacenter1";
-    DataSource dataSource =
+    DataSource ossDataSource =
         DataSource.ofCassandra(
             CassandraDataSource.ofOss(
                 CassandraDataSourceOss.builder()
@@ -64,11 +64,20 @@ public class CassandraIoWrapperTest {
                     .setLocalDataCenter(testLocalDC)
                     .overrideOptionInOptionsMap(TypedDriverOption.SESSION_KEYSPACE, TEST_KEYSPACE)
                     .build()));
+    DataSource astraDataSource =
+        DataSource.ofCassandra(
+            CassandraDataSource.ofAstra(
+                AstraDbDataSource.builder()
+                    .setAstraToken("AstraCS:testToken")
+                    .setDatabaseId("testID")
+                    .setKeySpace(TEST_KEYSPACE)
+                    .setAstraDbRegion("testRegion")
+                    .build()));
 
     SourceSchemaReference sourceSchemaReference =
         SourceSchemaReference.ofCassandra(
             CassandraSchemaReference.builder()
-                .setKeyspaceName(dataSource.cassandra().loggedKeySpace())
+                .setKeyspaceName(ossDataSource.cassandra().loggedKeySpace())
                 .build());
 
     String testGcsPath = "gs://smt-test-bucket/cassandraConfig.conf";
@@ -92,7 +101,19 @@ public class CassandraIoWrapperTest {
                       "",
                       "",
                       ""))
-          .thenReturn(dataSource);
+          .thenReturn(ossDataSource);
+      mockCassandraIoWrapperHelper
+          .when(
+              () ->
+                  CassandraIOWrapperHelper.buildDataSource(
+                      "",
+                      null,
+                      CassandraDialect.ASTRA,
+                      astraDataSource.cassandra().astra().astraToken(),
+                      astraDataSource.cassandra().astra().databaseId(),
+                      astraDataSource.cassandra().astra().keySpace(),
+                      astraDataSource.cassandra().astra().astraDbRegion()))
+          .thenReturn(astraDataSource);
       mockCassandraIoWrapperHelper
           .when(() -> CassandraIOWrapperHelper.buildSchemaDiscovery())
           .thenReturn(schemaDiscovery);
@@ -100,16 +121,31 @@ public class CassandraIoWrapperTest {
           .when(
               () ->
                   CassandraIOWrapperHelper.getTablesToRead(
-                      tablesToRead, dataSource, schemaDiscovery, sourceSchemaReference))
+                      tablesToRead, ossDataSource, schemaDiscovery, sourceSchemaReference))
+          .thenReturn(tablesToRead);
+      mockCassandraIoWrapperHelper
+          .when(
+              () ->
+                  CassandraIOWrapperHelper.getTablesToRead(
+                      tablesToRead, astraDataSource, schemaDiscovery, sourceSchemaReference))
           .thenReturn(tablesToRead);
       mockCassandraIoWrapperHelper
           .when(
               () ->
                   CassandraIOWrapperHelper.getSourceSchema(
-                      schemaDiscovery, dataSource, sourceSchemaReference, tablesToRead))
+                      schemaDiscovery, ossDataSource, sourceSchemaReference, tablesToRead))
           .thenReturn(mockSourceSchema);
       mockCassandraIoWrapperHelper
-          .when(() -> CassandraIOWrapperHelper.getTableReaders(dataSource, mockSourceSchema))
+          .when(
+              () ->
+                  CassandraIOWrapperHelper.getSourceSchema(
+                      schemaDiscovery, astraDataSource, sourceSchemaReference, tablesToRead))
+          .thenReturn(mockSourceSchema);
+      mockCassandraIoWrapperHelper
+          .when(() -> CassandraIOWrapperHelper.getTableReaders(ossDataSource, mockSourceSchema))
+          .thenReturn(mockTableReaders);
+      mockCassandraIoWrapperHelper
+          .when(() -> CassandraIOWrapperHelper.getTableReaders(astraDataSource, mockSourceSchema))
           .thenReturn(mockTableReaders);
 
       CassandraIoWrapper cassandraIoWrapper =
@@ -124,6 +160,19 @@ public class CassandraIoWrapperTest {
               "");
       assertThat(cassandraIoWrapper.discoverTableSchema()).isEqualTo(mockSourceSchema);
       assertThat(cassandraIoWrapper.getTableReaders()).isEqualTo(mockTableReaders);
+
+      CassandraIoWrapper cassandraIoWrapperAstra =
+          new CassandraIoWrapper(
+              "",
+              tablesToRead,
+              null,
+              CassandraDialect.ASTRA,
+              astraDataSource.cassandra().astra().astraToken(),
+              astraDataSource.cassandra().astra().databaseId(),
+              astraDataSource.cassandra().astra().keySpace(),
+              astraDataSource.cassandra().astra().astraDbRegion());
+      assertThat(cassandraIoWrapperAstra.discoverTableSchema()).isEqualTo(mockSourceSchema);
+      assertThat(cassandraIoWrapperAstra.getTableReaders()).isEqualTo(mockTableReaders);
     }
   }
 }

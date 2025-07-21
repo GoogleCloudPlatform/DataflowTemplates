@@ -19,15 +19,25 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.when;
 
+import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.dtsx.astra.sdk.db.DatabaseClient;
+import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
 import java.io.IOException;
+import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
 
 /** Test class for {@link CassandraConnector}. */
@@ -52,7 +62,7 @@ public class CassandraConnectorTest {
   }
 
   @Test
-  public void testBasic() throws IOException {
+  public void testOss() {
     CassandraSchemaReference testSchemaReference =
         CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build();
 
@@ -86,6 +96,49 @@ public class CassandraConnectorTest {
               cassandraConnectorWithNullKeySpace.getSession().getMetadata().getClusterName().get())
           .isEqualTo(sharedEmbeddedCassandra.getInstance().getClusterName());
       assertThat(cassandraConnectorWithNullKeySpace.getSession().getKeyspace()).isEmpty();
+    }
+  }
+
+  @Test
+  public void testAstra() {
+    CqlSession mockCqlSession = Mockito.mock(CqlSession.class);
+    ValueProvider<String> testAstraDbToken = GuardedStringValueProvider.create("AstraCS:testToken");
+    ValueProvider<byte[]> testAstraDbSecureBundle =
+        ValueProvider.StaticValueProvider.of(new byte[] {});
+    ValueProvider<String> testAstraDbKeySpace =
+        ValueProvider.StaticValueProvider.of("testKeySpace");
+    String testAstraDbRegion = "testRegion";
+    String testAstraDBID = "testID";
+    try (MockedConstruction<DatabaseClient> mockedConstruction =
+        mockConstruction(
+            DatabaseClient.class,
+            (mock, context) -> {
+              when(mock.exist()).thenReturn(true);
+              when(mock.downloadSecureConnectBundle(testAstraDbRegion))
+                  .thenReturn(testAstraDbSecureBundle.get());
+            })) {
+      try (MockedStatic<CqlSessionHolder> mockedStatic =
+          Mockito.mockStatic(CqlSessionHolder.class)) {
+        mockedStatic
+            .when(
+                () ->
+                    CqlSessionHolder.getCqlSession(
+                        testAstraDbToken, testAstraDbSecureBundle, testAstraDbKeySpace))
+            .thenReturn(mockCqlSession);
+        CassandraDataSource cassandraDataSource =
+            CassandraDataSource.ofAstra(
+                AstraDbDataSource.builder()
+                    .setAstraDbRegion(testAstraDbRegion)
+                    .setKeySpace(testAstraDbKeySpace.get())
+                    .setDatabaseId(testAstraDBID)
+                    .setAstraToken(testAstraDbToken.get())
+                    .build());
+        CassandraSchemaReference cassandraSchemaReference =
+            CassandraSchemaReference.builder().setKeyspaceName(testAstraDbKeySpace.get()).build();
+        CassandraConnector cassandraConnector =
+            new CassandraConnector(cassandraDataSource, cassandraSchemaReference);
+        assertThat(cassandraConnector.getSession()).isEqualTo(mockCqlSession);
+      }
     }
   }
 }

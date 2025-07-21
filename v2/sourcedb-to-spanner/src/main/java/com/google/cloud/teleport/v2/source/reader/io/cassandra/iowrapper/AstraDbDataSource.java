@@ -19,6 +19,7 @@ import com.dtsx.astra.sdk.db.DatabaseClient;
 import com.google.auto.value.AutoValue;
 import com.google.auto.value.extension.memoized.Memoized;
 import com.google.cloud.teleport.v2.source.reader.auth.dbauth.GuardedStringValueProvider;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.exception.AstraDBNotFoundException;
 import com.google.cloud.teleport.v2.utils.SecretManagerUtils;
 import java.io.Serializable;
 import javax.annotation.Nullable;
@@ -58,7 +59,7 @@ public abstract class AstraDbDataSource implements Serializable {
   public abstract Integer numPartitions();
 
   public static Builder builder() {
-    return new AutoValue_AstraDbDataSource.Builder().setNumPartitions(null);
+    return new AutoValue_AstraDbDataSource.Builder().setNumPartitions(null).setAstraDbRegion("");
   }
 
   public abstract Builder toBuilder();
@@ -76,8 +77,8 @@ public abstract class AstraDbDataSource implements Serializable {
      */
     DatabaseClient astraDbClient = new DatabaseClient(astraToken, databaseId());
     if (!astraDbClient.exist()) {
-      throw new RuntimeException(
-          "Astra Database does not exist, please check your Astra Token and Database ID");
+      throw new AstraDBNotFoundException(
+          "Astra Database does not exist, please check your Astra Token and Database ID. Please ensure that the database is active.");
     }
     byte[] astraSecureBundle;
     if (StringUtils.isEmpty(astraDbRegion())) {
@@ -101,10 +102,9 @@ public abstract class AstraDbDataSource implements Serializable {
       if (!astraToken.startsWith("AstraCS")) {
         astraToken = SecretManagerUtils.getSecret(value);
       }
-      LOG.info("Astra Token is parsed, value={}", astraToken.substring(0, 10) + "...");
+      LOG.info("Astra Token is parsed");
       return this.setAstraToken(GuardedStringValueProvider.create(value));
     }
-    ;
 
     public abstract Builder setKeySpace(String value);
 
