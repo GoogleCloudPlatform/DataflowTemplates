@@ -34,8 +34,7 @@ public class FilterRecordsFn extends DoFn<DataChangeRecord, DataChangeRecord> {
   @ProcessElement
   public void processElement(ProcessContext c) {
     DataChangeRecord record = c.element();
-    Metrics.counter(FilterRecordsFn.class, "data_record_count_per_record")
-        .inc(record.getMods().size());
+    Metrics.counter(FilterRecordsFn.class, "total_spanner_writes").inc(record.getMods().size());
 
     // In this mode, filter no records.
     if (filtrationMode.equals(Constants.FILTRATION_MODE_NONE)) {
