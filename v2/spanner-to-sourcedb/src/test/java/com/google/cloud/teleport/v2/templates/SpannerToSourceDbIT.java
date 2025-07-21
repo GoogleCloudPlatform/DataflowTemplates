@@ -374,7 +374,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     if (!rows.get(0).get("id").equals(1)) {
       return false;
     }
-    if (!rows.get(0).get("column1").equals(3)) {
+    if (!rows.get(0).get("column1").equals(4)) {
       return false;
     }
 
@@ -386,7 +386,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     if (!rows.get(0).get("id").equals(1)) {
       return false;
     }
-    if (!rows.get(0).get("column1").equals(4)) {
+    if (!rows.get(0).get("column1").equals(3)) {
       return false;
     }
 
