@@ -355,7 +355,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
             .to(3)
             .build());
     mutations.add(
-        Mutation.newInsertBuilder(TABLE_WITH_VIRTUAL_GEN_COL)
+        Mutation.newUpdateBuilder(TABLE_WITH_VIRTUAL_GEN_COL)
             .set("id")
             .to(1)
             .set("column1")
