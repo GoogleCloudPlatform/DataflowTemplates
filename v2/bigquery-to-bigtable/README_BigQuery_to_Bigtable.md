@@ -23,6 +23,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **timestampColumn**: The name of the BigQuery column to be used as the timestamp for the column's cell in Bigtable. The value must be millisecond precision, e.g. INT64 / Long. If a row does not contain the field, the default write timestamp will be used. The column specified will not be included as part of the row in Bigtable as a separate column.
+* **skipNullValues**: Flag to indicate whether nulls may propagate as an empty value or column skipped completely to adhere to Bigtable sparse table format. Defaults to: false.
 * **inputTableSpec**: The BigQuery table to read from. If you specify `inputTableSpec`, the template reads the data directly from BigQuery storage by using the BigQuery Storage Read API (https://cloud.google.com/bigquery/docs/reference/storage). For information about limitations in the Storage Read API, see https://cloud.google.com/bigquery/docs/reference/storage#limitations. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `<BIGQUERY_PROJECT>:<DATASET_NAME>.<INPUT_TABLE>`.
 * **outputDeadletterTable**: The BigQuery table for messages that failed to reach the output table. If a table doesn't exist, it is created during pipeline execution. If not specified, `<outputTableSpec>_error_records` is used. For example, `<PROJECT_ID>:<DATASET_NAME>.<DEADLETTER_TABLE>`.
 * **query**: The SQL query to use to read data from BigQuery. If the BigQuery dataset is in a different project than the Dataflow job, specify the full dataset name in the SQL query, for example: <PROJECT_ID>.<DATASET_NAME>.<TABLE_NAME>. By default, the `query` parameter uses GoogleSQL (https://cloud.google.com/bigquery/docs/introduction-sql), unless `useLegacySql` is `true`. You must specify either `inputTableSpec` or `query`. If you set both parameters, the template uses the `query` parameter. For example, `select * from sampledb.sample_table`.
@@ -122,6 +124,8 @@ export BIGTABLE_WRITE_TABLE_ID=<bigtableWriteTableId>
 export BIGTABLE_WRITE_COLUMN_FAMILY=<bigtableWriteColumnFamily>
 
 ### Optional
+export TIMESTAMP_COLUMN=""
+export SKIP_NULL_VALUES=false
 export INPUT_TABLE_SPEC=<inputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export QUERY=<query>
@@ -143,6 +147,8 @@ gcloud dataflow flex-template run "bigquery-to-bigtable-job" \
   --region "$REGION" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "readIdColumn=$READ_ID_COLUMN" \
+  --parameters "timestampColumn=$TIMESTAMP_COLUMN" \
+  --parameters "skipNullValues=$SKIP_NULL_VALUES" \
   --parameters "inputTableSpec=$INPUT_TABLE_SPEC" \
   --parameters "outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE" \
   --parameters "query=$QUERY" \
@@ -185,6 +191,8 @@ export BIGTABLE_WRITE_TABLE_ID=<bigtableWriteTableId>
 export BIGTABLE_WRITE_COLUMN_FAMILY=<bigtableWriteColumnFamily>
 
 ### Optional
+export TIMESTAMP_COLUMN=""
+export SKIP_NULL_VALUES=false
 export INPUT_TABLE_SPEC=<inputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export QUERY=<query>
@@ -208,7 +216,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="bigquery-to-bigtable-job" \
 -DtemplateName="BigQuery_to_Bigtable" \
--Dparameters="readIdColumn=$READ_ID_COLUMN,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
+-Dparameters="readIdColumn=$READ_ID_COLUMN,timestampColumn=$TIMESTAMP_COLUMN,skipNullValues=$SKIP_NULL_VALUES,inputTableSpec=$INPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,query=$QUERY,useLegacySql=$USE_LEGACY_SQL,queryLocation=$QUERY_LOCATION,queryTempDataset=$QUERY_TEMP_DATASET,KMSEncryptionKey=$KMSENCRYPTION_KEY,bigtableRpcAttemptTimeoutMs=$BIGTABLE_RPC_ATTEMPT_TIMEOUT_MS,bigtableRpcTimeoutMs=$BIGTABLE_RPC_TIMEOUT_MS,bigtableAdditionalRetryCodes=$BIGTABLE_ADDITIONAL_RETRY_CODES,bigtableWriteInstanceId=$BIGTABLE_WRITE_INSTANCE_ID,bigtableWriteTableId=$BIGTABLE_WRITE_TABLE_ID,bigtableWriteColumnFamily=$BIGTABLE_WRITE_COLUMN_FAMILY,bigtableWriteAppProfile=$BIGTABLE_WRITE_APP_PROFILE,bigtableWriteProjectId=$BIGTABLE_WRITE_PROJECT_ID,bigtableBulkWriteLatencyTargetMs=$BIGTABLE_BULK_WRITE_LATENCY_TARGET_MS,bigtableBulkWriteMaxRowKeyCount=$BIGTABLE_BULK_WRITE_MAX_ROW_KEY_COUNT,bigtableBulkWriteMaxRequestSizeBytes=$BIGTABLE_BULK_WRITE_MAX_REQUEST_SIZE_BYTES" \
 -f v2/bigquery-to-bigtable
 ```
 
@@ -257,6 +265,8 @@ resource "google_dataflow_flex_template_job" "bigquery_to_bigtable" {
     bigtableWriteInstanceId = "<bigtableWriteInstanceId>"
     bigtableWriteTableId = "<bigtableWriteTableId>"
     bigtableWriteColumnFamily = "<bigtableWriteColumnFamily>"
+    # timestampColumn = ""
+    # skipNullValues = "false"
     # inputTableSpec = "<inputTableSpec>"
     # outputDeadletterTable = "<outputDeadletterTable>"
     # query = "<query>"
