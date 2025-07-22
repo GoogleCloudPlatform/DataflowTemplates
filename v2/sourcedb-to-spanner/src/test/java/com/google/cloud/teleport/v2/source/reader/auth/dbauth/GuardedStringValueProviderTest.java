@@ -31,4 +31,17 @@ public class GuardedStringValueProviderTest {
     assertThat(provider.isAccessible()).isTrue();
     assertThat(provider.get()).isEqualTo(testPassword);
   }
+
+  @Test
+  public void testGuardedStringValueProviderEquality() {
+    final String firstTestPassword = "firstTestPassword";
+    final String secondTestPassword = "secondTestPassword";
+    assertThat(GuardedStringValueProvider.create(firstTestPassword))
+        .isEqualTo(GuardedStringValueProvider.create(firstTestPassword));
+    assertThat(GuardedStringValueProvider.create(firstTestPassword))
+        .isNotEqualTo(GuardedStringValueProvider.create(secondTestPassword));
+    assertThat(GuardedStringValueProvider.create(firstTestPassword).equals(firstTestPassword))
+        .isFalse();
+    assertThat(GuardedStringValueProvider.create(firstTestPassword).equals(null)).isFalse();
+  }
 }

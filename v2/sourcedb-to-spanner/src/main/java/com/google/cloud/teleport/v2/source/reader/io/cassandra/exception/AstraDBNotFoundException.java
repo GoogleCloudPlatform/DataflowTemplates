@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,22 +13,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
+package com.google.cloud.teleport.v2.source.reader.io.cassandra.exception;
 
-/**
- * The dialect of the source database. One of:
- *
- * <ul>
- *   <lI>MYSQL
- *   <lI>POSTGRESQL
- *   <LI>CASSANDRA
- * </ul>
- *
- * TODO(b/390535694): move this to non-jdbc package.
- */
-public enum SQLDialect {
-  MYSQL,
-  POSTGRESQL,
-  CASSANDRA,
-  ASTRA_DB
+import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryException;
+
+public class AstraDBNotFoundException extends SchemaDiscoveryException {
+
+  public AstraDBNotFoundException(String msg) {
+    super(new Throwable(msg));
+  }
 }
