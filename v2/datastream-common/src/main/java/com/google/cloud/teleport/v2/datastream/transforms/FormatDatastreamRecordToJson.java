@@ -151,6 +151,8 @@ public class FormatDatastreamRecordToJson
       // MongoDB Specific Metadata, MongoDB has different structure for sourceType.
       outputObject.put("_metadata_timestamp_seconds", getSecondsFromMongoSortKeys(record));
       outputObject.put("_metadata_timestamp_nanos", getNanosFromMongoSortKeys(record));
+      outputObject.put("_metadata_schema", getMetadataDatabase(record));
+      outputObject.put("_metadata_schema", getMetadataSchema(record));
     } else {
       // Oracle Specific Metadata
       outputObject.put("_metadata_schema", getMetadataSchema(record));
