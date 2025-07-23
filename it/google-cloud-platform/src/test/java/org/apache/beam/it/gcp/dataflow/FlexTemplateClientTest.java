@@ -139,7 +139,10 @@ public final class FlexTemplateClientTest {
                     .setJobName(JOB_NAME)
                     .setContainerSpecGcsPath(SPEC_PATH)
                     .setParameters(ImmutableMap.of(PARAM_KEY, PARAM_VALUE))
-                    .setEnvironment(new FlexTemplateRuntimeEnvironment()));
+                    .setEnvironment(
+                        new FlexTemplateRuntimeEnvironment()
+                            .setAdditionalPipelineOptions(
+                                Collections.singletonList("updateCompatibilityVersion=''"))));
     verify(getFlexTemplates(client), times(2))
         .launch(projectCaptor.capture(), regionCaptor.capture(), requestCaptor.capture());
     assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);
