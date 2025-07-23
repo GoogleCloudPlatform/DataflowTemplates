@@ -192,6 +192,8 @@ jobs:
         only-summary: 'false'
         token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-error: 'false'
+        list-suites: 'failed'
+        list-tests: 'failed'
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:
