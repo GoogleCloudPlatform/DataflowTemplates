@@ -49,7 +49,7 @@ concurrency:
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   spotless_check:
@@ -182,6 +182,16 @@ jobs:
         name: surefire-integration-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 10
+    - name: Integration Test report on GitHub
+      uses: dorny/test-reporter@v2
+      if: always()
+      with:
+        name: Integration Test report on GitHub
+        path: '**/surefire-reports/TEST-*.xml'
+        reporter: java-junit
+        only-summary: 'false'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-error: 'false'
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:
