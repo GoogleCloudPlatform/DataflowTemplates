@@ -39,7 +39,8 @@ import org.apache.beam.sdk.values.Row;
 /**
  * The {@link ManagedIOToManagedIO} pipeline is a flexible template that can read from any Managed
  * I/O source and write to any Managed I/O sink. This template supports all available Managed I/O
- * connectors including ICEBERG, ICEBERG_CDC, KAFKA, and BIGQUERY.
+ * connectors including ICEBERG, ICEBERG_CDC, KAFKA, and BIGQUERY. See
+ * https://cloud.google.com/dataflow/docs/guides/managed-io.
  *
  * <p><b>Pipeline Requirements</b>
  *
@@ -95,7 +96,8 @@ public class ManagedIOToManagedIO {
         helpText =
             "JSON configuration for the source Managed I/O connector. "
                 + "The configuration format depends on the connector type. "
-                + "For example, for KAFKA: {\"bootstrap_servers\": \"localhost:9092\", \"topic\": \"input-topic\", \"format\": \"JSON\"}")
+                + "For example, for KAFKA: {\"bootstrap_servers\": \"localhost:9092\", \"topic\": \"input-topic\", \"format\": \"JSON\"} "
+                + "See https://beam.apache.org/documentation/io/managed-io/ for the full configuration options.")
     String getSourceConfig();
 
     void setSourceConfig(String value);
