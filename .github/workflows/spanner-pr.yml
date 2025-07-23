@@ -189,7 +189,7 @@ jobs:
         name: Integration Test report on GitHub
         path: '**/surefire-reports/TEST-*.xml'
         reporter: java-junit
-        only-summary: 'false'
+        only-summary: 'true'
         token: ${{ secrets.GITHUB_TOKEN }}
         fail-on-error: 'false'
         list-suites: 'failed'
