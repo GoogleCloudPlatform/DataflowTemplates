@@ -31,6 +31,10 @@ affect forks. If you would like your fork and its local clone to reflect these
 changes you can
 follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-branches-in-your-repository/renaming-a-branch).
 
+## Getting Help
+
+- Have a bug or a feature request? Please file [a GitHub issue](https://github.com/GoogleCloudPlatform/DataflowTemplates/issues/new/choose).
+
 ## Template Pipelines
 
 - Get Started

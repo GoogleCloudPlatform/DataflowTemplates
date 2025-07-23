@@ -81,6 +81,33 @@ abstract class CassandraRowMapper implements Transformer<Row, SourceRow>, Serial
     return sourceRowBuilder.build();
   }
 
+  public @UnknownKeyFor @NonNull @Initialized SourceRow mapV4(
+      com.datastax.oss.driver.api.core.cql.Row row) {
+    /* Todo Decide if any of the element time like max time or min time is needed here. */
+    long time = getCurrentTimeMicros();
+
+    SourceRow.Builder sourceRowBuilder =
+        SourceRow.builder(sourceSchemaReference(), sourceTableSchema(), null, time);
+
+    sourceTableSchema()
+        .sourceColumnNameToSourceColumnType()
+        .forEach(
+            (key, value) -> {
+              Schema schema = sourceTableSchema().getAvroPayload().getField(key).schema();
+              // The Unified avro mapping produces a union of the mapped type with null type
+              // except for "Unsupported" case.
+              if (schema.isUnion()) {
+                schema = schema.getTypes().get(1);
+              }
+              sourceRowBuilder.setField(
+                  key,
+                  MAPPINGS
+                      .getOrDefault(value.getName().toUpperCase(), MAPPINGS.get("UNSUPPORTED"))
+                      .mapValueV4(row, key, schema));
+            });
+    return sourceRowBuilder.build();
+  }
+
   @Override
   public SourceRow transform(Row row) {
     return map(row);

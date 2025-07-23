@@ -42,6 +42,19 @@ public final class GuardedStringValueProvider implements ValueProvider<String>, 
     return new GuardedStringValueProvider(new GuardedString(value.toCharArray()));
   }
 
+  @Override
+  public boolean equals(Object other) {
+    boolean result;
+    if ((other == null) || (getClass() != other.getClass())) {
+      result = false;
+    } // end if
+    else {
+      GuardedStringValueProvider otherGuardedString = (GuardedStringValueProvider) other;
+      result = this.get().equals(otherGuardedString.get());
+    }
+    return result;
+  }
+
   /**
    * Implementation {@link ValueProvider#get()}.
    *

@@ -39,15 +39,20 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShardIdFetcherImpl;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -100,6 +105,20 @@ public class AssignShardIdFnTest {
     when(mockRow.getValue("accountName")).thenReturn(Value.string("xyz"));
     when(mockRow.getValue("migration_shard_id")).thenReturn(Value.string("shard1"));
     when(mockRow.getValue("accountNumber")).thenReturn(Value.int64(1));
+    when(mockRow.getValue("bytesCol"))
+        .thenReturn(Value.bytes(ByteArray.copyFrom("GOOGLE".getBytes())));
+    when(mockRow.getDouble("float_64_col")).thenReturn(0.5);
+    when(mockRow.getValue("float_64_col")).thenReturn(Value.float64(0.5));
+    when(mockRow.getDouble("float_64_col_nan")).thenReturn(Double.NaN);
+    when(mockRow.getValue("float_64_col_nan")).thenReturn(Value.float64(Double.NaN));
+    when(mockRow.getDouble("float_64_col_infinity")).thenReturn(Double.POSITIVE_INFINITY);
+    when(mockRow.getValue("float_64_col_infinity"))
+        .thenReturn(Value.float64(Double.POSITIVE_INFINITY));
+    when(mockRow.getDouble("float_64_col_neg_infinity")).thenReturn(Double.NEGATIVE_INFINITY);
+    when(mockRow.getValue("float_64_col_neg_infinity"))
+        .thenReturn(Value.float64(Double.NEGATIVE_INFINITY));
+    when(mockRow.getBoolean("bool_col")).thenReturn(true);
+    when(mockRow.getValue("bool_col")).thenReturn(Value.bool(true));
 
     // Mock readRow
     when(mockReadOnlyTransaction.readRow(eq("tableName"), any(Key.class), any(Iterable.class)))
@@ -115,6 +134,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -141,6 +161,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -151,6 +172,7 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
+
     assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
   }
 
@@ -163,6 +185,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -184,8 +207,10 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
+
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_infinity\":\"Infinity\",\"float_64_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"float_64_col_nan\":\"NaN\",\"bytesCol\":\"R09PR0xF\"}";
+
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -200,6 +225,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -220,8 +246,10 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
+
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"accountName\":\"xyz\",\"accountNumber\":\"1\"}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_infinity\":\"Infinity\",\"float_64_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"float_64_col_nan\":\"NaN\",\"bytesCol\":\"R09PR0xF\"}";
+
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -236,6 +264,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_SINGLE_SHARD,
             "test",
             "skip",
@@ -246,9 +275,8 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
-    //
     String newValuesJson =
-        "{\"accountName\": \"abc\", \"migration_shard_id\": \"shard1\", \"accountNumber\": 1}";
+        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0,\"bool_col\":false,\"accountName\":\"xyz\",\"float_64_col_infinity\":0,\"float_64_col_neg_infinity\":0,\"accountNumber\":\"1\",\"float_64_col_nan\":0,\"bytesCol\":\"R09PR0xF\"}";
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -269,6 +297,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -324,6 +353,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObjectAllDatatypes(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -362,6 +392,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObjectAllDatatypes(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -397,6 +428,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObjectAllDatatypes(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -425,6 +457,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -452,6 +485,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -479,6 +513,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -505,6 +540,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -543,6 +579,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObjectAllDatatypes(),
             getTestDdlForPrimaryKeyTest(),
+            getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -590,6 +627,7 @@ public class AssignShardIdFnTest {
             SpannerConfig.create(),
             getSchemaObject(),
             getTestDdl(),
+            getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
             "skip",
@@ -622,6 +660,54 @@ public class AssignShardIdFnTest {
     com.google.cloud.Timestamp actualStaleTimestamp = capturedBound.getReadTimestamp();
 
     assertEquals(expectedStaleTimestamp, actualStaleTimestamp);
+  }
+
+  @Test
+  public void testProcessElementTableNotInSourceSchema() throws Exception {
+    // Table name not present in the source schema
+    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    // Use a SourceSchema that does NOT contain the table
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable presentTable =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable.builder(SourceDatabaseType.MYSQL)
+            .name("someothertable")
+            .schema(null)
+            .columns(ImmutableList.of())
+            .primaryKeyColumns(ImmutableList.of())
+            .build();
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema sourceSchema =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
+                SourceDatabaseType.MYSQL)
+            .databaseName("testdb")
+            .tables(ImmutableMap.of("someothertable", presentTable))
+            .build();
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            getSchemaObject(),
+            getTestDdl(),
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL);
+    assignShardIdFn.setMapper(new ObjectMapper());
+    assignShardIdFn.setShardIdFetcher(
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+
+    assignShardIdFn.processElement(processContext);
+    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
+    Long key = keyStr.hashCode() % 10000L;
+    record.setShard("skip");
+    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+    // Optionally, assert the record's shard is set to skip
+    assertEquals("skip", record.getShard());
   }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {
@@ -698,10 +784,34 @@ public class AssignShardIdFnTest {
 
   public static Schema getSchemaObject() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
+    Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable> srcSchema =
+        new HashMap<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable>();
     Map<String, SpannerTable> spSchema = getSampleSpSchema();
     Map<String, NameAndCols> spannerToID = getSampleSpannerToId();
+
+    // Fill srcSchema to match spSchema but with MySQL types
+    // Define colIds and colDefs for the source table
+    String[] colIds = new String[] {"c1", "c2", "c4"};
+    Map<String, SourceColumnDefinition> colDefs = new HashMap<>();
+    colDefs.put(
+        "c1",
+        new SourceColumnDefinition(
+            "accountId", new SourceColumnType("VARCHAR", new Long[] {255L}, null)));
+    colDefs.put(
+        "c2",
+        new SourceColumnDefinition(
+            "accountName", new SourceColumnType("VARCHAR", new Long[] {255L}, null)));
+    colDefs.put(
+        "c4",
+        new SourceColumnDefinition("accountNumber", new SourceColumnType("BIGINT", null, null)));
+    ColumnPK[] primaryKeys = new ColumnPK[] {new ColumnPK("c1", 1)};
+    com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable srcTable =
+        new com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable(
+            "tableName", null, colIds, colDefs, primaryKeys);
+    srcSchema.put("t1", srcTable);
+
     Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
+    expectedSchema.generateMappings();
     expectedSchema.setSpannerToID(spannerToID);
     return expectedSchema;
   }
@@ -759,6 +869,31 @@ public class AssignShardIdFnTest {
             .endColumn()
             .column("accountNumber")
             .int64()
+            .endColumn()
+            .column("bytesCol")
+            .bytes()
+            .endColumn()
+            .column("float_64_col")
+            .float64()
+            .endColumn()
+            .column("float_64_col_nan")
+            .float64()
+            .endColumn()
+            .column("float_64_col_infinity")
+            .float64()
+            .endColumn()
+            .column("float_64_col_neg_infinity")
+            .float64()
+            .endColumn()
+            .column("bool_col")
+            .bool()
+            .endColumn()
+            // Non-stored Generated Column should not affect any flows
+            .column("non_stored_gen_column")
+            .int64()
+            .generatedAs("accountNumber + 1")
+            .isGenerated(true)
+            .isStored(false)
             .endColumn()
             .endTable()
             .build();
@@ -832,10 +967,69 @@ public class AssignShardIdFnTest {
 
   private static Schema getSchemaObjectAllDatatypes() {
     Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
+    Map<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable> srcSchema =
+        new HashMap<String, com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable>();
     Map<String, SpannerTable> spSchema = getSampleSpSchemaAllDatatypes();
     Map<String, NameAndCols> spannerToID = getSampleSpannerToIdAllDatatypes();
+
+    // Fill srcSchema to match spSchema but with MySQL types
+    String[] colIds =
+        new String[] {"c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8", "c9", "c10", "c11", "c12"};
+    Map<String, SourceColumnDefinition> colDefs = new HashMap<>();
+    colDefs.put(
+        "c1",
+        new SourceColumnDefinition(
+            "first_name", new SourceColumnType("VARCHAR", new Long[] {255L}, null)));
+    colDefs.put(
+        "c2", new SourceColumnDefinition("age", new SourceColumnType("DECIMAL", null, null)));
+    colDefs.put(
+        "c3",
+        new SourceColumnDefinition("bool_field", new SourceColumnType("BOOLEAN", null, null)));
+    colDefs.put(
+        "c4",
+        new SourceColumnDefinition("int64_field", new SourceColumnType("BIGINT", null, null)));
+    colDefs.put(
+        "c5",
+        new SourceColumnDefinition("float64_field", new SourceColumnType("DOUBLE", null, null)));
+    colDefs.put(
+        "c6",
+        new SourceColumnDefinition(
+            "string_field", new SourceColumnType("VARCHAR", new Long[] {255L}, null)));
+    colDefs.put(
+        "c7", new SourceColumnDefinition("json_field", new SourceColumnType("JSON", null, null)));
+    colDefs.put(
+        "c8", new SourceColumnDefinition("bytes_field", new SourceColumnType("BLOB", null, null)));
+    colDefs.put(
+        "c9",
+        new SourceColumnDefinition(
+            "timestamp_field", new SourceColumnType("TIMESTAMP", null, null)));
+    colDefs.put(
+        "c10",
+        new SourceColumnDefinition(
+            "timestamp_field2", new SourceColumnType("TIMESTAMP", null, null)));
+    colDefs.put(
+        "c11", new SourceColumnDefinition("date_field", new SourceColumnType("DATE", null, null)));
+    colDefs.put(
+        "c12", new SourceColumnDefinition("date_field2", new SourceColumnType("DATE", null, null)));
+    ColumnPK[] primaryKeys =
+        new ColumnPK[] {
+          new ColumnPK("c1", 1),
+          new ColumnPK("c2", 2),
+          new ColumnPK("c3", 3),
+          new ColumnPK("c4", 4),
+          new ColumnPK("c5", 5),
+          new ColumnPK("c6", 6),
+          new ColumnPK("c8", 7),
+          new ColumnPK("c9", 8),
+          new ColumnPK("c11", 9)
+        };
+    com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable srcTable =
+        new com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable(
+            "Users", null, colIds, colDefs, primaryKeys);
+    srcSchema.put("t1", srcTable);
+
     Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
+    expectedSchema.generateMappings();
     expectedSchema.setSpannerToID(spannerToID);
     return expectedSchema;
   }
@@ -1006,5 +1200,179 @@ public class AssignShardIdFnTest {
             new ColumnPK[] {new ColumnPK("c1", 1)},
             "c3"));
     return spSchema;
+  }
+
+  private static com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema getTestSourceSchema() {
+    // MySQL table: tableName(accountId VARCHAR, accountName VARCHAR, migration_shard_id VARCHAR,
+    // accountNumber BIGINT)
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable table =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable.builder(SourceDatabaseType.MYSQL)
+            .name("tableName")
+            .schema(null)
+            .columns(
+                ImmutableList.of(
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountId")
+                        .type("VARCHAR")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .size(255L)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountName")
+                        .type("VARCHAR")
+                        .isNullable(true)
+                        .size(255L)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("migration_shard_id")
+                        .type("VARCHAR")
+                        .isNullable(true)
+                        .size(255L)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("accountNumber")
+                        .type("BIGINT")
+                        .isNullable(true)
+                        .build()))
+            .primaryKeyColumns(ImmutableList.of("accountId"))
+            .build();
+    return com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
+            SourceDatabaseType.MYSQL)
+        .databaseName("testdb")
+        .tables(ImmutableMap.of("tableName", table))
+        .build();
+  }
+
+  private static com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema
+      getTestSourceSchemaForPrimaryKeyTest() {
+    // MySQL table: Users(first_name VARCHAR, migration_shard_id VARCHAR(50), age DECIMAL, ...)
+    com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable table =
+        com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable.builder(SourceDatabaseType.MYSQL)
+            .name("Users")
+            .schema(null)
+            .columns(
+                ImmutableList.of(
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("first_name")
+                        .type("VARCHAR")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .size(255L)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("migration_shard_id")
+                        .type("VARCHAR")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .size(50L)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("age")
+                        .type("DECIMAL")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("bool_field")
+                        .type("BOOLEAN")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("int64_field")
+                        .type("BIGINT")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("float64_field")
+                        .type("DOUBLE")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("string_field")
+                        .type("VARCHAR")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .size(255L)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("json_field")
+                        .type("JSON")
+                        .isNullable(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("bytes_field")
+                        .type("BLOB")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("timestamp_field")
+                        .type("TIMESTAMP")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("timestamp_field2")
+                        .type("TIMESTAMP")
+                        .isNullable(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("date_field")
+                        .type("DATE")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("date_field2")
+                        .type("DATE")
+                        .isNullable(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
+                            SourceDatabaseType.MYSQL)
+                        .name("migration_shard_id")
+                        .type("VARCHAR")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .size(50L)
+                        .build()))
+            .primaryKeyColumns(
+                ImmutableList.of(
+                    "first_name",
+                    "migration_shard_id",
+                    "age",
+                    "bool_field",
+                    "int64_field",
+                    "float64_field",
+                    "string_field",
+                    "bytes_field",
+                    "timestamp_field",
+                    "date_field"))
+            .build();
+    return com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema.builder(
+            SourceDatabaseType.MYSQL)
+        .databaseName("testdb")
+        .tables(ImmutableMap.of("Users", table))
+        .build();
   }
 }

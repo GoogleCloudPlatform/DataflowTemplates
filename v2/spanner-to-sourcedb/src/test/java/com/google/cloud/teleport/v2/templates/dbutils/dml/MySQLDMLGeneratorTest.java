@@ -15,23 +15,20 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
+import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
-import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
+import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.gson.FieldNamingPolicy;
 import com.google.gson.GsonBuilder;
 import java.io.InputStream;
@@ -51,12 +48,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void tableAndAllColumnNameTypesMatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /*The expected sql is:
@@ -68,6 +67,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -77,12 +78,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void tableNameMismatchAllColumnNameTypesMatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/tableNameMismatchSession.json");
+    String sessionFile = "src/test/resources/tableNameMismatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "leChanteur";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -94,6 +97,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -103,12 +108,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void tableNameMatchColumnNameTypeMismatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/coulmnNameTypeMismatchSession.json");
+    String sessionFile = "src/test/resources/coulmnNameTypeMismatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"222\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
     /*The expected sql is:
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES ('999',222,'ll') ON DUPLICATE"
@@ -119,6 +126,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -128,13 +137,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void tableNameMatchSourceColumnNotPresentInSpanner() {
-    Schema schema =
-        SessionFileReader.read("src/test/resources/sourceColumnAbsentInSpannerSession.json");
+    String sessionFile = "src/test/resources/sourceColumnAbsentInSpannerSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -146,6 +156,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -155,14 +167,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void tableNameMatchSpannerColumnNotPresentInSource() {
-
-    Schema schema =
-        SessionFileReader.read("src/test/resources/spannerColumnAbsentInSourceSession.json");
+    String sessionFile = "src/test/resources/spannerColumnAbsentInSourceSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"hb_shardId\":\"shardA\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -174,6 +186,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -183,12 +197,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void primaryKeyNotFoundInJson() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SomeRandomName\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SomeRandomName\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is: ""*/
@@ -198,6 +214,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -206,12 +224,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void primaryKeyNotPresentInSourceSchema() {
-    Schema schema = SessionFileReader.read("src/test/resources/sourceNoPkSession.json");
+    String sessionFile = "src/test/resources/sourceNoPkSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is: ""*/
@@ -221,6 +241,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -229,12 +251,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void timezoneOffsetMismatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/timeZoneSession.json");
+    String sessionFile = "src/test/resources/timeZoneSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"Bday\":\"2023-05-18T12:01:13.088397258Z\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -247,6 +271,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+10:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -256,12 +282,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void primaryKeyMismatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/primarykeyMismatchSession.json");
+    String sessionFile = "src/test/resources/primarykeyMismatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"FirstName\":\"kk\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"FirstName\":\"kk\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -273,6 +301,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -282,7 +312,10 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void allDataypesDML() throws Exception {
-    Schema schema = SessionFileReader.read("src/test/resources/allDatatypeSession.json");
+    String sessionFile = "src/test/resources/allDatatypeSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     InputStream stream =
         Channels.newInputStream(
@@ -331,6 +364,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -379,12 +414,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void updateToNull() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -396,6 +433,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -405,12 +444,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void deleteMultiplePKColumns() {
-    Schema schema = SessionFileReader.read("src/test/resources/MultiColmPKSession.json");
+    String sessionFile = "src/test/resources/MultiColmPKSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\",\"FirstName\":\"kk\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\",\"FirstName\":\"kk\"}");
     String modType = "DELETE";
 
     /* The expected sql is:
@@ -421,6 +462,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -431,12 +474,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSingleQuoteMatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"k\u0027k\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -448,6 +493,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -457,7 +504,10 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void singleQuoteBytesDML() throws Exception {
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     /*
     Spanner write is : CAST("\'" as BYTES) for blob and "\'" for varchar
     Eventual insert is '' but mysql synatx escapes each ' with another '*/
@@ -465,8 +515,7 @@ public final class MySQLDMLGeneratorTest {
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Jw\u003d\u003d\",\"varchar_column\":\"\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -480,6 +529,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertTrue(sql.contains("`varchar_column` = '''"));
@@ -492,13 +543,15 @@ public final class MySQLDMLGeneratorTest {
     Spanner write is : CAST("\''" as BYTES) for blob and "\'" for varchar
     Eventual insert is '' but mysql synatx escapes each ' with another '*/
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Jyc\u003d\",\"varchar_column\":\"\u0027\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -511,6 +564,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -524,13 +579,15 @@ public final class MySQLDMLGeneratorTest {
     Spanner write is : CAST("\\\'" as BYTES) for blob and "\\\'" for varchar
     Eventual insert is \' but mysql synatx escapes each ' with another ' and \ with another \*/
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"XCc\u003d\",\"varchar_column\":\"\\\\\\\u0027\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -543,6 +600,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -557,13 +616,15 @@ public final class MySQLDMLGeneratorTest {
     and "\t" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"CQ==\",\"varchar_column\":\"\\t\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -576,6 +637,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -590,13 +653,15 @@ public final class MySQLDMLGeneratorTest {
     and "\b" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"CA==\",\"varchar_column\":\"\\b\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -609,6 +674,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -623,13 +690,15 @@ public final class MySQLDMLGeneratorTest {
     and "\n" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Cg==\",\"varchar_column\":\"\\n\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -642,6 +711,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -656,13 +727,15 @@ public final class MySQLDMLGeneratorTest {
     and "\r" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"DQ==\",\"varchar_column\":\"\\r\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -675,6 +748,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -689,13 +764,15 @@ public final class MySQLDMLGeneratorTest {
     and "\f" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"DA==\",\"varchar_column\":\"\\f\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -708,6 +785,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -722,13 +801,15 @@ public final class MySQLDMLGeneratorTest {
     and "\"" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Ig==\",\"varchar_column\":\"\\\"\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -741,6 +822,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -755,13 +838,15 @@ public final class MySQLDMLGeneratorTest {
     and "\\" for varchar
     */
 
-    Schema schema = SessionFileReader.read("src/test/resources/quotesSession.json");
+    String sessionFile = "src/test/resources/quotesSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"XA==\",\"varchar_column\":\"\\\\\",}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"id\":\"12\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"id\":\"12\"}");
     String modType = "INSERT";
 
     /*The expected sql is:
@@ -774,6 +859,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -783,38 +870,47 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void bitColumnSql() {
-    Schema schema = SessionFileReader.read("src/test/resources/bitSession.json");
+    String sessionFile = "src/test/resources/bitSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"YmlsX2NvbA\u003d\u003d\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     /*The expected sql is:
     "INSERT INTO Singers(SingerId,FirstName,LastName) VALUES"
         + " (999,'kk',BINARY(FROM_BASE64('YmlsX2NvbA=='))) ON DUPLICATE KEY UPDATE  FirstName ="
-        + " 'kk', LastName = BINARY(FROM_BASE64('YmlsX2NvbA=='))"; */
+        + " 'kk', LastName = x'62696c5f636f6c'))";
+     Base64 decode of `YmlsX2NvbA==` is `bil_col`
+     Char to Hex for `bil_col` is `62 69 6C 5F 63 6F 6C`
+        */
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
-    assertTrue(sql.contains("`LastName` = BINARY(FROM_BASE64('YmlsX2NvbA=='))"));
+    assertTrue(sql.contains("`LastName` = x'62696c5f636f6c'"));
   }
 
   @Test
   public void testSpannerTableNotInSchema() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "SomeRandomTableNotInSchema";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -823,6 +919,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -831,12 +929,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSpannerKeyIsNull() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":null}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":null}");
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -845,6 +945,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -855,12 +957,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testKeyInNewValuesJson() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SmthingElse\":null}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SmthingElse\":null}");
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -869,6 +973,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
     assertTrue(
@@ -878,12 +984,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSourcePKNotInSpanner() {
-    Schema schema = SessionFileReader.read("src/test/resources/errorSchemaSession.json");
+    String sessionFile = "src/test/resources/errorSchemaSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "customer";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"Dont\":\"care\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "DELETE";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -892,6 +1000,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -900,12 +1010,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void primaryKeyMismatchSpannerNull() {
-    Schema schema = SessionFileReader.read("src/test/resources/primarykeyMismatchSession.json");
+    String sessionFile = "src/test/resources/primarykeyMismatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"FirstName\":null}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"FirstName\":null}");
     String modType = "INSERT";
 
     /* The expected sql is:
@@ -917,6 +1029,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -925,12 +1039,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testUnsupportedModType() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "JUNK";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -939,6 +1055,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -947,12 +1065,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testUpdateModType() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "UPDATE";
 
     /*The expected sql is:
@@ -964,6 +1084,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -973,12 +1095,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSpannerTableIdMismatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/errorSchemaSession.json");
+    String sessionFile = "src/test/resources/errorSchemaSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"Dont\":\"care\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "DELETE";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -987,6 +1111,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -995,12 +1121,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSourcePkNull() {
-    Schema schema = SessionFileReader.read("src/test/resources/errorSchemaSession.json");
+    String sessionFile = "src/test/resources/errorSchemaSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Persons";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"Dont\":\"care\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -1009,6 +1137,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -1017,12 +1147,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSourceTableNotInSchema() {
-    Schema schema = getSchemaObject();
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "contacts";
     String newValuesString = "{\"accountId\": \"Id1\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"Dont\":\"care\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"Dont\":\"care\"}");
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -1031,6 +1163,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
@@ -1039,13 +1173,14 @@ public final class MySQLDMLGeneratorTest {
 
   @Test
   public void testSpannerTableNotInSchemaObject() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
-    String tableName = "Singers";
-    schema.getSpSchema().remove(schema.getSpannerToID().get(tableName).getName());
+    String sessionFile = "src/test/resources/allMatchSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
+    String tableName = "randomname";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SmthingElse\":null}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SmthingElse\":null}");
     String modType = "INSERT";
 
     MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
@@ -1054,48 +1189,24 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
-    assertTrue(sql.isEmpty());
-  }
-
-  @Test
-  public void testSpannerColDefsNull() {
-    Schema schema = SessionFileReader.read("src/test/resources/allMatchSession.json");
-    String tableName = "Singers";
-
-    String spannerTableId = schema.getSpannerToID().get(tableName).getName();
-    SpannerTable spannerTable = schema.getSpSchema().get(spannerTableId);
-    spannerTable.getColDefs().remove("c5");
-    String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
-    JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"23\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
-    String modType = "INSERT";
-
-    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
-    DMLGeneratorResponse dmlGeneratorResponse =
-        mySQLDMLGenerator.getDMLStatement(
-            new DMLGeneratorRequest.Builder(
-                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
-                .build());
-    String sql = dmlGeneratorResponse.getDmlStatement();
-    MySQLDMLGenerator test = new MySQLDMLGenerator(); // to add that last bit of code coverage
-    InputRecordProcessor test2 =
-        new InputRecordProcessor(); // to add that last bit of code coverage
     assertTrue(sql.isEmpty());
   }
 
   @Test
   public void customTransformationMatch() {
-    Schema schema = SessionFileReader.read("src/test/resources/customTransformation.json");
+    String sessionFile = "src/test/resources/customTransformation.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    Schema schema = SessionFileReader.read(sessionFile);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    String keyValueString = "{\"SingerId\":\"999\"}";
-    JSONObject keyValuesJson = new JSONObject(keyValueString);
+    JSONObject keyValuesJson = new JSONObject("{\"SingerId\":\"999\"}");
     String modType = "INSERT";
     Map<String, Object> customTransformation = new HashMap<>();
     customTransformation.put("FullName", "\'kk ll\'");
@@ -1107,6 +1218,8 @@ public final class MySQLDMLGeneratorTest {
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchema(schema)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
                 .setCustomTransformationResponse(customTransformation)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
@@ -1115,48 +1228,15 @@ public final class MySQLDMLGeneratorTest {
     assertTrue(sql.contains("VALUES (1,'kk ll')"));
   }
 
-  public static Schema getSchemaObject() {
-    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
-    Map<String, SpannerTable> spSchema = getSampleSpSchema();
-    Map<String, NameAndCols> spannerToID = getSampleSpannerToId();
-    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
-    expectedSchema.setSpannerToID(spannerToID);
-    return expectedSchema;
-  }
-
-  public static Map<String, SpannerTable> getSampleSpSchema() {
-    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
-    Map<String, SpannerColumnDefinition> t1SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t1SpColDefs.put(
-        "c1", new SpannerColumnDefinition("accountId", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c2", new SpannerColumnDefinition("accountName", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c3",
-        new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c4", new SpannerColumnDefinition("accountNumber", new SpannerColumnType("INT", false)));
-    spSchema.put(
-        "t1",
-        new SpannerTable(
-            "tableName",
-            new String[] {"c1", "c2", "c3", "c4"},
-            t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c1", 1)},
-            "c3"));
-    return spSchema;
-  }
-
-  public static Map<String, NameAndCols> getSampleSpannerToId() {
-    Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
-    Map<String, String> t1ColIds = new HashMap<String, String>();
-    t1ColIds.put("accountId", "c1");
-    t1ColIds.put("accountName", "c2");
-    t1ColIds.put("migration_shard_id", "c3");
-    t1ColIds.put("accountNumber", "c4");
-    spannerToId.put("tableName", new NameAndCols("t1", t1ColIds));
-    return spannerToId;
+  @Test
+  public void testConvertBase64ToXHex() {
+    assertThat(MySQLDMLGenerator.convertBase64ToHex(null)).isNull();
+    assertThat(MySQLDMLGenerator.convertBase64ToHex("")).isEqualTo("x''");
+    assertThat(MySQLDMLGenerator.convertBase64ToHex("AA==")).isEqualTo("x'00'");
+    assertThat(MySQLDMLGenerator.convertBase64ToHex("R09PR0xF")).isEqualTo("x'474f4f474c45'");
+    // Invalid Base64 string.
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> MySQLDMLGenerator.convertBase64ToHex("####GOOGLE####"));
   }
 }

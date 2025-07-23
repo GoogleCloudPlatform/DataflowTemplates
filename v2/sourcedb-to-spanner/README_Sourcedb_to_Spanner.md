@@ -339,6 +339,127 @@ In case your job fails due to many exceptions like the above, here are a few ste
 #### Throughput on Spanner raises and falls in sharp bursts
 It's possible that the default configuration could lead to spanner throughput raise and fall in sharp bursts. In case this is observed, you can disable spanner batch writes by setting `batchSizeForSpannerMutations` as 0.
 
+## AstraDB to Spanner Bulk Migration
+### Prerequisites
+For bulk data migration from AstraDB to spanner, here are a few prerequisites you will need:
+
+#### Prerequisite-1: Network Connectivity
+1. Choose a VPC in the project where you would like to run the dataflow job (default is the VPC named `default` in the project).
+2. Ensure that the VPC has network connectivity to your AstraDB instance.
+#### Prerequisite-2: AstraDB credentials and related details
+You will need the following Astra DB details:
+1. AstraDB token.
+   1. The AstraDB token can be generated from the database page.
+   2. Please ensure that the token remains valid till the duration of the migration. Depending on the size of the database, the migration can take a few hours.
+2. AstraDB Database ID
+3. AstraDB Region - Leave it empty for default region.
+4. AstraDB Keyspace - The keyspace you want to migrate to spanner.
+Note that the template will automatically download the security bundle from the database.
+
+#### Prerequisite-3: Active Astra DB database
+Please ensure that the AstraDB instance is active (not hibernated) through the migration.
+#### Prerequisite-4: Spanner
+You will need to provision a spanner database where you would like to migrate the data. The database would need to have tables with a schema that maps to the schema on the source.
+The tables which are present both on Spanner and Cassandra would be the ones that are migrated.
+#### Prerequisite-5: GCS
+You would need a GCS bucket to stage your build, driver configuration file, and provide an output directory for DLQs.
+### Run Migration
+
+**Using the staged template**:
+
+Follow [above](#staging-the-template) to build the template and stage it in GCS.
+This step prints the path of the staged template which is passed as `TEMPLATE_SPEC_GCSPATH` below.
+
+To start a job with the staged template at any time using `gcloud`, you are going to
+need valid resources for the required parameters.
+
+Provided that, the following command line can be used:
+
+
+```shell
+### Basic Job Paramters
+export PROJECT=<your-project>
+export BUCKET_NAME=<bucket-name>
+export REGION=<GCP-Region-where-the-dataflow-machines-will-be-provisioned-like-us-central1>
+export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
+### The number of works controls the fanout of Dataflow job to read from Cassandra.
+### While you might need to finetune this for best performance, a number close to number of nodes on Cassandra Cluster might be good place to start.
+export MAX_WORKERS="<MAX_NUMBER_OF_DATAFLOW_WORKERS_TO_READ_FROM_CASSANDRA>"
+export NUM_WORKERS="<INITIAL_NUMBER_OF_DATAFLOW_WORKERS_TO_READ_FROM_CASSANDRA>"
+### The type of machine. `e2-standard-32` might be good starting point for most use cases.
+eport  MACHINE_TYPE="<WORKER_MACHINE_TYPE>"
+
+### Required
+export INSTANCE_ID=<spanner instanceId>
+export DATABASE_ID=<spanner databaseId>
+export PROJECT_ID=<spanner projectId>
+## Either the token directly (starting with `AstraCS`), or URL to gcp secret store.
+ASTRA_DB_APPLICATION_TOKEN="AstraCS:<Your-Astra-DB-Token>"
+## Astra DB database ID.
+ASTRA_DB_ID="<Your-Astra-DB-ID>"
+ASTRA_DB_KEYSPACE="<Your-Astra-DB-Key-Space>"
+## Astra DB region. Leave empty for default region.
+ASTRA_DB_REGION="<Your-Astra-DB-Region>"
+#### Stores DLQ.
+export OUTPUT_DIRECTORY=<outputDirectory>
+
+### Optional
+#### Use A session file in case you would like the Cassandra and Spanner Tables to have different names.
+export SESSION_FILE_PATH=""
+export DISABLED_ALGORITHMS=<disabledAlgorithms>
+export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
+export DEFAULT_LOG_LEVEL=INFO
+#### Set insert only mode to true, in case you would run bulk migration in parallel to dual writes.
+#### This mode stops the bulk template from overwriting rows that already exist in spanner.
+#### If you are not replicating live changes to spanner in parallel, you could choose to set this mode to false.
+#### Setting this mode to false causes the bulk template to overwrite existing rows in spanner.
+#### false is the default if unset.
+export INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS="true"
+#### Region for Dataflow workers (Required ony if you want to configure network and subnetwork.
+expoert WORKER_REGION="${REGION}"
+#### Network where you would like to run Dataflow. Defaults to default. This VPC must have access to Cassandra nodes you would like to migrate from.
+export NETWORK="<VPC_NAME>"
+#### Subnet where you would like to run Dataflow. Defaults to default. This subnet must have access to Cassandra nodes you would like to migrate from.
+export SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
+#### Number of partitions for parallel read.
+##### By default Apache Beam's CassandraIO sets NUM_PARTITIONS equals to number
+##### of nodes on the Cassandra Cluster. This default does not give good performance
+##### larger workloads as it limits the parallelization.
+##### While specifcs would depend on many factors like number of Cassandra nodes, distribution
+##### of partitions of the table across the nodes,
+##### In general a partition of average size of 150 MB gives good throughput and might be a good place to start the fine-tuning.
+NUM_PARTITIONS="<NUM_PARTITIONS>"
+#### Disable Spanner Batch Writes.
+BATCH_SIZE_FOR_SPANNER_MUTATIONS=1
+
+gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
+  --project "$PROJECT" \
+  --region "$REGION" \
+  --network "$NETWORK" \
+  --max-workers "$MAX_WORKERS" \
+  --num-workers "$NUM_WORKERS" \
+  --worker-machine-type "$MACHINE_TYPE" \
+  --subnetwork "$SUBNETWORK" \
+  --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
+  --additional-experiments="[\"disable_runner_v2\"]" \
+  --parameters "sourceDbDialect=ASTRA_DB" \
+  --parameters "insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS" \
+  --parameters "astraDBToken=${ASTRA_DB_APPLICATION_TOKEN}" \
+  --parameters "astraDBRegion=${ASTRA_DB_REGION}" \
+  --parameters "astraDBDatabaseId=${ASTRA_DB_ID}" \
+  --parameters "astraDBKeySpace=${ASTRA_DB_KEYSPACE}" \
+  --parameters "instanceId=$INSTANCE_ID" \
+  --parameters "databaseId=$DATABASE_ID" \
+  --parameters "projectId=$PROJECT_ID" \
+  --parameters "sessionFilePath=$SESSION_FILE_PATH" \
+  --parameters "outputDirectory=$OUTPUT_DIRECTORY" \
+  --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
+  --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+  --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL" \
+  --parameters "numPartitions=${NUM_PARTITIONS}" \
+  --parameters "batchSizeForSpannerMutations=${BATCH_SIZE_FOR_SPANNER_MUTATIONS}"
+```
+
 
 ## Terraform
 

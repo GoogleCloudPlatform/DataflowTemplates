@@ -28,6 +28,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
@@ -40,10 +41,13 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigDecimal;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -75,6 +79,8 @@ public class AssignShardIdFn
   /* The information schema of the Cloud Spanner database */
   private final Ddl ddl;
 
+  private final SourceSchema sourceSchema;
+
   private final Schema schema;
 
   // Jackson Object mapper.
@@ -102,6 +108,7 @@ public class AssignShardIdFn
       SpannerConfig spannerConfig,
       Schema schema,
       Ddl ddl,
+      SourceSchema sourceSchema,
       String shardingMode,
       String shardName,
       String skipDirName,
@@ -113,6 +120,7 @@ public class AssignShardIdFn
     this.spannerConfig = spannerConfig;
     this.schema = schema;
     this.ddl = ddl;
+    this.sourceSchema = sourceSchema;
     this.shardingMode = shardingMode;
     this.shardName = shardName;
     this.skipDirName = skipDirName;
@@ -200,9 +208,8 @@ public class AssignShardIdFn
         record.setShard(this.shardName);
         qualifiedShard = this.shardName;
       } else {
-        // Skip from processing if table not in session File
-        // TODO: remove dependency on session file when session file is made optional
-        boolean doesTableExist = doesTableExistInSessionFile(tableName);
+        // Skip from processing if table not found at source.
+        boolean doesTableExist = doesTableExistAtSource(tableName);
         if (!doesTableExist) {
           LOG.warn(
               "Writing record for table {} to skipped directory name {} since table not present in"
@@ -212,7 +219,6 @@ public class AssignShardIdFn
           record.setShard(skipDirName);
           qualifiedShard = skipDirName;
         } else {
-
           ShardIdRequest shardIdRequest = new ShardIdRequest(tableName, spannerRecord);
 
           ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest);
@@ -227,14 +233,12 @@ public class AssignShardIdFn
           }
         }
       }
-
       record.setShard(qualifiedShard);
       String finalKeyString = tableName + "_" + keysJsonStr + "_" + qualifiedShard;
       Long finalKey =
           finalKeyString.hashCode() % maxConnectionsAcrossAllShards; // The total parallelism is
       // maxConnectionsAcrossAllShards
       c.output(KV.of(finalKey, record));
-
     } catch (Exception e) {
       StringWriter errors = new StringWriter();
       e.printStackTrace(new PrintWriter(errors));
@@ -290,7 +294,11 @@ public class AssignShardIdFn
         com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
             staleInstant.getEpochSecond(), staleInstant.getNano());
     List<String> columns =
-        ddl.table(tableName).columns().stream().map(Column::name).collect(Collectors.toList());
+        ddl.table(tableName).columns().stream()
+            .filter(column -> (!column.isGenerated() || column.isStored()))
+            .map(Column::name)
+            .collect(Collectors.toList());
+
     Struct row =
         spannerAccessor
             .getDatabaseClient()
@@ -317,13 +325,51 @@ public class AssignShardIdFn
           (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
       rowAsMap.keySet().stream()
           .filter(k -> !keyColumns.contains(k))
-          .forEach(colName -> newValuesJsonNode.put(colName, row.getValue(colName).toString()));
+          .forEach(colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row));
       String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
       record.setMod(
           new Mod(
               record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     }
     return rowAsMap;
+  }
+
+  /*
+   * Marshals Spanner's read row values to match CDC stream's representation.
+   */
+  private void marshalSpannerValues(
+      ObjectNode newValuesJsonNode, String tableName, String colName, Struct row) {
+    // TODO(b/430495490): Add support for string arrays on Spanner side.
+    switch (ddl.table(tableName).column(colName).type().getCode()) {
+      case FLOAT64:
+        double val = row.getDouble(colName);
+        if (Double.isNaN(val) || !Double.isFinite(val)) {
+          newValuesJsonNode.put(colName, val);
+
+        } else {
+          newValuesJsonNode.put(colName, new BigDecimal(val));
+        }
+        break;
+      case BOOL:
+        newValuesJsonNode.put(colName, row.getBoolean(colName));
+        break;
+      case BYTES:
+        // We need to trim the base64 string to remove newlines added at the end.
+        // Older version of Base64 lik e(MIME) or Privacy-Enhanced Mail (PEM), often included line
+        // breaks.
+        // MySql adheres to RFC 4648 (the standard MySQL uses) which states that implementations
+        // MUST
+        // NOT add line feeds to base-encoded data unless explicitly directed by a referring
+        // specification.
+        newValuesJsonNode.put(
+            colName,
+            Base64.getEncoder()
+                .encodeToString(row.getValue(colName).getBytes().toByteArray())
+                .trim());
+        break;
+      default:
+        newValuesJsonNode.put(colName, row.getValue(colName).toString());
+    }
   }
 
   public Map<String, Object> getRowAsMap(Struct row, List<String> columns, String tableName)
@@ -499,14 +545,22 @@ public class AssignShardIdFn
     }
   }
 
-  private boolean doesTableExistInSessionFile(String tableName) throws IllegalArgumentException {
-    if (schema.getSpannerToID().containsKey(tableName)) {
-      return true;
+  private boolean doesTableExistAtSource(String tableName) {
+    try {
+      String sourceTableName = schema.getToSource().get(tableName).getName();
+      if (sourceTableName == null || sourceTableName.isEmpty()) {
+        return false;
+      }
+      for (com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable table :
+          sourceSchema.tables().values()) {
+        if (table.name().equalsIgnoreCase(sourceTableName)) {
+          return true;
+        }
+      }
+      return false;
+    } catch (NoSuchElementException e) {
+      return false;
     }
-    LOG.warn(
-        "Table {} found in change record but not found in session file. Skipping record",
-        tableName);
-    return false;
   }
 
   private Map<String, Object> getSpannerRecordFromChangeStreamData(

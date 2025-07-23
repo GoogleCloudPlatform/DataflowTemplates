@@ -149,6 +149,9 @@ public class CdcJdbcIO {
     abstract ValueProvider<Collection<String>> getConnectionInitSqls();
 
     @Nullable
+    abstract ValueProvider<Integer> getLoginTimeout();
+
+    @Nullable
     abstract DataSource getDataSource();
 
     abstract Builder builder();
@@ -168,6 +171,8 @@ public class CdcJdbcIO {
       abstract Builder setConnectionProperties(ValueProvider<String> connectionProperties);
 
       abstract Builder setConnectionInitSqls(ValueProvider<Collection<String>> connectionInitSqls);
+
+      abstract Builder setLoginTimeout(ValueProvider<Integer> loginTimeout);
 
       abstract Builder setDataSource(DataSource dataSource);
 
@@ -263,6 +268,27 @@ public class CdcJdbcIO {
       return builder().setConnectionInitSqls(connectionInitSqls).build();
     }
 
+    /**
+     * Sets the login timeout for the DataSource.
+     *
+     * @param loginTimeout login timeout in seconds
+     * @return updated DataSourceConfiguration
+     */
+    public DataSourceConfiguration withLoginTimeout(Integer loginTimeout) {
+      return withLoginTimeout(ValueProvider.StaticValueProvider.of(loginTimeout));
+    }
+
+    /**
+     * Sets the login timeout for the DataSource.
+     *
+     * @param loginTimeout login timeout in seconds as ValueProvider
+     * @return updated DataSourceConfiguration
+     */
+    public DataSourceConfiguration withLoginTimeout(ValueProvider<Integer> loginTimeout) {
+      checkArgument(loginTimeout != null, "loginTimeout can not be null");
+      return builder().setLoginTimeout(loginTimeout).build();
+    }
+
     void populateDisplayData(DisplayData.Builder builder) {
       if (getDataSource() != null) {
         builder.addIfNotNull(DisplayData.item("dataSource", getDataSource().getClass().getName()));
@@ -298,6 +324,24 @@ public class CdcJdbcIO {
         }
         if (getMaxIdleConnections() != null && getMaxIdleConnections().get() != null) {
           basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());
+        }
+        if (getLoginTimeout() != null && getLoginTimeout().get() != null) {
+          // BasicDataSource.setLoginTimeout() is not supported and throws
+          // UnsupportedOperationException.
+          // Instead, we append the loginTimeout as a connection property to the existing
+          // properties.
+          String existingProperties =
+              getConnectionProperties() != null && getConnectionProperties().get() != null
+                  ? getConnectionProperties().get()
+                  : "";
+          String loginTimeoutProperty = "loginTimeout=" + getLoginTimeout().get().toString();
+          String updatedProperties =
+              existingProperties.isEmpty()
+                  ? loginTimeoutProperty
+                  : existingProperties + ";" + loginTimeoutProperty;
+          basicDataSource.setConnectionProperties(updatedProperties);
+        } else if (getConnectionProperties() != null && getConnectionProperties().get() != null) {
+          basicDataSource.setConnectionProperties(getConnectionProperties().get());
         }
 
         return basicDataSource;

@@ -43,7 +43,7 @@ public class ProcessDml {
 
   private static final Logger LOG = LoggerFactory.getLogger(ProcessDml.class);
   private static final String WINDOW_DURATION = "1s";
-  private static final int NUM_THREADS = 8;
+  private static final int NUM_THREADS = 15;
 
   public ProcessDml() {}
 
@@ -99,11 +99,10 @@ public class ProcessDml {
       String currentSortKey = dmlInfo.getOrderByValueString();
 
       // If there is no PK then state can be skipped
+      String numThreads = Integer.toString(Math.abs(stateKey.hashCode()) % NUM_THREADS);
       if (dmlInfo.getAllPkFields().size() == 0) {
-        String numThreads = Integer.toString(stateKey.hashCode() % NUM_THREADS);
         context.output(KV.of(numThreads, dmlInfo));
       } else if (lastSortKey == null || currentSortKey.compareTo(lastSortKey) > 0) {
-        String numThreads = Integer.toString(stateKey.hashCode() % NUM_THREADS);
         myState.write(currentSortKey);
         context.output(KV.of(numThreads, dmlInfo));
 

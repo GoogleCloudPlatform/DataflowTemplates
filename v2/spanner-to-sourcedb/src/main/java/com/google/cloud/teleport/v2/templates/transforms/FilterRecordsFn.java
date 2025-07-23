@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.beam.sdk.transforms.DoFn.ProcessElement;
@@ -33,6 +34,7 @@ public class FilterRecordsFn extends DoFn<DataChangeRecord, DataChangeRecord> {
   @ProcessElement
   public void processElement(ProcessContext c) {
     DataChangeRecord record = c.element();
+    Metrics.counter(FilterRecordsFn.class, "total_spanner_writes").inc(record.getMods().size());
 
     // In this mode, filter no records.
     if (filtrationMode.equals(Constants.FILTRATION_MODE_NONE)) {
@@ -43,6 +45,9 @@ public class FilterRecordsFn extends DoFn<DataChangeRecord, DataChangeRecord> {
     // TODO: Fetch forward migration Dataflow job id and do full string match for the tag.
     if (!record.getTransactionTag().startsWith(Constants.FWD_MIGRATION_TRANSACTION_TAG_PREFIX)) {
       c.output(record);
+      return;
     }
+    Metrics.counter(FilterRecordsFn.class, "fwd_migration_filtered_record_count")
+        .inc(record.getMods().size());
   }
 }

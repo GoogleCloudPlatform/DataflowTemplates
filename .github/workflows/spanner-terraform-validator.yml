@@ -28,9 +28,9 @@ jobs:
     steps:
       - uses: hashicorp/setup-terraform@v3
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.2.2
       - name: Verify Terraform formatting
-        uses: dflook/terraform-fmt-check@v1
+        uses: dflook/terraform-fmt-check@v2
         with:
           path: ${{ matrix.terraform_paths }}
       - name: Verify Terraform template and required structure
