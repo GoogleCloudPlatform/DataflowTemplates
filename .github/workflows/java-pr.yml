@@ -50,7 +50,7 @@ env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
   IT_REGION: us-west2
 
-permissions: write-all
+permissions: read-all
 
 jobs:
   spotless_check:
