@@ -271,6 +271,18 @@ public class DataStreamToSQL {
     Integer getDatabaseLoginTimeout();
 
     void setDatabaseLoginTimeout(Integer value);
+
+    @TemplateParameter.Boolean(
+        order = 17,
+        optional = true,
+        description = "Order by configurations for data should include prioritizing data which is not deleted.",
+        helpText =
+            "Order by configurations for data should include prioritizing data which is not deleted.")
+    @Default.Boolean(false)
+    Boolean getOrderByIncludesIsDeleted();
+
+    void setOrderByIncludesIsDeleted(Boolean value);
+  }
   }
 
   /**
