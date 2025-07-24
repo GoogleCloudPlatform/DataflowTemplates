@@ -56,6 +56,7 @@ public abstract class DatastreamToDML
   private DataSource dataSource;
   public String quoteCharacter;
   protected Map<String, String> schemaMap = new HashMap<String, String>();
+  protected Boolean orderByIncludesIsDeleted = false;
 
   public abstract String getDefaultQuoteCharacter();
 
@@ -90,6 +91,11 @@ public abstract class DatastreamToDML
 
   public DatastreamToDML withSchemaMap(Map<String, String> schemaMap) {
     this.schemaMap = schemaMap;
+    return this;
+  }
+
+  public DatastreamToDML withOrderByIncludesIsDeleted(Boolean orderByIncludesIsDeleted) {
+    this.orderByIncludesIsDeleted = orderByIncludesIsDeleted;
     return this;
   }
 
@@ -216,7 +222,7 @@ public abstract class DatastreamToDML
       }
 
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
-      List<String> orderByFields = row.getSortFields();
+      List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
       List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema);
       List<String> orderByValues = getFieldValues(rowObj, orderByFields, tableSchema);
 
