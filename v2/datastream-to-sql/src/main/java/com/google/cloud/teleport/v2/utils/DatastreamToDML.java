@@ -327,11 +327,16 @@ public abstract class DatastreamToDML
   }
 
   public List<String> getFieldValues(
-      JsonNode rowObj, List<String> fieldNames, Map<String, String> tableSchema) {
+      JsonNode rowObj, List<String> fieldNames, Map<String, String> tableSchema, Boolean overrideIsDeleted) {
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
+      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
+        String val = getValueSql(rowObj, fieldName, tableSchema);
+        return val == "true" ? "1" : "0";
+      } else {
+        fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
+      }
     }
 
     return fieldValues;
