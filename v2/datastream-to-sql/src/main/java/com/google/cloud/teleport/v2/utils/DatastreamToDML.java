@@ -333,7 +333,7 @@ public abstract class DatastreamToDML
     for (String fieldName : fieldNames) {
       if (overrideIsDeleted && fieldName == "_metadata_deleted") {
         String val = getValueSql(rowObj, fieldName, tableSchema);
-        return val == "true" ? "1" : "0";
+        fieldValues.add(val == "true" ? "1" : "0");
       } else {
         fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
       }
