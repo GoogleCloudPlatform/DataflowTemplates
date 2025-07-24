@@ -56,6 +56,7 @@ public abstract class DatastreamToDML
   private DataSource dataSource;
   public String quoteCharacter;
   protected Map<String, String> schemaMap = new HashMap<String, String>();
+  protected Boolean orderByIncludesIsDeleted = false;
 
   public abstract String getDefaultQuoteCharacter();
 
@@ -90,6 +91,11 @@ public abstract class DatastreamToDML
 
   public DatastreamToDML withSchemaMap(Map<String, String> schemaMap) {
     this.schemaMap = schemaMap;
+    return this;
+  }
+
+  public DatastreamToDML withOrderByIncludesIsDeleted(Boolean orderByIncludesIsDeleted) {
+    this.orderByIncludesIsDeleted = orderByIncludesIsDeleted;
     return this;
   }
 
@@ -216,9 +222,10 @@ public abstract class DatastreamToDML
       }
 
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
-      List<String> orderByFields = row.getSortFields();
-      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema);
-      List<String> orderByValues = getFieldValues(rowObj, orderByFields, tableSchema);
+      List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
+      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema, false);
+      List<String> orderByValues =
+          getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
       String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
       Map<String, String> sqlTemplateValues =
@@ -321,11 +328,19 @@ public abstract class DatastreamToDML
   }
 
   public List<String> getFieldValues(
-      JsonNode rowObj, List<String> fieldNames, Map<String, String> tableSchema) {
+      JsonNode rowObj,
+      List<String> fieldNames,
+      Map<String, String> tableSchema,
+      Boolean overrideIsDeleted) {
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
+      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
+        String val = getValueSql(rowObj, fieldName, tableSchema);
+        fieldValues.add(val == "true" ? "1" : "0");
+      } else {
+        fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
+      }
     }
 
     return fieldValues;

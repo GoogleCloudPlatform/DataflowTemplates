@@ -271,6 +271,18 @@ public class DataStreamToSQL {
     Integer getDatabaseLoginTimeout();
 
     void setDatabaseLoginTimeout(Integer value);
+
+    @TemplateParameter.Boolean(
+        order = 17,
+        optional = true,
+        description =
+            "Order by configurations for data should include prioritizing data which is not deleted.",
+        helpText =
+            "Order by configurations for data should include prioritizing data which is not deleted.")
+    @Default.Boolean(false)
+    Boolean getOrderByIncludesIsDeleted();
+
+    void setOrderByIncludesIsDeleted(Boolean value);
   }
 
   /**
@@ -408,6 +420,7 @@ public class DataStreamToSQL {
                 "Format to DML",
                 CreateDml.of(dataSourceConfiguration)
                     .withSchemaMap(schemaMap)
+                    .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                     .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
 

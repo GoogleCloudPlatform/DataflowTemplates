@@ -44,6 +44,7 @@ public class CreateDml
   private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
   private static Map<String, String> schemaMap = new HashMap<String, String>();
+  private static Boolean orderByIncludesIsDeleted = false;
 
   private CreateDml(DataSourceConfiguration dataSourceConfiguration) {
     this.dataSourceConfiguration = dataSourceConfiguration;
@@ -55,6 +56,11 @@ public class CreateDml
 
   public CreateDml withSchemaMap(Map<String, String> schemaMap) {
     this.schemaMap = schemaMap;
+    return this;
+  }
+
+  public CreateDml withOrderByIncludesIsDeleted(Boolean orderByIncludesIsDeleted) {
+    this.orderByIncludesIsDeleted = orderByIncludesIsDeleted;
     return this;
   }
 
@@ -80,7 +86,9 @@ public class CreateDml
             String.format("Database Driver %s is not supported.", driverName));
     }
 
-    return datastreamToDML.withSchemaMap(schemaMap);
+    return datastreamToDML
+        .withSchemaMap(schemaMap)
+        .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted);
   }
 
   @Override
