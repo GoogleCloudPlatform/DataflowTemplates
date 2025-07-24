@@ -87,8 +87,8 @@ public class CreateDml
     }
 
     return datastreamToDML
-      .withSchemaMap(schemaMap)
-      .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted);
+        .withSchemaMap(schemaMap)
+        .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted);
   }
 
   @Override
