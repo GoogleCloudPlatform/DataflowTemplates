@@ -223,8 +223,8 @@ public abstract class DatastreamToDML
 
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
       List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema);
-      List<String> orderByValues = getFieldValues(rowObj, orderByFields, tableSchema);
+      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema, false);
+      List<String> orderByValues = getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
       String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
       Map<String, String> sqlTemplateValues =
