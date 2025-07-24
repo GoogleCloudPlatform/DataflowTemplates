@@ -188,7 +188,6 @@ public class DatastreamRow {
     List<String> sortFields = getSortFields();
     if (addIsDeleted) {
       sortFields.add("_metadata_deleted");
-      
     }
     return sortFields;
   }
