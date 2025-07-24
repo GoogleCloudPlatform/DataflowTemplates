@@ -275,7 +275,8 @@ public class DataStreamToSQL {
     @TemplateParameter.Boolean(
         order = 17,
         optional = true,
-        description = "Order by configurations for data should include prioritizing data which is not deleted.",
+        description =
+            "Order by configurations for data should include prioritizing data which is not deleted.",
         helpText =
             "Order by configurations for data should include prioritizing data which is not deleted.")
     @Default.Boolean(false)
