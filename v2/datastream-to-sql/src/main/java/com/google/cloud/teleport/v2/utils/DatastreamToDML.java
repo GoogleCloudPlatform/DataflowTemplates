@@ -224,7 +224,8 @@ public abstract class DatastreamToDML
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
       List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
       List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema, false);
-      List<String> orderByValues = getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
+      List<String> orderByValues =
+          getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
       String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
       Map<String, String> sqlTemplateValues =
@@ -327,7 +328,10 @@ public abstract class DatastreamToDML
   }
 
   public List<String> getFieldValues(
-      JsonNode rowObj, List<String> fieldNames, Map<String, String> tableSchema, Boolean overrideIsDeleted) {
+      JsonNode rowObj,
+      List<String> fieldNames,
+      Map<String, String> tableSchema,
+      Boolean overrideIsDeleted) {
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
