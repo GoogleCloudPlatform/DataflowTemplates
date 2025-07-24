@@ -283,7 +283,6 @@ public class DataStreamToSQL {
 
     void setOrderByIncludesIsDeleted(Boolean value);
   }
-  }
 
   /**
    * Main entry point for executing the pipeline.
