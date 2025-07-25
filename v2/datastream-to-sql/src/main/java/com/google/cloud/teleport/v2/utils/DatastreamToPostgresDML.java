@@ -124,6 +124,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       case "DOUBLE PRECISION":
       case "SMALLSERIAL":
       case "SERIAL":
+      case "ENUM":
       case "BIGSERIAL":
         if (columnValue.equals("") || columnValue.equals("''")) {
           return getNullValueSql();
@@ -134,6 +135,21 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
       case "BYTEA":
         // Byte arrays are converted to base64 string representation.
         return "decode(" + columnValue + ",'base64')";
+      case "HSTORE":
+        String hstoreLiteral = convertJsonToHstoreLiteral(columnValue);
+
+        if (hstoreLiteral.equals(getNullValueSql())) {
+          return hstoreLiteral;
+        }
+        return hstoreLiteral + "::hstore";
+      case "LTREE":
+        if (columnValue.equals("")
+            || columnValue.equals("''")
+            || columnValue.equalsIgnoreCase("'NULL'")
+            || columnValue.equalsIgnoreCase("NULL")) {
+          return getNullValueSql();
+        }
+        return columnValue + "::ltree";
     }
 
     // Arrays in Postgres are prefixed with underscore e.g. _INT4 for integer array.
@@ -143,14 +159,84 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     return columnValue;
   }
 
+  private String unquote(String value) {
+    if (value != null && value.length() > 1 && value.startsWith("'") && value.endsWith("'")) {
+      return value.substring(1, value.length() - 1).replace("''", "'");
+    }
+    return value;
+  }
+
+  public String convertJsonToHstoreLiteral(String jsonValue) {
+    // 1. Handle null, empty, or literal "null" strings
+    if (jsonValue == null || jsonValue.isEmpty() || jsonValue.equalsIgnoreCase("null")) {
+      return getNullValueSql();
+    }
+
+    ObjectMapper mapper = new ObjectMapper();
+    try {
+      String unquotedJsonValue = unquote(jsonValue);
+      JsonNode rootNode = mapper.readTree(unquotedJsonValue);
+
+      // 2. An hstore must be created from a JSON object.
+      if (!rootNode.isObject()) {
+        LOG.warn("Cannot convert non-object JSON to hstore. Value: {}", jsonValue);
+        return getNullValueSql();
+      }
+
+      StringBuilder hstoreBuilder = new StringBuilder();
+      Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
+
+      boolean isFirst = true;
+      while (fields.hasNext()) {
+        if (!isFirst) {
+          hstoreBuilder.append(", ");
+        }
+
+        Map.Entry<String, JsonNode> entry = fields.next();
+        String key = entry.getKey();
+        JsonNode valueNode = entry.getValue();
+
+        // 3. Format the key (always double-quoted and escaped)
+        hstoreBuilder.append("\"").append(escapeHstoreValue(key)).append("\"");
+        hstoreBuilder.append("=>");
+
+        // 4. Format the value (handle SQL NULL or double-quote and escape)
+        if (valueNode.isNull()) {
+          hstoreBuilder.append("NULL");
+        } else {
+          hstoreBuilder.append("\"").append(escapeHstoreValue(valueNode.asText())).append("\"");
+        }
+        isFirst = false;
+      }
+
+      // 5. Wrap the final result in single quotes to make it a PG string literal.
+      return "'" + hstoreBuilder.toString() + "'";
+
+    } catch (JsonProcessingException e) {
+      LOG.error(
+          "Error parsing JSON for hstore conversion: {}. Error: {}", jsonValue, e.getMessage());
+      return getNullValueSql();
+    }
+  }
+
+  /** Escapes backslashes and double-quotes within a string for hstore compatibility. */
+  private String escapeHstoreValue(String value) {
+    if (value == null) {
+      return "";
+    }
+    // Important: The order matters. Escape backslashes first.
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
   public String convertJsonToPostgresInterval(String jsonValue, String columnName) {
     if (jsonValue == null || jsonValue.equals("''") || jsonValue.equals("")) {
       return getNullValueSql();
     }
 
     try {
+      String unquotedJsonValue = unquote(jsonValue);
       ObjectMapper mapper = new ObjectMapper();
-      JsonNode rootNode = mapper.readTree(jsonValue);
+      JsonNode rootNode = mapper.readTree(unquotedJsonValue);
 
       if (!rootNode.isObject()
           || !rootNode.has("months")
@@ -181,8 +267,9 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     }
 
     try {
+      String unquotedJsonValue = unquote(jsonValue);
       ObjectMapper mapper = new ObjectMapper();
-      JsonNode rootNode = mapper.readTree(jsonValue);
+      JsonNode rootNode = mapper.readTree(unquotedJsonValue);
       if (!(rootNode.isObject() && rootNode.has("nestedArray"))) {
         LOG.warn("Null array for column {}, value {}", columnName, jsonValue);
         return getNullValueSql();
@@ -224,6 +311,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
         // Cast string array to uuid array.
         return arrayStatement + "::uuid[]";
       }
+
       return arrayStatement;
 
     } catch (JsonProcessingException e) {
