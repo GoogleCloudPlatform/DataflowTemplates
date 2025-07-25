@@ -3,8 +3,9 @@
 The [ManagedIOToManagedIO](src/main/java/com/google/cloud/teleport/v2/templates/ManagedIOToManagedIO.java)
 template is a flexible pipeline that can read from any Managed I/O source and write to any Managed I/O sink.
 This template supports all available Managed I/O connectors including ICEBERG, ICEBERG_CDC, KAFKA, and BIGQUERY.
-The template uses Apache Beam's Managed API to provide a unified interface for configuring different I/O connectors
-through simple configuration maps.
+The template automatically determines whether to run in streaming or batch mode based on the source connector type
+(ICEBERG_CDC and KAFKA use streaming, others use batch). The template uses Apache Beam's Managed API to provide
+a unified interface for configuring different I/O connectors through simple configuration maps.
 
 ## Getting Started
 
@@ -23,7 +24,6 @@ through simple configuration maps.
 | sourceConfig | JSON configuration for the source Managed I/O connector. The configuration format depends on the connector type. |
 | sinkConnectorType | The type of Managed I/O connector to use as sink. Supported values: ICEBERG, KAFKA, BIGQUERY. Note: ICEBERG_CDC is only available for reading. |
 | sinkConfig | JSON configuration for the sink Managed I/O connector. The configuration format depends on the connector type. |
-| streaming | (Optional) Whether to run the pipeline in streaming mode. This is only supported for certain connector combinations. Default is false (batch mode). |
 
 ## Supported Managed I/O Connectors
 
@@ -145,7 +145,7 @@ gcloud dataflow flex-template run "managed-io-bigquery-to-iceberg" \
     --parameters="sinkConfig={\"table\": \"my_catalog.my_database.target_table\", \"catalog_name\": \"my_catalog\"}"
 ```
 
-### Example 3: Iceberg CDC to Kafka (Streaming)
+### Example 3: Iceberg CDC to Kafka (Automatically Streaming)
 
 ```bash
 gcloud dataflow flex-template run "managed-io-iceberg-cdc-to-kafka" \
@@ -154,8 +154,7 @@ gcloud dataflow flex-template run "managed-io-iceberg-cdc-to-kafka" \
     --parameters="sourceConnectorType=ICEBERG_CDC" \
     --parameters="sourceConfig={\"table\": \"my_catalog.my_database.my_table\", \"streaming\": true}" \
     --parameters="sinkConnectorType=KAFKA" \
-    --parameters="sinkConfig={\"bootstrap_servers\": \"localhost:9092\", \"topic\": \"output-topic\"}" \
-    --parameters="streaming=true"
+    --parameters="sinkConfig={\"bootstrap_servers\": \"localhost:9092\", \"topic\": \"output-topic\"}"
 ```
 
 ## Building the Template
@@ -182,9 +181,9 @@ The template requires the following parameters:
 * **sinkConnectorType**: Sink connector type (ICEBERG, KAFKA, BIGQUERY)
 * **sinkConfig**: JSON configuration for the sink connector
 
-Optional parameters:
-
-* **streaming**: Enable streaming mode (default: false)
+The template automatically determines streaming vs. batch mode based on the source connector type:
+* **Streaming mode**: ICEBERG_CDC, KAFKA
+* **Batch mode**: ICEBERG, BIGQUERY
 
 The template can then be executed using gcloud:
 
@@ -199,17 +198,13 @@ export SOURCE_CONFIG=<sourceConfig>
 export SINK_CONNECTOR_TYPE=<sinkConnectorType>
 export SINK_CONFIG=<sinkConfig>
 
-### Optional
-export STREAMING=<streaming>
-
 gcloud dataflow flex-template run "managed-io-to-managed-io-job" \
   --template-file-gcs-location="$BUCKET_NAME/templates/flex/Managed_IO_to_Managed_IO" \
   --region="$REGION" \
   --parameters="sourceConnectorType=$SOURCE_CONNECTOR_TYPE" \
   --parameters="sourceConfig=$SOURCE_CONFIG" \
   --parameters="sinkConnectorType=$SINK_CONNECTOR_TYPE" \
-  --parameters="sinkConfig=$SINK_CONFIG" \
-  --parameters="streaming=$STREAMING"
+  --parameters="sinkConfig=$SINK_CONFIG"
 ```
 
 ## Configuration Reference
