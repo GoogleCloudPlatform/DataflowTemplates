@@ -25,6 +25,10 @@ on:
       - '**.xml'
       # Include python files and Dockerfiles used for YAML and xlang templates.
       - '**.py'
+      # Include Python requirements files for dependency updates
+      - '**/requirements.txt'
+      - 'python/default_base_*.txt'
+      - 'python/generate_all_dependencies.sh'
       - 'plugins/core-plugin/src/main/resources/**'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
