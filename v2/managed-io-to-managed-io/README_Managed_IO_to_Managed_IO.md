@@ -4,13 +4,15 @@ Managed I/O to Managed I/O template
 The Managed I/O to Managed I/O template is a flexible pipeline that can read from
 any Managed I/O source and write to any Managed I/O sink. This template supports
 all available Managed I/O connectors including ICEBERG, ICEBERG_CDC, KAFKA, and
-BIGQUERY. The template uses Apache Beam's Managed API to provide a unified
-interface for configuring different I/O connectors through simple configuration
-maps.
+BIGQUERY. The template automatically determines whether to run in streaming or
+batch mode based on the source connector type (ICEBERG_CDC and KAFKA use
+streaming, others use batch). The template uses Apache Beam's Managed API to
+provide a unified interface for configuring different I/O connectors through
+simple configuration maps.
 
 
 :memo: This is a Google-provided template! Please
-check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/templates/provided/managed-io-to-managed-io)
+check [Provided templates documentation](https://cloud.google.com/dataflow/docs/guides/managed-io)
 on how to use it without having to build from sources using [Create job from template](https://console.cloud.google.com/dataflow/createjob?template=Managed_IO_to_Managed_IO).
 
 :bulb: This is a generated documentation based
@@ -22,13 +24,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **sourceConnectorType**: The type of Managed I/O connector to use as source. Supported values: ICEBERG, ICEBERG_CDC, KAFKA, BIGQUERY.
-* **sourceConfig**: JSON configuration for the source Managed I/O connector. The configuration format depends on the connector type. For example, for KAFKA: {"bootstrap_servers": "localhost:9092", "topic": "input-topic", "format": "JSON"}.
+* **sourceConfig**: JSON configuration for the source Managed I/O connector. The configuration format depends on the connector type. For example, for KAFKA: {"bootstrap_servers": "localhost:9092", "topic": "input-topic", "format": "JSON"} See https://beam.apache.org/documentation/io/managed-io/ for the full configuration options.
 * **sinkConnectorType**: The type of Managed I/O connector to use as sink. Supported values: ICEBERG, KAFKA, BIGQUERY. Note: ICEBERG_CDC is only available for reading.
 * **sinkConfig**: JSON configuration for the sink Managed I/O connector. The configuration format depends on the connector type. For example, for BIGQUERY: {"table": "project:dataset.table"}.
 
 ### Optional parameters
 
-* **streaming**: Whether to run the pipeline in streaming mode. This is only supported for certain connector combinations. Default is false (batch mode).
 
 
 
@@ -113,7 +114,6 @@ export SINK_CONNECTOR_TYPE=<sinkConnectorType>
 export SINK_CONFIG=<sinkConfig>
 
 ### Optional
-export STREAMING=<streaming>
 
 gcloud dataflow flex-template run "managed-io-to-managed-io-job" \
   --project "$PROJECT" \
@@ -122,8 +122,7 @@ gcloud dataflow flex-template run "managed-io-to-managed-io-job" \
   --parameters "sourceConnectorType=$SOURCE_CONNECTOR_TYPE" \
   --parameters "sourceConfig=$SOURCE_CONFIG" \
   --parameters "sinkConnectorType=$SINK_CONNECTOR_TYPE" \
-  --parameters "sinkConfig=$SINK_CONFIG" \
-  --parameters "streaming=$STREAMING"
+  --parameters "sinkConfig=$SINK_CONFIG"
 ```
 
 For more information about the command, please check:
@@ -148,7 +147,6 @@ export SINK_CONNECTOR_TYPE=<sinkConnectorType>
 export SINK_CONFIG=<sinkConfig>
 
 ### Optional
-export STREAMING=<streaming>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -157,7 +155,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="managed-io-to-managed-io-job" \
 -DtemplateName="Managed_IO_to_Managed_IO" \
--Dparameters="sourceConnectorType=$SOURCE_CONNECTOR_TYPE,sourceConfig=$SOURCE_CONFIG,sinkConnectorType=$SINK_CONNECTOR_TYPE,sinkConfig=$SINK_CONFIG,streaming=$STREAMING" \
+-Dparameters="sourceConnectorType=$SOURCE_CONNECTOR_TYPE,sourceConfig=$SOURCE_CONFIG,sinkConnectorType=$SINK_CONNECTOR_TYPE,sinkConfig=$SINK_CONFIG" \
 -f v2/managed-io-to-managed-io
 ```
 
@@ -206,7 +204,6 @@ resource "google_dataflow_flex_template_job" "managed_io_to_managed_io" {
     sourceConfig = "<sourceConfig>"
     sinkConnectorType = "<sinkConnectorType>"
     sinkConfig = "<sinkConfig>"
-    # streaming = "<streaming>"
   }
 }
 ```

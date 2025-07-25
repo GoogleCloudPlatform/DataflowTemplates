@@ -87,21 +87,19 @@ public class ManagedIOToManagedIOTest {
   }
 
   @Test
-  public void testDefaultStreamingMode() {
-    Options options = PipelineOptionsFactory.create().as(Options.class);
+  public void testStreamingSourceDetection() {
+    // Test that ICEBERG_CDC and KAFKA sources are detected as streaming
+    assertThat(ManagedIOToManagedIO.isStreamingSource("ICEBERG_CDC")).isTrue();
+    assertThat(ManagedIOToManagedIO.isStreamingSource("KAFKA")).isTrue();
+    assertThat(ManagedIOToManagedIO.isStreamingSource("kafka")).isTrue(); // case insensitive
 
-    // Default streaming should be false
-    assertThat(options.isStreaming()).isFalse();
-  }
+    // Test that ICEBERG and BIGQUERY sources are detected as batch
+    assertThat(ManagedIOToManagedIO.isStreamingSource("ICEBERG")).isFalse();
+    assertThat(ManagedIOToManagedIO.isStreamingSource("BIGQUERY")).isFalse();
+    assertThat(ManagedIOToManagedIO.isStreamingSource("bigquery")).isFalse(); // case insensitive
 
-  @Test
-  public void testStreamingModeConfiguration() {
-    Options options = PipelineOptionsFactory.create().as(Options.class);
-
-    options.setStreaming(true);
-    assertThat(options.isStreaming()).isTrue();
-    options.setStreaming(false);
-    assertThat(options.isStreaming()).isFalse();
+    // Test unknown source defaults to batch
+    assertThat(ManagedIOToManagedIO.isStreamingSource("UNKNOWN")).isFalse();
   }
 
   @Test

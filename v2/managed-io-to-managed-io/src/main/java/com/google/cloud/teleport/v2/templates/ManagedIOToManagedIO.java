@@ -61,6 +61,8 @@ import org.apache.beam.sdk.values.Row;
         "The Managed I/O to Managed I/O template is a flexible pipeline that can read from any "
             + "Managed I/O source and write to any Managed I/O sink. This template supports all "
             + "available Managed I/O connectors including ICEBERG, ICEBERG_CDC, KAFKA, and BIGQUERY. "
+            + "The template automatically determines whether to run in streaming or batch mode based on "
+            + "the source connector type (ICEBERG_CDC and KAFKA use streaming, others use batch). "
             + "The template uses Apache Beam's Managed API to provide a unified interface for "
             + "configuring different I/O connectors through simple configuration maps.",
     optionsClass = Options.class,
@@ -70,8 +72,7 @@ import org.apache.beam.sdk.values.Row;
     requirements = {
       "The source and sink configurations must be valid for the specified connector types.",
       "Required permissions for accessing the source and sink systems."
-    },
-    streaming = false)
+    })
 public class ManagedIOToManagedIO {
 
   /**
@@ -123,18 +124,6 @@ public class ManagedIOToManagedIO {
     String getSinkConfig();
 
     void setSinkConfig(String value);
-
-    @TemplateParameter.Boolean(
-        order = 5,
-        optional = true,
-        description = "Enable streaming mode",
-        helpText =
-            "Whether to run the pipeline in streaming mode. "
-                + "This is only supported for certain connector combinations. "
-                + "Default is false (batch mode).")
-    boolean isStreaming();
-
-    void setStreaming(boolean value);
   }
 
   /**
@@ -173,6 +162,11 @@ public class ManagedIOToManagedIO {
    * @return The pipeline result.
    */
   public static PipelineResult run(Options options) {
+    // Determine if pipeline should be streaming based on source connector type
+    boolean isStreaming = isStreamingSource(options.getSourceConnectorType());
+
+    // Set streaming mode on pipeline options
+    options.as(DataflowPipelineOptions.class).setStreaming(isStreaming);
 
     Pipeline pipeline = Pipeline.create(options);
 
@@ -241,6 +235,24 @@ public class ManagedIOToManagedIO {
             "Unsupported sink connector type: "
                 + connectorType
                 + ". Note: ICEBERG_CDC is only available for reading.");
+    }
+  }
+
+  /**
+   * Determines if the source connector requires streaming mode.
+   *
+   * @param sourceConnectorType The source connector type.
+   * @return true if streaming mode is required, false for batch mode.
+   */
+  public static boolean isStreamingSource(String sourceConnectorType) {
+    switch (sourceConnectorType.toUpperCase()) {
+      case "ICEBERG_CDC":
+      case "KAFKA":
+        return true;
+      case "ICEBERG":
+      case "BIGQUERY":
+      default:
+        return false;
     }
   }
 
