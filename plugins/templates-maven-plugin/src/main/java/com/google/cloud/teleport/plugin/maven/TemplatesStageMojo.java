@@ -437,13 +437,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     boolean stageImageOnly = definition.getTemplateAnnotation().stageImageOnly();
     imageSpec.setAdditionalUserLabel("goog-dataflow-provided-template-version", version);
     imageSpec.setImage(
-        generateFlexTemplateImagePath(
-            containerName,
-            projectId,
-            artifactRegion,
-            artifactRegistry,
-            stagePrefix,
-            stageImageOnly));
+        generateFlexTemplateImagePath(containerName, projectId, artifactRegion, artifactRegistry));
 
     if (beamVersion == null || beamVersion.isEmpty()) {
       beamVersion = project.getProperties().getProperty("beam-python.version");
@@ -456,19 +450,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         generateSBOM && !Strings.isNullOrEmpty(stagingArtifactRegistry);
     String imagePath =
         stageImageBeforePromote
-            ? generateFlexTemplateImagePath(
-                containerName,
-                projectId,
-                null,
-                stagingArtifactRegistry,
-                stagePrefix,
-                stageImageOnly)
+            ? generateFlexTemplateImagePath(containerName, projectId, null, stagingArtifactRegistry)
             : imageSpec.getImage();
     String buildProjectId =
         stageImageBeforePromote
             ? new PromoteHelper.ArtifactRegImageSpec(imagePath).project
             : projectId;
-    LOG.info("Stage image to GCR: {}", imagePath);
+    LOG.info("Stage image to GCR: {}:{}", imagePath, stagePrefix);
 
     String metadataFile = "";
     if (!stageImageOnly) {
@@ -549,14 +537,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (generateSBOM) {
       // generate SBOM
       File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-      performVulnerabilityScanAndGenerateUserSBOM(imagePath, buildProjectId, buildDir);
-      GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePath);
+      performVulnerabilityScanAndGenerateUserSBOM(imagePath, stagePrefix, buildProjectId, buildDir);
+      GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePath, stagePrefix);
       Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
       String digest = runnable.getDigest();
 
       if (stageImageBeforePromote) {
         // promote image
-        PromoteHelper promoteHelper = new PromoteHelper(imagePath, imageSpec.getImage(), digest);
+        PromoteHelper promoteHelper =
+            new PromoteHelper(imagePath, stagePrefix, imageSpec.getImage(), digest);
         promoteHelper.promote();
 
         if (!stageImageOnly) {
@@ -610,6 +599,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String containerName = definition.getTemplateAnnotation().flexContainerName();
     String tarFileName =
         String.format("%s/%s/%s.tar", outputDirectory.getPath(), containerName, containerName);
+    String imagePathWithTag = String.format("%s:%s", imagePath, stagePrefix);
     Plugin plugin =
         plugin(
             "com.google.cloud.tools",
@@ -623,7 +613,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     elements.add(element("from", element("image", baseContainerImage)));
 
     // Target image to stage
-    elements.add(element("to", element("image", imagePath)));
+    elements.add(element("to", element("image", imagePathWithTag)));
     elements.add(
         element(
             "container",
@@ -734,7 +724,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       copyJavaArtifacts(containerName, targetDirectory, project.getArtifact().getFile());
 
       LOG.info("Staging XLANG image using Dockerfile");
-      stageXlangUsingDockerfile(imagePath, containerName, buildProjectId);
+      stageXlangUsingDockerfile(imagePathWithTag, containerName, buildProjectId);
     } else {
       // Jib's LayerFilter extension is not thread-safe, do only one at a time
       synchronized (TemplatesStageMojo.class) {
@@ -747,8 +737,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
       if (generateSBOM) {
         // Send image tar to Cloud Build for vulnerability scanning before pushing
-        LOG.info("Using Cloud Build to push image {}", imagePath);
-        stageFlexTemplateUsingCloudBuild(new File(tarFileName), imagePath, buildProjectId);
+        LOG.info("Using Cloud Build to push image {}", imagePathWithTag);
+        stageFlexTemplateUsingCloudBuild(new File(tarFileName), imagePathWithTag, buildProjectId);
       }
     }
 
@@ -765,7 +755,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "build",
           templatePath,
           "--image",
-          imagePath,
+          imagePath + ":" + stagePrefix,
           "--project",
           projectId,
           "--sdk-language",
@@ -1134,23 +1124,17 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   static String generateFlexTemplateImagePath(
-      String containerName,
-      String projectId,
-      String artifactRegion,
-      String artifactRegistry,
-      String stagePrefix,
-      boolean skipStagingPart) {
+      String containerName, String projectId, String artifactRegion, String artifactRegistry) {
     String prefix = Strings.isNullOrEmpty(artifactRegion) ? "" : artifactRegion + ".";
     // GCR paths can not contain ":", if the project id has it, it should be converted to "/".
     String projectIdUrl = Strings.isNullOrEmpty(projectId) ? "" : projectId.replace(':', '/');
-    String stagingPart = skipStagingPart ? "" : stagePrefix.toLowerCase() + "/";
     return Optional.ofNullable(artifactRegistry)
         .map(
             value ->
                 value.endsWith("gcr.io")
-                    ? value + "/" + projectIdUrl + "/" + stagingPart + containerName
-                    : value + "/" + stagingPart + containerName)
-        .orElse(prefix + "gcr.io/" + projectIdUrl + "/" + stagingPart + containerName);
+                    ? value + "/" + projectIdUrl + "/" + containerName
+                    : value + "/" + containerName)
+        .orElse(prefix + "gcr.io/" + projectIdUrl + "/" + containerName);
   }
 
   private void gcsCopy(String fromPath, String toPath) throws InterruptedException, IOException {
@@ -1170,7 +1154,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private void stageFlexTemplateUsingCloudBuild(
-      File tarFile, String imagePath, String buildProjectId)
+      File tarFile, String imagePathWithTag, String buildProjectId)
       throws IOException, InterruptedException {
     File directory = tarFile.getParentFile();
 
@@ -1185,7 +1169,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + tarFile.getName()
               + "\n"
               + "images: ['"
-              + imagePath
+              + imagePathWithTag
               + "']\n"
               + "options:\n"
               + "  logging: CLOUD_LOGGING_ONLY\n"
@@ -1221,7 +1205,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private void stageXlangUsingDockerfile(
-      String imagePath, String containerName, String buildProjectId)
+      String imagePathWithTag, String containerName, String buildProjectId)
       throws IOException, InterruptedException {
     String dockerfile = containerName + "/Dockerfile";
     File directory = new File(outputClassesDirectory.getAbsolutePath());
@@ -1229,13 +1213,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     String tarPath = "/workspace/" + containerName + ".tar\n";
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
+      String cacheFolder =
+          imagePathWithTag.substring(0, imagePathWithTag.lastIndexOf('/')) + "/cache";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
               + "  args:\n"
               + "  - --destination="
-              + imagePath
+              + imagePathWithTag
               + "\n"
               + "  - --dockerfile="
               + dockerfile
@@ -1259,7 +1244,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + tarPath
                       + "\n"
                       + "images: ['"
-                      + imagePath
+                      + imagePathWithTag
                       + "']\n"
                       + "options:\n"
                       + "  logging: CLOUD_LOGGING_ONLY\n"
@@ -1338,7 +1323,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private static void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePath, String buildProjectId, File buildDir)
+      String imagePath, String imageTag, String buildProjectId, File buildDir)
       throws IOException, InterruptedException {
     LOG.info("Generating user SBOM and Performing security scan for {}...", imagePath);
 
@@ -1370,7 +1355,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  args:\n"
               + "  - --image="
               + imagePath
-              + ":latest\n"
+              + ":"
+              + imageTag
+              + "\n"
               + "options:\n"
               + "  logging: CLOUD_LOGGING_ONLY\n");
     }
@@ -1408,13 +1395,15 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         Pattern.compile("@(?<DIGEST>sha256:[0-9a-f]{64})");
     private String digest;
     private final String imagePath;
+    private final String imageTag;
 
     public String getDigest() {
       return digest;
     }
 
-    public GenerateSBOMRunnable(String imagePath) {
+    public GenerateSBOMRunnable(String imagePath, String imageTag) {
       this.imagePath = imagePath;
+      this.imageTag = imageTag;
     }
 
     @Override
@@ -1425,7 +1414,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         output =
             runCommandCapturesOutput(
                 new String[] {
-                  "gcloud", "artifacts", "sbom", "export", "--uri", imagePath + ":latest"
+                  "gcloud", "artifacts", "sbom", "export", "--uri", imagePath + ":" + imageTag
                 },
                 null);
       } catch (Exception e) {

@@ -30,7 +30,8 @@ public class PromoteHelperTest {
     PromoteHelper helper =
         new PromoteHelper(
             "us-docker.pkg.dev/source-project/source-repo",
-            "us-docker.pkg.dev/target-project/target-repo/2020_10_10_rc00/io_to_io",
+            "2020_10_10_rc00",
+            "us-docker.pkg.dev/target-project/target-repo/some-prefix/io_to_io",
             "sha256:123",
             "fake-token");
     String[] cmds = helper.getPromoteFlexTemplateImageCmd();
@@ -39,7 +40,7 @@ public class PromoteHelperTest {
         "wget -O- --content-on-error --header=Authorization: Bearer fake-token "
             + "--header=Content-Type: application/json "
             + "--post-data={\"source_repository\":\"projects/source-project/locations/us/repositories/source-repo\","
-            + "\"source_version\":\"projects/source-project/locations/us/repositories/source-repo/packages/2020_10_10_rc00%2Fio_to_io/"
+            + "\"source_version\":\"projects/source-project/locations/us/repositories/source-repo/packages/some-prefix%2Fio_to_io/"
             + "versions/sha256:123\",\"attachment_behavior\":\"EXCLUDE\"} https://artifactregistry.googleapis.com/v1/"
             + "projects/target-project/locations/us/repositories/target-repo:promoteArtifact",
         cmd);
