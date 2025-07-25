@@ -149,6 +149,30 @@ public class DatastreamToDMLTest {
     assertEquals(expectedEmpty, actualEmpty);
   }
 
+  /** Test hstore conversion with multiple key-value pairs and a null value. */
+  @Test
+  public void testHstoreConversion_withMultipleAndNullValues() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String json = "{\"key1\":\"value1\",\"key2\":null,\"key3\":\"value3\"}";
+    String expected = "'\"key1\"=>\"value1\", \"key2\"=>NULL, \"key3\"=>\"value3\"'";
+
+    String actual = dmlBuilder.convertJsonToHstoreLiteral(json);
+
+    assertEquals(expected, actual);
+  }
+
+  /** Test that hstore conversion returns NULL for malformed JSON. */
+  @Test
+  public void testHstoreConversion_handlesMalformedJson() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String malformedJson = "{\"key1\":\"value1\""; // Missing closing brace
+    String expected = "NULL";
+
+    String actual = dmlBuilder.convertJsonToHstoreLiteral(malformedJson);
+
+    assertEquals(expected, actual);
+  }
+
   /**
    * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} correctly
    * formats LTREE types.
@@ -407,6 +431,67 @@ public class DatastreamToDMLTest {
     String expected = "'P1MT2H3.000000S'";
     String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
     assertEquals(expected, actual);
+  }
+
+  /** Test interval conversion with an empty string, which should result in NULL. */
+  @Test
+  public void testIntervalConversion_withEmptyString() {
+    String json = "{\"interval_field\": \"\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
+  }
+
+  /** Test interval conversion with a JSON object missing the 'months' key. */
+  @Test
+  public void testIntervalConversion_missingMonthsKey() {
+    String json = "{\"interval_field\": {\"hours\": 5, \"micros\": 123}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    // Expecting a default or error state, returning NULL
+    String expected = "NULL";
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test interval conversion with a 'nestedArray' key, which should be ignored and result in NULL.
+   */
+  @Test
+  public void testIntervalConversion_withNestedArrayKey() {
+    String json = "{\"interval_field\": {\"nestedArray\": [1,2,3]}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
+  }
+
+  /** Test interval conversion with malformed JSON text. */
+  @Test
+  public void testIntervalConversion_withMalformedJson() {
+    String json = "{\"interval_field\": \"{not-a-json-object\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    // This should result in an exception being caught and returning a NULL value
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
   }
 
   /**
