@@ -33,7 +33,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
@@ -90,7 +90,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final Counter invalidTransformationException =
       Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
 
-  private final Schema schema;
+  private final ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
@@ -107,7 +107,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   public SourceWriterFn(
       List<Shard> shards,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
@@ -118,7 +118,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String source,
       CustomTransformation customTransformation) {
 
-    this.schema = schema;
+    this.schemaMapper = schemaMapper;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
@@ -216,7 +216,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
           boolean isEventFiltered =
               InputRecordProcessor.processRecord(
                   spannerRec,
-                  schema,
+                  schemaMapper,
                   ddl,
                   sourceSchema,
                   sourceDao,

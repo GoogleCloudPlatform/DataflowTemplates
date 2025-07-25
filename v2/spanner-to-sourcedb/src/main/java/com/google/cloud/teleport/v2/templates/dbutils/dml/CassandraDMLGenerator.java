@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates.dbutils.dml;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.json.JSONObject;
@@ -78,17 +79,25 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn("DMLGeneratorRequest is null. Cannot process the request.");
       return new DMLGeneratorResponse("");
     }
-
+    ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
-    Schema schema = dmlGeneratorRequest.getSchema();
     Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
-    if (schema == null || spannerDdl == null || sourceSchema == null) {
+    if (schemaMapper == null || spannerDdl == null || sourceSchema == null) {
       LOG.warn(
-          "Schema, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
-          schema,
+          "Schema Mapper, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
+          schemaMapper,
           spannerDdl,
           sourceSchema);
+      return new DMLGeneratorResponse("");
+    }
+    String sourceTableName = "";
+    try {
+      sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
+    } catch (Exception e) {
+      LOG.warn(
+          "Equivalent table for {} was not found in source, check schema mapping provided",
+          spannerTableName);
       return new DMLGeneratorResponse("");
     }
 
@@ -97,8 +106,6 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       LOG.warn("Spanner table {} not found. Dropping the record.", spannerTableName);
       return new DMLGeneratorResponse("");
     }
-
-    String sourceTableName = schema.getToSource().get(spannerTableName).getName();
     SourceTable sourceTable = sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
       LOG.warn(
@@ -111,13 +118,13 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     if (sourceTable.primaryKeyColumns() == null || sourceTable.primaryKeyColumns().size() == 0) {
       LOG.warn(
           "Cannot reverse replicate table {} without primary key. Skipping the record.",
-          sourceTable.name());
+          sourceTableName);
       return new DMLGeneratorResponse("");
     }
 
     Map<String, PreparedStatementValueObject<?>> pkColumnNameValues =
         getPkColumnValues(
-            schema,
+            schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
@@ -127,7 +134,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     if (pkColumnNameValues == null) {
       LOG.warn(
           "Failed to generate primary key values for table {}. Skipping the record.",
-          sourceTable.name());
+          sourceTableName);
       return new DMLGeneratorResponse("");
     }
     java.sql.Timestamp timestamp = dmlGeneratorRequest.getCommitTimestamp().toSqlTimestamp();
@@ -135,7 +142,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
     return generateDMLResponse(
         spannerTable,
         sourceTable,
-        schema,
+        schemaMapper,
         dmlGeneratorRequest,
         pkColumnNameValues,
         timestamp,
@@ -169,14 +176,14 @@ public class CassandraDMLGenerator implements IDMLGenerator {
   private static DMLGeneratorResponse generateDMLResponse(
       Table spannerTable,
       SourceTable sourceTable,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       DMLGeneratorRequest dmlGeneratorRequest,
       Map<String, PreparedStatementValueObject<?>> pkColumnNameValues,
       java.sql.Timestamp timestamp,
       String modType) {
     Map<String, PreparedStatementValueObject<?>> columnNameValues =
         getColumnValues(
-            schema,
+            schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
@@ -296,7 +303,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    * Extracts the column values from the source table based on the provided Spanner schema, new
    * values, and key values JSON objects.
    *
-   * @param schema the Spanner schema.
+   * @param schemaMapper the schema mapper interface.
    * @param spannerTable the Spanner table schema.
    * @param sourceTable the source table schema.
    * @param newValuesJson the JSON object containing new values for columns.
@@ -311,7 +318,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    *     any of the JSON objects or are marked as null.
    */
   private static Map<String, PreparedStatementValueObject<?>> getColumnValues(
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Table spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -340,8 +347,12 @@ public class CassandraDMLGenerator implements IDMLGenerator {
         response.put(colName, columnValue);
         continue;
       }
-      String spannerColumnName =
-          schema.getToSpanner().get(spannerTable.name()).getCols().get(colName);
+      String spannerColumnName = "";
+      try {
+        spannerColumnName = schemaMapper.getSpannerColumnName("", sourceTable.name(), colName);
+      } catch (NoSuchElementException e) {
+        continue;
+      }
       Column spannerColDef = spannerTable.column(spannerColumnName);
       if (spannerColDef == null) {
         continue;
@@ -366,7 +377,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    * Extracts the primary key column values from the source table based on the provided Spanner
    * schema, new values, and key values JSON objects.
    *
-   * @param schema the Spanner schema.
+   * @param schemaMapper the schema mapper interface.
    * @param spannerTable the Spanner table schema.
    * @param sourceTable the source table schema.
    * @param newValuesJson the JSON object containing new values for columns.
@@ -382,7 +393,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
    *     primary key column is missing in the JSON objects.
    */
   private static Map<String, PreparedStatementValueObject<?>> getPkColumnValues(
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Table spannerTable,
       SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -396,9 +407,13 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       customTransformColumns = customTransformationResponse.keySet();
     }
     for (String sourceColName : sourcePKs) {
-      String spannerColName =
-          schema.getToSpanner().get(sourceTable.name()).getCols().get(sourceColName);
-      if (spannerColName == null) {
+      String spannerColName = "";
+      try {
+        spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
+      } catch (NoSuchElementException e) {
+        continue;
+      }
+      if (spannerColName == null || spannerColName == "") {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",
             sourceColName);

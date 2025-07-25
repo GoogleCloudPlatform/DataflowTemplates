@@ -37,11 +37,13 @@ import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ColumnPK;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.NameAndCols;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnDefinition;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
@@ -129,10 +131,11 @@ public class AssignShardIdFnTest {
 
   @Test
   public void testGetRowAsMap() throws Exception {
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -156,10 +159,11 @@ public class AssignShardIdFnTest {
 
   @Test(expected = Exception.class)
   public void cannotGetRowAsMap() throws Exception {
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -180,10 +184,11 @@ public class AssignShardIdFnTest {
   public void testProcessElementInsertModForMultiShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -201,7 +206,7 @@ public class AssignShardIdFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -220,10 +225,11 @@ public class AssignShardIdFnTest {
   public void testProcessElementDeleteModForMultiShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -241,7 +247,7 @@ public class AssignShardIdFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -259,10 +265,11 @@ public class AssignShardIdFnTest {
   public void testProcessElementForSingleShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_SINGLE_SHARD,
@@ -292,10 +299,11 @@ public class AssignShardIdFnTest {
     when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
     String shardingCustomClassName = "com.test.CustomShardIdFetcher";
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -308,7 +316,7 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     assignShardIdFn.setShardIdFetcher(
         ShardingLogicImplFetcher.getShardingLogicImpl(
-            customJarPath, shardingCustomClassName, "", getSchemaObject(), "skip"));
+            customJarPath, shardingCustomClassName, "", schemaMapper, "skip"));
   }
 
   @Test
@@ -348,10 +356,12 @@ public class AssignShardIdFnTest {
             .build();
     when(mockReadOnlyTransaction.readRow(eq("Users"), any(Key.class), any(Iterable.class)))
         .thenReturn(allDatatypesRow);
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObjectAllDatatypes(),
+            schemaMapper,
             getTestDdlForPrimaryKeyTest(),
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -368,8 +378,7 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getSchemaObjectAllDatatypes(), "skip");
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     shardIdFetcher.init("just to test this method is called argghhh!!");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
 
@@ -387,10 +396,12 @@ public class AssignShardIdFnTest {
   public void testProcessElementInsertAllDatatypes() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecordAllDatatypes("shard1");
     when(processContext.element()).thenReturn(record);
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObjectAllDatatypes(),
+            schemaMapper,
             getTestDdlForPrimaryKeyTest(),
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -407,8 +418,7 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getSchemaObjectAllDatatypes(), "skip");
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
 
     assignShardIdFn.processElement(processContext);
@@ -422,11 +432,12 @@ public class AssignShardIdFnTest {
   public void testSkippedShardForTableNotInSchema() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
-
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObjectAllDatatypes(),
+            schemaMapper,
             getTestDdlForPrimaryKeyTest(),
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -440,92 +451,7 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     record.setShard("skip");
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getSchemaObjectAllDatatypes(), "skip");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
-    assignShardIdFn.processElement(processContext);
-    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-  }
-
-  @Test
-  public void testNoShardForIncorrectShardColumn() throws Exception {
-    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
-    when(processContext.element()).thenReturn(record);
-
-    AssignShardIdFn assignShardIdFn =
-        new AssignShardIdFn(
-            SpannerConfig.create(),
-            getSchemaObject(),
-            getTestDdlForPrimaryKeyTest(),
-            getTestSourceSchemaForPrimaryKeyTest(),
-            Constants.SHARDING_MODE_MULTI_SHARD,
-            "test",
-            "skip",
-            "",
-            "",
-            "",
-            10000L,
-            Constants.SOURCE_MYSQL);
-    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
-    Long key = keyStr.hashCode() % 10000L;
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getBotchedSchemaObjectForMissingShardColumn(), "skip");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
-    assignShardIdFn.processElement(processContext);
-    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-  }
-
-  @Test
-  public void testNoShardForIncorrectSpToOid() throws Exception {
-    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
-    when(processContext.element()).thenReturn(record);
-
-    AssignShardIdFn assignShardIdFn =
-        new AssignShardIdFn(
-            SpannerConfig.create(),
-            getSchemaObject(),
-            getTestDdlForPrimaryKeyTest(),
-            getTestSourceSchemaForPrimaryKeyTest(),
-            Constants.SHARDING_MODE_MULTI_SHARD,
-            "test",
-            "skip",
-            "",
-            "",
-            "",
-            10000L,
-            Constants.SOURCE_MYSQL);
-    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
-    Long key = keyStr.hashCode() % 10000L;
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getBotchedSchemaObjectForInvalidSpannerToOid(), "skip");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
-    assignShardIdFn.processElement(processContext);
-    verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-  }
-
-  @Test
-  public void testNoShardForIncorrectSpSchema() throws Exception {
-    TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
-    when(processContext.element()).thenReturn(record);
-
-    AssignShardIdFn assignShardIdFn =
-        new AssignShardIdFn(
-            SpannerConfig.create(),
-            getSchemaObject(),
-            getTestDdlForPrimaryKeyTest(),
-            getTestSourceSchemaForPrimaryKeyTest(),
-            Constants.SHARDING_MODE_MULTI_SHARD,
-            "test",
-            "skip",
-            "",
-            "",
-            "",
-            10000L,
-            Constants.SOURCE_MYSQL);
-    String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
-    Long key = keyStr.hashCode() % 10000L;
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getBotchedSchemaObjectForInvalidSpSchema(), "skip");
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
@@ -535,10 +461,11 @@ public class AssignShardIdFnTest {
   public void testInvalidShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1/");
     when(processContext.element()).thenReturn(record);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -556,7 +483,7 @@ public class AssignShardIdFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -574,10 +501,12 @@ public class AssignShardIdFnTest {
 
     when(mockReadOnlyTransaction.readRow(eq("Users"), any(Key.class), any(Iterable.class)))
         .thenReturn(null);
+    ISchemaMapper schemaMapper =
+        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObjectAllDatatypes(),
+            schemaMapper,
             getTestDdlForPrimaryKeyTest(),
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -594,8 +523,7 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    ShardIdFetcherImpl shardIdFetcher =
-        new ShardIdFetcherImpl(getSchemaObjectAllDatatypes(), "skip");
+    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
 
     assignShardIdFn.processElement(processContext);
@@ -621,11 +549,11 @@ public class AssignShardIdFnTest {
             1,
             "");
     when(processContext.element()).thenReturn(record);
-
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -642,7 +570,7 @@ public class AssignShardIdFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
 
     // Triggers the stale read.
     assignShardIdFn.processElement(processContext);
@@ -683,10 +611,11 @@ public class AssignShardIdFnTest {
             .tables(ImmutableMap.of("someothertable", presentTable))
             .build();
 
+    ISchemaMapper schemaMapper = new IdentityMapper(getTestDdl());
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            getSchemaObject(),
+            schemaMapper,
             getTestDdl(),
             sourceSchema,
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -699,7 +628,7 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     assignShardIdFn.setMapper(new ObjectMapper());
     assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", getSchemaObject(), "skip"));
+        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -1113,93 +1042,6 @@ public class AssignShardIdFnTest {
 
     spannerToId.put("Users", new NameAndCols("t1", t1ColIds));
     return spannerToId;
-  }
-
-  private static Schema getBotchedSchemaObjectForInvalidSpannerToOid() {
-    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
-    Map<String, SpannerTable> spSchema = getSampleSpSchema();
-    Map<String, NameAndCols> spannerToID = getBotchedSampleSpannerToId();
-    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
-    expectedSchema.setSpannerToID(spannerToID);
-    return expectedSchema;
-  }
-
-  private static Schema getBotchedSchemaObjectForInvalidSpSchema() {
-    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
-    Map<String, SpannerTable> spSchema = getBotchedSampleSpSchema();
-    Map<String, NameAndCols> spannerToID = getSampleSpannerToId();
-    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
-    expectedSchema.setSpannerToID(spannerToID);
-    return expectedSchema;
-  }
-
-  private static Schema getBotchedSchemaObjectForMissingShardColumn() {
-    Map<String, SyntheticPKey> syntheticPKeys = new HashMap<String, SyntheticPKey>();
-    Map<String, SourceTable> srcSchema = new HashMap<String, SourceTable>();
-    Map<String, SpannerTable> spSchema = getBotchedSampleSpColmSchema();
-    Map<String, NameAndCols> spannerToID = getSampleSpannerToId();
-    Schema expectedSchema = new Schema(spSchema, syntheticPKeys, srcSchema);
-    expectedSchema.setSpannerToID(spannerToID);
-    return expectedSchema;
-  }
-
-  private static Map<String, SpannerTable> getBotchedSampleSpSchema() {
-    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
-    Map<String, SpannerColumnDefinition> t1SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t1SpColDefs.put(
-        "c1", new SpannerColumnDefinition("accountId", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c2", new SpannerColumnDefinition("accountName", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c3",
-        new SpannerColumnDefinition("migration_shard_id", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c4", new SpannerColumnDefinition("accountNumber", new SpannerColumnType("INT", false)));
-    spSchema.put(
-        "junk",
-        new SpannerTable(
-            "junk",
-            new String[] {"c1", "c2", "c3", "c4"},
-            t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c1", 1)},
-            "c3"));
-    return spSchema;
-  }
-
-  private static Map<String, NameAndCols> getBotchedSampleSpannerToId() {
-    Map<String, NameAndCols> spannerToId = new HashMap<String, NameAndCols>();
-    Map<String, String> t1ColIds = new HashMap<String, String>();
-    t1ColIds.put("accountId", "c1");
-    t1ColIds.put("accountName", "c2");
-    t1ColIds.put("migration_shard_id", "c3");
-    t1ColIds.put("accountNumber", "c4");
-    spannerToId.put("junk", new NameAndCols("t1", t1ColIds));
-    return spannerToId;
-  }
-
-  private static Map<String, SpannerTable> getBotchedSampleSpColmSchema() {
-    Map<String, SpannerTable> spSchema = new HashMap<String, SpannerTable>();
-    Map<String, SpannerColumnDefinition> t1SpColDefs =
-        new HashMap<String, SpannerColumnDefinition>();
-    t1SpColDefs.put(
-        "c1", new SpannerColumnDefinition("accountId", new SpannerColumnType("STRING", false)));
-    t1SpColDefs.put(
-        "c2", new SpannerColumnDefinition("accountName", new SpannerColumnType("STRING", false)));
-
-    t1SpColDefs.put(
-        "c4", new SpannerColumnDefinition("accountNumber", new SpannerColumnType("INT", false)));
-    spSchema.put(
-        "t1",
-        new SpannerTable(
-            "tableName",
-            new String[] {"c1", "c2", "c3", "c4"},
-            t1SpColDefs,
-            new ColumnPK[] {new ColumnPK("c1", 1)},
-            "c3"));
-    return spSchema;
   }
 
   private static com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema getTestSourceSchema() {
