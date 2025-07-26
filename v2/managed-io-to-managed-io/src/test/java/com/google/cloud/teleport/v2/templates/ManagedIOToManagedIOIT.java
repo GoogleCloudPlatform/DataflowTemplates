@@ -100,13 +100,7 @@ public final class ManagedIOToManagedIOIT extends TemplateTestBase {
 
     LaunchInfo info = launchTemplate(options);
     // Wait for the pipeline to finish and check the results
-    Result result =
-        pipelineOperator()
-            .waitForConditionAndFinish(
-                createConfig(info),
-                BigQueryRowsCheck.builder(bigQueryResourceManager, sinkTable)
-                    .setMinRows(testData.size())
-                    .build());
+    Result result = pipelineOperator().waitUntilDone(createConfig(info));
 
     assertThat(result).isEqualTo(Result.LAUNCH_FINISHED);
     assertThat(bigQueryResourceManager.getRowCount(sinkTable.getTable()))
