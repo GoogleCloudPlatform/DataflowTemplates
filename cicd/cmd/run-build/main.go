@@ -30,6 +30,7 @@ func main() {
 
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstallAll().Run(
+		mvnFlags.IncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(), // TODO(zhoufek): Fix our dependencies then remove this flag
 		mvnFlags.SkipJib(),
 		mvnFlags.SkipShade(),
