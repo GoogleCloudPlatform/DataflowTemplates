@@ -33,6 +33,7 @@ import com.google.auth.http.HttpCredentialsAdapter;
 import dev.failsafe.Failsafe;
 import java.io.IOException;
 import java.util.ArrayList;
+import org.apache.beam.sdk.util.ReleaseInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +118,8 @@ public final class FlexTemplateClient extends AbstractPipelineLauncher {
       if (environment.getAdditionalPipelineOptions() != null) {
         additionalOptions.addAll(environment.getAdditionalPipelineOptions());
       }
-      additionalOptions.add("updateCompatibilityVersion=''");
+      additionalOptions.add(
+          "updateCompatibilityVersion=" + ReleaseInfo.getReleaseInfo().getVersion());
       environment.setAdditionalPipelineOptions(additionalOptions);
     }
 
