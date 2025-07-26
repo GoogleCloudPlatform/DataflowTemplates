@@ -39,7 +39,7 @@
             <id>google-maven-central</id>
             <name>GCS Maven Central mirror</name>
             <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-            <mirrorOf>external:https:*</mirrorOf>
+            <mirrorOf>external:*,!splunk-artifactory</mirrorOf>
         </mirror>
         <mirror>
             <id>central-proxy</id>

@@ -21,6 +21,7 @@ on:
     branches:
     - 'main'
     paths:
+      - '.mvn/**'
       # Template wide common modules
       - 'pom.xml'
       - 'v2/common/**'
