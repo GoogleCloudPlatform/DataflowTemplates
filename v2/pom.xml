@@ -712,6 +712,7 @@
         <module>kafka-to-pubsub</module>
         <module>kinesis-to-pubsub</module>
         <module>kudu-to-bigquery</module>
+        <module>managed-io-to-managed-io</module>
         <module>mongodb-to-googlecloud</module>
         <module>mqtt-to-pubsub</module>
         <module>mysql-to-googlecloud</module>

@@ -31,7 +31,7 @@
     <awaitility.version>4.2.0</awaitility.version>
     <commons-math3.version>3.6.1</commons-math3.version>
     <testcontainers.version>1.21.3</testcontainers.version>
-    <dataflow-api.version>v1b3-rev20240817-2.0.0</dataflow-api.version>
+    <dataflow-api.version>v1b3-rev20250519-2.0.0</dataflow-api.version>
   </properties>
 
   <dependencies>
