@@ -64,6 +64,11 @@ var (
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-postgres/",
 			"v2/datastream-to-sql/",
+			"v2/datastream-to-spanner/",
+			"v2/spanner-common",
+			"v2/spanner-migrations-sdk",
+			"v2/spanner-custom-shard",
+			"v2/real-spanner-service",
 		},
 	}
 )

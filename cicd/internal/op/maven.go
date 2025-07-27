@@ -16,7 +16,11 @@
 
 package op
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
+)
 
 // Runs the given Maven command on a specified POM file. Considering the input, this is equivalent to:
 //
@@ -27,6 +31,12 @@ func RunMavenOnPom(pom string, cmd string, args ...string) error {
 	fullArgs = append(fullArgs, "-f", pom)
 	fullArgs = append(fullArgs, "-e")
 	fullArgs = append(fullArgs, args...)
+	modules := flags.ModulesToBuild()
+	if len(modules) != 0 {
+		moduleArgs := []string{"-pl", strings.Join(modules, ",")}
+		fullArgs = append(fullArgs, moduleArgs...)
+		fullArgs = append(fullArgs, "-am")
+	}
 	return RunCmdAndStreamOutput("mvn", fullArgs)
 }
 
