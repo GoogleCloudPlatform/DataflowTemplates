@@ -168,10 +168,15 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
             } else if (cellValue.trim().equalsIgnoreCase("false")) {
               bCellValue = Boolean.FALSE;
             } else {
-              throw new IllegalArgumentException(
-                  cellValue.trim() + " is not recognizable value " + "for BOOL type");
+              try {
+                int num = Integer.parseInt(cellValue.trim());
+                bCellValue = (num == 0) ? Boolean.FALSE : Boolean.TRUE;
+              } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                    cellValue.trim() + " is not recognizable value " + "for BOOL type");
+              }
             }
-            columnValue = Value.bool(Boolean.valueOf(cellValue));
+            columnValue = Value.bool(bCellValue);
           }
           break;
         case INT64:
