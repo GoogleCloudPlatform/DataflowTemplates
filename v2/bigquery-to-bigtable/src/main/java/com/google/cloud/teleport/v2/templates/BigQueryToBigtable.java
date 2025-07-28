@@ -33,7 +33,13 @@ import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
+import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.hadoop.hbase.client.Mutation;
+import org.apache.hadoop.hbase.client.Put;
+import org.apache.hadoop.hbase.util.Bytes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dataflow template which reads BigQuery data and writes it to Bigtable. The source data can be
@@ -108,7 +114,9 @@ public class BigQueryToBigtable {
         optional = true,
         description = "Flag to skip null values",
         helpText =
-            "Flag to indicate whether nulls may propagate as an empty value or column skipped completely to adhere to Bigtable sparse table format.")
+            "Flag to indicate whether nulls may propagate as an empty value or column skipped completely to adhere to "
+                + " Bigtable sparse table format. In cases where this leads to an empty row, e.g. a valid rowkey, but no "
+                + " columns, the row cannot be written to bigtable and the row will be skipped.")
     @Default.Boolean(false)
     Boolean getSkipNullValues();
 
@@ -145,8 +153,26 @@ public class BigQueryToBigtable {
                             .setTimestampColumn(options.getTimestampColumn())
                             .build()))
                 .build())
+        .apply("VerifyAndFilterMutations", ParDo.of((new VerifyAndFilterMutationsFn())))
         .apply("WriteToTable", CloudBigtableIO.writeToTable(bigtableTableConfig));
 
     pipeline.run();
+  }
+
+  /**
+   * Filter out invalid Bigtable Mutations, additional validations/filters may be applied e.g. An
+   * empty mutation is one that contains no actual cell set.
+   */
+  static class VerifyAndFilterMutationsFn extends DoFn<Mutation, Mutation> {
+    private static final Logger LOG = LoggerFactory.getLogger(VerifyAndFilterMutationsFn.class);
+
+    @ProcessElement
+    public void processElement(@Element Mutation mutation, OutputReceiver<Mutation> receiver) {
+      if (mutation instanceof Put && mutation.isEmpty()) {
+        LOG.warn("Skipping empty mutation for rowkey: {}", Bytes.toStringBinary(mutation.getRow()));
+      } else {
+        receiver.output(mutation);
+      }
+    }
   }
 }
