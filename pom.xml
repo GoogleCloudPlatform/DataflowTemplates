@@ -62,7 +62,7 @@
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.14.0</commons-lang3.version>
     <conscrypt.version>2.5.2</conscrypt.version>
-    <derby.version>10.14.2.0</derby.version>
+    <derby.version>10.17.1.0</derby.version>
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
