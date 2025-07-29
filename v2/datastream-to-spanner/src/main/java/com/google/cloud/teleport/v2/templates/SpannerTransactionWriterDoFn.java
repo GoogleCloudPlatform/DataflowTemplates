@@ -383,6 +383,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         .getDatabaseClient()
         .readWriteTransaction(
             Options.tag(getTxnTag(c.getPipelineOptions())),
+            Options.excludeTxnFromChangeStreams(),
             Options.priority(spannerConfig.getRpcPriority().get()))
         .run(
             (TransactionRunner.TransactionCallable<Void>)
@@ -439,6 +440,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
         .getDatabaseClient()
         .readWriteTransaction(
             Options.tag(getTxnTag(c.getPipelineOptions())),
+            Options.excludeTxnFromChangeStreams(),
             Options.priority(spannerConfig.getRpcPriority().get()))
         .allowNestedTransaction()
         .run(
@@ -463,6 +465,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                       .getDatabaseClient()
                       .readWriteTransaction(
                           Options.tag(getTxnTag(c.getPipelineOptions())),
+                          Options.excludeTxnFromChangeStreams(),
                           Options.priority(spannerConfig.getRpcPriority().get()))
                       .run(
                           (TransactionRunner.TransactionCallable<Void>)
