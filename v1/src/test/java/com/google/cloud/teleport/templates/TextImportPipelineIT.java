@@ -85,7 +85,9 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     gcsClient.createArtifact(
         "input/singers1.csv",
         "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n"
+            + "4,Jane,Doe,10,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n"
+            + "5,Jane,Doe,0,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
     gcsClient.createArtifact(
         "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
@@ -161,7 +163,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                 "Score",
                 "BirthDate",
                 "LastModified"));
-    assertThat(structs).hasSize(3);
+    assertThat(structs).hasSize(5);
     assertThatStructs(structs)
         .hasRecordsUnordered(
             List.of(
@@ -177,7 +179,18 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z")));
+                    "2023-01-01T17:24:02Z"),
+                createRecordMap(
+                    "4", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                createRecordMap(
+                    "5",
+                    "Jane",
+                    "Doe",
+                    "false",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z")));
   }
 
   @Test
