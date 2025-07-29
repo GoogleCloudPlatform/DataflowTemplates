@@ -452,7 +452,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String imagePath =
         stageImageBeforePromote
             ? generateFlexTemplateImagePath(containerName, projectId, null, stagingArtifactRegistry)
-            : imageSpec.getImage();
+            : targetImagePath;
     String imagePathTag = imagePath + ":" + stagePrefix;
     String buildProjectId =
         stageImageBeforePromote
@@ -547,7 +547,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (stageImageBeforePromote) {
         // promote image
         PromoteHelper promoteHelper =
-            new PromoteHelper(imagePath, stagePrefix, imageSpec.getImage(), digest);
+            new PromoteHelper(imagePath, targetImagePath, stagePrefix, digest);
         promoteHelper.promote();
 
         if (!stageImageOnly) {

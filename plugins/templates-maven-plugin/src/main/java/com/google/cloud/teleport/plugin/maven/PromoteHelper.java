@@ -46,18 +46,19 @@ class PromoteHelper {
   /**
    * Promote the staged flex template image using MOSS promote API.
    *
-   * @param sourcePath - spec for source image.
-   * @param targetPath - spec for target image
+   * @param sourcePath - spec for source image without tag
+   * @param targetPath - spec for target image without tag
+   * @param imageTag - image tag
    * @param sourceDigest - source image digest, e.g. sha256:xxxxx
    */
-  public PromoteHelper(String sourcePath, String imageTag, String targetPath, String sourceDigest)
+  public PromoteHelper(String sourcePath, String targetPath, String imageTag, String sourceDigest)
       throws IOException, InterruptedException {
-    this(sourcePath, imageTag, targetPath, sourceDigest, accessToken());
+    this(sourcePath, targetPath, imageTag, sourceDigest, accessToken());
   }
 
   @VisibleForTesting
   PromoteHelper(
-      String sourcePath, String imageTag, String targetPath, String sourceDigest, String token) {
+      String sourcePath, String targetPath, String imageTag, String sourceDigest, String token) {
     this.sourceSpec = new ArtifactRegImageSpec(sourcePath);
     this.targetSpec = new ArtifactRegImageSpec(targetPath);
     this.imageTag = imageTag;

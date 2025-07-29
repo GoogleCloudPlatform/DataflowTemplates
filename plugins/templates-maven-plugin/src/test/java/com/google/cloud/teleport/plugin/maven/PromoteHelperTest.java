@@ -30,8 +30,8 @@ public class PromoteHelperTest {
     PromoteHelper helper =
         new PromoteHelper(
             "us-docker.pkg.dev/source-project/source-repo",
-            "2020_10_10_rc00",
             "us-docker.pkg.dev/target-project/target-repo/some-prefix/io_to_io",
+            "2020_10_10_rc00",
             "sha256:123",
             "fake-token");
     String[] cmds = helper.getPromoteFlexTemplateImageCmd();
