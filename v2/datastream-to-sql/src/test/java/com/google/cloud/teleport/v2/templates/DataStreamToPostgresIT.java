@@ -112,23 +112,28 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   public void tearDown() {
     // Use a try-catch block to make cleanup resilient
     try {
-      // Drop the replication slot BEFORE cleaning up the database resource
       if (this.replicationSlot != null && !this.replicationSlot.isBlank()) {
 
-        // 1. Forcefully terminate any backend connection that is using the slot.
-        //    This query finds the active process ID from the pg_replication_slots table
-        //    and terminates it.
-        cloudSqlSourceResourceManager.runSQLUpdate(
-            String.format(
-                "SELECT pg_terminate_backend(active_pid) FROM pg_replication_slots WHERE slot_name = '%s' AND active = 't'",
-                this.replicationSlot));
+        // First, try to terminate any active connection.
+        // It's okay if this fails, so we wrap it in its own try-catch.
+        try {
+          cloudSqlSourceResourceManager.runSQLUpdate(
+              String.format(
+                  "SELECT pg_terminate_backend(active_pid) FROM pg_replication_slots WHERE slot_name = '%s' AND active = 't'",
+                  this.replicationSlot));
+        } catch (Exception e) {
+          LOG.info(
+              "No active connection to terminate for slot '{}', which is expected.",
+              this.replicationSlot);
+        }
 
-        // 2. Now that the connection is severed, drop the replication slot.
+        // Now, unconditionally drop the replication slot.
+        // This will run even if the command above failed.
         cloudSqlSourceResourceManager.runSQLUpdate(
             String.format("SELECT pg_drop_replication_slot('%s');", this.replicationSlot));
       }
     } catch (Exception e) {
-      LOG.warn("Error during replication slot cleanup: {}", e.getMessage());
+      LOG.warn("Error dropping replication slot: {}", e.getMessage());
     }
 
     // Clean up the rest of the resources
@@ -184,10 +189,23 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
 
+    // Set values
     String datastreamSourceHost = System.getProperty("datastreamSourceHost");
     Objects.requireNonNull(
         datastreamSourceHost,
         "The -DdatastreamSourceHost parameter must be set with the Cloud SQL Private IP.");
+    // Read network, region, and subnet name from system properties
+    String network = System.getProperty("network");
+    Objects.requireNonNull(network, "The -Dnetwork parameter must be set.");
+
+    String region = System.getProperty("region");
+    Objects.requireNonNull(region, "The -Dregion parameter must be set.");
+
+    String subnetName = System.getProperty("subnetName");
+    Objects.requireNonNull(subnetName, "The -DsubnetName parameter must be set.");
+
+    // Construct the full subnetwork path from the required properties
+    String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
 
     // 4. Create a PostgreSQL source for Datastream
     JDBCSource jdbcSource =
@@ -246,8 +264,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
             .addParameter("schemaMap", schemaMap)
             .addParameter("databaseHost", datastreamSourceHost)
-            .addParameter("network", "datastream-vpc")
-            .addParameter("subnetwork", "regions/us-central1/subnetworks/sql-subnet")
+            .addParameter("network", network)
+            .addParameter("subnetwork", subnetwork)
             .addParameter(
                 "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
             .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
