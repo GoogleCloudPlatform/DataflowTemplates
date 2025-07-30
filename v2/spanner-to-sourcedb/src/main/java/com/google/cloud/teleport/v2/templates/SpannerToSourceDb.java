@@ -68,9 +68,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineDebugOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions;
@@ -946,14 +944,9 @@ public class SpannerToSourceDb {
     } else if (hasSchemaOverridesFile) {
       schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
     } else if (hasStringOverrides) {
-      Map<String, String> userOptionsOverrides = new HashMap<>();
-      if (!options.getTableOverrides().isEmpty()) {
-        userOptionsOverrides.put("tableOverrides", options.getTableOverrides());
-      }
-      if (!options.getColumnOverrides().isEmpty()) {
-        userOptionsOverrides.put("columnOverrides", options.getColumnOverrides());
-      }
-      schemaMapper = new SchemaStringOverridesBasedMapper(userOptionsOverrides, ddl);
+      schemaMapper =
+          new SchemaStringOverridesBasedMapper(
+              options.getTableOverrides(), options.getColumnOverrides(), ddl);
     }
     return schemaMapper;
   }
