@@ -56,6 +56,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **customConnectionString**: Optional connection string which will be used instead of the default database string.
 * **numThreads**: Determines key parallelism of Format to DML step, specifically, the value is passed into Reshuffle.withNumBuckets. Defaults to: 100.
 * **databaseLoginTimeout**: The timeout in seconds for database login attempts. This helps prevent connection hangs when multiple workers try to connect simultaneously.
+* **orderByIncludesIsDeleted**: Order by configurations for data should include prioritizing data which is not deleted. Defaults to: false.
 
 
 
@@ -152,6 +153,7 @@ export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
 export NUM_THREADS=100
 export DATABASE_LOGIN_TIMEOUT=<databaseLoginTimeout>
+export ORDER_BY_INCLUDES_IS_DELETED=false
 
 gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --project "$PROJECT" \
@@ -172,7 +174,8 @@ gcloud dataflow flex-template run "cloud-datastream-to-sql-job" \
   --parameters "schemaMap=$SCHEMA_MAP" \
   --parameters "customConnectionString=$CUSTOM_CONNECTION_STRING" \
   --parameters "numThreads=$NUM_THREADS" \
-  --parameters "databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT"
+  --parameters "databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT" \
+  --parameters "orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED"
 ```
 
 For more information about the command, please check:
@@ -209,6 +212,7 @@ export SCHEMA_MAP=""
 export CUSTOM_CONNECTION_STRING=""
 export NUM_THREADS=100
 export DATABASE_LOGIN_TIMEOUT=<databaseLoginTimeout>
+export ORDER_BY_INCLUDES_IS_DELETED=false
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -217,7 +221,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-datastream-to-sql-job" \
 -DtemplateName="Cloud_Datastream_to_SQL" \
--Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING,numThreads=$NUM_THREADS,databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT" \
+-Dparameters="inputFilePattern=$INPUT_FILE_PATTERN,gcsPubSubSubscription=$GCS_PUB_SUB_SUBSCRIPTION,inputFileFormat=$INPUT_FILE_FORMAT,streamName=$STREAM_NAME,rfcStartDateTime=$RFC_START_DATE_TIME,dataStreamRootUrl=$DATA_STREAM_ROOT_URL,databaseType=$DATABASE_TYPE,databaseHost=$DATABASE_HOST,databasePort=$DATABASE_PORT,databaseUser=$DATABASE_USER,databasePassword=$DATABASE_PASSWORD,databaseName=$DATABASE_NAME,schemaMap=$SCHEMA_MAP,customConnectionString=$CUSTOM_CONNECTION_STRING,numThreads=$NUM_THREADS,databaseLoginTimeout=$DATABASE_LOGIN_TIMEOUT,orderByIncludesIsDeleted=$ORDER_BY_INCLUDES_IS_DELETED" \
 -f v2/datastream-to-sql
 ```
 
@@ -278,6 +282,7 @@ resource "google_dataflow_flex_template_job" "cloud_datastream_to_sql" {
     # customConnectionString = ""
     # numThreads = "100"
     # databaseLoginTimeout = "<databaseLoginTimeout>"
+    # orderByIncludesIsDeleted = "false"
   }
 }
 ```
