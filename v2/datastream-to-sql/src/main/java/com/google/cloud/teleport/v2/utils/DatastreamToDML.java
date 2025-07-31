@@ -33,7 +33,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -124,22 +123,16 @@ public abstract class DatastreamToDML
   }
 
   protected String cleanTableName(String tableName) {
-    return applyLowercase(tableName);
+    return tableName;
   }
 
   protected String cleanSchemaName(String schemaName) {
     schemaName = applySchemaMap(schemaName);
-    schemaName = applyLowercase(schemaName);
-
     return schemaName;
   }
 
   protected String applySchemaMap(String sourceSchema) {
     return schemaMap.getOrDefault(sourceSchema, sourceSchema);
-  }
-
-  protected String applyLowercase(String name) {
-    return name.toLowerCase();
   }
 
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow
@@ -152,6 +145,10 @@ public abstract class DatastreamToDML
 
   public DataSource getDataSource() {
     if (this.dataSource == null) {
+      // This can be null in unit tests that don't need a real connection.
+      if (this.dataSourceConfiguration == null) {
+        return null;
+      }
       this.dataSource = this.dataSourceConfiguration.buildDatasource();
     }
     return this.dataSource;
@@ -189,16 +186,32 @@ public abstract class DatastreamToDML
       setUpPrimaryKeyCache();
     }
 
+    // This correctly fetches ["ROW_ID"] from the target DB
     List<String> primaryKeys = this.primaryKeyCache.get(searchKey);
-    // If primary keys exist, but are not in the data
-    // than we assume this is a rolled back delete.
-    for (String primaryKey : primaryKeys) {
-      if (!rowObj.has(primaryKey)) {
+
+    for (String primaryKey : primaryKeys) { // primaryKey is "ROW_ID"
+
+      // --- CORRECTED LOGIC ---
+      // Instead of a case-sensitive .has() check, use our case-insensitive helper.
+      if (findMatchingSourceKey(rowObj, primaryKey) == null) {
+        // If no case-insensitive match is found, then we can fall back.
         return this.getDefaultPrimaryKeys();
       }
+      // --- END CORRECTION ---
     }
 
-    return primaryKeys;
+    return primaryKeys; // This will now correctly return ["ROW_ID"]
+  }
+
+  // Ensure this helper method is available in your class
+  private String findMatchingSourceKey(JsonNode rowObj, String targetKeyName) {
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceKeyName = it.next();
+      if (sourceKeyName.equalsIgnoreCase(targetKeyName)) {
+        return sourceKeyName;
+      }
+    }
+    return null;
   }
 
   public String quote(String name) {
@@ -208,20 +221,28 @@ public abstract class DatastreamToDML
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
     try {
-      // Oracle uses upper case while Postgres uses all lowercase.
-      // We lowercase the values of these metadata fields to align with
-      // our schema conversion rules.
+      // Get the target names which will be correctly cased by the subclass implementations
+      // The original source names are passed to the cache for lookup
       String catalogName = this.getTargetCatalogName(row);
       String schemaName = this.getTargetSchemaName(row);
       String tableName = this.getTargetTableName(row);
 
+      // CORRECTED CALL
       Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
+
       if (tableSchema.isEmpty()) {
         // If the table DNE we return null (NOOP).
         return null;
       }
 
-      List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
+      // Use the correctly cased names from the cache, falling back to original names if needed.
+      String correctedSchemaName =
+          tableSchema.getOrDefault("__correctly_cased_schema_name__", schemaName);
+      String correctedTableName =
+          tableSchema.getOrDefault("__correctly_cased_table_name__", tableName);
+
+      List<String> primaryKeys =
+          this.getPrimaryKeys(catalogName, correctedSchemaName, correctedTableName, rowObj);
       List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
       List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema, false);
       List<String> orderByValues =
@@ -230,7 +251,12 @@ public abstract class DatastreamToDML
       String dmlSqlTemplate = getDmlTemplate(rowObj, primaryKeys);
       Map<String, String> sqlTemplateValues =
           getSqlTemplateValues(
-              rowObj, catalogName, schemaName, tableName, primaryKeys, tableSchema);
+              rowObj,
+              catalogName,
+              correctedSchemaName,
+              correctedTableName,
+              primaryKeys,
+              tableSchema);
 
       StringSubstitutor stringSubstitutor = new StringSubstitutor(sqlTemplateValues, "{", "}");
       String dmlSql =
@@ -238,8 +264,8 @@ public abstract class DatastreamToDML
       return DmlInfo.of(
           failsafeValue,
           dmlSql,
-          schemaName,
-          tableName,
+          correctedSchemaName,
+          correctedTableName,
           primaryKeys,
           orderByFields,
           primaryKeyValues,
@@ -249,7 +275,7 @@ public abstract class DatastreamToDML
       return null;
     } catch (Exception e) {
       // TODO(dhercher): Consider raising an error and pushing to DLQ
-      LOG.error("Value Error: {} :: {}", rowObj.toString(), e.toString());
+      LOG.error("Value Error for: " + rowObj.toString(), e);
       return null;
     }
   }
@@ -284,8 +310,14 @@ public abstract class DatastreamToDML
         "primary_key_kv_sql", getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
     sqlTemplateValues.put("quoted_column_names", getColumnsListSql(rowObj, tableSchema));
     sqlTemplateValues.put("column_value_sql", getColumnsValuesSql(rowObj, tableSchema));
-    sqlTemplateValues.put("primary_key_names_sql", String.join(",", primaryKeys)); // TODO: quoted?
-    sqlTemplateValues.put("column_kv_sql", getColumnsUpdateSql(rowObj, tableSchema));
+
+    List<String> quotedPrimaryKeys = new ArrayList<>();
+    for (String pk : primaryKeys) {
+      quotedPrimaryKeys.add(quote(pk));
+    }
+    sqlTemplateValues.put("primary_key_names_sql", String.join(",", quotedPrimaryKeys));
+
+    sqlTemplateValues.put("column_kv_sql", getColumnsUpdateSql(rowObj, tableSchema, primaryKeys));
 
     return sqlTemplateValues;
   }
@@ -329,103 +361,130 @@ public abstract class DatastreamToDML
 
   public List<String> getFieldValues(
       JsonNode rowObj,
-      List<String> fieldNames,
+      List<String> targetFieldNames, // Renamed for clarity, e.g., ["ROW_ID"]
       Map<String, String> tableSchema,
       Boolean overrideIsDeleted) {
     List<String> fieldValues = new ArrayList<String>();
 
-    for (String fieldName : fieldNames) {
-      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
-        String val = getValueSql(rowObj, fieldName, tableSchema);
-        fieldValues.add(val == "true" ? "1" : "0");
+    for (String targetFieldName : targetFieldNames) {
+      // Find the matching key in the source JSON, ignoring case.
+      String sourceFieldName = findMatchingSourceKey(rowObj, targetFieldName);
+
+      if (sourceFieldName != null) {
+        // SUCCESS: Use the correctly-cased source key ("row_id") to get the value.
+        if (overrideIsDeleted && sourceFieldName.equals("_metadata_deleted")) {
+          String val = getValueSql(rowObj, sourceFieldName, tableSchema);
+          fieldValues.add(val == "true" ? "1" : "0");
+        } else {
+          fieldValues.add(getValueSql(rowObj, sourceFieldName, tableSchema));
+        }
       } else {
-        fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
+        LOG.warn(
+            "Could not find a case-insensitive match for target field '{}' in JSON: {}",
+            targetFieldName,
+            rowObj.toString());
       }
     }
-
     return fieldValues;
   }
 
   public String getColumnsListSql(JsonNode rowObj, Map<String, String> tableSchema) {
-    String columnsListSql = "";
+    List<String> quotedTargetColumns = new ArrayList<>();
 
-    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
-      String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceColumnName = it.next();
 
-      // Add column name
-      String quotedColumnName = quote(columnName);
-      if (Objects.equals(columnsListSql, "")) {
-        columnsListSql = quotedColumnName;
-      } else {
-        columnsListSql = columnsListSql + "," + quotedColumnName;
+      // Find the correctly-cased target column that matches the source column
+      String matchingTargetColumn = findMatchingTargetColumn(sourceColumnName, tableSchema);
+
+      if (matchingTargetColumn != null) {
+        // Add the correctly-cased and quoted TARGET column name to our list
+        quotedTargetColumns.add(quote(matchingTargetColumn));
       }
     }
+    return String.join(",", quotedTargetColumns);
+  }
 
-    return columnsListSql;
+  // You need this helper method (or one like it)
+  private String findMatchingTargetColumn(
+      String sourceColumnName, Map<String, String> tableSchema) {
+    for (String targetColumnName : tableSchema.keySet()) {
+      if (targetColumnName.equalsIgnoreCase(sourceColumnName)) {
+        return targetColumnName; // Return the correctly-cased target name
+      }
+    }
+    return null;
   }
 
   public String getColumnsValuesSql(JsonNode rowObj, Map<String, String> tableSchema) {
-    String valuesInsertSql = "";
+    List<String> values = new ArrayList<>();
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceColumnName = it.next();
 
-    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
-      String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
-
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (Objects.equals(valuesInsertSql, "")) {
-        valuesInsertSql = columnValue;
-      } else {
-        valuesInsertSql = valuesInsertSql + "," + columnValue;
+      // CORRECTED: Use the pattern to check if a match exists in the target
+      if (findMatchingTargetColumn(sourceColumnName, tableSchema) != null) {
+        // If it exists, get the VALUE from the source JSON using the source name
+        String columnValue = getValueSql(rowObj, sourceColumnName, tableSchema);
+        values.add(columnValue);
       }
     }
-
-    return valuesInsertSql;
+    return String.join(",", values);
   }
 
-  public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
-    String onUpdateSql = "";
-    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
-      String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
+  public String getColumnsUpdateSql(
+      JsonNode rowObj, Map<String, String> tableSchema, List<String> primaryKeys) {
+    List<String> updatePairs = new ArrayList<>();
 
-      String quotedColumnName = quote(columnName);
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
+    for (Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceColumnName = it.next();
+      String matchingTargetColumn = findMatchingTargetColumn(sourceColumnName, tableSchema);
 
-      if (onUpdateSql.equals("")) {
-        onUpdateSql = quotedColumnName + "=" + columnValue;
-      } else {
-        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=" + columnValue;
+      if (matchingTargetColumn != null) {
+        // --- NEW CHECK: Skip this column if it's a primary key ---
+        boolean isPrimaryKey = false;
+        for (String pk : primaryKeys) {
+          if (pk.equalsIgnoreCase(matchingTargetColumn)) {
+            isPrimaryKey = true;
+            break;
+          }
+        }
+
+        if (isPrimaryKey) {
+          continue; // Skip primary keys in the SET clause
+        }
+        // --- END NEW CHECK ---
+
+        String columnValue = getValueSql(rowObj, sourceColumnName, tableSchema);
+        String updatePair = quote(matchingTargetColumn) + "=" + columnValue;
+        updatePairs.add(updatePair);
       }
     }
-
-    return onUpdateSql;
+    return String.join(",", updatePairs);
   }
 
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
-    String pkToValueSql = "";
+    List<String> pkFilters = new ArrayList<>();
 
-    for (String columnName : primaryKeys) {
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
+    // The primaryKeys list contains the correctly-cased names from the TARGET DB (e.g., "ROW_ID")
+    for (String targetPkColumnName : primaryKeys) {
+      // Find the matching column name in the SOURCE JSON (e.g., "row_id")
+      String sourcePkColumnName = findMatchingSourceKey(rowObj, targetPkColumnName);
 
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (pkToValueSql.equals("")) {
-        pkToValueSql = columnName + "=" + columnValue;
+      if (sourcePkColumnName != null) {
+        // Use the SOURCE name to get the value from the JSON
+        String columnValue = getValueSql(rowObj, sourcePkColumnName, tableSchema);
+
+        // Use the TARGET name to build the SQL filter
+        pkFilters.add(quote(targetPkColumnName) + "=" + columnValue);
       } else {
-        pkToValueSql = pkToValueSql + " AND " + columnName + "=" + columnValue;
+        LOG.warn(
+            "Primary key '{}' from target schema not found in source JSON payload.",
+            targetPkColumnName);
       }
     }
 
-    return pkToValueSql;
+    return String.join(" AND ", pkFilters);
   }
 
   private static Connection getConnection(
@@ -456,36 +515,48 @@ public abstract class DatastreamToDML
   /**
    * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a local
    * cache for each worker thread.
-   *
-   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
-   * continuous.
    */
   public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
 
-    /**
-     * Create an instance of a {@link JdbcTableCache} to track table schemas.
-     *
-     * @param dataSource A DataSource instance used to extract Table objects.
-     */
     public JdbcTableCache(DataSource dataSource) {
       this.dataSource = dataSource;
     }
 
     private Map<String, String> getTableSchema(
         String catalogName, String schemaName, String tableName, int retriesRemaining) {
-      Map<String, String> tableSchema = new HashMap<String, String>();
+      Map<String, String> tableSchema = new HashMap<>();
 
       try (Connection connection = getConnection(this.dataSource, MAX_RETRIES, MAX_RETRIES)) {
         DatabaseMetaData metaData = connection.getMetaData();
-        try (ResultSet columns = metaData.getColumns(catalogName, schemaName, tableName, null)) {
-          while (columns.next()) {
-            tableSchema.put(columns.getString("COLUMN_NAME"), columns.getString("TYPE_NAME"));
+        String correctlyCasedSchema = null;
+        String correctlyCasedTable = null;
+
+        try (ResultSet tables =
+            metaData.getTables(catalogName, schemaName, null, new String[] {"TABLE"})) {
+          while (tables.next()) {
+            String dbTableName = tables.getString("TABLE_NAME");
+            if (tableName.equalsIgnoreCase(dbTableName)) {
+              String dbSchemaName = tables.getString("TABLE_SCHEM");
+              correctlyCasedSchema = (dbSchemaName == null) ? "" : dbSchemaName;
+              correctlyCasedTable = dbTableName;
+              break; // Found the exact match.
+            }
           }
+        }
+
+        if (correctlyCasedTable != null) {
+          try (ResultSet columns =
+              metaData.getColumns(catalogName, correctlyCasedSchema, correctlyCasedTable, null)) {
+            while (columns.next()) {
+              tableSchema.put(columns.getString("COLUMN_NAME"), columns.getString("TYPE_NAME"));
+            }
+          }
+
+          tableSchema.put("__correctly_cased_schema_name__", correctlyCasedSchema);
+          tableSchema.put("__correctly_cased_table_name__", correctlyCasedTable);
         }
       } catch (SQLException e) {
         if (retriesRemaining > 0) {
@@ -511,8 +582,8 @@ public abstract class DatastreamToDML
       }
 
       if (tableSchema.isEmpty()) {
-        LOG.info(
-            "Table Not Found: Catalog: {}, Schema: {}, Table: {}",
+        LOG.warn(
+            "Table Not Found (case-insensitive search): Catalog: {}, Schema: {}, Table: {}",
             catalogName,
             schemaName,
             tableName);
@@ -526,32 +597,19 @@ public abstract class DatastreamToDML
       String schemaName = key.get(1);
       String tableName = key.get(2);
 
-      Map<String, String> tableSchema =
-          getTableSchema(catalogName, schemaName, tableName, MAX_RETRIES);
-
-      return tableSchema;
+      return getTableSchema(catalogName, schemaName, tableName, MAX_RETRIES);
     }
   }
 
   /**
    * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a local
    * cache for each worker thread.
-   *
-   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
-   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
-   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
-   * continuous.
    */
   public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
 
-    /**
-     * Create an instance of a {@link JdbcPrimaryKeyCache} to track table primary keys.
-     *
-     * @param dataSource A DataSource instance used to extract Table objects.
-     */
     public JdbcPrimaryKeyCache(DataSource dataSource) {
       this.dataSource = dataSource;
     }
@@ -600,10 +658,7 @@ public abstract class DatastreamToDML
       String schemaName = key.get(1);
       String tableName = key.get(2);
 
-      List<String> primaryKeys =
-          getTablePrimaryKeys(catalogName, schemaName, tableName, MAX_RETRIES);
-
-      return primaryKeys;
+      return getTablePrimaryKeys(catalogName, schemaName, tableName, MAX_RETRIES);
     }
   }
 }

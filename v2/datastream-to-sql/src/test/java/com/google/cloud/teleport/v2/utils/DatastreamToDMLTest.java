@@ -17,14 +17,27 @@ package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
+import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
+import javax.sql.DataSource;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,6 +64,150 @@ public class DatastreamToDMLTest {
       throw new RuntimeException(e);
     }
     return rowObj;
+  }
+
+  /**
+   * Mocks the JDBC metadata calls to simulate finding a table with a specific casing.
+   *
+   * @param dataSourceMock The mock DataSource to configure.
+   * @param expectedSchema The correctly cased schema name to "find" in the database.
+   * @param expectedTable The correctly cased table name to "find" in the database.
+   * @throws SQLException
+   */
+  // Inside DatastreamToDMLTest class
+
+  private void setupMockJdbc(DataSource dataSourceMock, String expectedSchema, String expectedTable)
+      throws SQLException {
+    ResultSet tablesResultSetMock = mock(ResultSet.class);
+    when(tablesResultSetMock.next()).thenReturn(true).thenReturn(false);
+    when(tablesResultSetMock.getString("TABLE_SCHEM")).thenReturn(expectedSchema);
+    when(tablesResultSetMock.getString("TABLE_NAME")).thenReturn(expectedTable);
+
+    ResultSet columnsResultSetMock = mock(ResultSet.class);
+    when(columnsResultSetMock.next()).thenReturn(true).thenReturn(false);
+    when(columnsResultSetMock.getString("COLUMN_NAME")).thenReturn("id");
+    when(columnsResultSetMock.getString("TYPE_NAME")).thenReturn("INTEGER");
+
+    ResultSet primaryKeysResultSetMock = mock(ResultSet.class);
+    when(primaryKeysResultSetMock.next()).thenReturn(false);
+
+    DatabaseMetaData metadataMock = mock(DatabaseMetaData.class);
+
+    // FIX: The mock needs to handle the lowercase names from the source JSON.
+    when(metadataMock.getTables(any(), eq("myschema"), eq("mytable"), any(String[].class)))
+        .thenReturn(tablesResultSetMock);
+
+    // The mock for getColumns() needs to handle the canonical names.
+    when(metadataMock.getColumns(any(), eq(expectedSchema), eq(expectedTable), any()))
+        .thenReturn(columnsResultSetMock);
+
+    // The mock for getPrimaryKeys() also needs to handle the canonical names.
+    when(metadataMock.getPrimaryKeys(any(), eq(expectedSchema), eq(expectedTable)))
+        .thenReturn(primaryKeysResultSetMock);
+
+    Connection connectionMock = mock(Connection.class);
+    when(connectionMock.getMetaData()).thenReturn(metadataMock);
+    when(dataSourceMock.getConnection()).thenReturn(connectionMock);
+  }
+
+  /**
+   * Tests the end-to-end case-insensitive lookup. Simulates a lowercase source table name and an
+   * uppercase target table name.
+   */
+  @Test
+  public void testConvertJsonToDmlInfo_handlesCaseInsensitiveNames() throws SQLException {
+    // Arrange: Source event has lowercase names.
+    String json =
+        "{\"id\":1,"
+            + "\"_metadata_schema\":\"myschema\","
+            + "\"_metadata_table\":\"mytable\"," // lowercase in source
+            + "\"_metadata_deleted\":false,"
+            + "\"_metadata_timestamp\":1672531200,"
+            + "\"_metadata_source_type\":\"mysql\""
+            + "}";
+    JsonNode rowObj = getRowObj(json);
+
+    // Arrange: Mock the database to contain uppercase names.
+    DataSource dataSourceMock = mock(DataSource.class);
+    // Configure the mock to "find" the table, but with a different casing.
+    String canonicalSchema = "MySchema";
+    String canonicalTable = "MyTable";
+    setupMockJdbc(dataSourceMock, canonicalSchema, canonicalTable);
+
+    CdcJdbcIO.DataSourceConfiguration mockConfig = mock(CdcJdbcIO.DataSourceConfiguration.class);
+    when(mockConfig.buildDatasource()).thenReturn(dataSourceMock);
+
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(mockConfig);
+
+    // Act: Call the main method. The input table name is lowercase.
+    DmlInfo dmlInfo = dmlBuilder.convertJsonToDmlInfo(rowObj, json);
+
+    // Assert: Check the DmlInfo object for the correctly cased names from the database.
+    assertNotNull(dmlInfo);
+    assertEquals(canonicalSchema, dmlInfo.getSchemaName());
+    assertEquals(canonicalTable, dmlInfo.getTableName());
+    // The DML statement should also contain "MyTable"
+    assertThat(dmlInfo.getDmlSql()).contains(canonicalTable);
+  }
+
+  /**
+   * Test whether {@link DatastreamToDML#getTargetSchemaName} preserves the Oracle schema casing
+   * when no match is found in the target DB.
+   */
+  @Test
+  public void testGetPostgresSchemaName() throws SQLException {
+    // ARRANGE: Create a mock configuration that finds no matching tables.
+    DataSource dataSourceMock = mock(DataSource.class);
+    ResultSet emptyResultSet = mock(ResultSet.class);
+    when(emptyResultSet.next()).thenReturn(false);
+    DatabaseMetaData metadataMock = mock(DatabaseMetaData.class);
+    when(metadataMock.getTables(any(), any(), anyString(), any(String[].class)))
+        .thenReturn(emptyResultSet);
+    Connection connectionMock = mock(Connection.class);
+    when(connectionMock.getMetaData()).thenReturn(metadataMock);
+    when(dataSourceMock.getConnection()).thenReturn(connectionMock);
+    CdcJdbcIO.DataSourceConfiguration mockConfig = mock(CdcJdbcIO.DataSourceConfiguration.class);
+    when(mockConfig.buildDatasource()).thenReturn(dataSourceMock);
+
+    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(mockConfig);
+    JsonNode rowObj = this.getRowObj(JSON_STRING);
+    DatastreamRow row = DatastreamRow.of(rowObj);
+
+    // ACT
+    String schemaName = datastreamToDML.getTargetSchemaName(row);
+
+    // ASSERT: Should preserve the original casing from the JSON string as a fallback.
+    assertEquals("MY_SCHEMA", schemaName);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getTargetTableName} preserves the Oracle table
+   * casing when no match is found in the target DB.
+   */
+  @Test
+  public void testGetPostgresTableName() throws SQLException {
+    // ARRANGE: Create a mock configuration that finds no matching tables.
+    DataSource dataSourceMock = mock(DataSource.class);
+    ResultSet emptyResultSet = mock(ResultSet.class);
+    when(emptyResultSet.next()).thenReturn(false);
+    DatabaseMetaData metadataMock = mock(DatabaseMetaData.class);
+    when(metadataMock.getTables(any(), any(), anyString(), any(String[].class)))
+        .thenReturn(emptyResultSet);
+    Connection connectionMock = mock(Connection.class);
+    when(connectionMock.getMetaData()).thenReturn(metadataMock);
+    when(dataSourceMock.getConnection()).thenReturn(connectionMock);
+    CdcJdbcIO.DataSourceConfiguration mockConfig = mock(CdcJdbcIO.DataSourceConfiguration.class);
+    when(mockConfig.buildDatasource()).thenReturn(dataSourceMock);
+
+    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(mockConfig);
+    JsonNode rowObj = this.getRowObj(JSON_STRING);
+    DatastreamRow row = DatastreamRow.of(rowObj);
+
+    // ACT
+    String tableName = datastreamToDML.getTargetTableName(row);
+
+    // ASSERT: Should preserve the original casing from the JSON string as a fallback.
+    assertEquals("MY_TABLE$NAME", tableName);
   }
 
   /**
@@ -220,10 +377,8 @@ public class DatastreamToDMLTest {
     DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
     String expected = "NULL";
 
-    // Act
     String actual = dmlBuilder.getValueSql(rowObj, "path_info", tableSchema);
 
-    // Assert
     assertEquals(expected, actual);
   }
 
@@ -255,10 +410,8 @@ public class DatastreamToDMLTest {
     DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
     String expected = "NULL";
 
-    // Act
     String actual = dmlBuilder.getValueSql(rowObj, "status_enum", tableSchema);
 
-    // Assert
     assertEquals(expected, actual);
   }
 
@@ -276,10 +429,8 @@ public class DatastreamToDMLTest {
     DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
     String expected = "'in_progress'";
 
-    // Act
     String actual = dmlBuilder.getValueSql(rowObj, "current_status", tableSchema);
 
-    // Assert
     assertEquals(expected, actual);
   }
 
@@ -608,36 +759,6 @@ public class DatastreamToDMLTest {
     String expected = "'P0MT0H0.000000S'";
     String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
     assertEquals(expected, actual);
-  }
-
-  /**
-   * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
-   * correct Postgres schema.
-   */
-  @Test
-  public void testGetPostgresSchemaName() {
-    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj(JSON_STRING);
-    DatastreamRow row = DatastreamRow.of(rowObj);
-
-    String expectedSchemaName = "my_schema";
-    String schemaName = datastreamToDML.getTargetSchemaName(row);
-    assertEquals(schemaName, expectedSchemaName);
-  }
-
-  /**
-   * Test whether {@link DatastreamToPostgresDML#getTargetTableName} converts the Oracle table into
-   * the correct Postgres table.
-   */
-  @Test
-  public void testGetPostgresTableName() {
-    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj(JSON_STRING);
-    DatastreamRow row = DatastreamRow.of(rowObj);
-
-    String expectedTableName = "my_table$name";
-    String tableName = datastreamToDML.getTargetTableName(row);
-    assertEquals(expectedTableName, tableName);
   }
 
   /** Test cleaning schema map. */

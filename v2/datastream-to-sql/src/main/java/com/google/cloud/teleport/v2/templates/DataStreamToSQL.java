@@ -405,7 +405,6 @@ public class DataStreamToSQL {
                     options.getInputFileFormat(),
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
-                .withLowercaseSourceColumns()
                 .withRenameColumnValue("_metadata_row_id", "rowid")
                 .withHashRowId());
 

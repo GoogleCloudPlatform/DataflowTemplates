@@ -34,10 +34,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -48,7 +48,6 @@ import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.apache.beam.it.jdbc.conditions.JDBCRowsCheck;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.After;
@@ -70,12 +69,21 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   @Rule public Timeout timeout = new Timeout(30, TimeUnit.MINUTES);
   private static final int NUM_EVENTS = 10;
   private static final Logger LOG = LoggerFactory.getLogger(DataStreamToPostgresIT.class);
-  private static final String ROW_ID = "row_id";
-  private static final String NAME = "name";
-  private static final String AGE = "age";
-  private static final String MEMBER = "member";
-  private static final String ENTRY_ADDED = "entry_added";
-  private static final List<String> COLUMNS = List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
+
+  // Define column names for destination (uppercase)
+  private static final String ROW_ID = "ROW_ID";
+  private static final String NAME = "NAME";
+  private static final String AGE = "AGE";
+  private static final String MEMBER = "MEMBER";
+  private static final String ENTRY_ADDED = "ENTRY_ADDED";
+  private static final List<String> DESTINATION_COLUMNS =
+      List.of(ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED);
+
+  // Define column names for source (lowercase)
+  private static final List<String> SOURCE_COLUMNS =
+      DESTINATION_COLUMNS.stream().map(String::toLowerCase).collect(Collectors.toList());
+  private static final String SOURCE_PK = ROW_ID.toLowerCase();
+
   private String replicationSlot;
 
   private CloudPostgresResourceManager cloudSqlSourceResourceManager;
@@ -119,7 +127,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         try {
           cloudSqlSourceResourceManager.runSQLUpdate(
               String.format(
-                  "SELECT pg_terminate_backend(active_pid) FROM pg_replication_slots WHERE slot_name = '%s' AND active = 't'",
+                  "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE slot_name = '%s'",
                   this.replicationSlot));
         } catch (Exception e) {
           LOG.info(
@@ -136,6 +144,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
       LOG.warn("Error dropping replication slot: {}", e.getMessage());
     }
 
+    /*
     // Clean up the rest of the resources
     ResourceManagerUtils.cleanResources(
         cloudSqlSourceResourceManager,
@@ -143,48 +152,83 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         datastreamResourceManager,
         pubsubResourceManager,
         gcsResourceManager);
+    */
   }
 
   @Test
   public void testDataStreamPostgresToPostgres() throws IOException {
-    // 1. Create source and destination tables
-    String tableName = "pg_to_pg_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
-    cloudSqlSourceResourceManager.createTable(tableName, createJdbcSchema());
-    cloudSqlDestinationResourceManager.createTable(tableName, createJdbcSchema());
+    // 1. Create source (lowercase) and destination (uppercase) table names
+    String randomSuffix = RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    String sourceTableName = "pg_to_pg_" + randomSuffix;
+    String destinationTableName = sourceTableName.toUpperCase();
+
+    // 2. Create source and destination tables with different case schemas
+    cloudSqlSourceResourceManager.createTable(
+        sourceTableName, createJdbcSchema(SOURCE_COLUMNS, SOURCE_PK));
+
+    String destinationSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+    cloudSqlDestinationResourceManager.runSQLUpdate(
+        String.format(
+            "CREATE TABLE %s.\"%s\" (\"%s\" NUMERIC NOT NULL PRIMARY KEY, \"%s\" VARCHAR(200), \"%s\" NUMERIC, \"%s\" VARCHAR(200), \"%s\" VARCHAR(200))",
+            destinationSchema, destinationTableName, ROW_ID, NAME, AGE, MEMBER, ENTRY_ADDED));
+
+    // Query to check if the table exists
+    String checkTableQuery =
+        String.format(
+            "SELECT COUNT(*) FROM pg_tables WHERE schemaname = '%s' AND tablename = '%s';",
+            destinationSchema,
+            destinationTableName); // PostgreSQL table names are often lowercased by default
+
+    List<Map<String, Object>> resultForTargetTableTest =
+        cloudSqlDestinationResourceManager.runSQLQuery(checkTableQuery);
+
+    // If using runSQLQuery, the subsequent check would change slightly:
+    if (resultForTargetTableTest != null && !resultForTargetTableTest.isEmpty()) {
+      long count =
+          Long.parseLong(
+              resultForTargetTableTest
+                  .get(0)
+                  .get("count")
+                  .toString()); // Assuming "count" is the column name
+      if (count > 0) {
+        System.out.println(
+            "✅ Target table "
+                + destinationSchema
+                + ".\""
+                + destinationTableName
+                + "\" was successfully created.");
+      } else {
+        System.err.println(
+            "❌ Target table "
+                + destinationSchema
+                + ".\""
+                + destinationTableName
+                + "\" was NOT found.");
+      }
+    } else {
+      System.err.println(
+          "🚨 Failed to execute table existence check query or received an empty result.");
+    }
 
     // 3. Create required Replication Slot and Publication for Datastream
     this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-    // Succeeds because PERFORM discards the result
     String user = cloudSqlSourceResourceManager.getUsername();
     String schema = cloudSqlSourceResourceManager.getDatabaseName();
 
-    // Step 3a: Ensure the user has REPLICATION privilege.
-    // This is idempotent; it's safe to run even if the user already has the role.
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("ALTER USER %s WITH REPLICATION;", user));
-
-    // Step 3b: Create the logical replication slot.
-    // The DO/PERFORM block is used to discard the success message.
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format(
             "DO $$BEGIN PERFORM pg_create_logical_replication_slot('%s', 'pgoutput'); END$$;",
             this.replicationSlot));
-
-    // Step 3c: Create the publication.
-    // We scope it to the specific table used in the test.
     cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
-
-    // Step 3d: Grant privileges for the Datastream user to read schema and tables.
-    // This is CRITICAL for the initial backfill/snapshot to succeed.
+        String.format(
+            "CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, sourceTableName));
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;", schema, user));
-
-    // Step 3e: Grant future SELECT privileges. This handles any tables
-    // that might be created later or transiently.
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
@@ -194,7 +238,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     Objects.requireNonNull(
         datastreamSourceHost,
         "The -DdatastreamSourceHost parameter must be set with the Cloud SQL Private IP.");
-    // Read network, region, and subnet name from system properties
     String network = System.getProperty("network");
     Objects.requireNonNull(network, "The -Dnetwork parameter must be set.");
 
@@ -203,11 +246,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
     String subnetName = System.getProperty("subnetName");
     Objects.requireNonNull(subnetName, "The -DsubnetName parameter must be set.");
-
-    // Construct the full subnetwork path from the required properties
     String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
 
-    // 4. Create a PostgreSQL source for Datastream
+    // 4. Create a PostgreSQL source for Datastream pointing to the lowercase table
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
                 datastreamSourceHost,
@@ -218,7 +259,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 this.replicationSlot,
                 publication)
             .setAllowedTables(
-                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
+                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(sourceTableName)))
             .build();
 
     // 5. Create Datastream resources
@@ -235,17 +276,11 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         datastreamResourceManager.createStream("stream-pg-to-pg", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
 
-    // Create a Pub/Sub topic for GCS notifications
     com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications");
-
-    // Create a subscription for Dataflow to listen to
     com.google.pubsub.v1.SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "dataflow-subscription");
-
-    // Create a GCS notification on the artifact bucket to publish to the new topic
     gcsResourceManager.createNotification(topic.toString(), "");
 
-    // Schema Map
     String schemaMap =
         String.format(
             "%s:%s",
@@ -274,41 +309,103 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
-    // 7. Prepare and run the data validation checks
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    writePostgresData(tableName, cdcEvents),
-                    JDBCRowsCheck.builder(cloudSqlDestinationResourceManager, tableName)
-                        .setMinRows(NUM_EVENTS)
-                        .build(),
-                    changePostgresData(tableName, cdcEvents),
-                    checkDestinationRows(tableName, cdcEvents)))
+                    writePostgresData(sourceTableName, SOURCE_COLUMNS, cdcEvents),
+                    // MODIFICATION START: Replaced JDBCRowsCheck with a custom ConditionCheck
+                    new ConditionCheck() {
+                      @Override
+                      public @NonNull String getDescription() {
+                        // FIX: Use quotes for destinationTableName in the description for
+                        // consistency
+                        return String.format(
+                            "Check if destination table '\"%s\"' has at least %d rows",
+                            destinationTableName, NUM_EVENTS);
+                      }
+
+                      @Override
+                      protected @NonNull CheckResult check() {
+                        // Manually build the query with quoted identifiers to preserve case
+                        // This part was already correct for checking a case-sensitive table
+                        String countQuery =
+                            String.format(
+                                "SELECT COUNT(*) AS row_count FROM %s.\"%s\"",
+                                cloudSqlDestinationResourceManager.getDatabaseName(),
+                                destinationTableName);
+
+                        try {
+                          List<Map<String, Object>> result =
+                              cloudSqlDestinationResourceManager.runSQLQuery(countQuery);
+
+                          // Ensure result is not null/empty and contains expected key
+                          if (result == null
+                              || result.isEmpty()
+                              || !result.get(0).containsKey("row_count")) {
+                            return new CheckResult(
+                                false, "Query returned no results or missing 'row_count' column.");
+                          }
+
+                          long rowCount = Long.parseLong(result.get(0).get("row_count").toString());
+
+                          if (rowCount >= NUM_EVENTS) {
+                            return new CheckResult(
+                                true,
+                                String.format(
+                                    "Found %d rows in '\"%s\"'. Met expectation.", // FIX: Use
+                                    // quotes here
+                                    // too
+                                    rowCount, destinationTableName));
+                          } else {
+                            return new CheckResult(
+                                false,
+                                String.format(
+                                    "Found %d rows in '\"%s\"', but expected at least %d.", // FIX:
+                                    // Use
+                                    // quotes here too
+                                    rowCount, destinationTableName, NUM_EVENTS));
+                          }
+                        } catch (Exception e) {
+                          // More detailed error logging for debugging
+                          return new CheckResult(
+                              false,
+                              "Error checking row count for '\""
+                                  + destinationTableName
+                                  + "\": "
+                                  + e.getMessage()
+                                  + ". Stack: "
+                                  + e.toString());
+                        }
+                      }
+                    },
+                    // MODIFICATION END
+                    changePostgresData(sourceTableName, SOURCE_COLUMNS, cdcEvents),
+                    checkDestinationRows(destinationTableName, sourceTableName, cdcEvents)))
             .build();
 
     // 8. Wait for conditions to be met and cancel the job
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(30)), conditionCheck);
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(10)), conditionCheck);
 
     // 9. Assert the final results
-    checkJdbcTable(tableName, cdcEvents);
+    checkJdbcTable(destinationTableName, sourceTableName, cdcEvents);
     assertThatResult(result).meetsConditions();
   }
 
-  private JDBCResourceManager.JDBCSchema createJdbcSchema() {
-    HashMap<String, String> columns = new HashMap<>();
-    columns.put(ROW_ID, "NUMERIC NOT NULL");
-    columns.put(NAME, "VARCHAR(200)");
-    columns.put(AGE, "NUMERIC");
-    columns.put(MEMBER, "VARCHAR(200)");
-    columns.put(ENTRY_ADDED, "VARCHAR(200)");
-    return new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
+  private JDBCResourceManager.JDBCSchema createJdbcSchema(List<String> columns, String pkColumn) {
+    HashMap<String, String> schema = new HashMap<>();
+    schema.put(columns.get(0), "NUMERIC NOT NULL"); // ROW_ID
+    schema.put(columns.get(1), "VARCHAR(200)"); // NAME
+    schema.put(columns.get(2), "NUMERIC"); // AGE
+    schema.put(columns.get(3), "VARCHAR(200)"); // MEMBER
+    schema.put(columns.get(4), "VARCHAR(200)"); // ENTRY_ADDED
+    return new JDBCResourceManager.JDBCSchema(schema, pkColumn);
   }
 
   private ConditionCheck writePostgresData(
-      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+      String tableName, List<String> columns, Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
       public @NonNull String getDescription() {
@@ -320,11 +417,11 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (int i = 0; i < NUM_EVENTS; i++) {
           Map<String, Object> values = new HashMap<>();
-          values.put(COLUMNS.get(0), i);
-          values.put(COLUMNS.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
-          values.put(COLUMNS.get(2), new Random().nextInt(100));
-          values.put(COLUMNS.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
-          values.put(COLUMNS.get(4), Instant.now().toString());
+          values.put(columns.get(0), i);
+          values.put(columns.get(1), RandomStringUtils.randomAlphabetic(10).toLowerCase());
+          values.put(columns.get(2), new Random().nextInt(100));
+          values.put(columns.get(3), new Random().nextInt() % 2 == 0 ? "Y" : "N");
+          values.put(columns.get(4), Instant.now().toString());
           rows.add(values);
         }
         boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
@@ -336,7 +433,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private ConditionCheck changePostgresData(
-      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+      String tableName, List<String> columns, Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
       public @NonNull String getDescription() {
@@ -345,7 +442,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
       @Override
       protected @NonNull CheckResult check() {
-        // 1. Get the schema name from the source resource manager
         String schema = cloudSqlSourceResourceManager.getDatabaseName();
         String qualifiedTableName = schema + "." + tableName;
 
@@ -353,39 +449,32 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         for (int i = 0; i < NUM_EVENTS; i++) {
           if (i % 2 == 0) {
             Map<String, Object> values = cdcEvents.get(tableName).get(i);
-            values.put(COLUMNS.get(2), new Random().nextInt(100));
+            values.put(columns.get(2), new Random().nextInt(100));
             values.put(
-                COLUMNS.get(3),
-                (Objects.equals(values.get(COLUMNS.get(3)).toString(), "Y") ? "N" : "Y"));
+                columns.get(3),
+                (Objects.equals(values.get(columns.get(3)).toString(), "Y") ? "N" : "Y"));
 
-            // 2. Use the fully-qualified table name for the UPDATE
             String updateSql =
                 "UPDATE "
-                    + qualifiedTableName // <-- FIX
+                    + qualifiedTableName
                     + " SET "
-                    + COLUMNS.get(2)
+                    + columns.get(2)
                     + " = "
-                    + values.get(COLUMNS.get(2))
+                    + values.get(columns.get(2))
                     + ", "
-                    + COLUMNS.get(3)
+                    + columns.get(3)
                     + " = '"
-                    + values.get(COLUMNS.get(3))
+                    + values.get(columns.get(3))
                     + "'"
                     + " WHERE "
-                    + COLUMNS.get(0)
+                    + columns.get(0)
                     + " = "
                     + i;
             cloudSqlSourceResourceManager.runSQLUpdate(updateSql);
             newCdcEvents.add(values);
           } else {
-            // 3. Use the fully-qualified table name for the DELETE
             cloudSqlSourceResourceManager.runSQLUpdate(
-                "DELETE FROM "
-                    + qualifiedTableName
-                    + " WHERE "
-                    + COLUMNS.get(0)
-                    + "="
-                    + i); // <-- FIX
+                "DELETE FROM " + qualifiedTableName + " WHERE " + columns.get(0) + "=" + i);
           }
         }
         cdcEvents.put(tableName, newCdcEvents);
@@ -396,7 +485,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private ConditionCheck checkDestinationRows(
-      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+      String destinationTableName,
+      String sourceTableName,
+      Map<String, List<Map<String, Object>>> cdcEvents) {
     return new ConditionCheck() {
       @Override
       protected @NonNull String getDescription() {
@@ -405,24 +496,49 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
       @Override
       protected @NonNull CheckResult check() {
-        long totalRows = cloudSqlDestinationResourceManager.getRowCount(tableName);
-        long maxRows = cdcEvents.get(tableName).size();
-        if (totalRows > maxRows) {
-          return new CheckResult(
-              false, String.format("Expected up to %d rows but found %d", maxRows, totalRows));
-        }
+        // Build a correctly quoted SQL query to get the row count
+        String countQuery =
+            String.format(
+                "SELECT COUNT(*) AS row_count FROM %s.\"%s\"",
+                cloudSqlDestinationResourceManager.getDatabaseName(), destinationTableName);
+
+        LOG.info("Executing the following query: " + countQuery);
+
         try {
-          checkJdbcTable(tableName, cdcEvents);
+          // Use runSQLQuery to execute the raw SQL
+          List<Map<String, Object>> result =
+              cloudSqlDestinationResourceManager.runSQLQuery(countQuery);
+          long totalRows = Long.parseLong(result.get(0).get("row_count").toString());
+
+          long maxRows = cdcEvents.get(sourceTableName).size();
+          if (totalRows > maxRows) {
+            return new CheckResult(
+                false, String.format("Expected up to %d rows but found %d", maxRows, totalRows));
+          }
+
+          checkJdbcTable(destinationTableName, sourceTableName, cdcEvents);
           return new CheckResult(true, "JDBC table contains expected rows.");
-        } catch (AssertionError error) {
-          return new CheckResult(false, "JDBC table does not contain expected rows.");
+        } catch (Exception error) {
+          return new CheckResult(
+              false, "JDBC table does not contain expected rows yet. Error: " + error.getMessage());
         }
       }
     };
   }
 
-  private void checkJdbcTable(String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
-    assertThatRecords(cloudSqlDestinationResourceManager.readTable(tableName))
-        .hasRecordsUnorderedCaseInsensitiveColumns(cdcEvents.get(tableName));
+  private void checkJdbcTable(
+      String destinationTableName,
+      String sourceTableName,
+      Map<String, List<Map<String, Object>>> cdcEvents) {
+
+    // Build a correctly quoted SQL query to read all table data
+    String selectQuery =
+        String.format(
+            "SELECT * FROM %s.\"%s\"",
+            cloudSqlDestinationResourceManager.getDatabaseName(), destinationTableName);
+
+    // Use runSQLQuery instead of readTable to execute the correct query
+    assertThatRecords(cloudSqlDestinationResourceManager.runSQLQuery(selectQuery))
+        .hasRecordsUnorderedCaseInsensitiveColumns(cdcEvents.get(sourceTableName));
   }
 }
