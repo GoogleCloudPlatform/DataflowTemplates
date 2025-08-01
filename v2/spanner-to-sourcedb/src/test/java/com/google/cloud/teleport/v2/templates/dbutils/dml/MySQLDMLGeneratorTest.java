@@ -22,8 +22,8 @@ import static org.junit.Assert.assertTrue;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
-import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
@@ -51,7 +51,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -66,7 +67,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -81,7 +82,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/tableNameMismatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "leChanteur";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -96,7 +98,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -111,7 +113,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/coulmnNameTypeMismatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"222\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -125,7 +128,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -140,7 +143,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/sourceColumnAbsentInSpannerSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -155,7 +159,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -170,7 +174,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/spannerColumnAbsentInSourceSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"hb_shardId\":\"shardA\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -185,7 +190,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -200,7 +205,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -213,7 +219,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -227,7 +233,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/sourceNoPkSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -240,7 +247,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -254,7 +261,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/timeZoneSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"Bday\":\"2023-05-18T12:01:13.088397258Z\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -270,7 +278,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+10:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -285,7 +293,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/primarykeyMismatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -300,7 +309,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -315,7 +324,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allDatatypeSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     InputStream stream =
         Channels.newInputStream(
@@ -363,7 +372,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -417,7 +426,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -432,7 +442,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -447,7 +457,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/MultiColmPKSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"LastName\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -461,7 +472,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -477,7 +488,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"k\u0027k\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -492,7 +504,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -507,7 +519,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     /*
     Spanner write is : CAST("\'" as BYTES) for blob and "\'" for varchar
     Eventual insert is '' but mysql synatx escapes each ' with another '*/
@@ -528,7 +541,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -546,7 +559,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Jyc\u003d\",\"varchar_column\":\"\u0027\u0027\",}";
@@ -563,7 +576,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -582,7 +595,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"XCc\u003d\",\"varchar_column\":\"\\\\\\\u0027\",}";
@@ -599,7 +612,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -619,7 +632,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"CQ==\",\"varchar_column\":\"\\t\",}";
@@ -636,7 +649,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -656,7 +669,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"CA==\",\"varchar_column\":\"\\b\",}";
@@ -673,7 +686,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -693,7 +706,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Cg==\",\"varchar_column\":\"\\n\",}";
@@ -710,7 +723,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -730,7 +743,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"DQ==\",\"varchar_column\":\"\\r\",}";
@@ -747,7 +760,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -767,7 +780,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"DA==\",\"varchar_column\":\"\\f\",}";
@@ -784,7 +797,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -804,7 +817,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"Ig==\",\"varchar_column\":\"\\\"\",}";
@@ -821,7 +834,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -841,7 +854,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/quotesSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
 
     String tableName = "sample_table";
     String newValuesString = "{\"blob_column\":\"XA==\",\"varchar_column\":\"\\\\\",}";
@@ -858,7 +871,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -873,7 +886,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/bitSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"YmlsX2NvbA\u003d\u003d\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -892,7 +906,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -906,7 +920,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "SomeRandomTableNotInSchema";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -918,7 +933,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -932,7 +947,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -944,7 +960,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -960,7 +976,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -972,7 +989,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -987,7 +1004,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/errorSchemaSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "customer";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -999,7 +1017,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1013,7 +1031,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/primarykeyMismatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"SingerId\":\"999\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1028,7 +1047,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1042,7 +1061,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1054,7 +1074,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1068,7 +1088,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1083,7 +1104,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1098,7 +1119,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/errorSchemaSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Singers";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1110,7 +1132,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1124,7 +1146,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/errorSchemaSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "Persons";
     String newValuesString = "{\"Does\":\"not\",\"matter\":\"junk\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1136,7 +1159,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1150,7 +1173,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "contacts";
     String newValuesString = "{\"accountId\": \"Id1\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1162,7 +1186,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1176,7 +1200,8 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/allMatchSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
     String tableName = "randomname";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\",\"SingerId\":null}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1188,7 +1213,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .build());
@@ -1202,7 +1227,7 @@ public final class MySQLDMLGeneratorTest {
     String sessionFile = "src/test/resources/customTransformation.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
     SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
-    Schema schema = SessionFileReader.read(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
     String tableName = "Singers";
     String newValuesString = "{\"FirstName\":\"kk\",\"LastName\":\"ll\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
@@ -1217,7 +1242,7 @@ public final class MySQLDMLGeneratorTest {
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
                     modType, tableName, newValuesJson, keyValuesJson, "+00:00")
-                .setSchema(schema)
+                .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
                 .setCustomTransformationResponse(customTransformation)

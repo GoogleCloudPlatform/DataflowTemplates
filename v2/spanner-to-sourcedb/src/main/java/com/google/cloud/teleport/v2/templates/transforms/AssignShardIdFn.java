@@ -27,7 +27,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
@@ -81,7 +81,7 @@ public class AssignShardIdFn
 
   private final SourceSchema sourceSchema;
 
-  private final Schema schema;
+  private final ISchemaMapper schemaMapper;
 
   // Jackson Object mapper.
   private transient ObjectMapper mapper;
@@ -106,7 +106,7 @@ public class AssignShardIdFn
 
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Ddl ddl,
       SourceSchema sourceSchema,
       String shardingMode,
@@ -118,7 +118,7 @@ public class AssignShardIdFn
       Long maxConnectionsAcrossAllShards,
       String sourceTyoe) {
     this.spannerConfig = spannerConfig;
-    this.schema = schema;
+    this.schemaMapper = schemaMapper;
     this.ddl = ddl;
     this.sourceSchema = sourceSchema;
     this.shardingMode = shardingMode;
@@ -162,7 +162,7 @@ public class AssignShardIdFn
                 customJarPath,
                 shardingCustomClassName,
                 shardingCustomParameters,
-                schema,
+                schemaMapper,
                 skipDirName);
         retry = false;
       } catch (SpannerException e) {
@@ -547,7 +547,7 @@ public class AssignShardIdFn
 
   private boolean doesTableExistAtSource(String tableName) {
     try {
-      String sourceTableName = schema.getToSource().get(tableName).getName();
+      String sourceTableName = schemaMapper.getSourceTableName("", tableName);
       if (sourceTableName == null || sourceTableName.isEmpty()) {
         return false;
       }
