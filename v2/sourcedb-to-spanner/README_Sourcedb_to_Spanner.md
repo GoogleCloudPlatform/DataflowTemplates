@@ -244,6 +244,7 @@ You would need a GCS bucket to stage your build, driver configuration file, and 
 
 Follow [above](#staging-the-template) to build the template and stage it in GCS.
 This step prints the path of the staged template which is passed as `TEMPLATE_SPEC_GCSPATH` below.
+In case you would like to use the GCP released templates, you can skip this step.
 
 To start a job with the staged template at any time using `gcloud`, you are going to
 need valid resources for the required parameters.
@@ -251,10 +252,12 @@ need valid resources for the required parameters.
 Provided that, the following command line can be used:
 
 ```shell
-### Basic Job Paramters
+### Basic Job Parameters
 export PROJECT=<your-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
+#### Path of the staged template. In case you would like to use the GCP pre-built templates,
+#### please use gs://dataflow-templates-<gcp-region-for-example-us-central1>/latest/flex/Sourcedb_to_Spanner_Flex  as the path.
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 ### The number of works controls the fanout of Dataflow job to read from Cassandra.
 ### While you might need to finetune this for best performance, a number close to number of nodes on Cassandra Cluster might be good place to start.
@@ -299,6 +302,8 @@ export SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
 NUM_PARTITIONS="<NUM_PARTITIONS>"
 #### Disable Spanner Batch Writes.
 BATCH_SIZE_FOR_SPANNER_MUTATIONS=1
+#### Colon separated lIst of tables to migrate. Leave empty to migrate all the tables which are present in both source keyspace and destination spanner database.
+TABLES=""
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
@@ -323,6 +328,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL" \
   --parameters "numPartitions=${NUM_PARTITIONS}" \
   --parameters "batchSizeForSpannerMutations=${BATCH_SIZE_FOR_SPANNER_MUTATIONS}"
+  --parameters "tables=${TABLES}"
 ```
 
 For more information about the command, please check:
@@ -369,6 +375,7 @@ You would need a GCS bucket to stage your build, driver configuration file, and 
 
 Follow [above](#staging-the-template) to build the template and stage it in GCS.
 This step prints the path of the staged template which is passed as `TEMPLATE_SPEC_GCSPATH` below.
+In case you would like to use the GCP released templates, you can skip this step.
 
 To start a job with the staged template at any time using `gcloud`, you are going to
 need valid resources for the required parameters.
@@ -377,10 +384,12 @@ Provided that, the following command line can be used:
 
 
 ```shell
-### Basic Job Paramters
+### Basic Job Parameters
 export PROJECT=<your-project>
 export BUCKET_NAME=<bucket-name>
 export REGION=<GCP-Region-where-the-dataflow-machines-will-be-provisioned-like-us-central1>
+#### Path of the staged template. In case you would like to use the GCP pre-built templates,
+#### please use gs://dataflow-templates-<gcp-region-for-example-us-central1>/latest/flex/Sourcedb_to_Spanner_Flex  as the path.
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Sourcedb_to_Spanner_Flex"
 ### The number of works controls the fanout of Dataflow job to read from Cassandra.
 ### While you might need to finetune this for best performance, a number close to number of nodes on Cassandra Cluster might be good place to start.
@@ -431,6 +440,8 @@ export SUBNETWORK="regions/${WORKER_REGION}/subnetworks/<SUBNET_NAME>"
 NUM_PARTITIONS="<NUM_PARTITIONS>"
 #### Disable Spanner Batch Writes.
 BATCH_SIZE_FOR_SPANNER_MUTATIONS=1
+#### Colon separated lIst of tables to migrate. Leave empty to migrate all the tables which are present in both source keyspace and destination spanner database.
+TABLES=""
 
 gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --project "$PROJECT" \
@@ -457,7 +468,8 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
   --parameters "defaultLogLevel=$DEFAULT_LOG_LEVEL" \
   --parameters "numPartitions=${NUM_PARTITIONS}" \
-  --parameters "batchSizeForSpannerMutations=${BATCH_SIZE_FOR_SPANNER_MUTATIONS}"
+  --parameters "batchSizeForSpannerMutations=${BATCH_SIZE_FOR_SPANNER_MUTATIONS}" \
+  --parameters "tables=${TABLES}"
 ```
 
 
