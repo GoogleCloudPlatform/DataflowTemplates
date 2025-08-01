@@ -17,9 +17,11 @@ package com.google.cloud.teleport.v2.templates.dbutils.processor;
 
 import static com.google.cloud.teleport.v2.templates.constants.Constants.SOURCE_CASSANDRA;
 
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventToMapConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
@@ -51,6 +53,8 @@ public class InputRecordProcessor {
   public static boolean processRecord(
       TrimmedShardedDataChangeRecord spannerRecord,
       Schema schema,
+      Ddl ddl,
+      SourceSchema sourceSchema,
       IDao dao,
       String shardId,
       String sourceDbTimezoneOffset,
@@ -99,6 +103,8 @@ public class InputRecordProcessor {
               .setSchema(schema)
               .setCustomTransformationResponse(customTransformationResponse)
               .setCommitTimestamp(spannerRecord.getCommitTimestamp())
+              .setDdl(ddl)
+              .setSourceSchema(sourceSchema)
               .build();
 
       DMLGeneratorResponse dmlGeneratorResponse = dmlGenerator.getDMLStatement(dmlGeneratorRequest);

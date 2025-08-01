@@ -49,7 +49,7 @@ concurrency:
 env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   spotless_check:
@@ -124,8 +124,6 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         slug: GoogleCloudPlatform/DataflowTemplates
         files: 'target/site/jacoco-aggregate/jacoco.xml'
-        # Temp fix for https://github.com/codecov/codecov-action/issues/1487
-        version: v0.6.0
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_integration_smoke_tests_templates:
@@ -184,6 +182,18 @@ jobs:
         name: surefire-integration-test-results
         path: '**/surefire-reports/TEST-*.xml'
         retention-days: 10
+    - name: Integration Test report on GitHub
+      uses: dorny/test-reporter@v2
+      if: always()
+      with:
+        name: Integration Test report on GitHub
+        path: '**/surefire-reports/TEST-*.xml'
+        reporter: java-junit
+        only-summary: 'true'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-error: 'false'
+        list-suites: 'failed'
+        list-tests: 'failed'
     - name: Cleanup Java Environment
       uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:

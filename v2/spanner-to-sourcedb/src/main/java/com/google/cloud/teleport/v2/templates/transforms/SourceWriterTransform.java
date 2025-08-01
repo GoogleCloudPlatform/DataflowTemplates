@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
+import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.base.Preconditions;
@@ -49,6 +50,7 @@ public class SourceWriterTransform
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
   private final Ddl ddl;
+  private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
@@ -61,6 +63,7 @@ public class SourceWriterTransform
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
+      SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
       int maxThreadPerDataflowWorker,
@@ -72,6 +75,7 @@ public class SourceWriterTransform
     this.shards = shards;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
+    this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
@@ -92,6 +96,7 @@ public class SourceWriterTransform
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
                         this.ddl,
+                        this.sourceSchema,
                         this.shadowTablePrefix,
                         this.skipDirName,
                         this.maxThreadPerDataflowWorker,

@@ -41,23 +41,27 @@ class PromoteHelper {
   private final String targetPath;
   private final String sourceDigest;
   private final String token;
+  private final String imageTag;
 
   /**
    * Promote the staged flex template image using MOSS promote API.
    *
-   * @param sourcePath - spec for source image.
-   * @param targetPath - spec for target image
+   * @param sourcePath - spec for source image without tag
+   * @param targetPath - spec for target image without tag
+   * @param imageTag - image tag
    * @param sourceDigest - source image digest, e.g. sha256:xxxxx
    */
-  public PromoteHelper(String sourcePath, String targetPath, String sourceDigest)
+  public PromoteHelper(String sourcePath, String targetPath, String imageTag, String sourceDigest)
       throws IOException, InterruptedException {
-    this(sourcePath, targetPath, sourceDigest, accessToken());
+    this(sourcePath, targetPath, imageTag, sourceDigest, accessToken());
   }
 
   @VisibleForTesting
-  PromoteHelper(String sourcePath, String targetPath, String sourceDigest, String token) {
+  PromoteHelper(
+      String sourcePath, String targetPath, String imageTag, String sourceDigest, String token) {
     this.sourceSpec = new ArtifactRegImageSpec(sourcePath);
     this.targetSpec = new ArtifactRegImageSpec(targetPath);
+    this.imageTag = imageTag;
     this.sourceDigest = sourceDigest;
     this.token = token;
     this.targetPath = targetPath;
@@ -71,7 +75,10 @@ class PromoteHelper {
     JsonElement parsed = JsonParser.parseString(responseRLO);
     String operation = parsed.getAsJsonObject().get("name").getAsString();
     waitForComplete(operation);
-    addTag();
+    addTag(imageTag);
+    // override latest (for pull default tag) and public-image-latest (for vul scan)
+    addTag("latest");
+    addTag("public-image-latest");
   }
 
   @VisibleForTesting
@@ -133,8 +140,8 @@ class PromoteHelper {
     Failsafe.with(retry).run(runnable);
   }
 
-  /** Add "latest" tag after promotion. */
-  private void addTag() throws IOException, InterruptedException {
+  /** Add tag after promotion. */
+  private void addTag(String tag) throws IOException, InterruptedException {
     // TODO: remove this once copy tag is supported by promote API
     String[] command;
     if (targetSpec.repository.endsWith("gcr.io")) {
@@ -147,7 +154,7 @@ class PromoteHelper {
             "add-tag",
             "-q",
             String.format("%s@%s", targetPath, sourceDigest),
-            String.format("%s:latest", targetPath)
+            String.format("%s:%s", targetPath, tag)
           };
     } else {
       command =
@@ -158,7 +165,7 @@ class PromoteHelper {
             "tags",
             "add",
             String.format("%s@%s", targetPath, sourceDigest),
-            String.format("%s:latest", targetPath)
+            String.format("%s:%s", targetPath, tag)
           };
     }
     TemplatesStageMojo.runCommandCapturesOutput(command, null);

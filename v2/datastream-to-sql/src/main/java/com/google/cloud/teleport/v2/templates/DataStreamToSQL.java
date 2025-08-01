@@ -260,6 +260,29 @@ public class DataStreamToSQL {
     int getNumThreads();
 
     void setNumThreads(int value);
+
+    @TemplateParameter.Integer(
+        order = 16,
+        groupName = "Target",
+        optional = true,
+        description = "Database login timeout in seconds.",
+        helpText =
+            "The timeout in seconds for database login attempts. This helps prevent connection hangs when multiple workers try to connect simultaneously.")
+    Integer getDatabaseLoginTimeout();
+
+    void setDatabaseLoginTimeout(Integer value);
+
+    @TemplateParameter.Boolean(
+        order = 17,
+        optional = true,
+        description =
+            "Order by configurations for data should include prioritizing data which is not deleted.",
+        helpText =
+            "Order by configurations for data should include prioritizing data which is not deleted.")
+    @Default.Boolean(false)
+    Boolean getOrderByIncludesIsDeleted();
+
+    void setOrderByIncludesIsDeleted(Boolean value);
   }
 
   /**
@@ -315,7 +338,8 @@ public class DataStreamToSQL {
         CdcJdbcIO.DataSourceConfiguration.create(jdbcDriverName, jdbcDriverConnectionString)
             .withUsername(options.getDatabaseUser())
             .withPassword(options.getDatabasePassword())
-            .withMaxIdleConnections(new Integer(0));
+            .withMaxIdleConnections(new Integer(0))
+            .withLoginTimeout(options.getDatabaseLoginTimeout());
 
     return dataSourceConfiguration;
   }
@@ -396,6 +420,7 @@ public class DataStreamToSQL {
                 "Format to DML",
                 CreateDml.of(dataSourceConfiguration)
                     .withSchemaMap(schemaMap)
+                    .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                     .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
 

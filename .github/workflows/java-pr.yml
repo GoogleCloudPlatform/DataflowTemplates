@@ -25,6 +25,10 @@ on:
       - '**.xml'
       # Include python files and Dockerfiles used for YAML and xlang templates.
       - '**.py'
+      # Include Python requirements files for dependency updates
+      - '**/requirements.txt'
+      - 'python/default_base_*.txt'
+      - 'python/generate_all_dependencies.sh'
       - 'plugins/core-plugin/src/main/resources/**'
       # Include relevant GitHub Action files for running these checks.
       # This will make it easier to verify action changes don't break anything.
@@ -50,7 +54,7 @@ env:
   MAVEN_OPTS: -Dorg.slf4j.simpleLogger.log.org.apache.maven.plugins.shade=error
   IT_REGION: us-west2
 
-permissions: read-all
+permissions: write-all
 
 jobs:
   spotless_check:
@@ -117,8 +121,6 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
           files: 'target/site/jacoco-aggregate/jacoco.xml'
-          # Temp fix for https://github.com/codecov/codecov-action/issues/1487
-          version: v0.6.0
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
         if: always()
@@ -181,6 +183,18 @@ jobs:
           name: surefire-integration-test-results
           path: '**/surefire-reports/TEST-*.xml'
           retention-days: 1
+      - name: Integration Test report on GitHub
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Integration Test report on GitHub
+          path: '**/surefire-reports/TEST-*.xml'
+          reporter: java-junit
+          only-summary: 'true'
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fail-on-error: 'false'
+          list-suites: 'failed'
+          list-tests: 'failed'
       - name: Cleanup Java Environment
         uses: ./.github/actions/cleanup-java-env
         if: always()

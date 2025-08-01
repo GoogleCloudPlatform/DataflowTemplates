@@ -29,5 +29,6 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config;
 public enum SQLDialect {
   MYSQL,
   POSTGRESQL,
-  CASSANDRA
+  CASSANDRA,
+  ASTRA_DB
 }

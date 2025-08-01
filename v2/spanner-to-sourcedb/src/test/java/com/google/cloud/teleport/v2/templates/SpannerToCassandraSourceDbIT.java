@@ -143,7 +143,8 @@ public class SpannerToCassandraSourceDbIT extends SpannerToSourceDbITBase {
                 null,
                 null,
                 null,
-                CASSANDRA_SOURCE_TYPE);
+                CASSANDRA_SOURCE_TYPE,
+                null);
       }
     }
   }

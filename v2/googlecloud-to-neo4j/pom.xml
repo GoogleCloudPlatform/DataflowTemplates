@@ -26,6 +26,10 @@
   <artifactId>googlecloud-to-neo4j</artifactId>
   <modelVersion>4.0.0</modelVersion>
 
+  <properties>
+    <neo4j-java-driver.version>5.27.0</neo4j-java-driver.version>
+  </properties>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -36,7 +40,7 @@
       <dependency>
         <groupId>org.neo4j.driver</groupId>
         <artifactId>neo4j-java-driver</artifactId>
-        <version>5.27.0</version>
+        <version>${neo4j-java-driver.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
@@ -93,7 +97,14 @@
       <artifactId>beam-it-neo4j</artifactId>
       <scope>test</scope>
     </dependency>
-
   </dependencies>
 
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+  </build>
 </project>
