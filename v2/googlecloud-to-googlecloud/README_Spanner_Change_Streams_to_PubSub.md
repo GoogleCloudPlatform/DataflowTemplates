@@ -47,7 +47,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **spannerMetadataTableName**: The Spanner change streams connector metadata table name to use. If not provided, Spanner automatically creates the streams connector metadata table during the pipeline flow change. You must provide this parameter when updating an existing pipeline. Don't use this parameter for other cases.
 * **startTimestamp**: The starting DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to the timestamp when the pipeline starts, that is, the current time.
 * **endTimestamp**: The ending DateTime (https://tools.ietf.org/html/rfc3339), inclusive, to use for reading change streams. For example, ex- 2021-10-12T07:20:50.52Z. Defaults to an infinite time in the future.
-* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://spanner.googleapis.com`. Defaults to: https://spanner.googleapis.com.
+* **spannerHost**: The Cloud Spanner endpoint to call in the template. Only used for testing. For example, `https://batch-spanner.googleapis.com`. Defaults to: https://batch-spanner.googleapis.com.
 * **outputDataFormat**: The format of the output. Output is wrapped in many PubsubMessages and sent to a Pub/Sub topic. Allowed formats are JSON and AVRO. Default is JSON.
 * **pubsubAPI**: The Pub/Sub API used to implement the pipeline. Allowed APIs are `pubsubio` and `native_client`. For a small number of queries per second (QPS), `native_client` has less latency. For a large number of QPS, `pubsubio` provides better and more stable performance. The default is `pubsubio`.
 * **pubsubProjectId**: Project of Pub/Sub topic. The default for this parameter is the project where the Dataflow pipeline is running.
@@ -145,7 +145,7 @@ export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SPANNER_HOST=https://spanner.googleapis.com
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export OUTPUT_DATA_FORMAT=JSON
 export PUBSUB_API=pubsubio
 export PUBSUB_PROJECT_ID=""
@@ -206,7 +206,7 @@ export SPANNER_DATABASE_ROLE=<spannerDatabaseRole>
 export SPANNER_METADATA_TABLE_NAME=<spannerMetadataTableName>
 export START_TIMESTAMP=""
 export END_TIMESTAMP=""
-export SPANNER_HOST=https://spanner.googleapis.com
+export SPANNER_HOST=https://batch-spanner.googleapis.com
 export OUTPUT_DATA_FORMAT=JSON
 export PUBSUB_API=pubsubio
 export PUBSUB_PROJECT_ID=""
@@ -277,7 +277,7 @@ resource "google_dataflow_flex_template_job" "spanner_change_streams_to_pubsub" 
     # spannerMetadataTableName = "<spannerMetadataTableName>"
     # startTimestamp = ""
     # endTimestamp = ""
-    # spannerHost = "https://spanner.googleapis.com"
+    # spannerHost = "https://batch-spanner.googleapis.com"
     # outputDataFormat = "JSON"
     # pubsubAPI = "pubsubio"
     # pubsubProjectId = ""
