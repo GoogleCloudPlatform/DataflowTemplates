@@ -107,6 +107,183 @@ public class DatastreamToDMLTest {
   }
 
   /**
+   * Test whether {@link DatastreamToPostgresDML#convertJsonToHstoreLiteral(String)} correctly
+   * escapes special characters.
+   */
+  @Test
+  public void testHstoreConversion_shouldHandleSpecialCharacters() {
+    // Arrange
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String inputJsonWithQuotes = "{\"key\\\"\":\"val'ue\"}";
+    String expectedOutput = "'\"key\\\"\"=>\"val'ue\"'";
+
+    // Act
+    String actualOutput = dmlBuilder.convertJsonToHstoreLiteral(inputJsonWithQuotes);
+
+    // Assert
+    assertEquals(expectedOutput, actualOutput);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} correctly
+   * handles null and empty JSON for HSTORE types.
+   */
+  @Test
+  public void testHstoreTypeCoercion_handlesNullAndEmpty() {
+    // Test null value
+    String nullJson = "{\"product_details\":null}";
+    JsonNode nullRowObj = getRowObj(nullJson);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("product_details", "HSTORE");
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+
+    String actualNull = dmlBuilder.getValueSql(nullRowObj, "product_details", tableSchema);
+    assertEquals("NULL", actualNull);
+
+    // Test empty JSON object
+    String emptyJson = "{\"product_details\":\"{}\"}";
+    JsonNode emptyRowObj = getRowObj(emptyJson);
+    String expectedEmpty = "''::hstore";
+
+    String actualEmpty = dmlBuilder.getValueSql(emptyRowObj, "product_details", tableSchema);
+    assertEquals(expectedEmpty, actualEmpty);
+  }
+
+  /** Test hstore conversion with multiple key-value pairs and a null value. */
+  @Test
+  public void testHstoreConversion_withMultipleAndNullValues() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String json = "{\"key1\":\"value1\",\"key2\":null,\"key3\":\"value3\"}";
+    String expected = "'\"key1\"=>\"value1\", \"key2\"=>NULL, \"key3\"=>\"value3\"'";
+
+    String actual = dmlBuilder.convertJsonToHstoreLiteral(json);
+
+    assertEquals(expected, actual);
+  }
+
+  /** Test that hstore conversion returns NULL for malformed JSON. */
+  @Test
+  public void testHstoreConversion_handlesMalformedJson() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String malformedJson = "{\"key1\":\"value1\""; // Missing closing brace
+    String expected = "NULL";
+
+    String actual = dmlBuilder.convertJsonToHstoreLiteral(malformedJson);
+
+    assertEquals(expected, actual);
+  }
+
+  /** Test that hstore conversion returns NULL for non-object JSON input. */
+  @Test
+  public void testHstoreConversion_handlesNonObjectJson() {
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String nonObjectJson = "[\"a\", \"b\"]"; // A JSON array is not a JSON object
+    String expected = "NULL";
+
+    String actual = dmlBuilder.convertJsonToHstoreLiteral(nonObjectJson);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} correctly
+   * formats LTREE types.
+   */
+  @Test
+  public void testLtreeTypeCoercion() {
+    // Arrange
+    String json = "{\"path_info\":\"Top.Science.Astronomy.Cosmology\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("path_info", "LTREE");
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String expected = "'Top.Science.Astronomy.Cosmology'::ltree";
+
+    // Act
+    String actual = dmlBuilder.getValueSql(rowObj, "path_info", tableSchema);
+
+    // Assert
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} correctly
+   * handles a null value for LTREE types.
+   */
+  @Test
+  public void testLtreeTypeCoercion_handlesNull() {
+    // Arrange
+    String json = "{\"path_info\":null}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("path_info", "LTREE");
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String expected = "NULL";
+
+    // Act
+    String actual = dmlBuilder.getValueSql(rowObj, "path_info", tableSchema);
+
+    // Assert
+    assertEquals(expected, actual);
+  }
+
+  /** Test whether LTREE type coercion handles the literal string "NULL". */
+  @Test
+  public void testLtreeTypeCoercion_handlesNullString() {
+    String json = "{\"path_info\":\"NULL\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("path_info", "LTREE");
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+
+    String actual = dmlBuilder.getValueSql(rowObj, "path_info", tableSchema);
+
+    assertEquals("NULL", actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} correctly
+   * handles ENUM types, treating empty strings as NULL.
+   */
+  @Test
+  public void testEnumTypeCoercion_shouldHandleEmptyStringAsNull() {
+    // Arrange
+    String json = "{\"status_enum\":\"\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("status_enum", "ENUM");
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String expected = "NULL";
+
+    // Act
+    String actual = dmlBuilder.getValueSql(rowObj, "status_enum", tableSchema);
+
+    // Assert
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} correctly
+   * handles a valid ENUM value.
+   */
+  @Test
+  public void testEnumTypeCoercion_handlesValidEnum() {
+    // Arrange
+    String json = "{\"current_status\":\"in_progress\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("current_status", "ENUM");
+    DatastreamToPostgresDML dmlBuilder = DatastreamToPostgresDML.of(null);
+    String expected = "'in_progress'";
+
+    // Act
+    String actual = dmlBuilder.getValueSql(rowObj, "current_status", tableSchema);
+
+    // Assert
+    assertEquals(expected, actual);
+  }
+
+  /**
    * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts array
    * data into correct integer array syntax.
    */
@@ -280,6 +457,81 @@ public class DatastreamToDMLTest {
     String expected = "'P1MT2H3.000000S'";
     String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
     assertEquals(expected, actual);
+  }
+
+  /** Test interval conversion with an empty string, which should result in NULL. */
+  @Test
+  public void testIntervalConversion_withEmptyString() {
+    String json = "{\"interval_field\": \"\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
+  }
+
+  /** Test interval conversion with a JSON object missing the 'months' key. */
+  @Test
+  public void testIntervalConversion_missingMonthsKey() {
+    String json = "{\"interval_field\": {\"hours\": 5, \"micros\": 123}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+    // Expecting a default or error state, returning NULL
+    String expected = "NULL";
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals(expected, actual);
+  }
+
+  /**
+   * Test interval conversion with a 'nestedArray' key, which should be ignored and result in NULL.
+   */
+  @Test
+  public void testIntervalConversion_withNestedArrayKey() {
+    String json = "{\"interval_field\": {\"nestedArray\": [1,2,3]}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
+  }
+
+  /** Test interval conversion with malformed JSON text. */
+  @Test
+  public void testIntervalConversion_withMalformedJson() {
+    String json = "{\"interval_field\": \"{not-a-json-object\"}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    // This should result in an exception being caught and returning a NULL value
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
+  }
+
+  /** Test interval conversion with a JSON object missing the 'hours' key. */
+  @Test
+  public void testIntervalConversion_missingHoursKey() {
+    String json = "{\"interval_field\": {\"months\": 1, \"micros\": 123}}"; // Missing 'hours'
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("interval_field", "INTERVAL");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    String actual = dml.getValueSql(rowObj, "interval_field", tableSchema);
+
+    assertEquals("NULL", actual);
   }
 
   /**
