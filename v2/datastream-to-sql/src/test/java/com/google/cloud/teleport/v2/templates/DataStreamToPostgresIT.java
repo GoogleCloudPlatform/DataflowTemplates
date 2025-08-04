@@ -279,6 +279,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(sourceTableName)))
             .build();
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
+    String gcsPrefixForNotification =
+        getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("postgres-profile", jdbcSource);
     DestinationConfig destinationConfig =
@@ -293,7 +295,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications");
     com.google.pubsub.v1.SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "dataflow-subscription");
-    gcsResourceManager.createNotification(topic.toString(), "");
+    gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
     String schemaMap =
         String.format(
             "%s:%s",
@@ -378,6 +380,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
             .build();
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
+    String gcsPrefixForNotification =
+        getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("postgres-profile-special", jdbcSource);
     DestinationConfig destinationConfig =
@@ -394,7 +398,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         pubsubResourceManager.createTopic("gcs-notifications-special");
     com.google.pubsub.v1.SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "dataflow-subscription-special");
-    gcsResourceManager.createNotification(topic.toString(), "");
+    gcsResourceManager.createNotification(topic.toString(), gcsPrefixForNotification);
     String schemaMap =
         String.format(
             "%s:%s",
