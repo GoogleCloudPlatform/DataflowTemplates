@@ -161,7 +161,8 @@ public class DataStreamToSpannerMySQLSrcDataflowFT extends DataStreamToSpannerFT
 
     result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForConditionAndCancel(
+                createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 }
