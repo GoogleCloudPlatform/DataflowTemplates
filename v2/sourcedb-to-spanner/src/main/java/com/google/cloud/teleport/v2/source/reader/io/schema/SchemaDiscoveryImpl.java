@@ -120,12 +120,12 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
           } else {
             throw new SchemaDiscoveryRetriesExhaustedException(e);
           }
-        } catch (IOException ioException) {
-          throw new SchemaDiscoveryRetriesExhaustedException(ioException);
         } catch (InterruptedException threadException) {
           /* If sleep is interrupted, get back to work.
            * Unit testing this catch-point will need intrusive setting of thread state.
            */
+        } catch (Exception exception) {
+          throw new SchemaDiscoveryRetriesExhaustedException(exception);
         }
       }
     } while (true);
