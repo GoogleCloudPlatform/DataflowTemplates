@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatRecords;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -25,6 +26,7 @@ import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -124,7 +127,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     final long retryDelaySeconds = 10;
     boolean slotCleanupSuccess = false;
 
-    // Only attempt cleanup if a replication slot was created for this test
     if (this.replicationSlot != null && !this.replicationSlot.isBlank()) {
       for (int attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
@@ -134,9 +136,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
               maxAttempts,
               this.replicationSlot);
 
-          // 1. Try to terminate any backend process using the slot.
-          // This is wrapped in its own try-catch because it's okay if it fails
-          // (e.g., if no process is using the slot).
           try {
             cloudSqlSourceResourceManager.runSQLUpdate(
                 String.format(
@@ -151,13 +150,12 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 e.getMessage());
           }
 
-          // 2. Try to drop the replication slot. This is the critical step.
           cloudSqlSourceResourceManager.runSQLUpdate(
               String.format("SELECT pg_drop_replication_slot('%s');", this.replicationSlot));
 
           LOG.info("Successfully dropped replication slot '{}'.", this.replicationSlot);
           slotCleanupSuccess = true;
-          break; // If we get here, cleanup succeeded, so we exit the loop.
+          break;
 
         } catch (Exception e) {
           LOG.warn("Attempt {} to clean up replication slot failed: {}.", attempt, e.getMessage());
@@ -182,7 +180,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
       }
     }
 
-    // Finally, clean up all other resources.
     ResourceManagerUtils.cleanResources(
         cloudSqlSourceResourceManager,
         cloudSqlDestinationResourceManager,
@@ -193,28 +190,20 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
   @Test
   public void testDataStreamPostgresToPostgres() throws IOException {
-    // STANDARD TEST: Source and Target schemas have identical (lowercase) casing.
     String tableName = "pg_to_pg_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
     cloudSqlSourceResourceManager.createTable(
         tableName, createJdbcSchema(SOURCE_COLUMNS, SOURCE_PK));
     cloudSqlDestinationResourceManager.createTable(
         tableName, createJdbcSchema(SOURCE_COLUMNS, SOURCE_PK));
-
-    // Run the common test logic
     runTest(tableName, tableName);
   }
 
   @Test
   public void testDataStreamPostgresToPostgresUppercasing() throws IOException {
-    // UPPERCASING TEST: Source is lowercase, Target is uppercase and quoted.
     String sourceTableName = "pg_to_pg_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
     String destinationTableName = sourceTableName.toUpperCase();
-
-    // Create a lowercase source table
     cloudSqlSourceResourceManager.createTable(
         sourceTableName, createJdbcSchema(SOURCE_COLUMNS, SOURCE_PK));
-
-    // Create an uppercase, case-sensitive target table
     String destinationSchema = cloudSqlDestinationResourceManager.getDatabaseName();
     cloudSqlDestinationResourceManager.runSQLUpdate(
         String.format(
@@ -226,18 +215,32 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             AGE_UPPER,
             MEMBER_UPPER,
             ENTRY_ADDED_UPPER));
-
-    // Run the common test logic
     runTest(sourceTableName, destinationTableName);
   }
 
+  @Test
+  public void testPostgresToPostgresEnumLtreeHstore() throws IOException {
+    String tableName = "special_types_" + RandomStringUtils.randomAlphanumeric(5).toLowerCase();
+    String enumTypeName = "asset_status_it";
+    String createEnumSQL =
+        String.format("CREATE TYPE %s AS ENUM ('ONLINE', 'OFFLINE', 'MAINTENANCE');", enumTypeName);
+    cloudSqlSourceResourceManager.runSQLUpdate(createEnumSQL);
+    cloudSqlDestinationResourceManager.runSQLUpdate(createEnumSQL);
+
+    cloudSqlDestinationResourceManager.runSQLUpdate("CREATE EXTENSION IF NOT EXISTS hstore;");
+    cloudSqlDestinationResourceManager.runSQLUpdate("CREATE EXTENSION IF NOT EXISTS ltree;");
+
+    cloudSqlSourceResourceManager.createTable(tableName, createHybridSourceSchema(enumTypeName));
+    cloudSqlDestinationResourceManager.createTable(
+        tableName, createSpecialTypesJdbcSchema(enumTypeName));
+    runTestWithSpecialTypes(tableName);
+  }
+
   private void runTest(String sourceTableName, String destinationTableName) throws IOException {
-    // 3. Create required Replication Slot and Publication for Datastream
     this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
     String user = cloudSqlSourceResourceManager.getUsername();
     String schema = cloudSqlSourceResourceManager.getDatabaseName();
-
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("ALTER USER %s WITH REPLICATION;", user));
     cloudSqlSourceResourceManager.runSQLUpdate(
@@ -254,7 +257,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
-
     String datastreamSourceHost = System.getProperty("datastreamSourceHost");
     Objects.requireNonNull(datastreamSourceHost, "-DdatastreamSourceHost is required.");
     String network = System.getProperty("network");
@@ -264,7 +266,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     String subnetName = System.getProperty("subnetName");
     Objects.requireNonNull(subnetName, "-DsubnetName is required.");
     String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
-
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
                 datastreamSourceHost,
@@ -277,7 +278,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .setAllowedTables(
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(sourceTableName)))
             .build();
-
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
     SourceConfig sourceConfig =
         datastreamResourceManager.buildJDBCSourceConfig("postgres-profile", jdbcSource);
@@ -290,18 +290,15 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     Stream stream =
         datastreamResourceManager.createStream("stream-pg-to-pg", sourceConfig, destinationConfig);
     datastreamResourceManager.startStream(stream);
-
     com.google.pubsub.v1.TopicName topic = pubsubResourceManager.createTopic("gcs-notifications");
     com.google.pubsub.v1.SubscriptionName subscription =
         pubsubResourceManager.createSubscription(topic, "dataflow-subscription");
     gcsResourceManager.createNotification(topic.toString(), "");
-
     String schemaMap =
         String.format(
             "%s:%s",
             cloudSqlSourceResourceManager.getDatabaseName(),
             cloudSqlDestinationResourceManager.getDatabaseName());
-
     String jobName = PipelineUtils.createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
         PipelineLauncher.LaunchConfig.builder(jobName, specPath)
@@ -319,10 +316,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                 "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
             .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
             .addParameter("databasePassword", cloudSqlDestinationResourceManager.getPassword());
-
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
-
     Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -332,12 +327,113 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
                     changePostgresData(sourceTableName, cdcEvents),
                     checkDestinationRows(destinationTableName, sourceTableName, cdcEvents)))
             .build();
-
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
 
-    checkJdbcTable(destinationTableName, sourceTableName, cdcEvents);
+    // Corrected Call
+    checkRegularJdbcTable(destinationTableName, cdcEvents.get(sourceTableName));
+    assertThatResult(result).meetsConditions();
+  }
+
+  private void runTestWithSpecialTypes(String tableName) throws IOException {
+    this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
+    String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
+    String user = cloudSqlSourceResourceManager.getUsername();
+    String schema = cloudSqlSourceResourceManager.getDatabaseName();
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("ALTER USER %s WITH REPLICATION;", user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format(
+            "DO $$BEGIN PERFORM pg_create_logical_replication_slot('%s', 'pgoutput'); END$$;",
+            this.replicationSlot));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format("GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;", schema, user));
+    cloudSqlSourceResourceManager.runSQLUpdate(
+        String.format(
+            "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
+    String datastreamSourceHost = System.getProperty("datastreamSourceHost");
+    Objects.requireNonNull(datastreamSourceHost, "-DdatastreamSourceHost is required.");
+    String network = System.getProperty("network");
+    Objects.requireNonNull(network, "-Dnetwork is required.");
+    String region = System.getProperty("region");
+    Objects.requireNonNull(region, "-Dregion is required.");
+    String subnetName = System.getProperty("subnetName");
+    Objects.requireNonNull(subnetName, "-DsubnetName is required.");
+    String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
+    JDBCSource jdbcSource =
+        PostgresqlSource.builder(
+                datastreamSourceHost,
+                cloudSqlSourceResourceManager.getUsername(),
+                cloudSqlSourceResourceManager.getPassword(),
+                cloudSqlSourceResourceManager.getPort(),
+                cloudSqlSourceResourceManager.getDatabaseName(),
+                this.replicationSlot,
+                publication)
+            .setAllowedTables(
+                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
+            .build();
+    String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
+    SourceConfig sourceConfig =
+        datastreamResourceManager.buildJDBCSourceConfig("postgres-profile-special", jdbcSource);
+    DestinationConfig destinationConfig =
+        datastreamResourceManager.buildGCSDestinationConfig(
+            "gcs-profile-special",
+            artifactBucketName,
+            gcsPrefix,
+            DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT);
+    Stream stream =
+        datastreamResourceManager.createStream(
+            "stream-pg-special", sourceConfig, destinationConfig);
+    datastreamResourceManager.startStream(stream);
+    com.google.pubsub.v1.TopicName topic =
+        pubsubResourceManager.createTopic("gcs-notifications-special");
+    com.google.pubsub.v1.SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, "dataflow-subscription-special");
+    gcsResourceManager.createNotification(topic.toString(), "");
+    String schemaMap =
+        String.format(
+            "%s:%s",
+            cloudSqlSourceResourceManager.getDatabaseName(),
+            cloudSqlDestinationResourceManager.getDatabaseName());
+    String jobName = PipelineUtils.createJobName(testName + "-special");
+    PipelineLauncher.LaunchConfig.Builder options =
+        PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+            .addParameter("inputFilePattern", getGcsPath(testName) + "/cdc/")
+            .addParameter("gcsPubSubSubscription", subscription.toString())
+            .addParameter("inputFileFormat", "json")
+            .addParameter("streamName", stream.getName())
+            .addParameter("databaseType", "postgres")
+            .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
+            .addParameter("schemaMap", schemaMap)
+            .addParameter("databaseHost", datastreamSourceHost)
+            .addParameter("network", network)
+            .addParameter("subnetwork", subnetwork)
+            .addParameter(
+                "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
+            .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
+            .addParameter("databasePassword", cloudSqlDestinationResourceManager.getPassword());
+    PipelineLauncher.LaunchInfo info = launchTemplate(options);
+    assertThatPipeline(info).isRunning();
+    Map<String, List<Map<String, Object>>> cdcEvents = new HashMap<>();
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    writeSpecialTypesData(tableName, cdcEvents),
+                    buildRowCheck(tableName, NUM_EVENTS),
+                    changeSpecialTypesData(tableName, cdcEvents),
+                    checkDestinationRows(tableName, tableName, cdcEvents)))
+            .build();
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForConditionAndCancel(createConfig(info, Duration.ofMinutes(20)), conditionCheck);
+
+    // Corrected Call
+    checkSpecialKeys(tableName, cdcEvents.get(tableName));
     assertThatResult(result).meetsConditions();
   }
 
@@ -349,6 +445,24 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     schema.put(columns.get(3), "VARCHAR(200)");
     schema.put(columns.get(4), "VARCHAR(200)");
     return new JDBCResourceManager.JDBCSchema(schema, pkColumn);
+  }
+
+  private JDBCResourceManager.JDBCSchema createHybridSourceSchema(String enumTypeName) {
+    HashMap<String, String> schema = new HashMap<>();
+    schema.put("asset_id", "INT NOT NULL");
+    schema.put("status", enumTypeName);
+    schema.put("attributes", "TEXT");
+    schema.put("location_path", "TEXT");
+    return new JDBCResourceManager.JDBCSchema(schema, "asset_id");
+  }
+
+  private JDBCResourceManager.JDBCSchema createSpecialTypesJdbcSchema(String enumTypeName) {
+    HashMap<String, String> schema = new HashMap<>();
+    schema.put("asset_id", "INT NOT NULL");
+    schema.put("status", enumTypeName);
+    schema.put("attributes", "HSTORE");
+    schema.put("location_path", "LTREE");
+    return new JDBCResourceManager.JDBCSchema(schema, "asset_id");
   }
 
   private ConditionCheck buildRowCheck(String tableName, int expectedRows) {
@@ -416,7 +530,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
           rows.add(values);
         }
         boolean success = cloudSqlSourceResourceManager.write(tableName, rows);
-        cdcEvents.put(tableName, new ArrayList<>(rows)); // Store a copy for assertion
+        cdcEvents.put(tableName, new ArrayList<>(rows));
         return new CheckResult(
             success, String.format("Sent %d rows to %s.", rows.size(), tableName));
       }
@@ -433,8 +547,8 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
       @Override
       protected @NonNull CheckResult check() {
-        String schema = cloudSqlSourceResourceManager.getDatabaseName();
-        String qualifiedTableName = schema + "." + tableName;
+        String qualifiedTableName =
+            cloudSqlSourceResourceManager.getDatabaseName() + "." + tableName;
         List<Map<String, Object>> previousEvents = cdcEvents.get(tableName);
         List<Map<String, Object>> finalExpectedEvents = new ArrayList<>();
 
@@ -470,6 +584,92 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     };
   }
 
+  private ConditionCheck writeSpecialTypesData(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Send initial ENUM, HSTORE, and LTREE events.";
+      }
+
+      @Override
+      public @NonNull CheckResult check() {
+        List<Map<String, Object>> rowsForWrite = new ArrayList<>();
+        String[] statuses = {"ONLINE", "OFFLINE", "MAINTENANCE"};
+
+        for (int i = 0; i < NUM_EVENTS; i++) {
+          Map<String, Object> row = new HashMap<>();
+          row.put("asset_id", i);
+          row.put("status", statuses[i % statuses.length]);
+          row.put("location_path", String.format("USA.West.Rack%d.Host%d", i / 5, i % 5));
+          row.put(
+              "attributes",
+              String.format("{\"ip\":\"192.168.1.%d\",\"ram_gb\":\"%d\"}", 100 + i, 32 + i));
+          rowsForWrite.add(row);
+        }
+
+        boolean success = cloudSqlSourceResourceManager.write(tableName, rowsForWrite);
+        cdcEvents.put(tableName, new ArrayList<>(rowsForWrite));
+        return new CheckResult(
+            success, String.format("Sent %d rows to %s.", rowsForWrite.size(), tableName));
+      }
+    };
+  }
+
+  private ConditionCheck changeSpecialTypesData(
+      String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
+    return new ConditionCheck() {
+      @Override
+      public @NonNull String getDescription() {
+        return "Send changes for ENUM, HSTORE, and LTREE.";
+      }
+
+      @Override
+      protected @NonNull CheckResult check() {
+        String qualifiedTableName =
+            cloudSqlSourceResourceManager.getDatabaseName() + "." + tableName;
+        List<Map<String, Object>> previousEvents = cdcEvents.get(tableName);
+        List<Map<String, Object>> finalExpectedEvents = new ArrayList<>();
+
+        for (int i = 0; i < NUM_EVENTS; i++) {
+          // UPDATE even rows
+          if (i % 2 == 0) {
+            Map<String, Object> updatedEvent = new HashMap<>(previousEvents.get(i));
+
+            // Get the current status to determine the new status
+            String currentStatus = updatedEvent.get("status").toString();
+            String newStatus;
+            switch (currentStatus) {
+              case "ONLINE":
+                newStatus = "OFFLINE";
+                break;
+              case "OFFLINE":
+                newStatus = "MAINTENANCE";
+                break;
+              default: // Covers MAINTENANCE and any other case
+                newStatus = "ONLINE";
+                break;
+            }
+            updatedEvent.put("status", newStatus);
+
+            String updateSql =
+                String.format(
+                    "UPDATE %s SET status = '%s' WHERE asset_id = %d",
+                    qualifiedTableName, newStatus, i);
+            cloudSqlSourceResourceManager.runSQLUpdate(updateSql);
+            finalExpectedEvents.add(updatedEvent);
+          } else {
+            // DELETE odd rows
+            cloudSqlSourceResourceManager.runSQLUpdate(
+                String.format("DELETE FROM %s WHERE asset_id = %d", qualifiedTableName, i));
+          }
+        }
+        cdcEvents.put(tableName, finalExpectedEvents);
+        return new CheckResult(true, String.format("Sent changes to %s.", tableName));
+      }
+    };
+  }
+
   private ConditionCheck checkDestinationRows(
       String destinationTableName,
       String sourceTableName,
@@ -482,54 +682,71 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
       @Override
       protected @NonNull CheckResult check() {
-        long expectedRowCount = cdcEvents.get(sourceTableName).size();
-        long actualRowCount = -1;
+        List<Map<String, Object>> expectedRecords = cdcEvents.get(sourceTableName);
+        long expectedRowCount = expectedRecords.size();
+        String destinationSchema = cloudSqlDestinationResourceManager.getDatabaseName();
 
         try {
-          // Use logic similar to the buildRowCheck method to get the current row count,
-          // which correctly handles both lowercase and case-sensitive (quoted) table names.
+          List<Map<String, Object>> actualRecords;
+          String pkColumnForExpected;
+          String pkColumnForActual;
+          String pkColumnForQuery;
+          String qualifiedTableName;
+
           if (destinationTableName.toLowerCase().equals(destinationTableName)) {
-            actualRowCount = cloudSqlDestinationResourceManager.getRowCount(destinationTableName);
+            qualifiedTableName = destinationSchema + "." + destinationTableName;
           } else {
-            String countQuery =
-                String.format(
-                    "SELECT COUNT(*) AS row_count FROM %s.\"%s\"",
-                    cloudSqlDestinationResourceManager.getDatabaseName(), destinationTableName);
-            List<Map<String, Object>> result =
-                cloudSqlDestinationResourceManager.runSQLQuery(countQuery);
-            if (result != null && !result.isEmpty() && result.get(0).containsKey("row_count")) {
-              actualRowCount = Long.parseLong(result.get(0).get("row_count").toString());
+            qualifiedTableName = destinationSchema + ".\"" + destinationTableName + "\"";
+          }
+
+          if (destinationTableName.startsWith("special_types_")) {
+            pkColumnForExpected = "asset_id";
+            pkColumnForActual = "asset_id";
+            pkColumnForQuery = "asset_id";
+          } else {
+            pkColumnForExpected = SOURCE_PK; // "row_id"
+
+            if (!destinationTableName.toLowerCase().equals(destinationTableName)) {
+              // This is the uppercase test
+              pkColumnForActual = ROW_ID_UPPER; // "ROW_ID"
+              pkColumnForQuery = "\"" + ROW_ID_UPPER + "\"";
             } else {
-              return new CheckResult(false, "Query to count rows failed or returned empty.");
+              // This is the standard lowercase test
+              pkColumnForActual = SOURCE_PK; // "row_id"
+              pkColumnForQuery = SOURCE_PK;
             }
           }
 
-          // 1. First, poll until the row count is correct. This is a resilient check.
-          if (actualRowCount != expectedRowCount) {
+          actualRecords =
+              cloudSqlDestinationResourceManager.runSQLQuery(
+                  String.format("SELECT %s FROM %s", pkColumnForQuery, qualifiedTableName));
+
+          if (actualRecords.size() != expectedRowCount) {
             return new CheckResult(
                 false,
                 String.format(
                     "Polling: Found %d rows in '%s', but expected %d.",
-                    actualRowCount, destinationTableName, expectedRowCount));
+                    actualRecords.size(), destinationTableName, expectedRowCount));
           }
 
-          // 2. If row count matches, perform the final, strict data validation.
           LOG.info(
               "Row count for '{}' matches expected {}. Performing final data validation.",
               destinationTableName,
               expectedRowCount);
-          checkJdbcTable(destinationTableName, sourceTableName, cdcEvents);
 
-          // If the above assertion passes, the condition is met.
+          Set<BigDecimal> actualIds =
+              actualRecords.stream()
+                  .map(row -> new BigDecimal(row.get(pkColumnForActual).toString()))
+                  .collect(Collectors.toSet());
+          Set<BigDecimal> expectedIds =
+              expectedRecords.stream()
+                  .map(row -> new BigDecimal(row.get(pkColumnForExpected).toString()))
+                  .collect(Collectors.toSet());
+          assertThat(actualIds).isEqualTo(expectedIds);
+
           return new CheckResult(true, "Destination table row count and content are correct.");
 
-        } catch (AssertionError e) {
-          // This can happen in a rare race condition where the count is correct but the
-          // content is not *yet*. Returning false allows the test to poll again.
-          return new CheckResult(
-              false, "Row count is correct, but data does not match yet: " + e.getMessage());
         } catch (Exception e) {
-          // Catch any other exceptions during the check.
           return new CheckResult(
               false, "An unexpected error occurred while checking rows: " + e.getMessage());
         }
@@ -537,31 +754,41 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     };
   }
 
-  private void checkJdbcTable(
-      String destinationTableName,
-      String sourceTableName,
-      Map<String, List<Map<String, Object>>> cdcEvents) {
-
-    List<Map<String, Object>> expectedRecords = cdcEvents.get(sourceTableName);
-
-    // **THE FIX:** This condition correctly identifies if the destination table name
-    // has uppercase characters and therefore requires quoting.
+  private void checkRegularJdbcTable(
+      String destinationTableName, List<Map<String, Object>> expectedRecords) {
+    String destinationSchema = cloudSqlDestinationResourceManager.getDatabaseName();
     if (!destinationTableName.toLowerCase().equals(destinationTableName)) {
-
-      // This path is now correctly taken by the uppercasing test.
       LOG.info("Executing case-sensitive query for table: \"{}\"", destinationTableName);
       String selectQuery =
-          String.format(
-              "SELECT * FROM %s.\"%s\"",
-              cloudSqlDestinationResourceManager.getDatabaseName(), destinationTableName);
+          String.format("SELECT * FROM %s.\"%s\"", destinationSchema, destinationTableName);
       assertThatRecords(cloudSqlDestinationResourceManager.runSQLQuery(selectQuery))
           .hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
     } else {
-
-      // This path is taken by the standard test with a lowercase table name.
       LOG.info("Executing standard readTable for table: {}", destinationTableName);
-      assertThatRecords(cloudSqlDestinationResourceManager.readTable(destinationTableName))
+      // readTable in the resource manager does not currently support schema qualification,
+      // so we use a qualified query instead for consistency.
+      String selectQuery =
+          String.format("SELECT * FROM %s.%s", destinationSchema, destinationTableName);
+      assertThatRecords(cloudSqlDestinationResourceManager.runSQLQuery(selectQuery))
           .hasRecordsUnorderedCaseInsensitiveColumns(expectedRecords);
     }
+  }
+
+  private void checkSpecialKeys(String tableName, List<Map<String, Object>> expectedRecords) {
+    String destinationSchema = cloudSqlDestinationResourceManager.getDatabaseName();
+    LOG.info("Performing final validation of primary keys in '{}'", tableName);
+    List<Map<String, Object>> actualRecords =
+        cloudSqlDestinationResourceManager.runSQLQuery(
+            String.format("SELECT asset_id FROM %s.%s", destinationSchema, tableName));
+
+    Set<BigDecimal> actualIds =
+        actualRecords.stream()
+            .map(row -> new BigDecimal(row.get("asset_id").toString()))
+            .collect(Collectors.toSet());
+    Set<BigDecimal> expectedIds =
+        expectedRecords.stream()
+            .map(row -> new BigDecimal(row.get("asset_id").toString()))
+            .collect(Collectors.toSet());
+    assertThat(actualIds).isEqualTo(expectedIds);
   }
 }
