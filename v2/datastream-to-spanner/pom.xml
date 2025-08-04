@@ -97,6 +97,12 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-compute</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <profiles>
