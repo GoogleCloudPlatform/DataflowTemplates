@@ -22,7 +22,6 @@ import com.google.cloud.teleport.v2.source.reader.io.exception.SchemaDiscoveryRe
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import java.io.IOException;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.FluentBackoff;
 
@@ -120,12 +119,12 @@ public final class SchemaDiscoveryImpl implements SchemaDiscovery {
           } else {
             throw new SchemaDiscoveryRetriesExhaustedException(e);
           }
-        } catch (IOException ioException) {
-          throw new SchemaDiscoveryRetriesExhaustedException(ioException);
         } catch (InterruptedException threadException) {
           /* If sleep is interrupted, get back to work.
            * Unit testing this catch-point will need intrusive setting of thread state.
            */
+        } catch (Exception exception) {
+          throw new SchemaDiscoveryRetriesExhaustedException(exception);
         }
       }
     } while (true);
