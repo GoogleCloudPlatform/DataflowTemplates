@@ -101,6 +101,7 @@
         <dependency>
             <groupId>com.google.cloud</groupId>
             <artifactId>google-cloud-compute</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
