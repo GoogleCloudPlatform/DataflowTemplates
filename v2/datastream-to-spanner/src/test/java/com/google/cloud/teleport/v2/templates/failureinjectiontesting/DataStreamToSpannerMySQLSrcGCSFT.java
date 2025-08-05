@@ -122,7 +122,7 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
     // Wave of inserts
     MySQLSrcDataProvider.writeRowsInSourceDB(1, 2, sourceDBResourceManager);
 
-    String logFilter = "Failed to write a file";
+    String logFilter = " \"Failed to write a file\" ";
 
     LoggingClient loggingClient = LoggingClient.builder(credentials).setProjectId(PROJECT).build();
     DataflowJobLogsCheck logsCheck =
