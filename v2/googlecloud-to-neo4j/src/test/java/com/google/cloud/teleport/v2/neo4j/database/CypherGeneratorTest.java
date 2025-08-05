@@ -54,53 +54,73 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
 
   @Test
   public void specifies_keys_in_relationship_merge_pattern() {
-    var importSpecificationFile = "single-target-relation-import-with-keys-spec.json";
     var expectedCypher = "UNWIND $rows AS row "
         + "MATCH (start:`Source` {`id`: row.`source`}) "
         + "MATCH (end:`Target` {`id`: row.`target`}) "
         + "MERGE (start)-[r:`LINKS` {`id1`: row.`rel_id_1`, `id2`: row.`rel_id_2`}]->(end) "
         + "SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(importSpecificationFile), expectedCypher);
+    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypher);
   }
 
   @Test
   public void specifies_only_type_in_keyless_relationship_merge_pattern() {
-    var importSpecificationFile = "single-target-relation-import-without-keys-spec.json";
     var expectedCypher = "UNWIND $rows AS row "
         + "MATCH (start:`Source` {`id`: row.`source`}) "
         + "MATCH (end:`Target` {`id`: row.`target`}) "
         + "MERGE (start)-[r:`LINKS`]->(end) "
         + "SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(importSpecificationFile), expectedCypher);
+    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypher);
   }
 
   @Test
   public void merges_edges_as_well_as_their_start_and_end_nodes() {
-    var importSpecificationFile = "single-target-relation-import-merge-all.json";
     var expectedCypher = "UNWIND $rows AS row "
         + "MERGE (start:`Source` {`src_id`: row.`source`}) "
         + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
         + "MERGE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(importSpecificationFile), expectedCypher);
+    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypher);
   }
 
   @Test
   public void creates_edges_and_merges_their_start_and_end_nodes() {
-    var importSpecificationFile = "single-target-relation-import-create-rels-merge-nodes.json";
     var expectedCypher = "UNWIND $rows AS row "
         + "MERGE (start:`Source` {`src_id`: row.`source`}) "
         + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
         + "CREATE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(importSpecificationFile), expectedCypher);
+    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypher);
+  }
+
+  @Test
+  public void specifies_keys_in_relationship_merge_pattern_cypher_prefix() {
+    var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
+    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypherPrefix);
+  }
+
+  @Test
+  public void specifies_only_type_in_keyless_relationship_merge_pattern_cypher_prefix() {
+    var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
+    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypherPrefix);
+  }
+
+  @Test
+  public void merges_edges_as_well_as_their_start_and_end_nodes_cypher_prefix() {
+    var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
+    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypherPrefix);
+  }
+
+  @Test
+  public void creates_edges_and_merges_their_start_and_end_nodes_cypher_prefix() {
+    var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
+    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypherPrefix);
   }
 
   @Test
   public void does_not_generate_constraints_for_edge_without_schema() {
-    var relationshipTarget = importSpecificationOf("single-target-relation-import-merge-all.json")
+    var relationshipTarget = importSpecificationOf(SINGLE_TARGET_MERGE_ALL)
         .getTargets()
         .getRelationships()
         .iterator()
@@ -556,9 +576,21 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
+  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
+    assertSchemaStatements(
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
+        capabilitiesFor("2025.06", "enterprise"),
+        Set.of(
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source1-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source1`) REQUIRE (n.`src_id`) IS NODE KEY",
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source2-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source2`) REQUIRE (n.`src_id`) IS NODE KEY",
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-target-Target1-node-single-key-for-tgt_id` IF NOT EXISTS FOR (n:`Target1`) REQUIRE (n.`tgt_id`) IS NODE KEY",
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-target-Target2-node-single-key-for-tgt_id` IF NOT EXISTS FOR (n:`Target2`) REQUIRE (n.`tgt_id`) IS NODE KEY"));
+  }
+
+  @Test
   public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_enterprise() {
     assertSchemaStatements(
-        importSpecificationOf("multi-label-single-pass-import.json"),
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("5.1.0", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source1-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source1`) REQUIRE (n.`src_id`) IS NODE KEY",
@@ -570,7 +602,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_aura() {
     assertSchemaStatements(
-        importSpecificationOf("multi-label-single-pass-import.json"),
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("5.1-aura", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source1-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source1`) REQUIRE (n.`src_id`) IS NODE KEY",
@@ -582,13 +614,13 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_community() {
     assertSchemaStatements(
-        importSpecificationOf("multi-label-single-pass-import.json"), capabilitiesFor("5.1.6", "community"), Set.of());
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS), capabilitiesFor("5.1.6", "community"), Set.of());
   }
 
   @Test
   public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_enterprise() {
     assertSchemaStatements(
-        importSpecificationOf("multi-label-single-pass-import.json"),
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("4.4.25", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source1-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source1`) REQUIRE (n.`src_id`) IS NODE KEY",
@@ -600,7 +632,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_aura() {
     assertSchemaStatements(
-        importSpecificationOf("multi-label-single-pass-import.json"),
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("4.4-aura", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source1-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source1`) REQUIRE (n.`src_id`) IS NODE KEY",
@@ -612,13 +644,25 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_community() {
     assertSchemaStatements(
-        importSpecificationOf("multi-label-single-pass-import.json"), capabilitiesFor("4.4.25", "community"), Set.of());
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS), capabilitiesFor("4.4.25", "community"), Set.of());
+  }
+
+  @Test
+  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
+    assertSchemaStatements(
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
+        capabilitiesFor("2025.06", "enterprise"),
+        Set.of(
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id1` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id1`) IS NODE KEY",
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id2` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id2`) IS NODE KEY",
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-target-Target-node-key-for-tgt_id1` IF NOT EXISTS FOR (n:`Target`) REQUIRE (n.`tgt_id1`) IS NODE KEY",
+            "CYPHER 5 CREATE CONSTRAINT `Edge import-target-Target-node-key-for-tgt_id2` IF NOT EXISTS FOR (n:`Target`) REQUIRE (n.`tgt_id2`) IS NODE KEY"));
   }
 
   @Test
   public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_enterprise() {
     assertSchemaStatements(
-        importSpecificationOf("multi-distinct-keys-single-pass-import.json"),
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("5.1.0", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id1` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id1`) IS NODE KEY",
@@ -630,7 +674,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_aura() {
     assertSchemaStatements(
-        importSpecificationOf("/multi-distinct-keys-single-pass-import.json"),
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("5.1-aura", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id1` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id1`) IS NODE KEY",
@@ -640,9 +684,17 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
+  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus_community() {
+    assertSchemaStatements(
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
+        capabilitiesFor("2025.06", "community"),
+        Set.of());
+  }
+
+  @Test
   public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_community() {
     assertSchemaStatements(
-        importSpecificationOf("multi-distinct-keys-single-pass-import.json"),
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("5.1.0", "community"),
         Set.of());
   }
@@ -650,7 +702,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_enterprise() {
     assertSchemaStatements(
-        importSpecificationOf("multi-distinct-keys-single-pass-import.json"),
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("4.4.25", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id1` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id1`) IS NODE KEY",
@@ -662,7 +714,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_aura() {
     assertSchemaStatements(
-        importSpecificationOf("multi-distinct-keys-single-pass-import.json"),
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("4.4-aura", "enterprise"),
         Set.of(
             "CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id1` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id1`) IS NODE KEY",
@@ -674,7 +726,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_community() {
     assertSchemaStatements(
-        importSpecificationOf("multi-distinct-keys-single-pass-import.json"),
+        importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("4.4.25", "community"),
         Set.of());
   }
