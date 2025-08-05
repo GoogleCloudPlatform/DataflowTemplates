@@ -491,7 +491,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           pluginManager,
           currentTemplateName,
           buildProjectId,
-          imagePath,
+          imagePathTag,
           metadataFile,
           appRoot,
           commandSpec,
@@ -518,7 +518,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           definition,
           currentTemplateName,
           buildProjectId,
-          imagePath,
+          imagePathTag,
           metadataFile,
           containerName,
           templatePath);
@@ -527,7 +527,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           definition,
           currentTemplateName,
           buildProjectId,
-          imagePath,
+          imagePathTag,
           metadataFile,
           containerName,
           templatePath);
@@ -591,7 +591,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       BuildPluginManager pluginManager,
       String currentTemplateName,
       String buildProjectId,
-      String imagePath,
+      String imagePathTag,
       String metadataFile,
       String appRoot,
       String commandSpec,
@@ -601,7 +601,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     String containerName = definition.getTemplateAnnotation().flexContainerName();
     String tarFileName =
         String.format("%s/%s/%s.tar", outputDirectory.getPath(), containerName, containerName);
-    String imagePathTag = String.format("%s:%s", imagePath, stagePrefix);
     Plugin plugin =
         plugin(
             "com.google.cloud.tools",
@@ -757,7 +756,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "build",
           templatePath,
           "--image",
-          imagePath + ":" + stagePrefix,
+          imagePathTag,
           "--project",
           projectId,
           "--sdk-language",
@@ -789,7 +788,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       TemplateDefinitions definition,
       String currentTemplateName,
       String buildProjectId,
-      String imagePath,
+      String imagePathTag,
       String metadataFile,
       String containerName,
       String templatePath)
@@ -836,7 +835,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
 
     LOG.info("Staging YAML image using Dockerfile");
-    stageYamlUsingDockerfile(buildProjectId, imagePath, containerName);
+    stageYamlUsingDockerfile(buildProjectId, imagePathTag, containerName);
 
     // Skip GCS spec file creation
     if (definition.getTemplateAnnotation().stageImageOnly()) {
@@ -851,7 +850,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           "build",
           templatePath,
           "--image",
-          imagePath,
+          imagePathTag,
           "--project",
           buildProjectId,
           "--sdk-language",
@@ -978,20 +977,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private void stageYamlUsingDockerfile(
-      String buildProjectId, String imagePath, String yamlTemplateName)
+      String buildProjectId, String imagePathTag, String yamlTemplateName)
       throws IOException, InterruptedException {
     File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + yamlTemplateName);
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
+      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + yamlTemplateName + ".tar\n";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
               + "  args:\n"
               + "  - --destination="
-              + imagePath
+              + imagePathTag
               + "\n"
               + "  - --dockerfile=Dockerfile\n"
               + "  - --cache=true\n"
@@ -1013,7 +1012,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + tarPath
                       + "\n"
                       + "images: ['"
-                      + imagePath
+                      + imagePathTag
                       + "']\n"
                       + "options:\n"
                       + "  logging: CLOUD_LOGGING_ONLY\n"
@@ -1051,20 +1050,20 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   }
 
   private void stagePythonUsingDockerfile(
-      String buildProjectId, String imagePath, String containerName)
+      String buildProjectId, String imagePathTag, String containerName)
       throws IOException, InterruptedException {
     File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + containerName);
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePath.substring(0, imagePath.lastIndexOf('/')) + "/cache";
+      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + containerName + ".tar\n";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
               + "  args:\n"
               + "  - --destination="
-              + imagePath
+              + imagePathTag
               + "\n"
               + "  - --cache=true\n"
               + "  - --cache-ttl=6h\n"
@@ -1085,7 +1084,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
                       + tarPath
                       + "\n"
                       + "images: ['"
-                      + imagePath
+                      + imagePathTag
                       + "']\n"
                       + "options:\n"
                       + "  logging: CLOUD_LOGGING_ONLY\n"
