@@ -20,6 +20,7 @@ import static com.google.cloud.teleport.v2.templates.failureinjectiontesting.uti
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.logging.Severity;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
@@ -27,19 +28,16 @@ import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQ
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
-import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
+import org.apache.beam.it.gcp.dataflow.conditions.DataflowJobLogsCheck;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.apache.beam.it.gcp.logging.LoggingClient;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -101,12 +99,13 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
   }
 
   @Test
-  public void gcsNoPermissionFITest() throws IOException, InterruptedException {
+  public void gcsNoPermissionFITest() throws IOException {
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(testName);
-    // .addParameter(
-    //     "serviceAccount", "permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
+        FlexTemplateDataflowJobResourceManager.builder(testName)
+            .addParameter(
+                "serviceAccount",
+                "gcs-permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
 
     // launch forward migration template
     jobInfo =
@@ -121,41 +120,22 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
     assertThatPipeline(jobInfo).isRunning();
 
     // Wave of inserts
-    MySQLSrcDataProvider.writeRowsInSourceDB(1, 20000, sourceDBResourceManager);
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 2, sourceDBResourceManager);
 
-    ChainedConditionCheck conditionCheck =
-        ChainedConditionCheck.builder(
-                List.of(
-                    // Failure injection phase: check that retryable errors are there
-                    new RetryableErrorsCheck(pipelineLauncher, jobInfo, 10000),
+    String logFilter = "Failed to write a file";
 
-                    // Recovery phase: Wait for all events to appear in Spanner
-                    SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
-                        .setMinRows(20000)
-                        .setMaxRows(20000)
-                        .build(),
-                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
-                        .setMinRows(20000)
-                        .setMaxRows(20000)
-                        .build()))
+    LoggingClient loggingClient = LoggingClient.builder(credentials).setProjectId(PROJECT).build();
+    DataflowJobLogsCheck logsCheck =
+        DataflowJobLogsCheck.builder(loggingClient)
+            .setFilter(logFilter)
+            .setMinLogs(1)
+            .setJobInfo(jobInfo)
+            .setMinSeverity(Severity.ERROR)
             .build();
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForConditionAndCancel(createConfig(jobInfo, Duration.ofMinutes(20)), logsCheck);
     assertThatResult(result).meetsConditions();
-  }
-
-  private String extractJobIdFromError(String message) {
-    Pattern pattern =
-        Pattern.compile(
-            "https://console.cloud.google.com/dataflow/jobs/([^/]+)/([^/?]+)(\\?project=([^&]+))?");
-    Matcher matcher = pattern.matcher(message);
-    if (matcher.find()) {
-      // Group 2 contains the jobId
-      return matcher.group(2);
-    } else {
-      return null;
-    }
   }
 }
