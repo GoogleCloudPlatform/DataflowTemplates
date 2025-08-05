@@ -100,8 +100,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     String privateConnectivityId = System.getProperty("privateConnectivityId");
-    Objects.requireNonNull(
-        privateConnectivityId, "The -DprivateConnectivityId parameter must be set.");
 
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
@@ -258,13 +256,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
     String datastreamSourceHost = System.getProperty("datastreamSourceHost");
-    Objects.requireNonNull(datastreamSourceHost, "-DdatastreamSourceHost is required.");
     String network = System.getProperty("network");
-    Objects.requireNonNull(network, "-Dnetwork is required.");
     String region = System.getProperty("region");
-    Objects.requireNonNull(region, "-Dregion is required.");
     String subnetName = System.getProperty("subnetName");
-    Objects.requireNonNull(subnetName, "-DsubnetName is required.");
     String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
@@ -359,13 +353,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
     String datastreamSourceHost = System.getProperty("datastreamSourceHost");
-    Objects.requireNonNull(datastreamSourceHost, "-DdatastreamSourceHost is required.");
     String network = System.getProperty("network");
-    Objects.requireNonNull(network, "-Dnetwork is required.");
     String region = System.getProperty("region");
-    Objects.requireNonNull(region, "-Dregion is required.");
     String subnetName = System.getProperty("subnetName");
-    Objects.requireNonNull(subnetName, "-DsubnetName is required.");
     String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
