@@ -70,10 +70,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     String sourceTableName = "";
     try {
       sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
-    } catch (Exception e) {
-      LOG.warn(
-          "Equivalent table for {} was not found in source, check schema mapping provided",
-          spannerTableName);
+    } catch (NoSuchElementException e) {
       return new DMLGeneratorResponse("");
     }
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
