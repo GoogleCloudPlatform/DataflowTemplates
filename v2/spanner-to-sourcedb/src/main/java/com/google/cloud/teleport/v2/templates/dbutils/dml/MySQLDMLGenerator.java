@@ -18,7 +18,7 @@ package com.google.cloud.teleport.v2.templates.dbutils.dml;
 import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
+import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.type.Type;
@@ -29,6 +29,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -46,13 +47,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       return new DMLGeneratorResponse("");
     }
     String spannerTableName = dmlGeneratorRequest.getSpannerTableName();
-    Schema schema = dmlGeneratorRequest.getSchema();
+    ISchemaMapper schemaMapper = dmlGeneratorRequest.getSchemaMapper();
     Ddl spannerDdl = dmlGeneratorRequest.getSpannerDdl();
     SourceSchema sourceSchema = dmlGeneratorRequest.getSourceSchema();
-    if (schema == null || spannerDdl == null || sourceSchema == null) {
+    if (schemaMapper == null || spannerDdl == null || sourceSchema == null) {
       LOG.warn(
-          "Schema, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
-          schema,
+          "Schema Mapper, Ddl and SourceSchema must be not null, respectively found {},{},{}.",
+          schemaMapper,
           spannerDdl,
           sourceSchema);
       return new DMLGeneratorResponse("");
@@ -66,13 +67,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       return new DMLGeneratorResponse("");
     }
 
-    if (schema.getToSource().get(spannerTableName).getName() == null) {
-      LOG.warn(
-          "Equivalent source was not found in session file for spanner table {}, dropping the record",
-          spannerTableName);
+    String sourceTableName = "";
+    try {
+      sourceTableName = schemaMapper.getSourceTableName("", spannerTableName);
+    } catch (NoSuchElementException e) {
       return new DMLGeneratorResponse("");
     }
-    String sourceTableName = schema.getToSource().get(spannerTableName).getName();
     com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable =
         sourceSchema.table(sourceTableName);
     if (sourceTable == null) {
@@ -93,7 +93,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
     Map<String, String> pkcolumnNameValues =
         getPkColumnValues(
-            schema,
+            schemaMapper,
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
@@ -207,7 +207,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       Map<String, String> pkcolumnNameValues) {
     Map<String, String> columnNameValues =
         getColumnValues(
-            dmlGeneratorRequest.getSchema(),
+            dmlGeneratorRequest.getSchemaMapper(),
             spannerTable,
             sourceTable,
             dmlGeneratorRequest.getNewValuesJson(),
@@ -219,7 +219,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static Map<String, String> getColumnValues(
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Table spannerTable,
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -255,8 +255,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         response.put(colName, customTransformationResponse.get(colName).toString());
         continue;
       }
-      String spannerColumnName =
-          schema.getToSpanner().get(sourceTable.name()).getCols().get(colName);
+      String spannerColumnName = "";
+      try {
+        spannerColumnName = schemaMapper.getSpannerColumnName("", sourceTable.name(), colName);
+      } catch (NoSuchElementException e) {
+        continue;
+      }
       Column spannerColDef = spannerTable.column(spannerColumnName);
       if (spannerColDef == null) {
         continue;
@@ -291,7 +295,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static Map<String, String> getPkColumnValues(
-      Schema schema,
+      ISchemaMapper schemaMapper,
       Table spannerTable,
       com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable sourceTable,
       JSONObject newValuesJson,
@@ -318,8 +322,12 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
     for (int i = 0; i < sourcePKs.size(); i++) {
       String sourceColName = sourcePKs.get(i);
-      String spannerColName =
-          schema.getToSpanner().get(sourceTable.name()).getCols().get(sourceColName);
+      String spannerColName = "";
+      try {
+        spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
+      } catch (NoSuchElementException e) {
+        continue;
+      }
       if (spannerColName == null) {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",

@@ -22,6 +22,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.ddl.annotations.cassandra.CassandraAnnotations;
 import com.google.cloud.teleport.v2.spanner.type.Type;
 import java.io.Serializable;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -49,6 +50,18 @@ public class SchemaStringOverridesBasedMapper implements ISchemaMapper, Serializ
    */
   public SchemaStringOverridesBasedMapper(Map<String, String> userOptionOverrides, Ddl ddl) {
     this.parser = new SchemaStringOverridesParser(userOptionOverrides);
+    this.ddl = ddl;
+  }
+
+  public SchemaStringOverridesBasedMapper(String tableOverrides, String columnOverrides, Ddl ddl) {
+    Map<String, String> userOptionsOverrides = new HashMap<>();
+    if (!tableOverrides.isEmpty()) {
+      userOptionsOverrides.put("tableOverrides", tableOverrides);
+    }
+    if (!columnOverrides.isEmpty()) {
+      userOptionsOverrides.put("columnOverrides", columnOverrides);
+    }
+    this.parser = new SchemaStringOverridesParser(userOptionsOverrides);
     this.ddl = ddl;
   }
 
