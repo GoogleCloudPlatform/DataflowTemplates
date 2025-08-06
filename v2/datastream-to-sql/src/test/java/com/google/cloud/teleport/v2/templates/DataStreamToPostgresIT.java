@@ -99,12 +99,10 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
   @Before
   public void setUp() throws IOException {
-    String privateConnectivityId = System.getProperty("privateConnectivityId");
-
     datastreamResourceManager =
         DatastreamResourceManager.builder(testName, PROJECT, REGION)
             .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity(privateConnectivityId)
+            .setPrivateConnectivity("datastream-connect-2")
             .build();
 
     cloudSqlSourceResourceManager =
@@ -255,14 +253,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
-    String datastreamSourceHost = System.getProperty("datastreamSourceHost");
-    String network = System.getProperty("network");
-    String region = System.getProperty("region");
-    String subnetName = System.getProperty("subnetName");
-    String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
-                datastreamSourceHost,
+                cloudSqlSourceResourceManager.getHost(),
                 cloudSqlSourceResourceManager.getUsername(),
                 cloudSqlSourceResourceManager.getPassword(),
                 cloudSqlSourceResourceManager.getPort(),
@@ -305,9 +298,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .addParameter("databaseType", "postgres")
             .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
             .addParameter("schemaMap", schemaMap)
-            .addParameter("databaseHost", datastreamSourceHost)
-            .addParameter("network", network)
-            .addParameter("subnetwork", subnetwork)
+            .addParameter("databaseHost", cloudSqlDestinationResourceManager.getHost())
             .addParameter(
                 "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
             .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
@@ -352,14 +343,9 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format(
             "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
-    String datastreamSourceHost = System.getProperty("datastreamSourceHost");
-    String network = System.getProperty("network");
-    String region = System.getProperty("region");
-    String subnetName = System.getProperty("subnetName");
-    String subnetwork = String.format("regions/%s/subnetworks/%s", region, subnetName);
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
-                datastreamSourceHost,
+                cloudSqlSourceResourceManager.getHost(),
                 cloudSqlSourceResourceManager.getUsername(),
                 cloudSqlSourceResourceManager.getPassword(),
                 cloudSqlSourceResourceManager.getPort(),
@@ -404,9 +390,7 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
             .addParameter("databaseType", "postgres")
             .addParameter("databaseName", cloudSqlDestinationResourceManager.getDatabaseName())
             .addParameter("schemaMap", schemaMap)
-            .addParameter("databaseHost", datastreamSourceHost)
-            .addParameter("network", network)
-            .addParameter("subnetwork", subnetwork)
+            .addParameter("databaseHost", cloudSqlDestinationResourceManager.getHost())
             .addParameter(
                 "databasePort", String.valueOf(cloudSqlDestinationResourceManager.getPort()))
             .addParameter("databaseUser", cloudSqlDestinationResourceManager.getUsername())
