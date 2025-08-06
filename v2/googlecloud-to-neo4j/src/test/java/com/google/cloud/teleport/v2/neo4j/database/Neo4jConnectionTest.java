@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.neo4j.database;
 
+import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -178,13 +179,38 @@ public class Neo4jConnectionTest {
   }
 
   private void setIndexes(String... names) {
-    var result = mock(Result.class);
     when(result.list(any())).thenReturn(Arrays.asList(names));
-
     when(session.run(
             eq("SHOW INDEXES YIELD name, type WHERE type <> 'LOOKUP' RETURN name"),
             anyMap(),
             any()))
         .thenReturn(result);
+  }
+
+  @Test
+  public void capabilitiesCall() {
+    setCapabilities("5.1.0", "enterprise");
+    assertEquals(
+        "calling connection.capabilities() should query the DB",
+        new Neo4jCapabilities("5.1.0", "enterprise").toString(),
+        neo4jConnection.capabilities().toString());
+  }
+
+  @Test
+  public void capabilitiesCallCached() {
+    setCapabilities("5.1.0", "enterprise");
+    Neo4jCapabilities capa = neo4jConnection.capabilities();
+    setCapabilities("2025.05", "community");
+    assertEquals(
+        "calling connection.capabilities() is cached", capa, neo4jConnection.capabilities());
+  }
+
+  private void setCapabilities(String version, String edition) {
+    when(session.run(contains("dbms.components"), anyMap())).thenReturn(result);
+    when(result.single())
+        .thenReturn(
+            new InternalRecord(
+                List.of("versions[0]", "edition"),
+                new Value[] {Values.value(version), Values.value(edition)}));
   }
 }
