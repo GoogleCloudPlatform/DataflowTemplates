@@ -17,27 +17,29 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
 import static com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider.AUTHORS_TABLE;
 import static com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider.BOOKS_TABLE;
+import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.logging.Severity;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.GCSFailureInjector;
 import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
+import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
-import org.apache.beam.it.gcp.dataflow.conditions.DataflowJobLogsCheck;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
-import org.apache.beam.it.gcp.logging.LoggingClient;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
+import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -99,13 +101,12 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
   }
 
   @Test
-  public void gcsNoPermissionFITest() throws IOException {
-
+  public void gcsNoPermissionFITest() throws IOException, InterruptedException {
+    String serviceAccountEmail =
+        "gcs-permission-test@cloud-teleport-testing.iam.gserviceaccount.com";
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
-            .addParameter(
-                "serviceAccount",
-                "gcs-permission-test@cloud-teleport-testing.iam.gserviceaccount.com");
+            .addParameter("serviceAccount", serviceAccountEmail);
 
     // launch forward migration template
     jobInfo =
@@ -119,23 +120,59 @@ public class DataStreamToSpannerMySQLSrcGCSFT extends DataStreamToSpannerFTBase 
     // Wait for Forward migration job to be in running state
     assertThatPipeline(jobInfo).isRunning();
 
-    // Wave of inserts
+    // Inserts
     MySQLSrcDataProvider.writeRowsInSourceDB(1, 2, sourceDBResourceManager);
 
-    String logFilter = " \"Failed to write a file\" ";
-
-    LoggingClient loggingClient = LoggingClient.builder(credentials).setProjectId(PROJECT).build();
-    DataflowJobLogsCheck logsCheck =
-        DataflowJobLogsCheck.builder(loggingClient)
-            .setFilter(logFilter)
-            .setMinLogs(1)
-            .setJobInfo(jobInfo)
-            .setMinSeverity(Severity.ERROR)
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
+                        .setMinRows(2)
+                        .setMaxRows(2)
+                        .build()))
             .build();
 
+    // Wait for first 2 rows to make it to Spanner
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(createConfig(jobInfo, Duration.ofMinutes(20)), logsCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+    assertThatResult(result).meetsConditions();
+
+    // Remove GCS permissions
+    GCSFailureInjector.removeGCSPermissions(gcsResourceManager.getBucket(), serviceAccountEmail);
+
+    // Inserts
+    MySQLSrcDataProvider.writeRowsInSourceDB(3, 4, sourceDBResourceManager);
+
+    // Wait for 1 minute and check the rows
+    Thread.sleep(60000);
+    assertThat(spannerResourceManager.getRowCount(AUTHORS_TABLE)).isEqualTo(2);
+    assertThat(spannerResourceManager.getRowCount(BOOKS_TABLE)).isEqualTo(2);
+
+    // Add GCS permissions back
+    GCSFailureInjector.addGCSPermissions(gcsResourceManager.getBucket(), serviceAccountEmail);
+
+    // Wait for all the rows to appear in spanner
+    conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
+                        .setMinRows(4)
+                        .setMaxRows(4)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
+                        .setMinRows(4)
+                        .setMaxRows(4)
+                        .build()))
+            .build();
+
+    result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 }
