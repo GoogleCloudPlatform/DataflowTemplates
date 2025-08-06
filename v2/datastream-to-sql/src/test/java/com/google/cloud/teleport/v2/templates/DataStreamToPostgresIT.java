@@ -174,16 +174,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private void runTest(String sourceTableName, String destinationTableName) throws IOException {
-    JDBCSource jdbcSource =
-        PostgresqlSource.builder(
-                cloudSqlSourceResourceManager.getHost(),
-                cloudSqlSourceResourceManager.getUsername(),
-                cloudSqlSourceResourceManager.getPassword(),
-                cloudSqlSourceResourceManager.getPort(),
-                cloudSqlSourceResourceManager.getDatabaseName())
-            .setAllowedTables(
-                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(sourceTableName)))
-            .build();
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
     String gcsPrefixForNotification =
         getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
@@ -243,16 +233,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private void runTestWithSpecialTypes(String tableName) throws IOException {
-    JDBCSource jdbcSource =
-        PostgresqlSource.builder(
-                cloudSqlSourceResourceManager.getHost(),
-                cloudSqlSourceResourceManager.getUsername(),
-                cloudSqlSourceResourceManager.getPassword(),
-                cloudSqlSourceResourceManager.getPort(),
-                cloudSqlSourceResourceManager.getDatabaseName())
-            .setAllowedTables(
-                Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
-            .build();
     String gcsPrefix = getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName, "");
     String gcsPrefixForNotification =
         getGcsPath(testName + "/cdc/").replace("gs://" + artifactBucketName + "/", "");
