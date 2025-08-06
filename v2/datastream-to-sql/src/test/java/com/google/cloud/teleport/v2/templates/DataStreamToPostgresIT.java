@@ -89,8 +89,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
       DESTINATION_COLUMNS.stream().map(String::toLowerCase).collect(Collectors.toList());
   private static final String SOURCE_PK = ROW_ID_UPPER.toLowerCase();
 
-  private String replicationSlot;
-
   private CloudPostgresResourceManager cloudSqlSourceResourceManager;
   private CloudPostgresResourceManager cloudSqlDestinationResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
@@ -119,63 +117,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    final int maxAttempts = 5;
-    final long retryDelaySeconds = 10;
-    boolean slotCleanupSuccess = false;
-
-    if (this.replicationSlot != null && !this.replicationSlot.isBlank()) {
-      for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          LOG.info(
-              "Attempt {}/{} to clean up replication slot '{}'...",
-              attempt,
-              maxAttempts,
-              this.replicationSlot);
-
-          try {
-            cloudSqlSourceResourceManager.runSQLUpdate(
-                String.format(
-                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE slot_name = '%s'",
-                    this.replicationSlot));
-            LOG.info("Successfully terminated backend for slot '{}'.", this.replicationSlot);
-          } catch (Exception e) {
-            LOG.warn(
-                "Could not terminate backend for slot '{}' on attempt {}, which can be expected: {}",
-                this.replicationSlot,
-                attempt,
-                e.getMessage());
-          }
-
-          cloudSqlSourceResourceManager.runSQLUpdate(
-              String.format("SELECT pg_drop_replication_slot('%s');", this.replicationSlot));
-
-          LOG.info("Successfully dropped replication slot '{}'.", this.replicationSlot);
-          slotCleanupSuccess = true;
-          break;
-
-        } catch (Exception e) {
-          LOG.warn("Attempt {} to clean up replication slot failed: {}.", attempt, e.getMessage());
-          if (attempt < maxAttempts) {
-            LOG.info("Retrying in {} seconds...", retryDelaySeconds);
-            try {
-              TimeUnit.SECONDS.sleep(retryDelaySeconds);
-            } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              LOG.error("Cleanup retry loop was interrupted.", ie);
-              break;
-            }
-          }
-        }
-      }
-
-      if (!slotCleanupSuccess) {
-        LOG.error(
-            "FAILED to clean up replication slot '{}' after {} attempts. Subsequent cleanup may fail.",
-            this.replicationSlot,
-            maxAttempts);
-      }
-    }
-
     ResourceManagerUtils.cleanResources(
         cloudSqlSourceResourceManager,
         cloudSqlDestinationResourceManager,
@@ -233,35 +174,13 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private void runTest(String sourceTableName, String destinationTableName) throws IOException {
-    this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-    String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-    String user = cloudSqlSourceResourceManager.getUsername();
-    String schema = cloudSqlSourceResourceManager.getDatabaseName();
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("ALTER USER %s WITH REPLICATION;", user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "DO $$BEGIN PERFORM pg_create_logical_replication_slot('%s', 'pgoutput'); END$$;",
-            this.replicationSlot));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, sourceTableName));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;", schema, user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
                 cloudSqlSourceResourceManager.getHost(),
                 cloudSqlSourceResourceManager.getUsername(),
                 cloudSqlSourceResourceManager.getPassword(),
                 cloudSqlSourceResourceManager.getPort(),
-                cloudSqlSourceResourceManager.getDatabaseName(),
-                this.replicationSlot,
-                publication)
+                cloudSqlSourceResourceManager.getDatabaseName())
             .setAllowedTables(
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(sourceTableName)))
             .build();
@@ -324,34 +243,13 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private void runTestWithSpecialTypes(String tableName) throws IOException {
-    this.replicationSlot = "ds_it_slot_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-    String publication = "ds_it_pub_" + RandomStringUtils.randomAlphanumeric(4).toLowerCase();
-    String user = cloudSqlSourceResourceManager.getUsername();
-    String schema = cloudSqlSourceResourceManager.getDatabaseName();
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("ALTER USER %s WITH REPLICATION;", user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "DO $$BEGIN PERFORM pg_create_logical_replication_slot('%s', 'pgoutput'); END$$;",
-            this.replicationSlot));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, tableName));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("GRANT USAGE ON SCHEMA %s TO %s;", schema, user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format("GRANT SELECT ON ALL TABLES IN SCHEMA %s TO %s;", schema, user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "ALTER DEFAULT PRIVILEGES IN SCHEMA %s GRANT SELECT ON TABLES TO %s;", schema, user));
     JDBCSource jdbcSource =
         PostgresqlSource.builder(
                 cloudSqlSourceResourceManager.getHost(),
                 cloudSqlSourceResourceManager.getUsername(),
                 cloudSqlSourceResourceManager.getPassword(),
                 cloudSqlSourceResourceManager.getPort(),
-                cloudSqlSourceResourceManager.getDatabaseName(),
-                this.replicationSlot,
-                publication)
+                cloudSqlSourceResourceManager.getDatabaseName())
             .setAllowedTables(
                 Map.of(cloudSqlSourceResourceManager.getDatabaseName(), List.of(tableName)))
             .build();
