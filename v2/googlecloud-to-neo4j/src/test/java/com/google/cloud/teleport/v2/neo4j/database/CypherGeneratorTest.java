@@ -54,44 +54,49 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
 
   @Test
   public void specifies_keys_in_relationship_merge_pattern() {
-    var expectedCypher = "UNWIND $rows AS row "
-        + "MATCH (start:`Source` {`id`: row.`source`}) "
-        + "MATCH (end:`Target` {`id`: row.`target`}) "
-        + "MERGE (start)-[r:`LINKS` {`id1`: row.`rel_id_1`, `id2`: row.`rel_id_2`}]->(end) "
-        + "SET r.`ts` = row.`timestamp`";
+    var expectedCypher =
+        "UNWIND $rows AS row "
+            + "MATCH (start:`Source` {`id`: row.`source`}) "
+            + "MATCH (end:`Target` {`id`: row.`target`}) "
+            + "MERGE (start)-[r:`LINKS` {`id1`: row.`rel_id_1`, `id2`: row.`rel_id_2`}]->(end) "
+            + "SET r.`ts` = row.`timestamp`";
 
     assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_WITH_KEYS), expectedCypher);
   }
 
   @Test
   public void specifies_only_type_in_keyless_relationship_merge_pattern() {
-    var expectedCypher = "UNWIND $rows AS row "
-        + "MATCH (start:`Source` {`id`: row.`source`}) "
-        + "MATCH (end:`Target` {`id`: row.`target`}) "
-        + "MERGE (start)-[r:`LINKS`]->(end) "
-        + "SET r.`ts` = row.`timestamp`";
+    var expectedCypher =
+        "UNWIND $rows AS row "
+            + "MATCH (start:`Source` {`id`: row.`source`}) "
+            + "MATCH (end:`Target` {`id`: row.`target`}) "
+            + "MERGE (start)-[r:`LINKS`]->(end) "
+            + "SET r.`ts` = row.`timestamp`";
 
     assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_WITHOUT_KEYS), expectedCypher);
   }
 
   @Test
   public void merges_edges_as_well_as_their_start_and_end_nodes() {
-    var expectedCypher = "UNWIND $rows AS row "
-        + "MERGE (start:`Source` {`src_id`: row.`source`}) "
-        + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
-        + "MERGE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
+    var expectedCypher =
+        "UNWIND $rows AS row "
+            + "MERGE (start:`Source` {`src_id`: row.`source`}) "
+            + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
+            + "MERGE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
 
     assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_MERGE_ALL), expectedCypher);
   }
 
   @Test
   public void creates_edges_and_merges_their_start_and_end_nodes() {
-    var expectedCypher = "UNWIND $rows AS row "
-        + "MERGE (start:`Source` {`src_id`: row.`source`}) "
-        + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
-        + "CREATE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
+    var expectedCypher =
+        "UNWIND $rows AS row "
+            + "MERGE (start:`Source` {`src_id`: row.`source`}) "
+            + "MERGE (end:`Target` {`tgt_id`: row.`target`}) "
+            + "CREATE (start)-[r:`LINKS`]->(end) SET r.`ts` = row.`timestamp`";
 
-    assertImportStatementOf(importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypher);
+    assertImportStatementOf(
+        importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypher);
   }
 
   @Test
@@ -115,21 +120,22 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   @Test
   public void creates_edges_and_merges_their_start_and_end_nodes_cypher_prefix() {
     var expectedCypherPrefix = "CYPHER 5 UNWIND $rows AS row";
-    assertCypherPrefixOf(importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypherPrefix);
+    assertCypherPrefixOf(
+        importSpecificationOf(SINGLE_TARGET_CREATE_RELS_MERGE_NODES), expectedCypherPrefix);
   }
 
   @Test
   public void does_not_generate_constraints_for_edge_without_schema() {
-    var relationshipTarget = importSpecificationOf(SINGLE_TARGET_MERGE_ALL)
-        .getTargets()
-        .getRelationships()
-        .iterator()
-        .next();
+    var relationshipTarget =
+        importSpecificationOf(SINGLE_TARGET_MERGE_ALL)
+            .getTargets()
+            .getRelationships()
+            .iterator()
+            .next();
 
-    var statements = CypherGenerator.getSchemaStatements(
-        relationshipTarget,
-        capabilitiesFor("5.20", "enterprise")
-    );
+    var statements =
+        CypherGenerator.getSchemaStatements(
+            relationshipTarget, capabilitiesFor("5.20", "enterprise"));
 
     assertThat(statements).isEmpty();
   }
@@ -164,9 +170,10 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
     Set<String> schemaStatements =
         CypherGenerator.getSchemaStatements(relationship, capabilitiesFor("5.20", "enterprise"));
 
-    assertThat(schemaStatements).isEqualTo(Set.of(
-        "CREATE CONSTRAINT `rel-key` IF NOT EXISTS FOR ()-[r:`SELF_LINKS_TO`]-() REQUIRE (r.`targetRelProperty`) IS RELATIONSHIP KEY")
-    );
+    assertThat(schemaStatements)
+        .isEqualTo(
+            Set.of(
+                "CREATE CONSTRAINT `rel-key` IF NOT EXISTS FOR ()-[r:`SELF_LINKS_TO`]-() REQUIRE (r.`targetRelProperty`) IS RELATIONSHIP KEY"));
   }
 
   @Test
@@ -247,10 +254,11 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
             new Targets(List.of(startNode, endNode), List.of(relationship), null),
             null);
 
-    var expectedCypher = "UNWIND $rows AS row "
-        + "MATCH (start:`StartNode` {`targetNodeProperty`: row.`source_node_field`}) "
-        + "MATCH (end:`EndNode` {`targetNodeProperty`: row.`source_node_field`}) "
-        + "MERGE (start)-[r:`LINKS_TO` {`targetRelProperty`: row.`source_field`}]->(end)";
+    var expectedCypher =
+        "UNWIND $rows AS row "
+            + "MATCH (start:`StartNode` {`targetNodeProperty`: row.`source_node_field`}) "
+            + "MATCH (end:`EndNode` {`targetNodeProperty`: row.`source_node_field`}) "
+            + "MERGE (start)-[r:`LINKS_TO` {`targetRelProperty`: row.`source_field`}]->(end)";
 
     assertImportStatementOf(importSpecification, expectedCypher);
   }
@@ -576,7 +584,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("2025.06", "enterprise"),
@@ -588,7 +597,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_enterprise() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_enterprise() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("5.1.0", "enterprise"),
@@ -600,7 +610,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_aura() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_aura() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("5.1-aura", "enterprise"),
@@ -612,13 +623,17 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_community() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_community() {
     assertSchemaStatements(
-        importSpecificationOf(MULTI_LABEL_SINGLE_PASS), capabilitiesFor("5.1.6", "community"), Set.of());
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
+        capabilitiesFor("5.1.6", "community"),
+        Set.of());
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_enterprise() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_enterprise() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("4.4.25", "enterprise"),
@@ -630,7 +645,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_aura() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_aura() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
         capabilitiesFor("4.4-aura", "enterprise"),
@@ -642,13 +658,17 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_community() {
+  public void
+      generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_community() {
     assertSchemaStatements(
-        importSpecificationOf(MULTI_LABEL_SINGLE_PASS), capabilitiesFor("4.4.25", "community"), Set.of());
+        importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
+        capabilitiesFor("4.4.25", "community"),
+        Set.of());
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("2025.06", "enterprise"),
@@ -660,7 +680,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_enterprise() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_enterprise() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("5.1.0", "enterprise"),
@@ -672,7 +693,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_aura() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_aura() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("5.1-aura", "enterprise"),
@@ -684,7 +706,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus_community() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus_community() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("2025.06", "community"),
@@ -692,7 +715,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_community() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_5_community() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("5.1.0", "community"),
@@ -700,7 +724,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_enterprise() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_enterprise() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("4.4.25", "enterprise"),
@@ -712,7 +737,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_aura() {
+  public void
+      generates_correct_schema_statement_for_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_aura() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("4.4-aura", "enterprise"),
@@ -724,7 +750,8 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
   }
 
   @Test
-  public void generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_community() {
+  public void
+      generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_44_community() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
         capabilitiesFor("4.4.25", "community"),
