@@ -26,55 +26,55 @@ import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.TargetType;
 
 public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest {
-    protected static final String SPEC_PATH = "src/test/resources/testing-specs/cypher-generator-test/";
-    protected static final String MULTI_DISTINCT_KEYS_SINGLE_PASS =
-            "multi-distinct-keys-single-pass-import.json";
-    protected static final String MULTI_LABEL_SINGLE_PASS =
-            "multi-label-single-pass-import.json";
-    protected static final String SINGLE_TARGET_CREATE_RELS_MERGE_NODES =
-            "single-target-relation-import-create-rels-merge-nodes.json";
-    protected static final String SINGLE_TARGET_MERGE_ALL =
-            "single-target-relation-import-merge-all.json";
-    protected static final String SINGLE_TARGET_WITH_KEYS =
-            "single-target-relation-import-with-keys-spec.json";
-    protected static final String SINGLE_TARGET_WITHOUT_KEYS =
-            "single-target-relation-import-without-keys-spec.json";
+  protected static final String SPEC_PATH =
+      "src/test/resources/testing-specs/cypher-generator-test/";
+  protected static final String MULTI_DISTINCT_KEYS_SINGLE_PASS =
+      "multi-distinct-keys-single-pass-import.json";
+  protected static final String MULTI_LABEL_SINGLE_PASS = "multi-label-single-pass-import.json";
+  protected static final String SINGLE_TARGET_CREATE_RELS_MERGE_NODES =
+      "single-target-relation-import-create-rels-merge-nodes.json";
+  protected static final String SINGLE_TARGET_MERGE_ALL =
+      "single-target-relation-import-merge-all.json";
+  protected static final String SINGLE_TARGET_WITH_KEYS =
+      "single-target-relation-import-with-keys-spec.json";
+  protected static final String SINGLE_TARGET_WITHOUT_KEYS =
+      "single-target-relation-import-without-keys-spec.json";
 
-    protected static ImportSpecification importSpecificationOf(String specFile) {
-        return JobSpecMapper.parse(SPEC_PATH + specFile, new OptionsParams());
-    }
+  protected static ImportSpecification importSpecificationOf(String specFile) {
+    return JobSpecMapper.parse(SPEC_PATH + specFile, new OptionsParams());
+  }
 
-    protected void assertImportStatementOf(ImportSpecification spec, String expectedCypher) {
-        final Neo4jCapabilities preCypher25 = new Neo4jCapabilities("2025.05", "community");
-        var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
-        var actualCypher = CypherGenerator.getImportStatement(spec, relationshipTarget, preCypher25);
-        assertThat(actualCypher).isEqualTo(expectedCypher);
-    }
+  protected void assertImportStatementOf(ImportSpecification spec, String expectedCypher) {
+    final Neo4jCapabilities preCypher25 = new Neo4jCapabilities("2025.05", "community");
+    var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
+    var actualCypher = CypherGenerator.getImportStatement(spec, relationshipTarget, preCypher25);
+    assertThat(actualCypher).isEqualTo(expectedCypher);
+  }
 
-    protected void assertCypherPrefixOf(ImportSpecification spec, String expectedCypherPrefix) {
-        final Neo4jCapabilities postCypher25 = new Neo4jCapabilities("2025.06", "community");
-        var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
-        var actualCypher = CypherGenerator.getImportStatement(spec, relationshipTarget, postCypher25);
-        assertThat(actualCypher).startsWith(expectedCypherPrefix);
-    }
+  protected void assertCypherPrefixOf(ImportSpecification spec, String expectedCypherPrefix) {
+    final Neo4jCapabilities postCypher25 = new Neo4jCapabilities("2025.06", "community");
+    var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
+    var actualCypher = CypherGenerator.getImportStatement(spec, relationshipTarget, postCypher25);
+    assertThat(actualCypher).startsWith(expectedCypherPrefix);
+  }
 
-    protected void assertSchemaStatements(
-            ImportSpecification spec, Neo4jCapabilities capabilities, Set<String> expectedStatements) {
-        var statements =
-                spec.getTargets().getAll().stream()
-                        .filter(
-                                target ->
-                                        target.isActive()
-                                                && (target.getTargetType() == TargetType.NODE
-                                                || target.getTargetType() == TargetType.RELATIONSHIP))
-                        .map(target -> (EntityTarget) target)
-                        .flatMap(target -> CypherGenerator.getSchemaStatements(target, capabilities).stream())
-                        .collect(Collectors.toSet());
+  protected void assertSchemaStatements(
+      ImportSpecification spec, Neo4jCapabilities capabilities, Set<String> expectedStatements) {
+    var statements =
+        spec.getTargets().getAll().stream()
+            .filter(
+                target ->
+                    target.isActive()
+                        && (target.getTargetType() == TargetType.NODE
+                            || target.getTargetType() == TargetType.RELATIONSHIP))
+            .map(target -> (EntityTarget) target)
+            .flatMap(target -> CypherGenerator.getSchemaStatements(target, capabilities).stream())
+            .collect(Collectors.toSet());
 
-        assertThat(statements).isEqualTo(expectedStatements);
-    }
+    assertThat(statements).isEqualTo(expectedStatements);
+  }
 
-    protected Neo4jCapabilities capabilitiesFor(String neo4jVersion, String neo4jEdition) {
-        return new Neo4jCapabilities(neo4jVersion, neo4jEdition);
-    }
+  protected Neo4jCapabilities capabilitiesFor(String neo4jVersion, String neo4jEdition) {
+    return new Neo4jCapabilities(neo4jVersion, neo4jEdition);
+  }
 }

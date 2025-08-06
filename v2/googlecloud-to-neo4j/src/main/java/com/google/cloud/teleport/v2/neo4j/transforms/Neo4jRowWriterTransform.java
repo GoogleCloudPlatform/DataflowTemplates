@@ -180,7 +180,9 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
     }
 
     var capabilities = connectionSupplier.get().capabilities();
-    var query = CypherGenerator.getImportStatement(importSpecification, (EntityTarget) target, capabilities);
+    var query =
+        CypherGenerator.getImportStatement(
+            importSpecification, (EntityTarget) target, capabilities);
     LOG.info("Unwind cypher query: {}", query);
     return query;
   }

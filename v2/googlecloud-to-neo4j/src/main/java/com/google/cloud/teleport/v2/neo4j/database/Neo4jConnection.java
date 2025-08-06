@@ -70,12 +70,15 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
     }
 
     try (var session = getSession()) {
-      var result = session.run(
-          "CALL dbms.components() YIELD name, versions, edition WHERE name = $kernel RETURN versions[0], edition",
-          Map.of("kernel", "Neo4j Kernel")
-      ).single();
+      var result =
+          session
+              .run(
+                  "CALL dbms.components() YIELD name, versions, edition WHERE name = $kernel RETURN versions[0], edition",
+                  Map.of("kernel", "Neo4j Kernel"))
+              .single();
 
-      this.capabilitiesCache = new Neo4jCapabilities(result.get(0).asString(), result.get(1).asString());
+      this.capabilitiesCache =
+          new Neo4jCapabilities(result.get(0).asString(), result.get(1).asString());
       return this.capabilitiesCache;
     }
   }
