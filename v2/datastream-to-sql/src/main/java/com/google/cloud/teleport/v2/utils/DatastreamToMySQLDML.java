@@ -56,20 +56,40 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
         + "({quoted_column_names}) VALUES ({column_value_sql});";
   }
 
+  // In DatastreamToMySQLDML.java...
+
+  private String getFullSourceTableName(DatastreamRow row) {
+    return row.getSchemaName() + "." + row.getTableName();
+  }
+
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
-    String schemaName = row.getSchemaName();
-    return cleanSchemaName(schemaName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    // 1. Check for a specific table mapping first.
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      // If found, the new schema is the catalog for MySQL.
+      return tableMappings.get(fullSourceTableName).split("\\.")[0];
+    }
+    // 2. Fall back to the general schema mapping.
+    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
   }
 
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
+    // MySQL does not use a separate schema concept in the same way as Postgres.
+    // The catalog is the database/schema, so this can return an empty string.
     return "";
   }
 
   @Override
   public String getTargetTableName(DatastreamRow row) {
-    String tableName = row.getTableName();
-    return cleanTableName(tableName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    // 1. Check for a specific table mapping first.
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      // If found, parse the new table name from the value.
+      return tableMappings.get(fullSourceTableName).split("\\.")[1];
+    }
+    // 2. If no table mapping is found, fall back to the original table name.
+    return row.getTableName();
   }
 }
