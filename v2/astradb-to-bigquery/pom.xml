@@ -41,6 +41,11 @@
             <artifactId>beam-sdks-java-io-astra</artifactId>
             <version>${astra-io.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>32.1.2-jre</version>
+        </dependency>
 
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
