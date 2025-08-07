@@ -62,14 +62,32 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
     return cleanSchemaName(schemaName);
   }
 
+  private String getFullSourceTableName(DatastreamRow row) {
+    return row.getSchemaName() + "." + row.getTableName();
+  }
+
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
-    return "";
+    String fullSourceTableName = getFullSourceTableName(row);
+    // 1. Check for a specific table mapping first.
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      // If found, parse the new schema name from the value (e.g.,
+      // "human_resources.employees_main").
+      return tableMappings.get(fullSourceTableName).split("\\.")[0];
+    }
+    // 2. If no table mapping is found, fall back to the general schema mapping.
+    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
   }
 
   @Override
   public String getTargetTableName(DatastreamRow row) {
-    String tableName = row.getTableName();
-    return cleanTableName(tableName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    // 1. Check for a specific table mapping first.
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      // If found, parse the new table name from the value.
+      return tableMappings.get(fullSourceTableName).split("\\.")[1];
+    }
+    // 2. If no table mapping is found, fall back to the original table name.
+    return row.getTableName();
   }
 }
