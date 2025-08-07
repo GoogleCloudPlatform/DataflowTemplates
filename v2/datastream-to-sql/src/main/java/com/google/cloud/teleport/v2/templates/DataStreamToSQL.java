@@ -455,10 +455,7 @@ public class DataStreamToSQL {
                 "Format to DML",
                 CreateDml.of(dataSourceConfiguration)
                     .withSchemaMap(schemaMap)
-                    // --- MODIFICATION START ---
-                    // Pass the newly parsed table name map to the transform.
                     .withTableNameMap(tableNameMap)
-                    // --- MODIFICATION END ---
                     .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                     .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
