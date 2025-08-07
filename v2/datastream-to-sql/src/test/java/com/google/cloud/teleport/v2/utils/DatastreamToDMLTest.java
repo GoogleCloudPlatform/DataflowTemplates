@@ -610,55 +610,68 @@ public class DatastreamToDMLTest {
     assertEquals(expected, actual);
   }
 
-  /**
-   * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
-   * correct Postgres schema.
-   */
   @Test
-  public void testGetPostgresSchemaName() {
-    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj(JSON_STRING);
-    DatastreamRow row = DatastreamRow.of(rowObj);
+  public void testParseMappings_schemaOnly() {
+    // Arrange
+    Map<String, String> expectedSchemas = new HashMap<>();
+    expectedSchemas.put("a", "b");
+    expectedSchemas.put("c", "d");
 
-    String expectedSchemaName = "my_schema";
-    String schemaName = datastreamToDML.getTargetSchemaName(row);
-    assertEquals(schemaName, expectedSchemaName);
+    // Act
+    Map<String, Map<String, String>> actualMappings = DataStreamToSQL.parseMappings("a:b,c:d");
+
+    // Assert
+    assertThat(actualMappings.get("schemas")).isEqualTo(expectedSchemas);
+    assertThat(actualMappings.get("tables")).isEmpty();
   }
 
   /**
-   * Test whether {@link DatastreamToPostgresDML#getTargetTableName} converts the Oracle table into
-   * the correct Postgres table.
+   * Test whether getTargetSchemaName and getTargetTableName correctly apply schema and table
+   * mappings with the correct precedence.
    */
   @Test
-  public void testGetPostgresTableName() {
-    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj(JSON_STRING);
-    DatastreamRow row = DatastreamRow.of(rowObj);
+  public void testTableNameMapping() {
+    // 1. Arrange: Create a SINGLE combined map, just like the real pipeline.
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
 
-    String expectedTableName = "my_table$name";
-    String tableName = datastreamToDML.getTargetTableName(row);
-    assertEquals(expectedTableName, tableName);
-  }
+    Map<String, String> combinedMap = new HashMap<>();
+    combinedMap.put("hr", "human_resources"); // General schema rule
+    combinedMap.put("hr.employees", "human_resources.employees_2025"); // Specific table rule
 
-  /** Test cleaning schema map. */
-  @Test
-  public void testParseSchemaMap() {
-    Map<String, String> singleItemExpected =
-        new HashMap<String, String>() {
-          {
-            put("a", "b");
-          }
-        };
-    Map<String, String> doubleItemExpected =
-        new HashMap<String, String>() {
-          {
-            put("a", "b");
-            put("c", "d");
-          }
-        };
+    // Call the single, smart "with" method.
+    dmlConverter.withSchemaMap(combinedMap);
 
-    assertThat(DataStreamToSQL.parseSchemaMap("")).isEmpty();
-    assertThat(DataStreamToSQL.parseSchemaMap("a:b")).isEqualTo(singleItemExpected);
-    assertThat(DataStreamToSQL.parseSchemaMap("a:b,c:d")).isEqualTo(doubleItemExpected);
+    // 2. Act & Assert for the table with a specific rule.
+    String tableSpecificJson =
+        "{\"_metadata_schema\":\"hr\"," + "\"_metadata_table\":\"employees\"" + "}";
+    DatastreamRow tableSpecificRow = DatastreamRow.of(getRowObj(tableSpecificJson));
+
+    String actualTargetSchema1 = dmlConverter.getTargetSchemaName(tableSpecificRow);
+    String actualTargetTable1 = dmlConverter.getTargetTableName(tableSpecificRow);
+
+    assertThat(actualTargetSchema1).isEqualTo("human_resources");
+    assertThat(actualTargetTable1).isEqualTo("employees_2025");
+
+    // 3. Act & Assert for a different table in the same schema (should use the fallback rule).
+    String schemaFallbackJson =
+        "{\"_metadata_schema\":\"hr\"," + "\"_metadata_table\":\"locations\"" + "}";
+    DatastreamRow schemaFallbackRow = DatastreamRow.of(getRowObj(schemaFallbackJson));
+
+    String actualTargetSchema2 = dmlConverter.getTargetSchemaName(schemaFallbackRow);
+    String actualTargetTable2 = dmlConverter.getTargetTableName(schemaFallbackRow);
+
+    assertThat(actualTargetSchema2).isEqualTo("human_resources");
+    assertThat(actualTargetTable2).isEqualTo("locations");
+
+    // 4. Act & Assert for a record with no mapping rules.
+    String noRuleJson =
+        "{\"_metadata_schema\":\"marketing\"," + "\"_metadata_table\":\"campaigns\"" + "}";
+    DatastreamRow noRuleRow = DatastreamRow.of(getRowObj(noRuleJson));
+
+    String actualTargetSchema3 = dmlConverter.getTargetSchemaName(noRuleRow);
+    String actualTargetTable3 = dmlConverter.getTargetTableName(noRuleRow);
+
+    assertThat(actualTargetSchema3).isEqualTo("marketing");
+    assertThat(actualTargetTable3).isEqualTo("campaigns");
   }
 }
