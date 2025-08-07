@@ -1,0 +1,5 @@
+apache-beam[gcp]
+pandas
+pyarrow
+google-cloud-storage
+array-record[beam]
