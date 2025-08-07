@@ -5,7 +5,7 @@
  * use this file except in compliance with the License. You may obtain a copy of
  * the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
@@ -55,20 +55,25 @@ public abstract class DatastreamToDML
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
-  
-  // Fields to hold the separated maps
   protected Map<String, String> schemaMappings = new HashMap<>();
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
 
   public abstract String getDefaultQuoteCharacter();
+
   public abstract String getDeleteDmlStatement();
+
   public abstract String getUpsertDmlStatement();
+
   public abstract String getInsertDmlStatement();
+
   public abstract String getTargetCatalogName(DatastreamRow row);
+
   public abstract String getTargetSchemaName(DatastreamRow row);
+
   public abstract String getTargetTableName(DatastreamRow row);
 
+  /* An exception for delete DML without a primary key */
   private class DeletedWithoutPrimaryKey extends RuntimeException {
     public DeletedWithoutPrimaryKey(String errorMessage) {
       super(errorMessage);
@@ -85,13 +90,6 @@ public abstract class DatastreamToDML
     return this;
   }
 
-// This is the new method that CreateDml is trying to call
-public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
-  this.tableMappings = tableNameMap;
-  return this;
-}
-
-  // This method now intelligently separates the combined map from the user.
   public DatastreamToDML withSchemaMap(Map<String, String> combinedMap) {
     for (Map.Entry<String, String> entry : combinedMap.entrySet()) {
       if (entry.getKey().contains(".")) {
@@ -100,6 +98,11 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
         this.schemaMappings.put(entry.getKey(), entry.getValue());
       }
     }
+    return this;
+  }
+
+  public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
+    this.tableMappings = tableNameMap;
     return this;
   }
 
@@ -119,6 +122,7 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
       rowObj = mapper.readTree(jsonString);
       DmlInfo dmlInfo = convertJsonToDmlInfo(rowObj, element.getOriginalPayload());
 
+      // Null rows suggest no DML is required.
       if (dmlInfo != null) {
         LOG.debug("Output Data: {}", jsonString);
         context.output(KV.of(dmlInfo.getStateWindowKey(), dmlInfo));
@@ -130,7 +134,7 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
       LOG.error("IOException: {} :: {}", jsonString, e.toString());
     }
   }
-  
+
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow
   public List<String> getDefaultPrimaryKeys() {
     if (this.defaultPrimaryKeys == null) {
@@ -197,12 +201,16 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
   public DmlInfo convertJsonToDmlInfo(JsonNode rowObj, String failsafeValue) {
     DatastreamRow row = DatastreamRow.of(rowObj);
     try {
+      // Oracle uses upper case while Postgres uses all lowercase.
+      // We lowercase the values of these metadata fields to align with
+      // our schema conversion rules.
       String catalogName = this.getTargetCatalogName(row);
       String schemaName = this.getTargetSchemaName(row);
       String tableName = this.getTargetTableName(row);
 
       Map<String, String> tableSchema = this.getTableSchema(catalogName, schemaName, tableName);
       if (tableSchema.isEmpty()) {
+        // If the table DNE we return null (NOOP).
         return null;
       }
 
@@ -320,9 +328,9 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
     List<String> fieldValues = new ArrayList<String>();
 
     for (String fieldName : fieldNames) {
-      if (overrideIsDeleted && fieldName.equals("_metadata_deleted")) {
+      if (overrideIsDeleted && fieldName == "_metadata_deleted") {
         String val = getValueSql(rowObj, fieldName, tableSchema);
-        fieldValues.add(val.equals("true") ? "1" : "0");
+        fieldValues.add(val == "true" ? "1" : "0");
       } else {
         fieldValues.add(getValueSql(rowObj, fieldName, tableSchema));
       }
@@ -340,6 +348,7 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
         continue;
       }
 
+      // Add column name
       String quotedColumnName = quote(columnName);
       if (Objects.equals(columnsListSql, "")) {
         columnsListSql = quotedColumnName;
@@ -438,14 +447,24 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
   }
 
   /**
-   * The {@link JdbcTableCache} uses a direct, case-sensitive lookup, enforcing the "source of
-   * truth" rule.
+   * The {@link JdbcTableCache} manages safely getting and setting JDBC Table objects from a local
+   * cache for each worker thread.
+   *
+   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
+   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
+   * continuous.
    */
   public static class JdbcTableCache extends MappedObjectCache<List<String>, Map<String, String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
 
+    /**
+     * Create an instance of a {@link JdbcTableCache} to track table schemas.
+     *
+     * @param dataSource A DataSource instance used to extract Table objects.
+     */
     public JdbcTableCache(DataSource dataSource) {
       this.dataSource = dataSource;
     }
@@ -485,8 +504,8 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
       }
 
       if (tableSchema.isEmpty()) {
-        LOG.warn(
-            "Table Not Found (case-sensitive search): Catalog: {}, Schema: {}, Table: {}",
+        LOG.info(
+            "Table Not Found: Catalog: {}, Schema: {}, Table: {}",
             catalogName,
             schemaName,
             tableName);
@@ -500,16 +519,32 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
       String schemaName = key.get(1);
       String tableName = key.get(2);
 
-      return getTableSchema(catalogName, schemaName, tableName, MAX_RETRIES);
+      Map<String, String> tableSchema =
+          getTableSchema(catalogName, schemaName, tableName, MAX_RETRIES);
+
+      return tableSchema;
     }
   }
 
-  /** The {@link JdbcPrimaryKeyCache} uses a direct, case-sensitive lookup. */
+  /**
+   * The {@link JdbcPrimaryKeyCache} manages safely getting and setting JDBC Table PKs from a local
+   * cache for each worker thread.
+   *
+   * <p>The key factors addressed are ensuring expiration of cached tables, consistent update
+   * behavior to ensure reliability, and easy cache reloads. Open Question: Does the class require
+   * thread-safe behaviors? Currently, it does not since there is no iteration and get/set are not
+   * continuous.
+   */
   public static class JdbcPrimaryKeyCache extends MappedObjectCache<List<String>, List<String>> {
 
     private DataSource dataSource;
     private static final int MAX_RETRIES = 5;
 
+    /**
+     * Create an instance of a {@link JdbcPrimaryKeyCache} to track table primary keys.
+     *
+     * @param dataSource A DataSource instance used to extract Table objects.
+     */
     public JdbcPrimaryKeyCache(DataSource dataSource) {
       this.dataSource = dataSource;
     }
@@ -529,7 +564,8 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
         if (retriesRemaining > 0) {
           int sleepSecs = (MAX_RETRIES - retriesRemaining + 1) * 10;
           LOG.info(
-              "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} : {}",
+              "SQLException, will retry after {} seconds: Failed to Retrieve Primary Key: {}.{} :"
+                  + " {}",
               sleepSecs,
               schemaName,
               tableName,
@@ -557,7 +593,10 @@ public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
       String schemaName = key.get(1);
       String tableName = key.get(2);
 
-      return getTablePrimaryKeys(catalogName, schemaName, tableName, MAX_RETRIES);
+      List<String> primaryKeys =
+          getTablePrimaryKeys(catalogName, schemaName, tableName, MAX_RETRIES);
+
+      return primaryKeys;
     }
   }
 }
