@@ -119,69 +119,34 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    final int maxAttempts = 5;
-    final long retryDelaySeconds = 10;
-    boolean slotCleanupSuccess = false;
+    // Step 1: Clean up non-database resources first, including Datastream stream.
+    ResourceManagerUtils.cleanResources(
+        datastreamResourceManager, pubsubResourceManager, gcsResourceManager);
 
-    if (this.replicationSlot != null && !this.replicationSlot.isBlank()) {
-      for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-        try {
-          LOG.info(
-              "Attempt {}/{} to clean up replication slot '{}'...",
-              attempt,
-              maxAttempts,
-              this.replicationSlot);
-
-          try {
-            cloudSqlSourceResourceManager.runSQLUpdate(
-                String.format(
-                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE slot_name = '%s'",
-                    this.replicationSlot));
-            LOG.info("Successfully terminated backend for slot '{}'.", this.replicationSlot);
-          } catch (Exception e) {
-            LOG.warn(
-                "Could not terminate backend for slot '{}' on attempt {}, which can be expected: {}",
-                this.replicationSlot,
-                attempt,
-                e.getMessage());
-          }
-
-          cloudSqlSourceResourceManager.runSQLUpdate(
-              String.format("SELECT pg_drop_replication_slot('%s');", this.replicationSlot));
-
-          LOG.info("Successfully dropped replication slot '{}'.", this.replicationSlot);
-          slotCleanupSuccess = true;
-          break;
-
-        } catch (Exception e) {
-          LOG.warn("Attempt {} to clean up replication slot failed: {}.", attempt, e.getMessage());
-          if (attempt < maxAttempts) {
-            LOG.info("Retrying in {} seconds...", retryDelaySeconds);
-            try {
-              TimeUnit.SECONDS.sleep(retryDelaySeconds);
-            } catch (InterruptedException ie) {
-              Thread.currentThread().interrupt();
-              LOG.error("Cleanup retry loop was interrupted.", ie);
-              break;
-            }
-          }
-        }
-      }
-
-      if (!slotCleanupSuccess) {
-        LOG.error(
-            "FAILED to clean up replication slot '{}' after {} attempts. Subsequent cleanup may fail.",
-            this.replicationSlot,
-            maxAttempts);
-      }
+    // Step 2: Use the robust SQL statement to terminate the backend and drop the slot.
+    try {
+      cloudSqlSourceResourceManager.runSQLUpdate(
+          String.format(
+              "DO $$ "
+                  + "DECLARE slot_pid INTEGER; "
+                  + "BEGIN "
+                  + "    SELECT active_pid INTO slot_pid FROM pg_replication_slots WHERE slot_name = '%s'; "
+                  + "    IF slot_pid IS NOT NULL THEN "
+                  + "        PERFORM pg_terminate_backend(slot_pid); "
+                  + "    END IF; "
+                  + "    PERFORM pg_drop_replication_slot('%s'); "
+                  + "EXCEPTION WHEN undefined_object THEN "
+                  + "    RAISE NOTICE 'Replication slot %s not found, skipping.'; "
+                  + "END $$ LANGUAGE plpgsql;",
+              this.replicationSlot, this.replicationSlot, this.replicationSlot));
+      LOG.info("Successfully dropped replication slot '{}'.", this.replicationSlot);
+    } catch (Exception e) {
+      LOG.warn("Error during replication slot cleanup: {}", e.getMessage());
     }
 
+    // Step 3: Clean up the database resources.
     ResourceManagerUtils.cleanResources(
-        cloudSqlSourceResourceManager,
-        cloudSqlDestinationResourceManager,
-        datastreamResourceManager,
-        pubsubResourceManager,
-        gcsResourceManager);
+        cloudSqlSourceResourceManager, cloudSqlDestinationResourceManager);
   }
 
   @Test
