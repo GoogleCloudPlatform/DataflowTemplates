@@ -44,6 +44,7 @@ public class CreateDml
   private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
   private static Map<String, String> schemaMap = new HashMap<String, String>();
+  private static Map<String, String> tableNameMap = new HashMap<String, String>();
   private static Boolean orderByIncludesIsDeleted = false;
 
   private CreateDml(DataSourceConfiguration dataSourceConfiguration) {
@@ -56,6 +57,11 @@ public class CreateDml
 
   public CreateDml withSchemaMap(Map<String, String> schemaMap) {
     this.schemaMap = schemaMap;
+    return this;
+  }
+
+  public CreateDml withTableNameMap(Map<String, String> tableNameMap) {
+    this.tableNameMap = tableNameMap;
     return this;
   }
 
@@ -74,12 +80,10 @@ public class CreateDml
     String driverName = this.dataSourceConfiguration.getDriverClassName().get();
     switch (driverName) {
       case "org.postgresql.Driver":
-        datastreamToDML =
-            DatastreamToPostgresDML.of(dataSourceConfiguration).withSchemaMap(this.schemaMap);
+        datastreamToDML = DatastreamToPostgresDML.of(dataSourceConfiguration);
         break;
       case "com.mysql.cj.jdbc.Driver":
-        datastreamToDML =
-            DatastreamToMySQLDML.of(dataSourceConfiguration).withSchemaMap(this.schemaMap);
+        datastreamToDML = DatastreamToMySQLDML.of(dataSourceConfiguration);
         break;
       default:
         throw new IllegalArgumentException(
@@ -87,7 +91,8 @@ public class CreateDml
     }
 
     return datastreamToDML
-        .withSchemaMap(schemaMap)
+        .withSchemaMap(this.schemaMap)
+        .withTableNameMap(this.tableNameMap)
         .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted);
   }
 

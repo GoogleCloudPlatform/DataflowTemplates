@@ -41,28 +41,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   @Override
-  public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
-    String onUpdateSql = "";
-    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
-      String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
-
-      String quotedColumnName = quote(columnName);
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
-
-      if (onUpdateSql.equals("")) {
-        onUpdateSql = quotedColumnName + "=EXCLUDED." + quotedColumnName;
-      } else {
-        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=EXCLUDED." + quotedColumnName;
-      }
-    }
-
-    return onUpdateSql;
-  }
-
-  @Override
   public String getDefaultQuoteCharacter() {
     return "\"";
   }
@@ -90,16 +68,33 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     return "";
   }
 
+  private String getFullSourceTableName(DatastreamRow row) {
+    return row.getSchemaName() + "." + row.getTableName();
+  }
+
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
-    String schemaName = row.getSchemaName();
-    return cleanSchemaName(schemaName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    // 1. Check for a specific table mapping first.
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      // If found, parse the new schema name from the value (e.g.,
+      // "human_resources.employees_main").
+      return tableMappings.get(fullSourceTableName).split("\\.")[0];
+    }
+    // 2. If no table mapping is found, fall back to the general schema mapping.
+    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
   }
 
   @Override
   public String getTargetTableName(DatastreamRow row) {
-    String tableName = row.getTableName();
-    return cleanTableName(tableName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    // 1. Check for a specific table mapping first.
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      // If found, parse the new table name from the value.
+      return tableMappings.get(fullSourceTableName).split("\\.")[1];
+    }
+    // 2. If no table mapping is found, fall back to the original table name.
+    return row.getTableName();
   }
 
   @Override

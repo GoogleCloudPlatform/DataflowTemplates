@@ -362,15 +362,61 @@ public class DataStreamToSQL {
     }
   }
 
-  /** Parse the SchemaMap config which allows key:value pairs of column naming configs. */
-  public static Map<String, String> parseSchemaMap(String schemaMapString) {
-    if (schemaMapString == null || schemaMapString.equals("")) {
-      return new HashMap<>();
+  /**
+   * Parses a single map string containing both schema-only and table-specific mappings.
+   *
+   * @param mappingString The user-supplied comma-separated map string.
+   * @return A map containing two maps: one for "schemas" and one for "tables".
+   */
+  public static Map<String, Map<String, String>> parseMappings(String mappingString) {
+    Map<String, String> schemaMappings = new HashMap<>();
+    Map<String, String> tableMappings = new HashMap<>();
+
+    if (mappingString != null && !mappingString.isEmpty()) {
+      // First, split the entire string into individual mapping rules
+      Map<String, String> allMappings =
+          Splitter.on(",").withKeyValueSeparator(":").split(mappingString);
+
+      // Now, iterate through the rules and separate them into the two maps
+      for (Map.Entry<String, String> entry : allMappings.entrySet()) {
+        if (entry.getKey().contains(".")) {
+          // It's a table-specific rule if the key contains a dot (e.g., "hr.employees")
+          tableMappings.put(entry.getKey(), entry.getValue());
+        } else {
+          // It's a schema-only rule (e.g., "hr")
+          schemaMappings.put(entry.getKey(), entry.getValue());
+        }
+      }
     }
 
-    return Splitter.on(",").withKeyValueSeparator(":").split(schemaMapString);
+    if (!tableMappings.isEmpty() && schemaMappings.isEmpty()) {
+        for (Map.Entry<String, String> tableRule : tableMappings.entrySet()) {
+          String sourceSchema = tableRule.getKey().split("\\.")[0];
+          String targetSchema = tableRule.getValue().split("\\.")[0];
+
+          // If a general rule for this source schema doesn't already exist, add one.
+          if (!schemaMappings.containsKey(sourceSchema)) {
+            LOG.info(
+                "Inferred schema mapping '{}' to '{}' from table mapping rule.",
+                sourceSchema,
+                targetSchema);
+            schemaMappings.put(sourceSchema, targetSchema);
+          }
+        }
+      }
+
+    Map<String, Map<String, String>> mappings = new HashMap<>();
+    mappings.put("schemas", schemaMappings);
+    mappings.put("tables", tableMappings);
+    return mappings;
   }
 
+  /**
+   * Runs the pipeline with the supplied options.
+   *
+   * @param options The execution parameters to the pipeline.
+   * @return The result of the pipeline execution.
+   */
   /**
    * Runs the pipeline with the supplied options.
    *
@@ -380,22 +426,27 @@ public class DataStreamToSQL {
   public static PipelineResult run(Options options) {
     /*
      * Stages:
-     *   1) Ingest and Normalize Data to FailsafeElement with JSON Strings
-     *   2) Write JSON Strings to SQL DML Objects
-     *   3) Filter stale rows using stateful PK transform
-     *   4) Write DML statements to SQL Database via jdbc
+     * 1) Ingest and Normalize Data to FailsafeElement with JSON Strings
+     * 2) Write JSON Strings to SQL DML Objects
+     * 3) Filter stale rows using stateful PK transform
+     * 4) Write DML statements to SQL Database via jdbc
      */
 
     Pipeline pipeline = Pipeline.create(options);
 
     CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration = getDataSourceConfiguration(options);
     validateOptions(options, dataSourceConfiguration);
-    Map<String, String> schemaMap = parseSchemaMap(options.getSchemaMap());
+
+    Map<String, Map<String, String>> mappings = parseMappings(options.getSchemaMap());
+    Map<String, String> schemaMap = mappings.get("schemas");
+    Map<String, String> tableNameMap = mappings.get("tables");
+
     LOG.info("Parsed schema map: {}", schemaMap);
+    LOG.info("Parsed table name map: {}", tableNameMap);
 
     /*
      * Stage 1: Ingest and Normalize Data to FailsafeElement with JSON Strings
-     *   a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
+     * a) Read DataStream data from GCS into JSON String FailsafeElements (datastreamJsonRecords)
      */
     PCollection<FailsafeElement<String, String>> datastreamJsonRecords =
         pipeline.apply(
@@ -411,7 +462,7 @@ public class DataStreamToSQL {
 
     /*
      * Stage 2: Write JSON Strings to SQL Insert Strings
-     *   a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
+     * a) Convert JSON String FailsafeElements to TableRow's (tableRowRecords)
      * Stage 3) Filter stale rows using stateful PK transform
      */
     PCollection<KV<String, DmlInfo>> dmlStatements =
@@ -420,6 +471,7 @@ public class DataStreamToSQL {
                 "Format to DML",
                 CreateDml.of(dataSourceConfiguration)
                     .withSchemaMap(schemaMap)
+                    .withTableNameMap(tableNameMap)
                     .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                     .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());
