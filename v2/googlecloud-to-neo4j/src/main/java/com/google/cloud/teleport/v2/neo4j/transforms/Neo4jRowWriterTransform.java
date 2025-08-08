@@ -172,12 +172,17 @@ public class Neo4jRowWriterTransform extends PTransform<PCollection<Row>, PColle
 
   private String getCypherQuery() {
     TargetType targetType = target.getTargetType();
+
     if (targetType == TargetType.QUERY) {
       var query = ((CustomQueryTarget) target).getQuery();
       LOG.info("Custom cypher query: {}", query);
       return query;
     }
-    var query = CypherGenerator.getImportStatement(importSpecification, (EntityTarget) target);
+
+    var capabilities = connectionSupplier.get().capabilities();
+    var query =
+        CypherGenerator.getImportStatement(
+            importSpecification, (EntityTarget) target, capabilities);
     LOG.info("Unwind cypher query: {}", query);
     return query;
   }
