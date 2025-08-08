@@ -389,6 +389,22 @@ public class DataStreamToSQL {
       }
     }
 
+    if (!tableMappings.isEmpty() && schemaMappings.isEmpty()) {
+        for (Map.Entry<String, String> tableRule : tableMappings.entrySet()) {
+          String sourceSchema = tableRule.getKey().split("\\.")[0];
+          String targetSchema = tableRule.getValue().split("\\.")[0];
+
+          // If a general rule for this source schema doesn't already exist, add one.
+          if (!schemaMappings.containsKey(sourceSchema)) {
+            LOG.info(
+                "Inferred schema mapping '{}' to '{}' from table mapping rule.",
+                sourceSchema,
+                targetSchema);
+            schemaMappings.put(sourceSchema, targetSchema);
+          }
+        }
+      }
+
     Map<String, Map<String, String>> mappings = new HashMap<>();
     mappings.put("schemas", schemaMappings);
     mappings.put("tables", tableMappings);
