@@ -56,40 +56,48 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
         + "({quoted_column_names}) VALUES ({column_value_sql});";
   }
 
-  // In DatastreamToMySQLDML.java...
-
   private String getFullSourceTableName(DatastreamRow row) {
     return row.getSchemaName() + "." + row.getTableName();
   }
 
+  /**
+  * For MySQL, the catalog is the database/schema. This method now contains the logic
+  * to determine the target schema name, handling inheritance correctly.
+  */
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
-    // 1. Check for a specific table mapping first.
+    // 1. Check for a fully-qualified table rule first.
     if (tableMappings.containsKey(fullSourceTableName)) {
-      // If found, the new schema is the catalog for MySQL.
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
-    // 2. Fall back to the general schema mapping.
+    // 2. For all other cases (table-only rule or schema-only rule),
+    //    find the schema mapping or use the original schema name.
     return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
   }
 
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
-    // MySQL does not use a separate schema concept in the same way as Postgres.
-    // The catalog is the database/schema, so this can return an empty string.
+    // This remains empty for MySQL as the catalog is used for the schema.
     return "";
   }
 
+  /**
+  * This method is now updated to find table-only rules in the schemaMappings map,
+  * mirroring the behavior of the PostgreSQL implementation.
+  */
   @Override
   public String getTargetTableName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
-    // 1. Check for a specific table mapping first.
+    // 1. Check for a fully-qualified table rule first.
     if (tableMappings.containsKey(fullSourceTableName)) {
-      // If found, parse the new table name from the value.
       return tableMappings.get(fullSourceTableName).split("\\.")[1];
     }
-    // 2. If no table mapping is found, fall back to the original table name.
+    // 2. Check schemaMappings for a table-only rule.
+    if (schemaMappings.containsKey(row.getTableName())) {
+      return schemaMappings.get(row.getTableName());
+    }
+    // 3. No specific rule, so return the original table name.
     return row.getTableName();
   }
 }

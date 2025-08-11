@@ -75,25 +75,26 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
-    // 1. Check for a specific table mapping first.
+    // 1. Check for a fully-qualified table rule first.
     if (tableMappings.containsKey(fullSourceTableName)) {
-      // If found, parse the new schema name from the value (e.g.,
-      // "human_resources.employees_main").
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
-    // 2. If no table mapping is found, fall back to the general schema mapping.
+    // 2. Fall back to a general schema rule or the original name.
     return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
   }
 
   @Override
   public String getTargetTableName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
-    // 1. Check for a specific table mapping first.
+    // 1. Check for a fully-qualified table rule first.
     if (tableMappings.containsKey(fullSourceTableName)) {
-      // If found, parse the new table name from the value.
       return tableMappings.get(fullSourceTableName).split("\\.")[1];
     }
-    // 2. If no table mapping is found, fall back to the original table name.
+    // 2. Check schemaMappings for a table-only rule.
+    if (schemaMappings.containsKey(row.getTableName())) {
+      return schemaMappings.get(row.getTableName());
+    }
+    // 3. No specific rule, so return the original table name.
     return row.getTableName();
   }
 

@@ -362,48 +362,39 @@ public class DataStreamToSQL {
     }
   }
 
-  /**
-   * Parses a single map string containing both schema-only and table-specific mappings.
-   *
-   * @param mappingString The user-supplied comma-separated map string.
-   * @return A map containing two maps: one for "schemas" and one for "tables".
-   */
   public static Map<String, Map<String, String>> parseMappings(String mappingString) {
     Map<String, String> schemaMappings = new HashMap<>();
     Map<String, String> tableMappings = new HashMap<>();
 
     if (mappingString != null && !mappingString.isEmpty()) {
-      // First, split the entire string into individual mapping rules
       Map<String, String> allMappings =
           Splitter.on(",").withKeyValueSeparator(":").split(mappingString);
 
-      // Now, iterate through the rules and separate them into the two maps
+      // Pass 1: Strictly separate rules.
       for (Map.Entry<String, String> entry : allMappings.entrySet()) {
         if (entry.getKey().contains(".")) {
-          // It's a table-specific rule if the key contains a dot (e.g., "hr.employees")
           tableMappings.put(entry.getKey(), entry.getValue());
         } else {
-          // It's a schema-only rule (e.g., "hr")
           schemaMappings.put(entry.getKey(), entry.getValue());
         }
       }
-    }
 
-    if (!tableMappings.isEmpty() && schemaMappings.isEmpty()) {
+      // Pass 2: Intelligently infer schema maps if none were provided.
+      if (schemaMappings.isEmpty() && !tableMappings.isEmpty()) {
+        LOG.info(
+            "No schema-only mapping provided. Attempting to infer schemas from table mappings.");
+        // Iterate through ALL table rules to infer all possible schema mappings.
         for (Map.Entry<String, String> tableRule : tableMappings.entrySet()) {
           String sourceSchema = tableRule.getKey().split("\\.")[0];
           String targetSchema = tableRule.getValue().split("\\.")[0];
 
-          // If a general rule for this source schema doesn't already exist, add one.
           if (!schemaMappings.containsKey(sourceSchema)) {
-            LOG.info(
-                "Inferred schema mapping '{}' to '{}' from table mapping rule.",
-                sourceSchema,
-                targetSchema);
+            LOG.info("Inferred schema mapping: '{}' to '{}'", sourceSchema, targetSchema);
             schemaMappings.put(sourceSchema, targetSchema);
           }
         }
       }
+    }
 
     Map<String, Map<String, String>> mappings = new HashMap<>();
     mappings.put("schemas", schemaMappings);

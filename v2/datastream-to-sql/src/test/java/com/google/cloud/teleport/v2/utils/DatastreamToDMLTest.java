@@ -611,8 +611,8 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Tests the parseMappings method with a mix of schema and table rules,
-   * as well as table-only rules that imply schemas.
+   * Tests the parseMappings method with a mix of schema and table rules, as well as table-only
+   * rules that imply schemas.
    */
   @Test
   public void testParseMappings_withMixedAndTableOnlyRules() {
@@ -622,19 +622,18 @@ public class DatastreamToDMLTest {
 
     assertThat(mixedResult.get("schemas"))
         .containsExactly("hr", "human_resources", "finance", "fin");
-    assertThat(mixedResult.get("tables"))
-        .containsExactly("hr.employees", "human_resources.staff");
+    assertThat(mixedResult.get("tables")).containsExactly("hr.employees", "human_resources.staff");
 
     // 2. Test with only table-level rules and verify schema inference
     String tableOnlyMapping = "source_a.table1:dest_a.table_x,source_b.table2:dest_b.table_y";
-    Map<String, Map<String, String>> tableOnlyResult = DataStreamToSQL.parseMappings(tableOnlyMapping);
+    Map<String, Map<String, String>> tableOnlyResult =
+        DataStreamToSQL.parseMappings(tableOnlyMapping);
 
     // Assert that schemas were correctly inferred from the table mappings.
     assertThat(tableOnlyResult.get("schemas"))
         .containsExactly("source_a", "dest_a", "source_b", "dest_b");
     assertThat(tableOnlyResult.get("tables"))
-        .containsExactly(
-            "source_a.table1", "dest_a.table_x", "source_b.table2", "dest_b.table_y");
+        .containsExactly("source_a.table1", "dest_a.table_x", "source_b.table2", "dest_b.table_y");
 
     // 3. Test with an empty string
     Map<String, Map<String, String>> emptyResult = DataStreamToSQL.parseMappings("");
@@ -642,10 +641,7 @@ public class DatastreamToDMLTest {
     assertThat(emptyResult.get("tables")).isEmpty();
   }
 
-  /**
-   * Verifies that the DML generator correctly applies mappings without
-   * unexpected case changes.
-   */
+  /** Verifies that the DML generator correctly applies mappings without unexpected case changes. */
   @Test
   public void testTargetNameLogic_withPostgresMapping() {
     // 1. Arrange: Create a DML converter and configure it with a mapping rule set.
@@ -678,5 +674,80 @@ public class DatastreamToDMLTest {
     // Assert that the schema is mapped and the table name is preserved as-is.
     assertThat(actualTargetSchema2).isEqualTo("HUMAN_RESOURCES");
     assertThat(actualTargetTable2).isEqualTo("DEPARTMENTS");
+  }
+
+  @Test
+  public void testScenario1_ExplicitPrecedence() {
+    // Arrange
+    String mapString = "SCHEMA1:SCHEMA2,SCHEMA1.table1:SCHEMA2.TABLE1";
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+
+    // Act & Assert for the specific table
+    DatastreamRow row1 =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table1\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row1)).isEqualTo("SCHEMA2");
+    assertThat(dmlConverter.getTargetTableName(row1)).isEqualTo("TABLE1");
+
+    // Act & Assert for the fallback table
+    DatastreamRow row2 =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row2)).isEqualTo("SCHEMA2");
+    assertThat(dmlConverter.getTargetTableName(row2)).isEqualTo("table2");
+  }
+
+  @Test
+  public void testScenario3_InferredSchema() {
+    // Arrange
+    String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+
+    // Act & Assert for an unmapped table (should use inferred schema)
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SCHEMA2");
+    assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("table2");
+  }
+
+  @Test
+  public void testScenario4_SchemaInheritance() {
+    // Arrange
+    String mapString = "SCHEMA1:SCHEMA2,table1:TABLE1,table3:TABLE3";
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+
+    // Act & Assert for a table with a table-only rule
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table1\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SCHEMA2");
+    assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
+  }
+
+  @Test
+  public void testScenario5_ImpliedSchema() {
+    // Arrange
+    String mapString = "table1:TABLE1,table3:TABLE3";
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+
+    // Act & Assert for a table with a table-only rule (should infer schema is the same)
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SAME_SCHEMA\",\"_metadata_table\":\"table1\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SAME_SCHEMA");
+    assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
   }
 }
