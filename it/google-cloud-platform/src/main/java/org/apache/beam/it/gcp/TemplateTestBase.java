@@ -17,10 +17,6 @@
  */
 package org.apache.beam.it.gcp;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.gax.core.CredentialsProvider;
 import com.google.api.gax.core.FixedCredentialsProvider;
 import com.google.api.services.dataflow.model.Job;
@@ -35,13 +31,9 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateCreationParameters;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.metadata.util.MetadataUtils;
-import com.google.common.collect.ImmutableList;
 import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
 import java.lang.reflect.Method;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -51,7 +43,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.JobState;
@@ -67,11 +58,8 @@ import org.apache.beam.it.gcp.dataflow.ClassicTemplateClient;
 import org.apache.beam.it.gcp.dataflow.DirectRunnerClient;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateClient;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.sdk.io.FileSystems;
-import org.apache.beam.sdk.io.fs.MatchResult;
-import org.apache.beam.sdk.io.fs.ResourceId;
-import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.Cache;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.cache.CacheBuilder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -128,12 +116,7 @@ public abstract class TemplateTestBase {
   protected String testId;
 
   /** Cache to avoid staging the same template multiple times on the same execution. */
-  private static final ConcurrentHashMap<String, String> stagedTemplates =
-      new ConcurrentHashMap<>();
-
-  static {
-    Runtime.getRuntime().addShutdownHook(new Thread(TemplateTestBase::cleanUpTemplates));
-  }
+  private static final Cache<String, String> stagedTemplates = CacheBuilder.newBuilder().build();
 
   // Template metadata used only for single template tests specified via @TemplateIntegrationTest.
   protected Template template;
@@ -292,10 +275,10 @@ public abstract class TemplateTestBase {
       LOG.info("A spec path was given, not staging template {}", templateMetadata.name());
       return TestProperties.specPath();
     } else {
-      return stagedTemplates.computeIfAbsent(
+      return stagedTemplates.get(
           templateMetadata.name(),
-          (name) -> {
-            LOG.info("Preparing test for {} ({})", name, dataflowTemplateClass);
+          () -> {
+            LOG.info("Preparing test for {} ({})", templateMetadata.name(), dataflowTemplateClass);
 
             String prefix = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(new Date()) + "_IT";
 
@@ -337,7 +320,9 @@ public abstract class TemplateTestBase {
                   templateMetadata.flexContainerName() != null
                       && !templateMetadata.flexContainerName().isEmpty();
               return String.format(
-                  "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", name);
+                  "gs://%s/%s/%s%s",
+                  bucketName, prefix, flex ? "flex/" : "", templateMetadata.name());
+
             } catch (Exception e) {
               throw new IllegalArgumentException("Error staging template", e);
             }
@@ -638,13 +623,13 @@ public abstract class TemplateTestBase {
         artifactId);
   }
 
-  /** Create the default configuration {@link Config} for a specific job info. */
-  protected Config createConfig(LaunchInfo info) {
+  /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
+  protected PipelineOperator.Config createConfig(LaunchInfo info) {
     return createConfig(info, Duration.ofMinutes(45));
   }
 
-  /** Create the default configuration {@link Config} for a specific job info. */
-  protected Config createConfig(LaunchInfo info, Duration duration) {
+  /** Create the default configuration {@link PipelineOperator.Config} for a specific job info. */
+  protected PipelineOperator.Config createConfig(LaunchInfo info, Duration duration) {
     Config.Builder configBuilder =
         Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION);
 
@@ -764,58 +749,5 @@ public abstract class TemplateTestBase {
         LOG.debug("Error shutting down job {}: {}", launchInfo.jobId(), e.getMessage());
       }
     }
-  }
-
-  private static void cleanUpTemplates() {
-    FileSystems.registerFileSystemsOnce(PipelineOptionsFactory.create());
-    ObjectMapper mapper = new ObjectMapper();
-
-    // clean up staged templates after all tests run
-    for (String metafileName : stagedTemplates.values()) {
-      try {
-        MatchResult result = FileSystems.match(metafileName);
-        if (result.metadata().size() != 1) {
-          continue;
-        }
-        ResourceId rid = result.metadata().get(0).resourceId();
-        // for flex template, also clean up staged image
-        if (metafileName.contains("/flex/")) {
-          String raw;
-          try (ReadableByteChannel channel = FileSystems.open(rid)) {
-            Reader reader = Channels.newReader(channel, UTF_8);
-            raw = CharStreams.toString(reader);
-          }
-          JsonNode parsed = mapper.readTree(raw);
-          JsonNode valueNode = parsed.get("image");
-
-          // Check if the key exists and retrieve its text value
-          if (valueNode != null) {
-            String imgName = valueNode.asText();
-            if (!imgName.contains(":")) {
-              imgName = imgName + ":latest";
-            }
-            String[] cmd = null;
-            if (imgName.contains("gcr.io")) {
-              cmd = new String[] {"gcloud", "container", "images", "delete", "-q", imgName};
-            } else if (imgName.contains("pkg.dev")) {
-              cmd =
-                  new String[] {"gcloud", "artifacts", "docker", "images", "delete", "-q", imgName};
-            }
-            if (cmd != null) {
-              Process exec = Runtime.getRuntime().exec(cmd);
-              if (exec.waitFor() != 0) {
-                LOG.warn("Error deleting staged image {}", imgName);
-              }
-            }
-          } else {
-            LOG.warn("Error during clean up staged template: unable to find image from metadata");
-          }
-        }
-        FileSystems.delete(ImmutableList.of(rid));
-      } catch (Exception e) {
-        LOG.warn("Error during clean up staged template.", e);
-      }
-    }
-    stagedTemplates.clear();
   }
 }
