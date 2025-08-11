@@ -79,15 +79,7 @@ func ModulesToBuild() []string {
 	if m == "DEFAULT" {
 		// "DEFAULT" is "ALL" minus other modules defined in moduleMap
 		var s []string
-		for k, v := range moduleMap {
-			if k != "ALL" && k != "DEFAULT" {
-				for _, n := range v {
-					if !(strings.HasPrefix(n, "plugins/") || strings.Contains(n, "common/")) {
-						s = append(s, "!"+n)
-					}
-				}
-			}
-		}
+		s = append(s, "v2/googlecloud-to-neo4j")
 		return s
 	} else if val, ok := moduleMap[modulesToBuild]; ok {
 		return val

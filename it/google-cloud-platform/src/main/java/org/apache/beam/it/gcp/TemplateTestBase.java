@@ -131,9 +131,7 @@ public abstract class TemplateTestBase {
   private static final ConcurrentHashMap<String, String> stagedTemplates =
       new ConcurrentHashMap<>();
 
-  static {
-    Runtime.getRuntime().addShutdownHook(new Thread(TemplateTestBase::cleanUpTemplates));
-  }
+  private static volatile boolean hasStagedTemplates;
 
   // Template metadata used only for single template tests specified via @TemplateIntegrationTest.
   protected Template template;
@@ -336,6 +334,16 @@ public abstract class TemplateTestBase {
               boolean flex =
                   templateMetadata.flexContainerName() != null
                       && !templateMetadata.flexContainerName().isEmpty();
+
+              // register a shutdown hook once when there is template staged
+              synchronized (stagedTemplates) {
+                if (!hasStagedTemplates) {
+                  hasStagedTemplates = true;
+                  Runtime.getRuntime()
+                      .addShutdownHook(new Thread(TemplateTestBase::cleanUpTemplates));
+                }
+              }
+
               return String.format(
                   "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", name);
             } catch (Exception e) {
