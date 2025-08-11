@@ -362,6 +362,12 @@ public class DataStreamToSQL {
     }
   }
 
+  /**
+   * Parses a single map string and resolves it into schema and table mappings, intelligently
+   * inferring a schema-to-schema mapping if only table-specific rules are provided.
+   *
+   * @param mappingString A comma-separated string of mapping rules. Each rule is a
+   */
   public static Map<String, Map<String, String>> parseMappings(String mappingString) {
     Map<String, String> schemaMappings = new HashMap<>();
     Map<String, String> tableMappings = new HashMap<>();
@@ -370,7 +376,6 @@ public class DataStreamToSQL {
       Map<String, String> allMappings =
           Splitter.on(",").withKeyValueSeparator(":").split(mappingString);
 
-      // Pass 1: Strictly separate rules.
       for (Map.Entry<String, String> entry : allMappings.entrySet()) {
         if (entry.getKey().contains(".")) {
           tableMappings.put(entry.getKey(), entry.getValue());
@@ -379,11 +384,9 @@ public class DataStreamToSQL {
         }
       }
 
-      // Pass 2: Intelligently infer schema maps if none were provided.
       if (schemaMappings.isEmpty() && !tableMappings.isEmpty()) {
         LOG.info(
             "No schema-only mapping provided. Attempting to infer schemas from table mappings.");
-        // Iterate through ALL table rules to infer all possible schema mappings.
         for (Map.Entry<String, String> tableRule : tableMappings.entrySet()) {
           String sourceSchema = tableRule.getKey().split("\\.")[0];
           String targetSchema = tableRule.getValue().split("\\.")[0];
@@ -402,12 +405,6 @@ public class DataStreamToSQL {
     return mappings;
   }
 
-  /**
-   * Runs the pipeline with the supplied options.
-   *
-   * @param options The execution parameters to the pipeline.
-   * @return The result of the pipeline execution.
-   */
   /**
    * Runs the pipeline with the supplied options.
    *

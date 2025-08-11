@@ -750,4 +750,66 @@ public class DatastreamToDMLTest {
     assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SAME_SCHEMA");
     assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
   }
+
+  @Test
+  public void testMySqlMapping_withSchemaInheritance() {
+    // Arrange (Scenario 4 for MySQL)
+    String mapString = "HR_SOURCE:HR_PROD,employees:STAFF";
+    DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
+
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"HR_SOURCE\",\"_metadata_table\":\"employees\"}"));
+
+    // Act
+    String actualCatalog = dmlConverter.getTargetCatalogName(row);
+    String actualTable = dmlConverter.getTargetTableName(row);
+
+    // Assert
+    assertThat(actualCatalog).isEqualTo("HR_PROD");
+    assertThat(actualTable).isEqualTo("STAFF");
+  }
+
+  @Test
+  public void testMySqlMapping_withImpliedSchema() {
+    // Arrange (Scenario 5 for MySQL)
+    String mapString = "locations:OFFICES";
+    DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
+
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"GEO_DATA\",\"_metadata_table\":\"locations\"}"));
+
+    // Act
+    String actualCatalog = dmlConverter.getTargetCatalogName(row);
+    String actualTable = dmlConverter.getTargetTableName(row);
+
+    // Assert: The schema (catalog) is unchanged, but the table name is mapped.
+    assertThat(actualCatalog).isEqualTo("GEO_DATA");
+    assertThat(actualTable).isEqualTo("OFFICES");
+  }
+
+  @Test
+  public void testParseMappings_withMultipleInferredSchemas() {
+    // Arrange: Provide table rules with multiple different source/target schemas.
+    String mapping =
+        "hr.employees:human_resources.staff,"
+            + "sales.leads:crm.opportunities,"
+            + "hr.locations:human_resources.offices";
+
+    // Act
+    Map<String, Map<String, String>> result = DataStreamToSQL.parseMappings(mapping);
+    Map<String, String> inferredSchemas = result.get("schemas");
+
+    // Assert: Check that both unique schema pairs were inferred correctly.
+    assertThat(inferredSchemas).hasSize(2);
+    assertThat(inferredSchemas).containsEntry("hr", "human_resources");
+    assertThat(inferredSchemas).containsEntry("sales", "crm");
+  }
 }

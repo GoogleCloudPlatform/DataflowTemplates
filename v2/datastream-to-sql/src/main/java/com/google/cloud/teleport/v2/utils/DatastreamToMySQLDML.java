@@ -60,44 +60,29 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
     return row.getSchemaName() + "." + row.getTableName();
   }
 
-  /**
-   * For MySQL, the catalog is the database/schema. This method now contains the logic to determine
-   * the target schema name, handling inheritance correctly.
-   */
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
-    // 1. Check for a fully-qualified table rule first.
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
-    // 2. For all other cases (table-only rule or schema-only rule),
-    //    find the schema mapping or use the original schema name.
     return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
   }
 
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
-    // This remains empty for MySQL as the catalog is used for the schema.
     return "";
   }
 
-  /**
-   * This method is now updated to find table-only rules in the schemaMappings map, mirroring the
-   * behavior of the PostgreSQL implementation.
-   */
   @Override
   public String getTargetTableName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
-    // 1. Check for a fully-qualified table rule first.
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[1];
     }
-    // 2. Check schemaMappings for a table-only rule.
     if (schemaMappings.containsKey(row.getTableName())) {
       return schemaMappings.get(row.getTableName());
     }
-    // 3. No specific rule, so return the original table name.
     return row.getTableName();
   }
 }
