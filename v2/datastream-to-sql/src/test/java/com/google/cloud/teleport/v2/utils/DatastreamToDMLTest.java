@@ -17,14 +17,22 @@ package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
+import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
+import com.google.cloud.teleport.v2.transforms.CreateDml;
+import com.google.common.truth.Truth;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -796,6 +804,28 @@ public class DatastreamToDMLTest {
   }
 
   @Test
+  public void testMySqlMapping_withFullyQualifiedRule() {
+    // Arrange (Scenario 1 & 2 for MySQL)
+    String mapString = "SOURCE_DB.products:PROD_DB.CATALOG";
+    DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
+
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SOURCE_DB\",\"_metadata_table\":\"products\"}"));
+
+    // Act
+    String actualCatalog = dmlConverter.getTargetCatalogName(row);
+    String actualTable = dmlConverter.getTargetTableName(row);
+
+    // Assert that the fully-qualified rule was applied correctly.
+    assertThat(actualCatalog).isEqualTo("PROD_DB");
+    assertThat(actualTable).isEqualTo("CATALOG");
+  }
+
+  @Test
   public void testParseMappings_withMultipleInferredSchemas() {
     // Arrange: Provide table rules with multiple different source/target schemas.
     String mapping =
@@ -811,5 +841,103 @@ public class DatastreamToDMLTest {
     assertThat(inferredSchemas).hasSize(2);
     assertThat(inferredSchemas).containsEntry("hr", "human_resources");
     assertThat(inferredSchemas).containsEntry("sales", "crm");
+  }
+
+  @Test
+  public void getDatastreamToDML_returnsPostgresGenerator_forPostgresDriver() {
+    // Arrange
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    when(mockConfig.getDriverClassName())
+        .thenReturn(ValueProvider.StaticValueProvider.of("org.postgresql.Driver"));
+
+    // Act
+    DatastreamToDML dmlGenerator = CreateDml.of(mockConfig).getDatastreamToDML();
+
+    // Assert
+    Truth.assertThat(dmlGenerator).isInstanceOf(DatastreamToPostgresDML.class);
+  }
+
+  @Test
+  public void getDatastreamToDML_returnsMySqlGenerator_forMySqlDriver() {
+    // Arrange
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    when(mockConfig.getDriverClassName())
+        .thenReturn(ValueProvider.StaticValueProvider.of("com.mysql.cj.jdbc.Driver"));
+
+    // Act
+    DatastreamToDML dmlGenerator = CreateDml.of(mockConfig).getDatastreamToDML();
+
+    // Assert
+    Truth.assertThat(dmlGenerator).isInstanceOf(DatastreamToMySQLDML.class);
+  }
+
+  @Test
+  public void getDatastreamToDML_throwsException_forInvalidDriver() {
+    // Arrange
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    when(mockConfig.getDriverClassName())
+        .thenReturn(ValueProvider.StaticValueProvider.of("unsupported.driver.class"));
+    CreateDml createDml = CreateDml.of(mockConfig);
+
+    // Act & Assert
+    try {
+      createDml.getDatastreamToDML();
+      fail("Expected IllegalArgumentException to be thrown.");
+    } catch (IllegalArgumentException e) {
+      Truth.assertThat(e)
+          .hasMessageThat()
+          .contains("Database Driver unsupported.driver.class is not supported.");
+    }
+  }
+
+  @Test
+  public void getDataSourceConfiguration_returnsPostgresConfig() {
+    // Arrange: Mock pipeline options for a PostgreSQL connection.
+    Options options = mock(Options.class);
+    when(options.getDatabaseType()).thenReturn("postgres");
+    when(options.getDatabaseHost()).thenReturn("localhost");
+    when(options.getDatabasePort()).thenReturn("5432");
+    when(options.getDatabaseName()).thenReturn("mydb");
+    when(options.getCustomConnectionString()).thenReturn("");
+
+    // Act
+    DataSourceConfiguration config = DataStreamToSQL.getDataSourceConfiguration(options);
+
+    // Assert: We verify the correct driver was chosen, which confirms the logic.
+    Truth.assertThat(config.getDriverClassName().get()).isEqualTo("org.postgresql.Driver");
+  }
+
+  @Test
+  public void getDataSourceConfiguration_returnsMySqlConfig() {
+    // Arrange: Mock pipeline options for a MySQL connection.
+    Options options = mock(Options.class);
+    when(options.getDatabaseType()).thenReturn("mysql");
+    when(options.getDatabaseHost()).thenReturn("127.0.0.1");
+    when(options.getDatabasePort()).thenReturn("3306");
+    when(options.getDatabaseName()).thenReturn("testdb");
+    when(options.getCustomConnectionString()).thenReturn("");
+
+    // Act
+    DataSourceConfiguration config = DataStreamToSQL.getDataSourceConfiguration(options);
+
+    // Assert: We verify the correct driver was chosen, which confirms the logic.
+    Truth.assertThat(config.getDriverClassName().get()).isEqualTo("com.mysql.cj.jdbc.Driver");
+  }
+
+  @Test
+  public void getDataSourceConfiguration_throwsException_forInvalidType() {
+    // Arrange: Mock pipeline options with an unsupported database type.
+    Options options = mock(Options.class);
+    when(options.getDatabaseType()).thenReturn("unsupported-db");
+
+    // Act & Assert: Verify that an IllegalArgumentException is thrown.
+    try {
+      DataStreamToSQL.getDataSourceConfiguration(options);
+      fail("Expected IllegalArgumentException to be thrown.");
+    } catch (IllegalArgumentException e) {
+      Truth.assertThat(e)
+          .hasMessageThat()
+          .contains("Database Type unsupported-db is not supported.");
+    }
   }
 }
