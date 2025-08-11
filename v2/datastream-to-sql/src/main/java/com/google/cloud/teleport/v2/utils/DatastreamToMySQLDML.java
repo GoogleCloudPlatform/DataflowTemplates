@@ -61,9 +61,9 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   }
 
   /**
-  * For MySQL, the catalog is the database/schema. This method now contains the logic
-  * to determine the target schema name, handling inheritance correctly.
-  */
+   * For MySQL, the catalog is the database/schema. This method now contains the logic to determine
+   * the target schema name, handling inheritance correctly.
+   */
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
@@ -83,9 +83,9 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   }
 
   /**
-  * This method is now updated to find table-only rules in the schemaMappings map,
-  * mirroring the behavior of the PostgreSQL implementation.
-  */
+   * This method is now updated to find table-only rules in the schemaMappings map, mirroring the
+   * behavior of the PostgreSQL implementation.
+   */
   @Override
   public String getTargetTableName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
