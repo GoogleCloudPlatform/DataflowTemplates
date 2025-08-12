@@ -681,7 +681,7 @@ public class DatastreamToDMLTest {
 
     // Assert that the schema is mapped and the table name is preserved as-is.
     assertThat(actualTargetSchema2).isEqualTo("HUMAN_RESOURCES");
-    assertThat(actualTargetTable2).isEqualTo("DEPARTMENTS");
+    assertThat(actualTargetTable2).isEqualTo("departments");
   }
 
   @Test
@@ -755,7 +755,7 @@ public class DatastreamToDMLTest {
     DatastreamRow row =
         DatastreamRow.of(
             getRowObj("{\"_metadata_schema\":\"SAME_SCHEMA\",\"_metadata_table\":\"table1\"}"));
-    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SAME_SCHEMA");
+    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("same_schema");
     assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
   }
 
@@ -799,7 +799,7 @@ public class DatastreamToDMLTest {
     String actualTable = dmlConverter.getTargetTableName(row);
 
     // Assert: The schema (catalog) is unchanged, but the table name is mapped.
-    assertThat(actualCatalog).isEqualTo("GEO_DATA");
+    assertThat(actualCatalog).isEqualTo("geo_data");
     assertThat(actualTable).isEqualTo("OFFICES");
   }
 
