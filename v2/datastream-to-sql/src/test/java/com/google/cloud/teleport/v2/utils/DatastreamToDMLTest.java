@@ -699,25 +699,26 @@ public class DatastreamToDMLTest {
 
   @Test
   public void testScenario2_preservesSourceSchema_whenNoSchemaMapExists() {
-      // Arrange: Table-level rules are provided, but no schema-level rule.
-      String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
-      DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
-      Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-      dmlConverter.withSchemaMap(mappings.get("schemas"));
-      dmlConverter.withTableNameMap(mappings.get("tables"));
+    // Arrange: Table-level rules are provided, but no schema-level rule.
+    String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
 
-      // Create a row for an unmapped table from SCHEMA1.
-      DatastreamRow unmappedRow = DatastreamRow.of(
-          getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+    // Create a row for an unmapped table from SCHEMA1.
+    DatastreamRow unmappedRow =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
 
-      // Act
-      String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
-      String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+    // Act
+    String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
+    String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
 
-      // Assert: Verify that the original source schema is preserved (and lowercased),
-      // as schema inference is no longer active.
-      assertThat(actualTargetSchema).isEqualTo("schema1");
-      assertThat(actualTargetTable).isEqualTo("table2");
+    // Assert: Verify that the original source schema is preserved (and lowercased),
+    // as schema inference is no longer active.
+    assertThat(actualTargetSchema).isEqualTo("schema1");
+    assertThat(actualTargetTable).isEqualTo("table2");
   }
 
   @Test
@@ -756,26 +757,28 @@ public class DatastreamToDMLTest {
 
   @Test
   public void testGeneralSchemaRuleTakesPrecedenceOverInference() {
-      // Arrange: A general schema rule (SCHEMA1:SCHEMA3) is provided alongside
-      // more specific, fully-qualified table rules that map to SCHEMA2.
-      String mapString = "SCHEMA1:SCHEMA3,SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
-      DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
-      Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-      dmlConverter.withSchemaMap(mappings.get("schemas"));
-      dmlConverter.withTableNameMap(mappings.get("tables"));
-      
-      // Create a row for an unmapped table from SCHEMA1.
-      DatastreamRow unmappedRow = DatastreamRow.of(
-          getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+    // Arrange: A general schema rule (SCHEMA1:SCHEMA3) is provided alongside
+    // more specific, fully-qualified table rules that map to SCHEMA2.
+    String mapString =
+        "SCHEMA1:SCHEMA3,SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
 
-      // Act
-      String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
-      String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+    // Create a row for an unmapped table from SCHEMA1.
+    DatastreamRow unmappedRow =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
 
-      // Assert: The unmapped table correctly uses the general SCHEMA1:SCHEMA3 rule,
-      // and the schema inference logic is ignored.
-      assertThat(actualTargetSchema).isEqualTo("SCHEMA3");
-      assertThat(actualTargetTable).isEqualTo("table2");
+    // Act
+    String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
+    String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+
+    // Assert: The unmapped table correctly uses the general SCHEMA1:SCHEMA3 rule,
+    // and the schema inference logic is ignored.
+    assertThat(actualTargetSchema).isEqualTo("SCHEMA3");
+    assertThat(actualTargetTable).isEqualTo("table2");
   }
 
   @Test
