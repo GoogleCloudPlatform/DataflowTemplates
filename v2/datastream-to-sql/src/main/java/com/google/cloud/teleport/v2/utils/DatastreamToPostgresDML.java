@@ -78,7 +78,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
-    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName());
+    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName().toLowerCase());
   }
 
   @Override
@@ -90,7 +90,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     if (schemaMappings.containsKey(row.getTableName())) {
       return schemaMappings.get(row.getTableName());
     }
-    return row.getTableName();
+    return row.getTableName().toLowerCase();
   }
 
   @Override
