@@ -78,6 +78,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
+    // Fall back to a schema-level rule or the original name (lowercased).
     return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName().toLowerCase());
   }
 
@@ -87,9 +88,7 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[1];
     }
-    if (schemaMappings.containsKey(row.getTableName())) {
-      return schemaMappings.get(row.getTableName());
-    }
+    // No other rules apply, just default to lowercase.
     return row.getTableName().toLowerCase();
   }
 

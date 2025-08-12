@@ -722,40 +722,6 @@ public class DatastreamToDMLTest {
   }
 
   @Test
-  public void testScenario3_SchemaInheritance() {
-    // Arrange
-    String mapString = "SCHEMA1:SCHEMA2|table1:TABLE1|table3:TABLE3";
-    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
-    dmlConverter.withSchemaMap(mappings.get("schemas"));
-    dmlConverter.withTableNameMap(mappings.get("tables"));
-
-    // Act & Assert for a table with a table-only rule
-    DatastreamRow row =
-        DatastreamRow.of(
-            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table1\"}"));
-    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SCHEMA2");
-    assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
-  }
-
-  @Test
-  public void testScenario4_ImpliedSchema() {
-    // Arrange
-    String mapString = "table1:TABLE1|table3:TABLE3";
-    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
-    dmlConverter.withSchemaMap(mappings.get("schemas"));
-    dmlConverter.withTableNameMap(mappings.get("tables"));
-
-    // Act & Assert for a table with a table-only rule (should infer schema is the same)
-    DatastreamRow row =
-        DatastreamRow.of(
-            getRowObj("{\"_metadata_schema\":\"SAME_SCHEMA\",\"_metadata_table\":\"table1\"}"));
-    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("same_schema");
-    assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
-  }
-
-  @Test
   public void testGeneralSchemaRuleTakesPrecedenceOverInference() {
     // Arrange: A general schema rule (SCHEMA1:SCHEMA3) is provided alongside
     // more specific, fully-qualified table rules that map to SCHEMA2.
@@ -779,50 +745,6 @@ public class DatastreamToDMLTest {
     // and the schema inference logic is ignored.
     assertThat(actualTargetSchema).isEqualTo("SCHEMA3");
     assertThat(actualTargetTable).isEqualTo("table2");
-  }
-
-  @Test
-  public void testMySqlMapping_withSchemaInheritance() {
-    // Arrange (Scenario 4 for MySQL)
-    String mapString = "HR_SOURCE:HR_PROD|employees:STAFF";
-    DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
-
-    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-    dmlConverter.withSchemaMap(mappings.get("schemas"));
-    dmlConverter.withTableNameMap(mappings.get("tables"));
-    DatastreamRow row =
-        DatastreamRow.of(
-            getRowObj("{\"_metadata_schema\":\"HR_SOURCE\",\"_metadata_table\":\"employees\"}"));
-
-    // Act
-    String actualCatalog = dmlConverter.getTargetCatalogName(row);
-    String actualTable = dmlConverter.getTargetTableName(row);
-
-    // Assert
-    assertThat(actualCatalog).isEqualTo("HR_PROD");
-    assertThat(actualTable).isEqualTo("STAFF");
-  }
-
-  @Test
-  public void testMySqlMapping_withImpliedSchema() {
-    // Arrange (Scenario 5 for MySQL)
-    String mapString = "locations:OFFICES";
-    DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
-
-    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-    dmlConverter.withSchemaMap(mappings.get("schemas"));
-    dmlConverter.withTableNameMap(mappings.get("tables"));
-    DatastreamRow row =
-        DatastreamRow.of(
-            getRowObj("{\"_metadata_schema\":\"GEO_DATA\",\"_metadata_table\":\"locations\"}"));
-
-    // Act
-    String actualCatalog = dmlConverter.getTargetCatalogName(row);
-    String actualTable = dmlConverter.getTargetTableName(row);
-
-    // Assert: The schema (catalog) is unchanged, but the table name is mapped.
-    assertThat(actualCatalog).isEqualTo("geo_data");
-    assertThat(actualTable).isEqualTo("OFFICES");
   }
 
   @Test

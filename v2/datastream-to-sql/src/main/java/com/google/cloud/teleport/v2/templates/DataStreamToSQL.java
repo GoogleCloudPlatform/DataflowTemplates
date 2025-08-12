@@ -366,7 +366,7 @@ public class DataStreamToSQL {
    * Parses a single map string and resolves it into schema and table mappings, intelligently
    * inferring a schema-to-schema mapping if only table-specific rules are provided.
    *
-   * @param mappingString A comma-separated string of mapping rules. Each rule is a
+   * @param mappingString A comma-separated string of mapping rules.
    */
   public static Map<String, Map<String, String>> parseMappings(String mappingString) {
     Map<String, String> schemaMappings = new HashMap<>();
@@ -376,6 +376,7 @@ public class DataStreamToSQL {
       Map<String, String> allMappings =
           Splitter.on("|").withKeyValueSeparator(":").split(mappingString);
 
+      // Strictly separate rules based on the presence of a dot.
       for (Map.Entry<String, String> entry : allMappings.entrySet()) {
         if (entry.getKey().contains(".")) {
           tableMappings.put(entry.getKey(), entry.getValue());
@@ -384,7 +385,6 @@ public class DataStreamToSQL {
         }
       }
     }
-
     Map<String, Map<String, String>> mappings = new HashMap<>();
     mappings.put("schemas", schemaMappings);
     mappings.put("tables", tableMappings);
