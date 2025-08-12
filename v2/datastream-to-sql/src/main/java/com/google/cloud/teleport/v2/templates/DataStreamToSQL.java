@@ -374,7 +374,7 @@ public class DataStreamToSQL {
 
     if (mappingString != null && !mappingString.isEmpty()) {
       Map<String, String> allMappings =
-          Splitter.on(",").withKeyValueSeparator(":").split(mappingString);
+          Splitter.on("|").withKeyValueSeparator(":").split(mappingString);
 
       for (Map.Entry<String, String> entry : allMappings.entrySet()) {
         if (entry.getKey().contains(".")) {

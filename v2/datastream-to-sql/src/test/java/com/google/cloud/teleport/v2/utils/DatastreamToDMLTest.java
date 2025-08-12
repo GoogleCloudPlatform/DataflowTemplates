@@ -625,7 +625,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testParseMappings_withMixedAndTableOnlyRules() {
     // 1. Test with a mix of schema-level and table-level rules
-    String mixedMapping = "hr:human_resources,hr.employees:human_resources.staff,finance:fin";
+    String mixedMapping = "hr:human_resources|hr.employees:human_resources.staff|finance:fin";
     Map<String, Map<String, String>> mixedResult = DataStreamToSQL.parseMappings(mixedMapping);
 
     assertThat(mixedResult.get("schemas"))
@@ -676,7 +676,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testScenario1_ExplicitPrecedence() {
     // Arrange
-    String mapString = "SCHEMA1:SCHEMA2,SCHEMA1.table1:SCHEMA2.TABLE1";
+    String mapString = "SCHEMA1:SCHEMA2|SCHEMA1.table1:SCHEMA2.TABLE1";
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
     DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
     dmlConverter.withSchemaMap(mappings.get("schemas"));
@@ -700,7 +700,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testScenario2_preservesSourceSchema_whenNoSchemaMapExists() {
     // Arrange: Table-level rules are provided, but no schema-level rule.
-    String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+    String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1|SCHEMA1.table3:SCHEMA2.TABLE3";
     DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
     dmlConverter.withSchemaMap(mappings.get("schemas"));
@@ -724,7 +724,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testScenario3_SchemaInheritance() {
     // Arrange
-    String mapString = "SCHEMA1:SCHEMA2,table1:TABLE1,table3:TABLE3";
+    String mapString = "SCHEMA1:SCHEMA2|table1:TABLE1|table3:TABLE3";
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
     DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
     dmlConverter.withSchemaMap(mappings.get("schemas"));
@@ -741,7 +741,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testScenario4_ImpliedSchema() {
     // Arrange
-    String mapString = "table1:TABLE1,table3:TABLE3";
+    String mapString = "table1:TABLE1|table3:TABLE3";
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
     DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
     dmlConverter.withSchemaMap(mappings.get("schemas"));
@@ -760,7 +760,7 @@ public class DatastreamToDMLTest {
     // Arrange: A general schema rule (SCHEMA1:SCHEMA3) is provided alongside
     // more specific, fully-qualified table rules that map to SCHEMA2.
     String mapString =
-        "SCHEMA1:SCHEMA3,SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+        "SCHEMA1:SCHEMA3|SCHEMA1.table1:SCHEMA2.TABLE1|SCHEMA1.table3:SCHEMA2.TABLE3";
     DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
     dmlConverter.withSchemaMap(mappings.get("schemas"));
@@ -784,7 +784,7 @@ public class DatastreamToDMLTest {
   @Test
   public void testMySqlMapping_withSchemaInheritance() {
     // Arrange (Scenario 4 for MySQL)
-    String mapString = "HR_SOURCE:HR_PROD,employees:STAFF";
+    String mapString = "HR_SOURCE:HR_PROD|employees:STAFF";
     DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
 
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
