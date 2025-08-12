@@ -74,6 +74,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.io.CharStreams;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.experimental.categories.Category;
@@ -335,15 +336,6 @@ public abstract class TemplateTestBase {
                   templateMetadata.flexContainerName() != null
                       && !templateMetadata.flexContainerName().isEmpty();
 
-              // register a shutdown hook once when there is template staged
-              synchronized (stagedTemplates) {
-                if (!hasStagedTemplates) {
-                  hasStagedTemplates = true;
-                  Runtime.getRuntime()
-                      .addShutdownHook(new Thread(TemplateTestBase::cleanUpTemplates));
-                }
-              }
-
               return String.format(
                   "gs://%s/%s/%s%s", bucketName, prefix, flex ? "flex/" : "", name);
             } catch (Exception e) {
@@ -474,6 +466,17 @@ public abstract class TemplateTestBase {
   public void baseCleanup() throws IOException {
     if (!skipBaseCleanup) {
       tearDownBase();
+    }
+  }
+
+  @AfterClass
+  public static void baseAfterClass() {
+    // register a shutdown hook once when there is template staged
+    synchronized (stagedTemplates) {
+      if (!hasStagedTemplates && !stagedTemplates.isEmpty()) {
+        hasStagedTemplates = true;
+        Runtime.getRuntime().addShutdownHook(new Thread(TemplateTestBase::cleanUpTemplates));
+      }
     }
   }
 
