@@ -383,20 +383,6 @@ public class DataStreamToSQL {
           schemaMappings.put(entry.getKey(), entry.getValue());
         }
       }
-
-      if (schemaMappings.isEmpty() && !tableMappings.isEmpty()) {
-        LOG.info(
-            "No schema-only mapping provided. Attempting to infer schemas from table mappings.");
-        for (Map.Entry<String, String> tableRule : tableMappings.entrySet()) {
-          String sourceSchema = tableRule.getKey().split("\\.")[0];
-          String targetSchema = tableRule.getValue().split("\\.")[0];
-
-          if (!schemaMappings.containsKey(sourceSchema)) {
-            LOG.info("Inferred schema mapping: '{}' to '{}'", sourceSchema, targetSchema);
-            schemaMappings.put(sourceSchema, targetSchema);
-          }
-        }
-      }
     }
 
     Map<String, Map<String, String>> mappings = new HashMap<>();

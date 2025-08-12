@@ -632,18 +632,7 @@ public class DatastreamToDMLTest {
         .containsExactly("hr", "human_resources", "finance", "fin");
     assertThat(mixedResult.get("tables")).containsExactly("hr.employees", "human_resources.staff");
 
-    // 2. Test with only table-level rules and verify schema inference
-    String tableOnlyMapping = "source_a.table1:dest_a.table_x,source_b.table2:dest_b.table_y";
-    Map<String, Map<String, String>> tableOnlyResult =
-        DataStreamToSQL.parseMappings(tableOnlyMapping);
-
-    // Assert that schemas were correctly inferred from the table mappings.
-    assertThat(tableOnlyResult.get("schemas"))
-        .containsExactly("source_a", "dest_a", "source_b", "dest_b");
-    assertThat(tableOnlyResult.get("tables"))
-        .containsExactly("source_a.table1", "dest_a.table_x", "source_b.table2", "dest_b.table_y");
-
-    // 3. Test with an empty string
+    // 2. Test with an empty string
     Map<String, Map<String, String>> emptyResult = DataStreamToSQL.parseMappings("");
     assertThat(emptyResult.get("schemas")).isEmpty();
     assertThat(emptyResult.get("tables")).isEmpty();
@@ -709,24 +698,30 @@ public class DatastreamToDMLTest {
   }
 
   @Test
-  public void testScenario3_InferredSchema() {
-    // Arrange
-    String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
-    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
-    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
-    dmlConverter.withSchemaMap(mappings.get("schemas"));
-    dmlConverter.withTableNameMap(mappings.get("tables"));
+  public void testScenario2_preservesSourceSchema_whenNoSchemaMapExists() {
+      // Arrange: Table-level rules are provided, but no schema-level rule.
+      String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+      DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+      Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+      dmlConverter.withSchemaMap(mappings.get("schemas"));
+      dmlConverter.withTableNameMap(mappings.get("tables"));
 
-    // Act & Assert for an unmapped table (should use inferred schema)
-    DatastreamRow row =
-        DatastreamRow.of(
-            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
-    assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("SCHEMA2");
-    assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("table2");
+      // Create a row for an unmapped table from SCHEMA1.
+      DatastreamRow unmappedRow = DatastreamRow.of(
+          getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+
+      // Act
+      String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
+      String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+
+      // Assert: Verify that the original source schema is preserved (and lowercased),
+      // as schema inference is no longer active.
+      assertThat(actualTargetSchema).isEqualTo("schema1");
+      assertThat(actualTargetTable).isEqualTo("table2");
   }
 
   @Test
-  public void testScenario4_SchemaInheritance() {
+  public void testScenario3_SchemaInheritance() {
     // Arrange
     String mapString = "SCHEMA1:SCHEMA2,table1:TABLE1,table3:TABLE3";
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
@@ -743,7 +738,7 @@ public class DatastreamToDMLTest {
   }
 
   @Test
-  public void testScenario5_ImpliedSchema() {
+  public void testScenario4_ImpliedSchema() {
     // Arrange
     String mapString = "table1:TABLE1,table3:TABLE3";
     Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
@@ -757,6 +752,30 @@ public class DatastreamToDMLTest {
             getRowObj("{\"_metadata_schema\":\"SAME_SCHEMA\",\"_metadata_table\":\"table1\"}"));
     assertThat(dmlConverter.getTargetSchemaName(row)).isEqualTo("same_schema");
     assertThat(dmlConverter.getTargetTableName(row)).isEqualTo("TABLE1");
+  }
+
+  @Test
+  public void testGeneralSchemaRuleTakesPrecedenceOverInference() {
+      // Arrange: A general schema rule (SCHEMA1:SCHEMA3) is provided alongside
+      // more specific, fully-qualified table rules that map to SCHEMA2.
+      String mapString = "SCHEMA1:SCHEMA3,SCHEMA1.table1:SCHEMA2.TABLE1,SCHEMA1.table3:SCHEMA2.TABLE3";
+      DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+      Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+      dmlConverter.withSchemaMap(mappings.get("schemas"));
+      dmlConverter.withTableNameMap(mappings.get("tables"));
+      
+      // Create a row for an unmapped table from SCHEMA1.
+      DatastreamRow unmappedRow = DatastreamRow.of(
+          getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+
+      // Act
+      String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
+      String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+
+      // Assert: The unmapped table correctly uses the general SCHEMA1:SCHEMA3 rule,
+      // and the schema inference logic is ignored.
+      assertThat(actualTargetSchema).isEqualTo("SCHEMA3");
+      assertThat(actualTargetTable).isEqualTo("table2");
   }
 
   @Test
@@ -823,24 +842,6 @@ public class DatastreamToDMLTest {
     // Assert that the fully-qualified rule was applied correctly.
     assertThat(actualCatalog).isEqualTo("PROD_DB");
     assertThat(actualTable).isEqualTo("CATALOG");
-  }
-
-  @Test
-  public void testParseMappings_withMultipleInferredSchemas() {
-    // Arrange: Provide table rules with multiple different source/target schemas.
-    String mapping =
-        "hr.employees:human_resources.staff,"
-            + "sales.leads:crm.opportunities,"
-            + "hr.locations:human_resources.offices";
-
-    // Act
-    Map<String, Map<String, String>> result = DataStreamToSQL.parseMappings(mapping);
-    Map<String, String> inferredSchemas = result.get("schemas");
-
-    // Assert: Check that both unique schema pairs were inferred correctly.
-    assertThat(inferredSchemas).hasSize(2);
-    assertThat(inferredSchemas).containsEntry("hr", "human_resources");
-    assertThat(inferredSchemas).containsEntry("sales", "crm");
   }
 
   @Test
