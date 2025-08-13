@@ -249,7 +249,8 @@ public final class DatastreamResourceManager implements ResourceManager {
         sourceConfigBuilder.setMysqlSourceConfig((MysqlSourceConfig) source.config());
         break;
       case POSTGRESQL:
-        sourceConfigBuilder.setPostgresqlSourceConfig((PostgresqlSourceConfig) source.config());
+        sourceConfigBuilder.setPostgresqlSourceConfig(
+            ((PostgresqlSourceConfig.Builder) source.config()).build());
         break;
       case ORACLE:
         sourceConfigBuilder.setOracleSourceConfig((OracleSourceConfig) source.config());
