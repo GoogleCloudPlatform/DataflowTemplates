@@ -68,10 +68,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     return "";
   }
 
-  private String getFullSourceTableName(DatastreamRow row) {
-    return row.getSchemaName() + "." + row.getTableName();
-  }
-
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
@@ -80,16 +76,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
     }
     // Fall back to a schema-level rule or the original name (lowercased).
     return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName().toLowerCase());
-  }
-
-  @Override
-  public String getTargetTableName(DatastreamRow row) {
-    String fullSourceTableName = getFullSourceTableName(row);
-    if (tableMappings.containsKey(fullSourceTableName)) {
-      return tableMappings.get(fullSourceTableName).split("\\.")[1];
-    }
-    // No other rules apply, just default to lowercase.
-    return row.getTableName().toLowerCase();
   }
 
   @Override

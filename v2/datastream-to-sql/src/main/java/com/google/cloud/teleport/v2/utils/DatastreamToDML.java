@@ -71,8 +71,6 @@ public abstract class DatastreamToDML
 
   public abstract String getTargetSchemaName(DatastreamRow row);
 
-  public abstract String getTargetTableName(DatastreamRow row);
-
   /* An exception for delete DML without a primary key */
   private class DeletedWithoutPrimaryKey extends RuntimeException {
     public DeletedWithoutPrimaryKey(String errorMessage) {
@@ -172,6 +170,19 @@ public abstract class DatastreamToDML
     }
 
     return this.tableCache.get(searchKey);
+  }
+
+  protected String getFullSourceTableName(DatastreamRow row) {
+    return row.getSchemaName() + "." + row.getTableName();
+  }
+
+  public String getTargetTableName(DatastreamRow row) {
+    String fullSourceTableName = getFullSourceTableName(row);
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      return tableMappings.get(fullSourceTableName).split("\\.")[1];
+    }
+    // No other rules apply, just default to lowercase.
+    return row.getTableName().toLowerCase();
   }
 
   public List<String> getPrimaryKeys(

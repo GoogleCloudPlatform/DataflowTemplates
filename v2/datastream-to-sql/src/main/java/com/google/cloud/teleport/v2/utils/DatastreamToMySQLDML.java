@@ -56,10 +56,6 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
         + "({quoted_column_names}) VALUES ({column_value_sql});";
   }
 
-  private String getFullSourceTableName(DatastreamRow row) {
-    return row.getSchemaName() + "." + row.getTableName();
-  }
-
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
     String fullSourceTableName = getFullSourceTableName(row);
@@ -73,15 +69,5 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     return "";
-  }
-
-  @Override
-  public String getTargetTableName(DatastreamRow row) {
-    String fullSourceTableName = getFullSourceTableName(row);
-    if (tableMappings.containsKey(fullSourceTableName)) {
-      return tableMappings.get(fullSourceTableName).split("\\.")[1];
-    }
-    // No other rules apply, just default to lowercase.
-    return row.getTableName().toLowerCase();
   }
 }
