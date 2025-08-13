@@ -50,9 +50,9 @@ public class Neo4jCapabilitiesTest {
 
   @Test
   public void cypher_version_statement_availability() {
-    var before = new Neo4jCapabilities("2025.05.01", "community");
-    var first = new Neo4jCapabilities("2025.06.00", "community");
-    var after = new Neo4jCapabilities("2025.07.01", "community");
+    var before = new Neo4jCapabilities("5.20", "community");
+    var first = new Neo4jCapabilities("5.21", "community");
+    var after = new Neo4jCapabilities("5.26", "community");
 
     assertFalse("last version before cypher version statement", before.hasCypherVersionStatement());
     assertTrue("first version with cypher version statement", first.hasCypherVersionStatement());
