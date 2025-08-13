@@ -106,9 +106,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(
-        datastreamResourceManager, pubsubResourceManager, gcsResourceManager);
-
     try {
       cloudSqlSourceResourceManager.runSQLUpdate(
           String.format(
@@ -130,7 +127,11 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     }
 
     ResourceManagerUtils.cleanResources(
-        cloudSqlSourceResourceManager, cloudSqlDestinationResourceManager);
+        datastreamResourceManager,
+        pubsubResourceManager,
+        gcsResourceManager,
+        cloudSqlSourceResourceManager,
+        cloudSqlDestinationResourceManager);
   }
 
   @Test
