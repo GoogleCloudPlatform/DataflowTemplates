@@ -36,7 +36,7 @@ public final class Neo4jCapabilities implements Serializable {
   }
 
   public boolean hasCypherVersionStatement() {
-    return version.compareTo(Neo4jVersion.V2025_06) >= 0;
+    return version.compareTo(Neo4jVersion.V5_21_0) >= 0;
   }
 
   public boolean hasVectorIndexes() {
@@ -103,7 +103,7 @@ public final class Neo4jCapabilities implements Serializable {
     public static final Neo4jVersion V5_7_0 = new Neo4jVersion(5, 7, 0);
     public static final Neo4jVersion V5_11_0 = new Neo4jVersion(5, 11, 0);
     public static final Neo4jVersion V5_13_0 = new Neo4jVersion(5, 13, 0);
-    public static final Neo4jVersion V2025_06 = new Neo4jVersion(2025, 6, 0);
+    public static final Neo4jVersion V5_21_0 = new Neo4jVersion(5, 21, 0);
 
     private final int major;
     private final int minor;

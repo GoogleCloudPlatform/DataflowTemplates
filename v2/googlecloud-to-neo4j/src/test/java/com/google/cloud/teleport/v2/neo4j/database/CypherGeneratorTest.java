@@ -588,7 +588,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
       generates_correct_schema_statement_for_multi_label_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_LABEL_SINGLE_PASS),
-        capabilitiesFor("2025.06", "enterprise"),
+        capabilitiesFor("5.21", "enterprise"),
         Set.of(
             "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source1-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source1`) REQUIRE (n.`src_id`) IS NODE KEY",
             "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source2-node-single-key-for-src_id` IF NOT EXISTS FOR (n:`Source2`) REQUIRE (n.`src_id`) IS NODE KEY",
@@ -671,7 +671,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
       generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
-        capabilitiesFor("2025.06", "enterprise"),
+        capabilitiesFor("5.21", "enterprise"),
         Set.of(
             "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id1` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id1`) IS NODE KEY",
             "CYPHER 5 CREATE CONSTRAINT `Edge import-source-Source-node-key-for-src_id2` IF NOT EXISTS FOR (n:`Source`) REQUIRE (n.`src_id2`) IS NODE KEY",
@@ -710,7 +710,7 @@ public final class CypherGeneratorTest extends BaseCypherGeneratorTest {
       generates_correct_schema_statement_for_multi_distinct_keys_node_key_constraints_when_merging_edge_nodes_on_neo4j_2025_06_plus_community() {
     assertSchemaStatements(
         importSpecificationOf(MULTI_DISTINCT_KEYS_SINGLE_PASS),
-        capabilitiesFor("2025.06", "community"),
+        capabilitiesFor("5.21", "community"),
         Set.of());
   }
 
