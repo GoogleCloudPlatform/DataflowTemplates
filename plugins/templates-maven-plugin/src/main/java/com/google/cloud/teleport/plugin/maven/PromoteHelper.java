@@ -38,6 +38,7 @@ class PromoteHelper {
   private final ArtifactRegImageSpec sourceSpec;
   private final ArtifactRegImageSpec targetSpec;
   // needed for adding tag
+  private final String sourcePath;
   private final String targetPath;
   private final String sourceDigest;
   private final String token;
@@ -64,6 +65,7 @@ class PromoteHelper {
     this.imageTag = imageTag;
     this.sourceDigest = sourceDigest;
     this.token = token;
+    this.sourcePath = sourcePath;
     this.targetPath = targetPath;
   }
 
@@ -75,10 +77,11 @@ class PromoteHelper {
     JsonElement parsed = JsonParser.parseString(responseRLO);
     String operation = parsed.getAsJsonObject().get("name").getAsString();
     waitForComplete(operation);
-    addTag(imageTag);
+    addTag(sourcePath, "public-image-latest");
+    addTag(targetPath, imageTag);
     // override latest (for pull default tag) and public-image-latest (for vul scan)
-    addTag("latest");
-    addTag("public-image-latest");
+    addTag(targetPath, "latest");
+    addTag(targetPath, "public-image-latest");
   }
 
   @VisibleForTesting
@@ -141,10 +144,21 @@ class PromoteHelper {
   }
 
   /** Add tag after promotion. */
-  private void addTag(String tag) throws IOException, InterruptedException {
+  private void addTag(String path, String tag) throws IOException, InterruptedException {
     // TODO: remove this once copy tag is supported by promote API
     String[] command;
-    if (targetSpec.repository.endsWith("gcr.io")) {
+    if (path.contains("pkg.dev")) {
+      command =
+          new String[] {
+            "gcloud",
+            "artifacts",
+            "docker",
+            "tags",
+            "add",
+            String.format("%s@%s", path, sourceDigest),
+            String.format("%s:%s", path, tag)
+          };
+    } else if (path.contains("gcr.io")) {
       // gcr.io repository needs to use `gcloud container` to add tag
       command =
           new String[] {
@@ -153,20 +167,11 @@ class PromoteHelper {
             "images",
             "add-tag",
             "-q",
-            String.format("%s@%s", targetPath, sourceDigest),
-            String.format("%s:%s", targetPath, tag)
+            String.format("%s@%s", path, sourceDigest),
+            String.format("%s:%s", path, tag)
           };
     } else {
-      command =
-          new String[] {
-            "gcloud",
-            "artifacts",
-            "docker",
-            "tags",
-            "add",
-            String.format("%s@%s", targetPath, sourceDigest),
-            String.format("%s:%s", targetPath, tag)
-          };
+      throw new IllegalArgumentException("Expect a pkg.dev or gcr.io image, got " + path);
     }
     TemplatesStageMojo.runCommandCapturesOutput(command, null);
   }
