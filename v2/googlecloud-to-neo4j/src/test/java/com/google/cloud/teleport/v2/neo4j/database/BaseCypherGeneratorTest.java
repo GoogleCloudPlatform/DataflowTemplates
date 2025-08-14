@@ -47,14 +47,16 @@ public abstract sealed class BaseCypherGeneratorTest permits CypherGeneratorTest
   protected void assertImportStatementOf(ImportSpecification spec, String expectedCypher) {
     final Neo4jCapabilities beforeCypher5Possibility = new Neo4jCapabilities("5.20", "community");
     var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
-    var actualCypher = CypherGenerator.getImportStatement(spec, relationshipTarget, beforeCypher5Possibility);
+    var actualCypher =
+        CypherGenerator.getImportStatement(spec, relationshipTarget, beforeCypher5Possibility);
     assertThat(actualCypher).isEqualTo(expectedCypher);
   }
 
   protected void assertCypherPrefixOf(ImportSpecification spec, String expectedCypherPrefix) {
     final Neo4jCapabilities afterCypher5Possibility = new Neo4jCapabilities("5.21", "community");
     var relationshipTarget = spec.getTargets().getRelationships().iterator().next();
-    var actualCypher = CypherGenerator.getImportStatement(spec, relationshipTarget, afterCypher5Possibility);
+    var actualCypher =
+        CypherGenerator.getImportStatement(spec, relationshipTarget, afterCypher5Possibility);
     assertThat(actualCypher).startsWith(expectedCypherPrefix);
   }
 
