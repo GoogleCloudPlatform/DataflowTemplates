@@ -81,7 +81,7 @@ public class SchemaDiscoveryImplTest {
     final BackOff mockBackoff = mock(BackOff.class);
 
     when(mockFluentBackoff.backoff()).thenReturn(mockBackoff);
-    when(mockBackoff.nextBackOffMillis()).thenThrow(new IOException("test"));
+    when(mockBackoff.nextBackOffMillis()).thenThrow(new RuntimeException("test"));
     when(mockDataSource.jdbc()).thenReturn(mockJdbcDataSource);
     when(mockRetriableSchemaDiscovery.discoverTableSchema(
             mockDataSource, mockSourceSchemaReference, ImmutableList.of()))
