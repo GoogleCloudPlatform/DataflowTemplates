@@ -44,6 +44,9 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **transformationJarPath**: Custom jar location in Cloud Storage that contains the custom transformation logic for processing records in reverse replication. Defaults to empty.
 * **transformationClassName**: Fully qualified class name having the custom transformation logic.  It is a mandatory field in case transformationJarPath is specified. Defaults to empty.
 * **transformationCustomParameters**: String containing any custom parameters to be passed to the custom transformation class. Defaults to empty.
+* **tableOverrides**: These are the table name overrides from spanner to source. They are written in thefollowing format: [{SpannerTableName1, SourceTableName1}, {SpannerTableName2, SourceTableName2}]This example shows mapping Singers table to Vocalists and Albums table to Records. For example, `[{Singers, Vocalists}, {Albums, Records}]`. Defaults to empty.
+* **columnOverrides**: These are the column name overrides from spanner to source. They are written in thefollowing format: [{SpannerTableName1.SpannerColumnName1, SpannerTableName1.SourceColumnName1}, {SpannerTableName2.SpannerColumnName1, SpannerTableName2.SourceColumnName1}]Note that the SpannerTableName should remain the same in both the spanner and source pair. To override table names, use tableOverrides.The example shows mapping SingerName to TalentName and AlbumName to RecordName in Singers and Albums table respectively. For example, `[{Singers.SingerName, Singers.TalentName}, {Albums.AlbumName, Albums.RecordName}]`. Defaults to empty.
+* **schemaOverridesFilePath**: A file which specifies the table and the column name overrides from spanner to source. Defaults to empty.
 * **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
 * **isShardedMigration**: Sets the template to a sharded migration. If source shard template contains more than one shard, the value will be set to true. This value defaults to false.
 
@@ -153,6 +156,9 @@ export SOURCE_TYPE=mysql
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export TABLE_OVERRIDES=""
+export COLUMN_OVERRIDES=""
+export SCHEMA_OVERRIDES_FILE_PATH=""
 export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
 export IS_SHARDED_MIGRATION=false
 
@@ -187,6 +193,9 @@ gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --parameters "transformationJarPath=$TRANSFORMATION_JAR_PATH" \
   --parameters "transformationClassName=$TRANSFORMATION_CLASS_NAME" \
   --parameters "transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS" \
+  --parameters "tableOverrides=$TABLE_OVERRIDES" \
+  --parameters "columnOverrides=$COLUMN_OVERRIDES" \
+  --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
   --parameters "filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME" \
   --parameters "isShardedMigration=$IS_SHARDED_MIGRATION"
 ```
@@ -236,6 +245,9 @@ export SOURCE_TYPE=mysql
 export TRANSFORMATION_JAR_PATH=""
 export TRANSFORMATION_CLASS_NAME=""
 export TRANSFORMATION_CUSTOM_PARAMETERS=""
+export TABLE_OVERRIDES=""
+export COLUMN_OVERRIDES=""
+export SCHEMA_OVERRIDES_FILE_PATH=""
 export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
 export IS_SHARDED_MIGRATION=false
 
@@ -246,7 +258,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-sourcedb-job" \
 -DtemplateName="Spanner_to_SourceDb" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION" \
 -f v2/spanner-to-sourcedb
 ```
 
@@ -318,6 +330,9 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     # transformationJarPath = ""
     # transformationClassName = ""
     # transformationCustomParameters = ""
+    # tableOverrides = ""
+    # columnOverrides = ""
+    # schemaOverridesFilePath = ""
     # filterEventsDirectoryName = "filteredEvents"
     # isShardedMigration = "false"
   }
