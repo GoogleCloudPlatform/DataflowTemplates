@@ -41,28 +41,6 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
   }
 
   @Override
-  public String getColumnsUpdateSql(JsonNode rowObj, Map<String, String> tableSchema) {
-    String onUpdateSql = "";
-    for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
-      String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
-
-      String quotedColumnName = quote(columnName);
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
-
-      if (onUpdateSql.equals("")) {
-        onUpdateSql = quotedColumnName + "=EXCLUDED." + quotedColumnName;
-      } else {
-        onUpdateSql = onUpdateSql + "," + quotedColumnName + "=EXCLUDED." + quotedColumnName;
-      }
-    }
-
-    return onUpdateSql;
-  }
-
-  @Override
   public String getDefaultQuoteCharacter() {
     return "\"";
   }
@@ -92,14 +70,12 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
 
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
-    String schemaName = row.getSchemaName();
-    return cleanSchemaName(schemaName);
-  }
-
-  @Override
-  public String getTargetTableName(DatastreamRow row) {
-    String tableName = row.getTableName();
-    return cleanTableName(tableName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      return tableMappings.get(fullSourceTableName).split("\\.")[0];
+    }
+    // Fall back to a schema-level rule or the original name (lowercased).
+    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName().toLowerCase());
   }
 
   @Override

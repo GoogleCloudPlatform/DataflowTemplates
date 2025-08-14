@@ -17,14 +17,22 @@ package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO.DataSourceConfiguration;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL;
+import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
+import com.google.cloud.teleport.v2.transforms.CreateDml;
+import com.google.common.truth.Truth;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -611,54 +619,251 @@ public class DatastreamToDMLTest {
   }
 
   /**
-   * Test whether {@link DatastreamToDML#getTargetSchemaName} converts the Oracle schema into the
-   * correct Postgres schema.
+   * Tests the parseMappings method with a mix of schema and table rules, as well as table-only
+   * rules that imply schemas.
    */
   @Test
-  public void testGetPostgresSchemaName() {
-    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj(JSON_STRING);
-    DatastreamRow row = DatastreamRow.of(rowObj);
+  public void testParseMappings_withMixedAndTableOnlyRules() {
+    // 1. Test with a mix of schema-level and table-level rules
+    String mixedMapping = "hr:human_resources|hr.employees:human_resources.staff|finance:fin";
+    Map<String, Map<String, String>> mixedResult = DataStreamToSQL.parseMappings(mixedMapping);
 
-    String expectedSchemaName = "my_schema";
-    String schemaName = datastreamToDML.getTargetSchemaName(row);
-    assertEquals(schemaName, expectedSchemaName);
+    assertThat(mixedResult.get("schemas"))
+        .containsExactly("hr", "human_resources", "finance", "fin");
+    assertThat(mixedResult.get("tables")).containsExactly("hr.employees", "human_resources.staff");
+
+    // 2. Test with an empty string
+    Map<String, Map<String, String>> emptyResult = DataStreamToSQL.parseMappings("");
+    assertThat(emptyResult.get("schemas")).isEmpty();
+    assertThat(emptyResult.get("tables")).isEmpty();
   }
 
-  /**
-   * Test whether {@link DatastreamToPostgresDML#getTargetTableName} converts the Oracle table into
-   * the correct Postgres table.
-   */
+  /** Verifies that the DML generator correctly applies mappings without unexpected case changes. */
   @Test
-  public void testGetPostgresTableName() {
-    DatastreamToDML datastreamToDML = DatastreamToPostgresDML.of(null);
-    JsonNode rowObj = this.getRowObj(JSON_STRING);
-    DatastreamRow row = DatastreamRow.of(rowObj);
+  public void testTargetNameLogic_withPostgresMapping() {
+    // 1. Arrange: Create a DML converter and configure it with a mapping rule set.
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    Map<String, String> combinedMap = new HashMap<>();
+    combinedMap.put("HR", "HUMAN_RESOURCES"); // Schema rule
+    combinedMap.put("HR.EMPLOYEES", "HUMAN_RESOURCES.STAFF_2025"); // Specific table rule
+    dmlConverter.withSchemaMap(combinedMap);
 
-    String expectedTableName = "my_table$name";
-    String tableName = datastreamToDML.getTargetTableName(row);
-    assertEquals(expectedTableName, tableName);
+    // 2. Act & Assert for the table with a specific rule.
+    String tableSpecificJson =
+        "{\"_metadata_schema\":\"HR\"," + "\"_metadata_table\":\"EMPLOYEES\"" + "}";
+    DatastreamRow tableSpecificRow = DatastreamRow.of(getRowObj(tableSpecificJson));
+
+    String actualTargetSchema1 = dmlConverter.getTargetSchemaName(tableSpecificRow);
+    String actualTargetTable1 = dmlConverter.getTargetTableName(tableSpecificRow);
+
+    // Assert that the names are mapped correctly, preserving the case from the map.
+    assertThat(actualTargetSchema1).isEqualTo("HUMAN_RESOURCES");
+    assertThat(actualTargetTable1).isEqualTo("STAFF_2025");
+
+    // 3. Act & Assert for a table that uses the schema-level fallback rule.
+    String schemaFallbackJson =
+        "{\"_metadata_schema\":\"HR\"," + "\"_metadata_table\":\"DEPARTMENTS\"" + "}";
+    DatastreamRow schemaFallbackRow = DatastreamRow.of(getRowObj(schemaFallbackJson));
+
+    String actualTargetSchema2 = dmlConverter.getTargetSchemaName(schemaFallbackRow);
+    String actualTargetTable2 = dmlConverter.getTargetTableName(schemaFallbackRow);
+
+    // Assert that the schema is mapped and the table name is preserved as-is.
+    assertThat(actualTargetSchema2).isEqualTo("HUMAN_RESOURCES");
+    assertThat(actualTargetTable2).isEqualTo("departments");
   }
 
-  /** Test cleaning schema map. */
   @Test
-  public void testParseSchemaMap() {
-    Map<String, String> singleItemExpected =
-        new HashMap<String, String>() {
-          {
-            put("a", "b");
-          }
-        };
-    Map<String, String> doubleItemExpected =
-        new HashMap<String, String>() {
-          {
-            put("a", "b");
-            put("c", "d");
-          }
-        };
+  public void testScenario1_ExplicitPrecedence() {
+    // Arrange
+    String mapString = "SCHEMA1:SCHEMA2|SCHEMA1.table1:SCHEMA2.TABLE1";
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
 
-    assertThat(DataStreamToSQL.parseSchemaMap("")).isEmpty();
-    assertThat(DataStreamToSQL.parseSchemaMap("a:b")).isEqualTo(singleItemExpected);
-    assertThat(DataStreamToSQL.parseSchemaMap("a:b,c:d")).isEqualTo(doubleItemExpected);
+    // Act & Assert for the specific table
+    DatastreamRow row1 =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table1\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row1)).isEqualTo("SCHEMA2");
+    assertThat(dmlConverter.getTargetTableName(row1)).isEqualTo("TABLE1");
+
+    // Act & Assert for the fallback table
+    DatastreamRow row2 =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+    assertThat(dmlConverter.getTargetSchemaName(row2)).isEqualTo("SCHEMA2");
+    assertThat(dmlConverter.getTargetTableName(row2)).isEqualTo("table2");
+  }
+
+  @Test
+  public void testScenario2_preservesSourceSchema_whenNoSchemaMapExists() {
+    // Arrange: Table-level rules are provided, but no schema-level rule.
+    String mapString = "SCHEMA1.table1:SCHEMA2.TABLE1|SCHEMA1.table3:SCHEMA2.TABLE3";
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+
+    // Create a row for an unmapped table from SCHEMA1.
+    DatastreamRow unmappedRow =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+
+    // Act
+    String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
+    String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+
+    // Assert: Verify that the original source schema is preserved (and lowercased),
+    // as schema inference is no longer active.
+    assertThat(actualTargetSchema).isEqualTo("schema1");
+    assertThat(actualTargetTable).isEqualTo("table2");
+  }
+
+  @Test
+  public void testGeneralSchemaRuleTakesPrecedenceOverInference() {
+    // Arrange: A general schema rule (SCHEMA1:SCHEMA3) is provided alongside
+    // more specific, fully-qualified table rules that map to SCHEMA2.
+    String mapString =
+        "SCHEMA1:SCHEMA3|SCHEMA1.table1:SCHEMA2.TABLE1|SCHEMA1.table3:SCHEMA2.TABLE3";
+    DatastreamToPostgresDML dmlConverter = DatastreamToPostgresDML.of(null);
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+
+    // Create a row for an unmapped table from SCHEMA1.
+    DatastreamRow unmappedRow =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SCHEMA1\",\"_metadata_table\":\"table2\"}"));
+
+    // Act
+    String actualTargetSchema = dmlConverter.getTargetSchemaName(unmappedRow);
+    String actualTargetTable = dmlConverter.getTargetTableName(unmappedRow);
+
+    // Assert: The unmapped table correctly uses the general SCHEMA1:SCHEMA3 rule,
+    // and the schema inference logic is ignored.
+    assertThat(actualTargetSchema).isEqualTo("SCHEMA3");
+    assertThat(actualTargetTable).isEqualTo("table2");
+  }
+
+  @Test
+  public void testMySqlMapping_withFullyQualifiedRule() {
+    // Arrange (Scenario 1 & 2 for MySQL)
+    String mapString = "SOURCE_DB.products:PROD_DB.CATALOG";
+    DatastreamToMySQLDML dmlConverter = DatastreamToMySQLDML.of(null);
+
+    Map<String, Map<String, String>> mappings = DataStreamToSQL.parseMappings(mapString);
+    dmlConverter.withSchemaMap(mappings.get("schemas"));
+    dmlConverter.withTableNameMap(mappings.get("tables"));
+    DatastreamRow row =
+        DatastreamRow.of(
+            getRowObj("{\"_metadata_schema\":\"SOURCE_DB\",\"_metadata_table\":\"products\"}"));
+
+    // Act
+    String actualCatalog = dmlConverter.getTargetCatalogName(row);
+    String actualTable = dmlConverter.getTargetTableName(row);
+
+    // Assert that the fully-qualified rule was applied correctly.
+    assertThat(actualCatalog).isEqualTo("PROD_DB");
+    assertThat(actualTable).isEqualTo("CATALOG");
+  }
+
+  @Test
+  public void getDatastreamToDML_returnsPostgresGenerator_forPostgresDriver() {
+    // Arrange
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    when(mockConfig.getDriverClassName())
+        .thenReturn(ValueProvider.StaticValueProvider.of("org.postgresql.Driver"));
+
+    // Act
+    DatastreamToDML dmlGenerator = CreateDml.of(mockConfig).getDatastreamToDML();
+
+    // Assert
+    Truth.assertThat(dmlGenerator).isInstanceOf(DatastreamToPostgresDML.class);
+  }
+
+  @Test
+  public void getDatastreamToDML_returnsMySqlGenerator_forMySqlDriver() {
+    // Arrange
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    when(mockConfig.getDriverClassName())
+        .thenReturn(ValueProvider.StaticValueProvider.of("com.mysql.cj.jdbc.Driver"));
+
+    // Act
+    DatastreamToDML dmlGenerator = CreateDml.of(mockConfig).getDatastreamToDML();
+
+    // Assert
+    Truth.assertThat(dmlGenerator).isInstanceOf(DatastreamToMySQLDML.class);
+  }
+
+  @Test
+  public void getDatastreamToDML_throwsException_forInvalidDriver() {
+    // Arrange
+    DataSourceConfiguration mockConfig = mock(DataSourceConfiguration.class);
+    when(mockConfig.getDriverClassName())
+        .thenReturn(ValueProvider.StaticValueProvider.of("unsupported.driver.class"));
+    CreateDml createDml = CreateDml.of(mockConfig);
+
+    // Act & Assert
+    try {
+      createDml.getDatastreamToDML();
+      fail("Expected IllegalArgumentException to be thrown.");
+    } catch (IllegalArgumentException e) {
+      Truth.assertThat(e)
+          .hasMessageThat()
+          .contains("Database Driver unsupported.driver.class is not supported.");
+    }
+  }
+
+  @Test
+  public void getDataSourceConfiguration_returnsPostgresConfig() {
+    // Arrange: Mock pipeline options for a PostgreSQL connection.
+    Options options = mock(Options.class);
+    when(options.getDatabaseType()).thenReturn("postgres");
+    when(options.getDatabaseHost()).thenReturn("localhost");
+    when(options.getDatabasePort()).thenReturn("5432");
+    when(options.getDatabaseName()).thenReturn("mydb");
+    when(options.getCustomConnectionString()).thenReturn("");
+
+    // Act
+    DataSourceConfiguration config = DataStreamToSQL.getDataSourceConfiguration(options);
+
+    // Assert: We verify the correct driver was chosen, which confirms the logic.
+    Truth.assertThat(config.getDriverClassName().get()).isEqualTo("org.postgresql.Driver");
+  }
+
+  @Test
+  public void getDataSourceConfiguration_returnsMySqlConfig() {
+    // Arrange: Mock pipeline options for a MySQL connection.
+    Options options = mock(Options.class);
+    when(options.getDatabaseType()).thenReturn("mysql");
+    when(options.getDatabaseHost()).thenReturn("127.0.0.1");
+    when(options.getDatabasePort()).thenReturn("3306");
+    when(options.getDatabaseName()).thenReturn("testdb");
+    when(options.getCustomConnectionString()).thenReturn("");
+
+    // Act
+    DataSourceConfiguration config = DataStreamToSQL.getDataSourceConfiguration(options);
+
+    // Assert: We verify the correct driver was chosen, which confirms the logic.
+    Truth.assertThat(config.getDriverClassName().get()).isEqualTo("com.mysql.cj.jdbc.Driver");
+  }
+
+  @Test
+  public void getDataSourceConfiguration_throwsException_forInvalidType() {
+    // Arrange: Mock pipeline options with an unsupported database type.
+    Options options = mock(Options.class);
+    when(options.getDatabaseType()).thenReturn("unsupported-db");
+
+    // Act & Assert: Verify that an IllegalArgumentException is thrown.
+    try {
+      DataStreamToSQL.getDataSourceConfiguration(options);
+      fail("Expected IllegalArgumentException to be thrown.");
+    } catch (IllegalArgumentException e) {
+      Truth.assertThat(e)
+          .hasMessageThat()
+          .contains("Database Type unsupported-db is not supported.");
+    }
   }
 }

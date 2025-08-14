@@ -55,7 +55,8 @@ public abstract class DatastreamToDML
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
-  protected Map<String, String> schemaMap = new HashMap<String, String>();
+  protected Map<String, String> schemaMappings = new HashMap<>();
+  protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
 
   public abstract String getDefaultQuoteCharacter();
@@ -69,8 +70,6 @@ public abstract class DatastreamToDML
   public abstract String getTargetCatalogName(DatastreamRow row);
 
   public abstract String getTargetSchemaName(DatastreamRow row);
-
-  public abstract String getTargetTableName(DatastreamRow row);
 
   /* An exception for delete DML without a primary key */
   private class DeletedWithoutPrimaryKey extends RuntimeException {
@@ -89,8 +88,19 @@ public abstract class DatastreamToDML
     return this;
   }
 
-  public DatastreamToDML withSchemaMap(Map<String, String> schemaMap) {
-    this.schemaMap = schemaMap;
+  public DatastreamToDML withSchemaMap(Map<String, String> combinedMap) {
+    for (Map.Entry<String, String> entry : combinedMap.entrySet()) {
+      if (entry.getKey().contains(".")) {
+        this.tableMappings.put(entry.getKey(), entry.getValue());
+      } else {
+        this.schemaMappings.put(entry.getKey(), entry.getValue());
+      }
+    }
+    return this;
+  }
+
+  public DatastreamToDML withTableNameMap(Map<String, String> tableNameMap) {
+    this.tableMappings = tableNameMap;
     return this;
   }
 
@@ -121,25 +131,6 @@ public abstract class DatastreamToDML
       // TODO(dhercher): Push failure to DLQ collection
       LOG.error("IOException: {} :: {}", jsonString, e.toString());
     }
-  }
-
-  protected String cleanTableName(String tableName) {
-    return applyLowercase(tableName);
-  }
-
-  protected String cleanSchemaName(String schemaName) {
-    schemaName = applySchemaMap(schemaName);
-    schemaName = applyLowercase(schemaName);
-
-    return schemaName;
-  }
-
-  protected String applySchemaMap(String sourceSchema) {
-    return schemaMap.getOrDefault(sourceSchema, sourceSchema);
-  }
-
-  protected String applyLowercase(String name) {
-    return name.toLowerCase();
   }
 
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow
@@ -179,6 +170,19 @@ public abstract class DatastreamToDML
     }
 
     return this.tableCache.get(searchKey);
+  }
+
+  protected String getFullSourceTableName(DatastreamRow row) {
+    return row.getSchemaName() + "." + row.getTableName();
+  }
+
+  public String getTargetTableName(DatastreamRow row) {
+    String fullSourceTableName = getFullSourceTableName(row);
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      return tableMappings.get(fullSourceTableName).split("\\.")[1];
+    }
+    // No other rules apply, just default to lowercase.
+    return row.getTableName().toLowerCase();
   }
 
   public List<String> getPrimaryKeys(
