@@ -1,0 +1,30 @@
+{
+  "name": "ArrayRecord Conversion",
+  "description": "Converts a GCS object[CSV, JSON, Avro, Parquet] to ArrayRecord format.",
+  "parameters": [
+    {
+      "name": "input_path",
+      "label": "Input destination",
+      "helpText": "The path and filename prefix for reading input files. Example: gs://your-bucket/your-path",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    },
+    {
+      "name": "input_format",
+      "label": "Input format",
+      "helpText": "The format of the input files. Supported formats: text, images",
+      "regexes": [
+        "text|image"
+      ]
+    },
+    {
+      "name": "output_destination",
+      "label": "Output destination",
+      "helpText": "The path and filename prefix for writing output files. Example: gs://your-bucket/your-path",
+      "regexes": [
+        "^gs:\\/\\/[^\\n\\r]+$"
+      ]
+    }
+  ]
+}
