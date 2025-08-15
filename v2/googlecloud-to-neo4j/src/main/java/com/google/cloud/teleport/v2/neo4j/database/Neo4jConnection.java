@@ -42,6 +42,7 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   private final String database;
   private Driver driver;
   private Session session;
+  private Neo4jCapabilities capabilitiesCache = null;
 
   /** Constructor. */
   public Neo4jConnection(ConnectionParams settings, String templateVersion) {
@@ -64,6 +65,10 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
   }
 
   public Neo4jCapabilities capabilities() {
+    if (this.capabilitiesCache != null) {
+      return this.capabilitiesCache;
+    }
+
     try (var session = getSession()) {
       var result =
           session
@@ -72,7 +77,9 @@ public class Neo4jConnection implements AutoCloseable, Serializable {
                   Map.of("kernel", "Neo4j Kernel"))
               .single();
 
-      return new Neo4jCapabilities(result.get(0).asString(), result.get(1).asString());
+      this.capabilitiesCache =
+          new Neo4jCapabilities(result.get(0).asString(), result.get(1).asString());
+      return this.capabilitiesCache;
     }
   }
 
