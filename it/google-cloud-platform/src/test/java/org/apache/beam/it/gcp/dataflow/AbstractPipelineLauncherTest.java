@@ -150,6 +150,37 @@ public final class AbstractPipelineLauncherTest {
         () -> new FakePipelineLauncher(client).drainJob(PROJECT, REGION, JOB_ID));
   }
 
+  @Test
+  public void testForceCancelJob() throws IOException {
+    Update update = mock(Update.class);
+    when(getLocationJobs(client).update(any(), any(), any(), any()))
+        .thenThrow(new IOException("Connection reset"))
+        .thenReturn(update);
+    when(update.execute()).thenThrow(new IOException("Connection reset")).thenReturn(new Job());
+
+    new FakePipelineLauncher(client).forceCancelJob(PROJECT, REGION, JOB_ID);
+
+    verify(getLocationJobs(client), times(3))
+        .update(
+            projectCaptor.capture(),
+            regionCaptor.capture(),
+            jobIdCaptor.capture(),
+            jobCaptor.capture());
+    assertThat(projectCaptor.getValue()).isEqualTo(PROJECT);
+    assertThat(regionCaptor.getValue()).isEqualTo(REGION);
+    assertThat(jobIdCaptor.getValue()).isEqualTo(JOB_ID);
+    assertThat(jobCaptor.getValue().getRequestedState()).isEqualTo(JobState.CANCELLED.toString());
+    assertThat(jobCaptor.getValue().getLabels()).containsEntry("force_cancel_job", "true");
+  }
+
+  @Test
+  public void testForceCancelJobThrowsException() throws IOException {
+    when(getLocationJobs(client).update(any(), any(), any(), any())).thenThrow(new IOException());
+    assertThrows(
+        FailsafeException.class,
+        () -> new FakePipelineLauncher(client).forceCancelJob(PROJECT, REGION, JOB_ID));
+  }
+
   private static Locations.Jobs getLocationJobs(Dataflow client) {
     return client.projects().locations().jobs();
   }
