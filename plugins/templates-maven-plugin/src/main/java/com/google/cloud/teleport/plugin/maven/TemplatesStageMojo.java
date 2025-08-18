@@ -979,7 +979,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   private void stageYamlUsingDockerfile(
       String buildProjectId, String imagePathTag, String yamlTemplateName)
       throws IOException, InterruptedException {
-    File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + yamlTemplateName);
+    File directory = new File(outputClassesDirectory.getAbsolutePath());
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -992,7 +992,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --destination="
               + imagePathTag
               + "\n"
-              + "  - --dockerfile=Dockerfile\n"
+              + "  - --dockerfile="
+              + yamlTemplateName
+              + "/Dockerfile\n"
               + "  - --cache=true\n"
               + "  - --cache-ttl=6h\n"
               + "  - --compressed-caching=false\n"

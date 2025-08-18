@@ -79,7 +79,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Kafka_to_BigQuery_Yaml" \
--f python
+-f yaml
 ```
 
 
