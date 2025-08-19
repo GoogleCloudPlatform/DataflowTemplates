@@ -51,7 +51,7 @@
     <dlp.version>3.72.0</dlp.version>
     <hbase.version>2.5.3-hadoop3</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
-    <cassandra.driver.version>3.6.0</cassandra.driver.version>
+    <cassandra.driver.version>3.11.5</cassandra.driver.version>
     <datastax.query.builder.version>4.16.0</datastax.query.builder.version>
     <jacoco.version>0.8.13</jacoco.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
