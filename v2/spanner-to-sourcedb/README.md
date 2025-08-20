@@ -109,7 +109,8 @@ A few prerequisites must be considered before starting with reverse replication.
   CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   retention_period = '7d',
-  value_capture_type = 'NEW_ROW'
+  value_capture_type = 'NEW_ROW',
+  allow_txn_exclusion = true
   );
   ```
 15. The Dataflow template creates a pool of database connections per Dataflow worker. The maxShardConnections template parameter, defaulting to 10,000 represents the maximum connections allowed for a given database. The maxWorkers Dataflow configuration should not exceed the maxShardConnections value, else the template launch will fail as we do not want to overload the database.

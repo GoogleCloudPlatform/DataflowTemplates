@@ -68,7 +68,7 @@
     <guava.version>32.0.1-jre</guava.version>
     <hadoop.version>3.4.1</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
-    <hbase.client.version>2.5.3-hadoop3</hbase.client.version>
+    <hbase.client.version>2.6.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
     <log4j-2.version>2.24.3</log4j-2.version>
     <jackson.version>2.15.4</jackson.version>
@@ -195,6 +195,13 @@
         <groupId>org.xerial.snappy</groupId>
         <artifactId>snappy-java</artifactId>
         <version>${snappy.version}</version>
+      </dependency>
+
+      <!-- Enforce non-vulnerable version of org.json:json -->
+      <dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>${json.version}</version>
       </dependency>
 
       <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->

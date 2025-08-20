@@ -58,18 +58,16 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
 
   @Override
   public String getTargetCatalogName(DatastreamRow row) {
-    String schemaName = row.getSchemaName();
-    return cleanSchemaName(schemaName);
+    String fullSourceTableName = getFullSourceTableName(row);
+    if (tableMappings.containsKey(fullSourceTableName)) {
+      return tableMappings.get(fullSourceTableName).split("\\.")[0];
+    }
+    // Fall back to a schema-level rule or the original name (lowercased).
+    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName().toLowerCase());
   }
 
   @Override
   public String getTargetSchemaName(DatastreamRow row) {
     return "";
-  }
-
-  @Override
-  public String getTargetTableName(DatastreamRow row) {
-    String tableName = row.getTableName();
-    return cleanTableName(tableName);
   }
 }

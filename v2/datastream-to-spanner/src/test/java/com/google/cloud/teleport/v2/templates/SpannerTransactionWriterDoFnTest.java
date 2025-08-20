@@ -166,7 +166,8 @@ public class SpannerTransactionWriterDoFnTest {
               TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
               return callable.run(transactionContext);
             });
-    when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(transactionCallableMock);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
@@ -307,7 +308,8 @@ public class SpannerTransactionWriterDoFnTest {
               throw SpannerExceptionFactory.newSpannerException(
                   ErrorCode.ABORTED, "Transaction Aborted");
             });
-    when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(transactionCallableMock);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
@@ -372,7 +374,8 @@ public class SpannerTransactionWriterDoFnTest {
               throw SpannerExceptionFactory.newSpannerException(
                   ErrorCode.FAILED_PRECONDITION, "title must not be NULL in table Books");
             });
-    when(databaseClientMock.readWriteTransaction(any(), any())).thenReturn(transactionCallableMock);
+    when(databaseClientMock.readWriteTransaction(any(), any(), any()))
+        .thenReturn(transactionCallableMock);
 
     SpannerTransactionWriterDoFn spannerTransactionWriterDoFn =
         new SpannerTransactionWriterDoFn(
