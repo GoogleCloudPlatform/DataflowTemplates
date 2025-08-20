@@ -197,6 +197,13 @@
         <version>${snappy.version}</version>
       </dependency>
 
+      <!-- Enforce non-vulnerable version of org.json:json -->
+      <dependency>
+        <groupId>org.json</groupId>
+        <artifactId>json</artifactId>
+        <version>${json.version}</version>
+      </dependency>
+
       <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
       <dependency>
         <groupId>com.google.api</groupId>
