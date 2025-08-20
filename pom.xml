@@ -208,6 +208,13 @@
         <artifactId>gax</artifactId>
         <version>${gax.version}</version>
       </dependency>
+
+      <!-- Enforce non-vulnerable version of okio (CVE-2023-3635) -->
+      <dependency>
+        <groupId>com.squareup.okio</groupId>
+        <artifactId>okio</artifactId>
+        <version>1.17.6</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
