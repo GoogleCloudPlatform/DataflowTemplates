@@ -63,7 +63,7 @@ public class DatastreamToMySQLDML extends DatastreamToDML {
       return tableMappings.get(fullSourceTableName).split("\\.")[0];
     }
     // Fall back to a schema-level rule or the original name (lowercased).
-    return schemaMappings.getOrDefault(row.getSchemaName(), row.getSchemaName().toLowerCase());
+    return schemaMappings.getOrDefault(row.getSchemaName(), applyCasing(row.getSchemaName()));
   }
 
   @Override

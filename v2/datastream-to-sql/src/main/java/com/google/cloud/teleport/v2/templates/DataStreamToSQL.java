@@ -226,8 +226,21 @@ public class DataStreamToSQL {
 
     void setDatabaseName(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Enum(
         order = 13,
+        optional = true,
+        enumOptions = {@TemplateEnumOption("DEFAULT"), @TemplateEnumOption("UPPERCASED"), @TemplateEnumOption("CAPITALIZED")},
+        description = "Toggle for Table Casing",
+        helpText =
+            "A Toggle for table casing behavior. For example,(ie."
+                + "DEFAULT = table1 -> table1, Capitalized = table1 -> Table1")
+    @Default.String("DEFAULT")
+    String getDefaultCasing();
+
+    void setDefaultCasing(String value);
+
+    @TemplateParameter.Text(
+        order = 14,
         optional = true,
         description = "A map of key/values used to dictate schema name changes",
         helpText =
@@ -239,7 +252,7 @@ public class DataStreamToSQL {
     void setSchemaMap(String value);
 
     @TemplateParameter.Text(
-        order = 14,
+        order = 15,
         groupName = "Target",
         optional = true,
         description = "Custom connection string.",
@@ -251,7 +264,7 @@ public class DataStreamToSQL {
     void setCustomConnectionString(String value);
 
     @TemplateParameter.Integer(
-        order = 15,
+        order = 16,
         optional = true,
         description = "Number of threads to use for Format to DML step.",
         helpText =
@@ -262,7 +275,7 @@ public class DataStreamToSQL {
     void setNumThreads(int value);
 
     @TemplateParameter.Integer(
-        order = 16,
+        order = 17,
         groupName = "Target",
         optional = true,
         description = "Database login timeout in seconds.",
@@ -273,7 +286,7 @@ public class DataStreamToSQL {
     void setDatabaseLoginTimeout(Integer value);
 
     @TemplateParameter.Boolean(
-        order = 17,
+        order = 18,
         optional = true,
         description =
             "Order by configurations for data should include prioritizing data which is not deleted.",
@@ -300,6 +313,8 @@ public class DataStreamToSQL {
     options.setStreaming(true);
     run(options);
   }
+
+
 
   /**
    * Build the DataSourceConfiguration for the target SQL database. Using the pipeline options,
@@ -444,6 +459,7 @@ public class DataStreamToSQL {
             .apply(
                 "Format to DML",
                 CreateDml.of(dataSourceConfiguration)
+                    .withDefaultCasing(options.getDefaultCasing())
                     .withSchemaMap(schemaMap)
                     .withTableNameMap(tableNameMap)
                     .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())

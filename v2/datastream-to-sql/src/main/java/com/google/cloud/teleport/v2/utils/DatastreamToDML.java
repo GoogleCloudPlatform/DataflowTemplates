@@ -55,6 +55,7 @@ public abstract class DatastreamToDML
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
+  protected String defaultCasing = "DEFAULT";
   protected Map<String, String> schemaMappings = new HashMap<>();
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
@@ -86,6 +87,29 @@ public abstract class DatastreamToDML
   public DatastreamToDML withQuoteCharacter(String quoteChar) {
     this.quoteCharacter = quoteChar;
     return this;
+  }
+
+  public DatastreamToDML withDefaultCasing(String casing) {
+    if (casing != null) {
+      this.defaultCasing = casing;
+    }
+    return this;
+  }
+
+  protected String applyCasing(String name) {
+    if (name == null) {
+      return null;
+    }
+
+    switch (this.defaultCasing.toUpperCase()) {
+      case "UPPERCASED":
+        return name.toUpperCase();
+      case "CAPITALIZED":
+        return StringUtils.capitalize(name.toLowerCase());
+      case "DEFAULT":
+      default:
+        return name.toLowerCase();
+    }
   }
 
   public DatastreamToDML withSchemaMap(Map<String, String> combinedMap) {
@@ -182,7 +206,7 @@ public abstract class DatastreamToDML
       return tableMappings.get(fullSourceTableName).split("\\.")[1];
     }
     // No other rules apply, just default to lowercase.
-    return row.getTableName().toLowerCase();
+    return applyCasing(row.getTableName());
   }
 
   public List<String> getPrimaryKeys(
