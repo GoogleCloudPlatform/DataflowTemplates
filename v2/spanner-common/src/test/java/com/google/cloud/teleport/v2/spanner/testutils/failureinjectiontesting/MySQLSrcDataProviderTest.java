@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
 import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.AUTHORS_TABLE;
@@ -29,15 +44,15 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class MySQLSrcDataProviderTest {
 
-  @Mock
-  private CloudMySQLResourceManager mockResourceManager;
+  @Mock private CloudMySQLResourceManager mockResourceManager;
 
   @Test
   public void testCreateSourceResourceManagerWithSchema() {
     try (MockedStatic<CloudMySQLResourceManager> mockedStatic =
         mockStatic(CloudMySQLResourceManager.class)) {
       CloudMySQLResourceManager.Builder mockBuilder = mock(CloudMySQLResourceManager.Builder.class);
-      mockedStatic.when(() -> CloudMySQLResourceManager.builder(anyString()))
+      mockedStatic
+          .when(() -> CloudMySQLResourceManager.builder(anyString()))
           .thenReturn(mockBuilder);
       when(mockBuilder.build()).thenReturn(mockResourceManager);
 
@@ -54,13 +69,16 @@ public class MySQLSrcDataProviderTest {
       int authorIndex = tableNameCaptor.getAllValues().indexOf(AUTHORS_TABLE);
       assertThat(authorIndex).isNotEqualTo(-1);
       JDBCSchema authorSchema = schemaCaptor.getAllValues().get(authorIndex);
-      assertThat(authorSchema.toSqlStatement()).isEqualTo("AUTHOR_TABLE_COLUMNS");
+      assertThat(authorSchema.toSqlStatement())
+          .isEqualTo("author_id INT NOT NULL, name VARCHAR(200), PRIMARY KEY ( author_id )");
 
       // Verify books table creation
       int bookIndex = tableNameCaptor.getAllValues().indexOf(BOOKS_TABLE);
       assertThat(bookIndex).isNotEqualTo(-1);
       JDBCSchema bookSchema = schemaCaptor.getAllValues().get(bookIndex);
-      assertThat(bookSchema.toSqlStatement()).isEqualTo("BOOK_TABLE_COLUMNS");
+      assertThat(bookSchema.toSqlStatement())
+          .isEqualTo(
+              "author_id INT NOT NULL, book_id INT NOT NULL, name VARCHAR(200), PRIMARY KEY ( book_id )");
     }
   }
 
@@ -89,8 +107,7 @@ public class MySQLSrcDataProviderTest {
     assertThat(bookRows.get(0)).containsEntry("author_id", 1);
     assertThat(bookRows.get(0)).containsEntry("book_id", 1);
     assertThat(bookRows.get(0)).containsEntry("name", "book_name_1");
-    assertThat(bookRows.get(4))
-        .containsEntry("author_id", 5);
+    assertThat(bookRows.get(4)).containsEntry("author_id", 5);
     assertThat(bookRows.get(4)).containsEntry("book_id", 5);
     assertThat(bookRows.get(4)).containsEntry("name", "book_name_5");
   }
@@ -125,11 +142,9 @@ public class MySQLSrcDataProviderTest {
 
     List<Map<String, Object>> capturedRows = rowsCaptor.getValue();
     assertThat(capturedRows).hasSize(3);
-    assertThat(capturedRows.get(0))
-        .containsEntry("author_id", 10);
+    assertThat(capturedRows.get(0)).containsEntry("author_id", 10);
     assertThat(capturedRows.get(0)).containsEntry("name", "author_name_10");
-    assertThat(capturedRows.get(2))
-        .containsEntry("author_id", 12);
+    assertThat(capturedRows.get(2)).containsEntry("author_id", 12);
     assertThat(capturedRows.get(2)).containsEntry("name", "author_name_12");
   }
 
@@ -150,12 +165,10 @@ public class MySQLSrcDataProviderTest {
 
     List<Map<String, Object>> capturedRows = rowsCaptor.getValue();
     assertThat(capturedRows).hasSize(2);
-    assertThat(capturedRows.get(0))
-        .containsEntry("author_id", authorId);
+    assertThat(capturedRows.get(0)).containsEntry("author_id", authorId);
     assertThat(capturedRows.get(0)).containsEntry("book_id", 100);
     assertThat(capturedRows.get(0)).containsEntry("name", "book_name_100");
-    assertThat(capturedRows.get(1))
-        .containsEntry("author_id", authorId);
+    assertThat(capturedRows.get(1)).containsEntry("author_id", authorId);
     assertThat(capturedRows.get(1)).containsEntry("book_id", 101);
     assertThat(capturedRows.get(1)).containsEntry("name", "book_name_101");
   }
