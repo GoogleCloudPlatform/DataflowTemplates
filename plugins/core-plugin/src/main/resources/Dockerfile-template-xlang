@@ -26,7 +26,8 @@ RUN python -m venv /venv \
     && /venv/bin/pip install --no-cache-dir --require-hashes -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
-    && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
+    && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/ \
+    && rm -rf /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-*.whl
     # change to mv once Beam 2.57.0 is released
 
 
