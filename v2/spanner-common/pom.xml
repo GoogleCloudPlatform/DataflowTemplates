@@ -64,6 +64,17 @@
             <version>3.12.4</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-compute</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>it-google-cloud-platform</artifactId>
+            <scope>compile</scope>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
