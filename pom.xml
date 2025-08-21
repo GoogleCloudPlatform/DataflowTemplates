@@ -99,6 +99,9 @@
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
 
+    <!-- Security vulnerability fixes -->
+    <httpclient.version>4.5.13</httpclient.version>
+
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
@@ -202,6 +205,13 @@
         <groupId>org.json</groupId>
         <artifactId>json</artifactId>
         <version>${json.version}</version>
+      </dependency>
+
+      <!-- Enforce non-vulnerable version of httpclient to fix CVE-2020-13956 -->
+      <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <version>${httpclient.version}</version>
       </dependency>
 
       <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
