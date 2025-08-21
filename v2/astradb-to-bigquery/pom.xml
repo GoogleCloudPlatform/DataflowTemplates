@@ -41,12 +41,9 @@
             <artifactId>beam-sdks-java-io-astra</artifactId>
             <version>${astra-io.version}</version>
         </dependency>
-        <!-- TODO: Keep vendored Guava until Astra moves past Beam 2.50.0 -->
-        <dependency>
-            <groupId>org.apache.beam</groupId>
-            <artifactId>beam-vendor-guava-26_0-jre</artifactId>
-            <version>0.1</version>
-        </dependency>
+        <!-- Removed beam-vendor-guava-26_0-jre dependency to fix CVE-2023-2976.
+             Astra moves past Beam 2.50: https://github.com/DataStax-Examples/beam-sdks-java-io-astra/blob/main/pom.xml#L18
+             This workaround is no longer needed as project now uses Beam 2.67.0. -->
 
         <dependency>
             <groupId>com.google.cloud.teleport.v2</groupId>
