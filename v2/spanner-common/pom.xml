@@ -66,10 +66,6 @@
         </dependency>
 
         <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-compute</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>it-google-cloud-platform</artifactId>
             <scope>compile</scope>
