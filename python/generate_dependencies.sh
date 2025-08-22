@@ -14,6 +14,7 @@
 
 BASE_REQUIREMENTS_PATH=$1
 TARGET_REQUIREMENTS_PATH=$2
+PY_VERSION="3.11"
 
 if ! python3.11 --version > /dev/null 2>&1 ; then
   echo "Please install a python3.11 interpreter. See s.apache.org/beam-python-dev-wiki for Python installation tips."
