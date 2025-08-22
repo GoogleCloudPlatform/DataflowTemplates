@@ -15,34 +15,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.beam.it.gcp.artifacts;
 
-import com.google.cloud.storage.Blob;
-
-/** Represents a single blob in Google Cloud Storage (GCS). */
-public final class GcsArtifact implements Artifact {
-  public final Blob blob;
-
-  public GcsArtifact(Blob blob) {
-    this.blob = blob;
-  }
-
-  @Override
-  public String id() {
-    return blob.getGeneratedId();
-  }
-
-  @Override
-  public String name() {
-    return blob.getName();
-  }
-
-  @Override
-  public byte[] contents() {
-    return blob.getContent();
-  }
-
-  public Blob getBlob() {
-    return blob;
-  }
-}
+/** Package for check conditions related to Datastream. */
+package org.apache.beam.it.gcp.datastream.conditions;

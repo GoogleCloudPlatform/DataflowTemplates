@@ -78,7 +78,7 @@ public class MySQLSrcDataProviderTest {
       JDBCSchema bookSchema = schemaCaptor.getAllValues().get(bookIndex);
       assertThat(bookSchema.toSqlStatement())
           .isEqualTo(
-              "author_id INT NOT NULL, book_id INT NOT NULL, name VARCHAR(200), PRIMARY KEY ( book_id )");
+              "book_id INT NOT NULL, name VARCHAR(200), author_id INT NOT NULL, PRIMARY KEY ( book_id )");
     }
   }
 

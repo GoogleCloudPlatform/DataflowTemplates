@@ -35,6 +35,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
+import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -122,8 +123,8 @@ public class SrcDbToSpannerMySQLSevereErrorShardedFT extends SourceDbToSpannerFT
 
     // Insert data before launching the job
     MySQLSrcDataProvider.writeRowsInSourceDB(1, 1000, cloudSqlResourceManagerShardA);
-    MySQLSrcDataProvider.writeRowsInSourceDB(1, 900, cloudSqlResourceManagerShardB);
-    MySQLSrcDataProvider.writeBookRowsInSourceDB(901, 1000, 2000, cloudSqlResourceManagerShardB);
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 990, cloudSqlResourceManagerShardB);
+    MySQLSrcDataProvider.writeBookRowsInSourceDB(991, 1000, 2000, cloudSqlResourceManagerShardB);
 
     // launch forward migration template
     jobInfo =
@@ -155,14 +156,16 @@ public class SrcDbToSpannerMySQLSevereErrorShardedFT extends SourceDbToSpannerFT
         ChainedConditionCheck.builder(
                 List.of(
                     SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
-                        .setMinRows(1900)
-                        .setMaxRows(1900)
+                        .setMinRows(1990)
+                        .setMaxRows(1990)
                         .build(),
                     SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
-                        .setMinRows(1900)
-                        .setMaxRows(1900)
+                        .setMinRows(1990)
+                        .setMaxRows(1990)
                         .build(),
-                    new SevereErrorsCheck(pipelineLauncher, jobInfo, 100)))
+                    DlqEventsCountCheck.builder(gcsResourceManager, "output")
+                        .setMinEvents(10)
+                        .build()))
             .build();
 
     PipelineOperator.Result result =

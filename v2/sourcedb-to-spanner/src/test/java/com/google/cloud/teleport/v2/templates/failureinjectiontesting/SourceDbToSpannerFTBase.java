@@ -97,9 +97,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName)
-            // .addParameter("sessionFilePath", getGcsPath("input/session.json",
-            // gcsResourceManager))
+            .addParameter("outputDirectory", getGcsPath("output", gcsResourceManager))
             .addParameter("sourceConfigURL", cloudSqlResourceManager.getUri())
             .addParameter("username", cloudSqlResourceManager.getUsername())
             .addParameter("password", cloudSqlResourceManager.getPassword())
@@ -126,7 +124,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("instanceId", spannerResourceManager.getInstanceId())
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
-            .addParameter("outputDirectory", "gs://" + artifactBucketName)
+            .addParameter("outputDirectory", getGcsPath("output", gcsResourceManager))
             .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
             .addParameter(
                 "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
