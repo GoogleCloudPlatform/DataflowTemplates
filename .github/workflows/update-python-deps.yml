@@ -24,8 +24,11 @@ jobs:
           python-version: '3.11'
 
       - name: Update Python Dependencies
+        env:
+          PY_VERSION: "3.11"
+        shell: bash
         run: |
-          sh python/generate_all_dependencies.sh
+          bash python/generate_all_dependencies.sh
 
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
