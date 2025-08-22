@@ -33,7 +33,7 @@ ENV_PATH="$PWD/__build__/python${PY_VERSION_NO_DOT}_requirements_gen"
 rm -rf "$ENV_PATH" 2>/dev/null || true
 # These python versions need to be kept in sync with our dockerfile python versions (https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/0ac92513838ca525adb3f616c9e1f65237334d1e/plugins/core-plugin/src/main/java/com/google/cloud/teleport/plugin/DockerfileGenerator.java#L46)
 python3.11 -m venv "$ENV_PATH"
-source "$ENV_PATH"/bin/activate
+. "$ENV_PATH"/bin/activate
 
 # allow one-off executions of pip to generate requirements locally without alarming automation
 alias pip_automation="pip"
