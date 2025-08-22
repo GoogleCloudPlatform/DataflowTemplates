@@ -29,6 +29,7 @@ RUN python -m venv /venv \
     && cp -r /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/ \
     && rm -rf /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-*.whl
     # change to mv once Beam 2.57.0 is released
+    # remove rm whl once Beam 2.68.0 is released
 
 
 #============================================================#
