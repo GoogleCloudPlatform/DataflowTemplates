@@ -29,7 +29,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
@@ -43,7 +42,6 @@ import org.slf4j.LoggerFactory;
 
 public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
 
-  public static final String SEVERE_ERRORS_COUNTER_NAME = "mutation_groups_write_fail";
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerFTBase.class);
 
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
@@ -230,48 +228,6 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       this.dbName = dbName;
       this.databaseId = databaseId;
       this.refDataShardId = refDataShardId;
-    }
-  }
-
-  public static class SevereErrorsCheck extends ConditionCheck {
-
-    private Integer minErrors;
-
-    private PipelineLauncher.LaunchInfo jobInfo;
-
-    private PipelineLauncher pipelineLauncher;
-
-    @Override
-    public String getDescription() {
-      return String.format("Severe errors check if %d errors are present", minErrors);
-    }
-
-    @Override
-    public CheckResult check() {
-      Double severeErrors = null;
-      try {
-        severeErrors =
-            pipelineLauncher.getMetric(
-                PROJECT, REGION, jobInfo.jobId(), SEVERE_ERRORS_COUNTER_NAME);
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      if (severeErrors < minErrors) {
-        return new CheckResult(
-            false,
-            String.format(
-                "Expected at least %d errors but has only %.1f", minErrors, severeErrors));
-      }
-      return new CheckResult(
-          true,
-          String.format("Expected at least %d errors and found %.1f", minErrors, severeErrors));
-    }
-
-    public SevereErrorsCheck(
-        PipelineLauncher pipelineLauncher, PipelineLauncher.LaunchInfo jobInfo, int minErrors) {
-      this.pipelineLauncher = pipelineLauncher;
-      this.jobInfo = jobInfo;
-      this.minErrors = minErrors;
     }
   }
 }

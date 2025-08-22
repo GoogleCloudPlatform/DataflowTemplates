@@ -122,9 +122,10 @@ public class SrcDbToSpannerMySQLSevereErrorShardedFT extends SourceDbToSpannerFT
         "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
     // Insert data before launching the job
-    MySQLSrcDataProvider.writeRowsInSourceDB(1, 1000, cloudSqlResourceManagerShardA);
-    MySQLSrcDataProvider.writeRowsInSourceDB(1, 990, cloudSqlResourceManagerShardB);
-    MySQLSrcDataProvider.writeBookRowsInSourceDB(991, 1000, 2000, cloudSqlResourceManagerShardB);
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 100, cloudSqlResourceManagerShardA);
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 90, cloudSqlResourceManagerShardB);
+    // Write some data in shardB which violates integrity constraint in Spanner
+    MySQLSrcDataProvider.writeBookRowsInSourceDB(91, 100, 2000, cloudSqlResourceManagerShardB);
 
     // launch forward migration template
     jobInfo =
@@ -156,12 +157,12 @@ public class SrcDbToSpannerMySQLSevereErrorShardedFT extends SourceDbToSpannerFT
         ChainedConditionCheck.builder(
                 List.of(
                     SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
-                        .setMinRows(1990)
-                        .setMaxRows(1990)
+                        .setMinRows(190)
+                        .setMaxRows(190)
                         .build(),
                     SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
-                        .setMinRows(1990)
-                        .setMaxRows(1990)
+                        .setMinRows(190)
+                        .setMaxRows(190)
                         .build(),
                     DlqEventsCountCheck.builder(gcsResourceManager, "output")
                         .setMinEvents(10)

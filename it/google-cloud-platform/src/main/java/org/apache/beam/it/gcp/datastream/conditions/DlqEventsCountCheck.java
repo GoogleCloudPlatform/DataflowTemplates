@@ -61,7 +61,7 @@ public abstract class DlqEventsCountCheck extends ConditionCheck {
     for (Artifact artifact : artifacts) {
       GcsArtifact gcsArtifact = (GcsArtifact) artifact;
       // Skip the directory placeholder objects
-      if (!gcsArtifact.getBlob().getName().endsWith("/") && gcsArtifact.getBlob().getSize() != 0) {
+      if (!gcsArtifact.getBlob().getName().endsWith("/")) {
         try (BufferedReader reader =
             new BufferedReader(
                 Channels.newReader(gcsArtifact.getBlob().reader(), StandardCharsets.UTF_8))) {

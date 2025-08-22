@@ -27,13 +27,13 @@ import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
+import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
@@ -85,8 +85,8 @@ public class SrcDbToSpannerMySQLSevereErrorNonShardedFT extends SourceDbToSpanne
             .build();
 
     // Insert data before launching the job
-    MySQLSrcDataProvider.writeRowsInSourceDB(1, 900, sourceDBResourceManager);
-    MySQLSrcDataProvider.writeBookRowsInSourceDB(901, 1000, 2000, sourceDBResourceManager);
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 90, sourceDBResourceManager);
+    MySQLSrcDataProvider.writeBookRowsInSourceDB(91, 100, 2000, sourceDBResourceManager);
 
     // launch forward migration template
     jobInfo =
@@ -109,8 +109,7 @@ public class SrcDbToSpannerMySQLSevereErrorNonShardedFT extends SourceDbToSpanne
   }
 
   @Test
-  public void dataflowWorkerFailureTest()
-      throws IOException, ExecutionException, InterruptedException {
+  public void severeErrorFailureTest() {
 
     // Wait for Bulk migration job to be in running state
     assertThatPipeline(jobInfo).isRunning();
@@ -119,14 +118,14 @@ public class SrcDbToSpannerMySQLSevereErrorNonShardedFT extends SourceDbToSpanne
         ChainedConditionCheck.builder(
                 List.of(
                     SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
-                        .setMinRows(900)
-                        .setMaxRows(900)
+                        .setMinRows(90)
+                        .setMaxRows(90)
                         .build(),
                     SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
-                        .setMinRows(900)
-                        .setMaxRows(900)
+                        .setMinRows(90)
+                        .setMaxRows(90)
                         .build(),
-                    new SevereErrorsCheck(pipelineLauncher, jobInfo, 100)))
+                    DlqEventsCountCheck.builder(gcsResourceManager, "output").setMinEvents(10).build()))
             .build();
 
     PipelineOperator.Result result =

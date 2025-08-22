@@ -189,5 +189,10 @@
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-nio</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
