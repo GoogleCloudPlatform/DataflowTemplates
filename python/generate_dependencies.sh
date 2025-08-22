@@ -27,7 +27,9 @@ fi
 
 set -ex
 
-ENV_PATH="$PWD/__build__/python${PY_VERSION/./}_requirements_gen"
+PY_VERSION_NO_DOT=$(echo "$PY_VERSION" | tr -d '.')
+ENV_PATH="$PWD/__build__/python${PY_VERSION_NO_DOT}_requirements_gen"
+
 rm -rf "$ENV_PATH" 2>/dev/null || true
 # These python versions need to be kept in sync with our dockerfile python versions (https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/0ac92513838ca525adb3f616c9e1f65237334d1e/plugins/core-plugin/src/main/java/com/google/cloud/teleport/plugin/DockerfileGenerator.java#L46)
 python3.11 -m venv "$ENV_PATH"
