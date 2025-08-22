@@ -1,0 +1,43 @@
+name: Update Python Dependencies
+
+on:
+  schedule:
+    - cron: '0 16 * * 1' # Every Monday at 11 AM EST (16:00 UTC)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  update-python-deps:
+    name: Update Python Dependencies
+    runs-on: ubuntu-latest
+    if: github.repository == 'GoogleCloudPlatform/DataflowTemplates'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5.0.0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Update Python Dependencies
+        run: |
+          sh python/generate_all_dependencies.sh
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'deps: update Python dependencies'
+          title: 'chore(deps): update Python dependencies'
+          body: |
+            This PR updates the Python dependencies for all templates that use Python.
+            
+            This is an automated PR created by the update-python-deps workflow.
+            
+            **Note:** If this PR does not trigger the template integration tests, please close the PR and reopen it. This should trigger all the tests.
+          branch: chore/update-python-deps
+          base: main
