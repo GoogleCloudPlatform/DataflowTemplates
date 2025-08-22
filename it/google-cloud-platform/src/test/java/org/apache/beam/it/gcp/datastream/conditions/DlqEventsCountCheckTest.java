@@ -3,10 +3,10 @@ package org.apache.beam.it.gcp.datastream.conditions;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
@@ -58,9 +58,7 @@ public class DlqEventsCountCheckTest {
   @Test
   public void testGetDescriptionWithMinOnly() {
     DlqEventsCountCheck check =
-        DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX)
-            .setMinEvents(10)
-            .build();
+        DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX).setMinEvents(10).build();
     assertEquals(
         "Check if number of events in a given folder gs://bucket/dlq/ is 10",
         check.getDescription());
@@ -82,7 +80,8 @@ public class DlqEventsCountCheckTest {
   public void testCheckSuccessWhenEventsMet() {
     List<Artifact> mockArtifacts =
         Collections.singletonList(createMockArtifact("file1.txt", "line1\nline2\nline3"));
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX).setMinEvents(3).build();
@@ -99,7 +98,8 @@ public class DlqEventsCountCheckTest {
         Arrays.asList(
             createMockArtifact("file1.txt", "line1\nline2"),
             createMockArtifact("file2.txt", "line3"));
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX).setMinEvents(3).build();
@@ -114,7 +114,8 @@ public class DlqEventsCountCheckTest {
   public void testCheckSuccessWhenEventsInRange() {
     List<Artifact> mockArtifacts =
         Collections.singletonList(createMockArtifact("file1.txt", "line1\nline2\nline3\nline4"));
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX)
@@ -132,7 +133,8 @@ public class DlqEventsCountCheckTest {
   public void testCheckFailureWhenEventsBelowMin() {
     List<Artifact> mockArtifacts =
         Collections.singletonList(createMockArtifact("file1.txt", "line1"));
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX).setMinEvents(2).build();
@@ -147,7 +149,8 @@ public class DlqEventsCountCheckTest {
   public void testCheckFailureWhenEventsAboveMax() {
     List<Artifact> mockArtifacts =
         Collections.singletonList(createMockArtifact("file1.txt", "line1\nline2\nline3"));
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX)
@@ -168,8 +171,9 @@ public class DlqEventsCountCheckTest {
             createMockArtifact("file1.txt", "line1\nline2"), // 2 lines
             createMockArtifact("empty.txt", ""), // empty file
             createMockArtifact("subdir/", "") // directory placeholder
-        );
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+            );
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX).setMinEvents(2).build();
@@ -201,7 +205,8 @@ public class DlqEventsCountCheckTest {
     when(mockBlob.reader()).thenThrow(new IOException("Test IO Exception"));
 
     List<Artifact> mockArtifacts = Collections.singletonList(mockArtifact);
-    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class))).thenReturn(mockArtifacts);
+    when(mockResourceManager.listArtifacts(eq(GCS_PATH_PREFIX), any(Pattern.class)))
+        .thenReturn(mockArtifacts);
 
     DlqEventsCountCheck check =
         DlqEventsCountCheck.builder(mockResourceManager, GCS_PATH_PREFIX).setMinEvents(1).build();
