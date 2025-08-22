@@ -24,6 +24,8 @@ jobs:
           python-version: '3.11'
 
       - name: Update Python Dependencies
+        env:
+          PY_VERSION: "3.11"
         run: |
           sh python/generate_all_dependencies.sh
 
