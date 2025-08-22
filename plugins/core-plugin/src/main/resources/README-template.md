@@ -95,8 +95,10 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
-<#if language == 'PYTHON' || language == 'YAML'>
+<#if language == 'PYTHON'>
 -f python
+<#elseif language == 'YAML'>
+-f yaml
 <#elseif flex>
 -f v2/${spec.metadata.module!}
 <#else>
