@@ -229,7 +229,11 @@ public class DataStreamToSQL {
     @TemplateParameter.Enum(
         order = 13,
         optional = true,
-        enumOptions = {@TemplateEnumOption("DEFAULT"), @TemplateEnumOption("UPPERCASED"), @TemplateEnumOption("CAPITALIZED")},
+        enumOptions = {
+          @TemplateEnumOption("DEFAULT"),
+          @TemplateEnumOption("UPPERCASED"),
+          @TemplateEnumOption("CAPITALIZED")
+        },
         description = "Toggle for Table Casing",
         helpText =
             "A Toggle for table casing behavior. For example,(ie."
@@ -313,8 +317,6 @@ public class DataStreamToSQL {
     options.setStreaming(true);
     run(options);
   }
-
-
 
   /**
    * Build the DataSourceConfiguration for the target SQL database. Using the pipeline options,
