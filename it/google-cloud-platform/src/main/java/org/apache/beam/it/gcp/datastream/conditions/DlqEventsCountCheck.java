@@ -18,16 +18,9 @@
 package org.apache.beam.it.gcp.datastream.conditions;
 
 import com.google.auto.value.AutoValue;
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.channels.Channels;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.artifacts.Artifact;
-import org.apache.beam.it.gcp.artifacts.GcsArtifact;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 
 /** ConditionCheck to validate if Spanner has received a certain amount of rows. */
@@ -54,29 +47,11 @@ public abstract class DlqEventsCountCheck extends ConditionCheck {
         "Check if number of events in a given folder %s is %d", gcsPathPrefix(), minEvents());
   }
 
-  private long calculateTotalEvents() throws IOException {
-    List<Artifact> artifacts =
-        resourceManager().listArtifacts(gcsPathPrefix(), Pattern.compile(".*"));
-    long totalEvents = 0;
-    for (Artifact artifact : artifacts) {
-      GcsArtifact gcsArtifact = (GcsArtifact) artifact;
-      // Skip the directory placeholder objects
-      if (!gcsArtifact.getBlob().getName().endsWith("/")) {
-        try (BufferedReader reader =
-            new BufferedReader(
-                Channels.newReader(gcsArtifact.getBlob().reader(), StandardCharsets.UTF_8))) {
-          totalEvents += reader.lines().count();
-        }
-      }
-    }
-    return totalEvents;
-  }
-
   @Override
   public CheckResult check() {
     long totalEvents = 0;
     try {
-      totalEvents = calculateTotalEvents();
+      totalEvents = DlqEventsCounter.calculateTotalEvents(resourceManager(), gcsPathPrefix());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
