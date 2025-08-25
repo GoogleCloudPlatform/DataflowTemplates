@@ -208,6 +208,8 @@
       </dependency>
 
       <!-- Enforce non-vulnerable version of httpclient to fix CVE-2020-13956 -->
+      <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
+      <!-- TODO: Remove once Beam releases 2.68.0. -->
       <dependency>
         <groupId>org.apache.httpcomponents</groupId>
         <artifactId>httpclient</artifactId>
