@@ -206,6 +206,8 @@
       </dependency>
 
       <!-- Enforce non-vulnerable version of json-smart (CVE-2023-1370) -->
+      <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
+      <!-- TODO: Remove once Beam releases 2.68.0. -->
       <dependency>
         <groupId>net.minidev</groupId>
         <artifactId>json-smart</artifactId>
