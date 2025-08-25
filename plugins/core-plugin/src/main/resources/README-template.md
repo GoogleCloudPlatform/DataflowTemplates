@@ -14,7 +14,7 @@ on how to use it without having to build from sources using [Create job from tem
 </#if>
 
 :bulb: This is a generated documentation based
-on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates#metadata-annotations)
+on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#metadata-annotations)
 . Do not change this file directly.
 
 ## Parameters
@@ -95,8 +95,10 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
-<#if language == 'PYTHON' || language == 'YAML'>
+<#if language == 'PYTHON'>
 -f python
+<#elseif language == 'YAML'>
+-f yaml
 <#elseif flex>
 -f v2/${spec.metadata.module!}
 <#else>

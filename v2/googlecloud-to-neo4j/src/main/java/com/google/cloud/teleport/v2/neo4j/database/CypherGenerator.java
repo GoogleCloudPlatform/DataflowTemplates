@@ -22,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.neo4j.importer.v1.ImportSpecification;
 import org.neo4j.importer.v1.targets.EntityTarget;
 import org.neo4j.importer.v1.targets.NodeSchema;
@@ -45,16 +46,24 @@ public class CypherGenerator {
    * @return the batch import query
    */
   public static String getImportStatement(
-      ImportSpecification importSpecification, EntityTarget target) {
+      ImportSpecification importSpecification,
+      EntityTarget target,
+      Neo4jCapabilities capabilities) {
     var type = target.getTargetType();
-    switch (type) {
-      case NODE:
-        return unwindNodes((NodeTarget) target);
-      case RELATIONSHIP:
-        return unwindRelationships(importSpecification, (RelationshipTarget) target);
-      default:
-        throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
+    var generatedCypher =
+        switch (type) {
+          case NODE -> unwindNodes((NodeTarget) target);
+          case RELATIONSHIP -> unwindRelationships(
+              importSpecification, (RelationshipTarget) target);
+          default -> throw new IllegalArgumentException(
+              String.format("unexpected target type: %s", type));
+        };
+
+    if (capabilities.hasCypherVersionStatement()) {
+      return "CYPHER 5 " + generatedCypher;
     }
+
+    return generatedCypher;
   }
 
   /**
@@ -66,14 +75,21 @@ public class CypherGenerator {
   public static Set<String> getSchemaStatements(
       EntityTarget target, Neo4jCapabilities capabilities) {
     var type = target.getTargetType();
-    switch (type) {
-      case NODE:
-        return getNodeSchemaStatements((NodeTarget) target, capabilities);
-      case RELATIONSHIP:
-        return getRelationshipSchemaStatements((RelationshipTarget) target, capabilities);
-      default:
-        throw new IllegalArgumentException(String.format("unexpected target type: %s", type));
+    var generatedCyphers =
+        switch (type) {
+          case NODE -> getNodeSchemaStatements((NodeTarget) target, capabilities);
+          case RELATIONSHIP -> getRelationshipSchemaStatements(
+              (RelationshipTarget) target, capabilities);
+          default -> throw new IllegalArgumentException(
+              String.format("unexpected target type: %s", type));
+        };
+
+    if (capabilities.hasCypherVersionStatement()) {
+      generatedCyphers =
+          generatedCyphers.stream().map(cypher -> "CYPHER 5 " + cypher).collect(Collectors.toSet());
     }
+
+    return generatedCyphers;
   }
 
   private static String unwindNodes(NodeTarget nodeTarget) {

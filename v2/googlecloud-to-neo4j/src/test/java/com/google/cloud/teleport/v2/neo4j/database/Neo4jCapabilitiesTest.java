@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.neo4j.database;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.v2.neo4j.database.Neo4jCapabilities.Neo4jVersion;
 import org.junit.Test;
@@ -44,5 +46,16 @@ public class Neo4jCapabilitiesTest {
     assertThrows(NumberFormatException.class, () -> Neo4jVersion.of(".."));
     assertThrows(NumberFormatException.class, () -> Neo4jVersion.of("5..3"));
     assertThrows(NumberFormatException.class, () -> Neo4jVersion.of(".2025.6"));
+  }
+
+  @Test
+  public void cypher_version_statement_availability() {
+    var before = new Neo4jCapabilities("5.20", "community");
+    var first = new Neo4jCapabilities("5.21", "community");
+    var after = new Neo4jCapabilities("5.26", "community");
+
+    assertFalse("last version before cypher version statement", before.hasCypherVersionStatement());
+    assertTrue("first version with cypher version statement", first.hasCypherVersionStatement());
+    assertTrue("some versions after cypher version statement", after.hasCypherVersionStatement());
   }
 }

@@ -78,19 +78,24 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
                 createConfig(info),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
-                        "CALL db.schema.nodeTypeProperties() YIELD nodeLabels, propertyName, mandatory RETURN nodeLabels, collect(propertyName) AS propertyNames ORDER BY nodeLabels ASC")
+                        "CALL db.schema.nodeTypeProperties() "
+                            + "YIELD nodeLabels, propertyName, mandatory "
+                            + "WITH nodeLabels, propertyName "
+                            + "ORDER BY nodeLabels, propertyName "
+                            + "RETURN nodeLabels, collect(propertyName) AS propertyNames "
+                            + "ORDER BY nodeLabels ASC")
                     .setExpectedResult(
                         List.of(
                             Map.of(
                                 "nodeLabels",
                                 List.of("Customer"),
                                 "propertyNames",
-                                List.of("customerId", "contactName", "companyName")),
+                                List.of("companyName", "contactName", "customerId")),
                             Map.of(
                                 "nodeLabels",
                                 List.of("Product"),
                                 "propertyNames",
-                                List.of("productId", "productName", "amount", "quantity"))))
+                                List.of("amount", "productId", "productName", "quantity"))))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
@@ -102,14 +107,19 @@ public class InlineDataToNeo4jIT extends TemplateTestBase {
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(
-                        "CALL db.schema.relTypeProperties() YIELD relType, propertyName RETURN relType, collect(propertyName) AS propertyNames ORDER BY relType ASC")
+                        "CALL db.schema.relTypeProperties() "
+                            + "YIELD relType, propertyName "
+                            + "WITH relType, propertyName "
+                            + "ORDER BY relType, propertyName "
+                            + "RETURN relType, collect(propertyName) AS propertyNames "
+                            + "ORDER BY relType ASC")
                     .setExpectedResult(
                         List.of(
                             Map.of(
                                 "relType",
                                 ":`PURCHASES`",
                                 "propertyNames",
-                                List.of("orderId", "amount", "quantity"))))
+                                List.of("amount", "orderId", "quantity"))))
                     .build(),
                 Neo4jQueryCheck.builder(neo4jClient)
                     .setQuery(

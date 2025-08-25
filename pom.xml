@@ -74,12 +74,13 @@
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
+    <json-smart.version>2.4.9</json-smart.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>2.0.17</slf4j.version>
     <snakeyaml.version>2.2</snakeyaml.version>
     <snappy.version>1.1.10.4</snappy.version>
-    <spotless-maven-plugin.version>2.40.0</spotless-maven-plugin.version>
+    <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.1.5</truth.version>
     <gax.version>2.68.1</gax.version>
@@ -95,6 +96,7 @@
     <ojdbc8.version>23.2.0.0</ojdbc8.version>
     <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
+    <okio.version>1.17.6</okio.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
@@ -215,6 +217,15 @@
         <artifactId>httpclient</artifactId>
         <version>${httpclient.version}</version>
       </dependency>
+  
+      <!-- Enforce non-vulnerable version of json-smart (CVE-2023-1370) -->
+      <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
+      <!-- TODO: Remove once Beam releases 2.68.0. -->
+      <dependency>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+        <version>${json-smart.version}</version>
+      </dependency>
 
       <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
       <dependency>
@@ -226,6 +237,13 @@
         <groupId>com.google.api</groupId>
         <artifactId>gax</artifactId>
         <version>${gax.version}</version>
+      </dependency>
+
+      <!-- Enforce non-vulnerable version of okio (CVE-2023-3635) -->
+      <dependency>
+        <groupId>com.squareup.okio</groupId>
+        <artifactId>okio</artifactId>
+        <version>${okio.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
