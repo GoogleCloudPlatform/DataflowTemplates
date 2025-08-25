@@ -1329,7 +1329,8 @@ public class ImportFromAvroTest {
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
             ValueProvider.StaticValueProvider.of(true),
-            ValueProvider.StaticValueProvider.of(30)));
+            ValueProvider.StaticValueProvider.of(30),
+            ValueProvider.StaticValueProvider.of(40)));
     PipelineResult importResult = importPipeline.run();
     importResult.waitUntilFinish();
 
