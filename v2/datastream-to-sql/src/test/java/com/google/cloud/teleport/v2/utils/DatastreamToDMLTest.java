@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -865,5 +866,66 @@ public class DatastreamToDMLTest {
           .hasMessageThat()
           .contains("Database Type unsupported-db is not supported.");
     }
+  }
+
+  @Test
+  public void testApplyCasing_uppercased() {
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null).withDefaultCasing("UPPERCASED");
+    assertEquals("MYTABLE", dml.applyCasing("MyTable"));
+  }
+
+  @Test
+  public void testApplyCasing_capitalized() {
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null).withDefaultCasing("CAPITALIZED");
+    assertEquals("Mytable", dml.applyCasing("MYTABLE"));
+  }
+
+  @Test
+  public void testApplyCasing_defaultAndFallback() {
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dmlDefault = DatastreamToPostgresDML.of(null).withDefaultCasing("DEFAULT");
+    assertEquals("mytable", dmlDefault.applyCasing("MyTable"));
+
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dmlCaseInsensitive =
+        DatastreamToPostgresDML.of(null).withDefaultCasing("capitalized");
+    assertEquals("Mytable", dmlCaseInsensitive.applyCasing("MyTable"));
+
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dmlFallback = DatastreamToPostgresDML.of(null).withDefaultCasing("foo");
+    assertEquals("mytable", dmlFallback.applyCasing("MyTable"));
+  }
+
+  @Test
+  public void testApplyCasing_nullInput() {
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null);
+    assertNull(dml.applyCasing(null));
+  }
+
+  @Test
+  public void testTargetNames_withCasingOptions() {
+    DatastreamRow mockRow = mock(DatastreamRow.class);
+    when(mockRow.getSchemaName()).thenReturn("MySchema");
+    when(mockRow.getTableName()).thenReturn("MyTable");
+
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dmlCapitalized =
+        DatastreamToPostgresDML.of(null).withDefaultCasing("CAPITALIZED");
+    assertEquals("Myschema", dmlCapitalized.getTargetSchemaName(mockRow));
+    assertEquals("Mytable", dmlCapitalized.getTargetTableName(mockRow));
+
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dmlUppercased =
+        DatastreamToPostgresDML.of(null).withDefaultCasing("UPPERCASED");
+    assertEquals("MYSCHEMA", dmlUppercased.getTargetSchemaName(mockRow));
+    assertEquals("MYTABLE", dmlUppercased.getTargetTableName(mockRow));
+
+    // FIX: Changed variable type to DatastreamToDML
+    DatastreamToDML dmlDefault = DatastreamToPostgresDML.of(null).withDefaultCasing("DEFAULT");
+    assertEquals("myschema", dmlDefault.getTargetSchemaName(mockRow));
+    assertEquals("mytable", dmlDefault.getTargetTableName(mockRow));
   }
 }
