@@ -125,7 +125,7 @@ public class SrcDbToSpannerMySQLSevereErrorNonShardedFT extends SourceDbToSpanne
                         .setMinRows(90)
                         .setMaxRows(90)
                         .build(),
-                    DlqEventsCountCheck.builder(gcsResourceManager, "output")
+                    DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
                         .setMinEvents(10)
                         .build()))
             .build();

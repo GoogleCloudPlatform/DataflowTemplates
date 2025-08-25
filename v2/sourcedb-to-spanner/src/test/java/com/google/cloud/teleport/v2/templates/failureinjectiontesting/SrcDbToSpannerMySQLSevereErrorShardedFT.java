@@ -164,7 +164,7 @@ public class SrcDbToSpannerMySQLSevereErrorShardedFT extends SourceDbToSpannerFT
                         .setMinRows(190)
                         .setMaxRows(190)
                         .build(),
-                    DlqEventsCountCheck.builder(gcsResourceManager, "output")
+                    DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
                         .setMinEvents(10)
                         .build()))
             .build();
