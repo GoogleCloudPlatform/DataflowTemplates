@@ -1,6 +1,6 @@
 # Python Dependency Management
 
-This document outlines the process for managing Python dependencies for the Python-based Dataflow templates in this repository.
+This document outlines the process for managing Python dependencies for the Python-based and a few other Dataflow templates in this repository.
 
 ## Overview
 
