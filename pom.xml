@@ -101,6 +101,9 @@
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
 
+    <!-- Security vulnerability fixes -->
+    <httpclient.version>4.5.13</httpclient.version>
+
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
     <load.tests>com.google.cloud.teleport.metadata.TemplateLoadTest</load.tests>
@@ -206,6 +209,15 @@
         <version>${json.version}</version>
       </dependency>
 
+      <!-- Enforce non-vulnerable version of httpclient to fix CVE-2020-13956 -->
+      <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
+      <!-- TODO: Remove once Beam releases 2.68.0. -->
+      <dependency>
+        <groupId>org.apache.httpcomponents</groupId>
+        <artifactId>httpclient</artifactId>
+        <version>${httpclient.version}</version>
+      </dependency>
+  
       <!-- Enforce non-vulnerable version of json-smart (CVE-2023-1370) -->
       <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
       <!-- TODO: Remove once Beam releases 2.68.0. -->
