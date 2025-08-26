@@ -239,6 +239,12 @@
       <version>1.60</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-conditions</artifactId>
+      <scope>test</scope>
+      <version>${project.version}</version>
+    </dependency>
   </dependencies>
   <dependencyManagement>
     <dependencies>
