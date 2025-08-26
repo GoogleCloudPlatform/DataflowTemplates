@@ -17,4 +17,8 @@ package com.google.cloud.teleport.v2.failureinjection;
 
 public interface ErrorInjectionPolicy {
   boolean shouldInjectionError();
+
+  default String getErrorCodeToBeInjected() {
+    return null;
+  }
 }

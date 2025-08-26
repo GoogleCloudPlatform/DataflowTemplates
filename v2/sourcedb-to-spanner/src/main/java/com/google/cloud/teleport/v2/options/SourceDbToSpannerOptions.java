@@ -400,4 +400,14 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   String getAstraDBRegion();
 
   void setAstraDBRegion(String value);
+
+  @TemplateParameter.Text(
+      order = 32,
+      optional = true,
+      description = "Failure injection parameter",
+      helpText = "Failure injection parameter. Only used for testing.")
+  @Default.String("")
+  String getFailureInjectionParameter();
+
+  void setFailureInjectionParameter(String value);
 }

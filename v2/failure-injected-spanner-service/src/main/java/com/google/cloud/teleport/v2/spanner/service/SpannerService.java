@@ -30,6 +30,7 @@ import io.grpc.ForwardingClientCallListener.SimpleForwardingClientCallListener;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
+import io.grpc.Status.Code;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
@@ -91,7 +92,18 @@ public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, 
                 public void onClose(Status status, Metadata metadata) {
                   if (errorInjected.get()) {
                     // Return an error as if it has been sent from Spanner.
-                    status = Status.DEADLINE_EXCEEDED.augmentDescription("INJECTED BY TEST");
+                    if (errorInjectionPolicy.getErrorCodeToBeInjected() != null) {
+                      try {
+                        status =
+                            Status.fromCode(
+                                    Code.valueOf(errorInjectionPolicy.getErrorCodeToBeInjected()))
+                                .augmentDescription("INJECTED BY TEST");
+                      } catch (IllegalArgumentException e) {
+                        status = Status.DEADLINE_EXCEEDED.augmentDescription("INJECTED BY TEST");
+                      }
+                    } else {
+                      status = Status.DEADLINE_EXCEEDED.augmentDescription("INJECTED BY TEST");
+                    }
                   }
                   super.onClose(status, metadata);
                 }
