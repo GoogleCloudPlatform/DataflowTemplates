@@ -185,9 +185,11 @@ public class PipelineController {
           configContainer.getSrcTableToShardIdColumnMap(
               tableSelector.getSchemaMapper(), spannerTables);
 
-      spannerConfig =
-          SpannerServiceFactoryImpl.createSpannerService(
-              spannerConfig, options.getFailureInjectionParameter());
+      if (options.getFailureInjectionParameter() != null && !options.getFailureInjectionParameter().isBlank()) {
+        spannerConfig =
+            SpannerServiceFactoryImpl.createSpannerService(
+                spannerConfig, options.getFailureInjectionParameter());
+      }
 
       PCollection<Void> output =
           pipeline.apply(
