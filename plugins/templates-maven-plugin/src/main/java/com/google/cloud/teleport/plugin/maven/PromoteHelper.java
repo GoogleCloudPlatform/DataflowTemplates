@@ -42,6 +42,7 @@ class PromoteHelper {
   private final String sourceDigest;
   private final String token;
   private final String imageTag;
+  private final @Nullable String additionalTag;
 
   /**
    * Promote the staged flex template image using MOSS promote API.
@@ -49,19 +50,32 @@ class PromoteHelper {
    * @param sourcePath - spec for source image without tag
    * @param targetPath - spec for target image without tag
    * @param imageTag - image tag
+   * @param additionalTag - additional destination tag, used by repo managements, e.g.
+   *     public-image-latest
    * @param sourceDigest - source image digest, e.g. sha256:xxxxx
    */
-  public PromoteHelper(String sourcePath, String targetPath, String imageTag, String sourceDigest)
+  public PromoteHelper(
+      String sourcePath,
+      String targetPath,
+      String imageTag,
+      @Nullable String additionalTag,
+      String sourceDigest)
       throws IOException, InterruptedException {
-    this(sourcePath, targetPath, imageTag, sourceDigest, accessToken());
+    this(sourcePath, targetPath, imageTag, additionalTag, sourceDigest, accessToken());
   }
 
   @VisibleForTesting
   PromoteHelper(
-      String sourcePath, String targetPath, String imageTag, String sourceDigest, String token) {
+      String sourcePath,
+      String targetPath,
+      String imageTag,
+      @Nullable String additionalTag,
+      String sourceDigest,
+      String token) {
     this.sourceSpec = new ArtifactRegImageSpec(sourcePath);
     this.targetSpec = new ArtifactRegImageSpec(targetPath);
     this.imageTag = imageTag;
+    this.additionalTag = additionalTag;
     this.sourceDigest = sourceDigest;
     this.token = token;
     this.targetPath = targetPath;
@@ -76,9 +90,11 @@ class PromoteHelper {
     String operation = parsed.getAsJsonObject().get("name").getAsString();
     waitForComplete(operation);
     addTag(imageTag);
-    // override latest (for pull default tag) and public-image-latest (for vul scan)
+    // override latest (for pull default tag) and additionalTag (for vul scan, if present)
     addTag("latest");
-    addTag("public-image-latest");
+    if (additionalTag != null) {
+      addTag(additionalTag);
+    }
   }
 
   @VisibleForTesting
