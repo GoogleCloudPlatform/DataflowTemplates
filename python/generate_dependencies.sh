@@ -55,7 +55,7 @@ pip-compile $BASE_REQUIREMENTS_PATH -o $TARGET_REQUIREMENTS_PATH --generate-hash
 
 PY_IMAGE="py${PY_VERSION//.}"
 cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
-# Copyright 2024 Google Inc. All Rights Reserved.
+# Copyright 2025 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -73,6 +73,8 @@ cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
 # From the templates base directory to update,
 # run: sh python/generate_all_dependencies.sh
 # Do not edit manually, adjust the base requirements file, and regenerate the list.
+
+# See [maintainers-guide](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#validating-and-upgrading-beam-versions) for more information.
 
 $(cat $TARGET_REQUIREMENTS_PATH)
 
