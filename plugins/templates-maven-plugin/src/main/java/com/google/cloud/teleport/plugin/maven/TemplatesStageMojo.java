@@ -36,6 +36,7 @@ import com.google.cloud.teleport.plugin.TemplateDefinitionsParser;
 import com.google.cloud.teleport.plugin.TemplatePluginUtils;
 import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
+import com.google.cloud.teleport.plugin.model.ImageSpecMetadata;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import com.google.common.base.Strings;
 import dev.failsafe.Failsafe;
@@ -545,9 +546,17 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String digest = runnable.getDigest();
 
       if (stageImageBeforePromote) {
+        // resolve tag to apply
+        ImageSpecMetadata metadata = imageSpec.getMetadata();
+        String trackTag = "public-image-latest";
+        if (metadata.isHidden()) {
+          trackTag = "no-new-use-public-image-latest";
+        } else if (metadata.getName().contains("[Deprecated]")) {
+          trackTag = "deprecated-public-image-latest";
+        }
         // promote image
         PromoteHelper promoteHelper =
-            new PromoteHelper(imagePath, targetImagePath, stagePrefix, digest);
+            new PromoteHelper(imagePath, targetImagePath, stagePrefix, trackTag, digest);
         promoteHelper.promote();
 
         if (!stageImageOnly) {
