@@ -1,4 +1,4 @@
-# Copyright 2024 Google Inc. All Rights Reserved.
+# Copyright 2025 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# See [maintainers-guide](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#validating-and-upgrading-beam-versions) for more information.
+
+# Exit immediately on error
+set -e
+
 SCRIPTPATH=$(dirname "$0")
 
 sh $SCRIPTPATH/generate_dependencies.sh $SCRIPTPATH/../python/src/main/python/streaming-llm/base_requirements.txt $SCRIPTPATH/../python/src/main/python/streaming-llm/requirements.txt
@@ -24,6 +29,7 @@ cp $SCRIPTPATH/__build__/default_python_requirements.txt $SCRIPTPATH/../python/s
 
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../python/src/main/python/yaml-template/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../python/src/main/python/job-builder-server/requirements.txt
+cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../yaml/src/main/python/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-elasticsearch/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-googlecloud/src/main/resources/requirements.txt
 cp $SCRIPTPATH/__build__/default_yaml_requirements.txt $SCRIPTPATH/../v2/googlecloud-to-splunk/src/main/resources/requirements.txt
