@@ -520,6 +520,12 @@
                                                 <exclude>META-INF/*.RSA</exclude>
                                             </excludes>
                                         </filter>
+                                        <filter>
+                                            <artifact>org.apache.hbase:hbase-shaded-client</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/**</exclude>
+                                            </excludes>
+                                        </filter>
                                     </filters>
                                     <transformers>
                                         <transformer
