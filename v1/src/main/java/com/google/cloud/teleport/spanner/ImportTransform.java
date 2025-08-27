@@ -116,6 +116,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
   private final ValueProvider<Boolean> waitForSequences;
   private final ValueProvider<Boolean> earlyIndexCreateFlag;
   private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
+  private final ValueProvider<Integer> earlyIndexCreateThreshold;
 
   public ImportTransform(
       SpannerConfig spannerConfig,
@@ -125,7 +126,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
       ValueProvider<Boolean> waitForChangeStreams,
       ValueProvider<Boolean> waitForSequences,
       ValueProvider<Boolean> earlyIndexCreateFlag,
-      ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
+      ValueProvider<Integer> ddlCreationTimeoutInMinutes,
+      ValueProvider<Integer> earlyIndexCreateThreshold) {
     this.spannerConfig = spannerConfig;
     this.importDirectory = importDirectory;
     this.waitForIndexes = waitForIndexes;
@@ -134,6 +136,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     this.waitForSequences = waitForSequences;
     this.earlyIndexCreateFlag = earlyIndexCreateFlag;
     this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
+    this.earlyIndexCreateThreshold = earlyIndexCreateThreshold;
   }
 
   @Override
@@ -193,7 +196,8 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                 informationSchemaView,
                 manifestView,
                 earlyIndexCreateFlag,
-                ddlCreationTimeoutInMinutes));
+                ddlCreationTimeoutInMinutes,
+                earlyIndexCreateThreshold));
 
     final PCollection<Ddl> ddl = createTableOutput.get(CreateTables.getDdlObjectTag());
     final PCollectionView<List<String>> pendingIndexes =
@@ -408,6 +412,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
     private final PCollectionView<Export> manifestView;
     private final ValueProvider<Boolean> earlyIndexCreateFlag;
     private final ValueProvider<Integer> ddlCreationTimeoutInMinutes;
+    private final ValueProvider<Integer> earlyIndexCreateThreshold;
 
     private transient SpannerAccessor spannerAccessor;
     private static final Logger LOG = LoggerFactory.getLogger(CreateTables.class);
@@ -446,13 +451,15 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
         PCollectionView<Ddl> informationSchemaView,
         PCollectionView<Export> manifestView,
         ValueProvider<Boolean> earlyIndexCreateFlag,
-        ValueProvider<Integer> ddlCreationTimeoutInMinutes) {
+        ValueProvider<Integer> ddlCreationTimeoutInMinutes,
+        ValueProvider<Integer> earlyIndexCreateThreshold) {
       this.spannerConfig = spannerConfig;
       this.avroSchemasView = avroSchemasView;
       this.informationSchemaView = informationSchemaView;
       this.manifestView = manifestView;
       this.earlyIndexCreateFlag = earlyIndexCreateFlag;
       this.ddlCreationTimeoutInMinutes = ddlCreationTimeoutInMinutes;
+      this.earlyIndexCreateThreshold = earlyIndexCreateThreshold;
     }
 
     @Override
@@ -660,7 +667,7 @@ public class ImportTransform extends PTransform<PBegin, PDone> {
                             if (earlyIndexCreateFlag.get()
                                 && ((createForeignKeyStatements.size()
                                         + createIndexStatements.size())
-                                    >= EARLY_INDEX_CREATE_THRESHOLD)) {
+                                    >= earlyIndexCreateThreshold.get())) {
                               LOG.info(
                                   "Create index early: {}",
                                   String.join(";", createIndexStatements));
