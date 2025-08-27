@@ -171,7 +171,7 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
   }
 
   @Test
-  public void shouldInjectError_firstCallReturnsTrueAndInitializesTime() {
+  public void shouldInjectError_firstCallReturnsFalseAndInitializesTime() {
     JsonNode input = createInputObject("PT2S");
     Instant initialInstant = Instant.parse("2025-04-23T10:00:00Z");
     Clock initialClock = Clock.fixed(initialInstant, ZoneOffset.UTC);
@@ -183,9 +183,26 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
     // First call
     boolean result = policy.shouldInjectionError();
 
-    assertTrue("First call should return true", result);
+    assertFalse("First call should return false", result);
     assertNotNull("Start time should be set after first call", policy.getStartTime());
     assertEquals("Start time should match first call time", initialInstant, policy.getStartTime());
+  }
+
+  @Test
+  public void shouldInjectError_secondCallReturnsTrue() {
+    JsonNode input = createInputObject("PT2S");
+    Instant initialInstant = Instant.parse("2025-04-23T10:00:00Z");
+    Clock initialClock = Clock.fixed(initialInstant, ZoneOffset.UTC);
+    InitialLimitedDurationErrorInjectionPolicy policy =
+        new InitialLimitedDurationErrorInjectionPolicy(input, initialClock);
+
+    // First call
+    boolean result = policy.shouldInjectionError();
+    assertFalse("First call should return false", result);
+    result = policy.shouldInjectionError();
+    assertTrue("Second call should return true", result);
+    result = policy.shouldInjectionError();
+    assertTrue("Third call should return true", result);
   }
 
   @Test
@@ -202,7 +219,7 @@ public class InitialLimitedDurationErrorInjectionPolicyTest {
     // Simulate calls at different times by changing the clock
 
     // t=0s (First call)
-    assertTrue("Call at t=0s should return true", policy.shouldInjectionError());
+    assertFalse("First call at t=0s should return false", policy.shouldInjectionError());
     assertEquals("Start time should be t0", t0, policy.getStartTime());
 
     // t=1s
