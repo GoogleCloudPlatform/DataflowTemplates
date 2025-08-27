@@ -210,7 +210,7 @@ public class ImportPipeline {
         optional = true,
         description = "Early Index Create Threshold",
         helpText =
-            "The threshold for the number of indexes and foreign keys that determines whether to create indexes before data loading. If the total number of indexes and foreign keys is less than this threshold, they will be created before data import for better performance. The default value is 40.")
+            "The threshold for the number of indexes and foreign keys that determines whether to create indexes before data loading. If the total number of indexes and foreign keys is larger than this threshold, they will be created before data import for better performance. The default value is 40.")
     @Default.Integer(40)
     ValueProvider<Integer> getEarlyIndexCreateThreshold();
 
