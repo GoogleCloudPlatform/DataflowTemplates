@@ -458,9 +458,6 @@ python
 yaml
 ```
 
-REMINDER: Run `mvn clean install -pl plugins/templates-maven-plugin -am` command
-after making any changes and before running `mvn clean prepare-package` command here.
-
 ## Python Dependency Management
 
 See [maintainers-guide](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#validating-and-upgrading-beam-versions) for more information.
