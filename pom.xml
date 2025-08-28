@@ -99,7 +99,7 @@
     <okio.version>1.17.6</okio.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
-    <postgres-socket-factory.version>1.15.2</postgres-socket-factory.version>
+    <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
 
     <!-- Security vulnerability fixes -->
     <httpclient.version>4.5.13</httpclient.version>
