@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.failureinjection;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import io.grpc.Status.Code;
 import java.io.Serializable;
 import java.time.Clock;
 import java.time.Duration;
@@ -39,10 +40,14 @@ public class InitialLimitedDurationErrorInjectionPolicy
   private Instant startTime;
   private final Duration injectionDuration;
   private final String effectiveDurationParameter;
+  private String errorCodeToBeInjected;
   private Clock clock;
+  private long callCount;
 
   private static final String DEFAULT_DURATION = "PT10M";
   private static final String DURATION_FIELD_IN_OBJECT = "duration";
+  private static final String ERROR_CODE_IN_OBJECT = "errorCode";
+  private static final long INITIAL_ALLOWED_CALLS_COUNT = 2;
 
   public InitialLimitedDurationErrorInjectionPolicy(JsonNode inputParameter) {
     this(inputParameter, Clock.systemUTC());
@@ -77,6 +82,18 @@ public class InitialLimitedDurationErrorInjectionPolicy
                 "Received object input with blank text in field '{}'. Using default: {}",
                 DURATION_FIELD_IN_OBJECT,
                 DEFAULT_DURATION);
+          }
+        }
+        JsonNode errorCodePath = inputParameter.path(ERROR_CODE_IN_OBJECT);
+        if (errorCodePath.isTextual()) {
+          String textValue = errorCodePath.asText();
+          if (textValue != null && !textValue.isBlank()) {
+            errorCodeToBeInjected = textValue;
+          } else {
+            LOG.warn(
+                "Received object input with blank text in field '{}'. Using default: {}",
+                ERROR_CODE_IN_OBJECT,
+                Code.DEADLINE_EXCEEDED);
           }
         }
       }
@@ -118,6 +135,13 @@ public class InitialLimitedDurationErrorInjectionPolicy
         }
       }
     }
+    synchronized (this) {
+      ++callCount;
+    }
+
+    if (callCount < INITIAL_ALLOWED_CALLS_COUNT) {
+      return false;
+    }
 
     Instant now = Instant.now(clock);
     Duration elapsed = Duration.between(startTime, now);
@@ -139,6 +163,11 @@ public class InitialLimitedDurationErrorInjectionPolicy
     }
 
     return shouldInject;
+  }
+
+  @Override
+  public String getErrorCodeToBeInjected() {
+    return errorCodeToBeInjected;
   }
 
   public Duration getInjectionDuration() {

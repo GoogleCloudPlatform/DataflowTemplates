@@ -27,11 +27,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
+import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCounter;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
@@ -87,8 +91,20 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       GcsResourceManager gcsResourceManager,
       CloudSqlResourceManager cloudSqlResourceManager)
       throws IOException {
+    return launchBulkDataflowJob(
+        jobName, null, null, spannerResourceManager, gcsResourceManager, cloudSqlResourceManager);
+  }
+
+  protected PipelineLauncher.LaunchInfo launchBulkDataflowJob(
+      String jobName,
+      String additionalMavenProfile,
+      Map<String, String> additionalParams,
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      CloudSqlResourceManager cloudSqlResourceManager)
+      throws IOException {
     // launch dataflow template
-    FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager =
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(jobName)
             .withTemplateName("Sourcedb_to_Spanner_Flex")
             .withTemplateModulePath("v2/sourcedb-to-spanner")
@@ -101,11 +117,20 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("password", cloudSqlResourceManager.getPassword())
             .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
             .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("disable_runner_v2"))
-            .build();
+                "additionalExperiments", Collections.singletonList("disable_runner_v2"));
+
+    if (additionalMavenProfile != null && !additionalMavenProfile.isBlank()) {
+      flexTemplateBuilder.withAdditionalMavenProfile(additionalMavenProfile);
+    }
+
+    if (additionalParams != null) {
+      for (Entry<String, String> param : additionalParams.entrySet()) {
+        flexTemplateBuilder.addParameter(param.getKey(), param.getValue());
+      }
+    }
 
     // Run
-    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     return jobInfo;
   }
 
@@ -228,6 +253,61 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
       this.dbName = dbName;
       this.databaseId = databaseId;
       this.refDataShardId = refDataShardId;
+    }
+  }
+
+  public static class TotalEventsProcessedCheck extends ConditionCheck {
+
+    private Long minTotalEventsExpected;
+    private SpannerResourceManager spannerResourceManager;
+    private List<String> tables;
+    private GcsResourceManager gcsResourceManager;
+    private String gcsPathPrefix;
+
+    @Override
+    public String getDescription() {
+      return String.format(
+          "Total Events processed check if rows in Spanner + number of errors = %d",
+          minTotalEventsExpected);
+    }
+
+    @Override
+    public CheckResult check() {
+      Long totalRowsInSpanner = 0L;
+      Long totalErrors = 0L;
+      try {
+        for (String table : tables) {
+          totalRowsInSpanner += spannerResourceManager.getRowCount(table);
+        }
+        totalErrors = DlqEventsCounter.calculateTotalEvents(gcsResourceManager, gcsPathPrefix);
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      if ((totalRowsInSpanner + totalErrors) < minTotalEventsExpected) {
+        return new CheckResult(
+            false,
+            String.format(
+                "Expected at least %d events processed but has only %d in Spanner + %d errors",
+                minTotalEventsExpected, totalRowsInSpanner, totalErrors));
+      }
+      return new CheckResult(
+          true,
+          String.format(
+              "Expected at least %d events processed and found %d rows in spanner + %d errors",
+              minTotalEventsExpected, totalRowsInSpanner, totalErrors));
+    }
+
+    public TotalEventsProcessedCheck(
+        SpannerResourceManager spannerResourceManager,
+        List<String> tables,
+        GcsResourceManager gcsResourceManager,
+        String gcsPathPrefix,
+        long minTotalEventsExpected) {
+      this.spannerResourceManager = spannerResourceManager;
+      this.tables = tables;
+      this.gcsResourceManager = gcsResourceManager;
+      this.gcsPathPrefix = gcsPathPrefix;
+      this.minTotalEventsExpected = minTotalEventsExpected;
     }
   }
 }

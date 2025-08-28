@@ -41,6 +41,7 @@ import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.Wait;
@@ -183,6 +184,13 @@ public class PipelineController {
       Map<String, String> srcTableToShardIdColumnMap =
           configContainer.getSrcTableToShardIdColumnMap(
               tableSelector.getSchemaMapper(), spannerTables);
+
+      if (options.getFailureInjectionParameter() != null
+          && !options.getFailureInjectionParameter().isBlank()) {
+        spannerConfig =
+            SpannerServiceFactoryImpl.createSpannerService(
+                spannerConfig, options.getFailureInjectionParameter());
+      }
 
       PCollection<Void> output =
           pipeline.apply(
