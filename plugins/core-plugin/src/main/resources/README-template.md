@@ -95,7 +95,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
-<#if language == 'PYTHON'>
+<#if language == 'PYTHON' || spec.metadata.module! == 'python'>
 -f python
 <#elseif language == 'YAML'>
 -f yaml
@@ -198,8 +198,10 @@ mvn clean package -PtemplatesRun \
 -DjobName="${spec.metadata.internalName?lower_case?replace("_", "-")}-job" \
 -DtemplateName="${spec.metadata.internalName}" \
 -Dparameters="<#list spec.metadata.parameters as parameter>${parameter.name}=$${parameter.name?replace('([a-z])([A-Z])', '$1_$2', 'r')?upper_case?replace("-", "_")}<#sep>,</#sep></#list>" \
-<#if language == 'PYTHON' || language == 'YAML'>
+<#if language == 'PYTHON' || spec.metadata.module! == 'python'>
 -f python
+<#elseif language == 'YAML'>
+-f yaml
 <#elseif flex>
 -f v2/${spec.metadata.module!}
 <#else>
