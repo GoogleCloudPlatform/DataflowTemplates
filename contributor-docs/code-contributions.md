@@ -439,6 +439,25 @@ mvn clean prepare-package \
   -PtemplatesSpec
 ```
 
+To generate the documentation for a specific template, the following command can be used:
+
+```shell
+mvn clean prepare-package \
+  -DskipTests \
+  -PtemplatesSpec \
+  -pl python \
+  -DtemplateName="Yaml_Template" \
+  -am
+```
+
+`pl` argument can be any plugin module such as:
+```shell
+v1
+v2/bigquery-to-bigtable
+python
+yaml
+```
+
 ## Python Dependency Management
 
 See [maintainers-guide](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/maintainers-guide.md#validating-and-upgrading-beam-versions) for more information.

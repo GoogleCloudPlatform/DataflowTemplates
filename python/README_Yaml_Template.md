@@ -75,7 +75,7 @@ mvn clean package -PtemplatesStage  \
 -DbucketName="$BUCKET_NAME" \
 -DstagePrefix="templates" \
 -DtemplateName="Yaml_Template" \
--f yaml
+-f python
 ```
 
 

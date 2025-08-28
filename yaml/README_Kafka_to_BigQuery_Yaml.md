@@ -170,7 +170,7 @@ mvn clean package -PtemplatesRun \
 -DjobName="kafka-to-bigquery-yaml-job" \
 -DtemplateName="Kafka_to_BigQuery_Yaml" \
 -Dparameters="readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,outputTableSpec=$OUTPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,schema=$SCHEMA,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
--f python
+-f yaml
 ```
 
 ## Terraform
