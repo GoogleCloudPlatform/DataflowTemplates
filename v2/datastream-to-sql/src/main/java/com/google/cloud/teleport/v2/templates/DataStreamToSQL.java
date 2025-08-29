@@ -230,15 +230,17 @@ public class DataStreamToSQL {
         order = 13,
         optional = true,
         enumOptions = {
-          @TemplateEnumOption("DEFAULT"),
-          @TemplateEnumOption("UPPERCASED"),
-          @TemplateEnumOption("CAPITALIZED")
+          @TemplateEnumOption("LOWERCASE"),
+          @TemplateEnumOption("UPPERCASE"),
+          @TemplateEnumOption("CAMEL"),
+          @TemplateEnumOption("SNAKE")
         },
         description = "Toggle for Table Casing",
         helpText =
             "A Toggle for table casing behavior. For example,(ie."
-                + "DEFAULT = table1 -> table1, Capitalized = table1 -> Table1")
-    @Default.String("DEFAULT")
+                + "LOWERCASE = mytable -> mytable, UPPERCASE = mytable -> MYTABLE"
+                + "CAMEL = my_table -> myTable, SNAKE = myTable -> my_table")
+    @Default.String("LOWERCASE")
     String getDefaultCasing();
 
     void setDefaultCasing(String value);

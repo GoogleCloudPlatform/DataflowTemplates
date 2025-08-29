@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.CaseFormat;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.sql.Connection;
@@ -97,16 +98,24 @@ public abstract class DatastreamToDML
   }
 
   protected String applyCasing(String name) {
-    if (name == null) {
-      return null;
+    if (name == null || name.isEmpty()) {
+      return name;
     }
 
     switch (this.defaultCasing.toUpperCase()) {
-      case "UPPERCASED":
+      case "UPPERCASE":
         return name.toUpperCase();
-      case "CAPITALIZED":
-        return StringUtils.capitalize(name.toLowerCase());
-      case "DEFAULT":
+
+      case "CAMEL":
+        if (name.contains("_")) {
+          return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, name);
+        }
+        return name;
+
+      case "SNAKE":
+        return CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, name);
+
+      case "LOWERCASE":
       default:
         return name.toLowerCase();
     }

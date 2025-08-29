@@ -43,7 +43,7 @@ public class CreateDml
   private static final String WINDOW_DURATION = "1s";
   private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
-  private static String defaultCasing = "DEFAULT";
+  private static String defaultCasing = "LOWERCASE";
   private static Map<String, String> schemaMap = new HashMap<String, String>();
   private static Map<String, String> tableNameMap = new HashMap<String, String>();
   private static Boolean orderByIncludesIsDeleted = false;
