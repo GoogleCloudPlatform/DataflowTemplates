@@ -177,6 +177,16 @@ public class DataStreamToMongoDB {
     String getCollection();
 
     void setCollection(String value);
+
+    @TemplateParameter.Text(
+        order = 10,
+        optional = true,
+        description = "Datastream source type override",
+        helpText =
+            "Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.")
+    String getDatastreamSourceType();
+
+    void setDatastreamSourceType(String value);
   }
 
   /**
@@ -233,7 +243,8 @@ public class DataStreamToMongoDB {
                     options.getInputFileFormat(),
                     options.getInputSubscription(),
                     options.getRfcStartDateTime())
-                .withFileReadConcurrency(options.getFileReadConcurrency()));
+                .withFileReadConcurrency(options.getFileReadConcurrency())
+                .withDatastreamSourceType(options.getDatastreamSourceType()));
 
     PCollection<FailsafeElement<String, String>> jsonRecords =
         PCollectionList.of(datastreamJsonRecords).apply(Flatten.pCollections());

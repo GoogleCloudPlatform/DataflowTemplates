@@ -371,6 +371,16 @@ public class DataStreamToBigQuery {
     Boolean getUseStorageWriteApiAtLeastOnce();
 
     void setUseStorageWriteApiAtLeastOnce(Boolean value);
+
+    @TemplateParameter.Text(
+        order = 21,
+        optional = true,
+        description = "Datastream source type override",
+        helpText =
+            "Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.")
+    String getDatastreamSourceType();
+
+    void setDatastreamSourceType(String value);
   }
 
   /**
@@ -465,7 +475,8 @@ public class DataStreamToBigQuery {
                     options.getInputFileFormat(),
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
-                .withFileReadConcurrency(options.getFileReadConcurrency()));
+                .withFileReadConcurrency(options.getFileReadConcurrency())
+                .withDatastreamSourceType(options.getDatastreamSourceType()));
 
     // Elements sent to the Dead Letter Queue are to be reconsumed.
     // A DLQManager is to be created using PipelineOptions, and it is in charge

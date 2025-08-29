@@ -742,7 +742,8 @@ public class DataStreamToSpanner {
                   .withFileReadConcurrency(options.getFileReadConcurrency())
                   .withoutDatastreamRecordsReshuffle()
                   .withDirectoryWatchDuration(
-                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes())));
+                      Duration.standardMinutes(options.getDirectoryWatchDurationInMinutes()))
+                  .withDatastreamSourceType(options.getDatastreamSourceType()));
       int maxNumWorkers = options.getMaxNumWorkers() != 0 ? options.getMaxNumWorkers() : 1;
       jsonRecords =
           PCollectionList.of(datastreamJsonRecords)
