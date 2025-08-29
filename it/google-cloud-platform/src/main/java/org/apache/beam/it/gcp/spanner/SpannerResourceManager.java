@@ -194,7 +194,7 @@ public final class SpannerResourceManager implements ResourceManager {
 
       // Retry creation if there's a quota error
       Instance instance =
-          Failsafe.with(retryOnQuotaException())
+          Failsafe.with(retryOnQuotaException(5, Duration.ofMinutes(1), Duration.ofMinutes(2), 0.5))
               .get(() -> instanceAdminClient.createInstance(instanceInfo).get());
 
       hasInstance = true;
@@ -237,15 +237,21 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   private static <T> RetryPolicy<T> retryOnQuotaException() {
+    return retryOnQuotaException(
+        CREATE_MAX_RETRIES, CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY, CREATE_BACKOFF_JITTER);
+  }
+
+  private static <T> RetryPolicy<T> retryOnQuotaException(
+      int maxRetries, Duration backoffDelay, Duration maxBackoffDelay, double backoffJitter) {
     return RetryPolicy.<T>builder()
         .handleIf(
             exception -> {
               LOG.warn("Error from spanner:", exception);
               return ExceptionUtils.containsMessage(exception, "RESOURCE_EXHAUSTED");
             })
-        .withMaxRetries(CREATE_MAX_RETRIES)
-        .withBackoff(CREATE_BACKOFF_DELAY, CREATE_BACKOFF_MAX_DELAY)
-        .withJitter(CREATE_BACKOFF_JITTER)
+        .withMaxRetries(maxRetries)
+        .withBackoff(backoffDelay, maxBackoffDelay)
+        .withJitter(backoffJitter)
         .build();
   }
 
