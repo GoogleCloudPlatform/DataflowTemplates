@@ -929,11 +929,44 @@ public class DatastreamToDMLTest {
     // Act & Assert for CAMEL
     DatastreamToDML dmlCamel = DatastreamToPostgresDML.of(null).withDefaultCasing("CAMEL");
     assertEquals("mySchema", dmlCamel.getTargetSchemaName(mockRow)); // Converts snake_case
-    assertEquals("myTable", dmlCamel.getTargetTableName(mockRow));   // Preserves camelCase
+    assertEquals("myTable", dmlCamel.getTargetTableName(mockRow)); // Preserves camelCase
 
     // Act & Assert for SNAKE
     DatastreamToDML dmlSnake = DatastreamToPostgresDML.of(null).withDefaultCasing("SNAKE");
     assertEquals("my_schema", dmlSnake.getTargetSchemaName(mockRow)); // Preserves snake_case
-    assertEquals("my_table", dmlSnake.getTargetTableName(mockRow));    // Converts camelCase
+    assertEquals("my_table", dmlSnake.getTargetTableName(mockRow)); // Converts camelCase
+  }
+
+  /** Verifies that getColumnsListSql correctly applies all column casing rules. */
+  @Test
+  public void testGetColumnsListSql_withAllColumnCasingOptions() throws IOException {
+    // Arrange
+    String json = "{\"myColumn\": 1, \"another_column\": \"hello\"}";
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode rowObj = mapper.readTree(json);
+
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("myColumn", "INTEGER");
+    tableSchema.put("another_column", "TEXT");
+
+    // Act & Assert for SNAKE
+    DatastreamToDML dmlSnake = DatastreamToPostgresDML.of(null).withColumnCasing("SNAKE");
+    String snakeColumns = dmlSnake.getColumnsListSql(rowObj, tableSchema);
+    assertThat(snakeColumns).isEqualTo("\"my_column\",\"another_column\"");
+
+    // Act & Assert for CAMEL
+    DatastreamToDML dmlCamel = DatastreamToPostgresDML.of(null).withColumnCasing("CAMEL");
+    String camelColumns = dmlCamel.getColumnsListSql(rowObj, tableSchema);
+    assertThat(camelColumns).isEqualTo("\"myColumn\",\"anotherColumn\"");
+
+    // Act & Assert for UPPERCASE
+    DatastreamToDML dmlUpper = DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String upperColumns = dmlUpper.getColumnsListSql(rowObj, tableSchema);
+    assertThat(upperColumns).isEqualTo("\"MYCOLUMN\",\"ANOTHER_COLUMN\"");
+
+    // Act & Assert for LOWERCASE
+    DatastreamToDML dmlLower = DatastreamToPostgresDML.of(null).withColumnCasing("LOWERCASE");
+    String lowerColumns = dmlLower.getColumnsListSql(rowObj, tableSchema);
+    assertThat(lowerColumns).isEqualTo("\"mycolumn\",\"another_column\"");
   }
 }

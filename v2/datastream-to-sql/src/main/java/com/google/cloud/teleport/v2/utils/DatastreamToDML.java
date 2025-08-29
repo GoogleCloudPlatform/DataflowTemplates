@@ -56,7 +56,8 @@ public abstract class DatastreamToDML
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
-  protected String defaultCasing = "DEFAULT";
+  protected String defaultCasing = "LOWERCASE";
+  protected String columnCasing = "LOWERCASE";
   protected Map<String, String> schemaMappings = new HashMap<>();
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
@@ -97,24 +98,32 @@ public abstract class DatastreamToDML
     return this;
   }
 
+  public DatastreamToDML withColumnCasing(String casing) {
+    if (casing != null) {
+      this.columnCasing = casing;
+    }
+    return this;
+  }
+
   protected String applyCasing(String name) {
+    return applyCasingLogic(name, this.defaultCasing);
+  }
+
+  private String applyCasingLogic(String name, String casingOption) {
     if (name == null || name.isEmpty()) {
       return name;
     }
 
-    switch (this.defaultCasing.toUpperCase()) {
+    switch (casingOption.toUpperCase()) {
       case "UPPERCASE":
         return name.toUpperCase();
-
       case "CAMEL":
         if (name.contains("_")) {
           return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, name);
         }
         return name;
-
       case "SNAKE":
         return CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, name);
-
       case "LOWERCASE":
       default:
         return name.toLowerCase();
@@ -385,22 +394,20 @@ public abstract class DatastreamToDML
 
   public String getColumnsListSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String columnsListSql = "";
-
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
       if (!tableSchema.containsKey(columnName)) {
         continue;
       }
-
-      // Add column name
-      String quotedColumnName = quote(columnName);
-      if (Objects.equals(columnsListSql, "")) {
+      // Use the new helper method
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+      String quotedColumnName = quote(casedColumnName);
+      if (columnsListSql.isEmpty()) {
         columnsListSql = quotedColumnName;
       } else {
         columnsListSql = columnsListSql + "," + quotedColumnName;
       }
     }
-
     return columnsListSql;
   }
 
@@ -432,36 +439,35 @@ public abstract class DatastreamToDML
         continue;
       }
 
-      String quotedColumnName = quote(columnName);
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+      String quotedColumnName = quote(casedColumnName);
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
 
-      if (onUpdateSql.equals("")) {
+      if (onUpdateSql.isEmpty()) {
         onUpdateSql = quotedColumnName + "=" + columnValue;
       } else {
         onUpdateSql = onUpdateSql + "," + quotedColumnName + "=" + columnValue;
       }
     }
-
     return onUpdateSql;
   }
 
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
     String pkToValueSql = "";
-
     for (String columnName : primaryKeys) {
       if (!tableSchema.containsKey(columnName)) {
         continue;
       }
 
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (pkToValueSql.equals("")) {
-        pkToValueSql = columnName + "=" + columnValue;
+      if (pkToValueSql.isEmpty()) {
+        pkToValueSql = casedColumnName + "=" + columnValue;
       } else {
-        pkToValueSql = pkToValueSql + " AND " + columnName + "=" + columnValue;
+        pkToValueSql = pkToValueSql + " AND " + casedColumnName + "=" + columnValue;
       }
     }
-
     return pkToValueSql;
   }
 

@@ -44,6 +44,7 @@ public class CreateDml
   private static Integer numThreads = Integer.valueOf(100);
   private static DataSourceConfiguration dataSourceConfiguration;
   private static String defaultCasing = "LOWERCASE";
+  private static String columnCasing = "LOWERCASE";
   private static Map<String, String> schemaMap = new HashMap<String, String>();
   private static Map<String, String> tableNameMap = new HashMap<String, String>();
   private static Boolean orderByIncludesIsDeleted = false;
@@ -58,6 +59,11 @@ public class CreateDml
 
   public CreateDml withDefaultCasing(String casing) {
     CreateDml.defaultCasing = casing;
+    return this;
+  }
+
+  public CreateDml withColumnCasing(String casing) {
+    CreateDml.columnCasing = casing;
     return this;
   }
 
@@ -98,6 +104,7 @@ public class CreateDml
 
     return datastreamToDML
         .withDefaultCasing(defaultCasing)
+        .withColumnCasing(columnCasing)
         .withSchemaMap(this.schemaMap)
         .withTableNameMap(this.tableNameMap)
         .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted);
