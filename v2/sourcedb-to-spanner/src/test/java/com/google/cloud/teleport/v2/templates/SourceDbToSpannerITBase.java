@@ -80,9 +80,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   }
 
   public SpannerResourceManager setUpSpannerResourceManager() {
-    return SpannerResourceManager.builder(testName, PROJECT, REGION)
-        .maybeUseStaticInstance()
-        .build();
+    return SpannerResourceManager.builder(testName, PROJECT, REGION).build();
   }
 
   protected void loadSQLFileResource(JDBCResourceManager jdbcResourceManager, String resourcePath)

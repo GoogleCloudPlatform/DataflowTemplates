@@ -61,9 +61,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
   protected SpannerResourceManager createSpannerDatabase(String spannerSchemaFile)
       throws IOException {
     SpannerResourceManager spannerResourceManager =
-        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
+        SpannerResourceManager.builder("rr-main-" + testName, PROJECT, REGION).build();
 
     String ddl;
     try (InputStream inputStream =
@@ -93,9 +91,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   protected SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
     SpannerResourceManager spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
-            .build();
+        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION).build();
     String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     return spannerMetadataResourceManager;
@@ -333,7 +329,6 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-main-table-per-columns-" + testName, PROJECT, REGION)
-            .maybeUseStaticInstance()
             .build();
 
     StringBuilder ddlBuilder = new StringBuilder();
