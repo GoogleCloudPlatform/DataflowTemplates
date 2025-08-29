@@ -21,6 +21,7 @@ import com.google.api.services.bigquery.model.TableFieldSchema;
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.mongodb.client.MongoClient;
@@ -70,7 +71,7 @@ public class MongoDbUtils implements Serializable {
 
   private static final Logger LOG = LoggerFactory.getLogger(MongoDbToBigQuery.class);
 
-  static final Gson GSON = new Gson();
+  static final Gson GSON = new GsonBuilder().serializeSpecialFloatingPointValues().create();
 
   public static TableSchema getTableFieldSchema(
       String uri, String database, String collection, String userOption) {
