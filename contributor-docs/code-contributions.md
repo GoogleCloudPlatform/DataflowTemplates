@@ -439,14 +439,13 @@ mvn clean prepare-package \
   -PtemplatesSpec
 ```
 
-To generate the documentation for a specific template, the following command can be used:
+To generate the documentation for a module of templates, the following command can be used:
 
 ```shell
 mvn clean prepare-package \
   -DskipTests \
   -PtemplatesSpec \
   -pl python \
-  -DtemplateName="Yaml_Template" \
   -am
 ```
 
