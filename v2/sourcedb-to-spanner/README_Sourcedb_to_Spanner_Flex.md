@@ -54,6 +54,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **astraDBDatabaseId**: AstraDB databaseID, ignored for non-AstraDB dialects. Defaults to empty.
 * **astraDBKeySpace**: AstraDB keySpace, ignored for non-AstraDB dialects. Defaults to empty.
 * **astraDBRegion**: AstraDB region, ignored for non-AstraDB dialects. Defaults to empty.
+* **failureInjectionParameter**: Failure injection parameter. Only used for testing. Defaults to empty.
 * **disabledAlgorithms**: Comma separated algorithms to disable. If this value is set to `none`, no algorithm is disabled. Use this parameter with caution, because the algorithms disabled by default might have vulnerabilities or performance issues. For example, `SSLv3, RC4`.
 * **extraFilesToStage**: Comma separated Cloud Storage paths or Secret Manager secrets for files to stage in the worker. These files are saved in the /extra_files directory in each worker. For example, `gs://<BUCKET_NAME>/file.txt,projects/<PROJECT_ID>/secrets/<SECRET_ID>/versions/<VERSION_ID>`.
 
@@ -167,6 +168,7 @@ export ASTRA_DBTOKEN=""
 export ASTRA_DBDATABASE_ID=""
 export ASTRA_DBKEY_SPACE=""
 export ASTRA_DBREGION=""
+export FAILURE_INJECTION_PARAMETER=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -205,6 +207,7 @@ gcloud dataflow flex-template run "sourcedb-to-spanner-flex-job" \
   --parameters "astraDBDatabaseId=$ASTRA_DBDATABASE_ID" \
   --parameters "astraDBKeySpace=$ASTRA_DBKEY_SPACE" \
   --parameters "astraDBRegion=$ASTRA_DBREGION" \
+  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
   --parameters "disabledAlgorithms=$DISABLED_ALGORITHMS" \
   --parameters "extraFilesToStage=$EXTRA_FILES_TO_STAGE"
 ```
@@ -258,6 +261,7 @@ export ASTRA_DBTOKEN=""
 export ASTRA_DBDATABASE_ID=""
 export ASTRA_DBKEY_SPACE=""
 export ASTRA_DBREGION=""
+export FAILURE_INJECTION_PARAMETER=""
 export DISABLED_ALGORITHMS=<disabledAlgorithms>
 export EXTRA_FILES_TO_STAGE=<extraFilesToStage>
 
@@ -268,7 +272,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="sourcedb-to-spanner-flex-job" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS,batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS,spannerPriority=$SPANNER_PRIORITY,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT,astraDBToken=$ASTRA_DBTOKEN,astraDBDatabaseId=$ASTRA_DBDATABASE_ID,astraDBKeySpace=$ASTRA_DBKEY_SPACE,astraDBRegion=$ASTRA_DBREGION,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
+-Dparameters="sourceDbDialect=$SOURCE_DB_DIALECT,jdbcDriverJars=$JDBC_DRIVER_JARS,jdbcDriverClassName=$JDBC_DRIVER_CLASS_NAME,sourceConfigURL=$SOURCE_CONFIG_URL,username=$USERNAME,password=$PASSWORD,tables=$TABLES,numPartitions=$NUM_PARTITIONS,fetchSize=$FETCH_SIZE,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,projectId=$PROJECT_ID,spannerHost=$SPANNER_HOST,maxConnections=$MAX_CONNECTIONS,sessionFilePath=$SESSION_FILE_PATH,outputDirectory=$OUTPUT_DIRECTORY,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,namespace=$NAMESPACE,insertOnlyModeForSpannerMutations=$INSERT_ONLY_MODE_FOR_SPANNER_MUTATIONS,batchSizeForSpannerMutations=$BATCH_SIZE_FOR_SPANNER_MUTATIONS,spannerPriority=$SPANNER_PRIORITY,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,uniformizationStageCountHint=$UNIFORMIZATION_STAGE_COUNT_HINT,astraDBToken=$ASTRA_DBTOKEN,astraDBDatabaseId=$ASTRA_DBDATABASE_ID,astraDBKeySpace=$ASTRA_DBKEY_SPACE,astraDBRegion=$ASTRA_DBREGION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,disabledAlgorithms=$DISABLED_ALGORITHMS,extraFilesToStage=$EXTRA_FILES_TO_STAGE" \
 -f v2/sourcedb-to-spanner
 ```
 
@@ -344,6 +348,7 @@ resource "google_dataflow_flex_template_job" "sourcedb_to_spanner_flex" {
     # astraDBDatabaseId = ""
     # astraDBKeySpace = ""
     # astraDBRegion = ""
+    # failureInjectionParameter = ""
     # disabledAlgorithms = "<disabledAlgorithms>"
     # extraFilesToStage = "<extraFilesToStage>"
   }
