@@ -1,4 +1,3 @@
-
 # Google Cloud Build script for Cloud Teleport
 #
 # This build script is used to build the open-source Cloud Teleport GitHub repository for every
@@ -15,6 +14,7 @@
 #   --config=cloudbuild.yaml \
 #   --substitutions=BRANCH_NAME="master",REVISION_ID="bd671f47ce9e95dce00d0c07aee08f46d65658e4"
 #
+
 steps:
 ###########################################################
 # Step 1: Retrieve the cached .m2 directory from GCS
@@ -29,6 +29,7 @@ steps:
   volumes:
   - path: '/cache/.m2'
     name: 'm2_cache'
+
 ###########################################################
 # Step 2: Build, Test, and Verify
 ###########################################################
@@ -42,6 +43,7 @@ steps:
     name: 'm2_cache'
   env:
   - MAVEN_OPTS=-Dmaven.repo.local=/cache/.m2
+
 ###########################################################
 # Step 3: Update cached .m2 directory on GCS with any
 #         additional dependencies downloaded during the
@@ -57,14 +59,17 @@ steps:
   volumes:
   - path: '/cache/.m2'
     name: 'm2_cache'
+
 substitutions:
   # Default values
   _BUCKET: 'cloud-teleport-github_cloudbuild'
+
 artifacts:
   # Upload the jars created during the build.
   objects:
     location: 'gs://${_BUCKET}/artifacts/$BRANCH_NAME/$REVISION_ID'
     paths: ['target/*.jar']
+
 options:
   # Use higher CPU machines so the caching and build steps are faster.
   machineType: 'N1_HIGHCPU_32'
