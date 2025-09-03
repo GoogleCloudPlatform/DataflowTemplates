@@ -23,10 +23,10 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.SpannerDataProvider;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
-import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.DataflowFailureInjector;
 import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
@@ -131,7 +131,7 @@ public class SpannerToSrcDBMySQLDataflowFT extends SpannerToSourceDbFTBase {
     // Wave of inserts
     SpannerDataProvider.writeRowsInSpanner(1, 1000, spannerResourceManager);
 
-    // Wait for at least one row to appear in spanner
+    // Wait for at least one row to appear in source
     ConditionCheck conditionCheck =
         CloudSQLRowsCheck.builder(cloudSqlResourceManager, AUTHORS_TABLE).setMinRows(1).build();
 
