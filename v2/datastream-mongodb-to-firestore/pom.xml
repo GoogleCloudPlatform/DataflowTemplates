@@ -70,6 +70,12 @@
             <artifactId>mongodb-driver-sync</artifactId>
             <version>5.3.0</version>
         </dependency>
+        <!-- Add MongoDB driver core explicitly for compatibility with Beam 2.68.0-SNAPSHOT -->
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-core</artifactId>
+            <version>5.3.0</version>
+        </dependency>
     </dependencies>
 
 </project>
