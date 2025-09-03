@@ -23,6 +23,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.SpannerDataProvider;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.DataflowFailureInjector;
@@ -37,7 +38,6 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
-import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.cloudsql.conditions.CloudSQLRowsCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -83,7 +83,7 @@ public class SpannerToSrcDBMySQLDataflowFT extends SpannerToSourceDbFTBase {
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
     // create MySql Resources
-    cloudSqlResourceManager = CloudMySQLResourceManager.builder(testName).build();
+    cloudSqlResourceManager = MySQLSrcDataProvider.createSourceResourceManagerWithSchema(testName);
 
     // create and upload GCS Resources
     gcsResourceManager =
