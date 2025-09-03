@@ -389,7 +389,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     String colInputValue = "";
     Type colType = spannerColDef.type();
     String colName = spannerColDef.name();
-    if (colType.getCode().equals(Type.Code.FLOAT64)) {
+    if (colType.getCode().equals(Type.Code.FLOAT64)
+        || colType.getCode().equals(Type.Code.FLOAT32)) {
       // TODO Test and Handle NAN/Infinity.
       colInputValue = valuesJson.getBigDecimal(colName).toString();
     } else if (colType.getCode().equals(Type.Code.BOOL)) {
