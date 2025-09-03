@@ -15,8 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
-import static com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider.AUTHORS_TABLE;
-import static com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider.BOOKS_TABLE;
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.AUTHORS_TABLE;
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.BOOKS_TABLE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertNotNull;
@@ -28,8 +28,8 @@ import com.google.cloud.logging.Payload;
 import com.google.cloud.logging.Severity;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
-import com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils.MySQLSrcDataProvider;
 import com.google.common.collect.ImmutableMap;
 import com.google.pubsub.v1.PullResponse;
 import com.google.pubsub.v1.SubscriptionName;

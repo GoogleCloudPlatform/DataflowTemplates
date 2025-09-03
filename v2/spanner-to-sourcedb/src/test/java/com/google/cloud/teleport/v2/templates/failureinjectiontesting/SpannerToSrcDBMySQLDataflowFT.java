@@ -15,8 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
-import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.AUTHORS_TABLE;
-import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.BOOKS_TABLE;
+import static com.google.cloud.teleport.v2.spanner.migrations.constants.Constants.MYSQL_SOURCE_TYPE;
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.SpannerDataProvider.AUTHORS_TABLE;
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.SpannerDataProvider.BOOKS_TABLE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -24,55 +25,51 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
-import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
+import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.SpannerDataProvider;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
+import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
-import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
-import org.apache.beam.it.gcp.datastream.JDBCSource;
+import org.apache.beam.it.gcp.cloudsql.conditions.CloudSQLRowsCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * A failure injection test for the DataStream to Spanner template. This test simulates a Dataflow
+ * A failure injection test for the Spanner to SourceDb template. This test simulates a Dataflow
  * worker failure scenario to ensure the pipeline remains resilient and processes all data without
  * loss.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@TemplateIntegrationTest(DataStreamToSpanner.class)
+@TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class DataStreamToSpannerMySQLSrcDataflowFT extends DataStreamToSpannerFTBase {
-
-  private static final Logger LOG =
-      LoggerFactory.getLogger(DataStreamToSpannerMySQLSrcDataflowFT.class);
+public class SpannerToSrcDBMySQLDataflowFT extends SpannerToSourceDbFTBase {
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerFailureInjectionTesting/spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURSE = "SpannerFailureInjectionTesting/session.json";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
+  private static SpannerResourceManager spannerMetadataResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
 
-  private static CloudSqlResourceManager sourceDBResourceManager;
-  private JDBCSource sourceConnectionProfile;
+  private static CloudSqlResourceManager cloudSqlResourceManager;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -83,57 +80,60 @@ public class DataStreamToSpannerMySQLSrcDataflowFT extends DataStreamToSpannerFT
   public void setUp() throws IOException, InterruptedException {
     // create Spanner Resources
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
+    spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    // create Source Resources
-    sourceDBResourceManager = MySQLSrcDataProvider.createSourceResourceManagerWithSchema(testName);
-    sourceConnectionProfile =
-        createMySQLSourceConnectionProfile(
-            sourceDBResourceManager, Arrays.asList(AUTHORS_TABLE, BOOKS_TABLE));
+    // create MySql Resources
+    cloudSqlResourceManager = MySQLSrcDataProvider.createSourceResourceManagerWithSchema(testName);
 
     // create and upload GCS Resources
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
+    createAndUploadReverseShardConfigToGcs(
+        gcsResourceManager, cloudSqlResourceManager, cloudSqlResourceManager.getHost());
+    gcsResourceManager.uploadArtifact(
+        "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
 
-    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
-        FlexTemplateDataflowJobResourceManager.builder(testName);
-
-    // launch forward migration template
+    // launch reverse migration template
     jobInfo =
-        launchFwdDataflowJob(
+        launchRRDataflowJob(
+            PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
             spannerResourceManager,
             gcsResourceManager,
+            spannerMetadataResourceManager,
             pubsubResourceManager,
-            flexTemplateBuilder,
-            sourceConnectionProfile);
+            MYSQL_SOURCE_TYPE);
   }
 
   /**
-   * Cleanup all the resources and resource managers.
+   * Cleanup dataflow job and all the resources and resource managers.
    *
    * @throws IOException
    */
-  @After
-  public void cleanUp() throws IOException {
+  @AfterClass
+  public static void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, gcsResourceManager, pubsubResourceManager, sourceDBResourceManager);
+        spannerResourceManager,
+        spannerMetadataResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager,
+        cloudSqlResourceManager);
   }
 
   @Test
   public void dataflowWorkerFailureTest()
       throws IOException, ExecutionException, InterruptedException {
-    // Wait for Forward migration job to be in running state
     assertThatPipeline(jobInfo).isRunning();
 
     // Wave of inserts
-    MySQLSrcDataProvider.writeRowsInSourceDB(1, 10000, sourceDBResourceManager);
+    SpannerDataProvider.writeRowsInSpanner(1, 1000, spannerResourceManager);
 
-    // Wait for at least one row to appear in spanner
+    // Wait for at least one row to appear in source
     ConditionCheck conditionCheck =
-        SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE).setMinRows(1).build();
+        CloudSQLRowsCheck.builder(cloudSqlResourceManager, AUTHORS_TABLE).setMinRows(1).build();
 
     PipelineOperator.Result result =
         pipelineOperator()
@@ -141,7 +141,7 @@ public class DataStreamToSpannerMySQLSrcDataflowFT extends DataStreamToSpannerFT
     assertThatResult(result).meetsConditions();
 
     // Insert more data before killing the dataflow workers
-    MySQLSrcDataProvider.writeRowsInSourceDB(10001, 20000, sourceDBResourceManager);
+    SpannerDataProvider.writeRowsInSpanner(1001, 2000, spannerResourceManager);
 
     // Kill all the workers of the dataflow job
     DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
@@ -149,13 +149,13 @@ public class DataStreamToSpannerMySQLSrcDataflowFT extends DataStreamToSpannerFT
     conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
-                        .setMinRows(20000)
-                        .setMaxRows(20000)
+                    CloudSQLRowsCheck.builder(cloudSqlResourceManager, AUTHORS_TABLE)
+                        .setMinRows(2000)
+                        .setMaxRows(2000)
                         .build(),
-                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
-                        .setMinRows(20000)
-                        .setMaxRows(20000)
+                    CloudSQLRowsCheck.builder(cloudSqlResourceManager, BOOKS_TABLE)
+                        .setMinRows(2000)
+                        .setMaxRows(2000)
                         .build()))
             .build();
 
