@@ -119,6 +119,16 @@ public class AssignShardIdFnTest {
     when(mockRow.getDouble("float_64_col_neg_infinity")).thenReturn(Double.NEGATIVE_INFINITY);
     when(mockRow.getValue("float_64_col_neg_infinity"))
         .thenReturn(Value.float64(Double.NEGATIVE_INFINITY));
+    when(mockRow.getValue("float_32_col")).thenReturn(Value.float32(0.5f));
+    when(mockRow.getFloat("float_32_col")).thenReturn(0.5f);
+    when(mockRow.getFloat("float_32_col_nan")).thenReturn(Float.NaN);
+    when(mockRow.getValue("float_32_col_nan")).thenReturn(Value.float32(Float.NaN));
+    when(mockRow.getFloat("float_32_col_infinity")).thenReturn(Float.POSITIVE_INFINITY);
+    when(mockRow.getValue("float_32_col_infinity"))
+        .thenReturn(Value.float32(Float.POSITIVE_INFINITY));
+    when(mockRow.getFloat("float_32_col_neg_infinity")).thenReturn(Float.NEGATIVE_INFINITY);
+    when(mockRow.getValue("float_32_col_neg_infinity"))
+        .thenReturn(Value.float32(Float.NEGATIVE_INFINITY));
     when(mockRow.getBoolean("bool_col")).thenReturn(true);
     when(mockRow.getValue("bool_col")).thenReturn(Value.bool(true));
 
@@ -214,7 +224,7 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
 
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_infinity\":\"Infinity\",\"float_64_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"float_64_col_nan\":\"NaN\",\"bytesCol\":\"R09PR0xF\"}";
+        "{\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\"}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -254,7 +264,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     String newValuesJson =
-        "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_infinity\":\"Infinity\",\"float_64_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"float_64_col_nan\":\"NaN\",\"bytesCol\":\"R09PR0xF\"}";
+        "{\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\"}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -813,6 +823,30 @@ public class AssignShardIdFnTest {
             .endColumn()
             .column("float_64_col_neg_infinity")
             .float64()
+            .endColumn()
+            .column("float_64_col")
+            .float64()
+            .endColumn()
+            .column("float_64_col_nan")
+            .float64()
+            .endColumn()
+            .column("float_64_col_infinity")
+            .float64()
+            .endColumn()
+            .column("float_64_col_neg_infinity")
+            .float64()
+            .endColumn()
+            .column("float_32_col")
+            .float32()
+            .endColumn()
+            .column("float_32_col_nan")
+            .float32()
+            .endColumn()
+            .column("float_32_col_infinity")
+            .float32()
+            .endColumn()
+            .column("float_32_col_neg_infinity")
+            .float32()
             .endColumn()
             .column("bool_col")
             .bool()
