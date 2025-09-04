@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypeColumns (
     mediumint_column INT64,
     int_column INT64,
     bigint_column INT64,
-    float_column FLOAT64,
+    float_column FLOAT32,
     double_column FLOAT64,
     decimal_column NUMERIC,
     datetime_column TIMESTAMP,
