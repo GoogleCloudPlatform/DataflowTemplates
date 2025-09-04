@@ -546,6 +546,16 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
+              <!-- Add timeout configurations to prevent hanging tests -->
+              <forkedProcessTimeoutInSeconds>7200</forkedProcessTimeoutInSeconds>
+              <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
+              <!-- Fail fast on first test failure to prevent hanging -->
+              <skipAfterFailureCount>1</skipAfterFailureCount>
+              <!-- Set per-test timeout to 30 minutes -->
+              <systemPropertyVariables>
+                <junit.jupiter.execution.timeout.default>30m</junit.jupiter.execution.timeout.default>
+                <junit.jupiter.execution.timeout.testable.method.default>30m</junit.jupiter.execution.timeout.testable.method.default>
+              </systemPropertyVariables>
             </configuration>
           </plugin>
         </plugins>
