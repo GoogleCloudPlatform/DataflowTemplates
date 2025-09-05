@@ -73,7 +73,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       groupName = "Source",
       description = "Source database connection URL or shard config path.",
       helpText =
-      "The URL to connect to the source database host. This can be either:"
+          "The URL to connect to the source database host. This can be either:"
               + " 1. A JDBC connection URL for a single source database, which"
               + " must contain the  host, port and source db name and can"
               + " optionally contain properties like  autoReconnect,"
