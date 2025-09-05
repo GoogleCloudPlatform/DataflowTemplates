@@ -44,3 +44,4 @@ jobs:
             **Note:** If this PR does not trigger the template integration tests, please close the PR and reopen it. This should trigger all the tests.
           branch: chore/update-python-deps
           base: main
+          labels: package-upgrade
