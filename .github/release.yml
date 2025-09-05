@@ -12,3 +12,6 @@ changelog:
     - title: Bug fixes
       labels:
         - bug-fix
+    - title: Package Upgrades
+      labels:
+        - package-upgrade
