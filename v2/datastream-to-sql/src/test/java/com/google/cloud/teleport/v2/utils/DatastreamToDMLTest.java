@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.utils;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -865,5 +866,107 @@ public class DatastreamToDMLTest {
           .hasMessageThat()
           .contains("Database Type unsupported-db is not supported.");
     }
+  }
+
+  /** Tests the core logic of the applyCasing method for the SNAKE option. */
+  @Test
+  public void testApplyCasing_snake() {
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null).withDefaultCasing("SNAKE");
+    assertEquals("my_table", dml.applyCasing("myTable"));
+    assertEquals("my_special_table", dml.applyCasing("mySpecialTable"));
+  }
+
+  /** Tests the core logic of the applyCasing method for the CAMEL option. */
+  @Test
+  public void testApplyCasing_camel() {
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null).withDefaultCasing("CAMEL");
+    // Verifies conversion from snake_case
+    assertEquals("myTable", dml.applyCasing("my_table"));
+    // Verifies preservation of existing camelCase
+    assertEquals("mySpecialTable", dml.applyCasing("mySpecialTable"));
+  }
+
+  /** Tests the core logic of the applyCasing method for the UPPERCASE option. */
+  @Test
+  public void testApplyCasing_uppercase() {
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null).withDefaultCasing("UPPERCASE");
+    assertEquals("MY_TABLE", dml.applyCasing("my_table"));
+  }
+
+  /**
+   * Tests the applyCasing method for the LOWERCASE option and the fallback behavior for invalid
+   * options.
+   */
+  @Test
+  public void testApplyCasing_lowercaseAndFallback() {
+    // Test with "LOWERCASE"
+    DatastreamToDML dmlLowercase = DatastreamToPostgresDML.of(null).withDefaultCasing("LOWERCASE");
+    assertEquals("my_table", dmlLowercase.applyCasing("MY_TABLE"));
+
+    // Test with an invalid option, which should fall back to default (lowercase)
+    DatastreamToDML dmlFallback = DatastreamToPostgresDML.of(null).withDefaultCasing("foo");
+    assertEquals("my_table", dmlFallback.applyCasing("MY_TABLE"));
+  }
+
+  /** Tests that the applyCasing method correctly handles a null input. */
+  @Test
+  public void testApplyCasing_nullInput() {
+    DatastreamToDML dml = DatastreamToPostgresDML.of(null);
+    assertNull(dml.applyCasing(null));
+  }
+
+  /**
+   * Verifies that getTargetSchemaName and getTargetTableName correctly apply the new casing rules,
+   * including preservation of existing case.
+   */
+  @Test
+  public void testTargetNames_withNewCasingOptions() {
+    // Arrange
+    DatastreamRow mockRow = mock(DatastreamRow.class);
+    when(mockRow.getSchemaName()).thenReturn("my_schema");
+    when(mockRow.getTableName()).thenReturn("myTable");
+
+    // Act & Assert for CAMEL
+    DatastreamToDML dmlCamel = DatastreamToPostgresDML.of(null).withDefaultCasing("CAMEL");
+    assertEquals("mySchema", dmlCamel.getTargetSchemaName(mockRow)); // Converts snake_case
+    assertEquals("myTable", dmlCamel.getTargetTableName(mockRow)); // Preserves camelCase
+
+    // Act & Assert for SNAKE
+    DatastreamToDML dmlSnake = DatastreamToPostgresDML.of(null).withDefaultCasing("SNAKE");
+    assertEquals("my_schema", dmlSnake.getTargetSchemaName(mockRow)); // Preserves snake_case
+    assertEquals("my_table", dmlSnake.getTargetTableName(mockRow)); // Converts camelCase
+  }
+
+  /** Verifies that getColumnsListSql correctly applies all column casing rules. */
+  @Test
+  public void testGetColumnsListSql_withAllColumnCasingOptions() throws IOException {
+    // Arrange
+    String json = "{\"myColumn\": 1, \"another_column\": \"hello\"}";
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode rowObj = mapper.readTree(json);
+
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("myColumn", "INTEGER");
+    tableSchema.put("another_column", "TEXT");
+
+    // Act & Assert for SNAKE
+    DatastreamToDML dmlSnake = DatastreamToPostgresDML.of(null).withColumnCasing("SNAKE");
+    String snakeColumns = dmlSnake.getColumnsListSql(rowObj, tableSchema);
+    assertThat(snakeColumns).isEqualTo("\"my_column\",\"another_column\"");
+
+    // Act & Assert for CAMEL
+    DatastreamToDML dmlCamel = DatastreamToPostgresDML.of(null).withColumnCasing("CAMEL");
+    String camelColumns = dmlCamel.getColumnsListSql(rowObj, tableSchema);
+    assertThat(camelColumns).isEqualTo("\"myColumn\",\"anotherColumn\"");
+
+    // Act & Assert for UPPERCASE
+    DatastreamToDML dmlUpper = DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
+    String upperColumns = dmlUpper.getColumnsListSql(rowObj, tableSchema);
+    assertThat(upperColumns).isEqualTo("\"MYCOLUMN\",\"ANOTHER_COLUMN\"");
+
+    // Act & Assert for LOWERCASE
+    DatastreamToDML dmlLower = DatastreamToPostgresDML.of(null).withColumnCasing("LOWERCASE");
+    String lowerColumns = dmlLower.getColumnsListSql(rowObj, tableSchema);
+    assertThat(lowerColumns).isEqualTo("\"mycolumn\",\"another_column\"");
   }
 }
