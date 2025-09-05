@@ -71,12 +71,17 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       optional = true,
       regexes = {"(^jdbc:mysql://.*|^jdbc:postgresql://.*|^gs://.*|^$)"},
       groupName = "Source",
-      description =
-          "URL to connect to the source database host. It can be either of "
-              + "1. The JDBC connection URL - which must contain the host, port and source db name and can optionally contain properties like autoReconnect, maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`"
-              + "2. The shard config path",
+      description = "Source database connection URL or shard config path.",
       helpText =
-          "The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config. This parameter is required except for ASTRA_DB source.")
+      "The URL to connect to the source database host. This can be either:"
+              + " 1. A JDBC connection URL for a single source database, which"
+              + " must contain the  host, port and source db name and can"
+              + " optionally contain properties like  autoReconnect,"
+              + " maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`."
+              + " For example,`jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`."
+              + " 2. A Cloud Storage path to a shard config file for sharded"
+              + " migrations. For example, `gs://my-bucket/my-shard-config.yaml`."
+              + " This parameter is required except for ASTRA_DB source.")
   @Default.String("")
   String getSourceConfigURL();
 
