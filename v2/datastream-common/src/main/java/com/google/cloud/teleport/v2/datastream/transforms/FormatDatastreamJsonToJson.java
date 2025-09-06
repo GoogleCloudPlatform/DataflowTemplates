@@ -146,6 +146,11 @@ public final class FormatDatastreamJsonToJson
   }
 
   private String getSourceType(JsonNode record) {
+    // If datastreamSourceType is provided, use it as override
+    if (this.datastreamSourceType != null && !this.datastreamSourceType.isEmpty()) {
+      return this.datastreamSourceType;
+    }
+
     String sourceType = record.get("read_method").textValue().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
     if (sourceType == "postgres" || sourceType == "postgresql") {

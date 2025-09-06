@@ -75,6 +75,7 @@ public class FormatDatastreamRecordToJson
   private String rowIdColumnName;
   private Map<String, String> renameColumns = new HashMap<String, String>();
   private boolean hashRowId = false;
+  private String datastreamSourceType;
 
   private static final Long DATETIME_POSITIVE_INFINITY = 9223372036825200000L;
   private static final Long DATETIME_NEGATIVE_INFINITY = -9223372036832400000L;
@@ -108,6 +109,12 @@ public class FormatDatastreamRecordToJson
   /** Set the reader to hash Oracle ROWID values into int. */
   public FormatDatastreamRecordToJson withHashRowId(Boolean hashRowId) {
     this.hashRowId = hashRowId;
+    return this;
+  }
+
+  /** Set the Datastream source type override. */
+  public FormatDatastreamRecordToJson withDatastreamSourceType(String datastreamSourceType) {
+    this.datastreamSourceType = datastreamSourceType;
     return this;
   }
 
@@ -208,6 +215,11 @@ public class FormatDatastreamRecordToJson
   }
 
   private String getSourceType(GenericRecord record) {
+    // If datastreamSourceType is provided, use it as override
+    if (this.datastreamSourceType != null && !this.datastreamSourceType.isEmpty()) {
+      return this.datastreamSourceType;
+    }
+
     String sourceType = record.get("read_method").toString().split("-")[0];
     // TODO: consider validating the value is mysql or oracle
     return sourceType;

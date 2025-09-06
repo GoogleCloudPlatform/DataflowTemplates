@@ -115,6 +115,7 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
   private Boolean hashRowId = false;
   private Duration directoryWatchDuration = Duration.standardMinutes(10);
   PCollection<String> directories = null;
+  private String datastreamSourceType;
 
   private Boolean applyReshuffle = true;
 
@@ -188,6 +189,11 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
     return this;
   }
 
+  public DataStreamIO withDatastreamSourceType(String datastreamSourceType) {
+    this.datastreamSourceType = datastreamSourceType;
+    return this;
+  }
+
   @Override
   public PCollection<FailsafeElement<String, String>> expand(PBegin input) {
     PCollection<ReadableFile> datastreamFiles =
@@ -219,7 +225,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
                               .withStreamName(this.streamName)
                               .withRenameColumnValues(this.renameColumns)
                               .withHashRowId(this.hashRowId)
-                              .withLowercaseSourceColumns(this.lowercaseSourceColumns)))
+                              .withLowercaseSourceColumns(this.lowercaseSourceColumns)
+                              .withDatastreamSourceType(this.datastreamSourceType)))
               .setCoder(coder);
     } else {
       SerializableFunction<GenericRecord, FailsafeElement<String, String>> parseFn =
@@ -227,7 +234,8 @@ public class DataStreamIO extends PTransform<PBegin, PCollection<FailsafeElement
               .withStreamName(this.streamName)
               .withRenameColumnValues(this.renameColumns)
               .withHashRowId(this.hashRowId)
-              .withLowercaseSourceColumns(this.lowercaseSourceColumns);
+              .withLowercaseSourceColumns(this.lowercaseSourceColumns)
+              .withDatastreamSourceType(this.datastreamSourceType);
       datastreamRecords =
           datastreamFiles
               .apply("ReshuffleFiles", Reshuffle.<ReadableFile>viaRandomKey())
