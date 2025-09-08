@@ -470,7 +470,6 @@ public class DataStreamToSQL {
                     options.getInputFileFormat(),
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
-                .withLowercaseSourceColumns()
                 .withRenameColumnValue("_metadata_row_id", "rowid")
                 .withHashRowId());
 
@@ -487,6 +486,7 @@ public class DataStreamToSQL {
                     .withDefaultCasing(options.getDefaultCasing())
                     .withSchemaMap(schemaMap)
                     .withTableNameMap(tableNameMap)
+                    .withColumnCasing(options.getColumnCasing())
                     .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                     .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());

@@ -229,22 +229,44 @@ public abstract class DatastreamToDML
 
   public List<String> getPrimaryKeys(
       String catalogName, String schemaName, String tableName, JsonNode rowObj) {
+
     List<String> searchKey = ImmutableList.of(catalogName, schemaName, tableName);
 
     if (this.primaryKeyCache == null) {
       setUpPrimaryKeyCache();
     }
 
-    List<String> primaryKeys = this.primaryKeyCache.get(searchKey);
-    // If primary keys exist, but are not in the data
-    // than we assume this is a rolled back delete.
-    for (String primaryKey : primaryKeys) {
-      if (!rowObj.has(primaryKey)) {
-        return this.getDefaultPrimaryKeys();
+    // Get the list of primary keys from the destination table's schema.
+    List<String> destinationPrimaryKeys = this.primaryKeyCache.get(searchKey);
+
+    // Per your suggestion, only use the simple check if the casing is the default (LOWERCASE).
+    // Any other casing (UPPERCASE, CAMEL, SNAKE) requires the robust, transformation-aware check.
+    if (!"LOWERCASE".equalsIgnoreCase(this.columnCasing)) {
+
+      // Create a Set containing all source field names after applying the relevant casing logic.
+      java.util.Set<String> casedSourceFieldNames = new java.util.HashSet<>();
+      for (java.util.Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+        String sourceFieldName = it.next();
+        casedSourceFieldNames.add(applyCasingLogic(sourceFieldName, this.columnCasing));
+      }
+
+      // Check if every primary key from the destination exists in the set of cased source fields.
+      for (String destPk : destinationPrimaryKeys) {
+        if (!casedSourceFieldNames.contains(destPk)) {
+          return this.getDefaultPrimaryKeys();
+        }
+      }
+    } else {
+      // The default LOWERCASE option is safe to use with the original, more efficient check.
+      for (String primaryKey : destinationPrimaryKeys) {
+        if (!rowObj.has(primaryKey)) {
+          return this.getDefaultPrimaryKeys();
+        }
       }
     }
 
-    return primaryKeys;
+    // If all checks pass, return the actual primary keys from the destination.
+    return destinationPrimaryKeys;
   }
 
   public String quote(String name) {
@@ -269,7 +291,8 @@ public abstract class DatastreamToDML
 
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
       List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema, false);
+      List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+      List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
       List<String> orderByValues =
           getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
@@ -330,7 +353,12 @@ public abstract class DatastreamToDML
         "primary_key_kv_sql", getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
     sqlTemplateValues.put("quoted_column_names", getColumnsListSql(rowObj, tableSchema));
     sqlTemplateValues.put("column_value_sql", getColumnsValuesSql(rowObj, tableSchema));
-    sqlTemplateValues.put("primary_key_names_sql", String.join(",", primaryKeys)); // TODO: quoted?
+    String casedAndQuotedPkNames =
+        primaryKeys.stream()
+            .map(pk -> applyCasingLogic(pk, this.columnCasing))
+            .map(this::quote)
+            .collect(java.util.stream.Collectors.joining(","));
+    sqlTemplateValues.put("primary_key_names_sql", casedAndQuotedPkNames);
     sqlTemplateValues.put("column_kv_sql", getColumnsUpdateSql(rowObj, tableSchema));
 
     return sqlTemplateValues;
@@ -396,11 +424,14 @@ public abstract class DatastreamToDML
     String columnsListSql = "";
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
+      // Apply casing logic FIRST to get the destination column name.
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
+      // Check against the destination schema using the CASED name.
+      if (!tableSchema.containsKey(casedColumnName)) {
         continue;
       }
-      // Use the new helper method
-      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
       String quotedColumnName = quote(casedColumnName);
       if (columnsListSql.isEmpty()) {
         columnsListSql = quotedColumnName;
@@ -413,13 +444,17 @@ public abstract class DatastreamToDML
 
   public String getColumnsValuesSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String valuesInsertSql = "";
-
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
+      // Apply casing logic FIRST to get the destination column name.
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
+      // Check against the destination schema using the CASED name.
+      if (!tableSchema.containsKey(casedColumnName)) {
         continue;
       }
 
+      // Get the value from the JSON using the ORIGINAL column name.
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
       if (Objects.equals(valuesInsertSql, "")) {
         valuesInsertSql = columnValue;
@@ -427,7 +462,6 @@ public abstract class DatastreamToDML
         valuesInsertSql = valuesInsertSql + "," + columnValue;
       }
     }
-
     return valuesInsertSql;
   }
 
@@ -435,12 +469,16 @@ public abstract class DatastreamToDML
     String onUpdateSql = "";
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
+      // Apply casing logic FIRST to get the destination column name.
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
+      // Check against the destination schema using the CASED name.
+      if (!tableSchema.containsKey(casedColumnName)) {
         continue;
       }
 
-      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
       String quotedColumnName = quote(casedColumnName);
+      // Get the value from the JSON using the ORIGINAL column name.
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
 
       if (onUpdateSql.isEmpty()) {
@@ -454,18 +492,27 @@ public abstract class DatastreamToDML
 
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
-    String pkToValueSql = "";
-    for (String columnName : primaryKeys) {
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
 
-      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (pkToValueSql.isEmpty()) {
-        pkToValueSql = casedColumnName + "=" + columnValue;
-      } else {
-        pkToValueSql = pkToValueSql + " AND " + casedColumnName + "=" + columnValue;
+    DatastreamRow row = DatastreamRow.of(rowObj);
+    // Get the original primary key names from the source JSON metadata (e.g., "id_pk").
+    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+    String pkToValueSql = "";
+
+    for (String sourcePkName : sourcePrimaryKeys) {
+      // Apply casing to the source PK name to get the expected destination name (e.g., "idPk").
+      String destinationPkName = applyCasingLogic(sourcePkName, this.columnCasing);
+
+      // Check that this primary key is one that the destination table is actually expecting.
+      if (primaryKeys.contains(destinationPkName)) {
+        // Use the original SOURCE name to get the value from the JSON.
+        String columnValue = getValueSql(rowObj, sourcePkName, tableSchema);
+        String quotedDestinationPkName = quote(destinationPkName);
+
+        if (pkToValueSql.isEmpty()) {
+          pkToValueSql = quotedDestinationPkName + "=" + columnValue;
+        } else {
+          pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+        }
       }
     }
     return pkToValueSql;
