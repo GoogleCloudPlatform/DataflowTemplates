@@ -940,33 +940,61 @@ public class DatastreamToDMLTest {
   /** Verifies that getColumnsListSql correctly applies all column casing rules. */
   @Test
   public void testGetColumnsListSql_withAllColumnCasingOptions() throws IOException {
-    // Arrange
+    // Arrange: Define the source JSON with mixed-casing keys.
     String json = "{\"myColumn\": 1, \"another_column\": \"hello\"}";
     ObjectMapper mapper = new ObjectMapper();
     JsonNode rowObj = mapper.readTree(json);
 
-    Map<String, String> tableSchema = new HashMap<>();
-    tableSchema.put("myColumn", "INTEGER");
-    tableSchema.put("another_column", "TEXT");
-
-    // Act & Assert for SNAKE
+    // --- 1. Test SNAKE Casing ---
+    // Arrange: Mock a destination schema that is correctly in snake_case.
+    Map<String, String> tableSchemaSnake = new HashMap<>();
+    tableSchemaSnake.put("my_column", "INTEGER");
+    tableSchemaSnake.put("another_column", "TEXT");
     DatastreamToDML dmlSnake = DatastreamToPostgresDML.of(null).withColumnCasing("SNAKE");
-    String snakeColumns = dmlSnake.getColumnsListSql(rowObj, tableSchema);
+
+    // Act
+    String snakeColumns = dmlSnake.getColumnsListSql(rowObj, tableSchemaSnake);
+
+    // Assert
     assertThat(snakeColumns).isEqualTo("\"my_column\",\"another_column\"");
 
-    // Act & Assert for CAMEL
+    // --- 2. Test CAMEL Casing ---
+    // Arrange: Mock a destination schema that is correctly in camelCase.
+    Map<String, String> tableSchemaCamel = new HashMap<>();
+    tableSchemaCamel.put("myColumn", "INTEGER");
+    tableSchemaCamel.put("anotherColumn", "TEXT");
     DatastreamToDML dmlCamel = DatastreamToPostgresDML.of(null).withColumnCasing("CAMEL");
-    String camelColumns = dmlCamel.getColumnsListSql(rowObj, tableSchema);
+
+    // Act
+    String camelColumns = dmlCamel.getColumnsListSql(rowObj, tableSchemaCamel);
+
+    // Assert
     assertThat(camelColumns).isEqualTo("\"myColumn\",\"anotherColumn\"");
 
-    // Act & Assert for UPPERCASE
+    // --- 3. Test UPPERCASE Casing ---
+    // Arrange: Mock a destination schema that is correctly in UPPERCASE.
+    Map<String, String> tableSchemaUpper = new HashMap<>();
+    tableSchemaUpper.put("MYCOLUMN", "INTEGER");
+    tableSchemaUpper.put("ANOTHER_COLUMN", "TEXT");
     DatastreamToDML dmlUpper = DatastreamToPostgresDML.of(null).withColumnCasing("UPPERCASE");
-    String upperColumns = dmlUpper.getColumnsListSql(rowObj, tableSchema);
+
+    // Act
+    String upperColumns = dmlUpper.getColumnsListSql(rowObj, tableSchemaUpper);
+
+    // Assert
     assertThat(upperColumns).isEqualTo("\"MYCOLUMN\",\"ANOTHER_COLUMN\"");
 
-    // Act & Assert for LOWERCASE
+    // --- 4. Test LOWERCASE Casing ---
+    // Arrange: Mock a destination schema that is correctly in lowercase.
+    Map<String, String> tableSchemaLower = new HashMap<>();
+    tableSchemaLower.put("mycolumn", "INTEGER");
+    tableSchemaLower.put("another_column", "TEXT");
     DatastreamToDML dmlLower = DatastreamToPostgresDML.of(null).withColumnCasing("LOWERCASE");
-    String lowerColumns = dmlLower.getColumnsListSql(rowObj, tableSchema);
+
+    // Act
+    String lowerColumns = dmlLower.getColumnsListSql(rowObj, tableSchemaLower);
+
+    // Assert
     assertThat(lowerColumns).isEqualTo("\"mycolumn\",\"another_column\"");
   }
 }
