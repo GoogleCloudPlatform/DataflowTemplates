@@ -145,6 +145,14 @@ and prevent any future changes from being observed.  Please reissue:
 mvn clean install -pl plugins/templates-maven-plugin -am
 ```
 
+### Validating Templates
+
+Validating a template's code quality is as simple as this:
+
+```shell
+mvn clean install -PtemplatesValidate -DskipTests -pl <module> -am
+```
+
 ### Staging (Deploying) Templates
 
 To stage a Template, it is necessary to upload the images to Artifact

@@ -61,7 +61,25 @@ for more information about how to create and test those functions.
 ### Templates Plugin
 
 This README provides instructions using
-the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates#templates-plugin).
+the [Templates Plugin](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#templates-plugin).
+
+#### Validating the Template
+
+This template has a validation command that is used to check code quality.
+
+```shell
+mvn clean install -PtemplatesValidate \
+-DskipTests -am \
+<#if language == 'PYTHON' || spec.metadata.module! == 'python'>
+-pl python
+<#elseif language == 'YAML'>
+-pl yaml
+<#elseif flex>
+-pl v2/${spec.metadata.module!}
+<#else>
+-pl v1
+</#if>
+```
 
 ### Building Template
 
