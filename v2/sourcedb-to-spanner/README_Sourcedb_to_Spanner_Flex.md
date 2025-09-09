@@ -30,7 +30,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **sourceDbDialect**: Possible values are `CASSANDRA`, `MYSQL` and `POSTGRESQL`. Defaults to: MYSQL.
 * **jdbcDriverJars**: The comma-separated list of driver JAR files. For example, `gs://your-bucket/driver_jar1.jar,gs://your-bucket/driver_jar2.jar`. Defaults to empty.
 * **jdbcDriverClassName**: The JDBC driver class name. For example, `com.mysql.jdbc.Driver`. Defaults to: com.mysql.jdbc.Driver.
-* **sourceConfigURL**: The JDBC connection URL string. For example, `jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8` or the shard config. This parameter is required except for ASTRA_DB source. Defaults to empty.
+* **sourceConfigURL**: The URL to connect to the source database host. This can be either: 1. A JDBC connection URL for a single source database, which must contain the  host, port and source db name and can optionally contain properties like  autoReconnect, maxReconnects etc. Format: `jdbc:{mysql|postgresql}://{host}:{port}/{dbName}?{parameters}`. For example,`jdbc:mysql://127.4.5.30:3306/my-db?autoReconnect=true&maxReconnects=10&unicode=true&characterEncoding=UTF-8`. 2. A Cloud Storage path to a shard config file for sharded migrations. For example, `gs://my-bucket/my-shard-config.yaml`. This parameter is required except for ASTRA_DB source. Defaults to empty.
 * **username**: The username to be used for the JDBC connection. Defaults to empty.
 * **password**: The password to be used for the JDBC connection. Defaults to empty.
 * **tables**: Tables to migrate from source. Defaults to empty.
