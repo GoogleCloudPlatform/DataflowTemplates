@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -193,8 +192,6 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
             .addParameter("sourceType", sourceType)
-            .addEnvironmentVariable(
-                "additionalExperiments", Collections.singletonList("use_runner_v2"))
             .build();
 
     // Run
