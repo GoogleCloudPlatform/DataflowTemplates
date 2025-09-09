@@ -1,0 +1,514 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "fi_test",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "Authors",
+      "ColIds": [
+        "c3",
+        "c4",
+        "c8"
+      ],
+      "ShardIdColumn": "c8",
+      "ColDefs": {
+        "c3": {
+          "Name": "author_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: author_id int(10)",
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c4": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(200)",
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c8": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c8",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c8",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Authors",
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Books",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7",
+        "c9"
+      ],
+      "ShardIdColumn": "c9",
+      "ColDefs": {
+        "c5": {
+          "Name": "author_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: author_id int(10)",
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c6": {
+          "Name": "book_id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: book_id int(10)",
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c7": {
+          "Name": "name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: name varchar(200)",
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c9": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "Len": 50,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "",
+          "Id": "c9",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c6",
+          "Desc": false,
+          "Order": 2
+        },
+        {
+          "ColId": "c9",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Books",
+      "Id": "t2"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "Authors",
+      "Schema": "fi_test",
+      "ColIds": [
+        "c3",
+        "c4"
+      ],
+      "ColDefs": {
+        "c3": {
+          "Name": "author_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c4": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c3",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t1"
+    },
+    "t2": {
+      "Name": "Books",
+      "Schema": "fi_test",
+      "ColIds": [
+        "c5",
+        "c6",
+        "c7"
+      ],
+      "ColDefs": {
+        "c5": {
+          "Name": "author_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c6": {
+          "Name": "book_id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c7": {
+          "Name": "name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c6",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t2"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {
+        "c3": [
+          14
+        ],
+        "c8": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    },
+    "t2": {
+      "ColumnLevelIssues": {
+        "c5": [
+          14
+        ],
+        "c6": [
+          14
+        ],
+        "c9": [
+          29
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "Authors": {
+      "Name": "Authors",
+      "Cols": {
+        "author_id": "author_id",
+        "name": "name"
+      }
+    },
+    "Books": {
+      "Name": "Books",
+      "Cols": {
+        "author_id": "author_id",
+        "book_id": "book_id",
+        "name": "name"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [
+    {
+      "Id": "r10",
+      "Name": "r10",
+      "Type": "add_shard_id_primary_key",
+      "ObjectType": "",
+      "AssociatedObjects": "All Tables",
+      "Enabled": true,
+      "Data": {
+        "AddedAtTheStart": true
+      },
+      "AddedOn": {
+        "TimeOffset": null
+      }
+    }
+  ],
+  "IsSharded": true,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "span-cloud-migrations-testing",
+  "SpInstanceId": "teleport",
+  "Source": "mysql"
+}
