@@ -84,6 +84,7 @@ import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -492,6 +493,16 @@ public class SpannerToSourceDb {
     Boolean getIsShardedMigration();
 
     void setIsShardedMigration(Boolean value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
   }
 
   /**
@@ -655,6 +666,14 @@ public class SpannerToSourceDb {
                 ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()))
             .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
     PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerConfig, options.getFailureInjectionParameter());
+    }
+
     if (isRegularMode) {
       PCollection<TrimmedShardedDataChangeRecord> changeRecordsFromDB =
           pipeline
@@ -682,6 +701,13 @@ public class SpannerToSourceDb {
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
     ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerMetadataConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerMetadataConfig, options.getFailureInjectionParameter());
+    }
 
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords
