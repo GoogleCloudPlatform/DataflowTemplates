@@ -243,7 +243,9 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter("maxShardConnections", "5")
             .addParameter("maxNumWorkers", "1")
             .addParameter("numWorkers", "1")
-            .addParameter("sourceType", sourceType);
+            .addParameter("sourceType", sourceType)
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"));
 
     if (additionalMavenProfile != null && !additionalMavenProfile.isBlank()) {
       flexTemplateBuilder.withAdditionalMavenProfile(additionalMavenProfile);
