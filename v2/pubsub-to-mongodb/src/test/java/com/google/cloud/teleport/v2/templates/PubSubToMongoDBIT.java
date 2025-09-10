@@ -75,7 +75,8 @@ public final class PubSubToMongoDBIT extends TemplateTestBase {
     pubsubResourceManager =
         PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
 
-    mongoResourceManager = MongoDBResourceManager.builder(testName).setContainerImageTag("4.2").build();
+    mongoResourceManager =
+        MongoDBResourceManager.builder(testName).setContainerImageTag("4.2").build();
 
     bigQueryClient = BigQueryResourceManager.builder(testName, PROJECT, credentials).build();
   }
