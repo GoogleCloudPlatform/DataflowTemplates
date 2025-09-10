@@ -127,7 +127,7 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
 
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(20)));
-    assertThatResult(result).meetsConditions();
+    assertThatResult(result).isLaunchFinished();
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
