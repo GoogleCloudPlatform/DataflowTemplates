@@ -19,6 +19,7 @@ import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontes
 import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.BOOKS_TABLE;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertTrue;
 
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
@@ -78,6 +79,7 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
    */
   @Before
   public void setUp() throws IOException, InterruptedException {
+    super.skipBaseCleanup = true;
     // create Spanner Resources
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
 
@@ -114,7 +116,7 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
   @After
   public void cleanUp() throws IOException {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, gcsResourceManager, sourceDBResourceManager, pubsubResourceManager);
+        spannerResourceManager, sourceDBResourceManager, pubsubResourceManager);
   }
 
   @Test
@@ -122,6 +124,10 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
 
     // Wait for Bulk migration job to be in running state
     assertThatPipeline(bulkJobInfo).isRunning();
+
+    PipelineOperator.Result result =
+        pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(20)));
+    assertThatResult(result).meetsConditions();
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
@@ -139,10 +145,7 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
                         .build()))
             .build();
 
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(bulkJobInfo, Duration.ofMinutes(20)), conditionCheck);
-    assertThatResult(result).meetsConditions();
+    assertTrue(conditionCheck.get());
 
     // Correct spanner schema
     spannerResourceManager.executeDdlStatement(
