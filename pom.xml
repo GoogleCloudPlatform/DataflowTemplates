@@ -114,6 +114,17 @@
     <licenseHeaderFile>JAVA_LICENSE_HEADER</licenseHeaderFile>
   </properties>
 
+  <repositories>
+    <repository>
+      <id>Maven-Snapshot</id>
+      <name>maven snapshot repository</name>
+      <url>https://repository.apache.org/content/groups/snapshots/</url>
+      <releases>
+        <enabled>false</enabled>
+      </releases>
+    </repository>
+  </repositories>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
