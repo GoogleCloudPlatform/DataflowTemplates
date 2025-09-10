@@ -28,7 +28,6 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -62,7 +61,7 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(BulkAndLiveMySQLSpannerFT.class);
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerFailureInjectionTesting/spanner-schema.sql";
+      "SpannerFailureInjectionTesting/spanner-schema-small-author-name.sql";
 
   private static PipelineLauncher.LaunchInfo bulkJobInfo;
   public static SpannerResourceManager spannerResourceManager;
@@ -96,20 +95,12 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
 
-    bulkErrorFolderFullPath = getGcsPath("bulk/output", gcsResourceManager);
+    bulkErrorFolderFullPath = getGcsPath("output", gcsResourceManager);
 
     // launch bulk migration
     bulkJobInfo =
         launchBulkDataflowJob(
             getClass().getSimpleName(),
-            "failureInjectionTest",
-            Map.of(
-                "failureInjectionParameter",
-                "{\"policyType\":\"InitialLimitedDurationErrorInjectionPolicy\", \"policyInput\": { \"duration\": \"PT5M\", \"errorCode\": \"FAILED_PRECONDITION\" }}",
-                "batchSizeForSpannerMutations",
-                "1",
-                "outputDirectory",
-                bulkErrorFolderFullPath),
             spannerResourceManager,
             gcsResourceManager,
             sourceDBResourceManager);
@@ -140,10 +131,10 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
                         spannerResourceManager,
                         List.of(AUTHORS_TABLE, BOOKS_TABLE),
                         gcsResourceManager,
-                        "bulk/output",
+                        "output/dlq/severe/",
                         400),
                     // There should be at least 1 error
-                    DlqEventsCountCheck.builder(gcsResourceManager, "bulk/output/severe/")
+                    DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
                         .setMinEvents(1)
                         .build()))
             .build();
@@ -153,8 +144,11 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
             .waitForCondition(createConfig(bulkJobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
-    String dlqDirectoryFullPath = getGcsPath("retryDlq", gcsResourceManager);
-    String dlqGcsPrefix = dlqDirectoryFullPath.replace("gs://" + artifactBucketName, "");
+    // Correct spanner schema
+    spannerResourceManager.executeDdlStatement(
+        "ALTER TABLE\n" + "  `Authors` ALTER COLUMN `name` STRING(200);");
+
+    String dlqGcsPrefix = bulkErrorFolderFullPath.replace("gs://" + artifactBucketName, "");
     SubscriptionName dlqSubscription =
         createPubsubResources(
             testName + "dlq", pubsubResourceManager, dlqGcsPrefix, gcsResourceManager);
@@ -162,7 +156,10 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
     // launch forward migration template in retryDLQ mode
     retryLiveJobInfo =
         launchFwdDataflowJobInRetryDlqMode(
-            spannerResourceManager, bulkErrorFolderFullPath, dlqDirectoryFullPath, dlqSubscription);
+            spannerResourceManager,
+            bulkErrorFolderFullPath,
+            bulkErrorFolderFullPath + "/dlq",
+            dlqSubscription);
 
     conditionCheck =
         ChainedConditionCheck.builder(
@@ -180,7 +177,7 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
     result =
         pipelineOperator()
             .waitForConditionAndCancel(
-                createConfig(retryLiveJobInfo, Duration.ofMinutes(20)), conditionCheck);
+                createConfig(retryLiveJobInfo, Duration.ofMinutes(8)), conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 }
