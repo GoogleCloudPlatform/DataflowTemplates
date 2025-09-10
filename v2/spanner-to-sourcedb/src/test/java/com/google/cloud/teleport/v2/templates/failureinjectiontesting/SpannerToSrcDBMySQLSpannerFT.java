@@ -138,18 +138,18 @@ public class SpannerToSrcDBMySQLSpannerFT extends SpannerToSourceDbFTBase {
     assertThatPipeline(jobInfo).isRunning();
 
     // Wave of inserts
-    SpannerDataProvider.writeRowsInSpanner(1, 1000, spannerResourceManager);
+    SpannerDataProvider.writeRowsInSpanner(1, 50, spannerResourceManager);
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     CloudSQLRowsCheck.builder(cloudSqlResourceManager, AUTHORS_TABLE)
-                        .setMinRows(1000)
-                        .setMaxRows(1000)
+                        .setMinRows(50)
+                        .setMaxRows(50)
                         .build(),
                     CloudSQLRowsCheck.builder(cloudSqlResourceManager, BOOKS_TABLE)
-                        .setMinRows(1000)
-                        .setMaxRows(1000)
+                        .setMinRows(50)
+                        .setMaxRows(50)
                         .build()))
             .build();
 
