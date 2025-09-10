@@ -16,6 +16,11 @@ name: Run IT Tests with Beam Snapshots
 
 on:
   workflow_dispatch: # Allows manual triggering
+    inputs:
+      snapshot_version:
+        description: 'Beam snapshot version to use (e.g., 2.60.0-SNAPSHOT). If not provided, will calculate next version automatically.'
+        required: false
+        type: string
   schedule:
     - cron: "0 0 * * 2" # Runs every Tuesday at 12:00 AM UTC
 
@@ -45,17 +50,22 @@ jobs:
       - name: Calculate Next Beam Snapshot Version
         id: calculate_beam_snapshot
         run: |
-          CURRENT_BEAM_VERSION=$(mvn help:evaluate -Dexpression=beam.version -q -DforceStdout)
-          echo "Current Beam version from pom.xml: $CURRENT_BEAM_VERSION"
+          if [ -n "${{ github.event.inputs.snapshot_version }}" ]; then
+            BEAM_SNAPSHOT_VERSION="${{ github.event.inputs.snapshot_version }}"
+            echo "Using provided Beam snapshot version: $BEAM_SNAPSHOT_VERSION"
+          else
+            CURRENT_BEAM_VERSION=$(mvn help:evaluate -Dexpression=beam.version -q -DforceStdout)
+            echo "Current Beam version from pom.xml: $CURRENT_BEAM_VERSION"
 
-          MAJOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f1)
-          MINOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f2)
-          PATCH_VERSION=0
+            MAJOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f1)
+            MINOR_VERSION=$(echo "$CURRENT_BEAM_VERSION" | cut -d. -f2)
+            PATCH_VERSION=0
 
-          NEXT_MINOR_VERSION=$((MINOR_VERSION + 1))
+            NEXT_MINOR_VERSION=$((MINOR_VERSION + 1))
 
-          BEAM_SNAPSHOT_VERSION="${MAJOR_VERSION}.${NEXT_MINOR_VERSION}.${PATCH_VERSION}-SNAPSHOT"
-          echo "Calculated Beam Snapshot version: $BEAM_SNAPSHOT_VERSION"
+            BEAM_SNAPSHOT_VERSION="${MAJOR_VERSION}.${NEXT_MINOR_VERSION}.${PATCH_VERSION}-SNAPSHOT"
+            echo "Calculated Beam Snapshot version: $BEAM_SNAPSHOT_VERSION"
+          fi
 
           echo "beam_snapshot_version=$BEAM_SNAPSHOT_VERSION" >> $GITHUB_OUTPUT
         shell: bash
