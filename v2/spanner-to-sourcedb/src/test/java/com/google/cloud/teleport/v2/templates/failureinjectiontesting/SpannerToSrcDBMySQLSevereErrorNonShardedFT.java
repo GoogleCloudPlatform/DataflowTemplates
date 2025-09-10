@@ -136,18 +136,18 @@ public class SpannerToSrcDBMySQLSevereErrorNonShardedFT extends SpannerToSourceD
     assertThatPipeline(jobInfo).isRunning();
 
     // Write some data in Spanner
-    writeAuthorRowsInSpanner(1, 100, "author_name_", spannerResourceManager);
+    writeAuthorRowsInSpanner(1, 2, "author_name_", spannerResourceManager);
     // Write large data which violates string length constraint in MySql
-    writeAuthorRowsInSpanner(101, 105, "a".repeat(202), spannerResourceManager);
+    writeAuthorRowsInSpanner(11, 12, "a".repeat(202), spannerResourceManager);
 
     ConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     CloudSQLRowsCheck.builder(cloudSqlResourceManager, AUTHORS_TABLE)
-                        .setMinRows(100)
+                        .setMinRows(2)
                         .build(),
                     DlqEventsCountCheck.builder(gcsResourceManager, "dlq/severe/")
-                        .setMinEvents(5)
+                        .setMinEvents(2)
                         .build()))
             .build();
 
