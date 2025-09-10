@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.datastream.io.CdcJdbcIO;
 import com.google.cloud.teleport.v2.datastream.values.DatastreamRow;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.base.CaseFormat;
 import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.sql.Connection;
@@ -55,6 +56,8 @@ public abstract class DatastreamToDML
   private CdcJdbcIO.DataSourceConfiguration dataSourceConfiguration;
   private DataSource dataSource;
   public String quoteCharacter;
+  protected String defaultCasing = "LOWERCASE";
+  protected String columnCasing = "LOWERCASE";
   protected Map<String, String> schemaMappings = new HashMap<>();
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
@@ -86,6 +89,45 @@ public abstract class DatastreamToDML
   public DatastreamToDML withQuoteCharacter(String quoteChar) {
     this.quoteCharacter = quoteChar;
     return this;
+  }
+
+  public DatastreamToDML withDefaultCasing(String casing) {
+    if (casing != null) {
+      this.defaultCasing = casing;
+    }
+    return this;
+  }
+
+  public DatastreamToDML withColumnCasing(String casing) {
+    if (casing != null) {
+      this.columnCasing = casing;
+    }
+    return this;
+  }
+
+  protected String applyCasing(String name) {
+    return applyCasingLogic(name, this.defaultCasing);
+  }
+
+  private String applyCasingLogic(String name, String casingOption) {
+    if (name == null || name.isEmpty()) {
+      return name;
+    }
+
+    switch (casingOption.toUpperCase()) {
+      case "UPPERCASE":
+        return name.toUpperCase();
+      case "CAMEL":
+        if (name.contains("_")) {
+          return CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, name);
+        }
+        return name;
+      case "SNAKE":
+        return CaseFormat.LOWER_CAMEL.to(CaseFormat.LOWER_UNDERSCORE, name);
+      case "LOWERCASE":
+      default:
+        return name.toLowerCase();
+    }
   }
 
   public DatastreamToDML withSchemaMap(Map<String, String> combinedMap) {
@@ -181,8 +223,7 @@ public abstract class DatastreamToDML
     if (tableMappings.containsKey(fullSourceTableName)) {
       return tableMappings.get(fullSourceTableName).split("\\.")[1];
     }
-    // No other rules apply, just default to lowercase.
-    return row.getTableName().toLowerCase();
+    return applyCasing(row.getTableName());
   }
 
   public List<String> getPrimaryKeys(
@@ -193,16 +234,21 @@ public abstract class DatastreamToDML
       setUpPrimaryKeyCache();
     }
 
-    List<String> primaryKeys = this.primaryKeyCache.get(searchKey);
-    // If primary keys exist, but are not in the data
-    // than we assume this is a rolled back delete.
-    for (String primaryKey : primaryKeys) {
-      if (!rowObj.has(primaryKey)) {
+    List<String> destinationPrimaryKeys = this.primaryKeyCache.get(searchKey);
+
+    java.util.Set<String> casedSourceFieldNames = new java.util.HashSet<>();
+    for (java.util.Iterator<String> it = rowObj.fieldNames(); it.hasNext(); ) {
+      String sourceFieldName = it.next();
+      casedSourceFieldNames.add(applyCasingLogic(sourceFieldName, this.columnCasing));
+    }
+
+    for (String destPk : destinationPrimaryKeys) {
+      if (!casedSourceFieldNames.contains(destPk)) {
         return this.getDefaultPrimaryKeys();
       }
     }
 
-    return primaryKeys;
+    return destinationPrimaryKeys;
   }
 
   public String quote(String name) {
@@ -227,7 +273,8 @@ public abstract class DatastreamToDML
 
       List<String> primaryKeys = this.getPrimaryKeys(catalogName, schemaName, tableName, rowObj);
       List<String> orderByFields = row.getSortFields(orderByIncludesIsDeleted);
-      List<String> primaryKeyValues = getFieldValues(rowObj, primaryKeys, tableSchema, false);
+      List<String> sourcePrimaryKeys = row.getPrimaryKeys();
+      List<String> primaryKeyValues = getFieldValues(rowObj, sourcePrimaryKeys, tableSchema, false);
       List<String> orderByValues =
           getFieldValues(rowObj, orderByFields, tableSchema, orderByIncludesIsDeleted);
 
@@ -288,7 +335,12 @@ public abstract class DatastreamToDML
         "primary_key_kv_sql", getPrimaryKeyToValueFilterSql(rowObj, primaryKeys, tableSchema));
     sqlTemplateValues.put("quoted_column_names", getColumnsListSql(rowObj, tableSchema));
     sqlTemplateValues.put("column_value_sql", getColumnsValuesSql(rowObj, tableSchema));
-    sqlTemplateValues.put("primary_key_names_sql", String.join(",", primaryKeys)); // TODO: quoted?
+    String casedAndQuotedPkNames =
+        primaryKeys.stream()
+            .map(pk -> applyCasingLogic(pk, this.columnCasing))
+            .map(this::quote)
+            .collect(java.util.stream.Collectors.joining(","));
+    sqlTemplateValues.put("primary_key_names_sql", casedAndQuotedPkNames);
     sqlTemplateValues.put("column_kv_sql", getColumnsUpdateSql(rowObj, tableSchema));
 
     return sqlTemplateValues;
@@ -352,31 +404,33 @@ public abstract class DatastreamToDML
 
   public String getColumnsListSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String columnsListSql = "";
-
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
+      // Apply casing logic FIRST to get the destination column name.
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
+      // Check against the destination schema using the CASED name.
+      if (!tableSchema.containsKey(casedColumnName)) {
         continue;
       }
 
-      // Add column name
-      String quotedColumnName = quote(columnName);
-      if (Objects.equals(columnsListSql, "")) {
+      String quotedColumnName = quote(casedColumnName);
+      if (columnsListSql.isEmpty()) {
         columnsListSql = quotedColumnName;
       } else {
         columnsListSql = columnsListSql + "," + quotedColumnName;
       }
     }
-
     return columnsListSql;
   }
 
   public String getColumnsValuesSql(JsonNode rowObj, Map<String, String> tableSchema) {
     String valuesInsertSql = "";
-
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
+      if (!tableSchema.containsKey(casedColumnName)) {
         continue;
       }
 
@@ -387,7 +441,6 @@ public abstract class DatastreamToDML
         valuesInsertSql = valuesInsertSql + "," + columnValue;
       }
     }
-
     return valuesInsertSql;
   }
 
@@ -395,40 +448,45 @@ public abstract class DatastreamToDML
     String onUpdateSql = "";
     for (Iterator<String> fieldNames = rowObj.fieldNames(); fieldNames.hasNext(); ) {
       String columnName = fieldNames.next();
-      if (!tableSchema.containsKey(columnName)) {
+      String casedColumnName = applyCasingLogic(columnName, this.columnCasing);
+
+      if (!tableSchema.containsKey(casedColumnName)) {
         continue;
       }
 
-      String quotedColumnName = quote(columnName);
+      String quotedColumnName = quote(casedColumnName);
       String columnValue = getValueSql(rowObj, columnName, tableSchema);
 
-      if (onUpdateSql.equals("")) {
+      if (onUpdateSql.isEmpty()) {
         onUpdateSql = quotedColumnName + "=" + columnValue;
       } else {
         onUpdateSql = onUpdateSql + "," + quotedColumnName + "=" + columnValue;
       }
     }
-
     return onUpdateSql;
   }
 
   public String getPrimaryKeyToValueFilterSql(
       JsonNode rowObj, List<String> primaryKeys, Map<String, String> tableSchema) {
+
+    DatastreamRow row = DatastreamRow.of(rowObj);
+    List<String> sourcePrimaryKeys = row.getPrimaryKeys();
     String pkToValueSql = "";
 
-    for (String columnName : primaryKeys) {
-      if (!tableSchema.containsKey(columnName)) {
-        continue;
-      }
+    for (String sourcePkName : sourcePrimaryKeys) {
+      String destinationPkName = applyCasingLogic(sourcePkName, this.columnCasing);
 
-      String columnValue = getValueSql(rowObj, columnName, tableSchema);
-      if (pkToValueSql.equals("")) {
-        pkToValueSql = columnName + "=" + columnValue;
-      } else {
-        pkToValueSql = pkToValueSql + " AND " + columnName + "=" + columnValue;
+      if (primaryKeys.contains(destinationPkName)) {
+        String columnValue = getValueSql(rowObj, sourcePkName, tableSchema);
+        String quotedDestinationPkName = quote(destinationPkName);
+
+        if (pkToValueSql.isEmpty()) {
+          pkToValueSql = quotedDestinationPkName + "=" + columnValue;
+        } else {
+          pkToValueSql = pkToValueSql + " AND " + quotedDestinationPkName + "=" + columnValue;
+        }
       }
     }
-
     return pkToValueSql;
   }
 
