@@ -263,8 +263,7 @@ public class AvroSchemaToDdlConverter {
 
       // Deserialize dynamicLabelExpression
       String dynamicLabelColumn =
-          schema.getProp(
-              SPANNER_NODE_TABLE + "_" + nodeTableCount + "_" + SPANNER_DYNAMIC_LABEL);
+          schema.getProp(SPANNER_NODE_TABLE + "_" + nodeTableCount + "_" + SPANNER_DYNAMIC_LABEL);
       if (dynamicLabelColumn != null) {
         nodeTableBuilder.dynamicLabelExpression(
             new PropertyGraph.GraphDynamicLabelExpression(dynamicLabelColumn));
@@ -393,8 +392,7 @@ public class AvroSchemaToDdlConverter {
 
       // Deserialize dynamicLabelExpression
       String dynamicLabelColumn =
-          schema.getProp(
-              SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_" + SPANNER_DYNAMIC_LABEL);
+          schema.getProp(SPANNER_EDGE_TABLE + "_" + edgeTableCount + "_" + SPANNER_DYNAMIC_LABEL);
       if (dynamicLabelColumn != null) {
         edgeTableBuilder.dynamicLabelExpression(
             new PropertyGraph.GraphDynamicLabelExpression(dynamicLabelColumn));

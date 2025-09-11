@@ -536,15 +536,16 @@ public class InformationSchemaScannerIT {
     assertThat(nodeTestTable, notNullValue());
     assertThat(nodeTestTable.name(), equalTo("NodeTest"));
     // Assert that the dynamic label expression is correctly captured
-    assertThat(nodeTestTable.dynamicLabelExpression().dynamicLabelExpression,
-        equalTo("DynamicLabelCol"));
+    assertThat(
+        nodeTestTable.dynamicLabelExpression().dynamicLabelExpression, equalTo("DynamicLabelCol"));
 
     // --- Assertions for Edge Table ---
     GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
     assertThat(edgeTestTable, notNullValue());
     assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
     // Assert that the dynamic properties expression is correctly captured
-    assertThat(edgeTestTable.dynamicPropertiesExpression().dynamicPropertiesExpression,
+    assertThat(
+        edgeTestTable.dynamicPropertiesExpression().dynamicPropertiesExpression,
         equalTo("DynamicPropsCol"));
 
     // Assertions for the edge's default label properties
