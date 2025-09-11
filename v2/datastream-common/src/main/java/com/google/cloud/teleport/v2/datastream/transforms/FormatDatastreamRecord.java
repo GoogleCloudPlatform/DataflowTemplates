@@ -33,6 +33,7 @@ public abstract class FormatDatastreamRecord<InputT, OutputT> extends DoFn<Input
   protected boolean lowercaseSourceColumns = false;
   protected Map<String, String> renameColumns = new HashMap<String, String>();
   protected boolean hashRowId = false;
+  protected String datastreamSourceType;
 
   static final String ROW_ID_CHARSET =
       "+/0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -64,6 +65,12 @@ public abstract class FormatDatastreamRecord<InputT, OutputT> extends DoFn<Input
   /** Set the reader to hash Oracle ROWID values into int. */
   public FormatDatastreamRecord withHashRowId(Boolean hashRowId) {
     this.hashRowId = hashRowId;
+    return this;
+  }
+
+  /** Set the Datastream source type override. */
+  public FormatDatastreamRecord withDatastreamSourceType(String datastreamSourceType) {
+    this.datastreamSourceType = datastreamSourceType;
     return this;
   }
 

@@ -183,6 +183,16 @@ public class DataStreamToPostgres {
     String getDatabaseName();
 
     void setDatabaseName(String value);
+
+    @TemplateParameter.Text(
+        order = 13,
+        optional = true,
+        description = "Datastream source type override",
+        helpText =
+            "Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.")
+    String getDatastreamSourceType();
+
+    void setDatastreamSourceType(String value);
   }
 
   /**
@@ -264,7 +274,8 @@ public class DataStreamToPostgres {
                     options.getRfcStartDateTime())
                 .withLowercaseSourceColumns()
                 .withRenameColumnValue("_metadata_row_id", "rowid")
-                .withHashRowId());
+                .withHashRowId()
+                .withDatastreamSourceType(options.getDatastreamSourceType()));
 
     /*
      * Stage 2: Write JSON Strings to Postgres Insert Strings
