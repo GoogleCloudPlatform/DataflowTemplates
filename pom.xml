@@ -314,6 +314,7 @@
           <excludedGroups>${integration.tests}</excludedGroups>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
           <trimStackTrace>false</trimStackTrace>
+          <reportFormat>html</reportFormat>
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
@@ -441,7 +442,20 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>2.6</version>
+        <version>3.5.3</version>
+        <configuration>
+          <outputDirectory>${project.build.directory}/surefire-reports</outputDirectory>
+          <outputName>surefire-report</outputName>
+          <format>html</format>
+        </configuration>
+        <executions>
+          <execution>
+            <phase>test</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -496,6 +510,7 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
+              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>
@@ -587,6 +602,7 @@
                 ${load.tests}
               </groups>
               <trimStackTrace>false</trimStackTrace>
+              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>
@@ -615,6 +631,7 @@
               </includes>
               <excludedGroups></excludedGroups>
               <trimStackTrace>false</trimStackTrace>
+              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>
