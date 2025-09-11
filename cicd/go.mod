@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/terraform-exec v0.23.1
 	github.com/hashicorp/terraform-json v0.26.0
 	github.com/spf13/cobra v1.9.1
-	github.com/zclconf/go-cty v1.16.4
+	github.com/zclconf/go-cty v1.17.0
 )
 
 require (
