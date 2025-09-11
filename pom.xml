@@ -447,6 +447,7 @@
           <outputDirectory>${project.build.directory}/surefire-reports</outputDirectory>
           <outputName>surefire-report</outputName>
           <format>html</format>
+          <locale>en_US</locale>
         </configuration>
         <executions>
           <execution>
