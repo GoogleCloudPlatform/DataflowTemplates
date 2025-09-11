@@ -35,7 +35,7 @@
     </description>
 
     <properties>
-        <mongo-java-driver.version>3.12.14</mongo-java-driver.version>
+
     </properties>
 
     <dependencies>
@@ -48,11 +48,7 @@
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongo-java-driver</artifactId>
-            <version>${mongo-java-driver.version}</version>
-        </dependency>
+        <!-- MongoDB driver is provided by beam-sdks-java-io-mongodb -->
 
         <!-- Test Dependencies -->
         <dependency>
