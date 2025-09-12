@@ -21,7 +21,7 @@ import org.apache.beam.sdk.values.TupleTag;
 /** Class to maintain all the constants used in the pipeline. */
 public class SourceDbToSpannerConstants {
 
-  /** TAGS used for routing * */
+  /** TAGS used for routing. * */
 
   /* The tag for rows which transformed successfully */
   public static final TupleTag<RowContext> ROW_TRANSFORMATION_SUCCESS = new TupleTag<>();
