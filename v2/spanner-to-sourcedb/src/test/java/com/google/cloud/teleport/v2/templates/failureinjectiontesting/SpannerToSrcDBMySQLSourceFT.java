@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.Sp
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.common.io.Resources;
 import java.io.IOException;
+import java.net.Socket;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -43,12 +44,15 @@ import org.apache.beam.it.gcp.cloudsql.conditions.CloudSQLRowsCheck;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.awaitility.Awaitility;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A failure injection test for the Spanner to SourceDb template. This test simulates a Source Db
@@ -59,6 +63,7 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
 public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
+  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSrcDBMySQLSourceFT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerFailureInjectionTesting/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURSE = "SpannerFailureInjectionTesting/session.json";
@@ -68,6 +73,7 @@ public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
+  private static NetworkFailureInjector networkFailureInjector;
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
 
@@ -97,6 +103,10 @@ public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
 
+    // create network failure injector
+    networkFailureInjector =
+        NetworkFailureInjector.builder(PROJECT, "nokill-failure-testing-mysql-source-vpc").build();
+
     // launch reverse migration template
     jobInfo =
         launchRRDataflowJob(
@@ -120,12 +130,12 @@ public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
         spannerMetadataResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
-        cloudSqlResourceManager);
+        cloudSqlResourceManager,
+        networkFailureInjector);
   }
 
   @Test
-  public void sourceDbFailureTest()
-      throws IOException, ExecutionException, InterruptedException {
+  public void sourceDbFailureTest() throws IOException, ExecutionException, InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
 
     // Wave of inserts
@@ -140,16 +150,25 @@ public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
-    // Insert more data before injecting failures to source db
+    // Inject Source Db failure
+    networkFailureInjector.blockNetwork(
+        "failure-testing-mysql-host", cloudSqlResourceManager.getPort());
+
+    // Verify that the network is blocked
+    Awaitility.await()
+        .atMost(Duration.ofMinutes(2))
+        .until(
+            () ->
+                !isHostReachable(
+                    cloudSqlResourceManager.getHost(), cloudSqlResourceManager.getPort(), 5000));
+    LOG.info("Successfully verified that the source host is unreachable.");
+
+    // Insert more data while network is blocked
     SpannerDataProvider.writeRowsInSpanner(1001, 2000, spannerResourceManager);
 
-    // Inject Source Db failure
-    NetworkFailureInjector.blockNetworkForHost(
-        PROJECT,
-        "nokill-failure-testing-mysql-source-vpc",
-        "failure-testing-mysql-host",
-        cloudSqlResourceManager.getPort(),
-        Duration.ofMinutes(2));
+    // Unblock network
+    networkFailureInjector.cleanupAll();
+    LOG.info("Network connectivity restored.");
 
     conditionCheck =
         ChainedConditionCheck.builder(
@@ -169,5 +188,14 @@ public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
             .waitForConditionAndCancel(
                 createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
+  }
+
+  private static boolean isHostReachable(String host, int port, int timeoutMillis) {
+    try (Socket socket = new Socket()) {
+      socket.connect(new java.net.InetSocketAddress(host, port), timeoutMillis);
+      return true;
+    } catch (IOException e) {
+      return false; // Either timeout or unreachable or failed DNS lookup.
+    }
   }
 }
