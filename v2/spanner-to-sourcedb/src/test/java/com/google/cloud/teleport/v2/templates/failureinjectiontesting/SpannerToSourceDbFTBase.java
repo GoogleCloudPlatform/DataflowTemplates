@@ -31,6 +31,8 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -199,6 +201,64 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
 
     // Run
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    assertThatPipeline(jobInfo).isRunning();
+    return jobInfo;
+  }
+
+  public PipelineLauncher.LaunchInfo launchRRDataflowJob(
+      String jobName,
+      String additionalMavenProfile,
+      Map<String, String> additionalParams,
+      SpannerResourceManager spannerResourceManager,
+      GcsResourceManager gcsResourceManager,
+      SpannerResourceManager spannerMetadataResourceManager,
+      PubsubResourceManager pubsubResourceManager,
+      String sourceType)
+      throws IOException {
+
+    // create subscription
+    SubscriptionName rrSubscriptionName =
+        createPubsubResources(
+            getClass().getSimpleName(),
+            pubsubResourceManager,
+            getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
+            gcsResourceManager);
+
+    // Launch Dataflow template
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
+        FlexTemplateDataflowJobResourceManager.builder(jobName)
+            .withTemplateName("Spanner_to_SourceDb")
+            .withTemplateModulePath("v2/spanner-to-sourcedb")
+            .addParameter("sessionFilePath", getGcsPath("input/session.json", gcsResourceManager))
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("spannerProjectId", PROJECT)
+            .addParameter("metadataDatabase", spannerMetadataResourceManager.getDatabaseId())
+            .addParameter("metadataInstance", spannerMetadataResourceManager.getInstanceId())
+            .addParameter(
+                "sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager))
+            .addParameter("changeStreamName", "allstream")
+            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName.toString())
+            .addParameter("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager))
+            .addParameter("maxShardConnections", "5")
+            .addParameter("maxNumWorkers", "1")
+            .addParameter("numWorkers", "1")
+            .addParameter("sourceType", sourceType)
+            .addEnvironmentVariable(
+                "additionalExperiments", Collections.singletonList("use_runner_v2"));
+
+    if (additionalMavenProfile != null && !additionalMavenProfile.isBlank()) {
+      flexTemplateBuilder.withAdditionalMavenProfile(additionalMavenProfile);
+    }
+
+    if (additionalParams != null) {
+      for (Entry<String, String> param : additionalParams.entrySet()) {
+        flexTemplateBuilder.addParameter(param.getKey(), param.getValue());
+      }
+    }
+
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }
