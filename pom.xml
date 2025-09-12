@@ -440,6 +440,26 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>clean-surefire-xml</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>bash</executable>
+              <arguments>
+                <argument>${project.basedir}/scripts/clean-surefire-xml.sh</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
         <version>3.5.3</version>
@@ -456,12 +476,12 @@
             <phase>none</phase>
           </execution>
           <execution>
-             <id>generate-html-report</id>
-             <phase>post-integration-test</phase>
-             <goals>
-               <goal>report-only</goal>
-             </goals>
-           </execution>
+            <id>generate-html-report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report-only</goal>
+            </goals>
+          </execution>
         </executions>
       </plugin>
     </plugins>
