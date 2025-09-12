@@ -446,10 +446,7 @@
         <configuration>
           <outputDirectory>${project.build.directory}/surefire-reports</outputDirectory>
           <outputName>surefire-report</outputName>
-          <format>html</format>
           <locale>en_US</locale>
-          <skipEmptyReport>true</skipEmptyReport>
-          <failOnError>false</failOnError>
           <aggregate>false</aggregate>
           <linkXRef>false</linkXRef>
         </configuration>
@@ -459,19 +456,12 @@
             <phase>none</phase>
           </execution>
           <execution>
-            <id>generate-html-report</id>
-            <phase>post-integration-test</phase>
-            <goals>
-              <goal>report-only</goal>
-            </goals>
-            <configuration>
-              <systemPropertyVariables>
-                <user.language>en</user.language>
-                <user.country>US</user.country>
-                <user.timezone>UTC</user.timezone>
-              </systemPropertyVariables>
-            </configuration>
-          </execution>
+             <id>generate-html-report</id>
+             <phase>post-integration-test</phase>
+             <goals>
+               <goal>report-only</goal>
+             </goals>
+           </execution>
         </executions>
       </plugin>
     </plugins>
