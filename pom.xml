@@ -451,11 +451,12 @@
               <goal>exec</goal>
             </goals>
             <configuration>
-              <executable>bash</executable>
-              <arguments>
-                <argument>${project.basedir}/scripts/clean-surefire-xml.sh</argument>
-              </arguments>
-            </configuration>
+               <executable>bash</executable>
+               <arguments>
+                 <argument>-c</argument>
+                 <argument>find . -name "TEST-*.xml" -path "*/target/surefire-reports/*" -exec sed -i.bak 's/time="\([0-9]*\),\([0-9]*\.[0-9]*\)"/time="\1\2"/g' {} \;</argument>
+               </arguments>
+             </configuration>
           </execution>
         </executions>
       </plugin>
