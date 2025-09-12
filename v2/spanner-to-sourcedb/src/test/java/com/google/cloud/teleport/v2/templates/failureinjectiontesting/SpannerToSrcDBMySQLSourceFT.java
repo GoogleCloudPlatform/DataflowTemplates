@@ -166,6 +166,9 @@ public class SpannerToSrcDBMySQLSourceFT extends SpannerToSourceDbFTBase {
     // Insert more data while network is blocked
     SpannerDataProvider.writeRowsInSpanner(1001, 2000, spannerResourceManager);
 
+    // Wait for 3 minutes before unblocking the network
+    Thread.sleep(180000);
+
     // Unblock network
     networkFailureInjector.cleanupAll();
     LOG.info("Network connectivity restored.");
