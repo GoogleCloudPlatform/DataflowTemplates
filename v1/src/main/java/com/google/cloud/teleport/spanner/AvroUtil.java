@@ -65,6 +65,8 @@ public class AvroUtil {
   public static final String SPANNER_EDGE_TABLE = "spannerGraphEdgeTable";
   public static final String SPANNER_PROPERTY_DECLARATION = "spannerGraphPropertyDeclaration";
   public static final String SPANNER_LABEL = "spannerGraphLabel";
+  public static final String SPANNER_DYNAMIC_LABEL = "spannerGraphDynamicLabel";
+  public static final String SPANNER_DYNAMIC_PROPERTIES = "spannerGraphDynamicProperties";
 
   public static final String SPANNER_NAME = "spannerName";
   public static final String STORED = "stored";
