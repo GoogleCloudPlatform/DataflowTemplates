@@ -448,6 +448,10 @@
           <outputName>surefire-report</outputName>
           <format>html</format>
           <locale>en_US</locale>
+          <skipEmptyReport>true</skipEmptyReport>
+          <failOnError>false</failOnError>
+          <aggregate>false</aggregate>
+          <linkXRef>false</linkXRef>
         </configuration>
         <executions>
           <execution>
@@ -455,6 +459,13 @@
             <goals>
               <goal>report</goal>
             </goals>
+            <configuration>
+              <systemPropertyVariables>
+                <user.language>en</user.language>
+                <user.country>US</user.country>
+                <user.timezone>UTC</user.timezone>
+              </systemPropertyVariables>
+            </configuration>
           </execution>
         </executions>
       </plugin>
