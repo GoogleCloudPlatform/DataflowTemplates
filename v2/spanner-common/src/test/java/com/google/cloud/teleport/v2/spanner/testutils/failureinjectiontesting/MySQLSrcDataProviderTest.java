@@ -172,4 +172,15 @@ public class MySQLSrcDataProviderTest {
     assertThat(capturedRows.get(1)).containsEntry("book_id", 101);
     assertThat(capturedRows.get(1)).containsEntry("name", "book_name_101");
   }
+
+  @Test
+  public void testCreateForeignKeyConstraint() {
+    MySQLSrcDataProvider.createForeignKeyConstraint(mockResourceManager);
+    verify(mockResourceManager)
+        .runSQLUpdate(
+            "ALTER TABLE Books\n"
+                + "ADD CONSTRAINT fk_Books_Authors\n"
+                + "FOREIGN KEY (author_id)\n"
+                + "REFERENCES Authors(author_id);");
+  }
 }
