@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -103,6 +104,30 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
     jsObj.remove("secretManagerUri"); // remove field secretManagerUri
     JsonArray ja = new JsonArray();
     ja.add(jsObj);
+    String shardFileContents = ja.toString();
+    LOG.info("Shard file contents: {}", shardFileContents);
+    gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
+  }
+
+  protected void createAndUploadReverseShardConfigToGcs(
+      GcsResourceManager gcsResourceManager,
+      List<CloudSqlResourceManager> cloudSqlResourceManagers,
+      String privateHost,
+      List<String> logicalShardIds) {
+    JsonArray ja = new JsonArray();
+    for (int i = 0; i < cloudSqlResourceManagers.size(); ++i) {
+      Shard shard = new Shard();
+      shard.setLogicalShardId(logicalShardIds.get(i));
+      CloudSqlResourceManager cloudSqlResourceManager = cloudSqlResourceManagers.get(i);
+      shard.setUser(cloudSqlResourceManager.getUsername());
+      shard.setHost(privateHost);
+      shard.setPassword(cloudSqlResourceManager.getPassword());
+      shard.setPort(String.valueOf(cloudSqlResourceManager.getPort()));
+      shard.setDbName(cloudSqlResourceManager.getDatabaseName());
+      JsonObject jsObj = new Gson().toJsonTree(shard).getAsJsonObject();
+      jsObj.remove("secretManagerUri"); // remove field secretManagerUri
+      ja.add(jsObj);
+    }
     String shardFileContents = ja.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard.json", shardFileContents);
