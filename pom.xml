@@ -455,9 +455,14 @@
         </configuration>
         <executions>
           <execution>
-            <phase>test</phase>
+            <id>default</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>generate-html-report</id>
+            <phase>post-integration-test</phase>
             <goals>
-              <goal>report</goal>
+              <goal>report-only</goal>
             </goals>
             <configuration>
               <systemPropertyVariables>
