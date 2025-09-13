@@ -59,6 +59,7 @@
           <version>2.22.0</version>
           <configuration>
             <excludedGroups>com.google.cloud.teleport.metadata.TemplateIntegrationTest</excludedGroups>
+            <reportFormat>html</reportFormat>
           </configuration>
         </plugin>
         <plugin>

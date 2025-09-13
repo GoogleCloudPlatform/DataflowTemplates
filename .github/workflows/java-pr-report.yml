@@ -42,4 +42,7 @@ jobs:
       uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3 # v5.6.2
       with:
         commit: ${{github.event.workflow_run.head_sha}}
-        report_paths: '**/surefire-reports/TEST-*.xml'
+        report_paths: |
+          **/surefire-reports/TEST-*.xml
+          **/surefire-reports/*.html
+          **/surefire-reports/html/**
