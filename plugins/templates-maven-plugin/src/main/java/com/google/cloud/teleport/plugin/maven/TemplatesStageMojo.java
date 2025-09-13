@@ -1142,7 +1142,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     return Optional.ofNullable(artifactRegistry)
         .map(
             value ->
-                value.endsWith("gcr.io")
+                value.endsWith("gcr.io") && !value.contains("pkg.dev")
                     ? value + "/" + projectIdUrl + "/" + containerName
                     : value + "/" + containerName)
         .orElse(prefix + "gcr.io/" + projectIdUrl + "/" + containerName);

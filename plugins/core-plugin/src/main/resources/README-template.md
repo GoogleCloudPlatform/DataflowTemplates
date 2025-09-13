@@ -106,11 +106,17 @@ the `-PtemplatesStage` profile should be used:
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
+<#if flex>
+export ARTIFACT_REGISTRY_REPO=<region>-docker.pkg.dev/$PROJECT/<repo>
+</#if>
 
 mvn clean package -PtemplatesStage  \
 -DskipTests \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
+<#if flex>
+-DartifactRegisty="$ARTIFACT_REGISTRY_REPO" \
+</#if>
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
 <#if language == 'PYTHON' || spec.metadata.module! == 'python'>
@@ -125,6 +131,8 @@ mvn clean package -PtemplatesStage  \
 ```
 
 <#if flex>
+The `-DartifactRegisty` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+If not provided, it defaults to `gcr.io/<project>`.
 <#else>
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
 temp files to during serialization. The path used will be `gs://<temp-bucket-name>/temp/`.
