@@ -49,7 +49,7 @@
     <dependency>
       <groupId>org.neo4j.importer</groupId>
       <artifactId>import-spec</artifactId>
-      <version>1.0.0-rc03</version>
+      <version>1.0.0-rc05</version>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport.v2</groupId>
