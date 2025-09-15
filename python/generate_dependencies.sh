@@ -1,3 +1,4 @@
+#!/bin/bash
 # Copyright 2024 Google Inc. All Rights Reserved.
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,9 +16,6 @@
 BASE_REQUIREMENTS_PATH=$1
 TARGET_REQUIREMENTS_PATH=$2
 
-# Set default Python version if not provided
-PY_VERSION=${PY_VERSION:-"3.11"}
-
 if ! python3.11 --version > /dev/null 2>&1 ; then
   echo "Please install a python3.11 interpreter. See s.apache.org/beam-python-dev-wiki for Python installation tips."
   exit 1
@@ -30,8 +28,7 @@ fi
 
 set -ex
 
-PY_VERSION_NO_DOT=$(echo "$PY_VERSION" | tr -d '.')
-ENV_PATH="$PWD/__build__/python${PY_VERSION_NO_DOT}_requirements_gen"
+ENV_PATH="$PWD/__build__/python_requirements_gen"
 
 rm -rf "$ENV_PATH" 2>/dev/null || true
 # These python versions need to be kept in sync with our dockerfile python versions (https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/0ac92513838ca525adb3f616c9e1f65237334d1e/plugins/core-plugin/src/main/java/com/google/cloud/teleport/plugin/DockerfileGenerator.java#L46)
