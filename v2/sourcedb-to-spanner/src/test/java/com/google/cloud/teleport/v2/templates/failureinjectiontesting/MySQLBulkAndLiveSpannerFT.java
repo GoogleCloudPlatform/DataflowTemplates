@@ -59,9 +59,9 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
+public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BulkAndLiveMySQLSpannerFT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLBulkAndLiveSpannerFT.class);
   private static final String SPANNER_DDL_RESOURCE =
       "SpannerFailureInjectionTesting/spanner-schema-small-author-name.sql";
 
@@ -92,6 +92,10 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
             .build();
 
     // Insert data for bulk before launching the job
+    // The Author name is inserted as "author_name_" + i, and length of author name column is
+    // configured as STRING(13) in Spanner. Hence, insertion of rows from id 1 to 9 would succeed in
+    // Spanner (author_name_9 is 13 chars) and from id 10 onwards it would fail. At the end of Bulk
+    // migration, we expect 9 rows to be inserted and 191 rows to be in the DLQ folder.
     MySQLSrcDataProvider.writeAuthorRowsInSourceDB(1, 200, sourceDBResourceManager);
 
     // create pubsub manager
@@ -138,14 +142,16 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
                 "output/dlq/severe/",
                 200)
             .and(
-                // There should be at least 1 error
+                // Check that there are at least 191 errors in DLQ
                 DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
-                    .setMinEvents(1)
+                    .setMinEvents(191)
                     .build());
 
     assertTrue(conditionCheck.get());
 
-    // Correct spanner schema
+    // Correct spanner schema and increasing size of author name column to 100 before running Live
+    // migration in retryDLQ mode. Insertion of all the rows should succeed now and Authors table
+    // should contain 200 rows at the end.
     spannerResourceManager.executeDdlStatement(
         "ALTER TABLE `Authors` ALTER COLUMN `name` STRING(200)");
 
@@ -169,10 +175,6 @@ public class BulkAndLiveMySQLSpannerFT extends SourceDbToSpannerFTBase {
                         .setMinRows(200)
                         .setMaxRows(200)
                         .build()))
-            // SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
-            //     .setMinRows(200)
-            //     .setMaxRows(200)
-            //     .build()))
             .build();
 
     result =
