@@ -56,7 +56,6 @@ pip freeze
 echo "Running pip-compile to generate hashes"
 pip-compile $BASE_REQUIREMENTS_PATH -o $TARGET_REQUIREMENTS_PATH --generate-hashes --allow-unsafe
 
-PY_IMAGE="py${PY_VERSION//.}"
 cat <<EOT > "$TARGET_REQUIREMENTS_PATH"
 # Copyright 2025 Google Inc. All Rights Reserved.
 
