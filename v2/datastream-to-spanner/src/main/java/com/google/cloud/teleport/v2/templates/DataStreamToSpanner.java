@@ -487,7 +487,7 @@ public class DataStreamToSpanner {
         optional = true,
         helpText =
             "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
-                + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+                + "It expects a JSON file with the format: {\"StreamToDbAndShardMap\": Map<stream_name, Map<db_name, shard_id>>}",
         description = "Sharding context file path in cloud storage")
     String getShardingContextFilePath();
 
