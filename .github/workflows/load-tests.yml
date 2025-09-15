@@ -63,8 +63,8 @@ jobs:
       uses: dorny/test-reporter@v2
       if: always()
       with:
-          name: Integration Test report on GitHub
-          path: '**/surefire-reports/TEST-*.xml'
+        name: Integration Test report on GitHub
+        path: '**/surefire-reports/TEST-*.xml'
         reporter: java-junit
         only-summary: 'true'
         token: ${{ secrets.GITHUB_TOKEN }}
