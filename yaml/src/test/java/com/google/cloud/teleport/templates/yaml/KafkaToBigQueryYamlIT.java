@@ -46,7 +46,6 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -79,7 +78,6 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
   }
 
   @Test
-  @Ignore("YAML templates are still under development.")
   public void testKafkaToBigQuery() throws IOException {
     baseKafkaToBigQuery(Function.identity()); // no extra parameters
   }
@@ -132,6 +130,10 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
     TableId deadletterTableId = TableId.of(tableId.getDataset(), tableId.getTable() + "_dlq");
 
+    String bootstrapServers =
+        kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "");
+    LOG.info("Using Kafka Bootstrap Servers: " + bootstrapServers);
+
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
@@ -154,9 +156,13 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     KafkaProducer<String, String> kafkaProducer =
         kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
 
+
     for (int i = 1; i <= 10; i++) {
       publish(kafkaProducer, topicName, i + "1", "{\"id\": " + i + "1, \"name\": \"Dataflow\"}");
       publish(kafkaProducer, topicName, i + "2", "{\"id\": " + i + "2, \"name\": \"Pub/Sub\"}");
+      // Invalid schema
+      publish(
+          kafkaProducer, topicName, i + "3", "{\"id\": " + i + "3, \"description\": \"Pub/Sub\"}");
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -169,7 +175,10 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
         pipelineOperator()
             .waitForConditionsAndFinish(
                 createConfig(info),
-                BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build());
+                BigQueryRowsCheck.builder(bigQueryClient, tableId).setMinRows(20).build(),
+                BigQueryRowsCheck.builder(bigQueryClient, deadletterTableId)
+                    .setMinRows(10)
+                    .build());
 
     // Assert
     assertThatResult(result).meetsConditions();
