@@ -156,7 +156,6 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     KafkaProducer<String, String> kafkaProducer =
         kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
 
-
     for (int i = 1; i <= 10; i++) {
       publish(kafkaProducer, topicName, i + "1", "{\"id\": " + i + "1, \"name\": \"Dataflow\"}");
       publish(kafkaProducer, topicName, i + "2", "{\"id\": " + i + "2, \"name\": \"Pub/Sub\"}");
