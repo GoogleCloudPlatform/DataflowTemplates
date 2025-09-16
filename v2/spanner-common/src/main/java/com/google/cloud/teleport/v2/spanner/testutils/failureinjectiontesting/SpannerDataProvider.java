@@ -32,6 +32,18 @@ public class SpannerDataProvider {
       Integer startId, Integer endId, SpannerResourceManager spannerResourceManager) {
 
     boolean success = true;
+    success = writeAuthorRowsInSpanner(startId, endId, spannerResourceManager);
+
+    if (success) {
+      success = writeBookRowsInSpanner(startId, endId, null, spannerResourceManager);
+    }
+    return success;
+  }
+
+  public static boolean writeAuthorRowsInSpanner(
+      Integer startId, Integer endId, SpannerResourceManager spannerResourceManager) {
+
+    boolean success = true;
     List<Mutation> mutations = new ArrayList<>();
     // Insert Authors
     for (int i = startId; i <= endId; i++) {
@@ -47,13 +59,24 @@ public class SpannerDataProvider {
     spannerResourceManager.write(mutations);
     LOG.info(String.format("Wrote %d rows to table %s", mutations.size(), AUTHORS_TABLE));
 
-    mutations = new ArrayList<>();
+    return success;
+  }
+
+  public static boolean writeBookRowsInSpanner(
+      Integer startId,
+      Integer endId,
+      Integer authorId,
+      SpannerResourceManager spannerResourceManager) {
+
+    boolean success = true;
+    List<Mutation> mutations = new ArrayList<>();
+
     // Insert Books
     for (int i = startId; i <= endId; i++) {
       Mutation m =
           Mutation.newInsertOrUpdateBuilder(BOOKS_TABLE)
               .set("author_id")
-              .to(i)
+              .to(authorId != null ? authorId : i)
               .set("book_id")
               .to(i)
               .set("name")
