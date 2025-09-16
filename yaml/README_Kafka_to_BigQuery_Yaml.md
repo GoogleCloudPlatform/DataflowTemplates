@@ -21,17 +21,18 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Required parameters
 
+* **readBootstrapServers**: Kafka Bootstrap Server list, separated by commas. For example, `localhost:9092,127.0.0.1:9093`.
+* **kafkaReadTopics**: Kafka topic(s) to read input from. For example, `topic1,topic2`.
 * **outputTableSpec**: BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
+* **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`.
+* **messageFormat**: The message format. Can be AVRO or JSON. Defaults to: JSON.
 
 ### Optional parameters
 
-* **readBootstrapServers**: Kafka Bootstrap Server list, separated by commas. For example, `localhost:9092,127.0.0.1:9093`.
-* **kafkaReadTopics**: Kafka topic(s) to read input from. For example, `topic1,topic2`.
-* **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`.
-* **messageFormat**: The message format. Can be AVRO or JSON. Defaults to: JSON.
 * **schema**: Kafka schema. A schema is required if data format is JSON, AVRO or PROTO.
-* **numStorageWriteApiStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 1.
-* **storageWriteApiTriggeringFrequencySec**: Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. Defaults to: 1.
+* **numStorageWriteApiStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
+* **storageWriteApiTriggeringFrequencySec**: Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
+* **jinjaVariables**: Jinja variables to override ALL other parameters.
 
 
 
@@ -114,16 +115,17 @@ export REGION=us-central1
 export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Kafka_to_BigQuery_Yaml"
 
 ### Required
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
-
-### Optional
 export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export KAFKA_READ_TOPICS=<kafkaReadTopics>
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export MESSAGE_FORMAT=JSON
+
+### Optional
 export SCHEMA=<schema>
 export NUM_STORAGE_WRITE_API_STREAMS=1
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=1
+export JINJA_VARIABLES=<jinjaVariables>
 
 gcloud dataflow flex-template run "kafka-to-bigquery-yaml-job" \
   --project "$PROJECT" \
@@ -136,7 +138,8 @@ gcloud dataflow flex-template run "kafka-to-bigquery-yaml-job" \
   --parameters "messageFormat=$MESSAGE_FORMAT" \
   --parameters "schema=$SCHEMA" \
   --parameters "numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS" \
-  --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC"
+  --parameters "storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+  --parameters "jinjaVariables=$JINJA_VARIABLES"
 ```
 
 For more information about the command, please check:
@@ -155,16 +158,17 @@ export BUCKET_NAME=<bucket-name>
 export REGION=us-central1
 
 ### Required
-export OUTPUT_TABLE_SPEC=<outputTableSpec>
-
-### Optional
 export READ_BOOTSTRAP_SERVERS=<readBootstrapServers>
 export KAFKA_READ_TOPICS=<kafkaReadTopics>
+export OUTPUT_TABLE_SPEC=<outputTableSpec>
 export OUTPUT_DEADLETTER_TABLE=<outputDeadletterTable>
 export MESSAGE_FORMAT=JSON
+
+### Optional
 export SCHEMA=<schema>
 export NUM_STORAGE_WRITE_API_STREAMS=1
 export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=1
+export JINJA_VARIABLES=<jinjaVariables>
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -173,7 +177,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="kafka-to-bigquery-yaml-job" \
 -DtemplateName="Kafka_to_BigQuery_Yaml" \
--Dparameters="readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,outputTableSpec=$OUTPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,schema=$SCHEMA,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC" \
+-Dparameters="readBootstrapServers=$READ_BOOTSTRAP_SERVERS,kafkaReadTopics=$KAFKA_READ_TOPICS,outputTableSpec=$OUTPUT_TABLE_SPEC,outputDeadletterTable=$OUTPUT_DEADLETTER_TABLE,messageFormat=$MESSAGE_FORMAT,schema=$SCHEMA,numStorageWriteApiStreams=$NUM_STORAGE_WRITE_API_STREAMS,storageWriteApiTriggeringFrequencySec=$STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC,jinjaVariables=$JINJA_VARIABLES" \
 -f yaml
 ```
 
@@ -218,14 +222,15 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery_yaml" {
   name              = "kafka-to-bigquery-yaml"
   region            = var.region
   parameters        = {
+    readBootstrapServers = "<readBootstrapServers>"
+    kafkaReadTopics = "<kafkaReadTopics>"
     outputTableSpec = "<outputTableSpec>"
-    # readBootstrapServers = "<readBootstrapServers>"
-    # kafkaReadTopics = "<kafkaReadTopics>"
-    # outputDeadletterTable = "<outputDeadletterTable>"
-    # messageFormat = "JSON"
+    outputDeadletterTable = "<outputDeadletterTable>"
+    messageFormat = "JSON"
     # schema = "<schema>"
     # numStorageWriteApiStreams = "1"
     # storageWriteApiTriggeringFrequencySec = "1"
+    # jinjaVariables = "<jinjaVariables>"
   }
 }
 ```
