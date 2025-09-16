@@ -26,11 +26,14 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.SpannerDataProvider;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.io.Resources;
+import com.google.pubsub.v1.PullResponse;
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -47,21 +50,18 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
- * A failure injection test for the Spanner to SourceDb template. This test injects Spanner errors
- * and checks the template behaviour.
+ * A failure injection test for the Spanner to SourceDb template. This test simulates a Dataflow
+ * worker failure scenario to ensure the pipeline remains resilient and processes all data without
+ * loss.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToSrcDBMySQLSpannerFT extends SpannerToSourceDbFTBase {
-
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSrcDBMySQLSpannerFT.class);
+public class SpannerToSrcDBMySQLDlqPubsubFT extends SpannerToSourceDbFTBase {
   private static final String SPANNER_DDL_RESOURCE =
-      "SpannerFailureInjectionTesting/spanner-schema.sql";
+      "SpannerFailureInjectionTesting/spanner-schema-without-interleave.sql";
   private static final String SESSION_FILE_RESOURSE = "SpannerFailureInjectionTesting/session.json";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
@@ -69,6 +69,9 @@ public class SpannerToSrcDBMySQLSpannerFT extends SpannerToSourceDbFTBase {
   private static SpannerResourceManager spannerMetadataResourceManager;
   private static GcsResourceManager gcsResourceManager;
   private static PubsubResourceManager pubsubResourceManager;
+
+  private static TopicName topic;
+  private static SubscriptionName subscription;
 
   private static CloudSqlResourceManager cloudSqlResourceManager;
 
@@ -83,34 +86,40 @@ public class SpannerToSrcDBMySQLSpannerFT extends SpannerToSourceDbFTBase {
     spannerResourceManager = createSpannerDatabase(SPANNER_DDL_RESOURCE);
     spannerMetadataResourceManager = createSpannerMetadataDatabase();
 
-    // Create MySql Resource
-    cloudSqlResourceManager =
-        MySQLSrcDataProvider.createSourceResourceManagerWithSchema(getClass().getSimpleName());
+    // create MySql Resources
+    cloudSqlResourceManager = MySQLSrcDataProvider.createSourceResourceManagerWithSchema(testName);
+    MySQLSrcDataProvider.createForeignKeyConstraint(cloudSqlResourceManager);
 
     // create and upload GCS Resources
     gcsResourceManager =
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
-
-    // create and upload reverse migration config
     createAndUploadReverseShardConfigToGcs(
         gcsResourceManager, cloudSqlResourceManager, cloudSqlResourceManager.getHost());
-
     gcsResourceManager.uploadArtifact(
         "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
 
+    String topicNameSuffix = "rr-ft" + getClass().getSimpleName();
+    String subscriptionNameSuffix = "rr-ft-sub" + getClass().getSimpleName();
+    topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    subscription = pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, "");
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    prefix += "/retry/";
+    gcsResourceManager.createNotification(topic.toString(), prefix);
+
     // launch reverse migration template
     jobInfo =
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
-            "failureInjectionTest",
-            Map.of(
-                "failureInjectionParameter",
-                "{\"policyType\":\"InitialLimitedDurationErrorInjectionPolicy\", \"policyInput\": { \"duration\": \"PT5M\", \"errorCode\": \"FAILED_PRECONDITION\" }}"),
             null,
+            null,
+            subscription,
             spannerResourceManager,
             gcsResourceManager,
             spannerMetadataResourceManager,
@@ -134,29 +143,45 @@ public class SpannerToSrcDBMySQLSpannerFT extends SpannerToSourceDbFTBase {
   }
 
   @Test
-  public void spannerRetryableErrorFailureInjectionTest() {
-    // Wait for Reverse replication job to be in running state
+  public void dataflowWorkerFailureTest() throws IOException, InterruptedException {
     assertThatPipeline(jobInfo).isRunning();
 
     // Wave of inserts
-    SpannerDataProvider.writeRowsInSpanner(1, 50, spannerResourceManager);
+    SpannerDataProvider.writeBookRowsInSpanner(1, 100, null, spannerResourceManager);
+
+    // Wait for messages in pubsub for 5 minutes and consume them
+    PullResponse pullResponse = null;
+    for (int i = 0; i < 30; ++i) {
+      pullResponse = pubsubResourceManager.pull(subscription, 2);
+      if (pullResponse.getReceivedMessagesCount() > 0) {
+        break;
+      }
+      Thread.sleep(1000);
+    }
+    SpannerDataProvider.writeAuthorRowsInSpanner(1, 100, spannerResourceManager);
+
+    pubsubResourceManager.publish(
+        topic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
+    pubsubResourceManager.publish(
+        topic, ImmutableMap.of(), pullResponse.getReceivedMessages(0).getMessage().getData());
 
     ChainedConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     CloudSQLRowsCheck.builder(cloudSqlResourceManager, AUTHORS_TABLE)
-                        .setMinRows(50)
-                        .setMaxRows(50)
+                        .setMinRows(100)
+                        .setMaxRows(100)
                         .build(),
                     CloudSQLRowsCheck.builder(cloudSqlResourceManager, BOOKS_TABLE)
-                        .setMinRows(50)
-                        .setMaxRows(50)
+                        .setMinRows(100)
+                        .setMaxRows(100)
                         .build()))
             .build();
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForConditionAndCancel(
+                createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
   }
 }

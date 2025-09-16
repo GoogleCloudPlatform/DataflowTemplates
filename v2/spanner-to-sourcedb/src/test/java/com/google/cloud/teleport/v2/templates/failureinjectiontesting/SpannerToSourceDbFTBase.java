@@ -209,6 +209,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
       String jobName,
       String additionalMavenProfile,
       Map<String, String> additionalParams,
+      SubscriptionName dlqPubsubSubscription,
       SpannerResourceManager spannerResourceManager,
       GcsResourceManager gcsResourceManager,
       SpannerResourceManager spannerMetadataResourceManager,
@@ -216,13 +217,15 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
       String sourceType)
       throws IOException {
 
-    // create subscription
-    SubscriptionName rrSubscriptionName =
-        createPubsubResources(
-            getClass().getSimpleName(),
-            pubsubResourceManager,
-            getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
-            gcsResourceManager);
+    if (dlqPubsubSubscription == null) {
+      // create subscription
+      dlqPubsubSubscription =
+          createPubsubResources(
+              getClass().getSimpleName(),
+              pubsubResourceManager,
+              getGcsPath("dlq", gcsResourceManager).replace("gs://" + artifactBucketName, ""),
+              gcsResourceManager);
+    }
 
     // Launch Dataflow template
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
@@ -238,7 +241,7 @@ public class SpannerToSourceDbFTBase extends TemplateTestBase {
             .addParameter(
                 "sourceShardsFilePath", getGcsPath("input/shard.json", gcsResourceManager))
             .addParameter("changeStreamName", "allstream")
-            .addParameter("dlqGcsPubSubSubscription", rrSubscriptionName.toString())
+            .addParameter("dlqGcsPubSubSubscription", dlqPubsubSubscription.toString())
             .addParameter("deadLetterQueueDirectory", getGcsPath("dlq", gcsResourceManager))
             .addParameter("maxShardConnections", "5")
             .addParameter("maxNumWorkers", "1")
