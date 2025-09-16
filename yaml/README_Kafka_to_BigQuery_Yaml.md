@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **kafkaReadTopics**: Kafka topic(s) to read input from. For example, `topic1,topic2`.
 * **outputTableSpec**: BigQuery table location to write the output to. The name should be in the format `<project>:<dataset>.<table_name>`. The table's schema must match input objects.
 * **outputDeadletterTable**: BigQuery table for failed messages. Messages failed to reach the output table for different reasons (e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will be created during pipeline execution. If not specified, "outputTableSpec_error_records" is used instead. For example, `your-project-id:your-dataset.your-table-name`.
-* **messageFormat**: The message format. Can be AVRO or JSON. Defaults to: JSON.
+* **messageFormat**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING. Defaults to: JSON.
 
 ### Optional parameters
 
