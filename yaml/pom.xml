@@ -173,6 +173,7 @@
        </plugins>
      </build>
     </profile>
+<!-- TODO: Will uncomment this profile once everything else passes IT and we collectively are ready to release. -->
 <!--    <profile>-->
 <!--      <id>templatesRelease</id>-->
 <!--      <activation>-->
