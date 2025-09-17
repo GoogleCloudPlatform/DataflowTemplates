@@ -128,7 +128,7 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
             Field.of("name", StandardSQLTypeName.STRING));
 
     TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
-    TableId deadletterTableId = TableId.of(tableId.getDataset(), tableId.getTable() + "_dlq");
+    TableId deadletterTableId = bigQueryClient.createTable(bqTable + "_dlq", getDeadletterSchema());
 
     String bootstrapServers =
         kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "");
@@ -198,6 +198,7 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
           recordMetadata.topic(),
           recordMetadata.partition(),
           recordMetadata.offset());
+      LOG.info("Published record with key: {}, value: {}", key, value);
     } catch (Exception e) {
       throw new RuntimeException("Error publishing record to Kafka", e);
     }
