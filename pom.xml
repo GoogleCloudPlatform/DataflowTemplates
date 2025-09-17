@@ -454,7 +454,7 @@
                <executable>bash</executable>
                <arguments>
                  <argument>-c</argument>
-                 <argument>find . -name "TEST-*.xml" -path "*/target/surefire-reports/*" -exec sed -i.bak 's/time="\([0-9]*\),\([0-9]*\.[0-9]*\)"/time="\1\2"/g' {} \;</argument>
+                 <argument>find . -name "TEST-*.xml" -path "*/target/surefire-reports/*" -exec sed -i.bak -e 's/time="\([0-9]*\),\([0-9]*\)"/time="\1\2"/g' -e 's/time="\([0-9]*\),\([0-9]*\.[0-9]*\)"/time="\1\2"/g' {} \;</argument>
                </arguments>
              </configuration>
           </execution>
