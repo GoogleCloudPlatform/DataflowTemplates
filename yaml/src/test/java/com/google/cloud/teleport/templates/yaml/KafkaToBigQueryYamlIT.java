@@ -159,8 +159,7 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
       publish(kafkaProducer, topicName, i + "1", "{\"id\": " + i + "1, \"name\": \"Dataflow\"}");
       publish(kafkaProducer, topicName, i + "2", "{\"id\": " + i + "2, \"name\": \"Pub/Sub\"}");
       // Invalid schema
-      publish(
-          kafkaProducer, topicName, i + "3", "{\"id\": " + i + "3, \"description\": \"Pub/Sub\"}");
+      publish(kafkaProducer, topicName, i + "3", "this is not a valid json");
 
       try {
         TimeUnit.SECONDS.sleep(3);
