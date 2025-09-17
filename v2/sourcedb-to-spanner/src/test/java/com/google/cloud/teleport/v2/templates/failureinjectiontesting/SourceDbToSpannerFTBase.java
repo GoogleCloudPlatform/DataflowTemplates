@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 import static java.util.Arrays.stream;
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -36,6 +38,7 @@ import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.dataflow.FlexTemplateDataflowJobResourceManager;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCounter;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Strings;
@@ -208,6 +211,58 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
     String shardFileContents = bulkConfig.toString();
     LOG.info("Shard file contents: {}", shardFileContents);
     gcsResourceManager.createArtifact("input/shard-bulk.json", shardFileContents);
+  }
+
+  public PubsubResourceManager setUpPubSubResourceManager() throws IOException {
+    return PubsubResourceManager.builder(testName, PROJECT, credentialsProvider).build();
+  }
+
+  public SubscriptionName createPubsubResources(
+      String identifierSuffix,
+      PubsubResourceManager pubsubResourceManager,
+      String gcsPrefix,
+      GcsResourceManager gcsResourceManager) {
+    String topicNameSuffix = "FT-" + identifierSuffix;
+    String subscriptionNameSuffix = "FT" + identifierSuffix;
+    TopicName topic = pubsubResourceManager.createTopic(topicNameSuffix);
+    SubscriptionName subscription =
+        pubsubResourceManager.createSubscription(topic, subscriptionNameSuffix);
+    String prefix = gcsPrefix;
+    if (prefix.startsWith("/")) {
+      prefix = prefix.substring(1);
+    }
+    gcsResourceManager.createNotification(topic.toString(), prefix);
+    return subscription;
+  }
+
+  public PipelineLauncher.LaunchInfo launchFwdDataflowJobInRetryDlqMode(
+      SpannerResourceManager spannerResourceManager,
+      String inputLocationFullPath,
+      String dlqLocationFullPath,
+      SubscriptionName dlqPubSubSubscription)
+      throws IOException {
+
+    // launch dataflow template
+    FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager =
+        FlexTemplateDataflowJobResourceManager.builder(testName)
+            .withTemplateName("Cloud_Datastream_to_Spanner")
+            .withTemplateModulePath("v2/datastream-to-spanner")
+            .addParameter("inputFilePattern", inputLocationFullPath)
+            .addParameter(
+                "streamName", "projects/testProject/locations/us-central1/streams/testStream")
+            .addParameter("instanceId", spannerResourceManager.getInstanceId())
+            .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+            .addParameter("projectId", PROJECT)
+            .addParameter("deadLetterQueueDirectory", dlqLocationFullPath)
+            .addParameter("dlqGcsPubSubSubscription", dlqPubSubSubscription.toString())
+            .addParameter("datastreamSourceType", "mysql")
+            .addParameter("inputFileFormat", "avro")
+            .addParameter("runMode", "retryDLQ")
+            .build();
+
+    // Run
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    return jobInfo;
   }
 
   protected class DataShard {
