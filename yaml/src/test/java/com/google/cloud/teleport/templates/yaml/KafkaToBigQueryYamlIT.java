@@ -58,7 +58,7 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(BigtableResourceManager.class);
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaToBigQueryYamlIT.class);
 
   private KafkaResourceManager kafkaResourceManager;
   private BigQueryResourceManager bigQueryClient;
