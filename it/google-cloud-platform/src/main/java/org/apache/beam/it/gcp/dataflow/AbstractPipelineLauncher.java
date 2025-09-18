@@ -342,10 +342,10 @@ public abstract class AbstractPipelineLauncher implements PipelineLauncher {
       try {
         JobState state = getJobStatus(TestProperties.project(), TestProperties.region(), jobId);
         if (ACTIVE_STATES.contains(state) || PENDING_STATES.contains(state)) {
-          forceCancelJob(TestProperties.project(), TestProperties.region(), jobId);
+          cancelJob(TestProperties.project(), TestProperties.region(), jobId);
         }
       } catch (Exception e) {
-        LOG.warn("Unable to force cancel {}. Encountered error.", jobId, e);
+        LOG.warn("Unable to cancel {}. Encountered error.", jobId, e);
       }
     }
     LOG.info("Dataflow jobs successfully cleaned up.");
