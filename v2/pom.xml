@@ -38,7 +38,7 @@
         <autovalue.service.version>1.0-rc6</autovalue.service.version>
         <jib.maven.version>3.4.0</jib.maven.version>
         <kafka-clients.version>3.7.0</kafka-clients.version>
-        <opencensus.version>0.31.0</opencensus.version>
+        <opencensus.version>0.31.1</opencensus.version>
         <protoc.version>4.29.4</protoc.version>
         <base-container-image>gcr.io/dataflow-templates-base/java${java.version}-template-launcher-base</base-container-image>
         <base-container-image.version>latest</base-container-image.version>
