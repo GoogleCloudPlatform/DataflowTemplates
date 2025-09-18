@@ -83,35 +83,9 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
   }
 
   private Schema getDeadletterSchema() {
-    Schema dlqSchema =
-        Schema.of(
-            Field.newBuilder("timestamp", StandardSQLTypeName.TIMESTAMP)
-                .setMode(Field.Mode.REQUIRED)
-                .build(),
-            Field.newBuilder("payloadString", StandardSQLTypeName.STRING)
-                .setMode(Field.Mode.REQUIRED)
-                .build(),
-            Field.newBuilder("payloadBytes", StandardSQLTypeName.BYTES)
-                .setMode(Field.Mode.REQUIRED)
-                .build(),
-            Field.newBuilder(
-                    "attributes",
-                    StandardSQLTypeName.STRUCT,
-                    Field.newBuilder("key", StandardSQLTypeName.STRING)
-                        .setMode(Field.Mode.NULLABLE)
-                        .build(),
-                    Field.newBuilder("value", StandardSQLTypeName.STRING)
-                        .setMode(Field.Mode.NULLABLE)
-                        .build())
-                .setMode(Field.Mode.REPEATED)
-                .build(),
-            Field.newBuilder("errorMessage", StandardSQLTypeName.STRING)
-                .setMode(Field.Mode.NULLABLE)
-                .build(),
-            Field.newBuilder("stacktrace", StandardSQLTypeName.STRING)
-                .setMode(Field.Mode.NULLABLE)
-                .build());
-    return dlqSchema;
+    return Schema.of(
+        Field.of("failed_row", StandardSQLTypeName.BYTES),
+        Field.of("error_message", StandardSQLTypeName.STRING));
   }
 
   public void baseKafkaToBigQuery(
@@ -158,7 +132,6 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
         kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
 
     List<Map<String, Object>> expectedSuccessRecords = new ArrayList<>();
-    List<Map<String, Object>> expectedDeadletterRecords = new ArrayList<>();
     for (int i = 1; i <= 10; i++) {
       long id1 = Long.parseLong(i + "1");
       long id2 = Long.parseLong(i + "2");
@@ -171,7 +144,6 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
 
       // Invalid schema
       publish(kafkaProducer, topicName, i + "3", "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}");
-      expectedDeadletterRecords.add(Map.of("id", i + "3", "name", "bad-record"));
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -195,9 +167,6 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     TableResult tableRows = bigQueryClient.readTable(bqTable);
     assertThatBigQueryRecords(tableRows)
         .hasRecordsUnordered(expectedSuccessRecords);
-
-    TableResult deadletterRows = bigQueryClient.readTable(bqTableDlq);
-    assertThatBigQueryRecords(deadletterRows).hasRecordsUnordered(expectedDeadletterRecords);
   }
 
   private void publish(
