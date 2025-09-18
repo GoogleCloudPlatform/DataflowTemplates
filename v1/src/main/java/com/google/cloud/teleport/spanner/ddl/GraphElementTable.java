@@ -42,6 +42,12 @@ public abstract class GraphElementTable implements Serializable {
   @Nullable
   public abstract String baseTableName();
 
+  @Nullable
+  public abstract PropertyGraph.GraphDynamicLabelExpression dynamicLabelExpression();
+
+  @Nullable
+  public abstract PropertyGraph.GraphDynamicPropertiesExpression dynamicPropertiesExpression();
+
   public abstract Kind kind();
 
   public abstract Dialect dialect();
@@ -152,6 +158,8 @@ public abstract class GraphElementTable implements Serializable {
         .kind(Kind.UNSPECIFIED)
         .keyColumns(ImmutableList.of())
         .labelToPropertyDefinitions(ImmutableList.of())
+        .dynamicLabelExpression(null)
+        .dynamicPropertiesExpression(null)
         .sourceNodeTable(new GraphNodeTableReference("", ImmutableList.of(), ImmutableList.of()))
         .targetNodeTable(new GraphNodeTableReference("", ImmutableList.of(), ImmutableList.of()));
   }
@@ -186,6 +194,18 @@ public abstract class GraphElementTable implements Serializable {
             labelToPropertyDefinitions().stream()
                 .map(LabelToPropertyDefinitions::prettyPrint)
                 .collect(Collectors.toList())));
+    if (dynamicLabelExpression() != null) {
+      appendable
+          .append("\nDYNAMIC LABEL(")
+          .append(dynamicLabelExpression().dynamicLabelExpression)
+          .append(")");
+    }
+    if (dynamicPropertiesExpression() != null) {
+      appendable
+          .append("\nDYNAMIC PROPERTIES(")
+          .append(dynamicPropertiesExpression().dynamicPropertiesExpression)
+          .append(")");
+    }
   }
 
   public String prettyPrint() {
@@ -227,6 +247,12 @@ public abstract class GraphElementTable implements Serializable {
 
     public abstract Builder labelToPropertyDefinitions(
         ImmutableList<LabelToPropertyDefinitions> labelToPropertyDefinitions);
+
+    public abstract Builder dynamicLabelExpression(
+        PropertyGraph.GraphDynamicLabelExpression dynamicLabelExpression);
+
+    public abstract Builder dynamicPropertiesExpression(
+        PropertyGraph.GraphDynamicPropertiesExpression dynamicPropertiesExpression);
 
     public abstract Builder sourceNodeTable(GraphNodeTableReference sourceNodeTable);
 

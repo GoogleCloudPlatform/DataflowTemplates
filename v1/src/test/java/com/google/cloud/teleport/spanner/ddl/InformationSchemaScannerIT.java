@@ -488,7 +488,87 @@ public class InformationSchemaScannerIT {
   }
 
   @Test
-  public void complexPropertyGraph() throws Exception {}
+  public void dynamicPropertyGraph() throws Exception {
+    String nodeTableDef =
+        "CREATE TABLE NodeTest (\n"
+            + "  Id INT64 NOT NULL,\n"
+            + "  DynamicLabelCol STRING(MAX)\n"
+            + ") PRIMARY KEY(Id)";
+    String edgeTableDef =
+        "CREATE TABLE EdgeTest (\n"
+            + "  FromId INT64 NOT NULL,\n"
+            + "  ToId INT64 NOT NULL,\n"
+            + "  DynamicPropsCol JSON\n"
+            + ") PRIMARY KEY(FromId, ToId)";
+    String propertyGraphDef =
+        "CREATE PROPERTY GRAPH testGraph\n"
+            + "  NODE TABLES(\n"
+            + "    NodeTest\n"
+            + "      KEY(Id)\n"
+            + "      LABEL Test PROPERTIES(\n"
+            + "        Id)\n"
+            // Add the DYNAMIC LABEL clause
+            + "      DYNAMIC LABEL(DynamicLabelCol))\n"
+            + "  EDGE TABLES(\n"
+            + "    EdgeTest\n"
+            + "      KEY(FromId, ToId)\n"
+            + "      SOURCE KEY(FromId) REFERENCES NodeTest(Id)\n"
+            + "      DESTINATION KEY(ToId) REFERENCES NodeTest(Id)\n"
+            + "      DEFAULT LABEL PROPERTIES ALL COLUMNS\n"
+            // Add the DYNAMIC PROPERTIES clause
+            + "      DYNAMIC PROPERTIES(DynamicPropsCol))";
+
+    SPANNER_SERVER.createDatabase(
+        dbId, Arrays.asList(nodeTableDef, edgeTableDef, propertyGraphDef));
+    Ddl ddl = getDatabaseDdl();
+
+    assertThat(ddl.allTables(), hasSize(2));
+    assertThat(ddl.table("NodeTest"), notNullValue());
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    PropertyGraph testGraph = ddl.propertyGraph("testGraph");
+
+    assertEquals(testGraph.name(), "testGraph");
+    assertThat(testGraph.propertyDeclarations(), hasSize(4));
+
+    // --- Assertions for Node Table ---
+    GraphElementTable nodeTestTable = testGraph.getNodeTable("NodeTest");
+    assertThat(nodeTestTable, notNullValue());
+    assertThat(nodeTestTable.name(), equalTo("NodeTest"));
+    // Assert that the dynamic label expression is correctly captured
+    assertThat(
+        nodeTestTable.dynamicLabelExpression().dynamicLabelExpression, equalTo("DynamicLabelCol"));
+
+    // --- Assertions for Edge Table ---
+    GraphElementTable edgeTestTable = testGraph.getEdgeTable("EdgeTest");
+    assertThat(edgeTestTable, notNullValue());
+    assertThat(edgeTestTable.name(), equalTo("EdgeTest"));
+    // Assert that the dynamic properties expression is correctly captured
+    assertThat(
+        edgeTestTable.dynamicPropertiesExpression().dynamicPropertiesExpression,
+        equalTo("DynamicPropsCol"));
+
+    // Assertions for the edge's default label properties
+    GraphElementTable.LabelToPropertyDefinitions edgeTestLabel =
+        edgeTestTable.getLabelToPropertyDefinitions("EdgeTest");
+    assertThat(edgeTestLabel, notNullValue());
+    // The number of properties for the default label now includes the new column
+    assertThat(edgeTestLabel.propertyDefinitions(), hasSize(3)); // FromId, ToId, DynamicPropsCol
+
+    GraphElementTable.PropertyDefinition edgeTestFromIdProperty =
+        edgeTestLabel.getPropertyDefinition("FromId");
+    assertThat(edgeTestFromIdProperty, notNullValue());
+
+    GraphElementTable.PropertyDefinition edgeTestToIdProperty =
+        edgeTestLabel.getPropertyDefinition("ToId");
+    assertThat(edgeTestToIdProperty, notNullValue());
+
+    GraphElementTable.PropertyDefinition edgeTestDynamicPropsProperty =
+        edgeTestLabel.getPropertyDefinition("DynamicPropsCol");
+    assertThat(edgeTestDynamicPropsProperty, notNullValue());
+    assertThat(edgeTestDynamicPropsProperty.name, equalTo("DynamicPropsCol"));
+    assertThat(edgeTestDynamicPropsProperty.valueExpressionString, equalTo("DynamicPropsCol"));
+  }
 
   @Test
   public void simpleView() throws Exception {
