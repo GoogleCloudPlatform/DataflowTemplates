@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -127,7 +128,8 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
             Field.of("name", StandardSQLTypeName.STRING));
 
     TableId tableId = bigQueryClient.createTable(bqTable, bqSchema);
-    TableId deadletterTableId = bigQueryClient.createTable(bqTable + "_dlq", getDeadletterSchema());
+    String bqTableDlq = bqTable + "_dlq";
+    TableId deadletterTableId = bigQueryClient.createTable(bqTableDlq, getDeadletterSchema());
 
     String bootstrapServers =
         kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "");
@@ -155,11 +157,21 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     KafkaProducer<String, String> kafkaProducer =
         kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
 
+    List<Map<String, Object>> expectedSuccessRecords = new ArrayList<>();
+    List<Map<String, Object>> expectedDeadletterRecords = new ArrayList<>();
     for (int i = 1; i <= 10; i++) {
-      publish(kafkaProducer, topicName, i + "1", "{\"id\": " + i + "1, \"name\": \"Dataflow\"}");
-      publish(kafkaProducer, topicName, i + "2", "{\"id\": " + i + "2, \"name\": \"Pub/Sub\"}");
+      long id1 = Long.parseLong(i + "1");
+      long id2 = Long.parseLong(i + "2");
+      publish(
+          kafkaProducer, topicName, String.valueOf(id1), "{\"id\": " + id1 + ", \"name\": \"Dataflow\"}");
+      publish(
+          kafkaProducer, topicName, String.valueOf(id2), "{\"id\": " + id2 + ", \"name\": \"Pub/Sub\"}");
+      expectedSuccessRecords.add(Map.of("id", id1, "name", "Dataflow"));
+      expectedSuccessRecords.add(Map.of("id", id2, "name", "Pub/Sub"));
+
       // Invalid schema
-      publish(kafkaProducer, topicName, i + "3", "this is not a valid json");
+      publish(kafkaProducer, topicName, i + "3", "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}");
+      expectedDeadletterRecords.add(Map.of("id", i + "3", "name", "bad-record"));
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -182,8 +194,10 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
     assertThatBigQueryRecords(tableRows)
-        .hasRecordsUnordered(
-            List.of(Map.of("id", 11, "name", "Dataflow"), Map.of("id", 12, "name", "Pub/Sub")));
+        .hasRecordsUnordered(expectedSuccessRecords);
+
+    TableResult deadletterRows = bigQueryClient.readTable(bqTableDlq);
+    assertThatBigQueryRecords(deadletterRows).hasRecordsUnordered(expectedDeadletterRecords);
   }
 
   private void publish(
