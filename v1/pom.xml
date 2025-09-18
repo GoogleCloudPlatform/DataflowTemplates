@@ -39,7 +39,7 @@
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
     <bigtable-beam-import.version>2.14.2</bigtable-beam-import.version>
     <protobuf.version>4.29.4</protobuf.version>
-    <nashorn.version>15.4</nashorn.version>
+    <nashorn.version>15.7</nashorn.version>
     <junit.jupiter.version>5.5.2</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
