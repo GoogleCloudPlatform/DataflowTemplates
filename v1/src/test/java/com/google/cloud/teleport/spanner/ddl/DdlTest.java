@@ -1031,6 +1031,103 @@ public class DdlTest {
   }
 
   @Test
+  public void testDynamicPropertyGraph() {
+    // Craft Property Declarations
+    PropertyGraph.PropertyDeclaration propertyDeclaration1 =
+        new PropertyGraph.PropertyDeclaration("dummy-prop-name", "dummy-prop-type");
+    PropertyGraph.PropertyDeclaration propertyDeclaration2 =
+        new PropertyGraph.PropertyDeclaration("aliased-prop-name", "dummy-prop-type");
+    ImmutableList<String> propertyDeclsLabel1 =
+        ImmutableList.copyOf(Arrays.asList(propertyDeclaration1.name, propertyDeclaration2.name));
+
+    // Craft Labels and associated property definitions
+    PropertyGraph.GraphElementLabel label1 =
+        new PropertyGraph.GraphElementLabel("dummy-label-name1", propertyDeclsLabel1);
+    GraphElementTable.PropertyDefinition propertyDefinition1 =
+        new PropertyDefinition("dummy-prop-name", "dummy-prop-name");
+    GraphElementTable.PropertyDefinition propertyDefinition2 =
+        new PropertyDefinition(
+            "aliased-prop-name", "CONCAT(CAST(test_col AS STRING), \":\", \"dummy-column\")");
+    GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions1 =
+        new LabelToPropertyDefinitions(
+            label1.name, ImmutableList.of(propertyDefinition1, propertyDefinition2));
+
+    PropertyGraph.GraphElementLabel label2 =
+        new PropertyGraph.GraphElementLabel("dummy-label-name2", ImmutableList.of());
+    GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions2 =
+        new LabelToPropertyDefinitions(label2.name, ImmutableList.of());
+
+    PropertyGraph.GraphElementLabel label3 =
+        new PropertyGraph.GraphElementLabel("dummy-label-name3", ImmutableList.of());
+    GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions3 =
+        new LabelToPropertyDefinitions(label3.name, ImmutableList.of());
+
+    // Craft Node table
+    GraphElementTable.Builder testNodeTable =
+        GraphElementTable.builder()
+            .baseTableName("base-table")
+            .name("node-alias")
+            .kind(GraphElementTable.Kind.NODE)
+            .keyColumns(ImmutableList.of("primary-key"))
+            .dynamicLabelExpression(
+                new PropertyGraph.GraphDynamicLabelExpression("dynamic-label-column"))
+            .labelToPropertyDefinitions(
+                ImmutableList.of(labelToPropertyDefinitions1, labelToPropertyDefinitions2));
+
+    // Craft Edge table
+    GraphElementTable.Builder testEdgeTable =
+        GraphElementTable.builder()
+            .baseTableName("edge-base-table")
+            .name("edge-alias")
+            .kind(GraphElementTable.Kind.EDGE)
+            .keyColumns(ImmutableList.of("edge-primary-key"))
+            .dynamicPropertiesExpression(
+                new PropertyGraph.GraphDynamicPropertiesExpression("dynamic-properties-column"))
+            .sourceNodeTable(
+                new GraphNodeTableReference(
+                    "base-table",
+                    ImmutableList.of("node-key"),
+                    ImmutableList.of("source-edge-key")))
+            .targetNodeTable(
+                new GraphNodeTableReference(
+                    "base-table",
+                    ImmutableList.of("other-node-key"),
+                    ImmutableList.of("dest-edge-key")))
+            .labelToPropertyDefinitions(ImmutableList.of(labelToPropertyDefinitions3));
+
+    // Build PropertyGraph
+    PropertyGraph.Builder propertyGraph =
+        PropertyGraph.builder()
+            .name("test-graph")
+            .addLabel(label1)
+            .addLabel(label2)
+            .addLabel(label3)
+            .addPropertyDeclaration(propertyDeclaration1)
+            .addPropertyDeclaration(propertyDeclaration2)
+            .addNodeTable(testNodeTable.autoBuild())
+            .addEdgeTable(testEdgeTable.autoBuild());
+
+    assertThat(
+        propertyGraph.build().prettyPrint(),
+        equalToCompressingWhiteSpace(
+            "CREATE PROPERTY GRAPH test-graph "
+                + "NODE TABLES(\n"
+                + "base-table AS node-alias\n"
+                + " KEY (primary-key)\n"
+                + "LABEL dummy-label-name1 "
+                + "PROPERTIES(dummy-prop-name, CONCAT(CAST(test_col AS STRING), \":\", \"dummy-column\") AS aliased-prop-name)\n"
+                + "LABEL dummy-label-name2 NO PROPERTIES\n"
+                + "DYNAMIC LABEL(dynamic-label-column))\n"
+                + "EDGE TABLES(\n"
+                + "edge-base-table AS edge-alias\n"
+                + " KEY (edge-primary-key)\n"
+                + "SOURCE KEY(source-edge-key) REFERENCES base-table(node-key) DESTINATION KEY(dest-edge-key) REFERENCES base-table(other-node-key)\n"
+                + "LABEL dummy-label-name3 NO PROPERTIES\n"
+                + "DYNAMIC PROPERTIES(dynamic-properties-column)"
+                + ")"));
+  }
+
+  @Test
   public void testView() {
     View view = View.builder().name("user_view").query("SELECT * FROM `User`").build();
     assertThat(
