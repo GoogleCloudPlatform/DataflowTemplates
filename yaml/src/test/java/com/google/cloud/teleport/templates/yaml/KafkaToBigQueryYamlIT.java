@@ -136,14 +136,24 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
       long id1 = Long.parseLong(i + "1");
       long id2 = Long.parseLong(i + "2");
       publish(
-          kafkaProducer, topicName, String.valueOf(id1), "{\"id\": " + id1 + ", \"name\": \"Dataflow\"}");
+          kafkaProducer,
+          topicName,
+          String.valueOf(id1),
+          "{\"id\": " + id1 + ", \"name\": \"Dataflow\"}");
       publish(
-          kafkaProducer, topicName, String.valueOf(id2), "{\"id\": " + id2 + ", \"name\": \"Pub/Sub\"}");
+          kafkaProducer,
+          topicName,
+          String.valueOf(id2),
+          "{\"id\": " + id2 + ", \"name\": \"Pub/Sub\"}");
       expectedSuccessRecords.add(Map.of("id", id1, "name", "Dataflow"));
       expectedSuccessRecords.add(Map.of("id", id2, "name", "Pub/Sub"));
 
       // Invalid schema
-      publish(kafkaProducer, topicName, i + "3", "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}");
+      publish(
+          kafkaProducer,
+          topicName,
+          i + "3",
+          "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}");
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -165,8 +175,7 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
     assertThatResult(result).meetsConditions();
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
-    assertThatBigQueryRecords(tableRows)
-        .hasRecordsUnordered(expectedSuccessRecords);
+    assertThatBigQueryRecords(tableRows).hasRecordsUnordered(expectedSuccessRecords);
   }
 
   private void publish(
