@@ -123,6 +123,7 @@ follow [GitHub's branch renaming guide](https://docs.github.com/en/repositories/
     - [Bulk Decompress Files on Cloud Storage](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Bulk_Decompress_GCS_Files&type=code)
     - [Bulk Delete Entities in Firestore (Datastore mode)](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Firestore_to_Firestore_Delete&type=code)
     - [Convert file formats between Avro, Parquet & CSV](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20File_Format_Conversion&type=code)
+    - [Convert text or images to ArrayRecord format](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20ArrayRecord_Converter&type=code)
     - [Streaming Data Generator](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Streaming_Data_Generator&type=code)
 - Legacy Templates
     - [Bulk Delete Entities in Datastore [Deprecated]](https://github.com/search?q=repo%3AGoogleCloudPlatform%2FDataflowTemplates%20Datastore_to_Datastore_Delete&type=code)
