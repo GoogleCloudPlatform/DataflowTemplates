@@ -101,4 +101,82 @@ public class ShadowTableReadUtils {
     }
     return stmtBuilder.build();
   }
+
+  // TODO: After beam release, use the latest client lib version which supports setting lock
+  // hints via the read api. SQL string generation should be removed.
+  public static Statement generateDataTableReadSQL(
+      String dataTable, Key primaryKey, Ddl dataTableDdl) {
+    String columnNames =
+        String.join(
+            ", ",
+            dataTableDdl.table(dataTable).primaryKeys().stream()
+                .map(col -> col.name())
+                .collect(Collectors.toList()));
+    // TODO: Handle json type as PKs.
+    String whereClause =
+        String.join(
+            " AND ",
+            dataTableDdl.table(dataTable).primaryKeys().stream()
+                .map(col -> col.name() + "=@" + col.name())
+                .collect(Collectors.toList()));
+    String sql =
+        "@{LOCK_SCANNED_RANGES=exclusive} SELECT "
+            + columnNames
+            + " FROM "
+            + dataTable
+            + " WHERE "
+            + whereClause;
+
+    Statement.Builder stmtBuilder = Statement.newBuilder(sql);
+    int i = 0;
+    for (Object value : primaryKey.getParts()) {
+      Table table = dataTableDdl.table(dataTable);
+      String colName = table.primaryKeys().get(i).name();
+      Column key = table.column(colName);
+      Type keyColType = key.type();
+
+      switch (keyColType.getCode()) {
+        case BOOL:
+        case PG_BOOL:
+          stmtBuilder.bind(colName).to((Boolean) value);
+          break;
+        case INT64:
+        case PG_INT8:
+          stmtBuilder.bind(colName).to((Long) value);
+          break;
+        case FLOAT64:
+        case PG_FLOAT8:
+          stmtBuilder.bind(colName).to((Double) value);
+          break;
+        case STRING:
+        case PG_VARCHAR:
+        case PG_TEXT:
+        case JSON:
+        case PG_JSONB:
+          stmtBuilder.bind(colName).to((String) value);
+          break;
+        case NUMERIC:
+        case PG_NUMERIC:
+          stmtBuilder.bind(colName).to((BigDecimal) value);
+          break;
+        case BYTES:
+        case PG_BYTEA:
+          stmtBuilder.bind(colName).to((ByteArray) value);
+          break;
+        case TIMESTAMP:
+        case PG_COMMIT_TIMESTAMP:
+        case PG_TIMESTAMPTZ:
+          stmtBuilder.bind(colName).to((Timestamp) value);
+          break;
+        case DATE:
+        case PG_DATE:
+          stmtBuilder.bind(colName).to((Date) value);
+          break;
+        default:
+          throw new IllegalArgumentException("Unsupported type: " + keyColType);
+      }
+      i++;
+    }
+    return stmtBuilder.build();
+  }
 }
