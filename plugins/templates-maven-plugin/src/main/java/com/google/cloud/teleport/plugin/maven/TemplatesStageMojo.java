@@ -904,6 +904,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
    * @throws InterruptedException if a thread is interrupted.
    * @throws TemplateException if there is an error processing the template for the Dockerfile.
    */
+  @VisibleForTesting
   void prepareYamlDockerfile(TemplateDefinitions definition, String containerName)
       throws IOException, InterruptedException, TemplateException {
 
