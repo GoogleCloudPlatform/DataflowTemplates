@@ -598,6 +598,18 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     return templatePath;
   }
 
+  /**
+   * Prepares the necessary files for building a YAML-based Flex Template.
+   *
+   * <p>This method checks the {@link TemplateDefinitions} for a {@code yamlTemplateFile} annotation.
+   * If the annotation is present and specifies a file, this method copies that file from {@code
+   * src/main/yaml} to the build output directory, renaming it to {@code template.yaml}. This {@code
+   * template.yaml} is then expected to be packaged into the template's Docker container.
+   *
+   * @param definition The template definition containing metadata and annotations.
+   * @throws MojoExecutionException if the specified YAML template file does not exist.
+   * @throws IOException if an I/O error occurs while copying the file.
+   */
   @VisibleForTesting
   void prepareYamlTemplateFiles(TemplateDefinitions definition)
       throws MojoExecutionException, IOException {
@@ -879,6 +891,19 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
+  /**
+   * Prepares the Dockerfile for a YAML-based Flex Template.
+   *
+   * <p>This method generates a Dockerfile if one does not already exist in the build output
+   * directory. The Dockerfile is configured based on properties from the {@link TemplateDefinitions},
+   * including which files to copy into the container, the container entrypoint, and base images.
+   *
+   * @param definition The template definition containing metadata and annotations.
+   * @param containerName The name of the container, used for creating the Dockerfile path.
+   * @throws IOException if an I/O error occurs during file generation.
+   * @throws InterruptedException if a thread is interrupted.
+   * @throws TemplateException if there is an error processing the template for the Dockerfile.
+   */
   void prepareYamlDockerfile(TemplateDefinitions definition, String containerName)
       throws IOException, InterruptedException, TemplateException {
 
@@ -897,11 +922,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       if (yamlTemplateFile != null && !yamlTemplateFile.isEmpty()) {
         filesToCopy.add("template.yaml");
       }
-
-      // File requirementsFile = new File(outputClassesDirectory.getPath() + "/requirements.txt");
-      // if (requirementsFile.exists()) {
-      //   filesToCopy.add("requirements.txt");
-      // }
 
       List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
       if (entryPoint.isEmpty()) {
@@ -1041,8 +1061,19 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   private void stageYamlUsingDockerfile(
       String buildProjectId, String imagePathTag, String yamlTemplateName)
       throws IOException, InterruptedException {
-    File directory = new File(outputClassesDirectory.getAbsolutePath());
-    String dockerfile = yamlTemplateName + "/Dockerfile";
+
+    String submoduleName = project.getBasedir().toPath().getFileName().toString();
+    File directory;
+    String dockerfile;
+    if (submoduleName.equals("python")) {
+      // Should be for the yaml-template in the python submodule
+      directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + yamlTemplateName);
+      dockerfile = "Dockerfile";
+    } else {
+      // For any yaml template in the yaml submodule
+      directory = new File(outputClassesDirectory.getAbsolutePath());
+      dockerfile = yamlTemplateName + "/Dockerfile";
+    }
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
