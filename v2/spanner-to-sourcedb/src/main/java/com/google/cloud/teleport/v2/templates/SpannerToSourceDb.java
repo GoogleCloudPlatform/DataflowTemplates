@@ -504,6 +504,23 @@ public class SpannerToSourceDb {
     String getFailureInjectionParameter();
 
     void setFailureInjectionParameter(String value);
+
+    @TemplateParameter.Enum(
+        order = 34,
+        enumOptions = {
+            @TemplateEnumOption("LOW"),
+            @TemplateEnumOption("MEDIUM"),
+            @TemplateEnumOption("HIGH")
+        },
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
+    @Default.Enum("HIGH")
+    RpcPriority getSpannerPriority();
+
+    void setSpannerPriority(RpcPriority value);
   }
 
   /**
@@ -567,7 +584,7 @@ public class SpannerToSourceDb {
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
-            .withRpcPriority(RpcPriority.HIGH);
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
     // Create shadow tables
     // Note that there is a limit on the number of tables that can be created per DB: 5000.
@@ -581,7 +598,7 @@ public class SpannerToSourceDb {
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()))
-            .withRpcPriority(RpcPriority.HIGH);
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
     ShadowTableCreator shadowTableCreator =
         new ShadowTableCreator(
