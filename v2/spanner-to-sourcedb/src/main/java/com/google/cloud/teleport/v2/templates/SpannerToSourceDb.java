@@ -508,9 +508,9 @@ public class SpannerToSourceDb {
     @TemplateParameter.Enum(
         order = 34,
         enumOptions = {
-            @TemplateEnumOption("LOW"),
-            @TemplateEnumOption("MEDIUM"),
-            @TemplateEnumOption("HIGH")
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
         },
         optional = true,
         description = "Priority for Spanner RPC invocations",
