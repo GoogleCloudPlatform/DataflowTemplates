@@ -21,6 +21,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -565,7 +566,8 @@ public class SpannerToSourceDb {
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(RpcPriority.HIGH);
 
     // Create shadow tables
     // Note that there is a limit on the number of tables that can be created per DB: 5000.
@@ -578,7 +580,8 @@ public class SpannerToSourceDb {
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()))
+            .withRpcPriority(RpcPriority.HIGH);
 
     ShadowTableCreator shadowTableCreator =
         new ShadowTableCreator(
