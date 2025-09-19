@@ -203,7 +203,7 @@ public final class MySqlChangeEventContextTest {
     when(transactionContext.executeQuery(any(Statement.class))).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true);
 
-    context.readDataTable(transactionContext, ddl);
+    context.readDataTableRowWithExclusiveLock(transactionContext, ddl);
 
     ArgumentCaptor<Statement> statementCaptor = ArgumentCaptor.forClass(Statement.class);
     verify(transactionContext, times(1)).executeQuery(statementCaptor.capture());
@@ -223,7 +223,7 @@ public final class MySqlChangeEventContextTest {
     when(transactionContext.executeQuery(any(Statement.class))).thenReturn(resultSet);
     when(resultSet.next()).thenReturn(false);
 
-    context.readDataTable(transactionContext, ddl);
+    context.readDataTableRowWithExclusiveLock(transactionContext, ddl);
     verify(transactionContext, times(1)).executeQuery(any(Statement.class));
     verify(resultSet, times(1)).next();
     verify(resultSet, times(0)).getCurrentRowAsStruct();

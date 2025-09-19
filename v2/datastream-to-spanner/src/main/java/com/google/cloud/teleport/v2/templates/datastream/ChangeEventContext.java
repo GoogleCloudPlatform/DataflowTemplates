@@ -27,6 +27,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,11 +115,14 @@ public abstract class ChangeEventContext {
 
   // Fires a read on Data table with lock scanned ranges. Used to acquire exclusive lock on Data row
   // at the beginning of a readWriteTransaction
-  public void readDataTable(final TransactionContext transactionContext, Ddl dataTableDdl) {
+  public void readDataTableRowWithExclusiveLock(final TransactionContext transactionContext, Ddl dataTableDdl) {
     // TODO: After beam release, use the latest client lib version which supports setting lock
     // hints via the read api. SQL string generation should be removed.
+    List<String> columnNames = dataTableDdl.table(dataTable).primaryKeys().stream()
+                .map(col -> col.name())
+                .collect(Collectors.toList());
     Statement sql =
-        ShadowTableReadUtils.generateDataTableReadSQL(dataTable, primaryKey, dataTableDdl);
+        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(dataTable, columnNames, primaryKey, dataTableDdl);
     ResultSet resultSet = transactionContext.executeQuery(sql);
     if (!resultSet.next()) {
       return;

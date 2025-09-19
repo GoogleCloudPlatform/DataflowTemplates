@@ -115,7 +115,7 @@ public class ShadowTableReadUtilsTest {
             );
 
     Statement stmt =
-        ShadowTableReadUtils.generateShadowTableReadSQL(
+        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
             SHADOW_TABLE, READ_COLUMNS, primaryKey, ddl);
 
     String expectedSql =
@@ -137,54 +137,5 @@ public class ShadowTableReadUtilsTest {
     assertEquals(Value.bytes(bytesValue), params.get("bytes_field"));
     assertEquals(Value.timestamp(timestampValue), params.get("timestamp_field"));
     assertEquals(Value.date(dateValue), params.get("date_field"));
-  }
-
-  @Test
-  public void testGenerateDataTableReadSQL() {
-    Ddl ddl =
-        Ddl.builder()
-            .createTable("all_types")
-            .column("id")
-            .int64()
-            .notNull()
-            .endColumn()
-            .column("id2")
-            .string()
-            .size(10)
-            .notNull()
-            .endColumn()
-            .column("bytes_col")
-            .bytes()
-            .max()
-            .endColumn()
-            .column("bool_col")
-            .bool()
-            .endColumn()
-            .column("date_col")
-            .date()
-            .endColumn()
-            .column("float64_col")
-            .float64()
-            .endColumn()
-            .column("numeric_col")
-            .numeric()
-            .endColumn()
-            .column("timestamp_col")
-            .timestamp()
-            .endColumn()
-            .primaryKey()
-            .asc("id")
-            .asc("id2")
-            .end()
-            .endTable()
-            .build();
-
-    Key key = Key.newBuilder().append(123L).append("abc").build();
-    Statement statement = ShadowTableReadUtils.generateDataTableReadSQL("all_types", key, ddl);
-    String expectedSql =
-        "@{LOCK_SCANNED_RANGES=exclusive} SELECT id, id2 FROM all_types WHERE id=@id AND id2=@id2";
-    assertEquals(expectedSql, statement.getSql());
-    assertEquals(123L, statement.getParameters().get("id").getInt64());
-    assertEquals("abc", statement.getParameters().get("id2").getString());
   }
 }
