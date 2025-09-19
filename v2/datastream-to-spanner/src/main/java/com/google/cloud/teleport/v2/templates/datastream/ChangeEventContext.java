@@ -115,14 +115,17 @@ public abstract class ChangeEventContext {
 
   // Fires a read on Data table with lock scanned ranges. Used to acquire exclusive lock on Data row
   // at the beginning of a readWriteTransaction
-  public void readDataTableRowWithExclusiveLock(final TransactionContext transactionContext, Ddl dataTableDdl) {
+  public void readDataTableRowWithExclusiveLock(
+      final TransactionContext transactionContext, Ddl dataTableDdl) {
     // TODO: After beam release, use the latest client lib version which supports setting lock
     // hints via the read api. SQL string generation should be removed.
-    List<String> columnNames = dataTableDdl.table(dataTable).primaryKeys().stream()
-                .map(col -> col.name())
-                .collect(Collectors.toList());
+    List<String> columnNames =
+        dataTableDdl.table(dataTable).primaryKeys().stream()
+            .map(col -> col.name())
+            .collect(Collectors.toList());
     Statement sql =
-        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(dataTable, columnNames, primaryKey, dataTableDdl);
+        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
+            dataTable, columnNames, primaryKey, dataTableDdl);
     ResultSet resultSet = transactionContext.executeQuery(sql);
     if (!resultSet.next()) {
       return;

@@ -474,7 +474,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                               mainTxn -> {
                                 // Read row from main table with lock scanned ranges to acquire
                                 // exclusive lock on the main table row.
-                                changeEventContext.readDataTableRowWithExclusiveLock(mainTxn, dataTableDdl);
+                                changeEventContext.readDataTableRowWithExclusiveLock(
+                                    mainTxn, dataTableDdl);
 
                                 // Validate the row still holds the exclusive lock. In case of
                                 // network
