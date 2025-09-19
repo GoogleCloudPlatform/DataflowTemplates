@@ -25,7 +25,6 @@ import com.google.cloud.teleport.metadata.TemplateParameter;
     category = TemplateCategory.GET_STARTED,
     type = Template.TemplateType.YAML,
     displayName = "YAML",
-    filesToCopy = {"main.py", "requirements.txt"},
     description =
         "The YAML Template is used to run Dataflow pipelines written in Beam YAML. "
             + "The YAML pipeline can be passed to the template directly as a raw string or the location "
