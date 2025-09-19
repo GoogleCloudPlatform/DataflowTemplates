@@ -283,6 +283,11 @@ The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=Pubsu
 
 The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
 
+Notes: Template integration tests using test container based resource manager
+(e.g. kafka) only works on GitHub Actions. The test machine spins up a Kafka
+test container and then Dataflow worker accesses it. This only works when the
+test machine lives in the same network as the Dataflow worker.
+
 ### Running Load Tests
 
 For information on adding and running load tests, see [Adding a Load Test](./add-integration-or-load-test.md).
@@ -384,7 +389,7 @@ Boolean getUseColumnAlias();
 BulkInsertMethodOptions getBulkInsertMethod();
 ```
 
-Note: `order` is relevant for templates that can be used from the UI, and
+Notes: `order` is relevant for templates that can be used from the UI, and
 specify the relative order of parameters.
 
 #### Template Parameter Compatibility/Deprecation
