@@ -35,7 +35,7 @@
     </description>
 
     <properties>
-        <mongo-java-driver.version>3.12.11</mongo-java-driver.version>
+        <mongo-java-driver.version>3.12.14</mongo-java-driver.version>
     </properties>
 
     <dependencies>
