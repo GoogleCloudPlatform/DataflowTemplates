@@ -80,6 +80,7 @@ public class SourceWriterFnTest {
   @Mock private SpannerConfig mockSpannerConfig;
   @Mock private DoFn.ProcessContext processContext;
   @Mock private ISpannerMigrationTransformer mockSpannerMigrationTransformer;
+  @Mock private SourceProcessor mockSourceProcessor;
   private static Gson gson = new Gson();
 
   private Shard testShard;
@@ -623,6 +624,47 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     verify(mockSqlDao, never()).write(contains("567890"));
+  }
+
+  @Test
+  public void testTeardown() throws Exception {
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setSourceProcessor(mockSourceProcessor);
+    sourceWriterFn.teardown();
+    verify(mockSpannerDao).close();
+    verify(mockSourceProcessor).close();
+  }
+
+  @Test
+  public void testTeardownWithNulls() throws Exception {
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    sourceWriterFn.teardown();
+    // No exception thrown is success.
   }
 
   private TrimmedShardedDataChangeRecord getChild11TrimmedDataChangeRecord(String shardId) {

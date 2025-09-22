@@ -61,6 +61,8 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       config.setDriverClassName(connectionHelperRequest.getDriver());
       config.setMaximumPoolSize(connectionHelperRequest.getMaxConnections());
       config.setConnectionInitSql(connectionHelperRequest.getConnectionInitQuery());
+      config.setInitializationFailTimeout(-1); // do not fail during pool construction
+      config.setMinimumIdle(0); // avoid pre-filling connections
       Properties jdbcProperties = new Properties();
       if (shard.getConnectionProperties() != null && !shard.getConnectionProperties().isEmpty()) {
         try (StringReader reader = new StringReader(shard.getConnectionProperties())) {

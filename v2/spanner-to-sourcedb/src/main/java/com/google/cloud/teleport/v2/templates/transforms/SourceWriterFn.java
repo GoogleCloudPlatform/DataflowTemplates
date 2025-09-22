@@ -167,8 +167,12 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() throws Exception {
-    spannerDao.close();
-    sourceProcessor.close();
+    if (spannerDao != null) {
+      spannerDao.close();
+    }
+    if (sourceProcessor != null) {
+      sourceProcessor.close();
+    }
   }
 
   @ProcessElement
