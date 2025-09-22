@@ -25,7 +25,14 @@ RUN python -m venv /venv \
     && /venv/bin/pip install --require-hashes --no-deps --no-cache-dir -U -r $REQUIREMENTS_FILE \
     && /venv/bin/pip download --require-hashes --no-cache-dir --dest /tmp/dataflow-requirements-cache -r $REQUIREMENTS_FILE \
     && rm -rf /usr/local/lib/python$PY_VERSION/site-packages \
-    && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/
+    && mv /venv/lib/python$PY_VERSION/site-packages /usr/local/lib/python$PY_VERSION/ \
+    # Update ensurepip to use most recent versions of setuptools and pip. This avoids some vulnerabilities which won't be fixed on older versions of python.
+    && pip install upgrade_ensurepip; \
+    python3 -m upgrade_ensurepip; \
+    find /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-* -type f ! -name $(basename $(ls -v /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/setuptools-*-py3-none-any.whl | tail -n 1)) -delete; \
+    find /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/pip-* -type f ! -name $(basename $(ls -v /usr/local/lib/python$PY_VERSION/ensurepip/_bundled/pip-*-py3-none-any.whl | tail -n 1)) -delete; \
+    pip uninstall upgrade_ensurepip -y; \
+    python3 -m ensurepip;
 
 # Cache provider environments for faster startup and expansion time
 RUN mkdir -p ~/.apache_beam/cache/jars
