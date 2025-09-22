@@ -601,10 +601,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   /**
    * Prepares the necessary files for building a YAML-based Flex Template.
    *
-   * <p>This method checks the {@link TemplateDefinitions} for a {@code yamlTemplateFile} annotation.
-   * If the annotation is present and specifies a file, this method copies that file from {@code
-   * src/main/yaml} to the build output directory, renaming it to {@code template.yaml}. This {@code
-   * template.yaml} is then expected to be packaged into the template's Docker container.
+   * <p>This method checks the {@link TemplateDefinitions} for a {@code yamlTemplateFile}
+   * annotation. If the annotation is present and specifies a file, this method copies that file
+   * from {@code src/main/yaml} to the build output directory, renaming it to {@code template.yaml}.
+   * This {@code template.yaml} is then expected to be packaged into the template's Docker
+   * container.
    *
    * @param definition The template definition containing metadata and annotations.
    * @throws MojoExecutionException if the specified YAML template file does not exist.
@@ -895,8 +896,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
    * Prepares the Dockerfile for a YAML-based Flex Template.
    *
    * <p>This method generates a Dockerfile if one does not already exist in the build output
-   * directory. The Dockerfile is configured based on properties from the {@link TemplateDefinitions},
-   * including which files to copy into the container, the container entrypoint, and base images.
+   * directory. The Dockerfile is configured based on properties from the {@link
+   * TemplateDefinitions}, including which files to copy into the container, the container
+   * entrypoint, and base images.
    *
    * @param definition The template definition containing metadata and annotations.
    * @param containerName The name of the container, used for creating the Dockerfile path.
