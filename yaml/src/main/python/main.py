@@ -38,12 +38,9 @@ PIPELINE_ARGS = {
     '--staging_location'
 }
 
-JINJA_ARG = '--jinja_variables'
+JINJA_INCOMING_ARG = '--jinjaVariables'
+JINJA_OUTGOING_ARG = '--jinja_variables'
 
-YAML_ARGS = {
-    '--yaml_pipeline',
-    JINJA_ARG
-}
 
 def _get_pipeline_yaml():
     """Reads the pipeline definition from the 'template.yaml' file.
@@ -90,7 +87,7 @@ def run(argv=None):
     logging.info("Original pipeline args: \n%s\n", \
                  pprint.pformat(pipeline_args,indent=2))
     
-    if all([arg.split('=',1)[0] != JINJA_ARG for arg in pipeline_args]):
+    if all([arg.split('=',1)[0] != JINJA_INCOMING_ARG for arg in pipeline_args]):
         logging.info("Jinja variable parameter not found. Compiling individual parameters.")
         # Filter out for only jinja args
         # NOTE: If extra arguments get passed to the jinja variables, it is a
@@ -119,12 +116,21 @@ def run(argv=None):
         # Save jinja vars as pipeline_args command. In theory, there should be
         # at least one unless there are no manadatory arguments.
         if jinja_vars:
-            jinja_vars_output =  [f'--jinja_variables={json.dumps(jinja_vars)}']
+            jinja_vars_output =  [f'{JINJA_OUTGOING_ARG}={json.dumps(jinja_vars)}']
             pipeline_args += jinja_vars_output
 
     else:
-        logging.info("Jinja variable found and will override all other" \
-        "pipeline arguments if present.")
+        logging.info(f"{JINJA_INCOMING_ARG} parameter found. Replacing it with the " + \
+                     "{JINJA_OUTGOING_ARG} argument.")
+        # Find the jinjaVariables argument
+        jinja_arg_index = -1
+        for i, arg in enumerate(pipeline_args):
+            if arg.split('=', 1)[0] == JINJA_INCOMING_ARG:
+                jinja_arg_index = i
+                break
+
+        # Switch out jinjaVariables for jinja_variables
+        pipeline_args[jinja_arg_index] = f"{JINJA_OUTGOING_ARG}={pipeline_args[jinja_arg_index].split('=', 1)[1]}"
 
     # Save the pipeline yaml template to the appropriate pipeline option
     pipeline_args += [f'--yaml_pipeline={_get_pipeline_yaml()}']
