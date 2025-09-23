@@ -275,7 +275,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
 
       if (usesSeparateShadowTableDb) {
         processCrossDatabaseTransaction(
-            c, changeEventContext, currentChangeEventSequence, shadowTableDdl, ddl);
+            c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
       } else {
         processSingleDatabaseTransaction(
             c, changeEventContext, currentChangeEventSequence, shadowTableDdl);
@@ -417,9 +417,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
    *   <li>Start shadow table transaction - tx1
    *   <li>Read the shadow table row with exclusive lock - tx1.read()
    *   <li>Start main table transaction - tx2
-   *   <li>Read the main table row with exclusive lock - tx2.read()
-   *   <li>Before committing tx2, read the shadow table row again using tx1 inside tx2.
    *   <li>Write to main table - tx2.write()
+   *   <li>Before committing tx2, read the shadow table row again using tx1 inside tx2.
    *   <li>Commit main transaction - tx2.commit()
    *   <li>Update shadow table - tx1.write()
    *   <li>Commit shadow table transaction - tx1.commit()
@@ -435,8 +434,7 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
       ProcessContext c,
       ChangeEventContext changeEventContext,
       ChangeEventSequence currentChangeEventSequence,
-      Ddl shadowDdl,
-      Ddl dataTableDdl) {
+      Ddl shadowDdl) {
 
     shadowTableSpannerAccessor
         .getDatabaseClient()
@@ -472,10 +470,8 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                       .run(
                           (TransactionRunner.TransactionCallable<Void>)
                               mainTxn -> {
-                                // Read row from main table with lock scanned ranges to acquire
-                                // exclusive lock on the main table row.
-                                changeEventContext.readDataTableRowWithExclusiveLock(
-                                    mainTxn, dataTableDdl);
+                                // Write to main table
+                                mainTxn.buffer(changeEventContext.getDataMutation());
 
                                 // Validate the row still holds the exclusive lock. In case of
                                 // network
@@ -502,9 +498,6 @@ class SpannerTransactionWriterDoFn extends DoFn<FailsafeElement<String, String>,
                                   throw new Exception(
                                       "Shadow table sequence changed during transaction");
                                 }
-
-                                // Write to main table
-                                mainTxn.buffer(changeEventContext.getDataMutation());
                                 return null;
                               });
 

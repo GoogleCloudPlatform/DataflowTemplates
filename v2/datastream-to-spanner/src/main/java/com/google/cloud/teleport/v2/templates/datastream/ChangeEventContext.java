@@ -18,17 +18,12 @@ package com.google.cloud.teleport.v2.templates.datastream;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.Statement;
-import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -111,26 +106,5 @@ public abstract class ChangeEventContext {
   // Getter method for the shadow table.
   public String getShadowTable() {
     return shadowTable;
-  }
-
-  // Fires a read on Data table with lock scanned ranges. Used to acquire exclusive lock on Data row
-  // at the beginning of a readWriteTransaction
-  public void readDataTableRowWithExclusiveLock(
-      final TransactionContext transactionContext, Ddl dataTableDdl) {
-    // TODO: After beam release, use the latest client lib version which supports setting lock
-    // hints via the read api. SQL string generation should be removed.
-    List<String> columnNames =
-        dataTableDdl.table(dataTable).primaryKeys().stream()
-            .map(col -> col.name())
-            .collect(Collectors.toList());
-    Statement sql =
-        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
-            dataTable, columnNames, primaryKey, dataTableDdl);
-    ResultSet resultSet = transactionContext.executeQuery(sql);
-    if (!resultSet.next()) {
-      return;
-    }
-    // Read the row in order to acquire the lock and discard it.
-    resultSet.getCurrentRowAsStruct();
   }
 }

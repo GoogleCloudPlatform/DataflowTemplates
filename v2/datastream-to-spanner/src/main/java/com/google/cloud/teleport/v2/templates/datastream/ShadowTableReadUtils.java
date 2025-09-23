@@ -31,28 +31,28 @@ import java.util.stream.Collectors;
 public class ShadowTableReadUtils {
   // TODO: After beam release, use the latest client lib version which supports setting lock
   // hints via the read api. SQL string generation should be removed.
-  public static Statement generateReadSQLWithExclusiveLock(
-      String tableName, List<String> readColumnList, Key primaryKey, Ddl ddl) {
+  public static Statement generateShadowTableReadSQL(
+      String shadowTable, List<String> readColumnList, Key primaryKey, Ddl shadowTableDdl) {
     String columnNames = String.join(", ", readColumnList);
     // TODO: Handle json type as PKs.
     String whereClause =
         String.join(
             " AND ",
-            ddl.table(tableName).primaryKeys().stream()
+            shadowTableDdl.table(shadowTable).primaryKeys().stream()
                 .map(col -> col.name() + "=@" + col.name())
                 .collect(Collectors.toList()));
     String sql =
         "@{LOCK_SCANNED_RANGES=exclusive} SELECT "
             + columnNames
             + " FROM "
-            + tableName
+            + shadowTable
             + " WHERE "
             + whereClause;
 
     Statement.Builder stmtBuilder = Statement.newBuilder(sql);
     int i = 0;
     for (Object value : primaryKey.getParts()) {
-      Table table = ddl.table(tableName);
+      Table table = shadowTableDdl.table(shadowTable);
       String colName = table.primaryKeys().get(i).name();
       Column key = table.column(colName);
       Type keyColType = key.type();

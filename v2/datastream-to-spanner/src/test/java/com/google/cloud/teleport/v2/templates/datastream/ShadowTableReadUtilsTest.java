@@ -115,7 +115,7 @@ public class ShadowTableReadUtilsTest {
             );
 
     Statement stmt =
-        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
+        ShadowTableReadUtils.generateShadowTableReadSQL(
             SHADOW_TABLE, READ_COLUMNS, primaryKey, ddl);
 
     String expectedSql =

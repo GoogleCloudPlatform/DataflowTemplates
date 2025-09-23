@@ -117,7 +117,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
       // hints via the read api. SQL string generation should be removed.
       if (useSqlStatements) {
         Statement sql =
-            ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
+            ShadowTableReadUtils.generateShadowTableReadSQL(
                 shadowTable, readColumnList, primaryKey, shadowTableDdl);
         ResultSet resultSet = transactionContext.executeQuery(sql);
         if (!resultSet.next()) {
