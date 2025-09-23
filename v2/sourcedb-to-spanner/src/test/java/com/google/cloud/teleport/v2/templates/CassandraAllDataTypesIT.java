@@ -278,6 +278,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
   private Map<String, List<Map<String, String>>> getExpectedData() {
     Map<String, List<Map<String, String>>> expectedData = new HashMap<>();
     expectedData.put("all_data_types", getAllDataTypeRows());
+    expectedData.put("true", getAllTrueTableRows());
     return expectedData;
   }
 
@@ -727,5 +728,14 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
         .put("duration_col", "P10675199DT2H48M5S")
         .put("frozen_ascii_set_col", "[a,b]")
         .build();
+  }
+
+  private List<Map<String, String>> getAllTrueTableRows() {
+    List<Map<String, String>> rows = new ArrayList<>();
+    Map<String, String> row = new HashMap<>();
+    row.put("KEY", "1");
+    row.put("CLUSTERING", "test");
+    rows.add(row);
+    return rows;
   }
 }
