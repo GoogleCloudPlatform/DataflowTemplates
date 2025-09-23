@@ -960,7 +960,7 @@ public class DataStreamToSpanner {
               .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
               .toString();
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, options.getDlqMaxRetryCount());
     }
   }
 
