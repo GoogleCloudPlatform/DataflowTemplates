@@ -120,17 +120,21 @@ def run(argv=None):
             pipeline_args += jinja_vars_output
 
     else:
-        logging.info(f"{JINJA_INCOMING_ARG} parameter found. Replacing it with the " + \
-                     "{JINJA_OUTGOING_ARG} argument.")
-        # Find the jinjaVariables argument
-        jinja_arg_index = -1
-        for i, arg in enumerate(pipeline_args):
-            if arg.split('=', 1)[0] == JINJA_INCOMING_ARG:
-                jinja_arg_index = i
-                break
+        raise Exception(
+            f"The argument '{JINJA_INCOMING_ARG}' is not yet supported. ")
 
-        # Switch out jinjaVariables for jinja_variables
-        pipeline_args[jinja_arg_index] = f"{JINJA_OUTGOING_ARG}={pipeline_args[jinja_arg_index].split('=', 1)[1]}"
+        # TODO(#2816):
+        # logging.info(f"{JINJA_INCOMING_ARG} parameter found. Replacing it with the " + \
+        #              "{JINJA_OUTGOING_ARG} argument.")
+        # # Find the jinjaVariables argument
+        # jinja_arg_index = -1
+        # for i, arg in enumerate(pipeline_args):
+        #     if arg.split('=', 1)[0] == JINJA_INCOMING_ARG:
+        #         jinja_arg_index = i
+        #         break
+
+        # # Switch out jinjaVariables for jinja_variables
+        # pipeline_args[jinja_arg_index] = f"{JINJA_OUTGOING_ARG}={pipeline_args[jinja_arg_index].split('=', 1)[1]}"
 
     # Save the pipeline yaml template to the appropriate pipeline option
     pipeline_args += [f'--yaml_pipeline={_get_pipeline_yaml()}']

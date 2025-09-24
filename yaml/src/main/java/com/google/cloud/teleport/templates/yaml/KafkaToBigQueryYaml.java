@@ -19,6 +19,7 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Validation;
 
 @Template(
     name = "Kafka_to_BigQuery_Yaml",
@@ -46,40 +47,43 @@ public interface KafkaToBigQueryYaml {
   @TemplateParameter.Text(
       order = 1,
       name = "readBootstrapServers",
-      optional = true,
+      optional = false,
       description = "Kafka Bootstrap Server list",
       helpText =
           "Kafka Bootstrap Server list, separated by commas. This "
               + "parameter should be provided either through this parameter or jinjaVariables.",
       example = "localhost:9092,127.0.0.1:9093")
+  @Validation.Required
   String getReadBootstrapServers();
 
   @TemplateParameter.Text(
       order = 2,
       name = "kafkaReadTopics",
-      optional = true,
+      optional = false,
       description = "Kafka topic(s) to read input from.",
       helpText =
           "Kafka topic(s) to read input from. This parameter should be "
               + "provided either through this parameter or jinjaVariables.\",",
       example = "topic1,topic2")
+  @Validation.Required
   String getKafkaReadTopics();
 
   @TemplateParameter.Text(
       order = 3,
       name = "outputTableSpec",
-      optional = true,
+      optional = false,
       description = "BigQuery output table",
       helpText =
           "BigQuery table location to write the output to. The name should be in the format "
               + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects."
               + "This parameter should be provided either through this parameter or jinjaVariables.")
+  @Validation.Required
   String getOutputTableSpec();
 
   @TemplateParameter.Text(
       order = 4,
       name = "outputDeadletterTable",
-      optional = true,
+      optional = false,
       description = "The dead-letter table name to output failed messages to BigQuery",
       helpText =
           "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
@@ -87,6 +91,7 @@ public interface KafkaToBigQueryYaml {
               + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead."
               + "This parameter should be provided either through this parameter or jinjaVariables.",
       example = "your-project-id:your-dataset.your-table-name")
+  @Validation.Required
   String getOutputDeadletterTable();
 
   @TemplateParameter.Text(
@@ -103,7 +108,7 @@ public interface KafkaToBigQueryYaml {
   @TemplateParameter.Text(
       order = 6,
       name = "schema",
-      optional = true,
+      optional = false,
       description = "Kafka schema.",
       helpText = "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO.")
   String getSchema();
@@ -135,11 +140,12 @@ public interface KafkaToBigQueryYaml {
   @Default.Integer(1)
   Integer getStorageWriteApiTriggeringFrequencySec();
 
-  @TemplateParameter.Text(
-      order = 9,
-      name = "jinjaVariables",
-      optional = true,
-      description = "Jinja variables",
-      helpText = "Jinja variables to override ALL other parameters.")
-  String getJinjaVariables();
+  // TODO(#2816):
+  //   @TemplateParameter.Text(
+  //       order = 9,
+  //       name = "jinjaVariables",
+  //       optional = true,
+  //       description = "Jinja variables",
+  //       helpText = "Jinja variables to override ALL other parameters.")
+  //   String getJinjaVariables();
 }

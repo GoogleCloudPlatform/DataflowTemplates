@@ -29,7 +29,7 @@ template:
 
     - name: "messageFormat"
       help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
-      required: true
+      required: false
       default: JSON
       type: text
 
@@ -50,10 +50,11 @@ template:
       default: 1
       type: integer
 
-    - name: "jinjaVariables"
-      helpText: "Jinja variables to override ALL other parameters."
-      required: false
-      type: TEXT
+    # TODO(#2816):
+    # - name: "jinjaVariables"
+    #   helpText: "Jinja variables to override ALL other parameters."
+    #   required: false
+    #   type: TEXT
 
 
 pipeline:
