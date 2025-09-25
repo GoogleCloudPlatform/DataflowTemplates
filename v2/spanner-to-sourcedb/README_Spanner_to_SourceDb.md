@@ -50,6 +50,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 * **filterEventsDirectoryName**: Records skipped from reverse replication are written to this directory. Default directory name is skip.
 * **isShardedMigration**: Sets the template to a sharded migration. If source shard template contains more than one shard, the value will be set to true. This value defaults to false.
 * **failureInjectionParameter**: Failure injection parameter. Only used for testing. Defaults to empty.
+* **spannerPriority**: The request priority for Cloud Spanner calls. The value must be one of: [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.
 
 
 
@@ -177,6 +178,7 @@ export SCHEMA_OVERRIDES_FILE_PATH=""
 export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
 export IS_SHARDED_MIGRATION=false
 export FAILURE_INJECTION_PARAMETER=""
+export SPANNER_PRIORITY=HIGH
 
 gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --project "$PROJECT" \
@@ -214,7 +216,8 @@ gcloud dataflow flex-template run "spanner-to-sourcedb-job" \
   --parameters "schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH" \
   --parameters "filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME" \
   --parameters "isShardedMigration=$IS_SHARDED_MIGRATION" \
-  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER"
+  --parameters "failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
+  --parameters "spannerPriority=$SPANNER_PRIORITY"
 ```
 
 For more information about the command, please check:
@@ -268,6 +271,7 @@ export SCHEMA_OVERRIDES_FILE_PATH=""
 export FILTER_EVENTS_DIRECTORY_NAME=filteredEvents
 export IS_SHARDED_MIGRATION=false
 export FAILURE_INJECTION_PARAMETER=""
+export SPANNER_PRIORITY=HIGH
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -276,7 +280,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="spanner-to-sourcedb-job" \
 -DtemplateName="Spanner_to_SourceDb" \
--Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER" \
+-Dparameters="changeStreamName=$CHANGE_STREAM_NAME,instanceId=$INSTANCE_ID,databaseId=$DATABASE_ID,spannerProjectId=$SPANNER_PROJECT_ID,metadataInstance=$METADATA_INSTANCE,metadataDatabase=$METADATA_DATABASE,startTimestamp=$START_TIMESTAMP,endTimestamp=$END_TIMESTAMP,shadowTablePrefix=$SHADOW_TABLE_PREFIX,sourceShardsFilePath=$SOURCE_SHARDS_FILE_PATH,sessionFilePath=$SESSION_FILE_PATH,filtrationMode=$FILTRATION_MODE,shardingCustomJarPath=$SHARDING_CUSTOM_JAR_PATH,shardingCustomClassName=$SHARDING_CUSTOM_CLASS_NAME,shardingCustomParameters=$SHARDING_CUSTOM_PARAMETERS,sourceDbTimezoneOffset=$SOURCE_DB_TIMEZONE_OFFSET,dlqGcsPubSubSubscription=$DLQ_GCS_PUB_SUB_SUBSCRIPTION,skipDirectoryName=$SKIP_DIRECTORY_NAME,maxShardConnections=$MAX_SHARD_CONNECTIONS,deadLetterQueueDirectory=$DEAD_LETTER_QUEUE_DIRECTORY,dlqMaxRetryCount=$DLQ_MAX_RETRY_COUNT,runMode=$RUN_MODE,dlqRetryMinutes=$DLQ_RETRY_MINUTES,sourceType=$SOURCE_TYPE,transformationJarPath=$TRANSFORMATION_JAR_PATH,transformationClassName=$TRANSFORMATION_CLASS_NAME,transformationCustomParameters=$TRANSFORMATION_CUSTOM_PARAMETERS,tableOverrides=$TABLE_OVERRIDES,columnOverrides=$COLUMN_OVERRIDES,schemaOverridesFilePath=$SCHEMA_OVERRIDES_FILE_PATH,filterEventsDirectoryName=$FILTER_EVENTS_DIRECTORY_NAME,isShardedMigration=$IS_SHARDED_MIGRATION,failureInjectionParameter=$FAILURE_INJECTION_PARAMETER,spannerPriority=$SPANNER_PRIORITY" \
 -f v2/spanner-to-sourcedb
 ```
 
@@ -354,6 +358,7 @@ resource "google_dataflow_flex_template_job" "spanner_to_sourcedb" {
     # filterEventsDirectoryName = "filteredEvents"
     # isShardedMigration = "false"
     # failureInjectionParameter = ""
+    # spannerPriority = "HIGH"
   }
 }
 ```
