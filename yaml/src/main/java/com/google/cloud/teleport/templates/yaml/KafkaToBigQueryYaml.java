@@ -32,6 +32,7 @@ import org.apache.beam.sdk.options.Validation;
             + "If the errors table does not exist prior to execution, then it is created.",
     flexContainerName = "kafka-to-bigquery-yaml",
     yamlTemplateFile = "KafkaToBigQuery.yaml",
+    filesToCopy = {"template.yaml", "main.py", "requirements.txt"},
     documentation =
         "https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery",
     contactInformation = "https://cloud.google.com/support",
@@ -46,74 +47,75 @@ public interface KafkaToBigQueryYaml {
   @TemplateParameter.Text(
       order = 1,
       name = "readBootstrapServers",
-      optional = true,
+      optional = false,
       description = "Kafka Bootstrap Server list",
-      helpText = "Kafka Bootstrap Server list, separated by commas.",
+      helpText =
+          "Kafka Bootstrap Server list, separated by commas. This "
+              + "parameter should be provided either through this parameter or jinjaVariables.",
       example = "localhost:9092,127.0.0.1:9093")
+  @Validation.Required
   String getReadBootstrapServers();
-
-  void setReadBootstrapServers(String bootstrapServers);
 
   @TemplateParameter.Text(
       order = 2,
       name = "kafkaReadTopics",
-      optional = true,
+      optional = false,
       description = "Kafka topic(s) to read input from.",
-      helpText = "Kafka topic(s) to read input from.",
+      helpText =
+          "Kafka topic(s) to read input from. This parameter should be "
+              + "provided either through this parameter or jinjaVariables.\",",
       example = "topic1,topic2")
+  @Validation.Required
   String getKafkaReadTopics();
-
-  void setKafkaReadTopics(String inputTopics);
 
   @TemplateParameter.Text(
       order = 3,
       name = "outputTableSpec",
+      optional = false,
       description = "BigQuery output table",
       helpText =
           "BigQuery table location to write the output to. The name should be in the format "
-              + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects.")
+              + "`<project>:<dataset>.<table_name>`. The table's schema must match input objects."
+              + "This parameter should be provided either through this parameter or jinjaVariables.")
   @Validation.Required
   String getOutputTableSpec();
-
-  void setOutputTableSpec(String value);
 
   @TemplateParameter.Text(
       order = 4,
       name = "outputDeadletterTable",
-      optional = true,
+      optional = false,
       description = "The dead-letter table name to output failed messages to BigQuery",
       helpText =
           "BigQuery table for failed messages. Messages failed to reach the output table for different reasons "
               + "(e.g., mismatched schema, malformed json) are written to this table. If it doesn't exist, it will"
-              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead.",
+              + " be created during pipeline execution. If not specified, \"outputTableSpec_error_records\" is used instead."
+              + "This parameter should be provided either through this parameter or jinjaVariables.",
       example = "your-project-id:your-dataset.your-table-name")
+  @Validation.Required
   String getOutputDeadletterTable();
-
-  void setOutputDeadletterTable(String outputDeadletterTable);
 
   @TemplateParameter.Text(
       order = 5,
       name = "messageFormat",
       optional = true,
       description = "The message format",
-      helpText = "The message format. Can be AVRO or JSON.")
+      helpText =
+          "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
+              + "This parameter should be provided either through this parameter or jinjaVariables.\",")
   @Default.String("JSON")
   String getMessageFormat();
-
-  void setMessageFormat(String value);
 
   @TemplateParameter.Text(
       order = 6,
       name = "schema",
-      optional = true,
+      optional = false,
       description = "Kafka schema.",
       helpText = "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO.")
   String getSchema();
 
-  void setSchema(String schema);
-
   @TemplateParameter.Integer(
       order = 7,
+      name = "numStorageWriteApiStreams",
       optional = true,
       description = "Number of streams for BigQuery Storage Write API",
       helpText =
@@ -121,23 +123,29 @@ public interface KafkaToBigQueryYaml {
               + " roughly corresponds to the number of Storage Write API’s streams which will be"
               + " used by the pipeline. See"
               + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values.")
+              + " for the recommended values. The default value is 1.")
   @Default.Integer(1)
   Integer getNumStorageWriteApiStreams();
 
-  void setNumStorageWriteApiStreams(Integer value);
-
   @TemplateParameter.Integer(
       order = 8,
+      name = "storageWriteApiTriggeringFrequencySec",
       optional = true,
       description = "Triggering frequency in seconds for BigQuery Storage Write API",
       helpText =
           "Triggering frequency will determine how soon the data will be visible for querying in"
               + " BigQuery. See"
               + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values.")
-  @Default.Integer(1)
+              + " for the recommended values. The default value is 5.")
+  @Default.Integer(5)
   Integer getStorageWriteApiTriggeringFrequencySec();
 
-  void setStorageWriteApiTriggeringFrequencySec(Integer value);
+  // TODO(#2816):
+  //   @TemplateParameter.Text(
+  //       order = 9,
+  //       name = "jinjaVariables",
+  //       optional = true,
+  //       description = "Jinja variables",
+  //       helpText = "Jinja variables to override ALL other parameters.")
+  //   String getJinjaVariables();
 }
