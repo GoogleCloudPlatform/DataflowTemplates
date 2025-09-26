@@ -525,8 +525,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
 
-      prepareYamlTemplateFiles(definition);
-
       stageFlexYamlTemplate(
           definition,
           currentTemplateName,
@@ -844,6 +842,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       throws IOException, InterruptedException, TemplateException, MojoExecutionException {
 
     try {
+      prepareYamlTemplateFiles(definition);
       prepareYamlDockerfile(definition, containerName);
     } catch (IOException | InterruptedException | TemplateException e) {
       throw new MojoExecutionException("Error preparing YAML Dockerfile", e);
