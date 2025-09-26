@@ -31,7 +31,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **messageFormat**: The message format. One of: AVRO, JSON, PROTO, RAW, or STRING.This parameter should be provided either through this parameter or jinjaVariables.",. Defaults to: JSON.
 * **numStorageWriteApiStreams**: Number of streams defines the parallelism of the BigQueryIO’s Write transform and roughly corresponds to the number of Storage Write API’s streams which will be used by the pipeline. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
-* **storageWriteApiTriggeringFrequencySec**: Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 1.
+* **storageWriteApiTriggeringFrequencySec**: Triggering frequency will determine how soon the data will be visible for querying in BigQuery. See https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api for the recommended values. The default value is 5.
 
 
 
@@ -133,7 +133,7 @@ export SCHEMA=<schema>
 ### Optional
 export MESSAGE_FORMAT=JSON
 export NUM_STORAGE_WRITE_API_STREAMS=1
-export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=1
+export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=5
 
 gcloud dataflow flex-template run "kafka-to-bigquery-yaml-job" \
   --project "$PROJECT" \
@@ -174,7 +174,7 @@ export SCHEMA=<schema>
 ### Optional
 export MESSAGE_FORMAT=JSON
 export NUM_STORAGE_WRITE_API_STREAMS=1
-export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=1
+export STORAGE_WRITE_API_TRIGGERING_FREQUENCY_SEC=5
 
 mvn clean package -PtemplatesRun \
 -DskipTests \
@@ -235,7 +235,7 @@ resource "google_dataflow_flex_template_job" "kafka_to_bigquery_yaml" {
     schema = "<schema>"
     # messageFormat = "JSON"
     # numStorageWriteApiStreams = "1"
-    # storageWriteApiTriggeringFrequencySec = "1"
+    # storageWriteApiTriggeringFrequencySec = "5"
   }
 }
 ```
