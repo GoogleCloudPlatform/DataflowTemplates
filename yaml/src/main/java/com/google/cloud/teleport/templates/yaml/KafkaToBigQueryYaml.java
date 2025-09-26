@@ -139,5 +139,4 @@ public interface KafkaToBigQueryYaml {
               + " for the recommended values. The default value is 5.")
   @Default.Integer(5)
   Integer getStorageWriteApiTriggeringFrequencySec();
-
 }
