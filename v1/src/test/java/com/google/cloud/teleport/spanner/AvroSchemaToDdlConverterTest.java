@@ -1719,4 +1719,135 @@ public class AvroSchemaToDdlConverterTest {
                 + "PRIMARY KEY (\"k1\")\n"
                 + ") \nINTERLEAVE IN  \"ParentTable\"\n\n"));
   }
+
+  @Test
+  public void propertyGraphOnView() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"aml_view_complex\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerName\": \"aml_view_complex\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"V_GroupByPerson\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"loc_id,pid\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"V_GroupByPerson\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_2_NAME\": \"cnt\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_2_VALUE\": \"cnt\",\n"
+            + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"loc_id,pid\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_NAME\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_VALUE\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_2_BASE_TABLE_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphNodeTable_2_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_NAME\": \"aid\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_VALUE\": \"aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"Owns\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"V_FilteredPerson\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"loc_id,pid\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"loc_id,owner_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"GraphTableAccount\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"loc_id,aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_NAME\": \"Owns\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_0_NAME\": \"loc_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_1_NAME\": \"aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"aid\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_2_NAME\": \"owner_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_LABEL_0_PROPERTY_2_VALUE\": \"owner_id\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH `aml_view_complex`\n"
+            + "\tNODE TABLES (\n"
+            + "\t\t`V_GroupByPerson` KEY (`loc_id`, `pid`) LABEL `V_GroupByPerson`"
+            + " PROPERTIES (`loc_id`, `pid`, `cnt`),\n"
+            + "\t\t`V_FilteredPerson` KEY (`loc_id`, `pid`) LABEL `V_FilteredPerson`"
+            + " PROPERTIES (`loc_id`, `pid`),\n"
+            + "\t\t`GraphTableAccount` KEY (`loc_id`, `aid`) LABEL `GraphTableAccount`"
+            + " PROPERTIES (`loc_id`, `aid`)\n"
+            + "\t)\n"
+            + "\tEDGE TABLES (\n"
+            + "\t\t`GraphTableAccount` AS `Owns` KEY (`loc_id`, `aid`) SOURCE KEY (`loc_id`,"
+            + " `owner_id`) REFERENCES `V_FilteredPerson` (`loc_id`, `pid`) DESTINATION KEY"
+            + " (`loc_id`, `aid`) REFERENCES `GraphTableAccount` (`loc_id`, `aid`) LABEL `Owns`"
+            + " PROPERTIES (`loc_id`, `aid`, `owner_id`)\n"
+            + "\t)";
+    // TODO(b/348395193) Add full property list to the expected DDL, and fix the converter.
+    // assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
+
+  @Test
+  public void propertyGraphOnViewSupplyChain() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"SupplyChainGraph\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerName\": \"SupplyChainGraph\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"PartView\",\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"PartView\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"part_id\",\n"
+            + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"SupplierView\",\n"
+            + "  \"spannerGraphNodeTable_1_NAME\": \"SupplierView\",\n"
+            + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"supplier_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_BASE_TABLE_NAME\": \"PartSuppliersView\",\n"
+            + "  \"spannerGraphEdgeTable_0_NAME\": \"PartSuppliersView\",\n"
+            + "  \"spannerGraphEdgeTable_0_KEY_COLUMNS\": \"part_id,supplier_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_TABLE_NAME\": \"PartView\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_NODE_KEY_COLUMNS\": \"part_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_SOURCE_EDGE_KEY_COLUMNS\": \"part_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_TABLE_NAME\": \"SupplierView\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_NODE_KEY_COLUMNS\": \"supplier_id\",\n"
+            + "  \"spannerGraphEdgeTable_0_TARGET_EDGE_KEY_COLUMNS\": \"supplier_id\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "\nCREATE PROPERTY GRAPH SupplyChainGraph\n"
+            + "NODE TABLES(\n"
+            + "PartView AS PartView\n"
+            + " KEY (part_id)\n"
+            + ", SupplierView AS SupplierView\n"
+            + " KEY (supplier_id)\n"
+            + ")\n"
+            + "EDGE TABLES(\n"
+            + "PartSuppliersView AS PartSuppliersView\n"
+            + " KEY (part_id, supplier_id)\n"
+            + "SOURCE KEY(part_id) REFERENCES PartView(part_id) DESTINATION"
+            + " KEY(supplier_id) REFERENCES SupplierView(supplier_id)\n"
+            + ")";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
 }

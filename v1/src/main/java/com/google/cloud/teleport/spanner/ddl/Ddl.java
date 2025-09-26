@@ -277,14 +277,14 @@ public class Ddl implements Serializable {
       model.prettyPrint(appendable);
     }
 
-    for (PropertyGraph graph : propertyGraphs()) {
-      appendable.append("\n");
-      graph.prettyPrint(appendable);
-    }
-
     for (View view : views()) {
       appendable.append("\n");
       view.prettyPrint(appendable);
+    }
+
+    for (PropertyGraph graph : propertyGraphs()) {
+      appendable.append("\n");
+      graph.prettyPrint(appendable);
     }
 
     for (Udf udf : udfs()) {
@@ -317,8 +317,8 @@ public class Ddl implements Serializable {
         .addAll(createIndexStatements())
         .addAll(addForeignKeyStatements())
         .addAll(createModelStatements())
-        .addAll(createPropertyGraphStatements())
         .addAll(createViewStatements())
+        .addAll(createPropertyGraphStatements())
         .addAll(createUdfStatements())
         .addAll(createChangeStreamStatements())
         .addAll(createPlacementStatements())
