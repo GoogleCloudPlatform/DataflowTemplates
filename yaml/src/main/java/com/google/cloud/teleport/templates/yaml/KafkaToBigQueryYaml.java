@@ -139,13 +139,4 @@ public interface KafkaToBigQueryYaml {
               + " for the recommended values. The default value is 5.")
   @Default.Integer(5)
   Integer getStorageWriteApiTriggeringFrequencySec();
-
-  // TODO(#2816):
-  //   @TemplateParameter.Text(
-  //       order = 9,
-  //       name = "jinjaVariables",
-  //       optional = true,
-  //       description = "Jinja variables",
-  //       helpText = "Jinja variables to override ALL other parameters.")
-  //   String getJinjaVariables();
 }
