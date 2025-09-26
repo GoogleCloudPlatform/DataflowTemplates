@@ -98,7 +98,7 @@
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
     <okio.version>1.17.6</okio.version>
     <!-- Socket factory JARs for Cloud SQL -->
-    <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
+    <mysql-socket-factory.version>1.25.3</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
 
     <!-- Security vulnerability fixes -->
