@@ -47,7 +47,7 @@ template:
     - name: "storageWriteApiTriggeringFrequencySec"
       help: "Triggering frequency will determine how soon the data will be visible for querying in BigQuery."
       required: false
-      default: 1
+      default: 5
       type: integer
 
     # TODO(#2816):

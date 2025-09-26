@@ -136,8 +136,8 @@ public interface KafkaToBigQueryYaml {
           "Triggering frequency will determine how soon the data will be visible for querying in"
               + " BigQuery. See"
               + " https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api"
-              + " for the recommended values. The default value is 1.")
-  @Default.Integer(1)
+              + " for the recommended values. The default value is 5.")
+  @Default.Integer(5)
   Integer getStorageWriteApiTriggeringFrequencySec();
 
   // TODO(#2816):
