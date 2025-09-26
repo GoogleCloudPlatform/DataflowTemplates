@@ -27,6 +27,7 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -132,6 +133,7 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
         kafkaResourceManager.buildProducer(new StringSerializer(), new StringSerializer());
 
     List<Map<String, Object>> expectedSuccessRecords = new ArrayList<>();
+    List<Map<String, Object>> expectedFailureRecords = new ArrayList<>();
     for (int i = 1; i <= 10; i++) {
       long id1 = Long.parseLong(i + "1");
       long id2 = Long.parseLong(i + "2");
@@ -149,11 +151,15 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
       expectedSuccessRecords.add(Map.of("id", id2, "name", "Pub/Sub"));
 
       // Invalid schema
-      publish(
-          kafkaProducer,
-          topicName,
-          i + "3",
-          "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}");
+      String invalidRow = "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}";
+      byte[] invalidRowBytes = invalidRow.getBytes(StandardCharsets.UTF_8);
+      publish(kafkaProducer, topicName, i + "3", invalidRow);
+      expectedFailureRecords.add(
+          Map.of(
+              "error_message",
+              "Unable to get value from field 'id'. Schema type 'INT64'. JSON node type STRING",
+              "failed_row",
+              invalidRowBytes));
 
       try {
         TimeUnit.SECONDS.sleep(3);
@@ -176,6 +182,9 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
 
     TableResult tableRows = bigQueryClient.readTable(bqTable);
     assertThatBigQueryRecords(tableRows).hasRecordsUnordered(expectedSuccessRecords);
+
+    TableResult tableDlqRows = bigQueryClient.readTable(bqTableDlq);
+    assertThatBigQueryRecords(tableDlqRows).hasRecordsUnordered(expectedFailureRecords);
   }
 
   // TODO(#2816):
