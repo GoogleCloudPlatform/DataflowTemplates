@@ -27,8 +27,8 @@ import com.google.cloud.bigquery.TableResult;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -152,14 +152,13 @@ public final class KafkaToBigQueryYamlIT extends TemplateTestBase {
 
       // Invalid schema
       String invalidRow = "{\"id\": \"not-a-number\", \"name\": \"bad-record\"}";
-      byte[] invalidRowBytes = invalidRow.getBytes(StandardCharsets.UTF_8);
       publish(kafkaProducer, topicName, i + "3", invalidRow);
       expectedFailureRecords.add(
           Map.of(
               "error_message",
               "Unable to get value from field 'id'. Schema type 'INT64'. JSON node type STRING",
               "failed_row",
-              invalidRowBytes));
+              Base64.getEncoder().encodeToString(invalidRow.getBytes())));
 
       try {
         TimeUnit.SECONDS.sleep(3);
