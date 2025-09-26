@@ -173,31 +173,30 @@
        </plugins>
      </build>
     </profile>
-<!-- TODO: Will uncomment this profile once everything else passes IT and we collectively are ready to release. -->
-<!--    <profile>-->
-<!--      <id>templatesRelease</id>-->
-<!--      <activation>-->
-<!--        <activeByDefault>false</activeByDefault>-->
-<!--      </activation>-->
-<!--      <properties>-->
-<!--        <jib.skip>false</jib.skip>-->
-<!--      </properties>-->
-<!--      <build>-->
-<!--        <plugins>-->
-<!--          <plugin>-->
-<!--            <groupId>com.google.cloud.teleport</groupId>-->
-<!--            <artifactId>templates-maven-plugin</artifactId>-->
-<!--            <executions>-->
-<!--              <execution>-->
-<!--                <phase>package</phase>-->
-<!--                <goals>-->
-<!--                  <goal>release</goal>-->
-<!--                </goals>-->
-<!--              </execution>-->
-<!--            </executions>-->
-<!--          </plugin>-->
-<!--        </plugins>-->
-<!--      </build>-->
-<!--    </profile>-->
+    <profile>
+     <id>templatesRelease</id>
+      <activation>
+        <activeByDefault>false</activeByDefault>
+      </activation>
+      <properties>
+        <jib.skip>false</jib.skip>
+      </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>com.google.cloud.teleport</groupId>
+            <artifactId>templates-maven-plugin</artifactId>
+            <executions>
+              <execution>
+                <phase>package</phase>
+                <goals>
+                  <goal>release</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
 </project>
