@@ -42,7 +42,7 @@
         <dependency>
             <groupId>com.google.apis</groupId>
             <artifactId>google-api-services-datastream</artifactId>
-            <version>v1-rev20250722-2.0.0</version>
+            <version>v1-rev20250827-2.0.0</version>
         </dependency>
 
         <dependency>
