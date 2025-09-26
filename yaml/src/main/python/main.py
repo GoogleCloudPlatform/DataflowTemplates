@@ -18,11 +18,12 @@ import argparse
 import logging
 import json
 import pprint
-import re
 
 from apache_beam.io.filesystems import FileSystems
 from apache_beam.yaml import cache_provider_artifacts
 from apache_beam.yaml import main
+from jinja2 import Environment, meta
+
 
 
 JINJA_INCOMING_ARG = '--jinjaVariables'
@@ -45,12 +46,12 @@ def _get_pipeline_yaml():
         pipeline_yaml = fin.read().decode()
     return pipeline_yaml
 
-def _parse_yaml_pipeline(yaml_pipeline):
+def _extract_jinja_variable_names(yaml_pipeline):
     """Parses a YAML pipeline string to extract Jinja variable names.
 
     This function uses a regular expression to find all occurrences of Jinja-style
-    placeholders (e.g., `{{ my_var | default('foo') }}`) and extracts the core
-    variable name, ignoring filters and surrounding whitespace.
+    placeholders (e.g., `{{ my_var | default('foo') }}`) and extracts the
+    variable names.
 
     Args:
         yaml_pipeline (str): The YAML pipeline content as a string.
@@ -58,13 +59,9 @@ def _parse_yaml_pipeline(yaml_pipeline):
     Returns:
         set: A set of unique Jinja variable names found in the pipeline.
     """
-    pattern = r'\{\{(.*?)\}\}'
-    initial_jinja_variables = re.findall(pattern, yaml_pipeline)
-    final_jinja_variables = set()
-    for jinja_variable in initial_jinja_variables:
-        variable = jinja_variable.strip().split('|', 1)[0].strip()
-        final_jinja_variables.add(variable)
-    return final_jinja_variables
+    env = Environment()
+    template = env.parse(yaml_pipeline)
+    return meta.find_undeclared_variables(template)
 
 
 def run(argv=None):
@@ -94,7 +91,7 @@ def run(argv=None):
     yaml_pipeline = _get_pipeline_yaml()
     logging.info("Yaml pipeline: \n%s\n", pprint.pformat(yaml_pipeline, indent=2))
 
-    yaml_pipeline_jinja_variables = _parse_yaml_pipeline(yaml_pipeline)
+    yaml_pipeline_jinja_variables = _extract_jinja_variable_names(yaml_pipeline)
     logging.info("Jinja variables: \n%s\n", pprint.pformat(yaml_pipeline_jinja_variables,indent=2))
 
     parser = argparse.ArgumentParser()
