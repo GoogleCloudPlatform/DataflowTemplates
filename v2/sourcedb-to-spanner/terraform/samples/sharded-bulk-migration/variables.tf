@@ -16,7 +16,7 @@ variable "common_params" {
     database_id                      = string
     spanner_project_id               = string
     spanner_host                     = optional(string)
-    local_session_file_path          = string
+    local_session_file_path          = optional(string)
     transformation_jar_path          = optional(string)
     transformation_custom_parameters = optional(string)
     transformation_class_name        = optional(string)
@@ -35,6 +35,7 @@ variable "common_params" {
     ip_configuration      = optional(string)
     num_workers           = optional(number)
     default_log_level     = optional(string)
+    fetch_size            = optional(number)
 
     # This parameters decides the number of physical shards to migrate using a single dataflow job.
     # Set this in a way that restricts the total number of tables to 150 within a single job.

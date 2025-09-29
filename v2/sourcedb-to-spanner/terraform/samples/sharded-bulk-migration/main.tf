@@ -43,6 +43,7 @@ resource "google_compute_firewall" "allow-dataflow-to-source" {
 
 # upload local session file to the working GCS bucket
 resource "google_storage_bucket_object" "session_file_object" {
+  count        = var.common_params.local_session_file_path != null ? 1 : 0
   depends_on   = [google_project_service.enabled_apis]
   name         = "${var.common_params.working_directory_prefix}/session.json"
   source       = var.common_params.local_session_file_path
@@ -85,12 +86,13 @@ resource "google_dataflow_flex_template_job" "generated" {
     databaseId                     = var.common_params.database_id
     projectId                      = var.common_params.spanner_project_id
     spannerHost                    = var.common_params.spanner_host
-    sessionFilePath                = "${local.working_directory_gcs}/session.json"
+    sessionFilePath                = var.common_params.local_session_file_path != null ? "${local.working_directory_gcs}/session.json" : null
     outputDirectory                = "${local.working_directory_gcs}/${random_pet.job_prefixes[count.index].id}/output/"
     transformationJarPath          = var.common_params.transformation_jar_path
     transformationClassName        = var.common_params.transformation_class_name
     transformationCustomParameters = var.common_params.transformation_custom_parameters
     defaultSdkHarnessLogLevel      = var.common_params.default_log_level
+    fetchSize                      = var.common_params.fetch_size
   }
 
   service_account_email  = var.common_params.service_account_email
