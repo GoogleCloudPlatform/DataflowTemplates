@@ -1,4 +1,5 @@
 apache-beam[gcp]==2.68.0
+jsonschema==4.25.1
 torch
 transformers
 torchvision
