@@ -331,7 +331,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
     Assert.assertNotNull(exception);
     Assert.assertEquals(
         exception.getMessage(),
-        "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Invalid value for column id in table Books: Expected INT64.");
+        "INVALID_ARGUMENT: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Failed to initialize transaction due to invalid mutation key.");
     assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
@@ -385,7 +385,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
     Assert.assertNotNull(exception);
     Assert.assertEquals(
         exception.getMessage(),
-        "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Cannot write into generated column `Books.titleLowerStored`.");
+        "INVALID_ARGUMENT: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Failed to initialize transaction due to invalid mutation key.");
     assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
@@ -404,7 +404,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
     Assert.assertNotNull(exception);
     Assert.assertEquals(
         exception.getMessage(),
-        "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: For an Update, the value of a generated primary key `id2` must be explicitly specified, or else its non-key dependent column `part1` must be specified. Key: [1,<default>]");
+        "INVALID_ARGUMENT: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Failed to initialize transaction due to invalid mutation key.");
     assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 
@@ -422,7 +422,7 @@ public class DatastreamToSpannerExceptionClassifierIT {
     Assert.assertNotNull(exception);
     Assert.assertEquals(
         exception.getMessage(),
-        "FAILED_PRECONDITION: io.grpc.StatusRuntimeException: FAILED_PRECONDITION: Wrong number of key parts for MultiKeyTable. Expected: 3. Got: [\"1\"]");
+        "INVALID_ARGUMENT: io.grpc.StatusRuntimeException: INVALID_ARGUMENT: Failed to initialize transaction due to invalid mutation key.");
     assertSpannerExceptionClassification(exception, PERMANENT_ERROR, actualTag);
   }
 }
