@@ -149,10 +149,12 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     String schema = cloudSqlSourceResourceManager.getDatabaseName();
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("ALTER USER %s WITH REPLICATION;", user));
-    cloudSqlSourceResourceManager.runSQLUpdate(
-        String.format(
-            "DO $$BEGIN PERFORM pg_create_logical_replication_slot('%s', 'pgoutput'); END$$;",
-            this.replicationSlot));
+
+    // Clean up any existing replication slots that might be left over from previous test runs
+    cleanupExistingReplicationSlots();
+
+    // Try to create the replication slot, with retry logic if slots are full
+    createReplicationSlotWithRetry(this.replicationSlot);
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format(
             "CREATE PUBLICATION %s FOR TABLE %s.%s;", publication, schema, sourceTableName));
@@ -360,7 +362,114 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
   }
 
   private void checkJdbcTable(String tableName, Map<String, List<Map<String, Object>>> cdcEvents) {
-    assertThatRecords(cloudSqlDestinationResourceManager.readTable(tableName))
-        .hasRecordsUnorderedCaseInsensitiveColumns(cdcEvents.get(tableName));
+    List<Map<String, Object>> expectedRows = cdcEvents.get(tableName);
+    List<Map<String, Object>> actualRows = cloudSqlDestinationResourceManager.readTable(tableName);
+    assertThatRecords(actualRows).hasRecordsUnordered(expectedRows);
+  }
+
+  /**
+   * Cleans up any existing replication slots that might be left over from previous test runs. This
+   * helps prevent the "all replication slots are in use" error.
+   */
+  private void cleanupExistingReplicationSlots() {
+    try {
+      // Get list of existing replication slots that match our test pattern
+      String query =
+          "SELECT slot_name FROM pg_replication_slots WHERE slot_name LIKE 'ds_it_slot_%'";
+      List<Map<String, Object>> existingSlots = cloudSqlSourceResourceManager.runSQLQuery(query);
+
+      for (Map<String, Object> slot : existingSlots) {
+        String slotName = (String) slot.get("slot_name");
+        try {
+          cloudSqlSourceResourceManager.runSQLUpdate(
+              String.format(
+                  "DO $$ "
+                      + "DECLARE slot_pid INTEGER; "
+                      + "BEGIN "
+                      + "    SELECT active_pid INTO slot_pid FROM pg_replication_slots WHERE slot_name = '%s'; "
+                      + "    IF slot_pid IS NOT NULL THEN "
+                      + "        PERFORM pg_terminate_backend(slot_pid); "
+                      + "    END IF; "
+                      + "    PERFORM pg_drop_replication_slot('%s'); "
+                      + "EXCEPTION WHEN undefined_object THEN "
+                      + "    RAISE NOTICE 'Replication slot %s not found, skipping.'; "
+                      + "END $$ LANGUAGE plpgsql;",
+                  slotName, slotName, slotName));
+          LOG.info("Cleaned up existing replication slot: {}", slotName);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup replication slot {}: {}", slotName, e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Error during replication slot cleanup: {}", e.getMessage());
+    }
+  }
+
+  /**
+   * Creates a replication slot with retry logic to handle cases where all slots are in use. If slot
+   * creation fails due to slot limit, it will attempt to clean up old slots and retry.
+   */
+  private void createReplicationSlotWithRetry(String slotName) {
+    int maxRetries = 3;
+    int retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      try {
+        cloudSqlSourceResourceManager.runSQLUpdate(
+            String.format(
+                "DO $$BEGIN PERFORM pg_create_logical_replication_slot('%s', 'pgoutput'); END$$;",
+                slotName));
+        LOG.info("Successfully created replication slot: {}", slotName);
+        return;
+      } catch (Exception e) {
+        if (e.getMessage().contains("all replication slots are in use")) {
+          LOG.warn(
+              "All replication slots are in use, attempting cleanup and retry {} of {}",
+              retryCount + 1,
+              maxRetries);
+
+          // Clean up any inactive or old replication slots
+          cleanupInactiveReplicationSlots();
+
+          retryCount++;
+          if (retryCount < maxRetries) {
+            try {
+              Thread.sleep(2000); // Wait 2 seconds before retry
+            } catch (InterruptedException ie) {
+              Thread.currentThread().interrupt();
+              throw new RuntimeException(
+                  "Interrupted while waiting to retry replication slot creation", ie);
+            }
+          }
+        } else {
+          throw new RuntimeException("Failed to create replication slot: " + e.getMessage(), e);
+        }
+      }
+    }
+
+    throw new RuntimeException(
+        "Failed to create replication slot after " + maxRetries + " attempts");
+  }
+
+  /** Cleans up inactive replication slots to free up space for new ones. */
+  private void cleanupInactiveReplicationSlots() {
+    try {
+      // Drop inactive replication slots (those without an active connection)
+      String query = "SELECT slot_name FROM pg_replication_slots WHERE active = false";
+      List<Map<String, Object>> inactiveSlots = cloudSqlSourceResourceManager.runSQLQuery(query);
+
+      for (Map<String, Object> slot : inactiveSlots) {
+        String slotName = (String) slot.get("slot_name");
+        try {
+          cloudSqlSourceResourceManager.runSQLUpdate(
+              String.format("SELECT pg_drop_replication_slot('%s')", slotName));
+          LOG.info("Dropped inactive replication slot: {}", slotName);
+        } catch (Exception e) {
+          LOG.warn("Failed to drop inactive replication slot {}: {}", slotName, e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Error during inactive replication slot cleanup: {}", e.getMessage());
+    }
   }
 }
