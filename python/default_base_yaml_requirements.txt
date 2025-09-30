@@ -1,2 +1,3 @@
-apache-beam[dataframe,gcp,test,yaml]==2.67.0
+apache-beam[dataframe,gcp,test,yaml]==2.68.0
+jsonschema==4.25.1 # TODO: remove when correct version could come from beam
 setuptools
