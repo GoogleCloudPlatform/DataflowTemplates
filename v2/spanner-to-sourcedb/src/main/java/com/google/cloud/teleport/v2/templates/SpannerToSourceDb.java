@@ -894,7 +894,7 @@ public class SpannerToSourceDb {
       HikariDataSource ds = new HikariDataSource(config);
       return ds.getConnection();
     } catch (java.sql.SQLException e) {
-      LOG.error("Sql error while discovering mysql schema", e);
+      LOG.error("Sql error while discovering mysql schema: " + e);
       throw new RuntimeException(e);
     }
   }
