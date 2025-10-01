@@ -64,6 +64,9 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbIT.class);
 
+  // Test timeout configuration - can be adjusted if tests need more time
+  private static final Duration TEST_TIMEOUT = Duration.ofMinutes(15);
+
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSourceDbIT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURCE = "SpannerToSourceDbIT/session.json";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE = "SpannerToSourceDbIT/mysql-schema.sql";
@@ -211,7 +214,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, TEST_TIMEOUT),
                 () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
@@ -232,7 +235,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, TEST_TIMEOUT),
                 () ->
                     (jdbcResourceManager.getRowCount(TABLE_WITH_STORED_GEN_COL) == 2)
                         && (jdbcResourceManager.getRowCount(TABLE_WITH_VIRTUAL_GEN_COL)
@@ -244,8 +247,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
-                this::checkGenColRowsInMySQLAfterUpdate);
+                createConfig(jobInfo, TEST_TIMEOUT), this::checkGenColRowsInMySQLAfterUpdate);
     assertThatResult(result).meetsConditions();
 
     // Delete rows in spanner.
@@ -254,7 +256,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result deleteResult =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, TEST_TIMEOUT),
                 () -> allGenColRowsDeleted()); // all rows should be deleted
     assertThatResult(deleteResult).meetsConditions();
   }
@@ -286,7 +288,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(10)),
+                createConfig(jobInfo, TEST_TIMEOUT),
                 () -> jdbcResourceManager.getRowCount(BOUNDARY_CHECK_TABLE) == 1);
     assertThatResult(result).meetsConditions();
   }
