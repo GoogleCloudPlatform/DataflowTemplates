@@ -297,7 +297,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
       helpText =
           "The request priority for Cloud Spanner calls. The value must be one of:"
               + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `MEDIUM`.")
-  @Default.Enum("MEDIUM")
+  @Default.Enum("HIGH")
   Options.RpcPriority getSpannerPriority();
 
   void setSpannerPriority(Options.RpcPriority value);
