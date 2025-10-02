@@ -38,7 +38,7 @@ python3.11 -m venv "$ENV_PATH"
 # allow one-off executions of pip to generate requirements locally without alarming automation
 alias pip_automation="pip"
 
-pip_automation install --upgrade pip==25.0.1 setuptools wheel
+pip_automation install --upgrade pip==25.0.1 setuptools==80.3.1 wheel
 pip_automation install pip-tools
 
 # Install requirements from base file
