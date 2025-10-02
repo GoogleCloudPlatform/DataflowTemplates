@@ -1782,4 +1782,49 @@ public class InformationSchemaScannerIT {
             + "LABEL PartSuppliersView2 PROPERTIES(part_id, supplier_id))";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
+
+  @Test
+  public void propertyGraphOnViewWithNamedSchema() throws Exception {
+    List<String> statements =
+        Arrays.asList(
+            "CREATE SCHEMA Sch1",
+            "CREATE SCHEMA Sch2",
+            "CREATE TABLE Sch1.Account("
+                + "    AccountID INT64 NOT NULL,"
+                + "    Money FLOAT64,"
+                + "    AnotherMoney FLOAT64"
+                + "  ) PRIMARY KEY(AccountID)",
+            "CREATE VIEW V0 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
+            "CREATE VIEW Sch1.V1 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
+            "CREATE VIEW Sch2.V2 SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account",
+            "CREATE PROPERTY GRAPH aml "
+                + "    NODE TABLES ("
+                + "      V0 KEY(AccountID) PROPERTIES(AccountID, Money),"
+                + "      Sch1.V1 KEY(AccountID) PROPERTIES(AccountID, Money),"
+                + "      Sch2.V2 KEY(AccountID) PROPERTIES(AccountID, Money)"
+                + "    )");
+
+    SPANNER_SERVER.createDatabase(dbId, statements);
+    Ddl ddl = getDatabaseDdl();
+    String expectedDdl =
+        "\nCREATE SCHEMA `Sch1`\n"
+            + "CREATE SCHEMA `Sch2`CREATE TABLE `Sch1`.`Account` (\n"
+            + "\t`AccountID`                             INT64 NOT NULL,\n"
+            + "\t`Money`                                 FLOAT64,\n"
+            + "\t`AnotherMoney`                          FLOAT64,\n"
+            + ") PRIMARY KEY (`AccountID` ASC)\n\n\n"
+            + "CREATE VIEW `Sch1`.`V1` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `Sch2`.`V2` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `V0` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "V0 AS V0\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V0 PROPERTIES(AccountID, Money), Sch1.V1 AS V1\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V1 PROPERTIES(AccountID, Money), Sch2.V2 AS V2\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V2 PROPERTIES(AccountID, Money))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
 }

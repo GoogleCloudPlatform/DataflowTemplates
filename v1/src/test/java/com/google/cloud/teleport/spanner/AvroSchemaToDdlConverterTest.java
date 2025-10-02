@@ -1854,4 +1854,63 @@ public class AvroSchemaToDdlConverterTest {
             + ")";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
   }
+
+  @Test
+  public void propertyGraphOnViewWithNamedSchema() {
+    String avroString =
+        "{\n"
+            + "  \"type\": \"record\",\n"
+            + "  \"name\": \"aml\",\n"
+            + "  \"namespace\": \"spannertest\",\n"
+            + "  \"fields\": [],\n"
+            + "  \"spannerName\": \"aml\",\n"
+            + "  \"spannerEntity\": \"PropertyGraph\",\n"
+            + "  \"googleStorage\": \"CloudSpanner\",\n"
+            + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"V0\",\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"V0\",\n"
+            + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"V0\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_NAME\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_0_VALUE\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_NAME\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"Sch1.V1\",\n"
+            + "  \"spannerGraphNodeTable_1_NAME\": \"Sch1.V1\",\n"
+            + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_NAME\": \"Sch1.V1\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_NAME\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_VALUE\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_NAME\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_VALUE\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_2_BASE_TABLE_NAME\": \"Sch2.V2\",\n"
+            + "  \"spannerGraphNodeTable_2_NAME\": \"Sch2.V2\",\n"
+            + "  \"spannerGraphNodeTable_2_KEY_COLUMNS\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_NAME\": \"Sch2.V2\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_NAME\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_0_VALUE\": \"AccountID\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_NAME\": \"Money\",\n"
+            + "  \"spannerGraphNodeTable_2_LABEL_0_PROPERTY_1_VALUE\": \"Money\"\n"
+            + "}";
+
+    Schema schema = new Schema.Parser().parse(avroString);
+
+    AvroSchemaToDdlConverter converter = new AvroSchemaToDdlConverter();
+    Ddl ddl = converter.toDdl(Collections.singleton(schema));
+    assertThat(ddl.propertyGraphs(), hasSize(1));
+
+    String expectedPg =
+        "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "V0 AS V0\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V0 PROPERTIES(AccountID, Money), "
+            + "Sch1.V1 AS Sch1.V1\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch1.V1 PROPERTIES(AccountID, Money), "
+            + "Sch2.V2 AS Sch2.V2\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch2.V2 PROPERTIES(AccountID, Money))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+  }
 }

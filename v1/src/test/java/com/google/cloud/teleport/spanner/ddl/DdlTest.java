@@ -2047,4 +2047,104 @@ public class DdlTest {
             + ")";
     assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
   }
+
+  @Test
+  public void testGraphOnViewWithNamedSchema() {
+    Ddl ddl =
+        Ddl.builder()
+            .createSchema("Sch1")
+            .endNamedSchema()
+            .createSchema("Sch2")
+            .endNamedSchema()
+            .createTable("Sch1.Account")
+            .column("AccountID")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Money")
+            .float64()
+            .endColumn()
+            .column("AnotherMoney")
+            .float64()
+            .endColumn()
+            .primaryKey()
+            .asc("AccountID")
+            .end()
+            .endTable()
+            .createView("V0")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch1.V1")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch2.V2")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V0")
+                    .name("V0")
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V0",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch1.V1")
+                    .name("Sch1.V1")
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch1.V1",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch2.V2")
+                    .name("Sch2.V2")
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch2.V2",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    String expectedDdl =
+        "\nCREATE SCHEMA `Sch1`\n"
+            + "CREATE SCHEMA `Sch2`CREATE TABLE `Sch1`.`Account` (\n"
+            + "\t`AccountID`                             INT64 NOT NULL,\n"
+            + "\t`Money`                                 FLOAT64,\n"
+            + "\t`AnotherMoney`                          FLOAT64,\n"
+            + ") PRIMARY KEY (`AccountID` ASC)\n\n\n"
+            + "CREATE VIEW `Sch1`.`V1` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `Sch2`.`V2` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `V0` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "V0 AS V0\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V0 PROPERTIES(AccountID, Money), Sch1.V1 AS Sch1.V1\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch1.V1 PROPERTIES(AccountID, Money), Sch2.V2 AS Sch2.V2\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch2.V2 PROPERTIES(AccountID, Money))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
 }

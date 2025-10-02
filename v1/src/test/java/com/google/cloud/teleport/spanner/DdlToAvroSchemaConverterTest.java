@@ -2616,4 +2616,108 @@ public class DdlToAvroSchemaConverterTest {
     assertEquals(
         "GraphTableAccount", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_TARGET_NODE_TABLE_NAME"));
   }
+
+  @Test
+  public void propertyGraphOnViewWithNamedSchema() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createSchema("Sch1")
+            .endNamedSchema()
+            .createSchema("Sch2")
+            .endNamedSchema()
+            .createTable("Sch1.Account")
+            .column("AccountID")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Money")
+            .float64()
+            .endColumn()
+            .column("AnotherMoney")
+            .float64()
+            .endColumn()
+            .primaryKey()
+            .asc("AccountID")
+            .end()
+            .endTable()
+            .createView("V0")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch1.V1")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch2.V2")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V0")
+                    .name("V0")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V0",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch1.V1")
+                    .name("Sch1.V1")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch1.V1",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch2.V2")
+                    .name("Sch2.V2")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch2.V2",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(7)); // 1 table, 2 schemas, 3 views, 1 property graph
+    Schema avroSchema =
+        result.stream()
+            .filter(s -> s.getName().equals("aml"))
+            .findFirst()
+            .orElse(null);
+
+    assertThat(avroSchema, notNullValue());
+    assertThat(avroSchema.getName(), equalTo("aml"));
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PROPERTY_GRAPH));
+
+    // Asserting properties related to Node table
+    assertEquals("V0", avroSchema.getProp(SPANNER_NODE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals("Sch1.V1", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_BASE_TABLE_NAME"));
+    assertEquals("Sch2.V2", avroSchema.getProp(SPANNER_NODE_TABLE + "_2_BASE_TABLE_NAME"));
+  }
 }
