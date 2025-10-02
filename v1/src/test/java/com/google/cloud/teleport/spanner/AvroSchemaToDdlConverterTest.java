@@ -1732,6 +1732,7 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerEntity\": \"PropertyGraph\",\n"
             + "  \"googleStorage\": \"CloudSpanner\",\n"
             + "  \"googleFormatVersion\": \"booleans\",\n"
+            + "  \"spannerGraphNodeTable_0_NAME\": \"V_GroupByPerson\",\n"
             + "  \"spannerGraphNodeTable_0_BASE_TABLE_NAME\": \"V_GroupByPerson\",\n"
             + "  \"spannerGraphNodeTable_0_KEY_COLUMNS\": \"loc_id,pid\",\n"
             + "  \"spannerGraphNodeTable_0_LABEL_0_NAME\": \"V_GroupByPerson\",\n"
@@ -1741,6 +1742,7 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_1_VALUE\": \"pid\",\n"
             + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_2_NAME\": \"cnt\",\n"
             + "  \"spannerGraphNodeTable_0_LABEL_0_PROPERTY_2_VALUE\": \"cnt\",\n"
+            + "  \"spannerGraphNodeTable_1_NAME\": \"V_FilteredPerson\",\n"
             + "  \"spannerGraphNodeTable_1_BASE_TABLE_NAME\": \"V_FilteredPerson\",\n"
             + "  \"spannerGraphNodeTable_1_KEY_COLUMNS\": \"loc_id,pid\",\n"
             + "  \"spannerGraphNodeTable_1_LABEL_0_NAME\": \"V_FilteredPerson\",\n"
@@ -1748,6 +1750,7 @@ public class AvroSchemaToDdlConverterTest {
             + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_0_VALUE\": \"loc_id\",\n"
             + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_NAME\": \"pid\",\n"
             + "  \"spannerGraphNodeTable_1_LABEL_0_PROPERTY_1_VALUE\": \"pid\",\n"
+            + "  \"spannerGraphNodeTable_2_NAME\": \"GraphTableAccount\",\n"
             + "  \"spannerGraphNodeTable_2_BASE_TABLE_NAME\": \"GraphTableAccount\",\n"
             + "  \"spannerGraphNodeTable_2_KEY_COLUMNS\": \"loc_id,aid\",\n"
             + "  \"spannerGraphNodeTable_2_LABEL_0_NAME\": \"GraphTableAccount\",\n"
@@ -1780,23 +1783,24 @@ public class AvroSchemaToDdlConverterTest {
     assertThat(ddl.propertyGraphs(), hasSize(1));
 
     String expectedPg =
-        "CREATE PROPERTY GRAPH `aml_view_complex`\n"
-            + "\tNODE TABLES (\n"
-            + "\t\t`V_GroupByPerson` KEY (`loc_id`, `pid`) LABEL `V_GroupByPerson`"
-            + " PROPERTIES (`loc_id`, `pid`, `cnt`),\n"
-            + "\t\t`V_FilteredPerson` KEY (`loc_id`, `pid`) LABEL `V_FilteredPerson`"
-            + " PROPERTIES (`loc_id`, `pid`),\n"
-            + "\t\t`GraphTableAccount` KEY (`loc_id`, `aid`) LABEL `GraphTableAccount`"
-            + " PROPERTIES (`loc_id`, `aid`)\n"
-            + "\t)\n"
-            + "\tEDGE TABLES (\n"
-            + "\t\t`GraphTableAccount` AS `Owns` KEY (`loc_id`, `aid`) SOURCE KEY (`loc_id`,"
-            + " `owner_id`) REFERENCES `V_FilteredPerson` (`loc_id`, `pid`) DESTINATION KEY"
-            + " (`loc_id`, `aid`) REFERENCES `GraphTableAccount` (`loc_id`, `aid`) LABEL `Owns`"
-            + " PROPERTIES (`loc_id`, `aid`, `owner_id`)\n"
-            + "\t)";
-    // TODO(b/348395193) Add full property list to the expected DDL, and fix the converter.
-    // assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
+        "CREATE PROPERTY GRAPH aml_view_complex\n"
+            + "NODE TABLES(\n"
+            + "V_GroupByPerson AS V_GroupByPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_GroupByPerson PROPERTIES(loc_id, pid, cnt), "
+            + "V_FilteredPerson AS V_FilteredPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_FilteredPerson PROPERTIES(loc_id, pid), "
+            + "GraphTableAccount AS GraphTableAccount\n"
+            + " KEY (loc_id, aid)\n"
+            + "LABEL GraphTableAccount PROPERTIES(loc_id, aid))\n"
+            + "EDGE TABLES(\n"
+            + "GraphTableAccount AS Owns\n"
+            + " KEY (loc_id, aid)\n"
+            + "SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id,pid) DESTINATION"
+            + " KEY(loc_id, aid) REFERENCES GraphTableAccount(loc_id,aid)\n"
+            + "LABEL Owns PROPERTIES(loc_id, aid, owner_id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedPg));
   }
 
   @Test
