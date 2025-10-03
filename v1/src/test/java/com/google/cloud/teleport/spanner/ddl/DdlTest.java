@@ -1881,9 +1881,7 @@ public class DdlTest {
                     .keyColumns(ImmutableList.of("part_id", "supplier_id"))
                     .sourceNodeTable(
                         new GraphNodeTableReference(
-                            "PartView",
-                            ImmutableList.of("part_id"),
-                            ImmutableList.of("part_id")))
+                            "PartView", ImmutableList.of("part_id"), ImmutableList.of("part_id")))
                     .targetNodeTable(
                         new GraphNodeTableReference(
                             "SupplierView",
@@ -2001,9 +1999,7 @@ public class DdlTest {
                     .keyColumns(ImmutableList.of("part_id", "supplier_id"))
                     .sourceNodeTable(
                         new GraphNodeTableReference(
-                            "PartView2",
-                            ImmutableList.of("part_id"),
-                            ImmutableList.of("part_id")))
+                            "PartView2", ImmutableList.of("part_id"), ImmutableList.of("part_id")))
                     .targetNodeTable(
                         new GraphNodeTableReference(
                             "SupplierView2",

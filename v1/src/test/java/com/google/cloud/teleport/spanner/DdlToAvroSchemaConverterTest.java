@@ -1562,9 +1562,7 @@ public class DdlToAvroSchemaConverterTest {
                     .keyColumns(ImmutableList.of("part_id", "supplier_id"))
                     .sourceNodeTable(
                         new GraphNodeTableReference(
-                            "PartView",
-                            ImmutableList.of("part_id"),
-                            ImmutableList.of("part_id")))
+                            "PartView", ImmutableList.of("part_id"), ImmutableList.of("part_id")))
                     .targetNodeTable(
                         new GraphNodeTableReference(
                             "SupplierView",
@@ -1595,12 +1593,9 @@ public class DdlToAvroSchemaConverterTest {
 
     assertEquals(
         "PartSuppliersView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_BASE_TABLE_NAME"));
-    assertEquals(
-        "part_id, supplier_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_KEY_COLUMNS"));
-    assertEquals(
-        "PartView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_TABLE_NAME"));
-    assertEquals(
-        "part_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_KEY_COLUMNS"));
+    assertEquals("part_id, supplier_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_KEY_COLUMNS"));
+    assertEquals("PartView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_TABLE_NAME"));
+    assertEquals("part_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_KEY_COLUMNS"));
     assertEquals("part_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_EDGE_KEY_COLUMNS"));
     assertEquals(
         "SupplierView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_TARGET_NODE_TABLE_NAME"));
@@ -2603,14 +2598,14 @@ public class DdlToAvroSchemaConverterTest {
 
     // Asserting properties related to Node table
     assertEquals("V_GroupByPerson", avroSchema.getProp(SPANNER_NODE_TABLE + "_0_BASE_TABLE_NAME"));
-    assertEquals(
-        "V_FilteredPerson", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_BASE_TABLE_NAME"));
+    assertEquals("V_FilteredPerson", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_BASE_TABLE_NAME"));
     assertEquals(
         "GraphTableAccount", avroSchema.getProp(SPANNER_NODE_TABLE + "_2_BASE_TABLE_NAME"));
 
     // Asserting properties related to Edge table
     assertEquals("Owns", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_NAME"));
-    assertEquals("GraphTableAccount", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals(
+        "GraphTableAccount", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_BASE_TABLE_NAME"));
     assertEquals(
         "V_FilteredPerson", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_TABLE_NAME"));
     assertEquals(
@@ -2703,10 +2698,7 @@ public class DdlToAvroSchemaConverterTest {
     Collection<Schema> result = converter.convert(ddl);
     assertThat(result, hasSize(7)); // 1 table, 2 schemas, 3 views, 1 property graph
     Schema avroSchema =
-        result.stream()
-            .filter(s -> s.getName().equals("aml"))
-            .findFirst()
-            .orElse(null);
+        result.stream().filter(s -> s.getName().equals("aml")).findFirst().orElse(null);
 
     assertThat(avroSchema, notNullValue());
     assertThat(avroSchema.getName(), equalTo("aml"));
