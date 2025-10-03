@@ -17,6 +17,7 @@
  */
 package org.apache.beam.sdk.io.localcassandra;
 
+import static com.google.common.truth.Truth.assertThat;
 import static junit.framework.TestCase.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -687,6 +688,14 @@ public class CassandraIOTest implements Serializable {
                 + "');",
             CASSANDRA_KEYSPACE,
             CASSANDRA_TABLE));
+  }
+
+  @Test
+  public void testIdentifierEscaping() {
+    assertThat(ReadFn.delimitIdentifier("key"))
+        .isEqualTo("\"key\"");
+    assertThat(ReadFn.delimitIdentifier("ke\"y"))
+        .isEqualTo("\"ke\"\"y\"");
   }
 
   /** Simple Cassandra entity used in read tests. */
