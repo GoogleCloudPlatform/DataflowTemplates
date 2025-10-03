@@ -303,6 +303,20 @@ public class DdlToAvroSchemaConverter {
       schemas.add(schema);
     }
 
+    for (View view : ddl.views()) {
+      LOG.info("DdlToAvo view {}", view.name());
+      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
+          SchemaBuilder.record(generateAvroSchemaName(view.name())).namespace(this.namespace);
+      recordBuilder.prop(SPANNER_NAME, view.name());
+      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
+      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
+      recordBuilder.prop(SPANNER_VIEW_QUERY, view.query());
+      if (view.security() != null) {
+        recordBuilder.prop(SPANNER_VIEW_SECURITY, view.security().toString());
+      }
+      schemas.add(recordBuilder.fields().endRecord());
+    }
+
     for (PropertyGraph propertyGraph : ddl.propertyGraphs()) {
       LOG.info("DdlToAvro PropertyGraph {}", propertyGraph.name());
       SchemaBuilder.RecordBuilder<Schema> recordBuilder =
@@ -332,20 +346,6 @@ public class DdlToAvroSchemaConverter {
 
       Schema schema = recordBuilder.fields().endRecord();
       schemas.add(schema);
-    }
-
-    for (View view : ddl.views()) {
-      LOG.info("DdlToAvo view {}", view.name());
-      SchemaBuilder.RecordBuilder<Schema> recordBuilder =
-          SchemaBuilder.record(generateAvroSchemaName(view.name())).namespace(this.namespace);
-      recordBuilder.prop(SPANNER_NAME, view.name());
-      recordBuilder.prop(GOOGLE_FORMAT_VERSION, version);
-      recordBuilder.prop(GOOGLE_STORAGE, "CloudSpanner");
-      recordBuilder.prop(SPANNER_VIEW_QUERY, view.query());
-      if (view.security() != null) {
-        recordBuilder.prop(SPANNER_VIEW_SECURITY, view.security().toString());
-      }
-      schemas.add(recordBuilder.fields().endRecord());
     }
 
     for (ChangeStream changeStream : ddl.changeStreams()) {

@@ -202,4 +202,130 @@ public class PropertyGraphTest {
     assertNull(propertyGraph.getNodeTable("nodeTable"));
     assertNull(propertyGraph.getEdgeTable("edgeTable"));
   }
+
+  @Test
+  public void testPropertyGraphOnView() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("GraphTableAccount")
+            .column("loc_id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("aid")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("owner_id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("loc_id")
+            .asc("aid")
+            .end()
+            .endTable()
+            .createTable("GraphTablePerson")
+            .column("loc_id")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("pid")
+            .int64()
+            .notNull()
+            .endColumn()
+            .primaryKey()
+            .asc("loc_id")
+            .asc("pid")
+            .end()
+            .endTable()
+            .createView("V_FilteredPerson")
+            .query("SELECT t.loc_id, t.pid FROM GraphTablePerson AS t WHERE t.loc_id = 1")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("V_GraphTableAccount")
+            .query("SELECT t.loc_id, t.aid, t.owner_id FROM GraphTableAccount AS t")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("V_GroupByPerson")
+            .query(
+                "SELECT t.loc_id, t.pid, COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY"
+                    + " t.loc_id, t.pid ORDER BY cnt DESC")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml_view_complex")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .name("V_FilteredPerson")
+                    .baseTableName("V_FilteredPerson")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "pid"))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .name("V_GraphTableAccount")
+                    .baseTableName("V_GraphTableAccount")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "aid"))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .name("V_GroupByPerson")
+                    .baseTableName("V_GroupByPerson")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "pid"))
+                    .autoBuild())
+            .addEdgeTable(
+                GraphElementTable.builder()
+                    .name("Owns")
+                    .baseTableName("V_GraphTableAccount")
+                    .kind(GraphElementTable.Kind.EDGE)
+                    .keyColumns(ImmutableList.of("loc_id", "aid"))
+                    .sourceNodeTable(
+                        new GraphElementTable.GraphNodeTableReference(
+                            "V_FilteredPerson",
+                            ImmutableList.of("loc_id", "pid"),
+                            ImmutableList.of("loc_id", "owner_id")))
+                    .targetNodeTable(
+                        new GraphElementTable.GraphNodeTableReference(
+                            "V_GraphTableAccount",
+                            ImmutableList.of("loc_id", "aid"),
+                            ImmutableList.of("loc_id", "aid")))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+    String expected =
+        "CREATE TABLE `GraphTableAccount` (\n"
+            + "\t`loc_id`                                INT64 NOT NULL,\n"
+            + "\t`aid`                                   INT64 NOT NULL,\n"
+            + "\t`owner_id`                              INT64,\n"
+            + ") PRIMARY KEY (`loc_id` ASC, `aid` ASC)\n"
+            + "\n\n"
+            + "CREATE TABLE `GraphTablePerson` (\n"
+            + "\t`loc_id`                                INT64 NOT NULL,\n"
+            + "\t`pid`                                   INT64 NOT NULL,\n"
+            + ") PRIMARY KEY (`loc_id` ASC, `pid` ASC)\n"
+            + "\n\n"
+            + "CREATE VIEW `V_FilteredPerson` SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
+            + " GraphTablePerson AS t WHERE t.loc_id = 1\n"
+            + "CREATE VIEW `V_GraphTableAccount` SQL SECURITY INVOKER AS SELECT t.loc_id, t.aid, t.owner_id FROM GraphTableAccount AS t\n"
+            + "CREATE VIEW `V_GroupByPerson` SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid,"
+            + " COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER BY"
+            + " cnt DESC\n"
+            + "CREATE PROPERTY GRAPH aml_view_complex\n"
+            + "NODE TABLES(\n"
+            + "V_FilteredPerson AS V_FilteredPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + ", V_GraphTableAccount AS V_GraphTableAccount\n"
+            + " KEY (loc_id, aid)\n"
+            + ", V_GroupByPerson AS V_GroupByPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + ")\n"
+            + "EDGE TABLES(\n"
+            + "V_GraphTableAccount AS Owns\n"
+            + " KEY (loc_id, aid)\n"
+            + "SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id,pid) DESTINATION"
+            + " KEY(loc_id, aid) REFERENCES V_GraphTableAccount(loc_id,aid)\n"
+            + ")";
+    assertEquals(expected, ddl.prettyPrint());
+  }
 }
