@@ -26,7 +26,7 @@
     <artifactId>bigtable-common</artifactId>
 
     <properties>
-        <bigtable.version>2.15.2</bigtable.version>
+        <bigtable.version>2.15.5</bigtable.version>
         <skipShade>true</skipShade>
     </properties>
 
