@@ -25,10 +25,7 @@ from apache_beam.yaml import main
 from jinja2 import Environment, meta
 
 
-
-JINJA_INCOMING_ARG = '--jinjaVariables'
 JINJA_OUTGOING_ARG = '--jinja_variables'
-
 
 def _get_pipeline_yaml():
     """Reads the pipeline definition from the 'template.yaml' file.
@@ -79,14 +76,15 @@ def run(argv=None):
             `sys.argv` is used. Defaults to None.
 
     The method performs the following steps:
-    1. Determines if jinja argument present or not and branches off that.
-    2. Parses all command-line arguments.
-    3. Filters out standard pipeline arguments, treating the rest as Jinja
+    1. Retrieves the YAML pipeline definition from 'template.yaml'.
+    2. Extracts Jinja variable names from the YAML pipeline.
+    3. Parses command-line arguments.
+    4. Filters out standard pipeline arguments, treating the rest as Jinja
     variables.
-    4. Reads the YAML pipeline definition from 'template.yaml'.
-    5. Constructs the final argument list for `apache_beam.yaml.main.run`.
-    6. Caches Beam YAML provider artifacts.
-    7. Executes the Beam pipeline.
+    5. Reads the YAML pipeline definition from 'template.yaml'.
+    6. Constructs the final argument list for `apache_beam.yaml.main.run`.
+    7. Caches Beam YAML provider artifacts.
+    8. Executes the Beam pipeline.
     """
     yaml_pipeline = _get_pipeline_yaml()
     logging.info("Yaml pipeline: \n%s\n", pprint.pformat(yaml_pipeline, indent=2))
@@ -98,53 +96,34 @@ def run(argv=None):
     _, pipeline_args = parser.parse_known_args(argv)
     logging.info("Original pipeline args: \n%s\n", \
                  pprint.pformat(pipeline_args,indent=2))
-    
-    if all([arg.split('=',1)[0] != JINJA_INCOMING_ARG for arg in pipeline_args]):
-        logging.info("Jinja variable parameter not found. Compiling individual parameters.")
-        # Filter out for only jinja args
-        jinja_pipeline_args = \
-            [arg for arg in pipeline_args \
-             if arg.split('=',1)[0].strip('--') in yaml_pipeline_jinja_variables]
-        logging.info("Jinja pipeline args found: \n%s\n", \
-                     pprint.pformat(jinja_pipeline_args, indent=2))
 
-        # Remove jinja pipeline args from pipeline args
-        pipeline_args = \
-            [arg for arg in pipeline_args \
-             if arg.split('=',1)[0].strip('--') not in yaml_pipeline_jinja_variables]
-        logging.info("Pipeline args without jinja args: \n%s\n", \
-                     pprint.pformat(pipeline_args,indent=2))
+    # Filter out for only jinja args
+    jinja_pipeline_args = \
+        [arg for arg in pipeline_args \
+            if arg.split('=',1)[0].strip('--') in yaml_pipeline_jinja_variables]
+    logging.info("Jinja pipeline args found: \n%s\n", \
+                    pprint.pformat(jinja_pipeline_args, indent=2))
 
-        # Process args as key value pairs for later jinja processing.
-        provided_jinja_vars = {}    
-        for arg in jinja_pipeline_args:
-            arg_key_value = arg.strip('--').split('=')
-            provided_jinja_vars[arg_key_value[0]] = arg_key_value[1]
-        logging.info("Jinja variables provided: \n%s\n", \
-                     pprint.pformat(provided_jinja_vars,indent=2))
+    # Remove jinja pipeline args from pipeline args
+    pipeline_args = \
+        [arg for arg in pipeline_args \
+            if arg.split('=',1)[0].strip('--') not in yaml_pipeline_jinja_variables]
+    logging.info("Pipeline args without jinja args: \n%s\n", \
+                    pprint.pformat(pipeline_args,indent=2))
 
-        # Save jinja vars as pipeline_args command. In theory, there should be
-        # at least one unless there are no manadatory arguments.
-        if provided_jinja_vars:
-            jinja_vars_output =  [f'{JINJA_OUTGOING_ARG}={json.dumps(provided_jinja_vars)}']
-            pipeline_args += jinja_vars_output
+    # Process args as key value pairs for later jinja processing.
+    provided_jinja_vars = {}    
+    for arg in jinja_pipeline_args:
+        arg_key_value = arg.strip('--').split('=')
+        provided_jinja_vars[arg_key_value[0]] = arg_key_value[1]
+    logging.info("Jinja variables provided: \n%s\n", \
+                    pprint.pformat(provided_jinja_vars,indent=2))
 
-    else:
-        raise Exception(
-            f"The argument '{JINJA_INCOMING_ARG}' is not yet supported. ")
-
-        # TODO(#2816):
-        # logging.info(f"{JINJA_INCOMING_ARG} parameter found. Replacing it with the " + \
-        #              "{JINJA_OUTGOING_ARG} argument.")
-        # # Find the jinjaVariables argument
-        # jinja_arg_index = -1
-        # for i, arg in enumerate(pipeline_args):
-        #     if arg.split('=', 1)[0] == JINJA_INCOMING_ARG:
-        #         jinja_arg_index = i
-        #         break
-
-        # # Switch out jinjaVariables for jinja_variables
-        # pipeline_args[jinja_arg_index] = f"{JINJA_OUTGOING_ARG}={pipeline_args[jinja_arg_index].split('=', 1)[1]}"
+    # Save jinja vars as pipeline_args command. In theory, there should be
+    # at least one unless there are no manadatory arguments.
+    if provided_jinja_vars:
+        jinja_vars_output =  [f'{JINJA_OUTGOING_ARG}={json.dumps(provided_jinja_vars)}']
+        pipeline_args += jinja_vars_output
 
     # Save the pipeline yaml template to the appropriate pipeline option
     pipeline_args += [f'--yaml_pipeline={yaml_pipeline}']
