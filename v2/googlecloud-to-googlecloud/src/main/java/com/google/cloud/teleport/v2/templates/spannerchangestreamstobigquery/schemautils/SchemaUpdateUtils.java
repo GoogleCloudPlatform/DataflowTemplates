@@ -113,7 +113,8 @@ public class SchemaUpdateUtils {
       RpcPriority rpcPriority) {
     if (!spannerTableByName.containsKey(mod.getTableName())
         || SchemaUpdateUtils.detectDiffColumnInMod(mod, spannerTableByName)) {
-      if (mod.getValueCaptureType() != ValueCaptureType.NEW_ROW) {
+      if (mod.getValueCaptureType() != ValueCaptureType.NEW_ROW
+          && mod.getValueCaptureType() != ValueCaptureType.NEW_ROW_AND_OLD_VALUES) {
         com.google.cloud.Timestamp spannerCommitTimestamp =
             com.google.cloud.Timestamp.ofTimeSecondsAndNanos(
                 mod.getCommitTimestampSeconds(), mod.getCommitTimestampNanos());
