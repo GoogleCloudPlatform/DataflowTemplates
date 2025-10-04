@@ -35,7 +35,7 @@ import org.json.JSONObject;
  */
 public class SchemaUpdateUtils {
 
-  // Detect if there's a table/column difference between the mod and the stored map.
+  // Detect if a table/column in the mod is not in the stored schema information.
   public static boolean detectDiffColumnInMod(
       Mod mod, Map<String, TrackedSpannerTable> spannerTableByName) {
     TrackedSpannerTable spannerTable = spannerTableByName.get(mod.getTableName());
@@ -43,10 +43,6 @@ public class SchemaUpdateUtils {
         mod.getNewValuesJson() == ""
             ? new JSONObject("{}").keySet()
             : new JSONObject(mod.getNewValuesJson()).keySet();
-    // At this mod's spannerCommitTimestamp, one column is added/dropped.
-    if (spannerTable.getNonPkColumns().size() != keySetOfNewValuesJsonObject.size()) {
-      return true;
-    }
     Set<String> nonPkColumnsNamesSet = spannerTable.getNonPkColumnsNamesSet();
     // Returns true if the stored schema doesn't contain a column in the mod
     return !nonPkColumnsNamesSet.containsAll(keySetOfNewValuesJsonObject);
@@ -104,8 +100,9 @@ public class SchemaUpdateUtils {
     }
   }
 
-  // For NEW_VALUES and OLD_AND_NEW_VALUES, update the stored schema information by looking up
-  // INFORMATION_SCHEMA at the mod's commit timestamp.
+  // For NEW_VALUES and OLD_AND_NEW_VALUES, update the stored schema information
+  // by looking up INFORMATION_SCHEMA at the mod's commit timestamp iff col in mod
+  // is not a subset of the current stored schema information.
   // For NEW_ROW, update the stored schema information by fetching from the mod.
   public static Map<String, TrackedSpannerTable> updateStoredSchemaIfNeeded(
       SpannerAccessor spannerAccessor,
