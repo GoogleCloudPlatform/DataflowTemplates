@@ -255,7 +255,7 @@
     <dependency>
       <groupId>com.github.ben-manes.caffeine</groupId>
       <artifactId>caffeine</artifactId>
-      <version>3.1.8</version>
+      <version>3.2.2</version>
     </dependency>
 
     <!-- Remove once https://github.com/apache/beam/pull/30200 is merged in Beam 2.55 -->
