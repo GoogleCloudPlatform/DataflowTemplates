@@ -50,12 +50,6 @@ template:
       default: 5
       type: integer
 
-    # TODO(#2816):
-    # - name: "jinjaVariables"
-    #   helpText: "Jinja variables to override ALL other parameters."
-    #   required: false
-    #   type: TEXT
-
 
 pipeline:
   transforms:
