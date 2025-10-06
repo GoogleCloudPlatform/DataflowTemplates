@@ -1628,4 +1628,519 @@ public class DdlTest {
     assertEquals("schema", namedSchema.name());
     assertEquals("CREATE SCHEMA `schema`", namedSchema.prettyPrint());
   }
+
+  @Test
+  public void testPropertyGraphOnView() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("GraphTableAccount")
+            .column("loc_id")
+            .int64()
+            .endColumn()
+            .column("aid")
+            .int64()
+            .endColumn()
+            .column("owner_id")
+            .int64()
+            .endColumn()
+            .column("name")
+            .string()
+            .max()
+            .endColumn()
+            .column("account_kind")
+            .int64()
+            .endColumn()
+            .column("ProtoColumn")
+            .bytes()
+            .max()
+            .endColumn()
+            .column("generated_enum_field")
+            .int64()
+            .endColumn()
+            .column("another_enum_field")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("loc_id")
+            .asc("aid")
+            .end()
+            .endTable()
+            .createTable("GraphTablePerson")
+            .column("loc_id")
+            .int64()
+            .endColumn()
+            .column("pid")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("loc_id")
+            .asc("pid")
+            .end()
+            .endTable()
+            .createView("V_FilteredPerson")
+            .query("SELECT t.loc_id, t.pid FROM GraphTablePerson AS t WHERE t.loc_id = 1")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("V_GroupByPerson")
+            .query(
+                "SELECT t.loc_id, t.pid, COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY"
+                    + " t.loc_id, t.pid ORDER BY cnt DESC")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml_view_complex")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V_GroupByPerson")
+                    .name("V_GroupByPerson")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "pid"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V_GroupByPerson",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("pid", "pid"),
+                                    new PropertyDefinition("cnt", "cnt")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V_FilteredPerson")
+                    .name("V_FilteredPerson")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "pid"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V_FilteredPerson",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("pid", "pid")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("GraphTableAccount")
+                    .name("GraphTableAccount")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "aid"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "GraphTableAccount",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("aid", "aid"),
+                                    new PropertyDefinition("owner_id", "owner_id"),
+                                    new PropertyDefinition("name", "name"),
+                                    new PropertyDefinition("account_kind", "account_kind"),
+                                    new PropertyDefinition("ProtoColumn", "ProtoColumn"),
+                                    new PropertyDefinition(
+                                        "generated_enum_field", "generated_enum_field"),
+                                    new PropertyDefinition(
+                                        "another_enum_field", "another_enum_field")))))
+                    .autoBuild())
+            .addEdgeTable(
+                GraphElementTable.builder()
+                    .baseTableName("GraphTableAccount")
+                    .name("Owns")
+                    .kind(GraphElementTable.Kind.EDGE)
+                    .keyColumns(ImmutableList.of("loc_id", "aid"))
+                    .sourceNodeTable(
+                        new GraphNodeTableReference(
+                            "V_FilteredPerson",
+                            ImmutableList.of("loc_id", "pid"),
+                            ImmutableList.of("loc_id", "owner_id")))
+                    .targetNodeTable(
+                        new GraphNodeTableReference(
+                            "GraphTableAccount",
+                            ImmutableList.of("loc_id", "aid"),
+                            ImmutableList.of("loc_id", "aid")))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Owns",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("aid", "aid"),
+                                    new PropertyDefinition("owner_id", "owner_id")))))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    String expectedDdl =
+        "CREATE TABLE `GraphTableAccount` (\n"
+            + "\t`loc_id`                                INT64,\n"
+            + "\t`aid`                                   INT64,\n"
+            + "\t`owner_id`                              INT64,\n"
+            + "\t`name`                                  STRING(MAX),\n"
+            + "\t`account_kind`                          INT64,\n"
+            + "\t`ProtoColumn`                           BYTES(MAX),\n"
+            + "\t`generated_enum_field`                  INT64,\n"
+            + "\t`another_enum_field`                    INT64,\n"
+            + ") PRIMARY KEY (`loc_id` ASC, `aid` ASC)\n"
+            + "CREATE TABLE `GraphTablePerson` (\n"
+            + "\t`loc_id`                                INT64,\n"
+            + "\t`pid`                                   INT64,\n"
+            + ") PRIMARY KEY (`loc_id` ASC, `pid` ASC)\n"
+            + "CREATE VIEW `V_FilteredPerson` SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid FROM"
+            + " GraphTablePerson AS t WHERE t.loc_id = 1\n"
+            + "CREATE VIEW `V_GroupByPerson` SQL SECURITY INVOKER AS SELECT t.loc_id, t.pid,"
+            + " COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY t.loc_id, t.pid ORDER BY cnt"
+            + " DESC\n"
+            + "CREATE PROPERTY GRAPH aml_view_complex\n"
+            + "NODE TABLES(\n"
+            + "V_GroupByPerson AS V_GroupByPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_GroupByPerson PROPERTIES(loc_id, pid, cnt), V_FilteredPerson AS"
+            + " V_FilteredPerson\n"
+            + " KEY (loc_id, pid)\n"
+            + "LABEL V_FilteredPerson PROPERTIES(loc_id, pid), GraphTableAccount AS"
+            + " GraphTableAccount\n"
+            + " KEY (loc_id, aid)\n"
+            + "LABEL GraphTableAccount PROPERTIES(loc_id, aid, owner_id, name, account_kind,"
+            + " ProtoColumn, generated_enum_field, another_enum_field))\n"
+            + "EDGE TABLES(\n"
+            + "GraphTableAccount AS Owns\n"
+            + " KEY (loc_id, aid)\n"
+            + "SOURCE KEY(loc_id, owner_id) REFERENCES V_FilteredPerson(loc_id,pid) DESTINATION"
+            + " KEY(loc_id, aid) REFERENCES GraphTableAccount(loc_id,aid)\n"
+            + "LABEL Owns PROPERTIES(loc_id, aid, owner_id))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void testPropertyGraphOnViewMixedOrder() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Parts")
+            .column("part_id")
+            .int64()
+            .endColumn()
+            .column("part_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("part_id")
+            .end()
+            .endTable()
+            .createView("PartView")
+            .query("SELECT part_id, part_name FROM Parts")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createTable("Suppliers")
+            .column("supplier_id")
+            .int64()
+            .endColumn()
+            .column("supplier_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("supplier_id")
+            .end()
+            .endTable()
+            .createView("SupplierView")
+            .query("SELECT supplier_id, supplier_name FROM Suppliers")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createTable("PartSuppliers")
+            .column("part_id")
+            .int64()
+            .endColumn()
+            .column("supplier_id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("part_id")
+            .asc("supplier_id")
+            .end()
+            .endTable()
+            .createView("PartSuppliersView")
+            .query("SELECT part_id, supplier_id FROM PartSuppliers")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("SupplyChainGraph")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("PartView")
+                    .name("PartView")
+                    .keyColumns(ImmutableList.of("part_id"))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("SupplierView")
+                    .name("SupplierView")
+                    .keyColumns(ImmutableList.of("supplier_id"))
+                    .autoBuild())
+            .addEdgeTable(
+                GraphElementTable.builder()
+                    .baseTableName("PartSuppliersView")
+                    .name("PartSuppliersView")
+                    .kind(GraphElementTable.Kind.EDGE)
+                    .keyColumns(ImmutableList.of("part_id", "supplier_id"))
+                    .sourceNodeTable(
+                        new GraphNodeTableReference(
+                            "PartView", ImmutableList.of("part_id"), ImmutableList.of("part_id")))
+                    .targetNodeTable(
+                        new GraphNodeTableReference(
+                            "SupplierView",
+                            ImmutableList.of("supplier_id"),
+                            ImmutableList.of("supplier_id")))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    String expectedDdl =
+        "CREATE TABLE `Parts` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`part_name`                             STRING(MAX),\n"
+            + ") PRIMARY KEY (`part_id` ASC)\n\n\n"
+            + "CREATE TABLE `PartSuppliers` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + ") PRIMARY KEY (`part_id` ASC, `supplier_id` ASC)\n\n\n"
+            + "CREATE TABLE `Suppliers` (\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + "\t`supplier_name`                         STRING(MAX),\n"
+            + ") PRIMARY KEY (`supplier_id` ASC)\n\n\n"
+            + "CREATE VIEW `PartSuppliersView` SQL SECURITY INVOKER AS SELECT part_id, supplier_id"
+            + " FROM PartSuppliers\n"
+            + "CREATE VIEW `PartView` SQL SECURITY INVOKER AS SELECT part_id, part_name FROM"
+            + " Parts\n"
+            + "CREATE VIEW `SupplierView` SQL SECURITY INVOKER AS SELECT supplier_id, supplier_name"
+            + " FROM Suppliers\n"
+            + "CREATE PROPERTY GRAPH SupplyChainGraph\n"
+            + "NODE TABLES(\n"
+            + "PartView AS PartView\n"
+            + " KEY (part_id)\n"
+            + ", SupplierView AS SupplierView\n"
+            + " KEY (supplier_id)\n"
+            + ")\n"
+            + "EDGE TABLES(\n"
+            + "PartSuppliersView AS PartSuppliersView\n"
+            + " KEY (part_id, supplier_id)\n"
+            + "SOURCE KEY(part_id) REFERENCES PartView(part_id) DESTINATION"
+            + " KEY(supplier_id) REFERENCES SupplierView(supplier_id)\n"
+            + ")";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void testPropertyGraphOnViewTablesFirst() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Parts2")
+            .column("part_id")
+            .int64()
+            .endColumn()
+            .column("part_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("part_id")
+            .end()
+            .endTable()
+            .createTable("Suppliers2")
+            .column("supplier_id")
+            .int64()
+            .endColumn()
+            .column("supplier_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("supplier_id")
+            .end()
+            .endTable()
+            .createTable("PartSuppliers2")
+            .column("part_id")
+            .int64()
+            .endColumn()
+            .column("supplier_id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("part_id")
+            .asc("supplier_id")
+            .end()
+            .endTable()
+            .createView("PartView2")
+            .query("SELECT part_id, part_name FROM Parts2")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("SupplierView2")
+            .query("SELECT supplier_id, supplier_name FROM Suppliers2")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("PartSuppliersView2")
+            .query("SELECT part_id, supplier_id FROM PartSuppliers2")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("SupplyChainGraph2")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("PartView2")
+                    .name("PartView2")
+                    .keyColumns(ImmutableList.of("part_id"))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("SupplierView2")
+                    .name("SupplierView2")
+                    .keyColumns(ImmutableList.of("supplier_id"))
+                    .autoBuild())
+            .addEdgeTable(
+                GraphElementTable.builder()
+                    .baseTableName("PartSuppliersView2")
+                    .name("PartSuppliersView2")
+                    .kind(GraphElementTable.Kind.EDGE)
+                    .keyColumns(ImmutableList.of("part_id", "supplier_id"))
+                    .sourceNodeTable(
+                        new GraphNodeTableReference(
+                            "PartView2", ImmutableList.of("part_id"), ImmutableList.of("part_id")))
+                    .targetNodeTable(
+                        new GraphNodeTableReference(
+                            "SupplierView2",
+                            ImmutableList.of("supplier_id"),
+                            ImmutableList.of("supplier_id")))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    String expectedDdl =
+        "CREATE TABLE `Parts2` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`part_name`                             STRING(MAX),\n"
+            + ") PRIMARY KEY (`part_id` ASC)\n\n\n"
+            + "CREATE TABLE `PartSuppliers2` (\n"
+            + "\t`part_id`                               INT64,\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + ") PRIMARY KEY (`part_id` ASC, `supplier_id` ASC)\n\n\n"
+            + "CREATE TABLE `Suppliers2` (\n"
+            + "\t`supplier_id`                           INT64,\n"
+            + "\t`supplier_name`                         STRING(MAX),\n"
+            + ") PRIMARY KEY (`supplier_id` ASC)\n\n\n"
+            + "CREATE VIEW `PartSuppliersView2` SQL SECURITY INVOKER AS SELECT part_id,"
+            + " supplier_id FROM PartSuppliers2\n"
+            + "CREATE VIEW `PartView2` SQL SECURITY INVOKER AS SELECT part_id, part_name FROM"
+            + " Parts2\n"
+            + "CREATE VIEW `SupplierView2` SQL SECURITY INVOKER AS SELECT supplier_id,"
+            + " supplier_name FROM Suppliers2\n"
+            + "CREATE PROPERTY GRAPH SupplyChainGraph2\n"
+            + "NODE TABLES(\n"
+            + "PartView2 AS PartView2\n"
+            + " KEY (part_id)\n"
+            + ", SupplierView2 AS SupplierView2\n"
+            + " KEY (supplier_id)\n"
+            + ")\n"
+            + "EDGE TABLES(\n"
+            + "PartSuppliersView2 AS PartSuppliersView2\n"
+            + " KEY (part_id, supplier_id)\n"
+            + "SOURCE KEY(part_id) REFERENCES PartView2(part_id) DESTINATION"
+            + " KEY(supplier_id) REFERENCES SupplierView2(supplier_id)\n"
+            + ")";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
+
+  @Test
+  public void testGraphOnViewWithNamedSchema() {
+    Ddl ddl =
+        Ddl.builder()
+            .createSchema("Sch1")
+            .endNamedSchema()
+            .createSchema("Sch2")
+            .endNamedSchema()
+            .createTable("Sch1.Account")
+            .column("AccountID")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Money")
+            .float64()
+            .endColumn()
+            .column("AnotherMoney")
+            .float64()
+            .endColumn()
+            .primaryKey()
+            .asc("AccountID")
+            .end()
+            .endTable()
+            .createView("V0")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch1.V1")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch2.V2")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V0")
+                    .name("V0")
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V0",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch1.V1")
+                    .name("Sch1.V1")
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch1.V1",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch2.V2")
+                    .name("Sch2.V2")
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch2.V2",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    String expectedDdl =
+        "\nCREATE SCHEMA `Sch1`\n"
+            + "CREATE SCHEMA `Sch2`CREATE TABLE `Sch1`.`Account` (\n"
+            + "\t`AccountID`                             INT64 NOT NULL,\n"
+            + "\t`Money`                                 FLOAT64,\n"
+            + "\t`AnotherMoney`                          FLOAT64,\n"
+            + ") PRIMARY KEY (`AccountID` ASC)\n\n\n"
+            + "CREATE VIEW `Sch1`.`V1` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `Sch2`.`V2` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE VIEW `V0` SQL SECURITY INVOKER AS SELECT Account.AccountID, Account.Money FROM Sch1.Account\n"
+            + "CREATE PROPERTY GRAPH aml\n"
+            + "NODE TABLES(\n"
+            + "V0 AS V0\n"
+            + " KEY (AccountID)\n"
+            + "LABEL V0 PROPERTIES(AccountID, Money), Sch1.V1 AS Sch1.V1\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch1.V1 PROPERTIES(AccountID, Money), Sch2.V2 AS Sch2.V2\n"
+            + " KEY (AccountID)\n"
+            + "LABEL Sch2.V2 PROPERTIES(AccountID, Money))";
+    assertThat(ddl.prettyPrint(), equalToCompressingWhiteSpace(expectedDdl));
+  }
 }
