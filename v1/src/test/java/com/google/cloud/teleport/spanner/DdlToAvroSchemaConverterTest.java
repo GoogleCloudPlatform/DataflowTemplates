@@ -1489,6 +1489,123 @@ public class DdlToAvroSchemaConverterTest {
   }
 
   @Test
+  public void propertyGraphOnViewMixedOrder() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("Parts")
+            .column("part_id")
+            .int64()
+            .endColumn()
+            .column("part_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("part_id")
+            .end()
+            .endTable()
+            .createView("PartView")
+            .query("SELECT part_id, part_name FROM Parts")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createTable("Suppliers")
+            .column("supplier_id")
+            .int64()
+            .endColumn()
+            .column("supplier_name")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("supplier_id")
+            .end()
+            .endTable()
+            .createView("SupplierView")
+            .query("SELECT supplier_id, supplier_name FROM Suppliers")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createTable("PartSuppliers")
+            .column("part_id")
+            .int64()
+            .endColumn()
+            .column("supplier_id")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("part_id")
+            .asc("supplier_id")
+            .end()
+            .endTable()
+            .createView("PartSuppliersView")
+            .query("SELECT part_id, supplier_id FROM PartSuppliers")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("SupplyChainGraph")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("PartView")
+                    .name("PartView")
+                    .keyColumns(ImmutableList.of("part_id"))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("SupplierView")
+                    .name("SupplierView")
+                    .keyColumns(ImmutableList.of("supplier_id"))
+                    .autoBuild())
+            .addEdgeTable(
+                GraphElementTable.builder()
+                    .baseTableName("PartSuppliersView")
+                    .name("PartSuppliersView")
+                    .keyColumns(ImmutableList.of("part_id", "supplier_id"))
+                    .sourceNodeTable(
+                        new GraphNodeTableReference(
+                            "PartView", ImmutableList.of("part_id"), ImmutableList.of("part_id")))
+                    .targetNodeTable(
+                        new GraphNodeTableReference(
+                            "SupplierView",
+                            ImmutableList.of("supplier_id"),
+                            ImmutableList.of("supplier_id")))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(7)); // 3 tables, 3 views, 1 property graph
+    Schema avroSchema = null;
+    for (Schema s : result) {
+      if (s.getName().equals("SupplyChainGraph")) {
+        avroSchema = s;
+        break;
+      }
+    }
+    assertThat(avroSchema, notNullValue());
+
+    assertEquals("SupplyChainGraph", avroSchema.getName());
+    assertEquals(SPANNER_ENTITY_PROPERTY_GRAPH, avroSchema.getProp(SPANNER_ENTITY));
+
+    assertEquals("PartView", avroSchema.getProp(SPANNER_NODE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals("part_id", avroSchema.getProp(SPANNER_NODE_TABLE + "_0_KEY_COLUMNS"));
+    assertEquals("SupplierView", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_BASE_TABLE_NAME"));
+    assertEquals("supplier_id", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_KEY_COLUMNS"));
+
+    assertEquals(
+        "PartSuppliersView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals("part_id, supplier_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_KEY_COLUMNS"));
+    assertEquals("PartView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_TABLE_NAME"));
+    assertEquals("part_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_KEY_COLUMNS"));
+    assertEquals("part_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_EDGE_KEY_COLUMNS"));
+    assertEquals(
+        "SupplierView", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_TARGET_NODE_TABLE_NAME"));
+    assertEquals(
+        "supplier_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_TARGET_NODE_KEY_COLUMNS"));
+    assertEquals(
+        "supplier_id", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_TARGET_EDGE_KEY_COLUMNS"));
+  }
+
+  @Test
   public void propertyGraphDynamic() {
     DdlToAvroSchemaConverter converter =
         new DdlToAvroSchemaConverter("spannertest", "booleans", true);
@@ -2322,5 +2439,277 @@ public class DdlToAvroSchemaConverterTest {
         Schema.create(Schema.Type.NULL),
         LogicalTypes.decimal(NumericUtils.PG_MAX_PRECISION, NumericUtils.PG_MAX_SCALE)
             .addToSchema(Schema.create(Schema.Type.BYTES)));
+  }
+
+  @Test
+  public void propertyGraphOnView() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("GraphTablePerson")
+            .column("loc_id")
+            .int64()
+            .endColumn()
+            .column("pid")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("loc_id")
+            .asc("pid")
+            .end()
+            .endTable()
+            .createTable("GraphTableAccount")
+            .column("loc_id")
+            .int64()
+            .endColumn()
+            .column("aid")
+            .int64()
+            .endColumn()
+            .column("owner_id")
+            .int64()
+            .endColumn()
+            .column("name")
+            .string()
+            .max()
+            .endColumn()
+            .column("account_kind")
+            .int64()
+            .endColumn()
+            .column("ProtoColumn")
+            .bytes()
+            .max()
+            .endColumn()
+            .column("generated_enum_field")
+            .int64()
+            .endColumn()
+            .column("another_enum_field")
+            .int64()
+            .endColumn()
+            .primaryKey()
+            .asc("loc_id")
+            .asc("aid")
+            .end()
+            .endTable()
+            .createView("V_GroupByPerson")
+            .query(
+                "SELECT t.loc_id, t.pid, COUNT(*) AS cnt FROM GraphTablePerson AS t GROUP BY"
+                    + " t.loc_id, t.pid ORDER BY cnt DESC")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("V_FilteredPerson")
+            .query("SELECT t.loc_id, t.pid FROM GraphTablePerson AS t WHERE t.loc_id = 1")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml_view_complex")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V_GroupByPerson")
+                    .name("V_GroupByPerson")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "pid"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V_GroupByPerson",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("pid", "pid"),
+                                    new PropertyDefinition("cnt", "cnt")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V_FilteredPerson")
+                    .name("V_FilteredPerson")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "pid"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V_FilteredPerson",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("pid", "pid")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("GraphTableAccount")
+                    .name("GraphTableAccount")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("loc_id", "aid"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "GraphTableAccount",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("aid", "aid"),
+                                    new PropertyDefinition("owner_id", "owner_id"),
+                                    new PropertyDefinition("name", "name"),
+                                    new PropertyDefinition("account_kind", "account_kind"),
+                                    new PropertyDefinition("ProtoColumn", "ProtoColumn"),
+                                    new PropertyDefinition(
+                                        "generated_enum_field", "generated_enum_field"),
+                                    new PropertyDefinition(
+                                        "another_enum_field", "another_enum_field")))))
+                    .autoBuild())
+            .addEdgeTable(
+                GraphElementTable.builder()
+                    .baseTableName("GraphTableAccount")
+                    .name("Owns")
+                    .kind(GraphElementTable.Kind.EDGE)
+                    .keyColumns(ImmutableList.of("loc_id", "aid"))
+                    .sourceNodeTable(
+                        new GraphNodeTableReference(
+                            "V_FilteredPerson",
+                            ImmutableList.of("loc_id", "pid"),
+                            ImmutableList.of("loc_id", "owner_id")))
+                    .targetNodeTable(
+                        new GraphNodeTableReference(
+                            "GraphTableAccount",
+                            ImmutableList.of("loc_id", "aid"),
+                            ImmutableList.of("loc_id", "aid")))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Owns",
+                                ImmutableList.of(
+                                    new PropertyDefinition("loc_id", "loc_id"),
+                                    new PropertyDefinition("aid", "aid"),
+                                    new PropertyDefinition("owner_id", "owner_id")))))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(5));
+    Schema avroSchema =
+        result.stream()
+            .filter(s -> s.getName().equals("aml_view_complex"))
+            .findFirst()
+            .orElse(null);
+
+    assertThat(avroSchema, notNullValue());
+    assertThat(avroSchema.getName(), equalTo("aml_view_complex"));
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PROPERTY_GRAPH));
+
+    // Asserting properties related to Node table
+    assertEquals("V_GroupByPerson", avroSchema.getProp(SPANNER_NODE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals("V_FilteredPerson", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_BASE_TABLE_NAME"));
+    assertEquals(
+        "GraphTableAccount", avroSchema.getProp(SPANNER_NODE_TABLE + "_2_BASE_TABLE_NAME"));
+
+    // Asserting properties related to Edge table
+    assertEquals("Owns", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_NAME"));
+    assertEquals(
+        "GraphTableAccount", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals(
+        "V_FilteredPerson", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_SOURCE_NODE_TABLE_NAME"));
+    assertEquals(
+        "GraphTableAccount", avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_TARGET_NODE_TABLE_NAME"));
+  }
+
+  @Test
+  public void propertyGraphOnViewWithNamedSchema() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+    Ddl ddl =
+        Ddl.builder()
+            .createSchema("Sch1")
+            .endNamedSchema()
+            .createSchema("Sch2")
+            .endNamedSchema()
+            .createTable("Sch1.Account")
+            .column("AccountID")
+            .int64()
+            .notNull()
+            .endColumn()
+            .column("Money")
+            .float64()
+            .endColumn()
+            .column("AnotherMoney")
+            .float64()
+            .endColumn()
+            .primaryKey()
+            .asc("AccountID")
+            .end()
+            .endTable()
+            .createView("V0")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch1.V1")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createView("Sch2.V2")
+            .query("SELECT Account.AccountID, Account.Money FROM Sch1.Account")
+            .security(View.SqlSecurity.INVOKER)
+            .endView()
+            .createPropertyGraph("aml")
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("V0")
+                    .name("V0")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "V0",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch1.V1")
+                    .name("Sch1.V1")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch1.V1",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .addNodeTable(
+                GraphElementTable.builder()
+                    .baseTableName("Sch2.V2")
+                    .name("Sch2.V2")
+                    .kind(GraphElementTable.Kind.NODE)
+                    .keyColumns(ImmutableList.of("AccountID"))
+                    .labelToPropertyDefinitions(
+                        ImmutableList.of(
+                            new LabelToPropertyDefinitions(
+                                "Sch2.V2",
+                                ImmutableList.of(
+                                    new PropertyDefinition("AccountID", "AccountID"),
+                                    new PropertyDefinition("Money", "Money")))))
+                    .autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(7)); // 1 table, 2 schemas, 3 views, 1 property graph
+    Schema avroSchema =
+        result.stream().filter(s -> s.getName().equals("aml")).findFirst().orElse(null);
+
+    assertThat(avroSchema, notNullValue());
+    assertThat(avroSchema.getName(), equalTo("aml"));
+    assertThat(avroSchema.getNamespace(), equalTo("spannertest"));
+    assertThat(avroSchema.getProp(GOOGLE_FORMAT_VERSION), equalTo("booleans"));
+    assertThat(avroSchema.getProp(GOOGLE_STORAGE), equalTo("CloudSpanner"));
+    assertThat(avroSchema.getProp(SPANNER_ENTITY), equalTo(SPANNER_ENTITY_PROPERTY_GRAPH));
+
+    // Asserting properties related to Node table
+    assertEquals("V0", avroSchema.getProp(SPANNER_NODE_TABLE + "_0_BASE_TABLE_NAME"));
+    assertEquals("Sch1.V1", avroSchema.getProp(SPANNER_NODE_TABLE + "_1_BASE_TABLE_NAME"));
+    assertEquals("Sch2.V2", avroSchema.getProp(SPANNER_NODE_TABLE + "_2_BASE_TABLE_NAME"));
   }
 }
