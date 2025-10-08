@@ -276,4 +276,132 @@ public interface KafkaReadOptions extends PipelineOptions {
 
   void setKafkaReadSaslScramTruststorePasswordSecretId(
       String sourceSaslScramTruststorePasswordSecretId);
+
+  // Performance Optimization Parameters
+
+  @TemplateParameter.Boolean(
+      order = 17,
+      groupName = "Performance",
+      optional = true,
+      description = "Enable Kafka Redistribution",
+      helpText =
+          "Enable redistribution of Kafka messages across more workers to improve parallelism. "
+              + "Recommended when the number of Kafka partitions is less than the number of workers.")
+  @Default.Boolean(false)
+  Boolean getEnableKafkaRedistribution();
+
+  void setEnableKafkaRedistribution(Boolean value);
+
+  @TemplateParameter.Integer(
+      order = 18,
+      groupName = "Performance",
+      parentName = "enableKafkaRedistribution",
+      parentTriggerValues = {"true"},
+      optional = true,
+      description = "Kafka Redistribution Keys",
+      helpText =
+          "Number of keys to use for redistribution. Recommended value is 4 × max_workers or 2 × total vCPUs. "
+              + "Higher values improve parallelism but increase shuffle overhead.")
+  @Default.Integer(0)
+  Integer getKafkaRedistributeNumKeys();
+
+  void setKafkaRedistributeNumKeys(Integer value);
+
+  @TemplateParameter.Boolean(
+      order = 19,
+      groupName = "Performance",
+      parentName = "enableKafkaRedistribution",
+      parentTriggerValues = {"true"},
+      optional = true,
+      description = "Enable Offset Deduplication",
+      helpText =
+          "Enable offset deduplication to minimize shuffle overhead while maintaining exactly-once processing. "
+              + "Recommended for high-throughput scenarios with redistribution enabled.")
+  @Default.Boolean(true)
+  Boolean getEnableOffsetDeduplication();
+
+  void setEnableOffsetDeduplication(Boolean value);
+
+  @TemplateParameter.Boolean(
+      order = 20,
+      groupName = "Performance",
+      optional = true,
+      description = "Allow Duplicate Messages",
+      helpText =
+          "Allow duplicate message processing for at-least-once semantics with better performance. "
+              + "When enabled, provides higher throughput but may process some messages multiple times.")
+  @Default.Boolean(false)
+  Boolean getAllowDuplicates();
+
+  void setAllowDuplicates(Boolean value);
+
+  @TemplateParameter.Integer(
+      order = 21,
+      groupName = "Performance",
+      optional = true,
+      description = "Max Poll Records",
+      helpText =
+          "Maximum number of records returned in a single poll() call. "
+              + "Higher values improve throughput but increase memory usage. "
+              + "Recommended: 500 (balanced), 1000-2000 (high throughput), 100-200 (low latency).")
+  @Default.Integer(500)
+  Integer getMaxPollRecords();
+
+  void setMaxPollRecords(Integer value);
+
+  @TemplateParameter.Integer(
+      order = 22,
+      groupName = "Performance",
+      optional = true,
+      description = "Fetch Min Bytes",
+      helpText =
+          "Minimum amount of data the server should return for a fetch request in bytes. "
+              + "Higher values improve throughput but may increase latency. "
+              + "Recommended: 1024 (balanced), 51200 (high throughput), 1 (low latency).")
+  @Default.Integer(1024)
+  Integer getFetchMinBytes();
+
+  void setFetchMinBytes(Integer value);
+
+  @TemplateParameter.Integer(
+      order = 23,
+      groupName = "Performance",
+      optional = true,
+      description = "Fetch Max Wait Ms",
+      helpText =
+          "Maximum time to wait for fetch.min.bytes of data to accumulate in milliseconds. "
+              + "Lower values reduce latency but may decrease throughput. "
+              + "Recommended: 500 (balanced), 100 (high throughput), 50 (low latency).")
+  @Default.Integer(500)
+  Integer getFetchMaxWaitMs();
+
+  void setFetchMaxWaitMs(Integer value);
+
+  @TemplateParameter.Integer(
+      order = 24,
+      groupName = "Performance",
+      optional = true,
+      description = "Receive Buffer Bytes",
+      helpText =
+          "Size of the TCP receive buffer (SO_RCVBUF) for socket connections in bytes. "
+              + "Larger values can improve throughput for high-bandwidth networks. "
+              + "Use -1 for OS default, or specify size (e.g., 65536 for 64KB).")
+  @Default.Integer(-1)
+  Integer getReceiveBufferBytes();
+
+  void setReceiveBufferBytes(Integer value);
+
+  @TemplateParameter.Integer(
+      order = 25,
+      groupName = "Performance",
+      optional = true,
+      description = "Send Buffer Bytes",
+      helpText =
+          "Size of the TCP send buffer (SO_SNDBUF) for socket connections in bytes. "
+              + "Larger values can improve throughput for high-bandwidth networks. "
+              + "Use -1 for OS default, or specify size (e.g., 131072 for 128KB).")
+  @Default.Integer(-1)
+  Integer getSendBufferBytes();
+
+  void setSendBufferBytes(Integer value);
 }
