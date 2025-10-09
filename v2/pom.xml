@@ -526,6 +526,12 @@
                                                 <exclude>META-INF/maven/**</exclude>
                                             </excludes>
                                         </filter>
+                                        <filter>
+                                            <artifact>*:*</artifact>
+                                            <excludes>
+                                                <exclude>META-INF/maven/com.squareup.okio/**</exclude>
+                                            </excludes>
+                                        </filter>
                                     </filters>
                                     <transformers>
                                         <transformer
