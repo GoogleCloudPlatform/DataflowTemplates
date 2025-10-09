@@ -158,11 +158,14 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
         LaunchConfig.builder(testName, specPath)
             .addParameter(
                 "readBootstrapServerAndTopic",
-                kafkaResourceManager.getBootstrapServers() + ";" + topicName)
+                kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
+                    + ";"
+                    + topicName)
             .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
             .addParameter("inputFormat", "JSON")
             .addParameter("outputDeadletterTable", toTableSpecLegacy(tableId) + "_dlq")
-            .addParameter("kafkaReadAuthenticationMode", "NONE");
+            .addParameter("kafkaReadAuthenticationMode", "NONE")
+            .addParameter("kafkaReadOffset", "earliest");
 
     LaunchInfo info = launchTemplate(paramsAdder.apply(configBuilder));
     assertThatPipeline(info).isRunning();
