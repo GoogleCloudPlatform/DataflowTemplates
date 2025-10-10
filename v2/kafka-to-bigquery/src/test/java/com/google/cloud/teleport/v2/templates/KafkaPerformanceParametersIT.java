@@ -168,13 +168,22 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
     LaunchConfig.Builder finalConfigBuilder = paramsAdder.apply(configBuilder);
     LOG.info("Launching template with configuration builder: {}", finalConfigBuilder);
 
-    LaunchInfo info = launchTemplate(finalConfigBuilder);
-    LOG.info("Template launch completed. LaunchInfo: {}", info);
-    LOG.info("Job ID: {}", info.jobId());
-    LOG.info("Job State: {}", info.state());
-    LOG.info("Create Time: {}", info.createTime());
+    LaunchInfo info = null;
+    try {
+      LOG.info("About to call launchTemplate()...");
+      info = launchTemplate(finalConfigBuilder);
+      LOG.info("Template launch completed successfully. LaunchInfo: {}", info);
+      LOG.info("Job ID: {}", info.jobId());
+      LOG.info("Job State: {}", info.state());
+      LOG.info("Create Time: {}", info.createTime());
+    } catch (Exception e) {
+      LOG.error("Failed to launch template", e);
+      throw e;
+    }
 
+    LOG.info("About to assert pipeline is running...");
     assertThatPipeline(info).isRunning();
+    LOG.info("Pipeline assertion completed - pipeline is running");
 
     // Publish test messages to Kafka after pipeline is running
     publishTestMessages(topicName, 100);
