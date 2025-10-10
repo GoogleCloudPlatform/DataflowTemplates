@@ -158,19 +158,28 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
                 kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", "")
                     + ";"
                     + topicName)
+            .addParameter("messageFormat", "JSON")
+            .addParameter("writeMode", "SINGLE_TABLE_NAME")
             .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
-            .addParameter("inputFormat", "JSON")
             .addParameter("outputDeadletterTable", toTableSpecLegacy(tableId) + "_dlq")
             .addParameter("kafkaReadAuthenticationMode", "NONE")
             .addParameter("kafkaReadOffset", "earliest");
 
-    LaunchInfo info = launchTemplate(paramsAdder.apply(configBuilder));
+    LaunchConfig.Builder finalConfigBuilder = paramsAdder.apply(configBuilder);
+    LOG.info("Launching template with configuration builder: {}", finalConfigBuilder);
+
+    LaunchInfo info = launchTemplate(finalConfigBuilder);
+    LOG.info("Template launch completed. LaunchInfo: {}", info);
+    LOG.info("Job ID: {}", info.jobId());
+    LOG.info("Job State: {}", info.state());
+    LOG.info("Create Time: {}", info.createTime());
+
     assertThatPipeline(info).isRunning();
 
     // Publish test messages to Kafka after pipeline is running
     publishTestMessages(topicName, 100);
 
-    // Wait for messages to be processed
+    // Wait for messages to be processed with proper timeout
     Result result =
         pipelineOperator()
             .waitForConditionsAndFinish(
@@ -184,6 +193,9 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
     // Verify that messages were processed
     TableResult tableResult = bigQueryClient.readTable(tableId);
     assertThatBigQueryRecords(tableResult).hasRecordsUnordered(List.of());
+
+    LOG.info(
+        "Test completed successfully. Pipeline processed {} messages.", tableResult.getTotalRows());
   }
 
   private void publishTestMessages(String topicName, int messageCount) throws IOException {
