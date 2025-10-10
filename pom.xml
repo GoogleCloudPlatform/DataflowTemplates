@@ -74,7 +74,7 @@
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
-    <json-smart.version>2.4.9</json-smart.version>
+    <json-smart.version>2.6.0</json-smart.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>2.0.17</slf4j.version>
