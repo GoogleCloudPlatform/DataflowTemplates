@@ -198,7 +198,7 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
       int batchSize = 10;
       for (int batch = 0; batch < messageCount; batch += batchSize) {
         int endIndex = Math.min(batch + batchSize, messageCount);
-        
+
         for (int i = batch; i < endIndex; i++) {
           String message =
               String.format(
@@ -215,7 +215,7 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
               metadata.partition(),
               metadata.offset());
         }
-        
+
         // Add delay between batches to allow pipeline processing time
         if (endIndex < messageCount) {
           try {
