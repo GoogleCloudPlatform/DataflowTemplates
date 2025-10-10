@@ -162,6 +162,7 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
             .addParameter("writeMode", "SINGLE_TABLE_NAME")
             .addParameter("outputTableSpec", toTableSpecLegacy(tableId))
             .addParameter("outputDeadletterTable", toTableSpecLegacy(tableId) + "_dlq")
+            .addParameter("useBigQueryDLQ", "false")
             .addParameter("kafkaReadAuthenticationMode", "NONE")
             .addParameter("kafkaReadOffset", "earliest");
 
