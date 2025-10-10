@@ -150,10 +150,7 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
     String topicName = kafkaResourceManager.createTopic(testName, 3);
     tableId = bigQueryClient.createTable(testName, bqSchema);
 
-    // Publish test messages to Kafka
-    publishTestMessages(topicName, 100);
-
-    // Launch pipeline with performance parameters
+    // Launch pipeline with performance parameters first
     LaunchConfig.Builder configBuilder =
         LaunchConfig.builder(testName, specPath)
             .addParameter(
@@ -169,6 +166,9 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
 
     LaunchInfo info = launchTemplate(paramsAdder.apply(configBuilder));
     assertThatPipeline(info).isRunning();
+
+    // Publish test messages to Kafka after pipeline is running
+    publishTestMessages(topicName, 100);
 
     // Wait for messages to be processed
     Result result =
@@ -194,21 +194,37 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
             "value.serializer", StringSerializer.class.getName());
 
     try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerProps)) {
-      for (int i = 0; i < messageCount; i++) {
-        String message =
-            String.format(
-                "{\"id\": %d, \"message\": \"test message %d\", \"timestamp\": \"%s\"}",
-                i, i, java.time.Instant.now().toString());
+      // Publish messages in batches with delays, similar to working tests
+      int batchSize = 10;
+      for (int batch = 0; batch < messageCount; batch += batchSize) {
+        int endIndex = Math.min(batch + batchSize, messageCount);
+        
+        for (int i = batch; i < endIndex; i++) {
+          String message =
+              String.format(
+                  "{\"id\": %d, \"message\": \"test message %d\", \"timestamp\": \"%s\"}",
+                  i, i, java.time.Instant.now().toString());
 
-        ProducerRecord<String, String> record =
-            new ProducerRecord<>(topicName, "key-" + i, message);
+          ProducerRecord<String, String> record =
+              new ProducerRecord<>(topicName, "key-" + i, message);
 
-        RecordMetadata metadata = producer.send(record).get();
-        LOG.info(
-            "Published message {} to partition {} at offset {}",
-            i,
-            metadata.partition(),
-            metadata.offset());
+          RecordMetadata metadata = producer.send(record).get();
+          LOG.info(
+              "Published message {} to partition {} at offset {}",
+              i,
+              metadata.partition(),
+              metadata.offset());
+        }
+        
+        // Add delay between batches to allow pipeline processing time
+        if (endIndex < messageCount) {
+          try {
+            java.util.concurrent.TimeUnit.SECONDS.sleep(3);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Interrupted while waiting between message batches", e);
+          }
+        }
       }
       producer.flush();
     } catch (Exception e) {
