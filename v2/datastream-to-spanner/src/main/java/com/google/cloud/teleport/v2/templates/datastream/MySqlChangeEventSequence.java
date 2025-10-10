@@ -161,17 +161,23 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     }
     MySqlChangeEventSequence other = (MySqlChangeEventSequence) o;
 
-    int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
-
-    if (timestampComparisonResult != 0) {
-      return timestampComparisonResult;
+    // For backfill events logfile will be null/empty.
+    // These should always be treated as before the CDC events
+    if (this.logFile == null || this.logFile.isBlank()) {
+      return -1;
     }
 
     int logFileComparisonResult = this.logFile.compareTo(other.getLogFile());
+    if (logFileComparisonResult != 0) {
+      return logFileComparisonResult;
+    }
 
-    return (logFileComparisonResult != 0)
-        ? logFileComparisonResult
-        : this.logPosition.compareTo(other.getLogPosition());
+    int logPositionComparisonResult = this.logPosition.compareTo(other.getLogPosition());
+    if (logPositionComparisonResult != 0) {
+      return logPositionComparisonResult;
+    }
+
+    return this.timestamp.compareTo(other.getTimestamp());
   }
 
   @Override
