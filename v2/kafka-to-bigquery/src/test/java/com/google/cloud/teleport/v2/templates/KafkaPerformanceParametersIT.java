@@ -198,7 +198,7 @@ public final class KafkaPerformanceParametersIT extends TemplateTestBase {
                     .setMinRows(50) // Expect at least 50 messages processed
                     .build());
 
-    assertThatResult(result).isLaunchFinished();
+    assertThatResult(result).meetsConditions();
 
     // Verify that messages were processed
     TableResult tableResult = bigQueryClient.readTable(tableId);
