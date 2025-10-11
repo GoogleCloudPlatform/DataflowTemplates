@@ -163,8 +163,11 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
 
     // For backfill events logfile will be null/empty.
     // These should always be treated as before the CDC events
-    if (this.logFile == null || this.logFile.isBlank()) {
+    if (this.logFile == null) {
       return -1;
+    }
+    if (other.getLogFile() == null) {
+      return 1;
     }
 
     int logFileComparisonResult = this.logFile.compareTo(other.getLogFile());
