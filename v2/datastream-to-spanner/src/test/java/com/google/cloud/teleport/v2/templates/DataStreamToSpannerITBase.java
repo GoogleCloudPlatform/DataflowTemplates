@@ -41,6 +41,7 @@ import org.apache.beam.it.common.utils.PipelineUtils;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
+import org.apache.beam.it.gcp.datastream.DatastreamResourceManager.DestinationOutputFormat;
 import org.apache.beam.it.gcp.datastream.JDBCSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
@@ -76,7 +77,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       int numOfTables, String srcDb, String spannerDb, List<String> tableNames, String sessionFile)
       throws IOException {
     String sessionFileContent =
-        sessionFile.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
+        Resources.toString(Resources.getResource(sessionFile), StandardCharsets.UTF_8);
+    sessionFileContent =
+        sessionFileContent.replaceAll("SRC_DATABASE", srcDb).replaceAll("SP_DATABASE", spannerDb);
     for (int i = 1; i <= numOfTables; i++) {
       sessionFileContent = sessionFileContent.replaceAll("TABLE" + i, tableNames.get(i - 1));
     }
@@ -258,26 +261,44 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
       JDBCSource jdbcSource)
       throws IOException {
 
+    LOG.info("Starting Dataflow job launch for identifier: {}", identifierSuffix);
+    LOG.info("GCS Path Prefix: {}", gcsPathPrefix);
+
     if (sessionFileResourceName != null) {
+      LOG.info("Uploading session file from resource: {}", sessionFileResourceName);
       gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/session.json",
           Resources.getResource(sessionFileResourceName).getPath());
+    } else {
+      LOG.info("No session file resource name provided, skipping upload.");
     }
 
     if (sessionResourceContent != null) {
+      LOG.info("Creating session file from content.");
       gcsResourceManager.createArtifact(gcsPathPrefix + "/session.json", sessionResourceContent);
+    } else {
+      LOG.info("No session file content provided, skipping creation.");
     }
 
     if (transformationContextFileResourceName != null) {
+      LOG.info(
+          "Uploading transformation context file from resource: {}",
+          transformationContextFileResourceName);
       gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/transformationContext.json",
           Resources.getResource(transformationContextFileResourceName).getPath());
+    } else {
+      LOG.info("No transformation context file provided, skipping upload.");
     }
 
     if (shardingContextFileResourceName != null) {
+      LOG.info(
+          "Uploading sharding context file from resource: {}", shardingContextFileResourceName);
       gcsResourceManager.uploadArtifact(
           gcsPathPrefix + "/shardingContext.json",
           Resources.getResource(shardingContextFileResourceName).getPath());
+    } else {
+      LOG.info("No sharding context file provided, skipping upload.");
     }
 
     String gcsPrefix =
@@ -314,6 +335,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     params.putAll(ADDITIONAL_JOB_PARAMS);
 
     if (jdbcSource != null) {
+      LOG.info("JDBC source provided. Creating Datastream stream...");
+      LOG.info("Datastream GCS Destination Prefix: {}", gcsPrefix);
+      LOG.info("Datastream JDBC Source: {}", jdbcSource);
       params.put(
           "streamName",
           createDataStream(
@@ -321,11 +345,14 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
                   gcsResourceManager,
                   gcsPrefix,
                   jdbcSource,
-                  DatastreamResourceManager.DestinationOutputFormat.JSON_FILE_FORMAT)
+                  DestinationOutputFormat.AVRO_FILE_FORMAT)
               .getName());
+      LOG.info("Successfully created Datastream stream and added to parameters.");
+    } else {
+      LOG.info("No JDBC source provided, skipping Datastream stream creation.");
     }
 
-    if (sessionFileResourceName != null) {
+    if (sessionFileResourceName != null || sessionResourceContent != null) {
       params.put(
           "sessionFilePath", getGcsPath(gcsPathPrefix + "/session.json", gcsResourceManager));
     }
@@ -343,10 +370,13 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     }
 
     if (customTransformation != null) {
+      LOG.info("Custom transformation provided: {}", customTransformation.classPath());
       params.put(
           "transformationJarPath",
           getGcsPath(gcsPathPrefix + "/" + customTransformation.jarPath(), gcsResourceManager));
       params.put("transformationClassName", customTransformation.classPath());
+    } else {
+      LOG.info("No custom transformation provided.");
     }
 
     // overridden parameters
@@ -364,6 +394,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
 
     // Run
+    LOG.info("Launching Dataflow job with parameters: {}", params);
     LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
 

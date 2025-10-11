@@ -91,7 +91,7 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
             .withToken(astraDbDataSource.astraToken())
             .withSecureConnectBundle(astraDbDataSource.secureConnectBundle())
             .withKeyspace(astraDbDataSource.keySpace())
-            .withTable(sourceTableSchema.tableName())
+            .withTable(delimitIdentifier(sourceTableSchema.tableName()))
             // .withMinNumberOfSplits(minimalTokenRangesCount)
             .withMapperFactoryFn(AstraDbSourceRowMapperFactoryFn.create(astraDbSourceRowMapper))
             .withCoder(SerializableCoder.of(SourceRow.class))
@@ -109,7 +109,7 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
         cassandraDataSourceOss.driverConfigLoader().getInitialConfig().getDefaultProfile();
     final Read<SourceRow> tableReader =
         CassandraIO.<SourceRow>read()
-            .withTable(sourceTableSchema.tableName())
+            .withTable(delimitIdentifier(sourceTableSchema.tableName()))
             .withHosts(
                 cassandraDataSourceOss.contactPoints().stream()
                     .map(p -> p.getHostString())
@@ -220,6 +220,19 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
               profile.getString(TypedDriverOption.AUTH_PROVIDER_PASSWORD.getRawOption()));
     }
     return tableReader;
+  }
+
+  /**
+   * Delimit the Identifiers as per <a
+   * href=https://github.com/ronsavage/SQL/blob/master/sql-99.bnf>sql-99</a>. This is needed to
+   * handle cases where the user might use reserved keywords as column or table names.
+   *
+   * @param identifier
+   * @return
+   */
+  @VisibleForTesting
+  protected static String delimitIdentifier(String identifier) {
+    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
   }
 
   private CassandraSourceRowMapper getSourceRowMapper(
