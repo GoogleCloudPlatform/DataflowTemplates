@@ -81,6 +81,16 @@ public final class MySqlChangeEventSequenceTest {
   }
 
   @Test
+  public void canOrderTwoDumpEvents() {
+    MySqlChangeEventSequence dumpEvent1 = new MySqlChangeEventSequence(eventTimestamp, null, -1L);
+    MySqlChangeEventSequence dumpEvent2 =
+        new MySqlChangeEventSequence(eventTimestamp + 1, null, -1L);
+
+    assertTrue(dumpEvent1.compareTo(dumpEvent2) < 0);
+    assertTrue(dumpEvent2.compareTo(dumpEvent1) > 0);
+  }
+
+  @Test
   public void canOrderDumpEventAndCDCEventAtSameTimestamp() {
     MySqlChangeEventSequence dumpEvent = new MySqlChangeEventSequence(eventTimestamp, "", -1L);
     MySqlChangeEventSequence cdcEvent =

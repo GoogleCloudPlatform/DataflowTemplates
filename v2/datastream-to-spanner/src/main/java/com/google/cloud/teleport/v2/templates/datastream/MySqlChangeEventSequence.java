@@ -24,14 +24,19 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of ChangeEventSequence for MySql database which stores change event sequence
  * information and implements the comparison method.
  */
 class MySqlChangeEventSequence extends ChangeEventSequence {
+
+  private static final Logger LOG = LoggerFactory.getLogger(MySqlChangeEventSequence.class);
 
   // Timestamp for change event
   private final Long timestamp;
@@ -163,6 +168,10 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
 
     // For backfill events logfile will be null/empty.
     // These should always be treated as before the CDC events
+    if (this.logFile == null && other.getLogFile() == null) {
+      //if two bin log events happen to come, order by time of reading
+      return this.timestamp.compareTo(other.getTimestamp());
+    }
     if (this.logFile == null) {
       return -1;
     }
@@ -180,6 +189,8 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
       return logPositionComparisonResult;
     }
 
+    LOG.warn("encountered two events with same log file: {} and position: {}", this.logFile,
+        this.logPosition);
     return this.timestamp.compareTo(other.getTimestamp());
   }
 
