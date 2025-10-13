@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
-import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -169,7 +168,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     // For backfill events logfile will be null/empty.
     // These should always be treated as before the CDC events
     if (this.logFile == null && other.getLogFile() == null) {
-      //if two bin log events happen to come, order by time of reading
+      // if two bin log events happen to come, order by time of reading
       return this.timestamp.compareTo(other.getTimestamp());
     }
     if (this.logFile == null) {
@@ -189,7 +188,9 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
       return logPositionComparisonResult;
     }
 
-    LOG.warn("encountered two events with same log file: {} and position: {}", this.logFile,
+    LOG.warn(
+        "encountered two events with same log file: {} and position: {}",
+        this.logFile,
         this.logPosition);
     return this.timestamp.compareTo(other.getTimestamp());
   }
