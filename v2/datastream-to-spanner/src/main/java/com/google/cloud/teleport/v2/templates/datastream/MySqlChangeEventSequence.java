@@ -189,10 +189,9 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
     }
 
     int timestampComparisonResult = this.timestamp.compareTo(other.getTimestamp());
-    if (timestampComparisonResult != 0) {
+    if (timestampComparisonResult == 0) {
       LOG.warn(
           "encountered two events with same log file: {} and position: {} and timestamp:{}",
-          this.timestamp,
           this.logFile,
           this.logPosition,
           this.timestamp);
