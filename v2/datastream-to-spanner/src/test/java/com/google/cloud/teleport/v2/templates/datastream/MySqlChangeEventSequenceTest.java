@@ -71,6 +71,26 @@ public final class MySqlChangeEventSequenceTest {
   }
 
   @Test
+  public void canOrderDumpEventAndCDCEventWithNullBinlogName() {
+    MySqlChangeEventSequence dumpEvent = new MySqlChangeEventSequence(eventTimestamp, null, -1L);
+    MySqlChangeEventSequence cdcEvent =
+        new MySqlChangeEventSequence(eventTimestamp, "file1.log", 3L);
+
+    assertTrue(dumpEvent.compareTo(cdcEvent) < 0);
+    assertTrue(cdcEvent.compareTo(dumpEvent) > 0);
+  }
+
+  @Test
+  public void canOrderTwoDumpEvents() {
+    MySqlChangeEventSequence dumpEvent1 = new MySqlChangeEventSequence(eventTimestamp, null, -1L);
+    MySqlChangeEventSequence dumpEvent2 =
+        new MySqlChangeEventSequence(eventTimestamp + 1, null, -1L);
+
+    assertTrue(dumpEvent1.compareTo(dumpEvent2) < 0);
+    assertTrue(dumpEvent2.compareTo(dumpEvent1) > 0);
+  }
+
+  @Test
   public void canOrderDumpEventAndCDCEventAtSameTimestamp() {
     MySqlChangeEventSequence dumpEvent = new MySqlChangeEventSequence(eventTimestamp, "", -1L);
     MySqlChangeEventSequence cdcEvent =
