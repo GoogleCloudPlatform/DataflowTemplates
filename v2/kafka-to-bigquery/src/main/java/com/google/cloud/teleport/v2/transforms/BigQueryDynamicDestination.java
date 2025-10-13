@@ -17,17 +17,18 @@ package com.google.cloud.teleport.v2.transforms;
 
 import com.google.api.services.bigquery.model.TableRow;
 import com.google.api.services.bigquery.model.TableSchema;
-import com.google.cloud.teleport.v2.coders.GenericRecordCoder;
 import com.google.cloud.teleport.v2.utils.BigQueryAvroUtils;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.Coder;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.io.gcp.bigquery.DynamicDestinations;
 import org.apache.beam.sdk.io.gcp.bigquery.TableDestination;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.ValueInSingleWindow;
 
 public class BigQueryDynamicDestination
-    extends DynamicDestinations<KV<GenericRecord, TableRow>, GenericRecord> {
+    extends DynamicDestinations<KV<GenericRecord, TableRow>, String> {
 
   private String projectName;
 
@@ -52,15 +53,15 @@ public class BigQueryDynamicDestination
   }
 
   @Override
-  public GenericRecord getDestination(ValueInSingleWindow<KV<GenericRecord, TableRow>> element) {
-    return element.getValue().getKey();
+  public String getDestination(ValueInSingleWindow<KV<GenericRecord, TableRow>> element) {
+    return element.getValue().getKey().getSchema().toString();
   }
 
   @Override
-  public TableDestination getTable(GenericRecord element) {
-    String sanitizedNamespace =
-        BigQueryAvroUtils.sanitizeString(element.getSchema().getNamespace());
-    String sanitizedName = BigQueryAvroUtils.sanitizeString(element.getSchema().getName());
+  public TableDestination getTable(String schemaString) {
+    Schema schema = new Schema.Parser().parse(schemaString);
+    String sanitizedNamespace = BigQueryAvroUtils.sanitizeString(schema.getNamespace());
+    String sanitizedName = BigQueryAvroUtils.sanitizeString(schema.getName());
 
     String bqQualifiedFullName =
         sanitizedNamespace + (sanitizedNamespace.isBlank() ? "" : "-") + sanitizedName;
@@ -72,14 +73,13 @@ public class BigQueryDynamicDestination
   }
 
   @Override
-  public TableSchema getSchema(GenericRecord element) {
-    // TODO: Test if sending null can work here, might be more efficient.
-    return BigQueryAvroUtils.convertAvroSchemaToTableSchema(
-        element.getSchema(), this.persistKafkaKey);
+  public TableSchema getSchema(String schemaString) {
+    Schema schema = new Schema.Parser().parse(schemaString);
+    return BigQueryAvroUtils.convertAvroSchemaToTableSchema(schema, this.persistKafkaKey);
   }
 
   @Override
-  public Coder<GenericRecord> getDestinationCoder() {
-    return GenericRecordCoder.of();
+  public Coder<String> getDestinationCoder() {
+    return StringUtf8Coder.of();
   }
 }
