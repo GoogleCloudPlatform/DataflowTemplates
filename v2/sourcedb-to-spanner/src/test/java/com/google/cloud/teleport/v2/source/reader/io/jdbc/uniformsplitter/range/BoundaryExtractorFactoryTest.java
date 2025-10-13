@@ -268,9 +268,8 @@ public class BoundaryExtractorFactoryTest {
         PartitionColumn.builder().setColumnName("col1").setColumnClass(Timestamp.class).build();
     BoundaryExtractor<Timestamp> extractor = BoundaryExtractorFactory.create(Timestamp.class);
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getBigDecimal(1)).thenReturn(null);
-    // BigInt Unsigned Max in MySQL
-    when(mockResultSet.getBigDecimal(2)).thenReturn(null);
+    when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(null);
+    when(mockResultSet.getTimestamp(eq(2), any())).thenReturn(null);
     Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
 
     assertThat(boundary.start()).isNull();
