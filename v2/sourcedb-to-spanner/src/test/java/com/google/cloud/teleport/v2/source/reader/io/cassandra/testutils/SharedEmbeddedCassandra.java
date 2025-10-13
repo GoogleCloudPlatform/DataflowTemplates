@@ -105,6 +105,9 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
         refCountedEmbeddedCassandra.refIncrementAndGet();
         instances.put(configuration, refCountedEmbeddedCassandra);
       }
+    } catch (Exception e) {
+      Log.error("Exception while starting embedded Cassandra", e);
+      throw e;
     } finally {
       lock.unlock();
     }

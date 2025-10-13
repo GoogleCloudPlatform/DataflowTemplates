@@ -68,6 +68,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class CassandraSourceRowMapperTest {
 
   private static SharedEmbeddedCassandra sharedEmbeddedCassandra = null;
+  private static SharedEmbeddedCassandra sharedEmbeddedCassandraWithSsl = null;
 
   @BeforeClass
   public static void startEmbeddedCassandra() throws IOException {
@@ -81,6 +82,10 @@ public class CassandraSourceRowMapperTest {
     if (sharedEmbeddedCassandra != null) {
       sharedEmbeddedCassandra.close();
       sharedEmbeddedCassandra = null;
+    }
+    if (sharedEmbeddedCassandraWithSsl != null) {
+      sharedEmbeddedCassandraWithSsl.close();
+      sharedEmbeddedCassandraWithSsl = null;
     }
   }
 
@@ -105,6 +110,16 @@ public class CassandraSourceRowMapperTest {
   public void testCassandraSourceRowMapperMap() throws RetriableSchemaDiscoveryException {
     cassandraSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
     astraDbSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  @Test
+  public void testCassandraSourceRowMapperWithSsl()
+      throws IOException, RetriableSchemaDiscoveryException {
+    if (sharedEmbeddedCassandraWithSsl == null) {
+      sharedEmbeddedCassandraWithSsl = new SharedEmbeddedCassandra(TEST_CONFIG, TEST_CQLSH, true);
+    }
+    cassandraSourceRowMapperSslTestHelper(
+        PRIMITIVE_TYPES_TABLE, PRIMITIVE_TYPES_TABLE_AVRO_ROWS, sharedEmbeddedCassandraWithSsl);
   }
 
   private void cassandraSourceRowMapperTestHelper(String tableName, List<String> expectedRows)
@@ -137,23 +152,20 @@ public class CassandraSourceRowMapperTest {
             .setSourceTableSchema(sourceTableSchemaBuilder.build())
             .build();
 
-    ResultSet resultSet;
     String query = "SELECT * FROM " + tableName;
-    com.datastax.oss.driver.api.core.cql.SimpleStatement statement =
-        SimpleStatement.newInstance(query);
-    Cluster cluster =
-        Cluster.builder()
-            .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
-            .withClusterName(dataSource.cassandra().oss().clusterName())
-            .withoutJMXReporting()
-            .withLoadBalancingPolicy(
-                new DCAwareRoundRobinPolicy.Builder()
-                    .withLocalDc(dataSource.cassandra().oss().localDataCenter())
-                    .build())
-            .build();
-    try (CassandraConnector cassandraConnectorWithSchemaReference =
-        new CassandraConnector(dataSource.cassandra(), sourceSchemaReference.cassandra())) {
-      resultSet = cluster.connect(TEST_KEYSPACE).execute(query);
+    Cluster cluster = null;
+    try {
+      cluster =
+          Cluster.builder()
+              .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
+              .withClusterName(dataSource.cassandra().oss().clusterName())
+              .withoutJMXReporting()
+              .withLoadBalancingPolicy(
+                  new DCAwareRoundRobinPolicy.Builder()
+                      .withLocalDc(dataSource.cassandra().oss().localDataCenter())
+                      .build())
+              .build();
+      ResultSet resultSet = cluster.connect(TEST_KEYSPACE).execute(query);
       ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
       cassandraSourceRowMapper.map(resultSet).forEachRemaining(row -> readRowsBuilder.add(row));
       ImmutableList<SourceRow> readRows = readRowsBuilder.build();
@@ -175,6 +187,95 @@ public class CassandraSourceRowMapperTest {
       assertThrows(
           UnsupportedOperationException.class,
           () -> cassandraSourceRowMapper.saveAsync(readRows.get(0)));
+    } finally {
+      if (cluster != null) {
+        cluster.close();
+      }
+    }
+  }
+
+  private void cassandraSourceRowMapperSslTestHelper(
+      String tableName, List<String> expectedRows, SharedEmbeddedCassandra cassandra)
+      throws RetriableSchemaDiscoveryException {
+
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
+    DataSource dataSource =
+        DataSource.ofCassandra(
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setClusterName(cassandra.getInstance().getClusterName())
+                    .setOptionsMap(OptionsMap.driverDefaults())
+                    .setContactPoints(cassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(cassandra.getInstance().getLocalDataCenter())
+                    .build()));
+
+    SourceTableSchema.Builder sourceTableSchemaBuilder =
+        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
+    new CassandraSchemaDiscovery()
+        .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
+        .get(tableName)
+        .forEach(sourceTableSchemaBuilder::addSourceColumnNameToSourceColumnType);
+
+    CassandraSourceRowMapper cassandraSourceRowMapper =
+        CassandraSourceRowMapper.builder()
+            .setSourceSchemaReference(sourceSchemaReference)
+            .setSourceTableSchema(sourceTableSchemaBuilder.build())
+            .build();
+
+    // Configure SSL via system properties for the V3 driver
+    String originalTrustStore = System.getProperty("javax.net.ssl.trustStore");
+    String originalTrustStorePassword = System.getProperty("javax.net.ssl.trustStorePassword");
+    System.setProperty(
+        "javax.net.ssl.trustStore", cassandra.getInstance().getTrustStorePath().toString());
+    System.setProperty("javax.net.ssl.trustStorePassword", "cassandra");
+
+    Cluster cluster = null;
+    try {
+      cluster =
+          Cluster.builder()
+              .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
+              .withClusterName(dataSource.cassandra().oss().clusterName())
+              .withSSL() // This will use the system properties
+              .withoutJMXReporting()
+              .withLoadBalancingPolicy(
+                  new DCAwareRoundRobinPolicy.Builder()
+                      .withLocalDc(dataSource.cassandra().oss().localDataCenter())
+                      .build())
+              .build();
+
+      String query = "SELECT * FROM " + tableName;
+      ResultSet resultSet = cluster.connect(TEST_KEYSPACE).execute(query);
+      ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
+      cassandraSourceRowMapper.map(resultSet).forEachRemaining(row -> readRowsBuilder.add(row));
+      ImmutableList<SourceRow> readRows = readRowsBuilder.build();
+
+      readRows.forEach(r -> assertThat(r.tableName() == tableName));
+      readRows.forEach(r -> assertThat(r.sourceSchemaReference() == sourceSchemaReference));
+      assertThat(
+              readRows.stream()
+                  .map(r -> r.getPayload().toString())
+                  .sorted()
+                  .collect(ImmutableList.toImmutableList()))
+          .isEqualTo(expectedRows.stream().sorted().collect(ImmutableList.toImmutableList()));
+
+    } finally {
+      if (cluster != null) {
+        cluster.close();
+      }
+      // Restore original system properties
+      if (originalTrustStore != null) {
+        System.setProperty("javax.net.ssl.trustStore", originalTrustStore);
+      } else {
+        System.clearProperty("javax.net.ssl.trustStore");
+      }
+      if (originalTrustStorePassword != null) {
+        System.setProperty("javax.net.ssl.trustStorePassword", originalTrustStorePassword);
+      } else {
+        System.clearProperty("javax.net.ssl.trustStorePassword");
+      }
     }
   }
 

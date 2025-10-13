@@ -125,10 +125,53 @@ public class CassandraTableReaderFactoryCassandraIoImpl implements CassandraTabl
             .withCoder(SerializableCoder.of(SourceRow.class))
             .withMapperFactoryFn(
                 CassandraSourceRowMapperFactoryFn.create(cassandraSourceRowMapper));
-    return setNumPartitionsOss(
-        setCredentials(tableReader, profile),
-        cassandraDataSourceOss,
-        sourceTableSchema.tableName());
+    return setSslOptions(
+        setNumPartitionsOss(
+            setCredentials(tableReader, profile),
+            cassandraDataSourceOss,
+            sourceTableSchema.tableName()),
+        profile);
+  }
+
+  @VisibleForTesting
+  protected static CassandraIO.Read<SourceRow> setSslOptions(
+      CassandraIO.Read<SourceRow> tableReader, DriverExecutionProfile profile) {
+    if (enableSSL(profile)) {
+      SerializableSSLOptionsFactory.Builder sslOptionsFactoryBuilder =
+          SerializableSSLOptionsFactory.builder();
+      if (profile.isDefined(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption())) {
+        sslOptionsFactoryBuilder.setTrustStorePath(
+            profile.getString(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption()));
+      }
+      if (profile.isDefined(TypedDriverOption.SSL_TRUSTSTORE_PASSWORD.getRawOption())) {
+        sslOptionsFactoryBuilder.setTrustStorePassword(
+            profile.getString(TypedDriverOption.SSL_TRUSTSTORE_PASSWORD.getRawOption()));
+      }
+      if (profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption())) {
+        sslOptionsFactoryBuilder.setKeyStorePath(
+            profile.getString(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption()));
+      }
+      if (profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PASSWORD.getRawOption())) {
+        sslOptionsFactoryBuilder.setKeyStorePassword(
+            profile.getString(TypedDriverOption.SSL_KEYSTORE_PASSWORD.getRawOption()));
+      }
+      if (profile.isDefined(TypedDriverOption.SSL_CIPHER_SUITES.getRawOption())) {
+        sslOptionsFactoryBuilder.setSslCipherSuites(
+            profile.getStringList(TypedDriverOption.SSL_CIPHER_SUITES.getRawOption()));
+      }
+      SSLOptionsProvider sslOptionsProvider =
+          SSLOptionsProvider.buidler()
+              .setSslOptionsFactory(sslOptionsFactoryBuilder.build())
+              .build();
+      return tableReader.withSsl(sslOptionsProvider);
+    }
+    return tableReader;
+  }
+
+  @VisibleForTesting
+  protected static boolean enableSSL(DriverExecutionProfile profile) {
+    return (profile.isDefined(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption())
+        || profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption()));
   }
 
   @VisibleForTesting
