@@ -56,7 +56,7 @@ class YamlSyntaxTest(unittest.TestCase):
                 # Use placeholder values for Jinja variables for validation purposes
                 context = {var: 'placeholder' for var in undeclared_vars}
                 rendered_yaml = template.render(context)
-                self._logger.debug(f"Rendered YAML for {template_name}:\n{rendered_yaml}...") # Log first 500 chars
+                self._logger.debug(f"Rendered YAML for {template_name}:\n{rendered_yaml}...")
 
                 self._logger.debug(f"Loading YAML into Beam pipeline_spec: {template_name}")
                 pipeline_spec = yaml.load(rendered_yaml, Loader=yaml_transform.SafeLineLoader)
