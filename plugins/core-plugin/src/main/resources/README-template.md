@@ -115,7 +115,7 @@ mvn clean package -PtemplatesStage  \
 -DprojectId="$PROJECT" \
 -DbucketName="$BUCKET_NAME" \
 <#if flex>
--DartifactRegisty="$ARTIFACT_REGISTRY_REPO" \
+-DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 </#if>
 -DstagePrefix="templates" \
 -DtemplateName="${spec.metadata.internalName}" \
@@ -131,7 +131,7 @@ mvn clean package -PtemplatesStage  \
 ```
 
 <#if flex>
-The `-DartifactRegisty` parameter can be specified to set the artifact registry repository of the Flex Templates image.
+The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
 If not provided, it defaults to `gcr.io/<project>`.
 <#else>
 The `-DgcpTempLocation=<temp-bucket-name>` parameter can be specified to set the GCS bucket used by the DataflowRunner to write
