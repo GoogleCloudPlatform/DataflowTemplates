@@ -349,7 +349,18 @@ public class SplunkConverters {
                             // If the event was not overridden in metadata above, use
                             // the received JSON as event.
                             if (event.isEmpty()) {
-                              builder.withEvent(json.toString());
+                              // For Pub/Sub messages, extract the actual data content to prevent
+                              // nesting
+                              if (isPubsubMessage(json)) {
+                                Object dataContent = json.get(PUBSUB_MESSAGE_DATA_FIELD);
+                                if (dataContent instanceof JSONObject) {
+                                  builder.withEvent(((JSONObject) dataContent).toString());
+                                } else {
+                                  builder.withEvent(dataContent.toString());
+                                }
+                              } else {
+                                builder.withEvent(json.toString());
+                              }
                             }
                           }
 
