@@ -42,7 +42,7 @@ import org.apache.beam.sdk.options.Validation;
       "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
     },
     streaming = true,
-    hidden = true)
+    hidden = false)
 public interface KafkaToBigQueryYaml {
   @TemplateParameter.Text(
       order = 1,
