@@ -94,7 +94,7 @@
     <mysql-connector-java.version>8.0.30</mysql-connector-java.version>
     <postgresql.version>42.6.1</postgresql.version>
     <ojdbc8.version>23.9.0.25.07</ojdbc8.version>
-    <mssql-jdbc.version>12.2.0.jre11</mssql-jdbc.version>
+    <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
     <okio.version>1.17.6</okio.version>
     <!-- Socket factory JARs for Cloud SQL -->
