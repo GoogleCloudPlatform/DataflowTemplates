@@ -90,3 +90,8 @@ CREATE TABLE all_data_types (
                                 -- TODO(Add option once the option rolls to prod)
                                 varint_set_col ARRAY<NUMERIC>,
 ) PRIMARY KEY(primary_key);
+
+CREATE TABLE `true` (
+  `KEY` INT64 NOT NULL,
+  `CLUSTERING` STRING(MAX)
+) PRIMARY KEY (`KEY`);

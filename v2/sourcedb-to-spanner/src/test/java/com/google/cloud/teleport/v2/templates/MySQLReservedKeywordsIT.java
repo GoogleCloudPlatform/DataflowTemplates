@@ -24,7 +24,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,17 +39,17 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class PostgreSQLReservedKeywordsIT extends SourceDbToSpannerITBase {
+public class MySQLReservedKeywordsIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
 
-  public static PostgresResourceManager postgresSQLResourceManager;
+  public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
   // Spanner keywords from
   // https://cloud.google.com/spanner/docs/reference/standard-sql/lexical#reserved_keywords
-  // PostgreSQL keywords from
-  // https://github.com/postgres/postgres/blob/REL_15_STABLE/src/backend/parser/gram.y#L17073
-  private static final String POSTGRESQL_DDL_RESOURCE = "ReservedKeywordsIT/postgresql-schema.sql";
+  // MySQL keywords from
+  // https://dev.mysql.com/doc/refman/8.0/en/keywords.html
+  private static final String MYSQL_DDL_RESOURCE = "ReservedKeywordsIT/mysql-schema.sql";
   private static final String SPANNER_DDL_RESOURCE = "ReservedKeywordsIT/spanner-schema.sql";
 
   /**
@@ -57,26 +57,26 @@ public class PostgreSQLReservedKeywordsIT extends SourceDbToSpannerITBase {
    */
   @Before
   public void setUp() {
-    postgresSQLResourceManager = setUpPostgreSQLResourceManager();
+    mySQLResourceManager = setUpMySQLResourceManager();
     spannerResourceManager = setUpSpannerResourceManager();
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, postgresSQLResourceManager);
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
   @Test
   public void reservedKeywordsTest() throws Exception {
-    loadSQLFileResource(postgresSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
+    loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
             null,
             null,
-            postgresSQLResourceManager,
+            mySQLResourceManager,
             spannerResourceManager,
             null,
             null);

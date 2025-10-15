@@ -391,4 +391,12 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
     assertThat(retWithPartitions).isEqualTo(mockAstraDbIORead);
     verify(mockAstraDbIORead, times(1)).withMinNumberOfSplits(testNumberOfSplits);
   }
+
+  @Test
+  public void testIdentifierEscaping() {
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.delimitIdentifier("key"))
+        .isEqualTo("\"key\"");
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.delimitIdentifier("ke\"y"))
+        .isEqualTo("\"ke\"\"y\"");
+  }
 }

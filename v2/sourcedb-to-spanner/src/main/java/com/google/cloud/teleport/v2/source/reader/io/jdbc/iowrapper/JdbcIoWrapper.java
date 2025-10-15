@@ -408,7 +408,7 @@ public final class JdbcIoWrapper implements IoWrapper {
       SourceTableSchema sourceTableSchema) {
     ReadWithPartitions<SourceRow, @UnknownKeyFor @NonNull @Initialized Long> jdbcIO =
         JdbcIO.<SourceRow>readWithPartitions()
-            .withTable(tableConfig.tableName())
+            .withTable(delimitIdentifier(tableConfig.tableName()))
             .withPartitionColumn(tableConfig.partitionColumns().get(0).columnName())
             .withDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .withRowMapper(
@@ -445,7 +445,7 @@ public final class JdbcIoWrapper implements IoWrapper {
 
     ReadWithUniformPartitions.Builder<SourceRow> readWithUniformPartitionsBuilder =
         ReadWithUniformPartitions.<SourceRow>builder()
-            .setTableName(tableConfig.tableName())
+            .setTableName(delimitIdentifier(tableConfig.tableName()))
             .setPartitionColumns(tableConfig.partitionColumns())
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())

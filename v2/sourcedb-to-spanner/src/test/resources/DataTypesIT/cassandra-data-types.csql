@@ -766,3 +766,10 @@ VALUES (
     {'abcd':-9223372036854775808,'efgh':9223372036854775807}, -- varchar_bigint_map_col
     {184467440000000000000:BigIntAsBlob(9223372036854775807), -184467440000000000000:BigintAsBlob(-9223372036854775808)} -- varint_blob_map_col
 );
+
+CREATE TABLE "true" (
+  "KEY" bigint PRIMARY KEY,
+  "CLUSTERING" text
+);
+
+INSERT INTO "true"("KEY", "CLUSTERING") VALUES (1, 'test');

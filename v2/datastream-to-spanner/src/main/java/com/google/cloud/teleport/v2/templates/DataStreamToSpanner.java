@@ -607,17 +607,15 @@ public class DataStreamToSpanner {
       LOG.error("IOException Occurred: DataStreamClient failed initialization.");
       throw new IllegalArgumentException("Unable to initialize DatastreamClient: " + e);
     }
-    // TODO: use getPostgresSourceConfig() instead of an else once SourceConfig.java is updated.
     if (sourceConfig.getMysqlSourceConfig() != null) {
       return DatastreamConstants.MYSQL_SOURCE_TYPE;
     } else if (sourceConfig.getOracleSourceConfig() != null) {
       return DatastreamConstants.ORACLE_SOURCE_TYPE;
-    } else {
+    } else if (sourceConfig.getPostgresqlSourceConfig() != null) {
       return DatastreamConstants.POSTGRES_SOURCE_TYPE;
     }
-    // LOG.error("Source Connection Profile Type Not Supported");
-    // throw new IllegalArgumentException("Unsupported source connection profile type in
-    // Datastream");
+    LOG.error("Source Connection Profile Type Not Supported");
+    throw new IllegalArgumentException("Unsupported source connection profile type in Datastream");
   }
 
   /**
