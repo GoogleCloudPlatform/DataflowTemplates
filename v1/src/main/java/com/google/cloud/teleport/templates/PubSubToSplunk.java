@@ -261,11 +261,28 @@ public class PubSubToSplunk {
             ParDo.of(
                 new DoFn<SplunkWriteError, FailsafeElement<String, String>>() {
 
+                  private Boolean unwrapHecForDeadletter = false;
+
+                  @Setup
+                  public void setup() {
+                    if (options.getUnwrapHecForDeadletter() != null) {
+                      unwrapHecForDeadletter = options.getUnwrapHecForDeadletter().get();
+                    }
+                    LOG.info("unwrapHecForDeadletter set to: {}", unwrapHecForDeadletter);
+                  }
+
                   @ProcessElement
                   public void processElement(ProcessContext context) {
                     SplunkWriteError error = context.element();
+                    
+                    // Extract original payload if unwrap is enabled
+                    String payload = error.payload();
+                    if (unwrapHecForDeadletter) {
+                      payload = extractOriginalPayloadFromHec(payload);
+                    }
+                    
                     FailsafeElement<String, String> failsafeElement =
-                        FailsafeElement.of(error.payload(), error.payload());
+                        FailsafeElement.of(payload, payload);
 
                     if (error.statusMessage() != null) {
                       failsafeElement.setErrorMessage(error.statusMessage());
@@ -304,7 +321,21 @@ public class PubSubToSplunk {
       extends SplunkOptions,
           PubsubReadSubscriptionOptions,
           PubsubWriteDeadletterTopicOptions,
-          JavascriptTextTransformerOptions {}
+          JavascriptTextTransformerOptions {
+
+             @TemplateParameter.Boolean(
+                  order = 4,
+                  optional = true,
+                  description = "Unwrap Splunk HEC format from deadletter messages.",
+                  helpText =
+                      "When enabled, if a message fails to write to Splunk and is sent to the deadletter "
+                      + "queue, the original payload will be extracted from the Splunk HEC format before "
+                      + "writing to the deadletter topic. This prevents event nesting when messages are "
+                      + "replayed. Default: `false`.")
+              ValueProvider<Boolean> getUnwrapHecForDeadletter();
+
+              void setUnwrapHecForDeadletter(ValueProvider<Boolean> unwrapHecForDeadletter);
+          }
 
   /**
    * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
@@ -411,4 +442,46 @@ public class PubSubToSplunk {
 
     return attributesJson;
   }
+
+  /**
+   * Extracts the original payload from a Splunk HEC-formatted JSON string.
+   * 
+   * <p>When a SplunkEvent fails to write to Splunk, it's stored in HEC format like:
+   * {"event": "original payload", "time": ..., "host": ..., etc.}
+   * 
+   * <p>This method extracts just the "event" field to prevent nesting when replaying
+   * messages from the deadletter queue.
+   *
+   * @param hecPayload The HEC-formatted JSON string
+   * @return The original event payload, or the input if extraction fails
+   */
+  @VisibleForTesting
+  protected static String extractOriginalPayloadFromHec(String hecPayload) {
+    try {
+      JSONObject json = new JSONObject(hecPayload);
+      
+      // Check if this looks like HEC format (has "event" field)
+      if (json.has("event")) {
+        Object eventObj = json.get("event");
+        
+        // The event field could be a JSON object/array or a string
+        if (eventObj instanceof String) {
+          return (String) eventObj;
+        } else {
+          // If it's a JSONObject or JSONArray, return its string representation
+          return eventObj.toString();
+        }
+      }
+    } catch (JSONException e) {
+      // If parsing fails, log and return the original
+      LOG.debug(
+          "Failed to parse payload as HEC JSON, returning as-is. Error: {}", 
+          e.getMessage());
+    }
+    
+    // If no "event" field found or parsing failed, return original
+    return hecPayload;
+  }
+
 }
+
