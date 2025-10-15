@@ -1,0 +1,48 @@
+{
+    "SessionName": "NewSession",
+    "EditorName": "",
+    "DatabaseType": "cassandra",
+    "DatabaseName": "SP_DATABASE",
+    "Dialect": "google_standard_sql",
+    "Notes": null,
+    "Tags": null,
+    "SpSchema": {
+        "t1": {
+            "Name": "true",
+            "ColIds": ["c1", "c2", "c3"],
+            "ShardIdColumn": "",
+            "ColDefs": {
+                "c1": {"Name": "COLUMN", "T": {"Name": "INT64"}, "NotNull": true, "Id": "c1"},
+                "c2": {"Name": "TABLE", "T": {"Name": "STRING", "Len": "MAX"}, "Id": "c2"},
+                "c3": {"Name": "WITH", "T": {"Name": "STRING", "Len": "MAX"}, "Id": "c3"}
+            },
+            "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+            "Id": "t1"
+        }
+    },
+    "SyntheticPKeys": {},
+    "SrcSchema": {
+        "t1": {
+            "Name": "true",
+            "Schema": "SRC_DATABASE",
+            "ColIds": ["c1", "c2", "c3"],
+            "ColDefs": {
+                "c1": {"Name": "COLUMN", "T": {"Name": "bigint"}, "NotNull": true, "Id": "c1"},
+                "c2": {"Name": "TABLE", "T": {"Name": "text"}, "Id": "c2"},
+                "c3": {"Name": "WITH", "T": {"Name": "text"}, "Id": "c3"}
+            },
+            "PrimaryKeys": [{"ColId": "c1", "Desc": false, "Order": 1}],
+            "Id": "t1"
+        }
+    },
+    "SchemaIssues": {},
+    "Location": {},
+    "TimezoneOffset": "+00:00",
+    "SpDialect": "google_standard_sql",
+    "UniquePKey": {},
+    "Rules": [],
+    "IsSharded": false,
+    "SpRegion": "",
+    "ResourceValidation": false,
+    "UI": false
+}

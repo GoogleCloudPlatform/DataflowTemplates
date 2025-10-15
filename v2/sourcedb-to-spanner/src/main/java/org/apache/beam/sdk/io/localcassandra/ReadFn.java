@@ -22,6 +22,7 @@ import com.datastax.driver.core.PreparedStatement;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Session;
 import com.datastax.driver.core.Token;
+import com.google.common.annotations.VisibleForTesting;
 import java.math.BigInteger;
 import java.util.Collections;
 import java.util.Iterator;
@@ -51,6 +52,8 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
           session.getCluster().getMetadata().getKeyspace(read.keyspace().get())
               .getTable(read.table().get()).getPartitionKey().stream()
               .map(ColumnMetadata::getName)
+              // Fix for https://github.com/apache/beam/issues/36272.
+              .map(ReadFn::delimitIdentifier)
               .collect(Collectors.joining(","));
 
       String query = generateRangeQuery(read, partitionKey, read.ringRanges() != null);
@@ -92,6 +95,19 @@ class ReadFn<T> extends DoFn<Read<T>, T> {
       LOG.error("error", ex);
       throw ex;
     }
+  }
+
+  /**
+   * Delimit the Identifiers as per <a
+   * href=https://github.com/ronsavage/SQL/blob/master/sql-99.bnf>sql-99</a>. This is needed to
+   * handle cases where the user might use reserved keywords as column or table names.
+   *
+   * @param identifier
+   * @return
+   */
+  @VisibleForTesting
+  protected static String delimitIdentifier(String identifier) {
+    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
   }
 
   private static <T> void outputResults(
