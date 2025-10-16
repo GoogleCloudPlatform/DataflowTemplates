@@ -24,9 +24,13 @@ on:
 jobs:
   label-dependabot-pr:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    # This job should only run for PRs created by Dependabot
     if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
-      - uses: actions/labeler@634933edcd8ababfe52f92936142cc22ac488b1b # v6.0.1
+      - name: Add extra labels to Dependabot PRs
+        uses: actions-ecosystem/action-add-labels@v1.1.0
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
-          add-labels: "ignore-for-release"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          labels: ignore-for-release
