@@ -26,7 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-    # This job should only run for PRs created by Dependabot
     if: ${{ github.actor == 'dependabot[bot]' }}
     steps:
       - name: Add extra labels to Dependabot PRs
