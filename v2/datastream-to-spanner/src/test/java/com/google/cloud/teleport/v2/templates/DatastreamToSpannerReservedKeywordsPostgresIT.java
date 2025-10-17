@@ -74,6 +74,8 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
   private GcsResourceManager gcsResourceManager;
   private PubsubResourceManager pubsubResourceManager;
   private DatastreamResourceManager datastreamResourceManager;
+  private String publicationName;
+  private String replicationSlotName;
 
   @Before
   public void setUp() throws IOException {
@@ -104,12 +106,40 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
   @After
   public void cleanUp() {
     LOG.info("Cleaning up resources...");
+
+    // It is important to clean up Datastream before trying to drop the replication slot.
+    ResourceManagerUtils.cleanResources(datastreamResourceManager);
+
+    if (postgresResourceManager != null) {
+      if (replicationSlotName != null) {
+        try {
+          // Check if the slot exists before trying to drop it.
+          // This query will return a row if the slot exists.
+          List<Map<String, Object>> rows =
+              postgresResourceManager.runSQLQuery(
+                  "SELECT slot_name FROM pg_replication_slots WHERE slot_name = '"
+                      + replicationSlotName
+                      + "'");
+          if (!rows.isEmpty()) {
+            LOG.info("Dropping replication slot {}", replicationSlotName);
+            postgresResourceManager.runSQLQuery(
+                "SELECT pg_drop_replication_slot('" + replicationSlotName + "')");
+          }
+        } catch (Exception e) {
+          LOG.warn("Failed to drop replication slot {}: {}", replicationSlotName, e.getMessage());
+        }
+      }
+      if (publicationName != null) {
+        try {
+          postgresResourceManager.runSQLUpdate("DROP PUBLICATION IF EXISTS " + publicationName);
+        } catch (Exception e) {
+          LOG.warn("Failed to drop publication {}: {}", publicationName, e.getMessage());
+        }
+      }
+    }
+
     ResourceManagerUtils.cleanResources(
-        postgresResourceManager,
-        spannerResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager,
-        datastreamResourceManager);
+        postgresResourceManager, spannerResourceManager, gcsResourceManager, pubsubResourceManager);
   }
 
   @Test
@@ -135,12 +165,14 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
     }
 
     // Construct the final unique names
-    String publicationName = (pubPrefix + truncatedTestName + "_" + randomSuffix).toLowerCase();
-    String replicationSlotName =
-        (slotPrefix + truncatedTestName + "_" + randomSuffix).toLowerCase();
+    this.publicationName = (pubPrefix + truncatedTestName + "_" + randomSuffix).toLowerCase();
+    this.replicationSlotName = (slotPrefix + truncatedTestName + "_" + randomSuffix).toLowerCase();
 
     executeSqlScript(
-        postgresResourceManager, POSTGRESQL_DDL_RESOURCE, publicationName, replicationSlotName);
+        postgresResourceManager,
+        POSTGRESQL_DDL_RESOURCE,
+        this.publicationName,
+        this.replicationSlotName);
 
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
@@ -159,8 +191,8 @@ public class DatastreamToSpannerReservedKeywordsPostgresIT extends DataStreamToS
                 postgresResourceManager.getPassword(),
                 postgresResourceManager.getPort(),
                 postgresResourceManager.getDatabaseName(),
-                replicationSlotName,
-                publicationName)
+                this.replicationSlotName,
+                this.publicationName)
             .setAllowedTables(Map.of("public", List.of("true")))
             .build();
 
