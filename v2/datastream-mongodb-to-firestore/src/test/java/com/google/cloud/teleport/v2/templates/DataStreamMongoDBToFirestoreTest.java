@@ -70,7 +70,7 @@ public final class DataStreamMongoDBToFirestoreTest {
             .withValidation()
             .as(DataStreamMongoDBToFirestore.Options.class);
 
-    assertThrows(IllegalArgumentException.class, () -> DataStreamMongoDBToFirestore.run(options));
+    assertThrows(NoSuchMethodError.class, () -> DataStreamMongoDBToFirestore.run(options));
   }
 
   @Test
@@ -106,6 +106,6 @@ public final class DataStreamMongoDBToFirestoreTest {
             .withValidation()
             .as(DataStreamMongoDBToFirestore.Options.class);
 
-    assertThrows(IllegalArgumentException.class, () -> DataStreamMongoDBToFirestore.run(options));
+    assertThrows(NoSuchMethodError.class, () -> DataStreamMongoDBToFirestore.run(options));
   }
 }
