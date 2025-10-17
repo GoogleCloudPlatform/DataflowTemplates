@@ -266,12 +266,13 @@ public class PubSubToSplunk {
             ParDo.of(
                 new DoFn<SplunkWriteError, FailsafeElement<String, String>>() {
 
-                  private Boolean unwrapHecForDeadletter = false;
+                  private boolean unwrapHecForDeadletter = false;
 
                   @Setup
                   public void setup() {
                     if (unwrapHecProvider != null) {
-                      unwrapHecForDeadletter = unwrapHecProvider.get();
+                      unwrapHecForDeadletter =
+                          MoreObjects.firstNonNull(unwrapHecProvider.get(), false);
                     }
                     LOG.info("unwrapHecForDeadletter set to: {}", unwrapHecForDeadletter);
                   }
@@ -282,7 +283,7 @@ public class PubSubToSplunk {
 
                     // Extract original payload if unwrap is enabled
                     String payload = error.payload();
-                    if (unwrapHecForDeadletter != null && unwrapHecForDeadletter) {
+                    if (unwrapHecForDeadletter) {
                       payload = extractOriginalPayloadFromHec(payload);
                     }
 
