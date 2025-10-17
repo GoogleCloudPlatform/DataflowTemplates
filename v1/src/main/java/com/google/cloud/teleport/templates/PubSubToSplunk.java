@@ -18,6 +18,7 @@ package com.google.cloud.teleport.templates;
 import com.google.cloud.teleport.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.splunk.SplunkEvent;
 import com.google.cloud.teleport.splunk.SplunkEventCoder;
 import com.google.cloud.teleport.splunk.SplunkIO;
@@ -60,6 +61,8 @@ import org.apache.beam.sdk.values.PCollectionTuple;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.MoreObjects;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.collect.ImmutableList;
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -254,6 +257,8 @@ public class PubSubToSplunk {
                     .withEnableGzipHttpCompression(options.getEnableGzipHttpCompression())
                     .build());
 
+    final ValueProvider<Boolean> unwrapHecProvider = options.getUnwrapHecForDeadletter();
+
     // 5a) Wrap write failures into a FailsafeElement.
     PCollection<FailsafeElement<String, String>> wrappedSplunkWriteErrors =
         writeErrors.apply(
@@ -261,11 +266,29 @@ public class PubSubToSplunk {
             ParDo.of(
                 new DoFn<SplunkWriteError, FailsafeElement<String, String>>() {
 
+                  private boolean unwrapHecForDeadletter = false;
+
+                  @Setup
+                  public void setup() {
+                    if (unwrapHecProvider != null) {
+                      unwrapHecForDeadletter =
+                          MoreObjects.firstNonNull(unwrapHecProvider.get(), false);
+                    }
+                    LOG.info("unwrapHecForDeadletter set to: {}", unwrapHecForDeadletter);
+                  }
+
                   @ProcessElement
                   public void processElement(ProcessContext context) {
                     SplunkWriteError error = context.element();
+
+                    // Extract original payload if unwrap is enabled
+                    String payload = error.payload();
+                    if (unwrapHecForDeadletter) {
+                      payload = extractOriginalPayloadFromHec(payload);
+                    }
+
                     FailsafeElement<String, String> failsafeElement =
-                        FailsafeElement.of(error.payload(), error.payload());
+                        FailsafeElement.of(payload, payload);
 
                     if (error.statusMessage() != null) {
                       failsafeElement.setErrorMessage(error.statusMessage());
@@ -304,7 +327,20 @@ public class PubSubToSplunk {
       extends SplunkOptions,
           PubsubReadSubscriptionOptions,
           PubsubWriteDeadletterTopicOptions,
-          JavascriptTextTransformerOptions {}
+          JavascriptTextTransformerOptions {
+
+    @TemplateParameter.Boolean(
+        optional = true,
+        description = "Unwrap Splunk HEC format from deadletter messages.",
+        helpText =
+            "When enabled, if a message fails to write to Splunk and is sent to the deadletter "
+                + "queue, the original payload will be extracted from the Splunk HEC format before "
+                + "writing to the deadletter topic. This prevents event nesting when messages are "
+                + "replayed. Default: `false`.")
+    ValueProvider<Boolean> getUnwrapHecForDeadletter();
+
+    void setUnwrapHecForDeadletter(ValueProvider<Boolean> unwrapHecForDeadletter);
+  }
 
   /**
    * A {@link PTransform} that reads messages from a Pub/Sub subscription, increments a counter and
@@ -410,5 +446,44 @@ public class PubSubToSplunk {
     }
 
     return attributesJson;
+  }
+
+  /**
+   * Extracts the original payload from a Splunk HEC-formatted JSON string.
+   *
+   * <p>When a SplunkEvent fails to write to Splunk, it's stored in HEC format like: {"event":
+   * "original payload", "time": ..., "host": ..., etc.}
+   *
+   * <p>This method extracts just the "event" field to prevent nesting when replaying messages from
+   * the deadletter queue.
+   *
+   * @param hecPayload The HEC-formatted JSON string
+   * @return The original event payload, or the input if extraction fails
+   */
+  @VisibleForTesting
+  protected static String extractOriginalPayloadFromHec(String hecPayload) {
+    try {
+      JSONObject json = new JSONObject(hecPayload);
+
+      // Check if this looks like HEC format (has "event" field)
+      if (json.has("event")) {
+        Object eventObj = json.get("event");
+
+        // The event field could be a JSON object/array or a string
+        if (eventObj instanceof String) {
+          return (String) eventObj;
+        } else {
+          // If it's a JSONObject or JSONArray, return its string
+          // representation
+          return eventObj.toString();
+        }
+      }
+    } catch (JSONException e) {
+      // If parsing fails, log and return the original
+      LOG.debug("Failed to parse payload as HEC JSON, returning as-is. Error: {}", e.getMessage());
+    }
+
+    // If no "event" field found or parsing failed, return original
+    return hecPayload;
   }
 }
