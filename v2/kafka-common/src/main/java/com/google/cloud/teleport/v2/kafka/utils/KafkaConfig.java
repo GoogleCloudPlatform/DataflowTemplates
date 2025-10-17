@@ -24,6 +24,7 @@ import io.confluent.kafka.schemaregistry.client.SchemaRegistryClientConfig;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 
@@ -51,6 +52,9 @@ public class KafkaConfig {
             options.getKafkaReadSaslScramTruststorePasswordSecretId());
 
     properties.putAll(KafkaCommonUtils.configureKafkaOffsetCommit(options));
+
+    // Add performance optimization configurations
+    properties.putAll(configurePerformanceOptimizations(options));
 
     return properties;
   }
@@ -194,6 +198,45 @@ public class KafkaConfig {
     } else {
       throw new RuntimeException("Authentication method not supported: " + authMode);
     }
+
+    return properties;
+  }
+
+  /**
+   * Configures performance optimization properties for Kafka consumer based on the provided
+   * options.
+   *
+   * @param options The KafkaReadOptions containing performance optimization parameters
+   * @return A Map containing the performance optimization configurations
+   */
+  private static Map<String, Object> configurePerformanceOptimizations(KafkaReadOptions options) {
+    Map<String, Object> properties = new HashMap<>();
+
+    // Configure max poll records if specified
+    if (options.getMaxPollRecords() != null && options.getMaxPollRecords() > 0) {
+      properties.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, options.getMaxPollRecords());
+    }
+
+    // Configure fetch min bytes if specified
+    if (options.getFetchMinBytes() != null && options.getFetchMinBytes() > 0) {
+      properties.put(ConsumerConfig.FETCH_MIN_BYTES_CONFIG, options.getFetchMinBytes());
+    }
+
+    // Configure fetch max wait time if specified
+    if (options.getFetchMaxWaitMs() != null && options.getFetchMaxWaitMs() > 0) {
+      properties.put(ConsumerConfig.FETCH_MAX_WAIT_MS_CONFIG, options.getFetchMaxWaitMs());
+    }
+
+    // Configure receive buffer size if specified
+    if (options.getReceiveBufferBytes() != null && options.getReceiveBufferBytes() > 0) {
+      properties.put(ConsumerConfig.RECEIVE_BUFFER_CONFIG, options.getReceiveBufferBytes());
+    }
+
+    // Configure send buffer size if specified
+    if (options.getSendBufferBytes() != null && options.getSendBufferBytes() > 0) {
+      properties.put(ConsumerConfig.SEND_BUFFER_CONFIG, options.getSendBufferBytes());
+    }
+
     return properties;
   }
 }
