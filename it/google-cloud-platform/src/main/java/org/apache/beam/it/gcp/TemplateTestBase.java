@@ -451,15 +451,15 @@ public abstract class TemplateTestBase {
 
   public GcsResourceManager setUpSpannerITGcsResourceManager() {
     GcsResourceManager spannerTestsGcsClient;
-    if (TestProperties.project().equals("cloud-teleport-testing")) {
-      List<String> bucketList = TestConstants.SPANNER_TEST_BUCKETS;
+    List<String> bucketList =
+        TestConstants.SPANNER_TEST_BUCKETS.getOrDefault(TestProperties.project(), null);
+    if (bucketList != null) {
       Random random = new Random();
       int randomIndex = random.nextInt(bucketList.size());
       String randomBucketName = bucketList.get(randomIndex);
       spannerTestsGcsClient =
           GcsResourceManager.builder(randomBucketName, getClass().getSimpleName(), credentials)
               .build();
-
     } else {
       spannerTestsGcsClient = gcsClient;
     }
