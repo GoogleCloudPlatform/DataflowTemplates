@@ -1,0 +1,17 @@
+gcloud dataflow flex-template run iamsandeep-dataflowmigrationjob-404-3 \
+--project=span-cloud-testing \
+--region=us-central1 \
+--template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
+--num-workers 1 \
+--max-workers 50 \
+--worker-machine-type n1-standard-2 \
+--enable-streaming-engine \
+--parameters=databaseId=migrated_db_404 \
+--parameters=deadLetterQueueDirectory=gs://iamsandeep-bucket-001/dlq \
+--parameters=dlqGcsPubSubSubscription=projects/span-cloud-testing/subscriptions/iamsandeep-pubsubsub-002 \
+--parameters=gcsPubSubSubscription=projects/span-cloud-testing/subscriptions/iamsandeep-pubsubsub-001 \
+--parameters=instanceId=iamsandeep-test-instance \
+--parameters=projectId=span-cloud-testing \
+--parameters=sessionFilePath=gs://iamsandeep-bucket-001/session.json \
+--parameters=streamName=projects/span-cloud-testing/locations/us-central1/streams/iamsandeep-stream-003 \
+--parameters=transformationContextFilePath=gs://iamsandeep-bucket-001/transformationContext.json

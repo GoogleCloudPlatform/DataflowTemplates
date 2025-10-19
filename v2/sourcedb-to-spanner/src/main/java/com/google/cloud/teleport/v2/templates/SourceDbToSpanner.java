@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.spanner.Spanner;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
@@ -131,11 +132,15 @@ public class SourceDbToSpanner {
 
   @VisibleForTesting
   static SpannerConfig createSpannerConfig(SourceDbToSpannerOptions options) {
-    return SpannerConfig.create()
+    SpannerConfig spannerConfig = SpannerConfig.create()
         .withProjectId(ValueProvider.StaticValueProvider.of(options.getProjectId()))
         .withHost(ValueProvider.StaticValueProvider.of(options.getSpannerHost()))
         .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
         .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
         .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
+    if (options.getMaxCommitDelay() >= 0) {
+        spannerConfig = spannerConfig.withMaxCommitDelay(options.getMaxCommitDelay());
+    }
+    return spannerConfig;
   }
 }
