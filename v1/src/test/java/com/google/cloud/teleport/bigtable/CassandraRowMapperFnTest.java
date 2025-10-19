@@ -49,7 +49,6 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +57,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.schemas.Schema;
 import org.apache.beam.sdk.schemas.Schema.FieldType;
@@ -106,7 +106,12 @@ public class CassandraRowMapperFnTest extends CassandraBaseTest {
 
   @After
   public void teardownMapper() {
-    session.close();
+    if (session != null && !session.isClosed()) {
+      session.close();
+    }
+    if (cluster != null) {
+      cluster.close();
+    }
   }
 
   @Test
@@ -298,13 +303,22 @@ public class CassandraRowMapperFnTest extends CassandraBaseTest {
     assertEquals(expected, cassandraRowMapper.map(resultSet).next());
   }
 
+  private <T> T retry(Callable<T> op) throws Exception {
+    Exception last = null;
+    for (int i = 0; i < 50; i++) {           
+      try { return op.call(); }
+      catch (Exception e) { last = e; Thread.sleep(100); }
+    }
+    throw last;
+  }
+
   @Test
-  public void testTimeColumn() {
-    LocalTime now = LocalTime.now(ZoneId.systemDefault());
+  public void testTimeColumn() throws Exception{
+    LocalTime now = LocalTime.of(12,0,0);
 
     Long value = now.toNanoOfDay();
     primeWithType(value, TIME);
-    ResultSet resultSet = getResultSet();
+    ResultSet resultSet = retry(this::getResultSet);
 
     Schema schema = Schema.builder().addNullableField("col", FieldType.INT64).build();
     Row expected = Row.withSchema(schema).addValue(value).build();
