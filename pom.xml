@@ -57,7 +57,7 @@
     <autovalue.service.version>1.0.2</autovalue.service.version>
     <avro.version>1.11.4</avro.version>
     <caffeine.version>3.1.8</caffeine.version>
-    <checkstyle.version>10.7.0</checkstyle.version>
+    <checkstyle.version>11.0.1</checkstyle.version>
     <commons-codec.version>1.17.0</commons-codec.version>
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.14.0</commons-lang3.version>
@@ -66,7 +66,7 @@
     <failsafe.version>3.3.0</failsafe.version>
     <grpc.gen.version>1.70.0</grpc.gen.version>
     <guava.version>32.0.1-jre</guava.version>
-    <hadoop.version>3.4.1</hadoop.version>
+    <hadoop.version>3.4.2</hadoop.version>
     <hamcrest.version>2.1</hamcrest.version>
     <hbase.client.version>2.6.3-hadoop3</hbase.client.version>
     <mockito.version>4.11.0</mockito.version>
@@ -314,6 +314,7 @@
           <excludedGroups>${integration.tests}</excludedGroups>
           <excludedGroups>${excluded.spanner.tests}</excludedGroups>
           <trimStackTrace>false</trimStackTrace>
+          <reportFormat>html</reportFormat>
           <systemPropertyVariables>
             <!-- Allow this project to be tested with JDK 21 -->
             <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
@@ -439,9 +440,50 @@
         </executions>
       </plugin>
       <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <executions>
+          <execution>
+            <id>clean-surefire-xml</id>
+            <phase>post-integration-test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+               <executable>bash</executable>
+               <arguments>
+                 <argument>-c</argument>
+                 <argument>find . -name "TEST-*.xml" -path "*/target/surefire-reports/*" -exec sed -i.bak -e 's/time="\([0-9]*\),\([0-9]*\)"/time="\1\2"/g' -e 's/time="\([0-9]*\),\([0-9]*\.[0-9]*\)"/time="\1\2"/g' {} \;</argument>
+               </arguments>
+             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-report-plugin</artifactId>
-        <version>2.6</version>
+        <version>3.5.3</version>
+        <configuration>
+          <outputDirectory>${project.build.directory}/surefire-reports</outputDirectory>
+          <outputName>surefire-report</outputName>
+          <locale>en_US</locale>
+          <aggregate>false</aggregate>
+          <linkXRef>false</linkXRef>
+        </configuration>
+        <executions>
+          <execution>
+            <id>default</id>
+            <phase>none</phase>
+          </execution>
+          <execution>
+            <id>generate-html-report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report-only</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
@@ -496,6 +538,7 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
+              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>
@@ -546,6 +589,16 @@
               <parallel>${itParallelismType}</parallel>
               <threadCount>${itParallelism}</threadCount>
               <trimStackTrace>false</trimStackTrace>
+              <!-- Add timeout configurations to prevent hanging tests -->
+              <forkedProcessTimeoutInSeconds>7200</forkedProcessTimeoutInSeconds>
+              <forkedProcessExitTimeoutInSeconds>30</forkedProcessExitTimeoutInSeconds>
+              <!-- Fail fast on first test failure to prevent hanging -->
+              <skipAfterFailureCount>1</skipAfterFailureCount>
+              <!-- Set per-test timeout to 30 minutes -->
+              <systemPropertyVariables>
+                <junit.jupiter.execution.timeout.default>30m</junit.jupiter.execution.timeout.default>
+                <junit.jupiter.execution.timeout.testable.method.default>30m</junit.jupiter.execution.timeout.testable.method.default>
+              </systemPropertyVariables>
             </configuration>
           </plugin>
         </plugins>
@@ -577,6 +630,7 @@
                 ${load.tests}
               </groups>
               <trimStackTrace>false</trimStackTrace>
+              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>
@@ -605,6 +659,7 @@
               </includes>
               <excludedGroups></excludedGroups>
               <trimStackTrace>false</trimStackTrace>
+              <reportFormat>html</reportFormat>
             </configuration>
           </plugin>
         </plugins>

@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.connection;
 
+import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -37,6 +38,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
 import org.mockito.MockitoAnnotations;
@@ -55,6 +57,7 @@ public class JdbcConnectionHelperTest {
   public void setUp() {
     MockitoAnnotations.openMocks(this);
     connectionHelper = new JdbcConnectionHelper();
+    connectionHelper.setConnectionPoolMap(null); // Reset singleton state
     mockDataSource = mock(HikariDataSource.class);
   }
 
@@ -105,13 +108,31 @@ public class JdbcConnectionHelperTest {
     when(mockRequest.getMaxConnections()).thenReturn(10);
     when(mockRequest.getConnectionInitQuery()).thenReturn("SELECT 1");
 
-    try (MockedConstruction<HikariDataSource> mockedConstruction =
+    try (MockedConstruction<HikariDataSource> mockedDsConstruction =
         mockConstruction(
             HikariDataSource.class,
             (mock, context) -> when(mock.getConnection()).thenReturn(mock(Connection.class)))) {
-      connectionHelper.init(mockRequest);
+      try (MockedConstruction<HikariConfig> mockedConfigConstruction =
+          mockConstruction(HikariConfig.class)) {
+        connectionHelper.init(mockRequest);
 
-      assertTrue(connectionHelper.isConnectionPoolInitialized());
+        assertTrue(connectionHelper.isConnectionPoolInitialized());
+        // Verify HikariConfig properties
+        HikariConfig capturedConfig = mockedConfigConstruction.constructed().get(0);
+        verify(capturedConfig).setJdbcUrl("jdbc:mysql://localhost:3306/testdb");
+        verify(capturedConfig).setUsername("testuser");
+        verify(capturedConfig).setPassword("testpassword");
+        verify(capturedConfig).setDriverClassName("com.mysql.cj.jdbc.Driver");
+        verify(capturedConfig).setMaximumPoolSize(10);
+        verify(capturedConfig).setConnectionInitSql("SELECT 1");
+        verify(capturedConfig).addDataSourceProperty("useSSL", "false");
+
+        // Verify HikariDataSource was created with the config
+        assertThat(mockedDsConstruction.constructed()).hasSize(1);
+        ArgumentCaptor<HikariConfig> configCaptor = ArgumentCaptor.forClass(HikariConfig.class);
+        HikariDataSource createdDataSource = mockedDsConstruction.constructed().get(0);
+        assertThat(createdDataSource).isNotNull();
+      }
     }
   }
 }

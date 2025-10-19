@@ -55,6 +55,14 @@ public class MySQLSrcDataProvider {
     return cloudSqlResourceManager;
   }
 
+  public static void createForeignKeyConstraint(CloudSqlResourceManager cloudSqlResourceManager) {
+    cloudSqlResourceManager.runSQLUpdate(
+        "ALTER TABLE Books\n"
+            + "ADD CONSTRAINT fk_Books_Authors\n"
+            + "FOREIGN KEY (author_id)\n"
+            + "REFERENCES Authors(author_id);");
+  }
+
   public static boolean writeRowsInSourceDB(
       Integer startId, Integer endId, CloudSqlResourceManager sourceDBSqlResourceManager) {
 

@@ -7,29 +7,36 @@ template:
   category: "STREAMING"
 
   parameters:
+    - name: "readBootstrapServers"
+      help: "Kafka Bootstrap Server list, separated by commas."
+      required: true
+      type: text
+
     - name: "kafkaReadTopics"
       help: "Kafka topic to read the input from."
       required: true
-
-    - name: "messageFormat"
-      help: "Format of Kafka message data. One of: RAW, JSON, AVRO, PROTO."
-      required: true
-
-    - name: "schema"
-      help: "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO."
-      required: false
-
-    - name: "readBootstrapServers"
-      help: "Kafka Bootstrap Server list, separated by commas."
-      required: false
+      type: text
 
     - name: "outputTableSpec"
       help: "BigQuery table location to write the output to."
       required: true
+      type: text
 
     - name: "outputDeadletterTable"
       help: "The dead-letter table name to output failed messages to BigQuery."
       required: true
+      type: text
+
+    - name: "messageFormat"
+      help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
+      required: false
+      default: JSON
+      type: text
+
+    - name: "schema"
+      help: "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO."
+      required: true
+      type: text
 
     - name: "numStorageWriteApiStreams"
       help: "Number of streams defines the parallelism of the BigQueryIO’s Write."
@@ -38,46 +45,52 @@ template:
       type: integer
 
     - name: "storageWriteApiTriggeringFrequencySec"
-      help: "Triggering frequency in seconds for BigQuery Storage Write API"
+      help: "Triggering frequency will determine how soon the data will be visible for querying in BigQuery."
       required: false
-      default: 3
+      default: 5
       type: integer
+
+    # TODO(#2816):
+    # - name: "jinjaVariables"
+    #   helpText: "Jinja variables to override ALL other parameters."
+    #   required: false
+    #   type: TEXT
+
 
 pipeline:
   transforms:
     - type: ReadFromKafka
       config:
-        schema: $schema
-        format: $messageFormat
-        topic: $kafkaReadTopics
-        bootstrap_servers: $readBootstrapServers
-        autoOffsetResetConfig: 'earliest'
+        schema: |
+          {{ schema}}
+        format: {{ messageFormat }}
+        topic: {{ kafkaReadTopics }}
+        bootstrap_servers: {{ readBootstrapServers }}
+        auto_offset_reset_config: 'earliest'
         error_handling:
           output: errors
     - type: WriteToBigQuery
       name: WriteGoodMessages
       input: ReadFromKafka
       config:
-        table: $outputTableSpec
-        numStreams: $numStorageWriteApiStreams
-        create_disposition: 'CREATE_NEVER'
-        triggeringFrequencySeconds: $storageWriteApiTriggeringFrequencySec
+        table: {{ outputTableSpec }}
+        num_streams: {{ numStorageWriteApiStreams | default(1) }}
+        create_disposition: 'CREATE_IF_NEEDED'
+        write_disposition: 'WRITE_APPEND'
         error_handling:
           output: errors
     - type: WriteToBigQuery
       name: WriteBadReadMessages
       input: ReadFromKafka.errors
       config:
-        table: $outputDeadletterTable
-        numStreams: $numStorageWriteApiStreams
-        triggeringFrequencySeconds: $storageWriteApiTriggeringFrequencySec
+        table: {{ outputDeadletterTable }}
+        num_streams: {{ numStorageWriteApiStreams | default(1) }}
     - type: WriteToBigQuery
       name: WriteBadWriteMessages
       input: WriteGoodMessages.errors
       config:
-        table: $outputDeadletterTable
-        numStreams: $numStorageWriteApiStreams
-        triggeringFrequencySeconds: $storageWriteApiTriggeringFrequencySec
+        table: {{ outputDeadletterTable }}
+        num_streams: {{ numStorageWriteApiStreams | default(1) }}
 
 options:
   streaming: true

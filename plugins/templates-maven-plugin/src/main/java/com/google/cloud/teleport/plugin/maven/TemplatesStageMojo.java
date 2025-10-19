@@ -524,6 +524,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           containerName,
           templatePath);
     } else if (definition.getTemplateAnnotation().type() == TemplateType.YAML) {
+
       stageFlexYamlTemplate(
           definition,
           currentTemplateName,
@@ -593,6 +594,43 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     LOG.info("Flex Template was staged! {}", stageImageOnly ? imageSpec.getImage() : templatePath);
     return templatePath;
+  }
+
+  /**
+   * Prepares the necessary files for building a YAML-based Flex Template.
+   *
+   * <p>This method checks the {@link TemplateDefinitions} for a {@code yamlTemplateFile}
+   * annotation. If the annotation is present and specifies a file, this method copies that file
+   * from {@code src/main/yaml} to the build output directory, renaming it to {@code template.yaml}.
+   * This {@code template.yaml} is then expected to be packaged into the template's Docker
+   * container.
+   *
+   * @param definition The template definition containing metadata and annotations.
+   * @throws MojoExecutionException if the specified YAML template file does not exist.
+   * @throws IOException if an I/O error occurs while copying the file.
+   */
+  @VisibleForTesting
+  void prepareYamlTemplateFiles(TemplateDefinitions definition)
+      throws MojoExecutionException, IOException {
+    LOG.info("Preparing YAML template.");
+    String yamlTemplateFile = definition.getTemplateAnnotation().yamlTemplateFile();
+    // If a YAML template file is provided in the annotation, it will be copied to
+    // the build directory as "template.yaml" and packaged into the container.
+    if (yamlTemplateFile != null && !yamlTemplateFile.isEmpty()) {
+      Path source =
+          Paths.get(
+              project.getBasedir().getAbsolutePath(), "src", "main", "yaml", yamlTemplateFile);
+
+      if (!source.toFile().exists()) {
+        throw new MojoExecutionException("YAML template file not found: " + source);
+      }
+      Path destination = Paths.get(outputClassesDirectory.getAbsolutePath(), "template.yaml");
+
+      LOG.info("Copying " + source + " to " + destination);
+      Files.copy(source, destination, StandardCopyOption.REPLACE_EXISTING);
+    } else {
+      LOG.info("No YAML template file provided for copying to `template.yaml`");
+    }
   }
 
   private void stageFlexJavaTemplate(
@@ -801,46 +839,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
       String metadataFile,
       String containerName,
       String templatePath)
-      throws IOException, InterruptedException, TemplateException {
+      throws IOException, InterruptedException, TemplateException, MojoExecutionException {
 
-    // extract image properties for Dockerfile
-    String dockerfilePath = outputClassesDirectory.getPath() + "/" + containerName + "/Dockerfile";
-    File dockerfile = new File(dockerfilePath);
-    if (!dockerfile.exists()) {
-      List<String> filesToCopy = List.of(definition.getTemplateAnnotation().filesToCopy());
-      if (filesToCopy.isEmpty()) {
-        filesToCopy = List.of("main.py", "requirements.txt");
-      }
-      List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
-      if (entryPoint.isEmpty()) {
-        entryPoint = List.of(pythonTemplateLauncherEntryPoint);
-      }
-
-      // Generate Dockerfile
-      LOG.info("Generating dockerfile " + dockerfilePath);
-      DockerfileGenerator.Builder dockerfileBuilder =
-          DockerfileGenerator.builder(
-                  definition.getTemplateAnnotation().type(),
-                  beamVersion,
-                  containerName,
-                  outputClassesDirectory)
-              .setBasePythonContainerImage(basePythonContainerImage)
-              .setBaseJavaContainerImage(baseContainerImage)
-              .setPythonVersion(pythonVersion)
-              .setEntryPoint(entryPoint)
-              .setFilesToCopy(filesToCopy);
-
-      // Set Airlock parameters
-      if (internalMaven) {
-        dockerfileBuilder
-            .setServiceAccountSecretName(saSecretName)
-            .setAirlockPythonRepo(airlockPythonRepo)
-            .setAirlockJavaRepo(airlockJavaRepo);
-      }
-      if (!Strings.isNullOrEmpty(mavenRepo)) {
-        dockerfileBuilder.setMavenRepo(mavenRepo);
-      }
-      dockerfileBuilder.build().generate();
+    try {
+      prepareYamlTemplateFiles(definition);
+      prepareYamlDockerfile(definition, containerName);
+    } catch (IOException | InterruptedException | TemplateException e) {
+      throw new MojoExecutionException("Error preparing YAML Dockerfile", e);
     }
 
     LOG.info("Staging YAML image using Dockerfile");
@@ -883,6 +888,76 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8)
               + "\n"
               + new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8));
+    }
+  }
+
+  /**
+   * Prepares the Dockerfile for a YAML-based Flex Template.
+   *
+   * <p>This method generates a Dockerfile if one does not already exist in the build output
+   * directory. The Dockerfile is configured based on properties from the {@link
+   * TemplateDefinitions}, including which files to copy into the container, the container
+   * entrypoint, and base images.
+   *
+   * @param definition The template definition containing metadata and annotations.
+   * @param containerName The name of the container, used for creating the Dockerfile path.
+   * @throws IOException if an I/O error occurs during file generation.
+   * @throws InterruptedException if a thread is interrupted.
+   * @throws TemplateException if there is an error processing the template for the Dockerfile.
+   */
+  @VisibleForTesting
+  void prepareYamlDockerfile(TemplateDefinitions definition, String containerName)
+      throws IOException, InterruptedException, TemplateException {
+
+    // extract image properties for Dockerfile
+    String dockerfilePath = outputClassesDirectory.getPath() + "/" + containerName + "/Dockerfile";
+    File dockerfile = new File(dockerfilePath);
+    if (!dockerfile.exists()) {
+      // Obtain file names to copy to docker container
+      List<String> filesToCopy =
+          new ArrayList<>(List.of(definition.getTemplateAnnotation().filesToCopy()));
+      if (filesToCopy.isEmpty()) {
+        filesToCopy.addAll(List.of("main.py", "requirements.txt"));
+      }
+
+      String yamlTemplateFile = definition.getTemplateAnnotation().yamlTemplateFile();
+      if (yamlTemplateFile != null && !yamlTemplateFile.isEmpty()) {
+        filesToCopy.add("template.yaml");
+      }
+
+      List<String> entryPoint = List.of(definition.getTemplateAnnotation().entryPoint());
+      if (entryPoint.isEmpty()) {
+        entryPoint = List.of(pythonTemplateLauncherEntryPoint);
+      }
+
+      // Generate Dockerfile
+      LOG.info("Generating dockerfile " + dockerfilePath);
+      DockerfileGenerator.Builder dockerfileBuilder =
+          DockerfileGenerator.builder(
+                  definition.getTemplateAnnotation().type(),
+                  beamVersion,
+                  containerName,
+                  outputClassesDirectory)
+              .setBasePythonContainerImage(basePythonContainerImage)
+              .setBaseJavaContainerImage(baseContainerImage)
+              .setPythonVersion(pythonVersion)
+              .setEntryPoint(entryPoint);
+      // Copy required files to docker
+      if (!filesToCopy.isEmpty()) {
+        dockerfileBuilder.setFilesToCopy(filesToCopy);
+      }
+
+      // Set Airlock parameters
+      if (internalMaven) {
+        dockerfileBuilder
+            .setServiceAccountSecretName(saSecretName)
+            .setAirlockPythonRepo(airlockPythonRepo)
+            .setAirlockJavaRepo(airlockJavaRepo);
+      }
+      if (!Strings.isNullOrEmpty(mavenRepo)) {
+        dockerfileBuilder.setMavenRepo(mavenRepo);
+      }
+      dockerfileBuilder.build().generate();
     }
   }
 
@@ -988,7 +1063,19 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   private void stageYamlUsingDockerfile(
       String buildProjectId, String imagePathTag, String yamlTemplateName)
       throws IOException, InterruptedException {
-    File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + yamlTemplateName);
+
+    String submoduleName = project.getBasedir().toPath().getFileName().toString();
+    File directory;
+    String dockerfile;
+    if (submoduleName.equals("python")) {
+      // Should be for the yaml-template in the python submodule
+      directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + yamlTemplateName);
+      dockerfile = "Dockerfile";
+    } else {
+      // For any yaml template in the yaml submodule
+      directory = new File(outputClassesDirectory.getAbsolutePath());
+      dockerfile = yamlTemplateName + "/Dockerfile";
+    }
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -1001,7 +1088,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --destination="
               + imagePathTag
               + "\n"
-              + "  - --dockerfile=Dockerfile\n"
+              + "  - --dockerfile="
+              + dockerfile
+              + "\n"
               + "  - --cache=true\n"
               + "  - --cache-ttl=6h\n"
               + "  - --compressed-caching=false\n"
@@ -1142,7 +1231,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     return Optional.ofNullable(artifactRegistry)
         .map(
             value ->
-                value.endsWith("gcr.io")
+                value.endsWith("gcr.io") && !value.contains("pkg.dev")
                     ? value + "/" + projectIdUrl + "/" + containerName
                     : value + "/" + containerName)
         .orElse(prefix + "gcr.io/" + projectIdUrl + "/" + containerName);

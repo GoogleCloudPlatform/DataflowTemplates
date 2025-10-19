@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v5.0.0
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -44,3 +44,4 @@ jobs:
             **Note:** If this PR does not trigger the template integration tests, please close the PR and reopen it. This should trigger all the tests.
           branch: chore/update-python-deps
           base: main
+          labels: package-upgrade

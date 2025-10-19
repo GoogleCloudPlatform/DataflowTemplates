@@ -226,8 +226,48 @@ public class DataStreamToSQL {
 
     void setDatabaseName(String value);
 
-    @TemplateParameter.Text(
+    @TemplateParameter.Enum(
         order = 13,
+        optional = true,
+        enumOptions = {
+          @TemplateEnumOption("LOWERCASE"),
+          @TemplateEnumOption("UPPERCASE"),
+          @TemplateEnumOption("CAMEL"),
+          @TemplateEnumOption("SNAKE")
+        },
+        description = "Toggle for Table Casing",
+        helpText =
+            "A Toggle for table casing behavior. For example,(ie."
+                + "LOWERCASE = mytable -> mytable, UPPERCASE = mytable -> MYTABLE"
+                + "CAMEL = my_table -> myTable, SNAKE = myTable -> my_table")
+    @Default.String("LOWERCASE")
+    String getDefaultCasing();
+
+    void setDefaultCasing(String value);
+
+    @TemplateParameter.Enum(
+        order = 14,
+        optional = true,
+        enumOptions = {
+          @TemplateEnumOption("LOWERCASE"),
+          @TemplateEnumOption("UPPERCASE"),
+          @TemplateEnumOption("CAMEL"),
+          @TemplateEnumOption("SNAKE")
+        },
+        description = "Toggle for Column Casing",
+        helpText =
+            "A toggle for target column name casing. "
+                + "LOWERCASE (default): my_column -> my_column. "
+                + "UPPERCASE: my_column -> MY_COLUMN. "
+                + "CAMEL: my_column -> myColumn. "
+                + "SNAKE: myColumn -> my_column.")
+    @Default.String("LOWERCASE")
+    String getColumnCasing();
+
+    void setColumnCasing(String value);
+
+    @TemplateParameter.Text(
+        order = 15,
         optional = true,
         description = "A map of key/values used to dictate schema name changes",
         helpText =
@@ -239,7 +279,7 @@ public class DataStreamToSQL {
     void setSchemaMap(String value);
 
     @TemplateParameter.Text(
-        order = 14,
+        order = 16,
         groupName = "Target",
         optional = true,
         description = "Custom connection string.",
@@ -251,7 +291,7 @@ public class DataStreamToSQL {
     void setCustomConnectionString(String value);
 
     @TemplateParameter.Integer(
-        order = 15,
+        order = 17,
         optional = true,
         description = "Number of threads to use for Format to DML step.",
         helpText =
@@ -262,7 +302,7 @@ public class DataStreamToSQL {
     void setNumThreads(int value);
 
     @TemplateParameter.Integer(
-        order = 16,
+        order = 18,
         groupName = "Target",
         optional = true,
         description = "Database login timeout in seconds.",
@@ -273,7 +313,7 @@ public class DataStreamToSQL {
     void setDatabaseLoginTimeout(Integer value);
 
     @TemplateParameter.Boolean(
-        order = 17,
+        order = 19,
         optional = true,
         description =
             "Order by configurations for data should include prioritizing data which is not deleted.",
@@ -283,6 +323,16 @@ public class DataStreamToSQL {
     Boolean getOrderByIncludesIsDeleted();
 
     void setOrderByIncludesIsDeleted(Boolean value);
+
+    @TemplateParameter.Text(
+        order = 18,
+        optional = true,
+        description = "Datastream source type override",
+        helpText =
+            "Override the source type detection for Datastream CDC data. When specified, this value will be used instead of deriving the source type from the read_method field. Valid values include 'mysql', 'postgresql', 'oracle', etc. This parameter is useful when the read_method field contains 'cdc' and the actual source type cannot be determined automatically.")
+    String getDatastreamSourceType();
+
+    void setDatastreamSourceType(String value);
   }
 
   /**
@@ -430,9 +480,9 @@ public class DataStreamToSQL {
                     options.getInputFileFormat(),
                     options.getGcsPubSubSubscription(),
                     options.getRfcStartDateTime())
-                .withLowercaseSourceColumns()
                 .withRenameColumnValue("_metadata_row_id", "rowid")
-                .withHashRowId());
+                .withHashRowId()
+                .withDatastreamSourceType(options.getDatastreamSourceType()));
 
     /*
      * Stage 2: Write JSON Strings to SQL Insert Strings
@@ -444,8 +494,10 @@ public class DataStreamToSQL {
             .apply(
                 "Format to DML",
                 CreateDml.of(dataSourceConfiguration)
+                    .withDefaultCasing(options.getDefaultCasing())
                     .withSchemaMap(schemaMap)
                     .withTableNameMap(tableNameMap)
+                    .withColumnCasing(options.getColumnCasing())
                     .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
                     .withNumThreads(options.getNumThreads()))
             .apply("DML Stateful Processing", ProcessDml.statefulOrderByPK());

@@ -769,12 +769,11 @@ public abstract class TemplateTestBase {
       }
       try {
         Job cancelled =
-            pipelineLauncher.forceCancelJob(
+            pipelineLauncher.cancelJob(
                 launchInfo.projectId(), launchInfo.region(), launchInfo.jobId());
         LOG.warn("Job {} was shutdown by the hook to prevent resources leak.", cancelled.getId());
       } catch (Exception e) {
-        // expected that the force cancel fails if the test works as intended, so logging as debug
-        // only.
+        // expected that the cancel fails if the test works as intended, so logging as debug only.
         LOG.debug("Error shutting down job {}: {}", launchInfo.jobId(), e.getMessage());
       }
     }

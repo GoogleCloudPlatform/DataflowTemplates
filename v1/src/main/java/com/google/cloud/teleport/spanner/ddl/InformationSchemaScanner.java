@@ -28,6 +28,8 @@ import com.google.cloud.spanner.ReadContext;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.teleport.spanner.ddl.ForeignKey.ReferentialAction;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph.GraphDynamicLabelExpression;
+import com.google.cloud.teleport.spanner.ddl.PropertyGraph.GraphDynamicPropertiesExpression;
 import com.google.cloud.teleport.spanner.ddl.Table.InterleaveType;
 import com.google.cloud.teleport.spanner.proto.ExportProtos.Export;
 import com.google.common.annotations.VisibleForTesting;
@@ -1301,6 +1303,18 @@ public class InformationSchemaScanner {
                   .baseTableName(baseTableName)
                   .kind(GraphElementTable.Kind.valueOf(kind))
                   .keyColumns(keyColumns);
+
+          // If dynamic label or property expressions exist, capture them.
+          if (table.has("dynamicLabelExpr")) {
+            PropertyGraph.GraphDynamicLabelExpression dynamicLabelExpr =
+                new GraphDynamicLabelExpression(table.getString("dynamicLabelExpr"));
+            graphElementTableBuilder.dynamicLabelExpression(dynamicLabelExpr);
+          }
+          if (table.has("dynamicPropertyExpr")) {
+            PropertyGraph.GraphDynamicPropertiesExpression dynamicPropertiesExpr =
+                new GraphDynamicPropertiesExpression(table.getString("dynamicPropertyExpr"));
+            graphElementTableBuilder.dynamicPropertiesExpression(dynamicPropertiesExpr);
+          }
 
           // If it's an edge table, extract source and destination node table references
           if (tableType.equals("edgeTables")) {

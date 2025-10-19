@@ -26,6 +26,8 @@ import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
@@ -1484,6 +1486,96 @@ public class DdlToAvroSchemaConverterTest {
     assertEquals("dummyPropType", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_0_TYPE"));
     assertEquals("aliasedPropName", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_1_NAME"));
     assertEquals("aliasedPropType", avroSchema.getProp(SPANNER_PROPERTY_DECLARATION + "_1_TYPE"));
+  }
+
+  @Test
+  public void propertyGraphDynamic() {
+    DdlToAvroSchemaConverter converter =
+        new DdlToAvroSchemaConverter("spannertest", "booleans", true);
+
+    // Craft Property Declarations
+    PropertyGraph.PropertyDeclaration propertyDeclaration1 =
+        new PropertyGraph.PropertyDeclaration("dummyPropName", "dummyPropType");
+    PropertyGraph.PropertyDeclaration propertyDeclaration2 =
+        new PropertyGraph.PropertyDeclaration("aliasedPropName", "aliasedPropType");
+    ImmutableList<String> propertyDeclsLabel1 =
+        ImmutableList.copyOf(Arrays.asList(propertyDeclaration1.name, propertyDeclaration2.name));
+
+    // Craft Labels and associated property definitions
+    PropertyGraph.GraphElementLabel label1 =
+        new PropertyGraph.GraphElementLabel("dummyLabelName1", propertyDeclsLabel1);
+    GraphElementTable.PropertyDefinition propertyDefinition1 =
+        new PropertyDefinition("dummyPropName", "dummyPropName");
+    GraphElementTable.PropertyDefinition propertyDefinition2 =
+        new PropertyDefinition(
+            "aliasedPropName", "CONCAT(CAST(test_col AS STRING), \":\", \"dummyColumn\")");
+    GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions1 =
+        new LabelToPropertyDefinitions(
+            label1.name, ImmutableList.of(propertyDefinition1, propertyDefinition2));
+
+    PropertyGraph.GraphElementLabel label2 =
+        new PropertyGraph.GraphElementLabel("dummyLabelName2", ImmutableList.of());
+    GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions2 =
+        new LabelToPropertyDefinitions(label2.name, ImmutableList.of());
+
+    PropertyGraph.GraphElementLabel label3 =
+        new PropertyGraph.GraphElementLabel("dummyLabelName3", ImmutableList.of());
+    GraphElementTable.LabelToPropertyDefinitions labelToPropertyDefinitions3 =
+        new LabelToPropertyDefinitions(label3.name, ImmutableList.of());
+
+    // Craft Node table
+    GraphElementTable.Builder testNodeTable =
+        GraphElementTable.builder()
+            .baseTableName("baseTable")
+            .name("nodeAlias")
+            .kind(GraphElementTable.Kind.NODE)
+            .keyColumns(ImmutableList.of("primaryKey"))
+            .dynamicLabelExpression(
+                new PropertyGraph.GraphDynamicLabelExpression("dynamicLabelColumn"))
+            .labelToPropertyDefinitions(
+                ImmutableList.of(labelToPropertyDefinitions1, labelToPropertyDefinitions2));
+
+    // Craft Edge table
+    GraphElementTable.Builder testEdgeTable =
+        GraphElementTable.builder()
+            .baseTableName("edgeBaseTable")
+            .name("edgeAlias")
+            .kind(GraphElementTable.Kind.EDGE)
+            .keyColumns(ImmutableList.of("edgePrimaryKey"))
+            .dynamicPropertiesExpression(
+                new PropertyGraph.GraphDynamicPropertiesExpression("dynamicPropertiesColumn"))
+            .sourceNodeTable(
+                new GraphNodeTableReference(
+                    "baseTable", ImmutableList.of("nodeKey"), ImmutableList.of("sourceEdgeKey")))
+            .targetNodeTable(
+                new GraphNodeTableReference(
+                    "baseTable", ImmutableList.of("otherNodeKey"), ImmutableList.of("destEdgeKey")))
+            .labelToPropertyDefinitions(ImmutableList.of(labelToPropertyDefinitions3));
+
+    Ddl ddl =
+        Ddl.builder()
+            .createPropertyGraph("testGraph")
+            .addLabel(label1)
+            .addLabel(label2)
+            .addLabel(label3)
+            .addPropertyDeclaration(propertyDeclaration1)
+            .addPropertyDeclaration(propertyDeclaration2)
+            .addNodeTable(testNodeTable.autoBuild())
+            .addEdgeTable(testEdgeTable.autoBuild())
+            .endPropertyGraph()
+            .build();
+
+    Collection<Schema> result = converter.convert(ddl);
+    assertThat(result, hasSize(1));
+    Schema avroSchema = result.iterator().next();
+
+    // Assertions for dynamic fields
+    assertEquals(
+        "dynamicLabelColumn",
+        avroSchema.getProp(SPANNER_NODE_TABLE + "_0_" + SPANNER_DYNAMIC_LABEL));
+    assertEquals(
+        "dynamicPropertiesColumn",
+        avroSchema.getProp(SPANNER_EDGE_TABLE + "_0_" + SPANNER_DYNAMIC_PROPERTIES));
   }
 
   @Test

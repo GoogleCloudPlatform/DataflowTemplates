@@ -341,6 +341,15 @@ public class AssignShardIdFn
       ObjectNode newValuesJsonNode, String tableName, String colName, Struct row) {
     // TODO(b/430495490): Add support for string arrays on Spanner side.
     switch (ddl.table(tableName).column(colName).type().getCode()) {
+      case FLOAT32:
+        float val32 = row.getFloat(colName);
+        if (Float.isNaN(val32) || !Float.isFinite(val32)) {
+          newValuesJsonNode.put(colName, val32);
+
+        } else {
+          newValuesJsonNode.put(colName, new BigDecimal(val32));
+        }
+        break;
       case FLOAT64:
         double val = row.getDouble(colName);
         if (Double.isNaN(val) || !Double.isFinite(val)) {
@@ -412,6 +421,12 @@ public class AssignShardIdFn
                 DataChangeRecordTypeConvertor.toLong(
                     keysJson, keyColName, /* requiredField= */ true));
             break;
+          case FLOAT32:
+          case PG_FLOAT4:
+            pk.append(
+                DataChangeRecordTypeConvertor.toDouble(
+                    keysJson, keyColName, /* requiredField= */ true));
+            break;
           case FLOAT64:
           case PG_FLOAT8:
             pk.append(
@@ -471,6 +486,9 @@ public class AssignShardIdFn
         case INT64:
         case PG_INT8:
           return DataChangeRecordTypeConvertor.toLong(valuesJson, colName, false);
+        case FLOAT32:
+        case PG_FLOAT4:
+          return DataChangeRecordTypeConvertor.toDouble(valuesJson, colName, false);
         case FLOAT64:
         case PG_FLOAT8:
           return DataChangeRecordTypeConvertor.toDouble(valuesJson, colName, false);
@@ -513,6 +531,9 @@ public class AssignShardIdFn
         case INT64:
         case PG_INT8:
           return value.getInt64();
+        case FLOAT32:
+        case PG_FLOAT4:
+          return (double) value.getFloat32();
         case FLOAT64:
         case PG_FLOAT8:
           return value.getFloat64();

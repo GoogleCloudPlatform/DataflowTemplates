@@ -94,7 +94,7 @@ class OracleChangeEventSequence extends ChangeEventSequence {
       // hints via the read api. SQL string generation should be removed.
       if (useSqlStatements) {
         Statement sql =
-            ShadowTableReadUtils.generateShadowTableReadSQL(
+            ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
                 shadowTable, readColumnList, primaryKey, shadowTableDdl);
         ResultSet resultSet = transactionContext.executeQuery(sql);
         if (!resultSet.next()) {

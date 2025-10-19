@@ -21,6 +21,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.DriverConfigLoader;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -84,6 +85,7 @@ import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerIO;
+import org.apache.beam.sdk.io.gcp.spanner.SpannerServiceFactoryImpl;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
@@ -492,6 +494,33 @@ public class SpannerToSourceDb {
     Boolean getIsShardedMigration();
 
     void setIsShardedMigration(Boolean value);
+
+    @TemplateParameter.Text(
+        order = 33,
+        optional = true,
+        description = "Failure injection parameter",
+        helpText = "Failure injection parameter. Only used for testing.")
+    @Default.String("")
+    String getFailureInjectionParameter();
+
+    void setFailureInjectionParameter(String value);
+
+    @TemplateParameter.Enum(
+        order = 34,
+        enumOptions = {
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
+        },
+        optional = true,
+        description = "Priority for Spanner RPC invocations",
+        helpText =
+            "The request priority for Cloud Spanner calls. The value must be one of:"
+                + " [`HIGH`,`MEDIUM`,`LOW`]. Defaults to `HIGH`.")
+    @Default.Enum("HIGH")
+    RpcPriority getSpannerPriority();
+
+    void setSpannerPriority(RpcPriority value);
   }
 
   /**
@@ -554,7 +583,8 @@ public class SpannerToSourceDb {
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getInstanceId()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getDatabaseId()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
     // Create shadow tables
     // Note that there is a limit on the number of tables that can be created per DB: 5000.
@@ -567,7 +597,8 @@ public class SpannerToSourceDb {
         SpannerConfig.create()
             .withProjectId(ValueProvider.StaticValueProvider.of(options.getSpannerProjectId()))
             .withInstanceId(ValueProvider.StaticValueProvider.of(options.getMetadataInstance()))
-            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()));
+            .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()))
+            .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
     ShadowTableCreator shadowTableCreator =
         new ShadowTableCreator(
@@ -655,6 +686,14 @@ public class SpannerToSourceDb {
                 ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()))
             .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
     PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerConfig, options.getFailureInjectionParameter());
+    }
+
     if (isRegularMode) {
       PCollection<TrimmedShardedDataChangeRecord> changeRecordsFromDB =
           pipeline
@@ -682,6 +721,13 @@ public class SpannerToSourceDb {
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
     ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+
+    if (options.getFailureInjectionParameter() != null
+        && !options.getFailureInjectionParameter().isBlank()) {
+      spannerMetadataConfig =
+          SpannerServiceFactoryImpl.createSpannerService(
+              spannerMetadataConfig, options.getFailureInjectionParameter());
+    }
 
     SourceWriterTransform.Result sourceWriterOutput =
         mergedRecords

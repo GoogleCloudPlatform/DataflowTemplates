@@ -145,6 +145,14 @@ and prevent any future changes from being observed.  Please reissue:
 mvn clean install -pl plugins/templates-maven-plugin -am
 ```
 
+### Validating Templates
+
+Validating a template's code quality is as simple as this:
+
+```shell
+mvn clean install -PtemplatesValidate -DskipTests -pl <module> -am
+```
+
 ### Staging (Deploying) Templates
 
 To stage a Template, it is necessary to upload the images to Artifact
@@ -275,6 +283,11 @@ The parameter `-Dtest=` can be given to test a single class (e.g., `-Dtest=Pubsu
 
 The same happens when the test is executed from an IDE, just make sure to add the parameters `-Dproject=`, `-DartifactBucket=` and `-Dregion=` as program or VM arguments.
 
+Notes: Template integration tests using test container based resource manager
+(e.g. kafka) only works on GitHub Actions. The test machine spins up a Kafka
+test container and then Dataflow worker accesses it. This only works when the
+test machine lives in the same network as the Dataflow worker.
+
 ### Running Load Tests
 
 For information on adding and running load tests, see [Adding a Load Test](./add-integration-or-load-test.md).
@@ -376,7 +389,7 @@ Boolean getUseColumnAlias();
 BulkInsertMethodOptions getBulkInsertMethod();
 ```
 
-Note: `order` is relevant for templates that can be used from the UI, and
+Notes: `order` is relevant for templates that can be used from the UI, and
 specify the relative order of parameters.
 
 #### Template Parameter Compatibility/Deprecation
@@ -473,4 +486,10 @@ To learn more about this process, or how you can stage your own changes, see [Re
 
 Release notes are [automatically generated](https://docs.github.com/en/repositories/releasing-projects-on-github/automatically-generated-release-notes)
 based on the PR labels defined in [release.yml](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/release.yml).
-Before submitting your PR, a repo maintainer must add one of the following labels in order for all checks to pass: `ignore-for-release`, `new-template`, `improvement`, or `bug-fix`.
+Before submitting your PR, a repo maintainer must add one of the following labels in order for all checks to pass:
+
+- `ignore-for-release`: Changes that should not appear in release notes (e.g., documentation updates, internal refactoring)
+- `new-template`: Addition of new Dataflow templates
+- `improvement`: Enhancements to existing functionality or performance improvements
+- `bug-fix`: Fixes for bugs or issues in existing code
+- `package-upgrade`: Updates to dependencies, libraries, or package versions

@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.failureinjectiontesting.utils;
+package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
 import com.google.api.gax.longrunning.OperationFuture;
 import com.google.cloud.compute.v1.InstancesClient;

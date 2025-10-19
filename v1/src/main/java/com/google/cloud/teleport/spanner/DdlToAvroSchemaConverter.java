@@ -26,6 +26,8 @@ import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_LABEL;
+import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_DYNAMIC_PROPERTIES;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_EDGE_TABLE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_ENTITY_MODEL;
@@ -470,6 +472,16 @@ public class DdlToAvroSchemaConverter {
             prefix + "_" + i + "_LABEL_" + j + "_PROPERTY_" + k + "_VALUE",
             propertyDef.valueExpressionString);
       }
+    }
+    if (elementTable.dynamicLabelExpression() != null) {
+      recordBuilder.prop(
+          prefix + "_" + i + "_" + SPANNER_DYNAMIC_LABEL,
+          elementTable.dynamicLabelExpression().dynamicLabelExpression);
+    }
+    if (elementTable.dynamicPropertiesExpression() != null) {
+      recordBuilder.prop(
+          prefix + "_" + i + "_" + SPANNER_DYNAMIC_PROPERTIES,
+          elementTable.dynamicPropertiesExpression().dynamicPropertiesExpression);
     }
   }
 
