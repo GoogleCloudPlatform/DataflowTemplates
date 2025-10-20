@@ -444,6 +444,7 @@ public abstract class TemplateTestBase {
       "-DstagePrefix=" + prefix,
       "-DtemplateName=" + templateMetadata.name(),
       "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
+      "-Dparameters=bigQueryLoadingTemporaryDirectory=" + bucketName,
       // Print stacktrace when command fails
       "-e"
     };
