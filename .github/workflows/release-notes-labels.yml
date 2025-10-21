@@ -1,10 +1,17 @@
 name: Enforce labels for release notes
 on:
   pull_request:
-    types: [opened, labeled, unlabeled, synchronize]
+    types: [labeled, unlabeled, synchronize]
+  workflow_run:
+    workflows: [label-dependabot-prs.yml]
+    types: [completed, skipped]
+
 jobs:
   label:
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'pull_request' ||
+      (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'skipped')
     permissions:
       issues: write
       pull-requests: write
