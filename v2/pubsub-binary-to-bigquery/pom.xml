@@ -26,7 +26,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <properties>
-    <exec-maven-plugin.version>3.5.1</exec-maven-plugin.version>
+    <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
   </properties>
 
   <dependencies>
