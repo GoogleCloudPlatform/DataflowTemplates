@@ -93,6 +93,7 @@ resource "google_dataflow_flex_template_job" "generated" {
     transformationCustomParameters = var.common_params.transformation_custom_parameters
     defaultSdkHarnessLogLevel      = var.common_params.default_log_level
     fetchSize                      = var.common_params.fetch_size
+    maxCommitDelay                 = var.common_params.max_commit_delay
   }
 
   service_account_email  = var.common_params.service_account_email

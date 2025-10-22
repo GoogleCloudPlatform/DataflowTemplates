@@ -20,6 +20,7 @@ variable "common_params" {
     transformation_jar_path          = optional(string)
     transformation_custom_parameters = optional(string)
     transformation_class_name        = optional(string)
+    max_commit_delay                 = optional(number, 100)
 
     # Dataflow runtime parameters
     additional_experiments = optional(list(string), [

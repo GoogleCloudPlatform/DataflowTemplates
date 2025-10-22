@@ -4,6 +4,10 @@ terraform {
       source  = "hashicorp/google"
       version = "~> 4.0"
     }
+    google-beta = {
+      source  = "hashicorp/google-beta"
+      version = "~> 4.0" # Match the standard provider version constraint
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.0" # Or the latest compatible version
