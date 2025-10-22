@@ -55,6 +55,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -63,6 +64,7 @@ import org.apache.beam.it.common.ResourceManager;
 import org.apache.beam.it.common.utils.ExceptionUtils;
 import org.apache.beam.it.gcp.TestConstants;
 import org.apache.beam.it.gcp.monitoring.MonitoringClient;
+import org.apache.parquet.Strings;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -657,8 +659,9 @@ public final class SpannerResourceManager implements ResourceManager {
      */
     @SuppressWarnings("nullness")
     public Builder maybeUseStaticInstance() {
-      if (System.getProperty("spannerInstanceId") != null
-          && projectId == "cloud-teleport-testing") {
+      if (Objects.equals(projectId, "cloud-teleport-testing")
+          && (Strings.isNullOrEmpty(System.getProperty("spannerInstanceId"))
+              || Objects.equals(System.getProperty("spannerInstanceId"), "teleport"))) {
         this.useStaticInstance = true;
         List<String> instanceList = TestConstants.SPANNER_TEST_INSTANCES;
         Random random = new Random();

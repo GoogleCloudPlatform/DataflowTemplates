@@ -91,7 +91,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
   protected SpannerResourceManager createSpannerMetadataDatabase() throws IOException {
     SpannerResourceManager spannerMetadataResourceManager =
-        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION).build();
+        SpannerResourceManager.builder("rr-meta-" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
     String dummy = "CREATE TABLE IF NOT EXISTS t1(id INT64 ) primary key(id)";
     spannerMetadataResourceManager.executeDdlStatement(dummy);
     return spannerMetadataResourceManager;
@@ -329,6 +331,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
 
     SpannerResourceManager spannerResourceManager =
         SpannerResourceManager.builder("rr-main-table-per-columns-" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
             .build();
 
     StringBuilder ddlBuilder = new StringBuilder();
