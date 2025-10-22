@@ -24,19 +24,37 @@ public class KafkaTopicUtils {
   private static final Pattern GMK_PATTERN =
       Pattern.compile("^projects/([^/]+)/locations/([^/]+)/clusters/([^/]+)/topics/([^/]+)$");
 
+  private static String sanitizeProjectIdForHostname(String projectId) {
+    // Domain-scoped project IDs (like 'example.com:my-project') map to
+    // 'my-project.example.com' in cloud.goog hostnames.
+    // ':' is not valid in hostnames, but '.' is allowed as a label separator.
+    // Normalize to lowercase and replace any character not [a-z0-9-.] with '-'.
+    String normalized = projectId.toLowerCase();
+    if (normalized.contains(":")) {
+      String[] parts = normalized.split(":", 2);
+      String domain = parts[0];
+      String proj = parts[1];
+      normalized = proj + "." + domain;
+    }
+    return normalized.replaceAll("[^a-z0-9-.]", "-");
+  }
+
   public static List<String> getBootstrapServerAndTopic(
       String bootstrapServerAndTopicString, String project) {
     Matcher matcher = GMK_PATTERN.matcher(bootstrapServerAndTopicString);
     String bootstrapServer = null;
     String topicName = null;
     if (matcher.matches()) {
+      String clusterId = matcher.group(3);
+      String region = matcher.group(2);
+      String resourceProjectId = sanitizeProjectIdForHostname(matcher.group(1));
       bootstrapServer =
           "bootstrap."
-              + matcher.group(3)
+              + clusterId
               + "."
-              + matcher.group(2)
+              + region
               + ".managedkafka."
-              + project
+              + resourceProjectId
               + ".cloud.goog:9092";
       topicName = matcher.group(4);
     } else {
