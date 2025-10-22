@@ -72,7 +72,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   }
 
   public SpannerResourceManager setUpSpannerResourceManager() {
-    return SpannerResourceManager.builder(testName, PROJECT, REGION).build();
+    return SpannerResourceManager.builder(testName, PROJECT, REGION)
+        .maybeUseStaticInstance()
+        .build();
   }
 
   public String generateSessionFile(
@@ -91,7 +93,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
   public SpannerResourceManager setUpShadowSpannerResourceManager() {
     // Create a separate spanner resource manager with different db name for shadow tables.
     SpannerResourceManager sp =
-        SpannerResourceManager.builder("shadow_" + testName, PROJECT, REGION).build();
+        SpannerResourceManager.builder("shadow_" + testName, PROJECT, REGION)
+            .maybeUseStaticInstance()
+            .build();
     // Set up the Spanner instance and database with the empty DDL for the resource manager.
     sp.ensureUsableAndCreateResources();
     return sp;
