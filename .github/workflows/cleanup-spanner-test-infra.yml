@@ -46,3 +46,5 @@ jobs:
         run: python test-infra/cleanup_pubsub_notifications.py
       - name: Run cleanup_spanner_databases.py
         run: python test-infra/cleanup_spanner_databases.py
+      - name: Run delete_spanner_instances.sh
+        run: bash test-infra/delete_spanner_instances.sh

@@ -2,8 +2,9 @@ import datetime
 from google.cloud import spanner
 
 def delete_old_spanner_databases():
-  spanner_client = spanner.Client()
+  project_id = "cloud-teleport-testing"
   instance_ids = ["teleport", "teleport1", "teleport2", "teleport3", "teleport4"]
+  spanner_client = spanner.Client(project=project_id)
 
   for instance_id in instance_ids:
     instance = spanner_client.instance(instance_id)
