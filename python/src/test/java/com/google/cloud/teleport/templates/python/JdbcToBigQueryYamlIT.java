@@ -142,7 +142,8 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("yaml_pipeline_file", getGcsPath(YAML_PIPELINE_GCS_PATH))
-            .addParameter("jinja_variables", jinjaVars);
+            .addParameter("jinja_variables", jinjaVars)
+            .addParameter("bigQueryLoadingTemporaryDirectory", getGcsPath("jdbc-bq-tmp"));
 
     // Act
     LaunchInfo info = launchTemplate(options);
@@ -208,7 +209,9 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
         LaunchConfig.builder(testName, specPath)
             .addParameter(
                 "yaml_pipeline_file", getGcsPath(YAML_PIPELINE_WITHOUT_DRIVER_JARS_GCS_PATH))
-            .addParameter("jinja_variables", jinjaVars);
+            .addParameter("jinja_variables", jinjaVars)
+            .addParameter(
+                "bigQueryLoadingTemporaryDirectory", getGcsPath("without-driver-jars-tmp"));
 
     // Act
     LaunchInfo info = launchTemplate(options);
