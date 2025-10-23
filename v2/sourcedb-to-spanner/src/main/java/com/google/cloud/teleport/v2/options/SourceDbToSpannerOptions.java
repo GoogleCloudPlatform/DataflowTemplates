@@ -364,17 +364,6 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Long getUniformizationStageCountHint();
 
   void setUniformizationStageCountHint(Long value);
-  @TemplateParameter.Text(
-          order = 29,
-          optional = true,
-          description = "Maximum commit delay time (in milliseconds) to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes",
-          helpText = "Maximum commit delay time to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes."
-                          + "Set -1 to let spanner choose the default. Set to a positive value to override for best suited tradeoff of throughput vs latency."
-                          + "Defaults to -1.")
-  @Default.Long(-1)
-  Long getMaxCommitDelay();
-
-void setMaxCommitDelay(Long value);
 
   @TemplateParameter.Text(
       order = 28,
@@ -426,4 +415,27 @@ void setMaxCommitDelay(Long value);
   String getFailureInjectionParameter();
 
   void setFailureInjectionParameter(String value);
+
+    @TemplateParameter.Text(
+            order = 33,
+            optional = true,
+            description = "Maximum commit delay time (in milliseconds) to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes",
+            helpText = "Maximum commit delay time to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes."
+                    + "Set -1 to let spanner choose the default. Set to a positive value to override for best suited tradeoff of throughput vs latency."
+                    + "Defaults to -1.")
+    @Default.Long(-1)
+    Long getMaxCommitDelay();
+
+    void setMaxCommitDelay(Long value);
+
+    @TemplateParameter.Text(
+            order = 34,
+            optional = true,
+            description = "Maximum row updates in a spanner in a transaction ",
+            helpText = "Maximum row updates in spanner in a transaction. Set 0 to disable batching. Reference https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/io/gcp/spanner/SpannerIO.html"
+                    + "Set -1 to let spanner choose the default which is 500 rows. Set to a positive value to override the default value. Defaults to -1")
+    @Default.Long(-1)
+    Long getMaxRows();
+
+    void setMaxRows(Long value);
 }

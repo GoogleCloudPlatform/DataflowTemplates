@@ -104,7 +104,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
     // Write to Spanner
     SpannerWriter writer =
-        new SpannerWriter(spannerConfig, options.getBatchSizeForSpannerMutations());
+        new SpannerWriter(spannerConfig, options.getBatchSizeForSpannerMutations(), options.getMaxRows());
     SpannerWriteResult spannerWriteResult =
         writer.writeToSpanner(
             transformationResult
