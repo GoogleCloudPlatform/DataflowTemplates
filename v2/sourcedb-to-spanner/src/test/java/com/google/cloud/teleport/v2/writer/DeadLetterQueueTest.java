@@ -34,6 +34,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.cloud.teleport.v2.templates.RowContext;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform.WriteDLQ;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.testing.TestPipeline;
@@ -145,12 +147,11 @@ public class DeadLetterQueueTest {
                     .build())
             .setErr(new Exception("test exception"))
             .build();
-    String expectedDataWithSuccessfulConversion =
-        "\"timestamp_col\":\"1970-01-01T00:29:09.630376Z\",\"new_quantity\":\"42\"";
-    String expectedDataForConversionException =
-        "\"timestamp_col\":\"1749630376\",\"new_quantity\":\"42\"";
-    assertThat(dlq.rowContextToDlqElement(r1).getPayload())
-        .contains(expectedDataWithSuccessfulConversion);
+    JsonObject actualSuccessJson =
+        JsonParser.parseString(dlq.rowContextToDlqElement(r1).getPayload()).getAsJsonObject();
+    assertThat(actualSuccessJson.get("timestamp_col").getAsString())
+        .isEqualTo("1970-01-01T00:29:09.630376Z");
+    assertThat(actualSuccessJson.get("new_quantity").getAsString()).isEqualTo("42");
     try (MockedStatic<GenericRecordTypeConvertor> genericRecordTypeConvertorMockedStatic =
         Mockito.mockStatic(GenericRecordTypeConvertor.class)) {
       genericRecordTypeConvertorMockedStatic
@@ -159,9 +160,10 @@ public class DeadLetterQueueTest {
                   GenericRecordTypeConvertor.getJsonNodeObjectFromGenericRecord(
                       Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any()))
           .thenThrow(new RuntimeException("testException"));
-
-      assertThat(dlq.rowContextToDlqElement(r1).getPayload())
-          .contains(expectedDataForConversionException);
+      JsonObject actualExceptionJson =
+          JsonParser.parseString(dlq.rowContextToDlqElement(r1).getPayload()).getAsJsonObject();
+      assertThat(actualExceptionJson.get("timestamp_col").getAsString()).isEqualTo("1749630376");
+      assertThat(actualExceptionJson.get("new_quantity").getAsString()).isEqualTo("42");
     }
   }
 
