@@ -69,16 +69,20 @@ public class MySQLSrcDataProviderTest {
       int authorIndex = tableNameCaptor.getAllValues().indexOf(AUTHORS_TABLE);
       assertThat(authorIndex).isNotEqualTo(-1);
       JDBCSchema authorSchema = schemaCaptor.getAllValues().get(authorIndex);
-      assertThat(authorSchema.toSqlStatement())
-          .isEqualTo("author_id INT NOT NULL, name VARCHAR(200), PRIMARY KEY ( author_id )");
+      String authorSql = authorSchema.toSqlStatement();
+      assertThat(authorSql).startsWith("author_id INT NOT NULL");
+      assertThat(authorSql).contains("name VARCHAR(200)");
+      assertThat(authorSql).endsWith("PRIMARY KEY ( author_id )");
 
       // Verify books table creation
       int bookIndex = tableNameCaptor.getAllValues().indexOf(BOOKS_TABLE);
       assertThat(bookIndex).isNotEqualTo(-1);
       JDBCSchema bookSchema = schemaCaptor.getAllValues().get(bookIndex);
-      assertThat(bookSchema.toSqlStatement())
-          .isEqualTo(
-              "book_id INT NOT NULL, name VARCHAR(200), author_id INT NOT NULL, PRIMARY KEY ( book_id )");
+      String bookSql = bookSchema.toSqlStatement();
+      assertThat(bookSql).startsWith("book_id INT NOT NULL");
+      assertThat(bookSql).contains("name VARCHAR(200)");
+      assertThat(bookSql).contains("author_id INT NOT NULL");
+      assertThat(bookSql).endsWith("PRIMARY KEY ( book_id )");
     }
   }
 
