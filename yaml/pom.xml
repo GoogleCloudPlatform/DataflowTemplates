@@ -113,6 +113,44 @@
     </resources>
 
     <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>${exec-maven-plugin.version}</version>
+        <executions>
+          <execution>
+            <id>pip-install</id>
+            <phase>test-compile</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>pip</executable>
+              <arguments>
+                <argument>install</argument>
+                <argument>-r</argument>
+                <argument>src/test/python/requirements-test.txt</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>python-test</id>
+            <phase>test</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>python</executable>
+              <workingDirectory>${project.basedir}</workingDirectory>
+              <arguments>
+                <argument>-m</argument>
+                <argument>unittest</argument>
+                <argument>src/test/python/yaml_syntax_test.py</argument>
+              </arguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 

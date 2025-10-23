@@ -38,6 +38,7 @@
     <maven-checkstyle-plugin.version>3.2.1</maven-checkstyle-plugin.version>
     <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
     <maven-dependency-plugin.version>3.8.1</maven-dependency-plugin.version>
+    <exec-maven-plugin.version>3.6.2</exec-maven-plugin.version>
     <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
     <extra.enforcer.rules.version>1.10.0</extra.enforcer.rules.version>
     <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
@@ -443,7 +444,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
-        <version>3.6.2</version>
+        <version>${exec-maven-plugin.version}</version>
         <executions>
           <execution>
             <id>clean-surefire-xml</id>
