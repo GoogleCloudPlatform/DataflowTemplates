@@ -62,6 +62,7 @@
     <commons-codec.version>1.17.0</commons-codec.version>
     <commons-io.version>2.16.1</commons-io.version>
     <commons-lang3.version>3.14.0</commons-lang3.version>
+    <commons-configuration2.version>2.10.1</commons-configuration2.version>
     <conscrypt.version>2.5.2</conscrypt.version>
     <derby.version>10.14.2.0</derby.version>
     <failsafe.version>3.3.0</failsafe.version>
