@@ -20,12 +20,16 @@ import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JdbcDao implements IDao<String> {
   private String sqlUrl;
   private String sqlUser;
 
   private final IConnectionHelper connectionHelper;
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcDao.class);
 
   public JdbcDao(String sqlUrl, String sqlUser, IConnectionHelper connectionHelper) {
     this.sqlUrl = sqlUrl;
@@ -46,6 +50,40 @@ public class JdbcDao implements IDao<String> {
       }
       statement = connObj.createStatement();
       statement.executeUpdate(sqlStatement);
+
+    } finally {
+
+      if (statement != null) {
+        statement.close();
+      }
+      if (connObj != null) {
+        connObj.close();
+      }
+    }
+  }
+
+  @Override
+  public void writeAndCheck(String sqlStatement, TransactionalCheck commitCheck) throws Exception {
+    Connection connObj = null;
+    Statement statement = null;
+
+    try {
+      connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
+      if (connObj == null) {
+        throw new ConnectionException("Connection is null");
+      }
+      connObj.setAutoCommit(false);
+      statement = connObj.createStatement();
+      statement.executeUpdate(sqlStatement);
+
+      // Check if version in shadow table has changed.
+      if (!commitCheck.check()) {
+        // This code path should never execute since Spanner automatically
+        // aborts transactions when locks are released.
+        LOG.error("Shadow table sequence changed during transaction");
+        throw new Exception("Shadow table sequence changed during transaction");
+      }
+      connObj.commit();
 
     } finally {
 
