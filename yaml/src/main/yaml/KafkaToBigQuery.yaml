@@ -34,18 +34,23 @@ template:
       type: text
 
     - name: "schema"
-      help: "Kafka schema. A schema is required if data format is JSON, AVRO or PROTO."
+      help: >
+        Kafka schema. A schema is required if data format is JSON, AVRO or
+        PROTO.
       required: true
       type: text
 
     - name: "numStorageWriteApiStreams"
-      help: "Number of streams defines the parallelism of the BigQueryIO’s Write."
+      help: >
+        Number of streams defines the parallelism of the BigQueryIO’s Write.
       required: false
       default: 1
       type: integer
 
     - name: "storageWriteApiTriggeringFrequencySec"
-      help: "Triggering frequency will determine how soon the data will be visible for querying in BigQuery."
+      help: >
+        Triggering frequency will determine how soon the data will be visible
+        for querying in BigQuery.
       required: false
       default: 5
       type: integer
