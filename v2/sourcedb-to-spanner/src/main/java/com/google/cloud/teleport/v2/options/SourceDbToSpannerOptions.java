@@ -436,7 +436,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
           helpText = "Maximum row updates in spanner in a transaction. Set 0 to disable batching. Reference https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/io/gcp/spanner/SpannerIO.html"
                   + "Set -1 to let spanner choose the default which is 500 rows. Set to a positive value to override the default value. Defaults to -1")
   @Default.Long(-1)
-  Long getMaxRows();
+  Long getMaxNumRows();
 
-  void setMaxRows(Long value);
+  void setMaxNumRows(Long value);
 }
