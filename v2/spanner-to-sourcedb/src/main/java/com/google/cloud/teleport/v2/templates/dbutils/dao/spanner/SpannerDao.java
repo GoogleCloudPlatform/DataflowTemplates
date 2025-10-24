@@ -75,7 +75,7 @@ public class SpannerDao {
 
       return new ShadowTableRecord(row.getTimestamp(0), row.getLong(1));
     } catch (Exception e) {
-      LOG.warn("The " + tableName + " table could not be read. ", e);
+      LOG.warn("The {} table could not be read. Exception: {}", tableName, e);
       // We need to throw the original exception such that the caller can
       // look at SpannerException class to take decision
       throw e;

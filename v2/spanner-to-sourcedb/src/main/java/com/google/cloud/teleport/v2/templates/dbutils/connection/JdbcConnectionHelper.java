@@ -49,7 +49,7 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
       return;
     }
     LOG.info(
-        "Initializing connection pool with size: ", connectionHelperRequest.getMaxConnections());
+        "Initializing connection pool with size: {}", connectionHelperRequest.getMaxConnections());
     connectionPoolMap = new HashMap<>();
     for (Shard shard : connectionHelperRequest.getShards()) {
       String sourceConnectionUrl =
@@ -77,7 +77,6 @@ public class JdbcConnectionHelper implements IConnectionHelper<Connection> {
         config.addDataSourceProperty(key, value);
       }
       HikariDataSource ds = new HikariDataSource(config);
-
       connectionPoolMap.put(sourceConnectionUrl + "/" + shard.getUserName(), ds);
     }
   }
