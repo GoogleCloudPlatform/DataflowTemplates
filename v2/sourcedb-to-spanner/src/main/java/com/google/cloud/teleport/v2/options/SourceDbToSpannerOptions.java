@@ -417,7 +417,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   void setFailureInjectionParameter(String value);
 
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Long(
           order = 33,
           optional = true,
           description = "Maximum commit delay time (in milliseconds) to optimize write throughput in Spanner. Reference https://cloud.google.com/spanner/docs/throughput-optimized-writes",
@@ -429,7 +429,7 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
 
   void setMaxCommitDelay(Long value);
 
-  @TemplateParameter.Text(
+  @TemplateParameter.Long(
           order = 34,
           optional = true,
           description = "Maximum row updates in a spanner in a transaction ",
