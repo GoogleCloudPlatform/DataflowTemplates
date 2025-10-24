@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.bigtablechangestreamstovectorsearch;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric;
 
 import com.google.api.gax.longrunning.OperationTimedPollAlgorithm;
@@ -39,7 +41,6 @@ import com.google.protobuf.TextFormat;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.common.ResourceManager;
-import org.eclipse.jetty.util.ConcurrentHashSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.threeten.bp.Duration;
@@ -112,7 +113,7 @@ public class VectorSearchResourceManager implements ResourceManager {
   // will slowly grow over time, so we should figure out how to periodically purge the index, but
   // that could cause running instances of this test to fail, so it's not perfect.
   // Using ConcurrentHashSet instead of HashSet to support parallelized test cases
-  private ConcurrentHashSet<String> pendingDatapoints = new ConcurrentHashSet<>();
+  private final Set<String> pendingDatapoints = ConcurrentHashMap.newKeySet() ;
 
   private VectorSearchResourceManager(String projectNumber, String region) throws Exception {
     this.projectNumber = projectNumber;
