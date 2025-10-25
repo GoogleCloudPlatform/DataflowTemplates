@@ -34,4 +34,9 @@ public class ShadowTableRecord {
   public long getRecordSequence() {
     return recordSequence;
   }
+
+  public boolean equals(ShadowTableRecord other) {
+    return this.processedCommitTimestamp.equals(other.processedCommitTimestamp)
+        && this.recordSequence == other.recordSequence;
+  }
 }

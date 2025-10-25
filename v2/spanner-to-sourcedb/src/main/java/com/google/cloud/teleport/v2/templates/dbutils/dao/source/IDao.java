@@ -23,4 +23,17 @@ public interface IDao<T> {
    * @throws Exception If there is an error executing the statement.
    */
   void write(T statement) throws Exception;
+
+  /**
+   * Executes a given write statement against the data source then calls the commitCheck callback
+   * function. The transaction will be committed only if the callback function returns true. In any
+   * other case including the case where callback returned true but then the transaction could not
+   * be committed, an exception will be thrown.
+   *
+   * @param sqlStatement Query statement.
+   * @param commitCheck Callback function which will be executed and checked before committing the
+   *     transaction.
+   * @throws Exception If the sqlStatement could not be successfully committed.
+   */
+  void writeAndCheck(String sqlStatement, TransactionalCheck commitCheck) throws Exception;
 }

@@ -59,4 +59,10 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
                 .toArray());
     session.execute(boundStatement);
   }
+
+  @Override
+  public void writeAndCheck(String sqlStatement, TransactionalCheck commitCheck) throws Exception {
+    throw new UnsupportedOperationException(
+        "write and check operation not supported for Cassandra database");
+  }
 }

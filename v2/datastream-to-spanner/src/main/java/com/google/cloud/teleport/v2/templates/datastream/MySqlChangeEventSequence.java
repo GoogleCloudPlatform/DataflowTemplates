@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -121,7 +122,7 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
       // hints via the read api. SQL string generation should be removed.
       if (useSqlStatements) {
         Statement sql =
-            ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
+            SpannerReadUtils.generateReadSQLWithExclusiveLock(
                 shadowTable, readColumnList, primaryKey, shadowTableDdl);
         ResultSet resultSet = transactionContext.executeQuery(sql);
         if (!resultSet.next()) {
