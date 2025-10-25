@@ -37,13 +37,13 @@ public class SpannerWriterTest {
   public void testCreateSpannerWriter() {
     SpannerConfig conf =
         SpannerConfig.create().withProjectId("p1").withInstanceId("instance").withDatabaseId("db1");
-    SpannerWriter writer = new SpannerWriter(conf, null);
+    SpannerWriter writer = new SpannerWriter(conf, null, null);
     assertNotNull(writer.getSpannerWrite());
   }
 
   @Test(expected = NullPointerException.class)
   public void testCreateSpannerWriter_NullPointerException() {
-    SpannerWriter writer = new SpannerWriter(null, null);
+    SpannerWriter writer = new SpannerWriter(null, null, null);
     assertNotNull(writer.getSpannerWrite());
   }
 
@@ -54,12 +54,28 @@ public class SpannerWriterTest {
     Long testBatchSize = 42L;
     when(mockWrite.withBatchSizeBytes(testBatchSize)).thenReturn(mockWrite);
 
-    assertThat(new SpannerWriter(mockSpannerConfig, -1L).setBatchSize(mockWrite))
+    assertThat(new SpannerWriter(mockSpannerConfig, -1L, null).setBatchSize(mockWrite))
         .isEqualTo(mockWrite);
-    assertThat(new SpannerWriter(mockSpannerConfig, null).setBatchSize(mockWrite))
+    assertThat(new SpannerWriter(mockSpannerConfig, null, null).setBatchSize(mockWrite))
         .isEqualTo(mockWrite);
-    assertThat(new SpannerWriter(mockSpannerConfig, testBatchSize).setBatchSize(mockWrite))
+    assertThat(new SpannerWriter(mockSpannerConfig, testBatchSize, null).setBatchSize(mockWrite))
         .isEqualTo(mockWrite);
     verify(mockWrite, times(1)).withBatchSizeBytes(anyLong());
+  }
+
+  @Test
+  public void testSetMaxNumRows() {
+    SpannerConfig mockSpannerConfig = Mockito.mock(SpannerConfig.class);
+    SpannerIO.Write mockWrite = Mockito.mock(SpannerIO.Write.class);
+    Long testMaxNumRows = 100L;
+    when(mockWrite.withMaxNumRows(testMaxNumRows)).thenReturn(mockWrite);
+
+    assertThat(new SpannerWriter(mockSpannerConfig, null, -1L).setMaxNumRows(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, null, null).setMaxNumRows(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, null, testMaxNumRows).setMaxNumRows(mockWrite))
+        .isEqualTo(mockWrite);
+    verify(mockWrite, times(1)).withMaxNumRows(anyLong());
   }
 }
