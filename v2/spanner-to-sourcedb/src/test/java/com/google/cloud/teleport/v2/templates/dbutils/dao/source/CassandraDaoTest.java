@@ -65,7 +65,7 @@ public class CassandraDaoTest {
     ConnectionException exception =
         assertThrows(
             ConnectionException.class,
-            () -> cassandraDao.write(mockPreparedStatementGeneratedResponse));
+            () -> cassandraDao.write(mockPreparedStatementGeneratedResponse, null));
     assertEquals("Connection is null", exception.getMessage());
   }
 
@@ -84,7 +84,7 @@ public class CassandraDaoTest {
         .thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
 
-    cassandraDao.write(mockPreparedStatementGeneratedResponse);
+    cassandraDao.write(mockPreparedStatementGeneratedResponse, null);
 
     verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
     verify(mockPreparedStatement).bind(ArgumentMatchers.any());
@@ -105,7 +105,7 @@ public class CassandraDaoTest {
     when(mockSession.prepare(preparedDmlStatement)).thenReturn(mockPreparedStatement);
     when(mockPreparedStatement.bind(ArgumentMatchers.any())).thenReturn(mockBoundStatement);
 
-    cassandraDao.write(mockPreparedStatementGeneratedResponse);
+    cassandraDao.write(mockPreparedStatementGeneratedResponse, null);
 
     verify(mockSession).prepare(ArgumentMatchers.eq(preparedDmlStatement));
     verify(mockPreparedStatement).bind(ArgumentMatchers.any());
@@ -134,7 +134,7 @@ public class CassandraDaoTest {
         assertThrows(
             RuntimeException.class,
             () -> {
-              cassandraDao.write(mockPreparedStatementGeneratedResponse);
+              cassandraDao.write(mockPreparedStatementGeneratedResponse, null);
             });
 
     assertEquals("Prepared statement execution failed", exception.getMessage());
@@ -155,7 +155,7 @@ public class CassandraDaoTest {
         assertThrows(
             RuntimeException.class,
             () -> {
-              cassandraDao.write(mockPreparedStatementGeneratedResponse);
+              cassandraDao.write(mockPreparedStatementGeneratedResponse, null);
             });
 
     assertEquals("Failed to prepare statement", exception.getMessage());
@@ -170,7 +170,7 @@ public class CassandraDaoTest {
     ConnectionException exception =
         assertThrows(
             ConnectionException.class,
-            () -> cassandraDao.write(mockPreparedStatementGeneratedResponse));
+            () -> cassandraDao.write(mockPreparedStatementGeneratedResponse, null));
     assertEquals("Connection failed", exception.getMessage());
   }
 }

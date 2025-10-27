@@ -123,10 +123,10 @@ public class InputRecordProcessor {
        */
       switch (source) {
         case SOURCE_CASSANDRA:
-          dao.writeAndCheck(dmlGeneratorResponse, null);
+          dao.write(dmlGeneratorResponse, null);
           break;
         default:
-          dao.writeAndCheck(dmlGeneratorResponse.getDmlStatement(), check);
+          dao.write(dmlGeneratorResponse.getDmlStatement(), check);
           break;
       }
       return false;

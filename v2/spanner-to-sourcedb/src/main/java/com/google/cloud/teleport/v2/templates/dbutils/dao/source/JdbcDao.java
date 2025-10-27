@@ -37,8 +37,7 @@ public class JdbcDao implements IDao<String> {
   }
 
   @Override
-  public void writeAndCheck(String sqlStatement, TransactionalCheck transactionalCheck)
-      throws Exception {
+  public void write(String sqlStatement, TransactionalCheck transactionalCheck) throws Exception {
     Connection connObj = null;
     Statement statement = null;
 

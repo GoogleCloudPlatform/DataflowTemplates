@@ -37,7 +37,7 @@ public class CassandraDao implements IDao<DMLGeneratorResponse> {
   }
 
   @Override
-  public void writeAndCheck(
+  public void write(
       DMLGeneratorResponse dmlGeneratorResponse, TransactionalCheck transactionalCheck)
       throws Exception {
     if (transactionalCheck != null) {

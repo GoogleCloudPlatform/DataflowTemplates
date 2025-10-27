@@ -107,23 +107,25 @@ public class SourceWriterFnTest {
     doNothing().when(mockSpannerDao).updateShadowTable(any(), any());
     doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
-        .write(contains("2300")); // This is the child_id for which we want to test the foreign key
+        .write(
+            contains("2300"),
+            any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
     doThrow(
             new java.sql.SQLNonTransientConnectionException(
                 "transient connection error", "HY000", 1161))
         .when(mockSqlDao)
-        .write(contains("1161")); // This is the child_id for which we want to retryable
+        .write(contains("1161"), any()); // This is the child_id for which we want to retryable
     // connection error
     doThrow(
             new java.sql.SQLNonTransientConnectionException(
                 "permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
-        .write(contains("4242")); // no retryable error
+        .write(contains("4242"), any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
         .when(mockSqlDao)
-        .write(contains("12345")); // to test code path of generic exception
-    doNothing().when(mockSqlDao).write(contains("parent1"));
+        .write(contains("12345"), any()); // to test code path of generic exception
+    doNothing().when(mockSqlDao).write(contains("parent1"), any());
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
     testShard.setUser("test");
@@ -171,7 +173,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, never()).write(any());
+    verify(mockSqlDao, never()).write(any(), any());
     verify(mockSpannerDao, never()).updateShadowTable(any(), any());
   }
 
@@ -200,7 +202,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, never()).write(any());
+    verify(mockSqlDao, never()).write(any(), any());
     verify(mockSpannerDao, never()).updateShadowTable(any(), any());
   }
 
@@ -229,7 +231,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, atLeast(1)).write(any());
+    verify(mockSqlDao, atLeast(1)).write(any(), any());
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
@@ -304,7 +306,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture());
+    verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture(), any());
     assertTrue(argumentCaptor.getValue().contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
     verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
@@ -339,7 +341,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, atLeast(0)).write(any());
+    verify(mockSqlDao, atLeast(0)).write(any(), any());
     verify(mockSpannerDao, atLeast(0)).updateShadowTable(any(), any());
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
@@ -623,7 +625,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    verify(mockSqlDao, never()).write(contains("567890"));
+    verify(mockSqlDao, never()).write(contains("567890"), any());
   }
 
   @Test

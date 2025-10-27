@@ -26,5 +26,5 @@ public interface IDao<T> {
    *     committing the transaction.
    * @throws Exception If the sqlStatement could not be successfully committed.
    */
-  void writeAndCheck(T statement, TransactionalCheck transactionalCheck) throws Exception;
+  void write(T statement, TransactionalCheck transactionalCheck) throws Exception;
 }
