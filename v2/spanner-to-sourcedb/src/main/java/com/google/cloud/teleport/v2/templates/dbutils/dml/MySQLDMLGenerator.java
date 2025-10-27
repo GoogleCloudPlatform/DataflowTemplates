@@ -121,10 +121,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      String tableName,
-      List<String> primaryKeys,
-      Map<String, String> columnNameValues,
-      Map<String, String> pkcolumnNameValues) {
+      String tableName, Map<String, String> allColumnNameValues) {
 
     String allColumns = "";
     String allValues = "";
@@ -132,34 +129,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
 
     int index = 0;
 
-    for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-
-      allColumns += "`" + colName + "`";
-      allValues += colValue;
-      // Add PK columns as well to the UPDATE clause
-      updateValues += " `" + colName + "` = " + colValue;
-
-      // Add comma if not the last item in this loop
-      if (index + 1 < pkcolumnNameValues.size()) {
-        allColumns += ",";
-        allValues += ",";
-        updateValues += ",";
-      }
-      index++;
-    }
-
-    // Add a separator comma if we had PKs AND we have non-PKs to add
-    if (!pkcolumnNameValues.isEmpty() && !columnNameValues.isEmpty()) {
-      allColumns += ",";
-      allValues += ",";
-      updateValues += ",";
-    }
-
-    index = 0;
-
-    for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
+    for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       allColumns += "`" + colName + "`";
@@ -167,7 +137,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       updateValues += " `" + colName + "` = " + colValue;
 
       // Add comma if not the last item in this loop
-      if (index + 1 < columnNameValues.size()) {
+      if (index + 1 < allColumnNameValues.size()) {
         allColumns += ",";
         allValues += ",";
         updateValues += ",";
@@ -223,8 +193,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse());
-    return getUpsertStatement(
-        sourceTable.name(), sourceTable.primaryKeyColumns(), columnNameValues, pkcolumnNameValues);
+    columnNameValues.putAll(pkcolumnNameValues);
+    return getUpsertStatement(sourceTable.name(), columnNameValues);
   }
 
   private static Map<String, String> getColumnValues(

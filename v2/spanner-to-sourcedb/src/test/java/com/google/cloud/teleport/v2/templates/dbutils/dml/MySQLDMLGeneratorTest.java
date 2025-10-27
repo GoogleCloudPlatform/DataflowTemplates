@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dml;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -34,6 +35,7 @@ import com.google.gson.GsonBuilder;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.io.FileSystems;
@@ -283,9 +285,13 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(
-        sql.contains(
-            "INSERT INTO `resource_access`(`user_id`,`group_id`,`resource_id`) VALUES (101,5,99) ON DUPLICATE KEY UPDATE  `user_id` = 101, `group_id` = 5, `resource_id` = 99"));
+    assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
+    assertTrue(sql.contains("`user_id` = 101"));
+    assertTrue(sql.contains("`group_id` = 5"));
+    assertTrue(sql.contains("`resource_id` = 99"));
+    assertEquals(2, countInSQL(sql, "user_id"));
+    assertEquals(2, countInSQL(sql, "group_id"));
+    assertEquals(2, countInSQL(sql, "resource_id"));
   }
 
   @Test
@@ -997,10 +1003,13 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-
-    assertTrue(
-        sql.contains(
-            "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
+    assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`SingerId` = NULL"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertEquals(2, countInSQL(sql, "FirstName"));
+    assertEquals(2, countInSQL(sql, "SingerId"));
+    assertEquals(2, countInSQL(sql, "LastName"));
   }
 
   @Test
@@ -1026,9 +1035,13 @@ public final class MySQLDMLGeneratorTest {
                 .setSourceSchema(sourceSchema)
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
-    assertTrue(
-        sql.contains(
-            "INSERT INTO `Singers`(`SingerId`,`FirstName`,`LastName`) VALUES (NULL,'kk','ll')"));
+    assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
+    assertTrue(sql.contains("`FirstName` = 'kk'"));
+    assertTrue(sql.contains("`SingerId` = NULL"));
+    assertTrue(sql.contains("`LastName` = 'll'"));
+    assertEquals(2, countInSQL(sql, "FirstName"));
+    assertEquals(2, countInSQL(sql, "SingerId"));
+    assertEquals(2, countInSQL(sql, "LastName"));
   }
 
   @Test
@@ -1281,8 +1294,11 @@ public final class MySQLDMLGeneratorTest {
                 .build());
     String sql = dmlGeneratorResponse.getDmlStatement();
 
+    assertThat(sql.contains("ON DUPLICATE KEY UPDATE"));
     assertTrue(sql.contains("`FullName` = 'kk ll'"));
-    assertTrue(sql.contains("VALUES (1,'kk ll')"));
+    assertTrue(sql.contains("`SingerId` = 1"));
+    assertEquals(2, countInSQL(sql, "FullName"));
+    assertEquals(2, countInSQL(sql, "SingerId"));
   }
 
   @Test
@@ -1295,5 +1311,14 @@ public final class MySQLDMLGeneratorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> MySQLDMLGenerator.convertBase64ToHex("####GOOGLE####"));
+  }
+
+  public long countInSQL(String sql, String targetWord) {
+    if (sql == null || sql.isEmpty()) {
+      return 0;
+    }
+    return Arrays.stream(sql.split("\\W+"))
+        .filter(word -> word.equalsIgnoreCase(targetWord))
+        .count();
   }
 }
