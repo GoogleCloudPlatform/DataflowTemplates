@@ -36,8 +36,7 @@ public class SpannerWriter implements Serializable {
   private static final Logger LOG = LoggerFactory.getLogger(SpannerWriter.class);
 
   private final SpannerConfig spannerConfig;
-  @Nullable
-  private final Long batchSize;
+  @Nullable private final Long batchSize;
 
   public SpannerWriter(SpannerConfig spannerConfig, @Nullable Long batchSize) {
     this.spannerConfig = spannerConfig;
