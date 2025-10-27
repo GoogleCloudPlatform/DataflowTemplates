@@ -86,7 +86,8 @@ public class CassandraConnectionHelper implements IConnectionHelper<CqlSession> 
         connectionPoolMap.put(connectionKey, session);
         LOG.info("Connection initialized for key: {}", connectionKey);
       } catch (Exception e) {
-        LOG.error("Failed to initialize connection for shard: {}", cassandraShard, e);
+        LOG.error(
+            "Failed to initialize connection for shard: {}. Exception: {}", cassandraShard, e);
         throw e;
       }
     }
