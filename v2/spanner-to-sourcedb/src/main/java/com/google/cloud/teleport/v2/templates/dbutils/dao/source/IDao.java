@@ -17,23 +17,14 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
 public interface IDao<T> {
   /**
-   * Executes a given write statement against the data source.
+   * Executes a given write statement against the data source then calls the transactionalCheck
+   * callback function (if not null). The transaction will be committed only if the callback
+   * function did not throw any exception. In any other case, an exception will be thrown.
    *
    * @param statement Query statement.
-   * @throws Exception If there is an error executing the statement.
-   */
-  void write(T statement) throws Exception;
-
-  /**
-   * Executes a given write statement against the data source then calls the commitCheck callback
-   * function. The transaction will be committed only if the callback function returns true. In any
-   * other case including the case where callback returned true but then the transaction could not
-   * be committed, an exception will be thrown.
-   *
-   * @param sqlStatement Query statement.
-   * @param commitCheck Callback function which will be executed and checked before committing the
-   *     transaction.
+   * @param transactionalCheck Callback function which will be executed and checked before
+   *     committing the transaction.
    * @throws Exception If the sqlStatement could not be successfully committed.
    */
-  void writeAndCheck(String sqlStatement, TransactionalCheck commitCheck) throws Exception;
+  void writeAndCheck(T statement, TransactionalCheck transactionalCheck) throws Exception;
 }

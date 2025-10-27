@@ -22,6 +22,9 @@ public class ShadowTableRecord {
   private Timestamp processedCommitTimestamp;
   private long recordSequence;
 
+  // TODO: ShadowTableRecord class should also contain the corresponding tableName and the compare
+  // methods should check if comparison is being done between records of same table.
+
   public ShadowTableRecord(Timestamp processedCommitTimestamp, long recordSequence) {
     this.processedCommitTimestamp = processedCommitTimestamp;
     this.recordSequence = recordSequence;

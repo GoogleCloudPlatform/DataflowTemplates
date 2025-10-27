@@ -104,7 +104,7 @@ public class SourceWriterFnTest {
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_child11"), any()))
         .thenReturn(new ShadowTableRecord(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"), 1));
     when(mockSpannerDao.getShadowTableRecord(eq("shadow_child21"), any())).thenReturn(null);
-    doNothing().when(mockSpannerDao).updateShadowTable(any());
+    doNothing().when(mockSpannerDao).updateShadowTable(any(), any());
     doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
         .write(contains("2300")); // This is the child_id for which we want to test the foreign key
@@ -172,7 +172,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, never()).write(any());
-    verify(mockSpannerDao, never()).updateShadowTable(any());
+    verify(mockSpannerDao, never()).updateShadowTable(any(), any());
   }
 
   @Test
@@ -201,7 +201,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, never()).write(any());
-    verify(mockSpannerDao, never()).updateShadowTable(any());
+    verify(mockSpannerDao, never()).updateShadowTable(any(), any());
   }
 
   @Test
@@ -230,7 +230,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, atLeast(1)).write(any());
-    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
   @Test
@@ -306,7 +306,7 @@ public class SourceWriterFnTest {
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture());
     assertTrue(argumentCaptor.getValue().contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
-    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
   @Test
@@ -340,7 +340,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
     verify(mockSqlDao, atLeast(0)).write(any());
-    verify(mockSpannerDao, atLeast(0)).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(0)).updateShadowTable(any(), any());
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
         new ChangeStreamErrorRecord(jsonRec, Constants.FILTERED_TAG_MESSAGE);

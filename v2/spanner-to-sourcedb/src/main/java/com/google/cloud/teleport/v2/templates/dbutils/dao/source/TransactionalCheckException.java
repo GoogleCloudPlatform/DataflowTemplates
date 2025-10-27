@@ -15,16 +15,15 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 
-/**
- * A functional interface for performing a check within a transaction. The check method must throw
- * an exception if the check fails.
- */
-@FunctionalInterface
-public interface TransactionalCheck {
-  /**
-   * Performs a check.
-   *
-   * @throws TransactionalCheckException if the check fails.
-   */
-  void check() throws TransactionalCheckException;
+/** Exception representing TransactionalCheck callback failures. */
+public class TransactionalCheckException extends Exception {
+  public TransactionalCheckException() {}
+
+  public TransactionalCheckException(String message) {
+    super(message);
+  }
+
+  public TransactionalCheckException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,32 +37,8 @@ public class JdbcDao implements IDao<String> {
   }
 
   @Override
-  public void write(String sqlStatement) throws SQLException, ConnectionException {
-    Connection connObj = null;
-    Statement statement = null;
-
-    try {
-
-      connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
-      if (connObj == null) {
-        throw new ConnectionException("Connection is null");
-      }
-      statement = connObj.createStatement();
-      statement.executeUpdate(sqlStatement);
-
-    } finally {
-
-      if (statement != null) {
-        statement.close();
-      }
-      if (connObj != null) {
-        connObj.close();
-      }
-    }
-  }
-
-  @Override
-  public void writeAndCheck(String sqlStatement, TransactionalCheck commitCheck) throws Exception {
+  public void writeAndCheck(String sqlStatement, TransactionalCheck transactionalCheck)
+      throws Exception {
     Connection connObj = null;
     Statement statement = null;
 
@@ -76,12 +51,8 @@ public class JdbcDao implements IDao<String> {
       statement = connObj.createStatement();
       statement.executeUpdate(sqlStatement);
 
-      // Check if version in shadow table has changed.
-      if (!commitCheck.check()) {
-        // This code path should never execute since Spanner automatically
-        // aborts transactions when locks are released.
-        LOG.error("Shadow table sequence changed during transaction");
-        throw new Exception("Shadow table sequence changed during transaction");
+      if (transactionalCheck != null) {
+        transactionalCheck.check();
       }
       connObj.commit();
 

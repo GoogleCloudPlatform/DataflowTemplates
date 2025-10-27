@@ -46,6 +46,7 @@ import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataCha
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
@@ -57,6 +58,8 @@ import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import java.sql.SQLNonTransientConnectionException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -235,7 +238,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                               ShadowTableRecord newShadowTableRecord =
                                   spannerDao.readShadowTableRecordWithExclusiveLock(
                                       shadowTableName, primaryKey, ddl, shadowTransaction);
-                              return shadowTableRecord.equals(newShadowTableRecord);
+                              if (!shadowTableRecord.equals(newShadowTableRecord)) {
+                                throw new TransactionalCheckException(
+                                    "Shadow table sequence changed during transaction");
+                              }
                             };
                         boolean isEventFiltered =
                             InputRecordProcessor.processRecord(
@@ -269,6 +275,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                       }
                       return null;
                     });
+        // Source write metrics should be updated outside the shadowTableTransaction after the
+        // shadow table update is successful.
+        updateSourceWriteMetrics(shardId, spannerRec);
         successRecordCountMetric.inc();
         if (spannerRec.isRetryRecord()) {
           retryableRecordCountMetric.dec();
@@ -318,6 +327,21 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       }
     }
+  }
+
+  private void updateSourceWriteMetrics(
+      String shardId, TrimmedShardedDataChangeRecord spannerRecord) {
+    Counter numRecProcessedMetric =
+        Metrics.counter(shardId, "records_written_to_source_" + shardId);
+
+    numRecProcessedMetric.inc(1); // update the number of records processed metric
+    Distribution lagMetric = Metrics.distribution(shardId, "replication_lag_in_seconds_" + shardId);
+
+    Instant instTime = Instant.now();
+    Instant commitTsInst = spannerRecord.getCommitTimestamp().toSqlTimestamp().toInstant();
+    long replicationLag = ChronoUnit.SECONDS.between(commitTsInst, instTime);
+
+    lagMetric.update(replicationLag); // update the lag metric
   }
 
   private Mutation getShadowTableMutation(
