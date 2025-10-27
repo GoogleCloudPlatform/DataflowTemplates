@@ -31,8 +31,7 @@ import org.mockito.Mockito;
 
 public class SpannerWriterTest {
 
-  @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testCreateSpannerWriter() {
