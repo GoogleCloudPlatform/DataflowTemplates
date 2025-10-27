@@ -101,6 +101,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final SpannerConfig spannerConfig;
   private transient SpannerDao spannerDao;
   private final Ddl ddl;
+  private final Ddl shadowTableDdl;
   private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
@@ -116,6 +117,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
+      Ddl shadowTableDdl,
       SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
@@ -128,6 +130,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.shards = shards;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
+    this.shadowTableDdl = shadowTableDdl;
     this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
@@ -211,7 +214,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                       boolean isSourceAhead = false;
                       ShadowTableRecord shadowTableRecord =
                           spannerDao.readShadowTableRecordWithExclusiveLock(
-                              shadowTableName, primaryKey, ddl, shadowTransaction);
+                              shadowTableName, primaryKey, shadowTableDdl, shadowTransaction);
                       isSourceAhead =
                           shadowTableRecord != null
                               && ((shadowTableRecord
@@ -235,7 +238,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             () -> {
                               ShadowTableRecord newShadowTableRecord =
                                   spannerDao.readShadowTableRecordWithExclusiveLock(
-                                      shadowTableName, primaryKey, ddl, shadowTransaction);
+                                      shadowTableName,
+                                      primaryKey,
+                                      shadowTableDdl,
+                                      shadowTransaction);
                               if (!ShadowTableRecord.isEquals(
                                   shadowTableRecord, newShadowTableRecord)) {
                                 throw new TransactionalCheckException(

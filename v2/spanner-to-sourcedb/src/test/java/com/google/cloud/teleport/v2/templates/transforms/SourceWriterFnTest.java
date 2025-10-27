@@ -96,6 +96,7 @@ public class SourceWriterFnTest {
   private Shard testShard;
   private Schema testSchema;
   private Ddl testDdl;
+  private Ddl shadowTableDdl;
   private SourceSchema testSourceSchema;
 
   private ISchemaMapper schemaMapper;
@@ -177,6 +178,9 @@ public class SourceWriterFnTest {
     testSourceDbTimezoneOffset = "+00:00";
     testDdl =
         SchemaUtils.buildSpannerDdlFromSessionFile("src/test/resources/sourceWriterUTSession.json");
+    shadowTableDdl =
+        SchemaUtils.buildSpannerShadowTableDdlFromSessionFile(
+            "src/test/resources/sourceWriterUTSession.json");
     testSourceSchema =
         SchemaUtils.buildSourceSchemaFromSessionFile(
             "src/test/resources/sourceWriterUTSession.json");
@@ -199,6 +203,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -229,6 +234,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -258,6 +264,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -292,6 +299,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -333,6 +341,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -370,6 +379,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -405,6 +415,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -437,6 +448,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -467,6 +479,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -501,6 +514,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -531,6 +545,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -563,6 +578,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -595,6 +611,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -627,6 +644,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -658,6 +676,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdlForNullDML(),
+            testDdlForNullDML(),
             testSourceSchema,
             "shadow_",
             "skip",
@@ -681,6 +700,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -703,6 +723,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",

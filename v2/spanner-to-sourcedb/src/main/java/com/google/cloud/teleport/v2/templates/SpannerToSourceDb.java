@@ -616,6 +616,7 @@ public class SpannerToSourceDb {
 
     shadowTableCreator.createShadowTablesInSpanner();
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
+    Ddl shadowTableDdl = SpannerSchema.getInformationSchemaAsDdl(spannerMetadataConfig);
     List<Shard> shards;
     String shardingMode;
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
@@ -764,6 +765,7 @@ public class SpannerToSourceDb {
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
                     ddl,
+                    shadowTableDdl,
                     sourceSchema,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
