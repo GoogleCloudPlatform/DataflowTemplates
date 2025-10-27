@@ -871,7 +871,8 @@ public class SpannerToSourceDb {
             .withChangeStreamName(options.getChangeStreamName())
             .withMetadataInstance(options.getMetadataInstance())
             .withMetadataDatabase(options.getMetadataDatabase())
-            .withInclusiveStartAt(startTime);
+            .withInclusiveStartAt(startTime)
+            .withRpcPriority(options.getSpannerPriority());
     if (!options.getEndTimestamp().equals("")) {
       return readChangeStreamDoFn.withInclusiveEndAt(
           Timestamp.parseTimestamp(options.getEndTimestamp()));

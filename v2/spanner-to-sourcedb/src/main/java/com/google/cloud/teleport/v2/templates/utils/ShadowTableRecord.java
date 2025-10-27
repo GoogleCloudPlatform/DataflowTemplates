@@ -42,4 +42,24 @@ public class ShadowTableRecord {
     return this.processedCommitTimestamp.equals(other.processedCommitTimestamp)
         && this.recordSequence == other.recordSequence;
   }
+
+  /**
+   * Performs equality check between ShadowTable records with handling for nulls.
+   *
+   * @param record1
+   * @param record2
+   * @return
+   */
+  public static boolean isEquals(ShadowTableRecord record1, ShadowTableRecord record2) {
+    // If both record1 and record2 are null, then they are equal.
+    if (record1 == null && record2 == null) {
+      return true;
+    }
+    // If one is null and other is not, then they are not equal.
+    if (record1 == null || record2 == null) {
+      return false;
+    }
+    // If both of them are not null then perform the actual equality check
+    return record1.equals(record2);
+  }
 }
