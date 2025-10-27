@@ -39,7 +39,6 @@ import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.util.Base64;
@@ -241,8 +240,7 @@ public class AssignShardIdFn
       c.output(KV.of(finalKey, record));
     } catch (Exception e) {
       StringWriter errors = new StringWriter();
-      e.printStackTrace(new PrintWriter(errors));
-      LOG.error("Error fetching shard Id column: " + e.getMessage() + ": " + errors.toString(), e);
+      LOG.error("Error fetching shard Id column: {}", e);
       // The record has no shard hence will be sent to DLQ in subsequent steps
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
