@@ -50,7 +50,8 @@ import org.joda.time.Instant;
 /** A {@link PTransform} that converts generatedMessages to write to Spanner table. */
 public final class StreamingDataGeneratorWriteToKafka {
 
-  private static final Pattern ManagedKafkaRegex = Pattern.compile(".*managedkafka\\..*\\.goog.*");
+  private static final Pattern ManagedKafkaRegex =
+      Pattern.compile("bootstrap\\..*\\.managedkafka\\..*\\.cloud\\.goog.*");
 
   private StreamingDataGeneratorWriteToKafka() {}
 
