@@ -18,6 +18,8 @@ package com.google.cloud.teleport.v2.templates.changestream;
 import com.google.cloud.Timestamp;
 import java.io.Serializable;
 import java.util.Objects;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 
@@ -26,6 +28,7 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
  * this pipeline.
  */
 @SuppressWarnings("initialization.fields.uninitialized") // Avro requires the default constructor
+@DefaultCoder(value = AvroCoder.class)
 public class TrimmedShardedDataChangeRecord extends java.lang.Object implements Serializable {
   private Timestamp commitTimestamp;
   private String serverTransactionId;
