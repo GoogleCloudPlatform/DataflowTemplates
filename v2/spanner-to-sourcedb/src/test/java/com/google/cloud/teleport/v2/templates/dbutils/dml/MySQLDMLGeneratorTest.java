@@ -266,7 +266,7 @@ public final class MySQLDMLGeneratorTest {
     String tableName = "resource_access";
     String newValuesString = "{\"user_id\":\"101\",\"group_id\":\"5\",\"resource_id\":\"99\"}";
     JSONObject newValuesJson = new JSONObject(newValuesString);
-    //the keys and the newValues are the same because all the columns are part of the key
+    // the keys and the newValues are the same because all the columns are part of the key
     JSONObject keyValuesJson = new JSONObject(newValuesString);
     String modType = "INSERT";
 
@@ -277,7 +277,7 @@ public final class MySQLDMLGeneratorTest {
     DMLGeneratorResponse dmlGeneratorResponse =
         mySQLDMLGenerator.getDMLStatement(
             new DMLGeneratorRequest.Builder(
-                modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                    modType, tableName, newValuesJson, keyValuesJson, "+00:00")
                 .setSchemaMapper(schemaMapper)
                 .setDdl(ddl)
                 .setSourceSchema(sourceSchema)
