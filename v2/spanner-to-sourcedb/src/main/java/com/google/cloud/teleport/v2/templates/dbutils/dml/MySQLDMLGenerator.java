@@ -130,34 +130,43 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     String allValues = "";
     String updateValues = "";
 
+    int index = 0;
+
     for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
 
-      allColumns += "`" + colName + "`,";
-      allValues += colValue + ",";
+      allColumns += "`" + colName + "`";
+      allValues += colValue;
+      // Add PK columns as well to the UPDATE clause
+      updateValues += " `" + colName + "` = " + colValue;
+
+      // Add comma if not the last item in this loop
+      if (index + 1 < pkcolumnNameValues.size()) {
+        allColumns += ",";
+        allValues += ",";
+        updateValues += ",";
+      }
+      index++;
     }
 
-    if (columnNameValues.size() == 0) { // if there are only PKs
-      // trim the last ','
-      allColumns = allColumns.substring(0, allColumns.length() - 1);
-      allValues = allValues.substring(0, allValues.length() - 1);
-
-      String returnVal =
-          "INSERT INTO `" + tableName + "`(" + allColumns + ")" + " VALUES (" + allValues + ") ";
-      return new DMLGeneratorResponse(returnVal);
+    // Add a separator comma if we had PKs AND we have non-PKs to add
+    if (!pkcolumnNameValues.isEmpty() && !columnNameValues.isEmpty()) {
+      allColumns += ",";
+      allValues += ",";
+      updateValues += ",";
     }
-    int index = 0;
+
+    index = 0;
 
     for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       allColumns += "`" + colName + "`";
       allValues += colValue;
-      if (!primaryKeys.contains(colName)) {
-        updateValues += " `" + colName + "` = " + colValue;
-      }
+      updateValues += " `" + colName + "` = " + colValue;
 
+      // Add comma if not the last item in this loop
       if (index + 1 < columnNameValues.size()) {
         allColumns += ",";
         allValues += ",";

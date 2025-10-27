@@ -257,6 +257,38 @@ public final class MySQLDMLGeneratorTest {
   }
 
   @Test
+  public void tableOnlyContainsPrimaryKeyColumns() {
+    String sessionFile = "src/test/resources/onlyPKColumnsSession.json";
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(sessionFile);
+    ISchemaMapper schemaMapper = new SessionBasedMapper(sessionFile, ddl);
+
+    String tableName = "resource_access";
+    String newValuesString = "{\"user_id\":\"101\",\"group_id\":\"5\",\"resource_id\":\"99\"}";
+    JSONObject newValuesJson = new JSONObject(newValuesString);
+    //the keys and the newValues are the same because all the columns are part of the key
+    JSONObject keyValuesJson = new JSONObject(newValuesString);
+    String modType = "INSERT";
+
+    /*The expected sql is:
+    INSERT INTO `resource_access`(`user_id`,`group_id`,`resource_id`) VALUES (101,5,99) ON DUPLICATE KEY UPDATE  `user_id` = 101, `group_id` = 5, `resource_id` = 99
+    */
+    MySQLDMLGenerator mySQLDMLGenerator = new MySQLDMLGenerator();
+    DMLGeneratorResponse dmlGeneratorResponse =
+        mySQLDMLGenerator.getDMLStatement(
+            new DMLGeneratorRequest.Builder(
+                modType, tableName, newValuesJson, keyValuesJson, "+00:00")
+                .setSchemaMapper(schemaMapper)
+                .setDdl(ddl)
+                .setSourceSchema(sourceSchema)
+                .build());
+    String sql = dmlGeneratorResponse.getDmlStatement();
+    assertTrue(
+        sql.contains(
+            "INSERT INTO `resource_access`(`user_id`,`group_id`,`resource_id`) VALUES (101,5,99) ON DUPLICATE KEY UPDATE  `user_id` = 101, `group_id` = 5, `resource_id` = 99"));
+  }
+
+  @Test
   public void timezoneOffsetMismatch() {
     String sessionFile = "src/test/resources/timeZoneSession.json";
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(sessionFile);
