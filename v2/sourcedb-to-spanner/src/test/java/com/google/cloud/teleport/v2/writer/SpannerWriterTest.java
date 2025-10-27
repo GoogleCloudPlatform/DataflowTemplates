@@ -31,19 +31,20 @@ import org.mockito.Mockito;
 
 public class SpannerWriterTest {
 
-  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+  @Rule
+  public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testCreateSpannerWriter() {
     SpannerConfig conf =
         SpannerConfig.create().withProjectId("p1").withInstanceId("instance").withDatabaseId("db1");
-    SpannerWriter writer = new SpannerWriter(conf, null);
+    SpannerWriter writer = new SpannerWriter(conf, null, null, null);
     assertNotNull(writer.getSpannerWrite());
   }
 
   @Test(expected = NullPointerException.class)
   public void testCreateSpannerWriter_NullPointerException() {
-    SpannerWriter writer = new SpannerWriter(null, null);
+    SpannerWriter writer = new SpannerWriter(null, null, null, null);
     assertNotNull(writer.getSpannerWrite());
   }
 
@@ -54,12 +55,47 @@ public class SpannerWriterTest {
     Long testBatchSize = 42L;
     when(mockWrite.withBatchSizeBytes(testBatchSize)).thenReturn(mockWrite);
 
-    assertThat(new SpannerWriter(mockSpannerConfig, -1L).setBatchSize(mockWrite))
+    assertThat(new SpannerWriter(mockSpannerConfig, -1L, null, null).setBatchSize(mockWrite))
         .isEqualTo(mockWrite);
-    assertThat(new SpannerWriter(mockSpannerConfig, null).setBatchSize(mockWrite))
+    assertThat(new SpannerWriter(mockSpannerConfig, null, null, null).setBatchSize(mockWrite))
         .isEqualTo(mockWrite);
-    assertThat(new SpannerWriter(mockSpannerConfig, testBatchSize).setBatchSize(mockWrite))
+    assertThat(new SpannerWriter(mockSpannerConfig, testBatchSize, null, null).setBatchSize(mockWrite))
         .isEqualTo(mockWrite);
     verify(mockWrite, times(1)).withBatchSizeBytes(anyLong());
+  }
+
+  @Test
+  public void testSetMaxNumRows() {
+    SpannerConfig mockSpannerConfig = Mockito.mock(SpannerConfig.class);
+    SpannerIO.Write mockWrite = Mockito.mock(SpannerIO.Write.class);
+    Long testMaxNumRows = 100L;
+    when(mockWrite.withMaxNumRows(testMaxNumRows)).thenReturn(mockWrite);
+
+    assertThat(new SpannerWriter(mockSpannerConfig, null, -1L, null).setMaxNumRows(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, null, null, null).setMaxNumRows(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, null, testMaxNumRows, null).setMaxNumRows(mockWrite))
+        .isEqualTo(mockWrite);
+    verify(mockWrite, times(1)).withMaxNumRows(anyLong());
+  }
+
+  @Test
+  public void testSetMaxNumMutations() {
+    SpannerConfig mockSpannerConfig = Mockito.mock(SpannerConfig.class);
+    SpannerIO.Write mockWrite = Mockito.mock(SpannerIO.Write.class);
+    Long testMaxNumMutations = 500L;
+    when(mockWrite.withMaxNumMutations(testMaxNumMutations)).thenReturn(mockWrite);
+
+    assertThat(
+        new SpannerWriter(mockSpannerConfig, null, null, -1L).setMaxNumMutations(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(new SpannerWriter(mockSpannerConfig, null, null, null).setMaxNumMutations(mockWrite))
+        .isEqualTo(mockWrite);
+    assertThat(
+        new SpannerWriter(mockSpannerConfig, null, null, testMaxNumMutations)
+            .setMaxNumMutations(mockWrite))
+        .isEqualTo(mockWrite);
+    verify(mockWrite, times(1)).withMaxNumMutations(anyLong());
   }
 }
