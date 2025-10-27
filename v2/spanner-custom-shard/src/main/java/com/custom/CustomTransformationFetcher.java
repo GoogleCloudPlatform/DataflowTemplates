@@ -8,7 +8,7 @@
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * distributed under the License is distributed on an "AS IS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
@@ -21,17 +21,13 @@ import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * This is a sample class to be implemented by the customer. All the relevant dependencies have been
- * added and users need to implement the toSpannerRow() and/or toSourceRow() method for forward and
- * reverse replication flows respectively
- */
 public class CustomTransformationFetcher implements ISpannerMigrationTransformer {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CustomShardIdFetcher.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CustomTransformationFetcher.class);
 
   @Override
   public void init(String customParameters) {
@@ -41,37 +37,29 @@ public class CustomTransformationFetcher implements ISpannerMigrationTransformer
   @Override
   public MigrationTransformationResponse toSpannerRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("Customers")) {
-      Map<String, Object> requestRow = request.getRequestRow();
+
+    // Check for the correct table name (case-insensitive is safer)
+    if (request.getTableName().equalsIgnoreCase("ih_items_archive")) {
       Map<String, Object> responseRow = new HashMap<>();
 
-      responseRow.put(
-          "full_name", requestRow.get("first_name") + " " + requestRow.get("last_name"));
-      responseRow.put("migration_shard_id", request.getShardId() + "_" + requestRow.get("id"));
-      MigrationTransformationResponse response =
-          new MigrationTransformationResponse(responseRow, false);
-      return response;
+      // Generate the random UUID for the new primary key column.
+      responseRow.put("my_pk", UUID.randomUUID().toString());
+
+      // Return the response.
+      // Note: We only need to return the NEW or MODIFIED columns.
+      // SMT will automatically carry over all other columns from the source.
+      return new MigrationTransformationResponse(responseRow, false);
     }
-    return new MigrationTransformationResponse(null, false);
+
+    // For any other tables, return a response with an EMPTY, NON-NULL map.
+    return new MigrationTransformationResponse(new HashMap<>(), false);
   }
 
   @Override
   public MigrationTransformationResponse toSourceRow(MigrationTransformationRequest request)
       throws InvalidTransformationException {
-    if (request.getTableName().equals("Customers")) {
-      Map<String, Object> requestRow = request.getRequestRow();
-      Map<String, Object> responseRow = new HashMap<>();
-      String fullName = (String) requestRow.get("full_name");
-      String[] nameParts = fullName.split(" ", 2);
-      responseRow.put("first_name", nameParts[0]);
-      responseRow.put("last_name", nameParts[1]);
-      String migrationShardId = (String) requestRow.get("migration_shard_id");
-      String[] idParts = migrationShardId.split("_", 2);
-      responseRow.put("id", idParts[1]);
-      MigrationTransformationResponse response =
-          new MigrationTransformationResponse(responseRow, false);
-      return response;
-    }
-    return new MigrationTransformationResponse(null, false);
+    // This part is not used for your forward migration.
+    // Return a default empty response.
+    return new MigrationTransformationResponse(new HashMap<>(), false);
   }
 }
