@@ -439,4 +439,15 @@ public interface SourceDbToSpannerOptions extends CommonTemplateOptions {
   Long getMaxNumRows();
 
   void setMaxNumRows(Long value);
+
+  @TemplateParameter.Text(
+        order = 35,
+        optional = true,
+        description = "Maximum number of mutations in a transaction",
+        helpText = "Maximum number of mutations in a transaction. Set 0 to disable batching. Reference https://beam.apache.org/releases/javadoc/current/org/apache/beam/sdk/io/gcp/spanner/SpannerIO.html"
+                + "Set -1 to let spanner choose the default which is 5000 mutations. Set to a positive value to override the default value. Defaults to -1")
+  @Default.Long(-1)
+  Long getMaxNumMutations();
+
+  void setMaxNumMutations(Long value);
 }

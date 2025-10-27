@@ -38,19 +38,22 @@ public class SpannerWriter implements Serializable {
   private final SpannerConfig spannerConfig;
   @Nullable private final Long batchSize;
   @Nullable private final Long maxNumRows;
+  @Nullable private final Long maxNumMutations;
 
-  public SpannerWriter(SpannerConfig spannerConfig, @Nullable Long batchSize, @Nullable Long maxNumRows) {
+  public SpannerWriter(SpannerConfig spannerConfig, @Nullable Long batchSize, @Nullable Long maxNumRows, @Nullable Long maxNumMutations) {
     this.spannerConfig = spannerConfig;
     this.batchSize = batchSize;
     this.maxNumRows = maxNumRows;
+    this.maxNumMutations = maxNumMutations;
   }
 
   public Write getSpannerWrite() {
-    return setMaxNumRows(
+    return setMaxNumMutations(
+        setMaxNumRows(
         setBatchSize(
             SpannerIO.write()
                 .withSpannerConfig(spannerConfig)
-                .withFailureMode(FailureMode.REPORT_FAILURES)));
+                .withFailureMode(FailureMode.REPORT_FAILURES))));
   }
 
   protected Write setBatchSize(Write write) {
@@ -66,6 +69,15 @@ public class SpannerWriter implements Serializable {
     if (this.maxNumRows != null && this.maxNumRows >= 0) {
       LOG.info("Setting Spanner Max Num Rows as {}", this.maxNumRows);
       return write.withMaxNumRows(this.maxNumRows);
+    } else {
+      return write;
+    }
+  }
+
+  protected Write setMaxNumMutations(Write write) {
+    if (this.maxNumMutations != null && this.maxNumMutations >= 0) {
+      LOG.info("Setting Spanner Max Num Mutations as {}", this.maxNumMutations);
+      return write.withMaxNumMutations(this.maxNumMutations);
     } else {
       return write;
     }
