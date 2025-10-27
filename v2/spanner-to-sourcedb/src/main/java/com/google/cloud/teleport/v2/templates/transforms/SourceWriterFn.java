@@ -293,7 +293,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         Throwable cause = ex.getCause();
         if (cause == null) {
           // If cause is null, then it is a plain Spanner exception
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, cause.getMessage(), spannerRec);
+          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
         } else if (cause instanceof InvalidTransformationException) {
           invalidTransformationException.inc();
           outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
