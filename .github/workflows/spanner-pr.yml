@@ -187,7 +187,7 @@ jobs:
           --it-project="cloud-teleport-testing" \
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2" \
-          -Dtest=SpannerToSourceDbIT
+          --it-test-to-run="SpannerToSourceDbIT"
       - name: Upload Integration Tests Report
         uses: actions/upload-artifact@v4
         if: always() # always run even if the previous step fails

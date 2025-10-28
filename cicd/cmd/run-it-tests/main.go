@@ -68,6 +68,7 @@ func main() {
 		flags.SpannerHost(),
 		flags.FailureMode(),
 		flags.RetryFailures(),
+		flags.TestToRun(), // ADD THIS LINE TO USE THE NEW FLAG
 		flags.StaticOracleHost(),
 		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),
