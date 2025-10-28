@@ -69,6 +69,7 @@ func main() {
 		flags.FailureMode(),
 		flags.RetryFailures(),
 		flags.TestToRun(), // ADD THIS LINE TO USE THE NEW FLAG
+		flags.ModuleToTest(),
 		flags.StaticOracleHost(),
 		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),

@@ -43,6 +43,7 @@ var (
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
 	dTestToRun                          string // 1. ADD THIS VARIABLE
+	dModuleToTest                       string // 1. ADD THIS VARIABLE
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -68,6 +69,7 @@ func RegisterItFlags() {
 
 	// 2. ADD THIS FLAG REGISTRATION
 	flag.StringVar(&dTestToRun, "it-test-to-run", "", "The specific integration test class to run")
+	flag.StringVar(&dModuleToTest, "it-module-to-test", "", "The specific module to run tests against") // 2. ADD THIS FLAG REGISTRATION
 }
 
 func Region() string {
@@ -176,6 +178,16 @@ func ThreadCount() int {
 func TestToRun() string {
 	if dTestToRun != "" {
 		return "-Dtest=" + dTestToRun
+	}
+	return ""
+}
+
+// 3. ADD THIS ACCESSOR FUNCTION
+func ModuleToTest() string {
+	if dModuleToTest != "" {
+		// -pl tells Maven to build only this project
+		// -am tells Maven to also build any dependencies it needs
+		return "-pl " + dModuleToTest + " -am"
 	}
 	return ""
 }
