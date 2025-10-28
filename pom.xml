@@ -98,6 +98,7 @@
     <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
     <okio.version>3.16.2</okio.version>
+    <jetty.version>12.0.12</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
@@ -245,6 +246,80 @@
         <groupId>com.squareup.okio</groupId>
         <artifactId>okio</artifactId>
         <version>${okio.version}</version>
+      </dependency>
+      <!-- Enforce non-vulnerable version of Jetty HTTP (CVE-2024-6763) -->
+      <!-- Using Jetty 12 EE8 artifacts for compatibility with Hadoop -->
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-http</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-server</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-client</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-io</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-util</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-security</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-util-ajax</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-xml</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty</groupId>
+        <artifactId>jetty-alpn-client</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <!-- EE8 specific artifacts for compatibility with Hadoop -->
+      <dependency>
+        <groupId>org.eclipse.jetty.ee8</groupId>
+        <artifactId>jetty-ee8-servlet</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.ee8</groupId>
+        <artifactId>jetty-ee8-webapp</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <!-- WebSocket artifacts with correct Jetty 12 coordinates -->
+      <dependency>
+        <groupId>org.eclipse.jetty.websocket</groupId>
+        <artifactId>jetty-websocket-jetty-api</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.websocket</groupId>
+        <artifactId>jetty-websocket-jetty-client</artifactId>
+        <version>${jetty.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.eclipse.jetty.websocket</groupId>
+        <artifactId>jetty-websocket-jetty-common</artifactId>
+        <version>${jetty.version}</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
