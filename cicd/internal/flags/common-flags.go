@@ -9,7 +9,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * WARRANTIES OR CONDITIONS OF ANY, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
  */
@@ -18,19 +18,19 @@ package flags
 
 import (
 	"flag"
+	"fmt" // ADDED: Import fmt package
 	"strings"
 )
 
 const (
-	ALL        = "ALL"     // All modules
-	DEFAULT    = "DEFAULT" // Modules other than those excluded
+	ALL        = "ALL"
+	DEFAULT    = "DEFAULT"
 	KAFKA      = "KAFKA"
 	SPANNER    = "SPANNER"
 	BIGTABLE   = "BIGTABLE"
 	DATASTREAM = "DATASTREAM"
 )
 
-// Avoid making these vars public.
 var (
 	modulesToBuild string
 	moduleMap      = map[string][]string{
@@ -68,16 +68,24 @@ var (
 	}
 )
 
-// Registers all common flags. Must be called before flag.Parse().
 func RegisterCommonFlags() {
 	flag.StringVar(&modulesToBuild, "modules-to-build", ALL, "List of modules to build/run commands against")
 }
 
-// Returns all modules to build.
-func ModulesToBuild() []string {
+// CHANGED: This function now contains all logic for deciding which modules to build.
+// It returns a slice of strings that will be passed to Maven.
+func ProjectsToBuild() []string {
+	// If a specific module is given for testing, it takes highest priority.
+	if ModuleToTest != "" {
+		// -pl tells Maven to build only this project
+		// -am tells Maven to also build any dependencies it needs
+		return []string{"-pl", ModuleToTest, "-am"}
+	}
+
+	// Otherwise, use the default behavior with --modules-to-build
 	m := modulesToBuild
+	var modules []string
 	if m == "DEFAULT" {
-		// "DEFAULT" is "ALL" minus other modules defined in moduleMap
 		var s []string
 		for k, v := range moduleMap {
 			if k != "ALL" && k != "DEFAULT" {
@@ -88,12 +96,17 @@ func ModulesToBuild() []string {
 				}
 			}
 		}
-		return s
+		modules = s
 	} else if val, ok := moduleMap[modulesToBuild]; ok {
-		return val
+		modules = val
+	} else if len(m) > 0 {
+		modules = strings.Split(m, ",")
 	}
-	if len(m) == 0 {
-		return make([]string, 0)
+
+	if len(modules) > 0 {
+		return []string{"-pl", strings.Join(modules, ","), "-am"}
 	}
-	return strings.Split(m, ",")
+
+	// Return empty if ALL modules should be built (Maven's default)
+	return []string{}
 }
