@@ -121,44 +121,23 @@ public class MySQLDMLGenerator implements IDMLGenerator {
   }
 
   private static DMLGeneratorResponse getUpsertStatement(
-      String tableName,
-      List<String> primaryKeys,
-      Map<String, String> columnNameValues,
-      Map<String, String> pkcolumnNameValues) {
+      String tableName, Map<String, String> allColumnNameValues) {
 
     String allColumns = "";
     String allValues = "";
     String updateValues = "";
 
-    for (Map.Entry<String, String> entry : pkcolumnNameValues.entrySet()) {
-      String colName = entry.getKey();
-      String colValue = entry.getValue();
-
-      allColumns += "`" + colName + "`,";
-      allValues += colValue + ",";
-    }
-
-    if (columnNameValues.size() == 0) { // if there are only PKs
-      // trim the last ','
-      allColumns = allColumns.substring(0, allColumns.length() - 1);
-      allValues = allValues.substring(0, allValues.length() - 1);
-
-      String returnVal =
-          "INSERT INTO `" + tableName + "`(" + allColumns + ")" + " VALUES (" + allValues + ") ";
-      return new DMLGeneratorResponse(returnVal);
-    }
     int index = 0;
 
-    for (Map.Entry<String, String> entry : columnNameValues.entrySet()) {
+    for (Map.Entry<String, String> entry : allColumnNameValues.entrySet()) {
       String colName = entry.getKey();
       String colValue = entry.getValue();
       allColumns += "`" + colName + "`";
       allValues += colValue;
-      if (!primaryKeys.contains(colName)) {
-        updateValues += " `" + colName + "` = " + colValue;
-      }
+      updateValues += " `" + colName + "` = " + colValue;
 
-      if (index + 1 < columnNameValues.size()) {
+      // Add comma if not the last item in this loop
+      if (index + 1 < allColumnNameValues.size()) {
         allColumns += ",";
         allValues += ",";
         updateValues += ",";
@@ -214,8 +193,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
             dmlGeneratorRequest.getKeyValuesJson(),
             dmlGeneratorRequest.getSourceDbTimezoneOffset(),
             dmlGeneratorRequest.getCustomTransformationResponse());
-    return getUpsertStatement(
-        sourceTable.name(), sourceTable.primaryKeyColumns(), columnNameValues, pkcolumnNameValues);
+    columnNameValues.putAll(pkcolumnNameValues);
+    return getUpsertStatement(sourceTable.name(), columnNameValues);
   }
 
   private static Map<String, String> getColumnValues(
