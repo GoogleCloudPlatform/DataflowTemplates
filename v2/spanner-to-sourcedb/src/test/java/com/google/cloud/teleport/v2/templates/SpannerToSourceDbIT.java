@@ -157,7 +157,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-//  @Ignore("Skipping spannerToSourceDbBasic test")
+  //  @Ignore("Skipping spannerToSourceDbBasic test")
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
