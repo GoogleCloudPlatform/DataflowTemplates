@@ -304,10 +304,14 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   public String stageTemplate(
       TemplateDefinitions definition, ImageSpec imageSpec, BuildPluginManager pluginManager)
       throws MojoExecutionException, IOException, InterruptedException, TemplateException {
+    RetryPolicy<String> retryPolicy =
+        RetryPolicy.<String>builder().withDelay(Duration.ofSeconds(10)).withMaxRetries(3).build();
     if (definition.isClassic()) {
-      return stageClassicTemplate(definition, imageSpec, pluginManager);
+      return Failsafe.with(retryPolicy)
+          .get(() -> stageClassicTemplate(definition, imageSpec, pluginManager));
     } else {
-      return stageFlexTemplate(definition, imageSpec, pluginManager);
+      return Failsafe.with(retryPolicy)
+          .get(() -> stageFlexTemplate(definition, imageSpec, pluginManager));
     }
   }
 
