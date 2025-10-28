@@ -29,10 +29,10 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.ReadOnlyTransaction;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
-import com.google.common.collect.ImmutableList;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
@@ -52,6 +52,8 @@ public final class SpannerDaoTest {
   @Mock private DatabaseClient mockDatabaseClient;
 
   @Mock private ReadOnlyTransaction mockReadOnlyTransaction;
+
+  @Mock private TransactionContext mockReadWriteTransaction;
 
   @Before
   public void doBeforeEachTest() throws Exception {
@@ -104,8 +106,8 @@ public final class SpannerDaoTest {
   public void testUpdateShadowTable() {
     SpannerDao spannerDao = new SpannerDao(mockSpannerAccessor);
     Mutation mutation = Mutation.newInsertBuilder("T").set("C1").to("x").set("C2").to("y").build();
-    when(mockDatabaseClient.write(any())).thenReturn(null);
-    spannerDao.updateShadowTable(mutation);
-    verify(mockDatabaseClient).write(eq(ImmutableList.of(mutation)));
+
+    spannerDao.updateShadowTable(mutation, mockReadWriteTransaction);
+    verify(mockReadWriteTransaction).buffer(eq(mutation));
   }
 }

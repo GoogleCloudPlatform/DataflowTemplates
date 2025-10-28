@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.utils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.cloud.teleport.v2.spanner.ddl.Column;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
@@ -24,9 +25,11 @@ import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceTable;
 import com.google.cloud.teleport.v2.spanner.type.Type;
+import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -219,6 +222,110 @@ public final class SchemaUtils {
       }
       schemaBuilder.tables(tablesBuilder.build());
       return schemaBuilder.build();
+    } catch (Exception e) {
+      throw new RuntimeException("Error reading or parsing session file: " + sessionFile, e);
+    }
+  }
+
+  public static Ddl buildSpannerShadowTableDdlFromSessionFile(String sessionFile) {
+    try {
+      ObjectMapper mapper = new ObjectMapper();
+      Map<String, Object> session = mapper.readValue(new File(sessionFile), Map.class);
+      Map<String, Object> spSchema = (Map<String, Object>) session.get(KEY_SP_SCHEMA);
+      Ddl.Builder ddlBuilder = Ddl.builder();
+
+      for (Map.Entry<String, Object> entry : spSchema.entrySet()) {
+        Map<String, Object> tableMap = (Map<String, Object>) entry.getValue();
+        String tableName = (String) tableMap.get(KEY_NAME);
+        String shadowTableName = "shadow_" + tableName;
+        Table.Builder tableBuilder = ddlBuilder.createTable(shadowTableName);
+        Map<String, Object> colDefs = (Map<String, Object>) tableMap.get(KEY_COL_DEFS);
+
+        List<String> pkColNames = new ArrayList<>();
+        List<Map<String, Object>> pks = (List<Map<String, Object>>) tableMap.get(KEY_PRIMARY_KEYS);
+        if (pks != null && !pks.isEmpty()) {
+          for (Map<String, Object> pk : pks) {
+            String colId = (String) pk.get(KEY_COL_ID);
+            Map<String, Object> colMap = (Map<String, Object>) colDefs.get(colId);
+            String colName = (String) colMap.get(KEY_NAME);
+            pkColNames.add(colName);
+          }
+        }
+
+        for (String colId : colDefs.keySet()) {
+          Map<String, Object> colMap = (Map<String, Object>) colDefs.get(colId);
+          String colName = (String) colMap.get(KEY_NAME);
+          if (!pkColNames.contains(colName)) {
+            continue;
+          }
+          Map<String, Object> typeMap = (Map<String, Object>) colMap.get(KEY_TYPE_SPANNER);
+          String typeName = (String) typeMap.get(KEY_NAME);
+          Boolean isArray = (Boolean) typeMap.get(KEY_IS_ARRAY);
+
+          switch (typeName) {
+            case SPANNER_TYPE_STRING:
+              if (Boolean.TRUE.equals(isArray)) {
+                tableBuilder.column(colName).array(Type.string()).endColumn();
+              } else {
+                tableBuilder.column(colName).string().max().endColumn();
+              }
+              break;
+            case SPANNER_TYPE_INT64:
+              tableBuilder.column(colName).int64().endColumn();
+              break;
+            case SPANNER_TYPE_FLOAT32:
+              tableBuilder.column(colName).float32().endColumn();
+              break;
+            case SPANNER_TYPE_FLOAT64:
+              tableBuilder.column(colName).float64().endColumn();
+              break;
+            case SPANNER_TYPE_BOOL:
+              tableBuilder.column(colName).bool().endColumn();
+              break;
+            case SPANNER_TYPE_BYTES:
+              tableBuilder.column(colName).bytes().max().endColumn();
+              break;
+            case SPANNER_TYPE_TIMESTAMP:
+              tableBuilder.column(colName).timestamp().endColumn();
+              break;
+            case SPANNER_TYPE_DATE:
+              tableBuilder.column(colName).date().endColumn();
+              break;
+            case SPANNER_TYPE_NUMERIC:
+              tableBuilder.column(colName).numeric().endColumn();
+              break;
+            case SPANNER_TYPE_JSON:
+              tableBuilder.column(colName).json().endColumn();
+              break;
+            default:
+              throw new IllegalArgumentException(
+                  "Unsupported Spanner type in session file: " + typeName);
+          }
+        }
+
+        Column.Builder processedCommitTimestampColumnBuilder =
+            tableBuilder.column(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME);
+        tableBuilder.addColumn(
+            processedCommitTimestampColumnBuilder
+                .type(Type.timestamp())
+                .notNull(false)
+                .autoBuild());
+
+        Column.Builder recordSequenceColumnBuilder =
+            tableBuilder.column(Constants.RECORD_SEQ_COLUMN_NAME);
+        tableBuilder.addColumn(
+            recordSequenceColumnBuilder.type(Type.int64()).notNull(false).autoBuild());
+
+        if (!pkColNames.isEmpty()) {
+          IndexColumn.IndexColumnsBuilder<Table.Builder> pkBuilder = tableBuilder.primaryKey();
+          for (String pkColName : pkColNames) {
+            pkBuilder.asc(pkColName);
+          }
+          pkBuilder.end();
+        }
+        tableBuilder.endTable();
+      }
+      return ddlBuilder.build();
     } catch (Exception e) {
       throw new RuntimeException("Error reading or parsing session file: " + sessionFile, e);
     }

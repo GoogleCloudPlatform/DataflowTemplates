@@ -26,7 +26,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.SpannerException;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.IndexColumn;
 import com.google.cloud.teleport.v2.spanner.ddl.Table;
@@ -43,6 +45,8 @@ import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorReco
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheckException;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
@@ -53,6 +57,7 @@ import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
+import java.sql.SQLNonTransientConnectionException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -96,6 +101,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final SpannerConfig spannerConfig;
   private transient SpannerDao spannerDao;
   private final Ddl ddl;
+  private final Ddl shadowTableDdl;
   private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
@@ -111,6 +117,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
+      Ddl shadowTableDdl,
       SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
@@ -123,6 +130,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.shards = shards;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
+    this.shadowTableDdl = shadowTableDdl;
     this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
@@ -197,81 +205,124 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             ChangeEventSpannerConvertor.changeEventToPrimaryKey(
                 tableName, ddl, keysJson, /* convertNameToLowerCase= */ false);
         String shadowTableName = shadowTablePrefix + tableName;
-        boolean isSourceAhead = false;
-        ShadowTableRecord shadowTableRecord =
-            spannerDao.getShadowTableRecord(shadowTableName, primaryKey);
-        isSourceAhead =
-            shadowTableRecord != null
-                && ((shadowTableRecord
-                            .getProcessedCommitTimestamp()
-                            .compareTo(spannerRec.getCommitTimestamp())
-                        > 0) // either the source already has record with greater commit
-                    // timestamp
-                    || (shadowTableRecord // or the source has the same commit timestamp but
-                                // greater record sequence
-                                .getProcessedCommitTimestamp()
-                                .compareTo(spannerRec.getCommitTimestamp())
-                            == 0
-                        && shadowTableRecord.getRecordSequence()
-                            > Long.parseLong(spannerRec.getRecordSequence())));
+        spannerDao
+            .getDatabaseClient()
+            .readWriteTransaction(Options.priority(spannerConfig.getRpcPriority().get()))
+            .run(
+                (TransactionRunner.TransactionCallable<Void>)
+                    shadowTransaction -> {
+                      boolean isSourceAhead = false;
+                      ShadowTableRecord shadowTableRecord =
+                          spannerDao.readShadowTableRecordWithExclusiveLock(
+                              shadowTableName, primaryKey, shadowTableDdl, shadowTransaction);
+                      isSourceAhead =
+                          shadowTableRecord != null
+                              && ((shadowTableRecord
+                                          .getProcessedCommitTimestamp()
+                                          .compareTo(spannerRec.getCommitTimestamp())
+                                      > 0) // either the source already has record with greater
+                                  // commit
+                                  // timestamp
+                                  || (shadowTableRecord // or the source has the same commit
+                                              // timestamp but
+                                              // greater record sequence
+                                              .getProcessedCommitTimestamp()
+                                              .compareTo(spannerRec.getCommitTimestamp())
+                                          == 0
+                                      && shadowTableRecord.getRecordSequence()
+                                          > Long.parseLong(spannerRec.getRecordSequence())));
 
-        if (!isSourceAhead) {
-          IDao sourceDao = sourceProcessor.getSourceDao(shardId);
-          boolean isEventFiltered =
-              InputRecordProcessor.processRecord(
-                  spannerRec,
-                  schemaMapper,
-                  ddl,
-                  sourceSchema,
-                  sourceDao,
-                  shardId,
-                  sourceDbTimezoneOffset,
-                  sourceProcessor.getDmlGenerator(),
-                  spannerToSourceTransformer,
-                  this.source);
-          if (isEventFiltered) {
-            outputWithTag(c, Constants.FILTERED_TAG, Constants.FILTERED_TAG_MESSAGE, spannerRec);
-          }
+                      if (!isSourceAhead) {
+                        IDao sourceDao = sourceProcessor.getSourceDao(shardId);
+                        TransactionalCheck check =
+                            () -> {
+                              ShadowTableRecord newShadowTableRecord =
+                                  spannerDao.readShadowTableRecordWithExclusiveLock(
+                                      shadowTableName,
+                                      primaryKey,
+                                      shadowTableDdl,
+                                      shadowTransaction);
+                              if (!ShadowTableRecord.isEquals(
+                                  shadowTableRecord, newShadowTableRecord)) {
+                                throw new TransactionalCheckException(
+                                    "Shadow table sequence changed during transaction");
+                              }
+                            };
+                        boolean isEventFiltered =
+                            InputRecordProcessor.processRecord(
+                                spannerRec,
+                                schemaMapper,
+                                ddl,
+                                sourceSchema,
+                                sourceDao,
+                                shardId,
+                                sourceDbTimezoneOffset,
+                                sourceProcessor.getDmlGenerator(),
+                                spannerToSourceTransformer,
+                                this.source,
+                                check);
+                        if (isEventFiltered) {
+                          outputWithTag(
+                              c,
+                              Constants.FILTERED_TAG,
+                              Constants.FILTERED_TAG_MESSAGE,
+                              spannerRec);
+                        }
 
-          spannerDao.updateShadowTable(
-              getShadowTableMutation(
-                  tableName,
-                  shadowTableName,
-                  keysJson,
-                  spannerRec.getCommitTimestamp(),
-                  spannerRec.getRecordSequence()));
-        }
+                        spannerDao.updateShadowTable(
+                            getShadowTableMutation(
+                                tableName,
+                                shadowTableName,
+                                keysJson,
+                                spannerRec.getCommitTimestamp(),
+                                spannerRec.getRecordSequence()),
+                            shadowTransaction);
+                      }
+                      return null;
+                    });
         successRecordCountMetric.inc();
         if (spannerRec.isRetryRecord()) {
           retryableRecordCountMetric.dec();
         }
         com.google.cloud.Timestamp timestamp = com.google.cloud.Timestamp.now();
         c.output(Constants.SUCCESS_TAG, timestamp.toString());
-      } catch (InvalidTransformationException ex) {
-        invalidTransformationException.inc();
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (ChangeEventConvertorException | CodecNotFoundException ex) {
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (SpannerException
-          | IllegalStateException
-          | com.mysql.cj.jdbc.exceptions.CommunicationsException
-          | java.sql.SQLIntegrityConstraintViolationException
-          | java.sql.SQLTransientConnectionException
-          | ConnectionInitException
-          | DriverTimeoutException
-          | AllNodesFailedException
-          | BusyConnectionException
-          | NodeUnavailableException
-          | QueryExecutionException
-          | ConnectionException ex) {
-        outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (java.sql.SQLNonTransientConnectionException ex) {
-        // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-        // error codes 1053,1161 and 1159 can be retried
-        if (ex.getErrorCode() == 1053 || ex.getErrorCode() == 1159 || ex.getErrorCode() == 1161) {
+        // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
+        // wrapped inside a SpannerException.
+        // We need to get and inspect the cause while handling the exception.
+      } catch (SpannerException ex) {
+        Throwable cause = ex.getCause();
+        if (cause == null) {
+          // If cause is null, then it is a plain Spanner exception
           outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+        } else if (cause instanceof InvalidTransformationException) {
+          invalidTransformationException.inc();
+          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
+        } else if (cause instanceof ChangeEventConvertorException
+            || cause instanceof CodecNotFoundException) {
+          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
+        } else if (cause instanceof IllegalStateException
+            || cause instanceof com.mysql.cj.jdbc.exceptions.CommunicationsException
+            || cause instanceof java.sql.SQLIntegrityConstraintViolationException
+            || cause instanceof java.sql.SQLTransientConnectionException
+            || cause instanceof ConnectionInitException
+            || cause instanceof DriverTimeoutException
+            || cause instanceof AllNodesFailedException
+            || cause instanceof BusyConnectionException
+            || cause instanceof NodeUnavailableException
+            || cause instanceof QueryExecutionException
+            || cause instanceof ConnectionException) {
+          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, cause.getMessage(), spannerRec);
+        } else if (cause instanceof java.sql.SQLNonTransientConnectionException) {
+          SQLNonTransientConnectionException e = (SQLNonTransientConnectionException) cause;
+          // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+          // error codes 1053,1161 and 1159 can be retried
+          if (e.getErrorCode() == 1053 || e.getErrorCode() == 1159 || e.getErrorCode() == 1161) {
+            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, e.getMessage(), spannerRec);
+          } else {
+            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, e.getMessage(), spannerRec);
+          }
         } else {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
         }
       } catch (Exception ex) {
         LOG.error("Failed to write to source: {}", ex);

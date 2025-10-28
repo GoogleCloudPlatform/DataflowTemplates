@@ -26,6 +26,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpa
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -124,7 +125,7 @@ public abstract class ChangeEventContext {
             .map(col -> col.name())
             .collect(Collectors.toList());
     Statement sql =
-        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
+        SpannerReadUtils.generateReadSQLWithExclusiveLock(
             dataTable, columnNames, primaryKey, dataTableDdl);
     ResultSet resultSet = transactionContext.executeQuery(sql);
     if (!resultSet.next()) {

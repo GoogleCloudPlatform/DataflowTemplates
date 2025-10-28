@@ -29,6 +29,11 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.cloud.Timestamp;
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.ErrorCode;
+import com.google.cloud.spanner.Options.RpcPriority;
+import com.google.cloud.spanner.SpannerExceptionFactory;
+import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
@@ -57,6 +62,7 @@ import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
@@ -67,8 +73,10 @@ import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
+import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.stubbing.Answer;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SourceWriterFnTest {
@@ -76,6 +84,8 @@ public class SourceWriterFnTest {
   @Rule public final MockitoRule mocktio = MockitoJUnit.rule();
   @Mock private JdbcDao mockSqlDao;
   @Mock private SpannerDao mockSpannerDao;
+  @Mock private DatabaseClient mockDatabaseClient;
+  @Mock private TransactionRunner mockTransactionRunner;
   @Mock HashMap<String, IDao> mockDaoMap;
   @Mock private SpannerConfig mockSpannerConfig;
   @Mock private DoFn.ProcessContext processContext;
@@ -86,6 +96,7 @@ public class SourceWriterFnTest {
   private Shard testShard;
   private Schema testSchema;
   private Ddl testDdl;
+  private Ddl shadowTableDdl;
   private SourceSchema testSourceSchema;
 
   private ISchemaMapper schemaMapper;
@@ -97,33 +108,63 @@ public class SourceWriterFnTest {
   @Before
   public void doBeforeEachTest() throws Exception {
     when(mockDaoMap.get(any())).thenReturn(mockSqlDao);
-    when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent1"), any())).thenReturn(null);
-    when(mockSpannerDao.getShadowTableRecord(eq("shadow_tableName"), any())).thenReturn(null);
-    when(mockSpannerDao.getShadowTableRecord(eq("shadow_parent2"), any()))
+    when(mockSpannerDao.getDatabaseClient()).thenReturn(mockDatabaseClient);
+    when(mockDatabaseClient.readWriteTransaction(any())).thenReturn(mockTransactionRunner);
+    when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
+        .thenAnswer(
+            new Answer<Void>() {
+              @Override
+              public Void answer(InvocationOnMock invocation) throws Throwable {
+                TransactionRunner.TransactionCallable<Void> callable = invocation.getArgument(0);
+                try {
+                  callable.run(null);
+                } catch (Exception e) {
+                  throw SpannerExceptionFactory.newSpannerException(
+                      ErrorCode.UNKNOWN, e.getMessage(), e);
+                }
+                return null;
+              }
+            });
+
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
+            eq("shadow_parent1"), any(), any(), any()))
+        .thenReturn(null);
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
+            eq("shadow_tableName"), any(), any(), any()))
+        .thenReturn(null);
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
+            eq("shadow_parent2"), any(), any(), any()))
         .thenThrow(new IllegalStateException("Test exception"));
-    when(mockSpannerDao.getShadowTableRecord(eq("shadow_child11"), any()))
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
+            eq("shadow_child11"), any(), any(), any()))
         .thenReturn(new ShadowTableRecord(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"), 1));
-    when(mockSpannerDao.getShadowTableRecord(eq("shadow_child21"), any())).thenReturn(null);
-    doNothing().when(mockSpannerDao).updateShadowTable(any());
+    when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
+            eq("shadow_child21"), any(), any(), any()))
+        .thenReturn(null);
+    when(mockSpannerConfig.getRpcPriority())
+        .thenReturn(ValueProvider.StaticValueProvider.of(RpcPriority.HIGH));
+    doNothing().when(mockSpannerDao).updateShadowTable(any(), any());
     doThrow(new java.sql.SQLIntegrityConstraintViolationException("a foreign key constraint fails"))
         .when(mockSqlDao)
-        .write(contains("2300")); // This is the child_id for which we want to test the foreign key
+        .write(
+            contains("2300"),
+            any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
     doThrow(
             new java.sql.SQLNonTransientConnectionException(
                 "transient connection error", "HY000", 1161))
         .when(mockSqlDao)
-        .write(contains("1161")); // This is the child_id for which we want to retryable
+        .write(contains("1161"), any()); // This is the child_id for which we want to retryable
     // connection error
     doThrow(
             new java.sql.SQLNonTransientConnectionException(
                 "permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
-        .write(contains("4242")); // no retryable error
+        .write(contains("4242"), any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))
         .when(mockSqlDao)
-        .write(contains("12345")); // to test code path of generic exception
-    doNothing().when(mockSqlDao).write(contains("parent1"));
+        .write(contains("12345"), any()); // to test code path of generic exception
+    doNothing().when(mockSqlDao).write(contains("parent1"), any());
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
     testShard.setUser("test");
@@ -137,6 +178,9 @@ public class SourceWriterFnTest {
     testSourceDbTimezoneOffset = "+00:00";
     testDdl =
         SchemaUtils.buildSpannerDdlFromSessionFile("src/test/resources/sourceWriterUTSession.json");
+    shadowTableDdl =
+        SchemaUtils.buildSpannerShadowTableDdlFromSessionFile(
+            "src/test/resources/sourceWriterUTSession.json");
     testSourceSchema =
         SchemaUtils.buildSourceSchemaFromSessionFile(
             "src/test/resources/sourceWriterUTSession.json");
@@ -159,6 +203,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -170,9 +215,10 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, never()).write(any());
-    verify(mockSpannerDao, never()).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1))
+        .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
+    verify(mockSqlDao, never()).write(any(), any());
+    verify(mockSpannerDao, never()).updateShadowTable(any(), any());
   }
 
   @Test
@@ -188,6 +234,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -199,9 +246,10 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, never()).write(any());
-    verify(mockSpannerDao, never()).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1))
+        .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
+    verify(mockSqlDao, never()).write(any(), any());
+    verify(mockSpannerDao, never()).updateShadowTable(any(), any());
   }
 
   @Test
@@ -216,6 +264,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -228,9 +277,10 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, atLeast(1)).write(any());
-    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1))
+        .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
+    verify(mockSqlDao, atLeast(1)).write(any(), any());
+    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
   @Test
@@ -249,6 +299,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -262,7 +313,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
+    verify(mockSpannerDao, atLeast(1))
+        .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
         new ChangeStreamErrorRecord(
@@ -289,6 +341,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -303,10 +356,11 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture());
+    verify(mockSpannerDao, atLeast(1))
+        .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
+    verify(mockSqlDao, atLeast(1)).write(argumentCaptor.capture(), any());
     assertTrue(argumentCaptor.getValue().contains("INSERT INTO `parent1`(`id`) VALUES (45)"));
-    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1)).updateShadowTable(any(), any());
   }
 
   @Test
@@ -325,6 +379,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -338,9 +393,10 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSpannerToSourceTransformer(mockSpannerMigrationTransformer);
     sourceWriterFn.processElement(processContext);
-    verify(mockSpannerDao, atLeast(1)).getShadowTableRecord(any(), any());
-    verify(mockSqlDao, atLeast(0)).write(any());
-    verify(mockSpannerDao, atLeast(0)).updateShadowTable(any());
+    verify(mockSpannerDao, atLeast(1))
+        .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
+    verify(mockSqlDao, atLeast(0)).write(any(), any());
+    verify(mockSpannerDao, atLeast(0)).updateShadowTable(any(), any());
     String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
     ChangeStreamErrorRecord errorRecord =
         new ChangeStreamErrorRecord(jsonRec, Constants.FILTERED_TAG_MESSAGE);
@@ -359,6 +415,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -391,6 +448,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -421,6 +479,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -455,6 +514,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -485,6 +545,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -517,6 +578,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -549,6 +611,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -581,6 +644,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -612,6 +676,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdlForNullDML(),
+            testDdlForNullDML(),
             testSourceSchema,
             "shadow_",
             "skip",
@@ -623,7 +688,7 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    verify(mockSqlDao, never()).write(contains("567890"));
+    verify(mockSqlDao, never()).write(contains("567890"), any());
   }
 
   @Test
@@ -635,6 +700,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
@@ -657,6 +723,7 @@ public class SourceWriterFnTest {
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testDdl,
+            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",

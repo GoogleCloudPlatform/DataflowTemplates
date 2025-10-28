@@ -18,14 +18,17 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.source;
 import com.google.cloud.teleport.v2.templates.dbutils.connection.IConnectionHelper;
 import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.sql.Statement;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JdbcDao implements IDao<String> {
   private String sqlUrl;
   private String sqlUser;
 
   private final IConnectionHelper connectionHelper;
+
+  private static final Logger LOG = LoggerFactory.getLogger(JdbcDao.class);
 
   public JdbcDao(String sqlUrl, String sqlUser, IConnectionHelper connectionHelper) {
     this.sqlUrl = sqlUrl;
@@ -34,18 +37,23 @@ public class JdbcDao implements IDao<String> {
   }
 
   @Override
-  public void write(String sqlStatement) throws SQLException, ConnectionException {
+  public void write(String sqlStatement, TransactionalCheck transactionalCheck) throws Exception {
     Connection connObj = null;
     Statement statement = null;
 
     try {
-
       connObj = (Connection) connectionHelper.getConnection(this.sqlUrl + "/" + this.sqlUser);
       if (connObj == null) {
         throw new ConnectionException("Connection is null");
       }
+      connObj.setAutoCommit(false);
       statement = connObj.createStatement();
       statement.executeUpdate(sqlStatement);
+
+      if (transactionalCheck != null) {
+        transactionalCheck.check();
+      }
+      connObj.commit();
 
     } finally {
 
