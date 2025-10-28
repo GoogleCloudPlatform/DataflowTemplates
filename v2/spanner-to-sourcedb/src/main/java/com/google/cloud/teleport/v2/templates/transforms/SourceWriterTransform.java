@@ -50,6 +50,7 @@ public class SourceWriterTransform
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
   private final Ddl ddl;
+  private final Ddl shadowTableDdl;
   private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
@@ -63,6 +64,7 @@ public class SourceWriterTransform
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       Ddl ddl,
+      Ddl shadowTableDdl,
       SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
@@ -75,6 +77,7 @@ public class SourceWriterTransform
     this.shards = shards;
     this.spannerConfig = spannerConfig;
     this.ddl = ddl;
+    this.shadowTableDdl = shadowTableDdl;
     this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
@@ -96,6 +99,7 @@ public class SourceWriterTransform
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
                         this.ddl,
+                        this.shadowTableDdl,
                         this.sourceSchema,
                         this.shadowTablePrefix,
                         this.skipDirName,

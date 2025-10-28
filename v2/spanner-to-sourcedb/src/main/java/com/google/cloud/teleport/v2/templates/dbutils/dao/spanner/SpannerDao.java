@@ -17,10 +17,14 @@ package com.google.cloud.teleport.v2.templates.dbutils.dao.spanner;
 
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.ResultSet;
+import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
+import com.google.cloud.spanner.TransactionContext;
+import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -82,10 +86,33 @@ public class SpannerDao {
     }
   }
 
-  public void updateShadowTable(Mutation mutation) {
-    List<Mutation> mutations = new ArrayList<>();
-    mutations.add(mutation);
-    spannerAccessor.getDatabaseClient().write(mutations);
+  public ShadowTableRecord readShadowTableRecordWithExclusiveLock(
+      String shadowTableName,
+      com.google.cloud.spanner.Key primaryKey,
+      Ddl shadowTableDdl,
+      TransactionContext rwTransaction) {
+    List<String> readColumnList =
+        Arrays.asList(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME);
+    Statement sql =
+        SpannerReadUtils.generateReadSQLWithExclusiveLock(
+            shadowTableName, readColumnList, primaryKey, shadowTableDdl);
+    ResultSet resultSet = rwTransaction.executeQuery(sql);
+
+    // This is the first event for the primary key and hence the latest event.
+    if (!resultSet.next()) {
+      return null;
+    }
+    Struct row = resultSet.getCurrentRowAsStruct();
+    return new ShadowTableRecord(
+        row.getTimestamp(readColumnList.get(0)), row.getLong(readColumnList.get(1)));
+  }
+
+  public DatabaseClient getDatabaseClient() {
+    return spannerAccessor.getDatabaseClient();
+  }
+
+  public void updateShadowTable(Mutation mutation, TransactionContext transactionContext) {
+    transactionContext.buffer(mutation);
   }
 
   public void close() {

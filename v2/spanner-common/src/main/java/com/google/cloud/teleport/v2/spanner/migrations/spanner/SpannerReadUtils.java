@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.spanner;
 
 import com.google.cloud.ByteArray;
 import com.google.cloud.Date;
@@ -28,7 +28,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class ShadowTableReadUtils {
+public class SpannerReadUtils {
   // TODO: After beam release, use the latest client lib version which supports setting lock
   // hints via the read api. SQL string generation should be removed.
   public static Statement generateReadSQLWithExclusiveLock(

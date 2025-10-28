@@ -24,6 +24,7 @@ import com.google.cloud.spanner.Key;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
@@ -31,7 +32,7 @@ import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 
-public class ShadowTableReadUtilsTest {
+public class SpannerReadUtilsTest {
   private Ddl ddl;
   private static final String SHADOW_TABLE = "shadow_test_table";
   private static final List<String> READ_COLUMNS =
@@ -115,7 +116,7 @@ public class ShadowTableReadUtilsTest {
             );
 
     Statement stmt =
-        ShadowTableReadUtils.generateReadSQLWithExclusiveLock(
+        SpannerReadUtils.generateReadSQLWithExclusiveLock(
             SHADOW_TABLE, READ_COLUMNS, primaryKey, ddl);
 
     String expectedSql =

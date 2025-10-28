@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationRequest
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.source.IDao;
+import com.google.cloud.teleport.v2.templates.dbutils.dao.source.TransactionalCheck;
 import com.google.cloud.teleport.v2.templates.dbutils.dml.IDMLGenerator;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorRequest;
 import com.google.cloud.teleport.v2.templates.models.DMLGeneratorResponse;
@@ -60,7 +61,8 @@ public class InputRecordProcessor {
       String sourceDbTimezoneOffset,
       IDMLGenerator dmlGenerator,
       ISpannerMigrationTransformer spannerToSourceTransformer,
-      String source)
+      String source,
+      TransactionalCheck check)
       throws Exception {
 
     try {
@@ -124,10 +126,10 @@ public class InputRecordProcessor {
        */
       switch (source) {
         case SOURCE_CASSANDRA:
-          dao.write(dmlGeneratorResponse);
+          dao.write(dmlGeneratorResponse, null);
           break;
         default:
-          dao.write(dmlGeneratorResponse.getDmlStatement());
+          dao.write(dmlGeneratorResponse.getDmlStatement(), check);
           break;
       }
 
