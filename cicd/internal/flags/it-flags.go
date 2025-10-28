@@ -7,7 +7,7 @@
  *
  *   http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required by applicable law of or agreed to in writing, software
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
@@ -42,8 +42,6 @@ var (
 	dUnifiedWorkerHarnessContainerImage string
 	dIntegrationTestParallelism         string
 	dThreadCount                        string
-	dTestToRun                          string // 1. ADD THIS VARIABLE
-	dModuleToTest                       string // 1. ADD THIS VARIABLE
 )
 
 // Registers all it flags. Must be called before flag.Parse().
@@ -63,13 +61,9 @@ func RegisterItFlags() {
 	flag.StringVar(&dCloudProxyPassword, "it-cloud-proxy-password", "t>5xl%J(&qTK6?FaZ", "Password of static Cloud Auth Proxy")
 	flag.StringVar(&dOracleHost, "it-oracle-host", "10.128.0.90", "Hostname or IP address of static Oracle DB")
 	flag.StringVar(&dCloudOracleSysPassword, "it-oracle-sys-password", "oracle", "sys password of static Oracle DB")
-	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run against")
+	flag.StringVar(&dUnifiedWorkerHarnessContainerImage, "it-unified-worker-harness-container-image", "", "Runner harness image to run tests against")
 	flag.StringVar(&dIntegrationTestParallelism, "it-integration-test-parallelism", "3", "The level of parallelism for integration tests")
 	flag.StringVar(&dThreadCount, "it-thread-count", "4", "The IT thread count to use for maven, which is the number of threads per core")
-
-	// 2. ADD THIS FLAG REGISTRATION
-	flag.StringVar(&dTestToRun, "it-test-to-run", "", "The specific integration test class to run")
-	flag.StringVar(&dModuleToTest, "it-module-to-test", "", "The specific module to run tests against") // 2. ADD THIS FLAG REGISTRATION
 }
 
 func Region() string {
@@ -172,22 +166,4 @@ func ThreadCount() int {
 	i := 4
 	fmt.Sscan(dThreadCount, &i)
 	return i
-}
-
-// 3. ADD THIS ACCESSOR FUNCTION
-func TestToRun() string {
-	if dTestToRun != "" {
-		return "-Dtest=" + dTestToRun
-	}
-	return ""
-}
-
-// 3. ADD THIS ACCESSOR FUNCTION
-func ModuleToTest() string {
-	if dModuleToTest != "" {
-		// -pl tells Maven to build only this project
-		// -am tells Maven to also build any dependencies it needs
-		return "-pl " + dModuleToTest + " -am"
-	}
-	return ""
 }

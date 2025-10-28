@@ -9,7 +9,7 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY, either express or implied. See the
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
  */
@@ -20,8 +20,8 @@ import (
 	"flag"
 	"log"
 
+	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/workflows"
-	"github.comcom/GoogleCloudPlatform/DataflowTemplates/cicd/internal/flags"
 )
 
 func main() {
@@ -31,8 +31,7 @@ func main() {
 
 	// Run mvn install before running integration tests
 	mvnFlags := workflows.NewMavenFlags()
-	// CHANGED: Pass projects to build to the clean install step as well.
-	err := workflows.MvnCleanInstall(flags.ProjectsToBuild()...).Run(
+	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
@@ -48,8 +47,7 @@ func main() {
 
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
-	// CHANGED: Pass projects to build to the verify step.
-	err = workflows.MvnVerify(flags.ProjectsToBuild()...).Run(
+	err = workflows.MvnVerify().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
@@ -70,7 +68,6 @@ func main() {
 		flags.SpannerHost(),
 		flags.FailureMode(),
 		flags.RetryFailures(),
-		flags.TestToRun(),
 		flags.StaticOracleHost(),
 		flags.StaticOracleSysPassword(),
 		flags.CloudProxyHost(),

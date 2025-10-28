@@ -19,7 +19,7 @@ name: Spanner PR
 on:
   pull_request:
     branches:
-      - 'main'
+    - 'main'
     paths:
       # Template wide common modules
       - 'pom.xml'
@@ -41,7 +41,7 @@ on:
       # Git action files
       - '.github/workflows/spanner-pr.yml'
   schedule:
-    - cron: "3 */12 * * *"
+  - cron: "3 */12 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -54,189 +54,179 @@ env:
 permissions: write-all
 
 jobs:
-  # Temporarily disabled for faster debugging
-  # spotless_check:
-  #   name: Spotless
-  #   timeout-minutes: 10
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Checkout Code
-  #     uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #   - name: Setup Environment
-  #     id: setup-env
-  #     uses: ./.github/actions/setup-env
-  #   - name: Run Spotless
-  #     run: |
-  #       ./cicd/run-spotless \
-  #       --modules-to-build="SPANNER"
-
-  # Temporarily disabled for faster debugging
-  # checkstyle_check:
-  #   name: Checkstyle
-  #   timeout-minutes: 10
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - name: Checkout Code
-  #     uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #   - name: Setup Environment
-  #     id: setup-env
-  #     uses: ./.github/actions/setup-env
-  #   - name: Run Checkstyle
-  #     run: |
-  #       ./cicd/run-checkstyle \
-  #       --modules-to-build="SPANNER"
-
+  spotless_check:
+    name: Spotless
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Spotless
+      run: |
+        ./cicd/run-spotless \
+        --modules-to-build="SPANNER"
+  checkstyle_check:
+    name: Checkstyle
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Checkstyle
+      run: |
+        ./cicd/run-checkstyle \
+        --modules-to-build="SPANNER"
   java_build:
     name: Build
     timeout-minutes: 60
     runs-on: [self-hosted, it]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Build
-        run: |
-          ./cicd/run-build \
-          --modules-to-build="SPANNER"
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
-
-  # Temporarily disabled the Unit Test job to speed up debugging
-  # java_unit_tests:
-  #   name: Unit Tests
-  #   needs: [java_build]
-  #   timeout-minutes: 60
-  #   runs-on: [self-hosted, it]
-  #   steps:
-  #   - name: Checkout Code
-  #     uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #   - name: Setup Environment
-  #     id: setup-env
-  #     uses: ./.github/actions/setup-env
-  #   - name: Run Unit Tests
-  #     run: |
-  #       ./cicd/run-unit-tests \
-  #       --modules-to-build="SPANNER"
-  #   - name: Upload Unit Tests Report
-  #     uses: actions/upload-artifact@v4
-  #     if: always()
-  #     with:
-  #       name: surefire-unit-test-results
-  #       path: |
-  #           **/surefire-reports/TEST-*.xml
-  #           **/surefire-reports/*.html
-  #           **/surefire-reports/html/**
-  #       retention-days: 1
-  #   - name: Upload coverage reports to Codecov
-  #     uses: codecov/codecov-action@v5.5.1
-  #     with:
-  #       token: ${{ secrets.CODECOV_TOKEN }}
-  #       slug: GoogleCloudPlatform/DataflowTemplates
-  #       files: 'target/site/jacoco-aggregate/jacoco.xml'
-  #   - name: Cleanup Java Environment
-  #     uses: ./.github/actions/cleanup-java-env
-
-  # Temporarily disabled for faster debugging
-  # java_integration_smoke_tests_templates:
-  #   name: Dataflow Templates Integration Smoke Tests
-  #   needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
-  #   timeout-minutes: 60
-  #   runs-on: [self-hosted, it]
-  #   steps:
-  #   - name: Checkout Code
-  #     uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-  #   - name: Setup Environment
-  #     id: setup-env
-  #     uses: ./.github/actions/setup-env
-  #   - name: Run Integration Smoke Tests
-  #     run: |
-  #       ./cicd/run-it-smoke-tests \
-  #       --modules-to-build="SPANNER" \
-  #       --it-region="us-central1" \
-  #       --it-project="cloud-teleport-testing" \
-  #       --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-  #       --it-private-connectivity="datastream-connect-2"
-  #   - name: Upload Smoke Tests Report
-  #     uses: actions/upload-artifact@v4
-  #     if: always()
-  #     with:
-  #       name: surefire-smoke-test-results
-  #       path: |
-  #         **/surefire-reports/TEST-*.xml
-  #         **/surefire-reports/*.html
-  #         **/surefire-reports/html/**
-  #       retention-days: 1
-  #   - name: Cleanup Java Environment
-  #     uses: ./.github/actions/cleanup-java-env
-
-  java_integration_tests_templates:
-    name: Dataflow Templates Integration Tests
-    # Updated dependencies to run directly after build
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Build
+      run: |
+        ./cicd/run-build \
+        --modules-to-build="SPANNER"
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
+  java_unit_tests:
+    name: Unit Tests
     needs: [java_build]
-    timeout-minutes: 180
+    timeout-minutes: 60
     runs-on: [self-hosted, it]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Integration Tests
-        run: |
-          ./cicd/run-it-tests \
-          --modules-to-build="SPANNER" \
-          --it-region="us-central1" \
-          --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-connect-2" \
-          --it-module-to-test="v2/spanner-to-sourcedb" \
-          --it-test-to-run="SpannerToSourceDbIT"
-      - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: surefire-integration-test-results
-          path: |
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Unit Tests
+      run: |
+        ./cicd/run-unit-tests \
+        --modules-to-build="SPANNER"
+    - name: Upload Unit Tests Report
+      uses: actions/upload-artifact@v4
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-unit-test-results
+        path: |
             **/surefire-reports/TEST-*.xml
             **/surefire-reports/*.html
             **/surefire-reports/html/**
-          retention-days: 10
-      - name: Integration Test report on GitHub
-        uses: dorny/test-reporter@v2
-        if: always()
-        with:
-          name: Integration Test report on GitHub
-          path: '**/surefire-reports/TEST-*.xml'
-          reporter: java-junit
-          only-summary: 'true'
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on-error: 'false'
-          list-suites: 'failed'
-          list-tests: 'failed'
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
+        retention-days: 1
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v5.5.1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        slug: GoogleCloudPlatform/DataflowTemplates
+        files: 'target/site/jacoco-aggregate/jacoco.xml'
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
+  java_integration_smoke_tests_templates:
+    name: Dataflow Templates Integration Smoke Tests
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests]
+    timeout-minutes: 60
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Integration Smoke Tests
+      run: |
+        ./cicd/run-it-smoke-tests \
+        --modules-to-build="SPANNER" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-connect-2"
+    - name: Upload Smoke Tests Report
+      uses: actions/upload-artifact@v4
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-smoke-test-results
+        path: |
+          **/surefire-reports/TEST-*.xml
+          **/surefire-reports/*.html
+          **/surefire-reports/html/**
+        retention-days: 1
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
+  java_integration_tests_templates:
+    name: Dataflow Templates Integration Tests
+    needs: [java_integration_smoke_tests_templates]
+    timeout-minutes: 180
+    # Run on any runner that matches all the specified runs-on values.
+    runs-on: [self-hosted, it]
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Integration Tests
+      run: |
+        ./cicd/run-it-tests \
+        --modules-to-build="SPANNER" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-connect-2"
+    - name: Upload Integration Tests Report
+      uses: actions/upload-artifact@v4
+      if: always() # always run even if the previous step fails
+      with:
+        name: surefire-integration-test-results
+        path: |
+          **/surefire-reports/TEST-*.xml
+          **/surefire-reports/*.html
+          **/surefire-reports/html/**
+        retention-days: 10
+    - name: Integration Test report on GitHub
+      uses: dorny/test-reporter@v2
+      if: always()
+      with:
+        name: Integration Test report on GitHub
+        path: '**/surefire-reports/TEST-*.xml'
+        reporter: java-junit
+        only-summary: 'true'
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fail-on-error: 'false'
+        list-suites: 'failed'
+        list-tests: 'failed'
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
   java_load_tests_templates:
     if: contains(github.event.pull_request.labels.*.name, 'run-load-tests')
     name: Dataflow Templates Load Tests
-    # Updated dependencies
-    needs: [java_build, java_integration_tests_templates]
+    needs: [spotless_check, checkstyle_check, java_build, java_unit_tests, java_integration_tests_templates]
     timeout-minutes: 600
+    # Run on any runner that matches all the specified runs-on values.
     runs-on: [self-hosted, perf]
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-      - name: Setup Environment
-        id: setup-env
-        uses: ./.github/actions/setup-env
-      - name: Run Load Tests
-        run: |
-          ./cicd/run-load-tests \
-          --modules-to-build="SPANNER" \
-          --it-region="us-central1" \
-          --it-project="cloud-teleport-testing" \
-          --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
-          --it-private-connectivity="datastream-connect-2"
-      - name: Cleanup Java Environment
-        uses: ./.github/actions/cleanup-java-env
+    - name: Checkout Code
+      uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+    - name: Setup Environment
+      id: setup-env
+      uses: ./.github/actions/setup-env
+    - name: Run Load Tests
+      run: |
+        ./cicd/run-load-tests \
+        --modules-to-build="SPANNER" \
+        --it-region="us-central1" \
+        --it-project="cloud-teleport-testing" \
+        --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
+        --it-private-connectivity="datastream-connect-2"
+    - name: Cleanup Java Environment
+      uses: ./.github/actions/cleanup-java-env
