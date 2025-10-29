@@ -169,7 +169,7 @@ func NewMavenFlags() MavenFlags {
 }
 
 // =================================================================
-// WORKFLOWS THAT SCAN FOR CHANGED MODULES
+// ORIGINAL WORKFLOWS (RESTORED TO PREVENT COMPILATION ERRORS)
 // =================================================================
 
 type mvnCleanInstallWorkflow struct{}
@@ -182,7 +182,6 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
 }
 
-// Adding MvnCleanInstallAll back in
 type mvnCleanInstallAllWorkflow struct{}
 
 func MvnCleanInstallAll() Workflow {
@@ -203,18 +202,28 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 	return RunForChangedModules(VerifyCmd, args...)
 }
 
-func RunForChangedModules(cmd string, args ...string) error {
-	parsedArgs := []string{}
-	for _, arg := range args {
-		if arg != "" {
-			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
-		}
-	}
-	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
+type spotlessCheckWorkflow struct{}
+
+func SpotlessCheck() Workflow {
+	return &spotlessCheckWorkflow{}
+}
+
+func (*spotlessCheckWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, spotlessCheckCmd, args...)
+}
+
+type checkstyleCheckWorkflow struct{}
+
+func CheckstyleCheck() Workflow {
+	return &checkstyleCheckWorkflow{}
+}
+
+func (*checkstyleCheckWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
 }
 
 // =================================================================
-// WORKFLOW THAT RUNS DIRECTLY ON THE POM
+// NEW DIRECT EXECUTION WORKFLOW (FOR YOUR SPECIFIC GOAL)
 // =================================================================
 
 type mvnRunOnPomWorkflow struct {
@@ -229,6 +238,22 @@ func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
 	return runOnPom(w.cmd, args...)
 }
 
+// =================================================================
+// UNDERLYING RUNNER FUNCTIONS
+// =================================================================
+
+// RunForChangedModules is the original runner that automatically adds a `-pl` flag.
+func RunForChangedModules(cmd string, args ...string) error {
+	parsedArgs := []string{}
+	for _, arg := range args {
+		if arg != "" {
+			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
+		}
+	}
+	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
+}
+
+// runOnPom is the new, direct runner that does NOT add any automatic flags.
 func runOnPom(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
