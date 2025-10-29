@@ -48,6 +48,9 @@ func main() {
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
 	err = workflows.MvnVerify().Run(
+		// Add this line to specify the module to test
+		mvnFlags.Projects("v2/spanner-to-sourcedb"),
+
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
