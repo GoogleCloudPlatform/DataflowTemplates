@@ -182,6 +182,17 @@ func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
 }
 
+// Adding MvnCleanInstallAll back in
+type mvnCleanInstallAllWorkflow struct{}
+
+func MvnCleanInstallAll() Workflow {
+	return &mvnCleanInstallAllWorkflow{}
+}
+
+func (*mvnCleanInstallAllWorkflow) Run(args ...string) error {
+	return op.RunMavenOnPom(unifiedPom, cleanInstallCmd, args...)
+}
+
 type mvnVerifyWorkflow struct{}
 
 func MvnVerify() Workflow {
@@ -192,8 +203,6 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 	return RunForChangedModules(VerifyCmd, args...)
 }
 
-// RunForChangedModules is the function that causes the unwanted behavior.
-// It calls op.RunMavenOnModule which adds its own -pl flag.
 func RunForChangedModules(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
@@ -201,31 +210,25 @@ func RunForChangedModules(cmd string, args ...string) error {
 			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
 		}
 	}
-	// THIS IS THE CALL WE ARE AVOIDING IN THE NEW WORKFLOW
 	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
 }
 
 // =================================================================
-// WORKFLOW THAT RUNS DIRECTLY ON THE POM (THE CORRECT ONE TO USE)
+// WORKFLOW THAT RUNS DIRECTLY ON THE POM
 // =================================================================
 
 type mvnRunOnPomWorkflow struct {
 	cmd string
 }
 
-// MvnRunOnPom creates a workflow that runs a command directly on the root pom,
-// completely bypassing the logic that scans for changed modules.
 func MvnRunOnPom(cmd string) Workflow {
 	return &mvnRunOnPomWorkflow{cmd: cmd}
 }
 
-// Run calls the simple runner, ensuring no extra flags are added.
 func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
 	return runOnPom(w.cmd, args...)
 }
 
-// runOnPom is a simple wrapper that correctly parses arguments and calls the
-// most basic maven operator.
 func runOnPom(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
@@ -233,9 +236,5 @@ func runOnPom(cmd string, args ...string) error {
 			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
 		}
 	}
-	// This call runs on the POM file without adding any logic. It is correct.
 	return op.RunMavenOnPom(unifiedPom, cmd, parsedArgs...)
 }
-
-// Other workflows that were here are omitted for clarity if they are not used by main.go
-// but can be left in if they are.
