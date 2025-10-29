@@ -29,7 +29,7 @@ func main() {
 	flags.RegisterItFlags()
 	flag.Parse()
 
-	// Run mvn install before running integration tests (this part is unchanged)
+	// Run mvn install before running integration tests
 	mvnFlags := workflows.NewMavenFlags()
 	err := workflows.MvnCleanInstall().Run(
 		mvnFlags.IncludeDependencies(),
@@ -47,14 +47,7 @@ func main() {
 
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
-
-	// *** CHANGE THIS BLOCK ***
-	// Use the new MvnRunOnPom workflow instead of MvnVerify.
-	// This gives us direct control and prevents the duplicate -pl flag.
-	err = workflows.MvnRunOnPom(workflows.VerifyCmd).Run(
-		// This will now be the ONLY -pl flag in the command.
-		mvnFlags.Projects("v2/spanner-to-sourcedb"),
-
+	err = workflows.MvnVerify().Run(
 		mvnFlags.IncludeDependencies(),
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),

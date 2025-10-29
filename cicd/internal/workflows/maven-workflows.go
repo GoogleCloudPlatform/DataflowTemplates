@@ -18,7 +18,6 @@ package workflows
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 )
@@ -28,7 +27,7 @@ const (
 	cleanInstallCmd    = "clean install"
 	cleanVerifyCmd     = "clean verify"
 	cleanTestCmd       = "clean test"
-	VerifyCmd          = "verify" // Exported for use in other packages
+	verifyCmd          = "verify"
 	spotlessCheckCmd   = "spotless:check"
 	checkstyleCheckCmd = "checkstyle:check"
 
@@ -61,7 +60,6 @@ type MavenFlags interface {
 	StaticSpannerInstance(string) string
 	SpannerHost(string) string
 	InternalMaven() string
-	Projects(projects ...string) string
 }
 
 type mvnFlags struct{}
@@ -133,10 +131,13 @@ func (*mvnFlags) RunLoadTestObserver() string {
 	return "-PtemplatesLoadTestObserve"
 }
 
+// The number of modules Maven is going to build in parallel in a multi-module project.
 func (*mvnFlags) ThreadCount(count int) string {
 	return "-T" + strconv.Itoa(count)
 }
 
+// The number of tests Maven Surefire plugin is going to run in parallel for each Maven build
+// thread. The total number of parallel tests is IntegrationTestParallelism * ThreadCount.
 func (*mvnFlags) IntegrationTestParallelism(count int) string {
 	return "-DitParallelism=" + strconv.Itoa(count)
 }
@@ -157,26 +158,16 @@ func (*mvnFlags) InternalMaven() string {
 	return "--settings=.mvn/settings.xml"
 }
 
-func (*mvnFlags) Projects(projects ...string) string {
-	if len(projects) == 0 {
-		return ""
-	}
-	return "-pl " + strings.Join(projects, ",")
-}
-
 func NewMavenFlags() MavenFlags {
 	return &mvnFlags{}
 }
-
-// =================================================================
-// ALL ORIGINAL WORKFLOWS ARE RESTORED HERE
-// =================================================================
 
 type mvnCleanInstallWorkflow struct{}
 
 func MvnCleanInstall() Workflow {
 	return &mvnCleanInstallWorkflow{}
 }
+
 func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
 }
@@ -186,6 +177,7 @@ type mvnCleanInstallAllWorkflow struct{}
 func MvnCleanInstallAll() Workflow {
 	return &mvnCleanInstallAllWorkflow{}
 }
+
 func (*mvnCleanInstallAllWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, cleanInstallCmd, args...)
 }
@@ -195,6 +187,7 @@ type mvnCleanTestWorkflow struct{}
 func MvnCleanTest() Workflow {
 	return &mvnCleanTestWorkflow{}
 }
+
 func (*mvnCleanTestWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanTestCmd, args...)
 }
@@ -204,6 +197,7 @@ type mvnCleanVerifyWorkflow struct{}
 func MvnCleanVerify() Workflow {
 	return &mvnCleanVerifyWorkflow{}
 }
+
 func (*mvnCleanVerifyWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanVerifyCmd, args...)
 }
@@ -213,8 +207,19 @@ type mvnVerifyWorkflow struct{}
 func MvnVerify() Workflow {
 	return &mvnVerifyWorkflow{}
 }
+
 func (*mvnVerifyWorkflow) Run(args ...string) error {
-	return RunForChangedModules(VerifyCmd, args...)
+	return RunForChangedModules(verifyCmd, args...)
+}
+
+func RunForChangedModules(cmd string, args ...string) error {
+	parsedArgs := []string{}
+	for _, arg := range args {
+		if arg != "" {
+			parsedArgs = append(parsedArgs, arg)
+		}
+	}
+	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
 }
 
 type spotlessCheckWorkflow struct{}
@@ -222,6 +227,7 @@ type spotlessCheckWorkflow struct{}
 func SpotlessCheck() Workflow {
 	return &spotlessCheckWorkflow{}
 }
+
 func (*spotlessCheckWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, spotlessCheckCmd, args...)
 }
@@ -231,47 +237,26 @@ type checkstyleCheckWorkflow struct{}
 func CheckstyleCheck() Workflow {
 	return &checkstyleCheckWorkflow{}
 }
+
 func (*checkstyleCheckWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
 }
 
-// =================================================================
-// NEW WORKFLOW FOR DIRECT EXECUTION
-// =================================================================
-
-type mvnRunOnPomWorkflow struct {
-	cmd string
-}
-
-func MvnRunOnPom(cmd string) Workflow {
-	return &mvnRunOnPomWorkflow{cmd: cmd}
-}
-func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
-	return runOnPom(w.cmd, args...)
-}
-
-// =================================================================
-// UNDERLYING RUNNER FUNCTIONS
-// =================================================================
-
-// Runner that automatically detects changed modules
-func RunForChangedModules(cmd string, args ...string) error {
-	parsedArgs := []string{}
-	for _, arg := range args {
-		if arg != "" {
-			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
+// Removes root and returns results. This may reorder the input.
+func removeRoot(modules []string) []string {
+	var i int
+	for i = 0; i < len(modules); i += 1 {
+		if modules[i] == "" {
+			break
 		}
 	}
-	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
-}
 
-// Direct runner that does not add any automatic flags
-func runOnPom(cmd string, args ...string) error {
-	parsedArgs := []string{}
-	for _, arg := range args {
-		if arg != "" {
-			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
-		}
+	if i == len(modules) {
+		return modules
 	}
-	return op.RunMavenOnPom(unifiedPom, cmd, parsedArgs...)
+
+	// Order doesn't matter when passing the modules
+	l := len(modules)
+	modules[i] = modules[l-1]
+	return modules[:l-1]
 }
