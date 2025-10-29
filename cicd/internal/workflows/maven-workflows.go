@@ -168,6 +168,10 @@ func NewMavenFlags() MavenFlags {
 	return &mvnFlags{}
 }
 
+// =================================================================
+// WORKFLOWS THAT SCAN FOR CHANGED MODULES
+// =================================================================
+
 type mvnCleanInstallWorkflow struct{}
 
 func MvnCleanInstall() Workflow {
@@ -176,36 +180,6 @@ func MvnCleanInstall() Workflow {
 
 func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
-}
-
-type mvnCleanInstallAllWorkflow struct{}
-
-func MvnCleanInstallAll() Workflow {
-	return &mvnCleanInstallAllWorkflow{}
-}
-
-func (*mvnCleanInstallAllWorkflow) Run(args ...string) error {
-	return op.RunMavenOnPom(unifiedPom, cleanInstallCmd, args...)
-}
-
-type mvnCleanTestWorkflow struct{}
-
-func MvnCleanTest() Workflow {
-	return &mvnCleanTestWorkflow{}
-}
-
-func (*mvnCleanTestWorkflow) Run(args ...string) error {
-	return RunForChangedModules(cleanTestCmd, args...)
-}
-
-type mvnCleanVerifyWorkflow struct{}
-
-func MvnCleanVerify() Workflow {
-	return &mvnCleanVerifyWorkflow{}
-}
-
-func (*mvnCleanVerifyWorkflow) Run(args ...string) error {
-	return RunForChangedModules(cleanVerifyCmd, args...)
 }
 
 type mvnVerifyWorkflow struct{}
@@ -218,6 +192,8 @@ func (*mvnVerifyWorkflow) Run(args ...string) error {
 	return RunForChangedModules(VerifyCmd, args...)
 }
 
+// RunForChangedModules is the function that causes the unwanted behavior.
+// It calls op.RunMavenOnModule which adds its own -pl flag.
 func RunForChangedModules(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
@@ -225,50 +201,31 @@ func RunForChangedModules(cmd string, args ...string) error {
 			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
 		}
 	}
+	// THIS IS THE CALL WE ARE AVOIDING IN THE NEW WORKFLOW
 	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
 }
 
-type spotlessCheckWorkflow struct{}
-
-func SpotlessCheck() Workflow {
-	return &spotlessCheckWorkflow{}
-}
-
-func (*spotlessCheckWorkflow) Run(args ...string) error {
-	return op.RunMavenOnPom(unifiedPom, spotlessCheckCmd, args...)
-}
-
-type checkstyleCheckWorkflow struct{}
-
-func CheckstyleCheck() Workflow {
-	return &checkstyleCheckWorkflow{}
-}
-
-func (*checkstyleCheckWorkflow) Run(args ...string) error {
-	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
-}
-
 // =================================================================
-// NEW WORKFLOW TO RUN COMMANDS ON THE ROOT POM WITHOUT MODULE DETECTION
+// WORKFLOW THAT RUNS DIRECTLY ON THE POM (THE CORRECT ONE TO USE)
 // =================================================================
 
 type mvnRunOnPomWorkflow struct {
 	cmd string
 }
 
-// MvnRunOnPom creates a workflow that runs a given maven command directly on the root pom,
-// without automatically detecting changed modules. This is useful for when you want to
-// explicitly specify the projects to run using the .Projects() flag.
+// MvnRunOnPom creates a workflow that runs a command directly on the root pom,
+// completely bypassing the logic that scans for changed modules.
 func MvnRunOnPom(cmd string) Workflow {
 	return &mvnRunOnPomWorkflow{cmd: cmd}
 }
 
+// Run calls the simple runner, ensuring no extra flags are added.
 func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
-	// This uses op.RunMavenOnPom and does NOT have the automatic module detection logic.
 	return runOnPom(w.cmd, args...)
 }
 
-// This is a simplified runner that correctly parses arguments but does not add its own.
+// runOnPom is a simple wrapper that correctly parses arguments and calls the
+// most basic maven operator.
 func runOnPom(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
@@ -276,24 +233,9 @@ func runOnPom(cmd string, args ...string) error {
 			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
 		}
 	}
+	// This call runs on the POM file without adding any logic. It is correct.
 	return op.RunMavenOnPom(unifiedPom, cmd, parsedArgs...)
 }
 
-// Removes root and returns results. This may reorder the input.
-func removeRoot(modules []string) []string {
-	var i int
-	for i = 0; i < len(modules); i += 1 {
-		if modules[i] == "" {
-			break
-		}
-	}
-
-	if i == len(modules) {
-		return modules
-	}
-
-	// Order doesn't matter when passing the modules
-	l := len(modules)
-	modules[i] = modules[l-1]
-	return modules[:l-1]
-}
+// Other workflows that were here are omitted for clarity if they are not used by main.go
+// but can be left in if they are.
