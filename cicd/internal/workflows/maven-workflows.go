@@ -18,6 +18,7 @@ package workflows
 
 import (
 	"strconv"
+	"strings" // Import the strings package
 
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 )
@@ -60,6 +61,9 @@ type MavenFlags interface {
 	StaticSpannerInstance(string) string
 	SpannerHost(string) string
 	InternalMaven() string
+
+	// Add the new Projects method to the interface
+	Projects(projects ...string) string
 }
 
 type mvnFlags struct{}
@@ -147,7 +151,7 @@ func (*mvnFlags) StaticBigtableInstance(instanceID string) string {
 }
 
 func (*mvnFlags) StaticSpannerInstance(instanceID string) string {
-	return "-DspannerInstanceId=" + instanceID
+	-	return "-DspannerInstanceId=" + instanceID
 }
 
 func (*mvnFlags) SpannerHost(host string) string {
@@ -157,6 +161,16 @@ func (*mvnFlags) SpannerHost(host string) string {
 func (*mvnFlags) InternalMaven() string {
 	return "--settings=.mvn/settings.xml"
 }
+
+func (*mvnFlags) Projects(projects ...string) string {
+	if len(projects) == 0 {
+		return ""
+	}
+	// Note: We are returning "-pl module1,module2" as two separate arguments
+	// by joining with a space. The RunForChangedModules function will handle splitting them.
+	return "-pl " + strings.Join(projects, ",")
+}
+
 
 func NewMavenFlags() MavenFlags {
 	return &mvnFlags{}
@@ -216,7 +230,9 @@ func RunForChangedModules(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
 		if arg != "" {
-			parsedArgs = append(parsedArgs, arg)
+			// By splitting fields by spaces, we can handle flags like "-pl module"
+			// which need to be two separate arguments for the command.
+			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
 		}
 	}
 	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
