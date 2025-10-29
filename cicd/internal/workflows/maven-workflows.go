@@ -62,7 +62,6 @@ type MavenFlags interface {
 	SpannerHost(string) string
 	InternalMaven() string
 
-	// Add the new Projects method to the interface
 	Projects(projects ...string) string
 }
 
@@ -151,7 +150,7 @@ func (*mvnFlags) StaticBigtableInstance(instanceID string) string {
 }
 
 func (*mvnFlags) StaticSpannerInstance(instanceID string) string {
-	-	return "-DspannerInstanceId=" + instanceID
+	return "-DspannerInstanceId=" + instanceID
 }
 
 func (*mvnFlags) SpannerHost(host string) string {
@@ -170,7 +169,6 @@ func (*mvnFlags) Projects(projects ...string) string {
 	// by joining with a space. The RunForChangedModules function will handle splitting them.
 	return "-pl " + strings.Join(projects, ",")
 }
-
 
 func NewMavenFlags() MavenFlags {
 	return &mvnFlags{}
