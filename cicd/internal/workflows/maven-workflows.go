@@ -28,7 +28,7 @@ const (
 	cleanInstallCmd    = "clean install"
 	cleanVerifyCmd     = "clean verify"
 	cleanTestCmd       = "clean test"
-	verifyCmd          = "verify"
+	VerifyCmd          = "verify"
 	spotlessCheckCmd   = "spotless:check"
 	checkstyleCheckCmd = "checkstyle:check"
 
@@ -221,7 +221,7 @@ func MvnVerify() Workflow {
 }
 
 func (*mvnVerifyWorkflow) Run(args ...string) error {
-	return RunForChangedModules(verifyCmd, args...)
+	return RunForChangedModules(VerifyCmd, args...)
 }
 
 func RunForChangedModules(cmd string, args ...string) error {
@@ -273,4 +273,18 @@ func removeRoot(modules []string) []string {
 	l := len(modules)
 	modules[i] = modules[l-1]
 	return modules[:l-1]
+}
+
+type mvnRunWorkflow struct {
+	cmd string
+}
+
+func MvnRun(cmd string) Workflow {
+	return &mvnRunWorkflow{cmd: cmd}
+}
+
+func (w *mvnRunWorkflow) Run(args ...string) error {
+	// This uses RunMavenOnPom, which does NOT automatically detect changed modules,
+	// unlike RunForChangedModules.
+	return op.RunMavenOnPom(unifiedPom, w.cmd, args...)
 }

@@ -47,11 +47,13 @@ func main() {
 
 	// Run integration tests
 	mvnFlags = workflows.NewMavenFlags()
-	err = workflows.MvnVerify().Run(
-		// Add this line to specify the module to test
+
+	// Use the new, generic MvnRun workflow instead of MvnVerify
+	err = workflows.MvnRun(workflows.VerifyCmd).Run(
+		// Specify only the module you want to test
 		mvnFlags.Projects("v2/spanner-to-sourcedb"),
 
-		mvnFlags.IncludeDependencies(),
+		mvnFlags.IncludeDependencies(), // Keep -am for building dependencies
 		mvnFlags.SkipDependencyAnalysis(),
 		mvnFlags.SkipCheckstyle(),
 		mvnFlags.SkipJib(),
