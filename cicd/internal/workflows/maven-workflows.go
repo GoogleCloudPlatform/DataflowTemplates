@@ -18,7 +18,7 @@ package workflows
 
 import (
 	"strconv"
-	"strings" // Import the strings package
+	"strings"
 
 	"github.com/GoogleCloudPlatform/DataflowTemplates/cicd/internal/op"
 )
@@ -28,7 +28,7 @@ const (
 	cleanInstallCmd    = "clean install"
 	cleanVerifyCmd     = "clean verify"
 	cleanTestCmd       = "clean test"
-	VerifyCmd          = "verify"
+	VerifyCmd          = "verify" // Exported for use in other packages
 	spotlessCheckCmd   = "spotless:check"
 	checkstyleCheckCmd = "checkstyle:check"
 
@@ -61,7 +61,6 @@ type MavenFlags interface {
 	StaticSpannerInstance(string) string
 	SpannerHost(string) string
 	InternalMaven() string
-
 	Projects(projects ...string) string
 }
 
@@ -134,13 +133,10 @@ func (*mvnFlags) RunLoadTestObserver() string {
 	return "-PtemplatesLoadTestObserve"
 }
 
-// The number of modules Maven is going to build in parallel in a multi-module project.
 func (*mvnFlags) ThreadCount(count int) string {
 	return "-T" + strconv.Itoa(count)
 }
 
-// The number of tests Maven Surefire plugin is going to run in parallel for each Maven build
-// thread. The total number of parallel tests is IntegrationTestParallelism * ThreadCount.
 func (*mvnFlags) IntegrationTestParallelism(count int) string {
 	return "-DitParallelism=" + strconv.Itoa(count)
 }
@@ -165,8 +161,6 @@ func (*mvnFlags) Projects(projects ...string) string {
 	if len(projects) == 0 {
 		return ""
 	}
-	// Note: We are returning "-pl module1,module2" as two separate arguments
-	// by joining with a space. The RunForChangedModules function will handle splitting them.
 	return "-pl " + strings.Join(projects, ",")
 }
 
@@ -228,8 +222,6 @@ func RunForChangedModules(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
 		if arg != "" {
-			// By splitting fields by spaces, we can handle flags like "-pl module"
-			// which need to be two separate arguments for the command.
 			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
 		}
 	}
@@ -256,6 +248,37 @@ func (*checkstyleCheckWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
 }
 
+// =================================================================
+// NEW WORKFLOW TO RUN COMMANDS ON THE ROOT POM WITHOUT MODULE DETECTION
+// =================================================================
+
+type mvnRunOnPomWorkflow struct {
+	cmd string
+}
+
+// MvnRunOnPom creates a workflow that runs a given maven command directly on the root pom,
+// without automatically detecting changed modules. This is useful for when you want to
+// explicitly specify the projects to run using the .Projects() flag.
+func MvnRunOnPom(cmd string) Workflow {
+	return &mvnRunOnPomWorkflow{cmd: cmd}
+}
+
+func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
+	// This uses op.RunMavenOnPom and does NOT have the automatic module detection logic.
+	return runOnPom(w.cmd, args...)
+}
+
+// This is a simplified runner that correctly parses arguments but does not add its own.
+func runOnPom(cmd string, args ...string) error {
+	parsedArgs := []string{}
+	for _, arg := range args {
+		if arg != "" {
+			parsedArgs = append(parsedArgs, strings.Fields(arg)...)
+		}
+	}
+	return op.RunMavenOnPom(unifiedPom, cmd, parsedArgs...)
+}
+
 // Removes root and returns results. This may reorder the input.
 func removeRoot(modules []string) []string {
 	var i int
@@ -273,18 +296,4 @@ func removeRoot(modules []string) []string {
 	l := len(modules)
 	modules[i] = modules[l-1]
 	return modules[:l-1]
-}
-
-type mvnRunWorkflow struct {
-	cmd string
-}
-
-func MvnRun(cmd string) Workflow {
-	return &mvnRunWorkflow{cmd: cmd}
-}
-
-func (w *mvnRunWorkflow) Run(args ...string) error {
-	// This uses RunMavenOnPom, which does NOT automatically detect changed modules,
-	// unlike RunForChangedModules.
-	return op.RunMavenOnPom(unifiedPom, w.cmd, args...)
 }
