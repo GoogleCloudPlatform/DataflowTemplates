@@ -169,7 +169,7 @@ func NewMavenFlags() MavenFlags {
 }
 
 // =================================================================
-// ORIGINAL WORKFLOWS (RESTORED TO PREVENT COMPILATION ERRORS)
+// ALL ORIGINAL WORKFLOWS ARE RESTORED HERE
 // =================================================================
 
 type mvnCleanInstallWorkflow struct{}
@@ -177,7 +177,6 @@ type mvnCleanInstallWorkflow struct{}
 func MvnCleanInstall() Workflow {
 	return &mvnCleanInstallWorkflow{}
 }
-
 func (*mvnCleanInstallWorkflow) Run(args ...string) error {
 	return RunForChangedModules(cleanInstallCmd, args...)
 }
@@ -187,9 +186,26 @@ type mvnCleanInstallAllWorkflow struct{}
 func MvnCleanInstallAll() Workflow {
 	return &mvnCleanInstallAllWorkflow{}
 }
-
 func (*mvnCleanInstallAllWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, cleanInstallCmd, args...)
+}
+
+type mvnCleanTestWorkflow struct{}
+
+func MvnCleanTest() Workflow {
+	return &mvnCleanTestWorkflow{}
+}
+func (*mvnCleanTestWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanTestCmd, args...)
+}
+
+type mvnCleanVerifyWorkflow struct{}
+
+func MvnCleanVerify() Workflow {
+	return &mvnCleanVerifyWorkflow{}
+}
+func (*mvnCleanVerifyWorkflow) Run(args ...string) error {
+	return RunForChangedModules(cleanVerifyCmd, args...)
 }
 
 type mvnVerifyWorkflow struct{}
@@ -197,7 +213,6 @@ type mvnVerifyWorkflow struct{}
 func MvnVerify() Workflow {
 	return &mvnVerifyWorkflow{}
 }
-
 func (*mvnVerifyWorkflow) Run(args ...string) error {
 	return RunForChangedModules(VerifyCmd, args...)
 }
@@ -207,7 +222,6 @@ type spotlessCheckWorkflow struct{}
 func SpotlessCheck() Workflow {
 	return &spotlessCheckWorkflow{}
 }
-
 func (*spotlessCheckWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, spotlessCheckCmd, args...)
 }
@@ -217,13 +231,12 @@ type checkstyleCheckWorkflow struct{}
 func CheckstyleCheck() Workflow {
 	return &checkstyleCheckWorkflow{}
 }
-
 func (*checkstyleCheckWorkflow) Run(args ...string) error {
 	return op.RunMavenOnPom(unifiedPom, checkstyleCheckCmd, args...)
 }
 
 // =================================================================
-// NEW DIRECT EXECUTION WORKFLOW (FOR YOUR SPECIFIC GOAL)
+// NEW WORKFLOW FOR DIRECT EXECUTION
 // =================================================================
 
 type mvnRunOnPomWorkflow struct {
@@ -233,7 +246,6 @@ type mvnRunOnPomWorkflow struct {
 func MvnRunOnPom(cmd string) Workflow {
 	return &mvnRunOnPomWorkflow{cmd: cmd}
 }
-
 func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
 	return runOnPom(w.cmd, args...)
 }
@@ -242,7 +254,7 @@ func (w *mvnRunOnPomWorkflow) Run(args ...string) error {
 // UNDERLYING RUNNER FUNCTIONS
 // =================================================================
 
-// RunForChangedModules is the original runner that automatically adds a `-pl` flag.
+// Runner that automatically detects changed modules
 func RunForChangedModules(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
@@ -253,7 +265,7 @@ func RunForChangedModules(cmd string, args ...string) error {
 	return op.RunMavenOnModule(unifiedPom, cmd, parsedArgs...)
 }
 
-// runOnPom is the new, direct runner that does NOT add any automatic flags.
+// Direct runner that does not add any automatic flags
 func runOnPom(cmd string, args ...string) error {
 	parsedArgs := []string{}
 	for _, arg := range args {
