@@ -552,7 +552,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         // resolve tag to apply
         ImageSpecMetadata metadata = imageSpec.getMetadata();
         String trackTag = "public-image-latest";
-        String dateSuffix = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
+        String dateSuffix =
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
         String deprecatedTag = "no-new-use-public-image-newer-available-" + dateSuffix;
         if (metadata.isHidden()) {
           trackTag = "no-new-use-public-image-latest";
@@ -561,7 +562,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         }
         // promote image
         PromoteHelper promoteHelper =
-            new PromoteHelper(imagePath, targetImagePath, stagePrefix, trackTag, deprecatedTag, digest);
+            new PromoteHelper(
+                imagePath, targetImagePath, stagePrefix, trackTag, deprecatedTag, digest);
         promoteHelper.promote();
 
         if (!stageImageOnly) {

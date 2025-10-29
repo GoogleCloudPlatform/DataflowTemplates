@@ -53,8 +53,8 @@ class PromoteHelper {
    * @param imageTag - image tag
    * @param additionalTag - additional destination tag, used by repo managements, e.g.
    *     public-image-latest
-   * @param replacementTag - tag to put on original holder of additionalTag, used by
-   *     repo managements, e.g. no-new-use-public-image-
+   * @param replacementTag - tag to put on original holder of additionalTag, used by repo
+   *     managements, e.g. no-new-use-public-image-
    * @param sourceDigest - source image digest, e.g. sha256:xxxxx
    */
   public PromoteHelper(
@@ -65,7 +65,14 @@ class PromoteHelper {
       @Nullable String replacementTag,
       String sourceDigest)
       throws IOException, InterruptedException {
-    this(sourcePath, targetPath, imageTag, additionalTag, replacementTag, sourceDigest, accessToken());
+    this(
+        sourcePath,
+        targetPath,
+        imageTag,
+        additionalTag,
+        replacementTag,
+        sourceDigest,
+        accessToken());
   }
 
   @VisibleForTesting
@@ -105,7 +112,7 @@ class PromoteHelper {
     if (additionalTag != null) {
       addTag(additionalTag, sourceDigest);
     }
-    if (originalDigest != null &&  !originalDigest.isEmpty()) {
+    if (originalDigest != null && !originalDigest.isEmpty()) {
       addTag(replacementTag, originalDigest);
     }
   }
@@ -232,7 +239,8 @@ class PromoteHelper {
             "docker",
             "images",
             "describe",
-            imageReference, // This is the full image reference including tag, e.g., us-central1-docker.pkg.dev/my-project/my-repo/my-image:tag
+            imageReference, // This is the full image reference including tag, e.g.,
+            // us-central1-docker.pkg.dev/my-project/my-repo/my-image:tag
             "--format=\"get(image_summary.digest)\""
           };
     }
