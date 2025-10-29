@@ -66,6 +66,12 @@ var (
 			"v2/datastream-to-sql/",
 		},
 	}
+
+	// New map for short name to full path mapping
+	shortNameToFullPathMap = map[string]string{
+		"spanner-to-sourcedb": "v2/spanner-to-sourcedb/",
+		// Add other mappings as needed
+	}
 )
 
 // Registers all common flags. Must be called before flag.Parse().
@@ -73,9 +79,20 @@ func RegisterCommonFlags() {
 	flag.StringVar(&modulesToBuild, "modules-to-build", ALL, "List of modules to build/run commands against")
 }
 
+// SetModulesToBuild allows setting the modules to build programmatically.
+func SetModulesToBuild(module string) {
+	modulesToBuild = module
+}
+
 // Returns all modules to build.
 func ModulesToBuild() []string {
 	m := modulesToBuild
+
+	// Check if the module is a short name
+	if fullPath, ok := shortNameToFullPathMap[m]; ok {
+		return []string{fullPath}
+	}
+
 	if m == "DEFAULT" {
 		// "DEFAULT" is "ALL" minus other modules defined in moduleMap
 		var s []string
