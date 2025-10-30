@@ -228,7 +228,8 @@ class PromoteHelper {
             "list-tags",
             targetPath, // This is the image name, e.g., us.gcr.io/my-project/my-image
             "--filter=tags:" + tag,
-            "--format=\"get(digest)\""
+            "--format",
+            "get(digest)"
           };
     } else {
       // Artifact Registry repository needs to use `gcloud artifacts docker images describe`
@@ -241,11 +242,18 @@ class PromoteHelper {
             "describe",
             imageReference, // This is the full image reference including tag, e.g.,
             // us-central1-docker.pkg.dev/my-project/my-repo/my-image:tag
-            "--format=\"get(image_summary.digest)\""
+            "--format",
+            "get(image_summary.digest)"
           };
     }
 
-    String response = TemplatesStageMojo.runCommandCapturesOutput(command, null);
+    String response = "";
+    try {
+      response = TemplatesStageMojo.runCommandCapturesOutput(command, null);
+    } catch (Exception e) {
+      // Swallow exceptions here - usually this means that the image does not exist with the tag
+      return "";
+    }
     // The response is expected to be just the digest, e.g., "sha256:..."
     // Trim any leading/trailing whitespace.
     return response.trim();
