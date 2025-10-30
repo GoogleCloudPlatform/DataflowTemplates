@@ -33,6 +33,7 @@ public class PromoteHelperTest {
             "us-docker.pkg.dev/target-project/target-repo/some-prefix/io_to_io",
             "2020_10_10_rc00",
             null,
+            null,
             "sha256:123",
             "fake-token");
     String[] cmds = helper.getPromoteFlexTemplateImageCmd();
