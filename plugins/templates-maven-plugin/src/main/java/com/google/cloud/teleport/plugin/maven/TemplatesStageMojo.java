@@ -1139,14 +1139,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             cloudBuildLogs);
 
     int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building YAML image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
-    validateImageExists(imagePathTag, buildProjectId);
   }
 
   private void stagePythonUsingDockerfile(
@@ -1216,13 +1213,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building Python image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
-    validateImageExists(imagePathTag, buildProjectId);
   }
 
   /** generate image path (not including tag). */
@@ -1299,13 +1291,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Build Flex image nonzero return code {}.  This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
-    validateImageExists(imagePathTag, buildProjectId);
   }
 
   private void stageXlangUsingDockerfile(
@@ -1379,13 +1366,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building Xlang image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
-    validateImageExists(imagePathTag, buildProjectId);
   }
 
   private static void copyJavaArtifacts(
@@ -1484,14 +1466,11 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Scanning container nonzero return code {}. This does not necessarily mean an error. Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
-  private void validateImageExists(String imagePathTag, String buildProjectId)
+  private static void validateImageExists(String imagePathTag, String buildProjectId)
       throws IOException, InterruptedException {
     LOG.info("Validating that image {} was created...", imagePathTag);
 
