@@ -1140,11 +1140,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     int retval = stageProcess.waitFor();
     if (retval != 0) {
-      throw new RuntimeException(
-          String.format(
-              "Error building yaml image using gcloud. Code %d. Check logs for details.\n%s",
-              retval, cloudBuildLogs));
+      LOG.warn(
+          "Building YAML image nonzero return code {}. This does not necessarily mean an error. "
+              + "Check logs for details. {}",
+          retval,
+          cloudBuildLogs);
     }
+    validateImageExists(imagePathTag, buildProjectId);
   }
 
   private void stagePythonUsingDockerfile(
@@ -1220,6 +1222,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           retval,
           cloudBuildLogs);
     }
+    validateImageExists(imagePathTag, buildProjectId);
   }
 
   /** generate image path (not including tag). */
@@ -1302,6 +1305,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           retval,
           cloudBuildLogs);
     }
+    validateImageExists(imagePathTag, buildProjectId);
   }
 
   private void stageXlangUsingDockerfile(
@@ -1381,6 +1385,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           retval,
           cloudBuildLogs);
     }
+    validateImageExists(imagePathTag, buildProjectId);
   }
 
   private static void copyJavaArtifacts(
@@ -1484,6 +1489,36 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
           retval,
           cloudBuildLogs);
     }
+  }
+
+  private void validateImageExists(String imagePathTag, String buildProjectId)
+      throws IOException, InterruptedException {
+    LOG.info("Validating that image {} was created...", imagePathTag);
+
+    // Tries to describe the image. If it fails, it means the image does not exist.
+    Process validationProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "artifacts",
+              "docker",
+              "images",
+              "describe",
+              imagePathTag,
+              "--project",
+              buildProjectId
+            },
+            null,
+            new StringBuilder());
+
+    if (validationProcess.waitFor() != 0) {
+      throw new RuntimeException(
+          "Image "
+              + imagePathTag
+              + " was not created properly. Check the build logs for more details.");
+    }
+
+    LOG.info("Image {} validated successfully.", imagePathTag);
   }
 
   /** A runnable used for generating system SBOM, fetching image digest for retrivial. */
