@@ -1145,11 +1145,10 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
             cloudBuildLogs);
 
     int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
     if (retval != 0) {
-      throw new RuntimeException(
-          String.format(
-              "Error building yaml image using gcloud. Code %d. Check logs for details.\n%s",
-              retval, cloudBuildLogs));
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1220,11 +1219,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building Python image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1302,11 +1297,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Build Flex image nonzero return code {}.  This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1381,11 +1372,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building Xlang image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1485,11 +1472,38 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Scanning container nonzero return code {}. This does not necessarily mean an error. Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
+  }
+
+  private static void validateImageExists(String imagePathTag, String buildProjectId)
+      throws IOException, InterruptedException {
+    LOG.info("Validating that image {} was created...", imagePathTag);
+
+    // Tries to describe the image. If it fails, it means the image does not exist.
+    Process validationProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "artifacts",
+              "docker",
+              "images",
+              "describe",
+              imagePathTag,
+              "--project",
+              buildProjectId
+            },
+            null,
+            new StringBuilder());
+
+    if (validationProcess.waitFor() != 0) {
+      throw new RuntimeException(
+          "Image "
+              + imagePathTag
+              + " was not created properly. Check the build logs for more details.");
+    }
+
+    LOG.info("Image {} validated successfully.", imagePathTag);
   }
 
   /** A runnable used for generating system SBOM, fetching image digest for retrivial. */
