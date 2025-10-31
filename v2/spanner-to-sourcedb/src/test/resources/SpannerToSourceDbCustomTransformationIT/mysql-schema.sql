@@ -26,5 +26,6 @@ CREATE TABLE AllDatatypeTransformation (
     bool_column TINYINT(1),
     binary_column VARBINARY(150),
     bit_column BIT(8),
-    PRIMARY KEY (varchar_column)
+    sql_column INT NOT NULL,
+    PRIMARY KEY (varchar_column, sql_column)
 );
