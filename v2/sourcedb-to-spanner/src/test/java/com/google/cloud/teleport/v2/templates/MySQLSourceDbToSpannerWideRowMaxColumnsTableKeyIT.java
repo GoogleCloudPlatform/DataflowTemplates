@@ -29,8 +29,8 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -53,15 +53,23 @@ public class MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT extends SourceDbT
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
 
-  @Before
-  public void setUp() throws Exception {
-    mySQLResourceManager = setUpMySQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
+  /**
+   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
+   */
+  @BeforeClass
+  public static void setUpClass() {
+    mySQLResourceManager =
+        setUpMySQLResourceManager(
+            String.valueOf(MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT.class));
+    spannerResourceManager =
+        setUpSpannerResourceManager(
+            String.valueOf(MySQLSourceDbToSpannerWideRowMaxColumnsTableKeyIT.class));
   }
 
-  @After
-  public void cleanUp() throws Exception {
-    ResourceManagerUtils.cleanResources(mySQLResourceManager, spannerResourceManager);
+  /** Cleanup dataflow job and all the resources and resource managers. */
+  @AfterClass
+  public static void cleanUpClass() {
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
   @Test

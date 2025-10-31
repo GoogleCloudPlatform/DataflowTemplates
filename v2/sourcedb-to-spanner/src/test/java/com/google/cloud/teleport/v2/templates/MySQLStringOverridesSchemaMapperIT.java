@@ -29,8 +29,8 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -59,17 +59,19 @@ public class MySQLStringOverridesSchemaMapperIT extends SourceDbToSpannerITBase 
   private static final String SPANNER_DDL_RESOURCE = "SchemaMapperIT/spanner-overrides-target.sql";
 
   /**
-   * Setup resource managers and Launch dataflow job once during the execution of this test class.
+   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
    */
-  @Before
-  public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
+  @BeforeClass
+  public static void setUpClass() {
+    mySQLResourceManager =
+        setUpMySQLResourceManager(String.valueOf(MySQLStringOverridesSchemaMapperIT.class));
+    spannerResourceManager =
+        setUpSpannerResourceManager(String.valueOf(MySQLStringOverridesSchemaMapperIT.class));
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
-  @After
-  public void cleanUp() {
+  @AfterClass
+  public static void cleanUpClass() {
     ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
