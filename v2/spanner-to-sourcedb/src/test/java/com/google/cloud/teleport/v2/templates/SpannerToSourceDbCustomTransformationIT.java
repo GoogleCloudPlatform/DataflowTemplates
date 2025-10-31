@@ -55,7 +55,6 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 /**
  * Integration test for {@link SpannerToSourceDb} Flex template with custom transformation jar
  * supplied.
@@ -63,7 +62,6 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-@Ignore("This test is disabled currently")
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
@@ -401,6 +399,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(1).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
     assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
+      assertThat(rows.get(0).get("sql_column")).isEqualTo(98);
     assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
 
     assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
@@ -424,6 +423,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(0).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
+    assertThat(rows.get(0).get("sql_column")).isEqualTo(122);
     assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
 
     rows =
