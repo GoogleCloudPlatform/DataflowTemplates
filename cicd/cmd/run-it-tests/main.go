@@ -27,7 +27,15 @@ import (
 func main() {
 	flags.RegisterCommonFlags()
 	flags.RegisterItFlags()
+
+	var itModule string
+	flag.StringVar(&itModule, "it-module", "", "(optional) The single module to run integration tests for")
+
 	flag.Parse()
+
+	if itModule != "" {
+		flags.SetModulesToBuild(itModule)
+	}
 
 	// Run mvn install before running integration tests
 	mvnFlags := workflows.NewMavenFlags()

@@ -46,7 +46,6 @@ import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -158,7 +157,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  @Ignore("Skipping spannerToSourceDbBasic test")
+  //  @Ignore("Skipping spannerToSourceDbBasic test")
   public void spannerToSourceDbBasic() throws InterruptedException, IOException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
@@ -217,12 +216,20 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, TEST_TIMEOUT),
-                () -> jdbcResourceManager.getRowCount(TABLE) == 1); // only one row is inserted
+                () -> {
+                  long rowCount = jdbcResourceManager.getRowCount(TABLE);
+                  LOG.info("Current row count for table {}: {}", TABLE, rowCount);
+                  return rowCount == 1;
+                }); // only one row is inserted
     assertThatResult(result).meetsConditions();
     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE);
+    LOG.info("Retrieved rows from MySQL for table {}: {}", TABLE, rows);
     assertThat(rows).hasSize(1);
+    LOG.info("id is : {}", rows.get(0).get("id"));
     assertThat(rows.get(0).get("id")).isEqualTo(1);
+    LOG.info("name is : {}", rows.get(0).get("name"));
     assertThat(rows.get(0).get("name")).isEqualTo("FF");
+    LOG.info("from is : {}", rows.get(0).get("from"));
     assertThat(rows.get(0).get("from")).isEqualTo("AA");
   }
 
