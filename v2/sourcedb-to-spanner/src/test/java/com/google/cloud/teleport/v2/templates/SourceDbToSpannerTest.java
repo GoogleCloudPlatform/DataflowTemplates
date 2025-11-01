@@ -17,19 +17,54 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.teleport.v2.common.CommonTemplateJvmInitializer;
 import com.google.cloud.teleport.v2.options.SourceDbToSpannerOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
+import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.joda.time.Duration;
 import org.junit.Test;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 public class SourceDbToSpannerTest {
 
   @Test
+  public void testGetSourceDbToSpannerOptions() {
+    try (MockedStatic<PipelineOptionsFactory> mockedPipelineOptionsFactory =
+            mockStatic(PipelineOptionsFactory.class);
+        MockedConstruction<CommonTemplateJvmInitializer> mockedCommonTemplateJvmInitializer =
+            mockConstruction(CommonTemplateJvmInitializer.class)) {
+
+      SourceDbToSpannerOptions mockOptions = mock(SourceDbToSpannerOptions.class);
+      PipelineOptionsFactory.Builder mockBuilder = mock(PipelineOptionsFactory.Builder.class);
+
+      when(mockBuilder.withValidation()).thenReturn(mockBuilder);
+      when(mockBuilder.as(SourceDbToSpannerOptions.class)).thenReturn(mockOptions);
+      mockedPipelineOptionsFactory
+          .when(() -> PipelineOptionsFactory.fromArgs(any(String[].class)))
+          .thenReturn(mockBuilder);
+
+      SourceDbToSpannerOptions options =
+          SourceDbToSpanner.getSourceDbToSpannerOptions(new String[] {});
+
+      assertThat(options).isNotNull();
+      verify(mockedCommonTemplateJvmInitializer.constructed().get(0), times(1))
+          .beforeProcessing(options);
+    }
+  }
+
+  @Test
   public void testCreateSpannerConfig() {
+
     SourceDbToSpannerOptions mockOptions =
         mock(SourceDbToSpannerOptions.class, Mockito.withSettings().serializable());
     when(mockOptions.getProjectId()).thenReturn("testProject");

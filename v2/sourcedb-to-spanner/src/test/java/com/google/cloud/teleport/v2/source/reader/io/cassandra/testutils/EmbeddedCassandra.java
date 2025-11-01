@@ -209,7 +209,7 @@ public class EmbeddedCassandra implements AutoCloseable {
 
     // Create content signer
     ContentSigner contentSigner =
-        new JcaContentSignerBuilder("SHA256WithRSAEncryption").build(keyPair.getPrivate());
+        new JcaContentSignerBuilder("SHA512WITHRSAENCRYPTION").build(keyPair.getPrivate());
 
     // Build the certificate holder
     X509CertificateHolder certHolder = certBuilder.build(contentSigner);

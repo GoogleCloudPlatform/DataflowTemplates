@@ -71,7 +71,7 @@ public class MySQLIdentitySchemaMapperIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void simpleTest() throws Exception {
+  public void testMySQLIdentitySchemaMapping() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =

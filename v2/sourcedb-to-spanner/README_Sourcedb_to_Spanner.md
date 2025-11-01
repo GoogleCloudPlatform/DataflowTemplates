@@ -238,6 +238,23 @@ You will need to provision a spanner database where you would like to migrate th
 The tables which are present both on Spanner and Cassandra would be the ones that are migrated.
 #### Prerequisite-5: GCS
 You would need a GCS bucket to stage your build, driver configuration file, and provide an output directory for DLQs.
+#### Optional Prerequisite-6: Truststore for Client-to-Server TLS
+If you require Client-to-Server TLS for the connection between Dataflow and Cassandra, follow these steps:
+
+1.  Upload the JKS truststore file, which is needed to verify the server-side certificate, to a GCS bucket.
+2.  Provide the GCS path to this file using the `extraFilesToStage` parameter. For example:
+    ```
+    --parameters="extraFilesToStage=gs://your-bucket/path/to/truststore.jks"
+    ```
+3.  In your driver configuration file, reference the truststore. The path should be `/extra_files/` followed by the filename:
+    ```
+    advanced.ssl-engine-factory {
+      class = DefaultSslEngineFactory
+      truststore-path = "/extra_files/truststore.jks"
+      truststore-password = "your-truststore-password"
+    }
+    ```
+4.  Ensure that the truststore contains a valid certificate and that the Cassandra hostname matches the Common Name (CN) in the certificate's chain of trust.
 ### Run Migration
 
 **Using the staged template**:

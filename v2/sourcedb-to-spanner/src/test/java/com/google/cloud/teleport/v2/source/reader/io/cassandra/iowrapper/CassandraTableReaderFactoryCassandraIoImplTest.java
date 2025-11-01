@@ -24,13 +24,16 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
 import static com.google.common.truth.Truth.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.datastax.driver.core.SSLOptions;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
@@ -55,6 +58,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URL;
 import java.time.Duration;
+import java.util.List;
 import org.apache.beam.sdk.io.astra.db.AstraDbIO;
 import org.apache.beam.sdk.io.astra.db.CqlSessionHolder;
 import org.apache.beam.sdk.io.localcassandra.CassandraIO;
@@ -71,6 +75,7 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -390,6 +395,109 @@ public class CassandraTableReaderFactoryCassandraIoImplTest {
             "testTable");
     assertThat(retWithPartitions).isEqualTo(mockAstraDbIORead);
     verify(mockAstraDbIORead, times(1)).withMinNumberOfSplits(testNumberOfSplits);
+  }
+
+  public void testEnableSslWithKeyStore() {
+    DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
+    when(profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption())).thenReturn(true);
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.enableSSL(profile)).isEqualTo(true);
+  }
+
+  @Test
+  public void testEnableSslWithNoStore() {
+    DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
+    assertThat(CassandraTableReaderFactoryCassandraIoImpl.enableSSL(profile)).isEqualTo(false);
+  }
+
+  @Test
+  public void testSetSslOptionsNoSsl() {
+    DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
+    CassandraIO.Read<SourceRow> reader = mock(CassandraIO.Read.class);
+    CassandraTableReaderFactoryCassandraIoImpl.setSslOptions(reader, profile);
+    verify(reader, never()).withSsl(any(SSLOptions.class));
+  }
+
+  @Test
+  public void testSetSslOptionsWithSsl() {
+    DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
+    when(profile.isDefined(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption())).thenReturn(true);
+    when(profile.getString(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption()))
+        .thenReturn("path/to/truststore");
+    when(profile.isDefined(TypedDriverOption.SSL_TRUSTSTORE_PASSWORD.getRawOption()))
+        .thenReturn(true);
+    when(profile.getString(TypedDriverOption.SSL_TRUSTSTORE_PASSWORD.getRawOption()))
+        .thenReturn("truststore_password");
+    when(profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption())).thenReturn(true);
+    when(profile.getString(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption()))
+        .thenReturn("path/to/keystore");
+    when(profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PASSWORD.getRawOption()))
+        .thenReturn(true);
+    when(profile.getString(TypedDriverOption.SSL_KEYSTORE_PASSWORD.getRawOption()))
+        .thenReturn("keystore_password");
+    when(profile.isDefined(TypedDriverOption.SSL_CIPHER_SUITES.getRawOption())).thenReturn(true);
+    when(profile.getStringList(TypedDriverOption.SSL_CIPHER_SUITES.getRawOption()))
+        .thenReturn(List.of("cipher1", "cipher2"));
+
+    CassandraIO.Read<SourceRow> reader = mock(CassandraIO.Read.class);
+    CassandraTableReaderFactoryCassandraIoImpl.setSslOptions(reader, profile);
+
+    ArgumentCaptor<ValueProvider> captor = ArgumentCaptor.forClass(ValueProvider.class);
+    verify(reader, times(1)).withSsl(captor.capture());
+    SSLOptionsProvider provider = (SSLOptionsProvider) captor.getValue();
+    assertThat(provider.isAccessible()).isEqualTo(true);
+    SerializableSSLOptionsFactory factory =
+        (SerializableSSLOptionsFactory) provider.sslOptionsFactory();
+    assertThat(factory.trustStorePath()).isEqualTo("path/to/truststore");
+    assertThat(factory.trustStorePassword()).isEqualTo("truststore_password");
+    assertThat(factory.keyStorePath()).isEqualTo("path/to/keystore");
+    assertThat(factory.keyStorePassword()).isEqualTo("keystore_password");
+    assertThat(factory.sslCipherSuites()).isEqualTo(List.of("cipher1", "cipher2"));
+  }
+
+  @Test
+  public void testSetSslOptionsWithTrustStoreOnly() {
+    DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
+    when(profile.isDefined(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption())).thenReturn(true);
+    when(profile.getString(TypedDriverOption.SSL_TRUSTSTORE_PATH.getRawOption()))
+        .thenReturn("path/to/truststore");
+
+    CassandraIO.Read<SourceRow> reader = mock(CassandraIO.Read.class);
+    CassandraTableReaderFactoryCassandraIoImpl.setSslOptions(reader, profile);
+
+    ArgumentCaptor<ValueProvider> captor = ArgumentCaptor.forClass(ValueProvider.class);
+    verify(reader, times(1)).withSsl(captor.capture());
+    SSLOptionsProvider provider = (SSLOptionsProvider) captor.getValue();
+    assertThat(provider.isAccessible()).isEqualTo(true);
+    SerializableSSLOptionsFactory factory =
+        (SerializableSSLOptionsFactory) provider.sslOptionsFactory();
+    assertThat(factory.trustStorePath()).isEqualTo("path/to/truststore");
+    assertThat(factory.trustStorePassword()).isNull();
+    assertThat(factory.keyStorePath()).isNull();
+    assertThat(factory.keyStorePassword()).isNull();
+    assertThat(factory.sslCipherSuites()).isNull();
+  }
+
+  @Test
+  public void testSetSslOptionsWithKeyStoreOnly() {
+    DriverExecutionProfile profile = mock(DriverExecutionProfile.class);
+    when(profile.isDefined(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption())).thenReturn(true);
+    when(profile.getString(TypedDriverOption.SSL_KEYSTORE_PATH.getRawOption()))
+        .thenReturn("path/to/keystore");
+
+    CassandraIO.Read<SourceRow> reader = mock(CassandraIO.Read.class);
+    CassandraTableReaderFactoryCassandraIoImpl.setSslOptions(reader, profile);
+
+    ArgumentCaptor<ValueProvider> captor = ArgumentCaptor.forClass(ValueProvider.class);
+    verify(reader, times(1)).withSsl(captor.capture());
+    SSLOptionsProvider provider = (SSLOptionsProvider) captor.getValue();
+    assertThat(provider.isAccessible()).isEqualTo(true);
+    SerializableSSLOptionsFactory factory =
+        (SerializableSSLOptionsFactory) provider.sslOptionsFactory();
+    assertThat(factory.trustStorePath()).isNull();
+    assertThat(factory.trustStorePassword()).isNull();
+    assertThat(factory.keyStorePath()).isEqualTo("path/to/keystore");
+    assertThat(factory.keyStorePassword()).isNull();
+    assertThat(factory.sslCipherSuites()).isNull();
   }
 
   @Test

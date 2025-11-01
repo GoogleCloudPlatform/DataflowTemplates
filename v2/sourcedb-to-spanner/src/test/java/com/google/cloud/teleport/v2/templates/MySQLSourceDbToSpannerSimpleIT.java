@@ -103,7 +103,7 @@ public class MySQLSourceDbToSpannerSimpleIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void simpleTest() throws IOException {
+  public void testMySqlToSpanner() throws IOException {
     List<Map<String, Object>> mySQLData = getMySQLData();
     mySQLResourceManager.createTable(TABLE1, getMySQLSchema(ID));
     mySQLResourceManager.createTable(TABLE2, getMySQLSchema(NAME));
