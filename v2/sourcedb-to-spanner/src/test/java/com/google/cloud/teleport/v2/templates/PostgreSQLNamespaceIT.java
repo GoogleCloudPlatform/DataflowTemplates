@@ -68,7 +68,7 @@ public class PostgreSQLNamespaceIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void simpleTest() throws Exception {
+  public void testPostgreSQLNamespace() throws Exception {
     Map<String, String> jobParameters = new HashMap<>();
     jobParameters.put("namespace", "my-namespace");
     loadSQLFileResource(postgresSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
