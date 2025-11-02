@@ -91,13 +91,16 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.StreamingOptions;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.Flatten;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.transforms.Reshuffle;
+import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionList;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -508,9 +511,9 @@ public class SpannerToSourceDb {
     @TemplateParameter.Enum(
         order = 34,
         enumOptions = {
-          @TemplateEnumOption("LOW"),
-          @TemplateEnumOption("MEDIUM"),
-          @TemplateEnumOption("HIGH")
+            @TemplateEnumOption("LOW"),
+            @TemplateEnumOption("MEDIUM"),
+            @TemplateEnumOption("HIGH")
         },
         optional = true,
         description = "Priority for Spanner RPC invocations",
@@ -615,8 +618,21 @@ public class SpannerToSourceDb {
     DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
 
     shadowTableCreator.createShadowTablesInSpanner();
+
+    // Fetch DDLs eagerly and convert them to PCollectionViews for side input distribution.
     Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
     Ddl shadowTableDdl = SpannerSchema.getInformationSchemaAsDdl(spannerMetadataConfig);
+
+    final PCollectionView<Ddl> ddlView =
+        pipeline
+            .apply("Create Main DDL", Create.of(ddl).withCoder(SerializableCoder.of(Ddl.class)))
+            .apply("View Main DDL", View.asSingleton());
+
+    final PCollectionView<Ddl> shadowTableDdlView =
+        pipeline
+            .apply("Create Shadow DDL", Create.of(shadowTableDdl).withCoder(SerializableCoder.of(Ddl.class)))
+            .apply("View Shadow DDL", View.asSingleton());
+
     List<Shard> shards;
     String shardingMode;
     if (MYSQL_SOURCE_TYPE.equals(options.getSourceType())) {
@@ -650,8 +666,8 @@ public class SpannerToSourceDb {
     int reshuffleBucketSize =
         maxNumWorkers
             * (debugOptions.getNumberOfWorkerHarnessThreads() > 0
-                ? debugOptions.getNumberOfWorkerHarnessThreads()
-                : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
+            ? debugOptions.getNumberOfWorkerHarnessThreads()
+            : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
     if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
@@ -721,7 +737,7 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
-    ISchemaMapper schemaMapper = getSchemaMapper(options, ddl);
+    // ISchemaMapper schemaMapper is now initialized on the worker side in AssignShardIdFn and SourceWriterFn
 
     if (options.getFailureInjectionParameter() != null
         && !options.getFailureInjectionParameter().isBlank()) {
@@ -739,20 +755,20 @@ public class SpannerToSourceDb {
                 // mod
                 // number of parallelism
                 ParDo.of(
-                    new AssignShardIdFn(
-                        spannerConfig,
-                        schemaMapper,
-                        ddl,
-                        sourceSchema,
-                        shardingMode,
-                        shards.get(0).getLogicalShardId(),
-                        options.getSkipDirectoryName(),
-                        options.getShardingCustomJarPath(),
-                        options.getShardingCustomClassName(),
-                        options.getShardingCustomParameters(),
-                        options.getMaxShardConnections() * shards.size(),
-                        options.getSourceType()))) // currently assuming that all shards accept the
-            // same
+                        new AssignShardIdFn(
+                            spannerConfig,
+                            options, // Pass options instead of Ddl and SchemaMapper
+                            ddlView, // *** MISSING ARGUMENT ADDED HERE ***
+                            sourceSchema,
+                            shardingMode,
+                            shards.get(0).getLogicalShardId(),
+                            options.getSkipDirectoryName(),
+                            options.getShardingCustomJarPath(),
+                            options.getShardingCustomClassName(),
+                            options.getShardingCustomParameters(),
+                            options.getMaxShardConnections() * shards.size(),
+                            options.getSourceType()))
+                    .withSideInputs(ddlView)) // Pass DDL as side input
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
@@ -761,11 +777,11 @@ public class SpannerToSourceDb {
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    schemaMapper,
+                    options, // Pass options instead of SchemaMapper
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
-                    ddl,
-                    shadowTableDdl,
+                    ddlView, // Pass DDL View
+                    shadowTableDdlView, // Pass Shadow DDL View
                     sourceSchema,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),
@@ -959,7 +975,7 @@ public class SpannerToSourceDb {
     return sourceSchema;
   }
 
-  private static ISchemaMapper getSchemaMapper(Options options, Ddl ddl) {
+  public static ISchemaMapper getSchemaMapper(Options options, Ddl ddl) {
     // Check if config types are specified
     boolean hasSessionFile =
         options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");

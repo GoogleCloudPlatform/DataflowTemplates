@@ -21,6 +21,8 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.common.base.Preconditions;
@@ -34,6 +36,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PInput;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.PValue;
@@ -43,14 +46,14 @@ import org.apache.beam.sdk.values.TupleTagList;
 /** Takes an input of change stream events and writes them to the source database. */
 public class SourceWriterTransform
     extends PTransform<
-        PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
+    PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
 
-  private final ISchemaMapper schemaMapper;
+  private final SpannerToSourceDb.Options options;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
-  private final Ddl ddl;
-  private final Ddl shadowTableDdl;
+  private final PCollectionView<Ddl> ddlView;
+  private final PCollectionView<Ddl> shadowTableDdlView;
   private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
@@ -60,11 +63,11 @@ public class SourceWriterTransform
 
   public SourceWriterTransform(
       List<Shard> shards,
-      ISchemaMapper schemaMapper,
+      SpannerToSourceDb.Options options,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
-      Ddl ddl,
-      Ddl shadowTableDdl,
+      PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
       SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
@@ -72,12 +75,12 @@ public class SourceWriterTransform
       String source,
       CustomTransformation customTransformation) {
 
-    this.schemaMapper = schemaMapper;
+    this.options = options;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
-    this.ddl = ddl;
-    this.shadowTableDdl = shadowTableDdl;
+    this.ddlView = ddlView;
+    this.shadowTableDdlView = shadowTableDdlView;
     this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
@@ -95,17 +98,19 @@ public class SourceWriterTransform
             ParDo.of(
                     new SourceWriterFn(
                         this.shards,
-                        this.schemaMapper,
+                        this.options, // Pass options instead of schemaMapper
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
-                        this.ddl,
-                        this.shadowTableDdl,
+                        // Ddl and shadowTableDdl removed from constructor
                         this.sourceSchema,
                         this.shadowTablePrefix,
                         this.skipDirName,
                         this.maxThreadPerDataflowWorker,
                         this.source,
-                        this.customTransformation))
+                        this.customTransformation,
+                        this.ddlView, // Pass ddlView
+                        this.shadowTableDdlView)) // Pass shadowTableDdlView
+                .withSideInputs(ddlView, shadowTableDdlView) // Pass DDL Views as side inputs
                 .withOutputTags(
                     Constants.SUCCESS_TAG,
                     TupleTagList.of(Constants.PERMANENT_ERROR_TAG)
