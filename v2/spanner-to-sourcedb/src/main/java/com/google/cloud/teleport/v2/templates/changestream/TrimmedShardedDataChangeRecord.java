@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.templates.changestream;
 
 import com.google.cloud.Timestamp;
+import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 import java.util.Objects;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
@@ -38,6 +39,9 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private String shard;
   private boolean isRetryRecord;
 
+  @SerializedName("_metadata_retry_count")
+  private long metadataRetryCount;
+
   public TrimmedShardedDataChangeRecord(
       com.google.cloud.Timestamp commitTimestamp,
       String serverTransactionId,
@@ -56,6 +60,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.numberOfRecordsInTransaction = numberOfRecordsInTransaction;
     this.transactionTag = transactionTag;
     this.isRetryRecord = false;
+    this.metadataRetryCount = 0;
   }
 
   public TrimmedShardedDataChangeRecord(TrimmedShardedDataChangeRecord other) {
@@ -69,6 +74,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.transactionTag = other.transactionTag;
     this.shard = other.shard;
     this.isRetryRecord = other.isRetryRecord;
+    this.metadataRetryCount = other.metadataRetryCount;
   }
 
   public Timestamp getCommitTimestamp() {
@@ -123,6 +129,14 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
     this.isRetryRecord = isRetryRecord;
   }
 
+  public long getMetadataRetryCount() {
+    return metadataRetryCount;
+  }
+
+  public void setMetadataRetryCount(long metadataRetryCount) {
+    this.metadataRetryCount = metadataRetryCount;
+  }
+
   @Override
   public boolean equals(@javax.annotation.Nullable Object o) {
     if (this == o) {
@@ -141,7 +155,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         && numberOfRecordsInTransaction == that.numberOfRecordsInTransaction
         && Objects.equals(transactionTag, that.transactionTag)
         && Objects.equals(shard, that.shard)
-        && isRetryRecord == that.isRetryRecord;
+        && isRetryRecord == that.isRetryRecord
+        && metadataRetryCount == that.metadataRetryCount;
   }
 
   @Override
@@ -156,7 +171,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         numberOfRecordsInTransaction,
         transactionTag,
         shard,
-        isRetryRecord);
+        isRetryRecord,
+        metadataRetryCount);
   }
 
   @Override
@@ -185,6 +201,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
         + shard
         + ", isRetryRecord="
         + isRetryRecord
+        + ", metadataRetryCount="
+        + metadataRetryCount
         + '}';
   }
 }
