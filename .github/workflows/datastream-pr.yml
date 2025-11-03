@@ -17,9 +17,9 @@
 name: Datastream PR
 
 on:
-  pull_request:
-    branches:
-    - 'main'
+#  pull_request:
+#    branches:
+#    - 'main'
 #    paths:
 #      # Template wide common modules
 #      - 'pom.xml'
