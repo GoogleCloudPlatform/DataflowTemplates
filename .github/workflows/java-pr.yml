@@ -20,28 +20,28 @@ on:
   pull_request:
     branches:
       - 'main'
-    paths:
-      - '**.java'
-      - '**.xml'
-      # Include python files and Dockerfiles used for YAML and xlang templates.
-      - '**.py'
-      # Include Python requirements files for dependency updates
-      - '**/requirements.txt'
-      - 'python/default_base_*.txt'
-      - 'python/generate_all_dependencies.sh'
-      - 'plugins/core-plugin/src/main/resources/**'
-      # Include relevant GitHub Action files for running these checks.
-      # This will make it easier to verify action changes don't break anything.
-      - '.github/actions/setup-env/*'
-      - '.github/workflows/java-pr.yml'
-      # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
-      - '!v2/datastream-to-spanner/**'
-      - '!v2/spanner-common/**'
-      - '!v2/spanner-change-streams-to-sharded-file-sink/**'
-      - '!v2/gcs-to-sourcedb/**'
-      - '!v2/spanner-migrations-sdk/**'
-      - '!v2/spanner-custom-shard/**'
-      - '!v2/sourcedb-to-spanner/**'
+#    paths:
+#      - '**.java'
+#      - '**.xml'
+#      # Include python files and Dockerfiles used for YAML and xlang templates.
+#      - '**.py'
+#      # Include Python requirements files for dependency updates
+#      - '**/requirements.txt'
+#      - 'python/default_base_*.txt'
+#      - 'python/generate_all_dependencies.sh'
+#      - 'plugins/core-plugin/src/main/resources/**'
+#      # Include relevant GitHub Action files for running these checks.
+#      # This will make it easier to verify action changes don't break anything.
+#      - '.github/actions/setup-env/*'
+#      - '.github/workflows/java-pr.yml'
+#      # Exclude spanner paths from global run (covered in https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/.github/workflows/spanner-pr.yml)
+#      - '!v2/datastream-to-spanner/**'
+#      - '!v2/spanner-common/**'
+#      - '!v2/spanner-change-streams-to-sharded-file-sink/**'
+#      - '!v2/gcs-to-sourcedb/**'
+#      - '!v2/spanner-migrations-sdk/**'
+#      - '!v2/spanner-custom-shard/**'
+#      - '!v2/sourcedb-to-spanner/**'
   schedule:
     - cron: "0 */12 * * *"
   workflow_dispatch:

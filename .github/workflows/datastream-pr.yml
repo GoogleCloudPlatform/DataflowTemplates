@@ -20,23 +20,23 @@ on:
   pull_request:
     branches:
     - 'main'
-    paths:
-      # Template wide common modules
-      - 'pom.xml'
-      - 'v2/common/**'
-      - 'v2/datastream-common/**'
-      - 'v2/spanner-custom-shard/**'
-      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
-      - 'it/google-cloud-platform/**'
-      - 'it/conditions/**'
-      # Datastream template paths
-      - '.github/workflows/datastream-pr.yml'
-      - 'v2/datastream-mongodb-to-firestore/**'
-      - 'v2/datastream-to-bigquery/**'
-      - 'v2/datastream-to-mongodb/**'
-      - 'v2/datastream-to-postgres/**'
-      - 'v2/datastream-to-spanner/**'
-      - 'v2/datastream-to-sql/**'
+#    paths:
+#      # Template wide common modules
+#      - 'pom.xml'
+#      - 'v2/common/**'
+#      - 'v2/datastream-common/**'
+#      - 'v2/spanner-custom-shard/**'
+#      - 'v2/spanner-change-streams-to-sharded-file-sink/**'
+#      - 'it/google-cloud-platform/**'
+#      - 'it/conditions/**'
+#      # Datastream template paths
+#      - '.github/workflows/datastream-pr.yml'
+#      - 'v2/datastream-mongodb-to-firestore/**'
+#      - 'v2/datastream-to-bigquery/**'
+#      - 'v2/datastream-to-mongodb/**'
+#      - 'v2/datastream-to-postgres/**'
+#      - 'v2/datastream-to-spanner/**'
+#      - 'v2/datastream-to-sql/**'
   schedule:
     - cron: "6 */12 * * *"
   workflow_dispatch:
