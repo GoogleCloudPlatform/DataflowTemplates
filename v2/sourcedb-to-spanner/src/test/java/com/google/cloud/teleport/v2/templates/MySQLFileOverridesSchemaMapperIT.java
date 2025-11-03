@@ -32,6 +32,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -47,6 +48,7 @@ import org.testcontainers.shaded.com.google.common.io.Resources;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
+@Ignore("Disabling to test MySQL container issues.")
 public class MySQLFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLFileOverridesSchemaMapperIT.class);
   private static final HashSet<MySQLFileOverridesSchemaMapperIT> testInstances = new HashSet<>();
