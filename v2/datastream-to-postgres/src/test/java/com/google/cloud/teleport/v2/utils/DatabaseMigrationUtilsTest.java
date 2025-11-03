@@ -99,4 +99,36 @@ public class DatabaseMigrationUtilsTest {
     String tableName = DatabaseMigrationUtils.getPostgresTableName(rowObj);
     assertEquals(expectedTableName, tableName);
   }
+
+  /**
+   * Test whether {@link DatabaseMigrationUtils#getValueSql(JsonNode, String, Map)} converts JSON
+   * objects and arrays into correct strings.
+   */
+  @Test
+  public void testGetValueSqlJson() {
+    String jsonWithJson =
+        "{"
+            + "\"json_object_column\":{\"a\":\"b\"},"
+            + "\"json_array_column\":[{\"a\":\"b\"}],"
+            + "\"_metadata_schema\":\"MY_SCHEMA\","
+            + "\"_metadata_table\":\"MY_TABLE$NAME\""
+            + "}";
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode rowObj;
+    try {
+      rowObj = mapper.readTree(jsonWithJson);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
+    String expectedJsonObjectContent = "'{\"a\":\"b\"}'";
+    String testJsonObjectContent =
+        DatabaseMigrationUtils.getValueSql(rowObj, "json_object_column", null);
+    assertEquals(expectedJsonObjectContent, testJsonObjectContent);
+
+    String expectedJsonArrayContent = "'[{\"a\":\"b\"}]'";
+    String testJsonArrayContent =
+        DatabaseMigrationUtils.getValueSql(rowObj, "json_array_column", null);
+    assertEquals(expectedJsonArrayContent, testJsonArrayContent);
+  }
 }

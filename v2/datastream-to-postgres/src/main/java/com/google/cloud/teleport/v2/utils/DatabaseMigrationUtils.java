@@ -258,6 +258,8 @@ public class DatabaseMigrationUtils implements Serializable {
 
     if (columnObj.isTextual()) {
       columnValue = "\'" + cleanSql(columnObj.textValue()) + "\'";
+    } else if (columnObj.isObject() || columnObj.isArray()) {
+      columnValue = "\'" + cleanSql(columnObj.toString()) + "\'";
     } else {
       columnValue = columnObj.toString();
     }
