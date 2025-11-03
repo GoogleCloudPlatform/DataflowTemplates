@@ -34,7 +34,6 @@ import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -342,7 +341,8 @@ public class AssignShardIdFn
           (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
       rowAsMap.keySet().stream()
           .filter(k -> !keyColumns.contains(k))
-          .forEach(colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row, ddl));
+          .forEach(
+              colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row, ddl));
       String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
       record.setMod(
           new Mod(
@@ -398,8 +398,8 @@ public class AssignShardIdFn
     }
   }
 
-  public Map<String, Object> getRowAsMap(Struct row, List<String> columns, String tableName, Ddl ddl)
-      throws Exception {
+  public Map<String, Object> getRowAsMap(
+      Struct row, List<String> columns, String tableName, Ddl ddl) throws Exception {
     Map<String, Object> spannerRecord = new HashMap<>();
     Table table = ddl.table(tableName);
     for (String columnName : columns) {

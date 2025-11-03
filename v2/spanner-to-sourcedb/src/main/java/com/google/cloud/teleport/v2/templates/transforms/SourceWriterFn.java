@@ -231,19 +231,19 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                       isSourceAhead =
                           shadowTableRecord != null
                               && ((shadowTableRecord
-                              .getProcessedCommitTimestamp()
-                              .compareTo(spannerRec.getCommitTimestamp())
-                              > 0) // either the source already has record with greater
-                              // commit
-                              // timestamp
-                              || (shadowTableRecord // or the source has the same commit
-                              // timestamp but
-                              // greater record sequence
-                              .getProcessedCommitTimestamp()
-                              .compareTo(spannerRec.getCommitTimestamp())
-                              == 0
-                              && shadowTableRecord.getRecordSequence()
-                              > Long.parseLong(spannerRec.getRecordSequence())));
+                                          .getProcessedCommitTimestamp()
+                                          .compareTo(spannerRec.getCommitTimestamp())
+                                      > 0) // either the source already has record with greater
+                                  // commit
+                                  // timestamp
+                                  || (shadowTableRecord // or the source has the same commit
+                                              // timestamp but
+                                              // greater record sequence
+                                              .getProcessedCommitTimestamp()
+                                              .compareTo(spannerRec.getCommitTimestamp())
+                                          == 0
+                                      && shadowTableRecord.getRecordSequence()
+                                          > Long.parseLong(spannerRec.getRecordSequence())));
 
                       if (!isSourceAhead) {
                         IDao sourceDao = sourceProcessor.getSourceDao(shardId);

@@ -22,7 +22,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -133,19 +132,19 @@ public class SourceWriterFnTest {
             });
 
     when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
-        eq("shadow_parent1"), any(), any(), any()))
+            eq("shadow_parent1"), any(), any(), any()))
         .thenReturn(null);
     when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
-        eq("shadow_tableName"), any(), any(), any()))
+            eq("shadow_tableName"), any(), any(), any()))
         .thenReturn(null);
     when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
-        eq("shadow_parent2"), any(), any(), any()))
+            eq("shadow_parent2"), any(), any(), any()))
         .thenThrow(new IllegalStateException("Test exception"));
     when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
-        eq("shadow_child11"), any(), any(), any()))
+            eq("shadow_child11"), any(), any(), any()))
         .thenReturn(new ShadowTableRecord(Timestamp.parseTimestamp("2025-02-02T00:00:00Z"), 1));
     when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
-        eq("shadow_child21"), any(), any(), any()))
+            eq("shadow_child21"), any(), any(), any()))
         .thenReturn(null);
     when(mockSpannerConfig.getRpcPriority())
         .thenReturn(ValueProvider.StaticValueProvider.of(RpcPriority.HIGH));
@@ -157,14 +156,14 @@ public class SourceWriterFnTest {
             any()); // This is the child_id for which we want to test the foreign key
     // constraint failure.
     doThrow(
-        new java.sql.SQLNonTransientConnectionException(
-            "transient connection error", "HY000", 1161))
+            new java.sql.SQLNonTransientConnectionException(
+                "transient connection error", "HY000", 1161))
         .when(mockSqlDao)
         .write(contains("1161"), any()); // This is the child_id for which we want to retryable
     // connection error
     doThrow(
-        new java.sql.SQLNonTransientConnectionException(
-            "permanent connection error", "HY000", 4242))
+            new java.sql.SQLNonTransientConnectionException(
+                "permanent connection error", "HY000", 4242))
         .when(mockSqlDao)
         .write(contains("4242"), any()); // no retryable error
     doThrow(new RuntimeException("generic exception"))

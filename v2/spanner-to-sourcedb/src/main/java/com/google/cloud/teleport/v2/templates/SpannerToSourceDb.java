@@ -511,9 +511,9 @@ public class SpannerToSourceDb {
     @TemplateParameter.Enum(
         order = 34,
         enumOptions = {
-            @TemplateEnumOption("LOW"),
-            @TemplateEnumOption("MEDIUM"),
-            @TemplateEnumOption("HIGH")
+          @TemplateEnumOption("LOW"),
+          @TemplateEnumOption("MEDIUM"),
+          @TemplateEnumOption("HIGH")
         },
         optional = true,
         description = "Priority for Spanner RPC invocations",
@@ -630,7 +630,9 @@ public class SpannerToSourceDb {
 
     final PCollectionView<Ddl> shadowTableDdlView =
         pipeline
-            .apply("Create Shadow DDL", Create.of(shadowTableDdl).withCoder(SerializableCoder.of(Ddl.class)))
+            .apply(
+                "Create Shadow DDL",
+                Create.of(shadowTableDdl).withCoder(SerializableCoder.of(Ddl.class)))
             .apply("View Shadow DDL", View.asSingleton());
 
     List<Shard> shards;
@@ -666,8 +668,8 @@ public class SpannerToSourceDb {
     int reshuffleBucketSize =
         maxNumWorkers
             * (debugOptions.getNumberOfWorkerHarnessThreads() > 0
-            ? debugOptions.getNumberOfWorkerHarnessThreads()
-            : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
+                ? debugOptions.getNumberOfWorkerHarnessThreads()
+                : Constants.DEFAULT_WORKER_HARNESS_THREAD_COUNT);
 
     if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
@@ -737,7 +739,8 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
-    // ISchemaMapper schemaMapper is now initialized on the worker side in AssignShardIdFn and SourceWriterFn
+    // ISchemaMapper schemaMapper is now initialized on the worker side in AssignShardIdFn and
+    // SourceWriterFn
 
     if (options.getFailureInjectionParameter() != null
         && !options.getFailureInjectionParameter().isBlank()) {
