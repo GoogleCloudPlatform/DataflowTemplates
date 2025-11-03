@@ -275,18 +275,30 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   }
 
   private Map<String, String> getJdbcParameters(JDBCResourceManager jdbcResourceManager) {
-
-    Map<String, String> params =
-        new HashMap<>() {
-          {
-            put("sourceDbDialect", sqlDialectFrom(jdbcResourceManager));
-            put("sourceConfigURL", jdbcResourceManager.getUri());
-            put("username", jdbcResourceManager.getUsername());
-            put("password", jdbcResourceManager.getPassword());
-            put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
-          }
-        };
+    Map<String, String> params = new HashMap<>();
+    params.put("sourceDbDialect", sqlDialectFrom(jdbcResourceManager));
+    String sourceUrl = jdbcResourceManager.getUri();
+    if (jdbcResourceManager instanceof MySQLResourceManager) {
+      sourceUrl = addTimeoutsToJdbcUrl(sourceUrl, 120000);
+    }
+    params.put("sourceConfigURL", sourceUrl);
+    params.put("username", jdbcResourceManager.getUsername());
+    params.put("password", jdbcResourceManager.getPassword());
+    params.put("jdbcDriverClassName", driverClassNameFrom(jdbcResourceManager));
     return params;
+  }
+
+  private static String addTimeoutsToJdbcUrl(String jdbcUrl, int timeoutMs) {
+    String url = jdbcUrl;
+    boolean hasQuery = url.contains("?");
+    if (!url.contains("connectTimeout")) {
+      url = url + (hasQuery ? "&" : "?") + "connectTimeout=" + timeoutMs;
+      hasQuery = true;
+    }
+    if (!url.contains("socketTimeout")) {
+      url = url + (hasQuery ? "&" : "?") + "socketTimeout=" + timeoutMs;
+    }
+    return url;
   }
 
   private Map<String, String> getCassandraParameters(
