@@ -27,8 +27,7 @@
         "c129",
         "c130",
         "c131",
-        "c132",
-        "c133"
+        "c132"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
@@ -303,31 +302,11 @@
           }
         }
       },
-      "c133": {
-        "Name": "sql_column",
-        "T": {
-          "Name": "INT64",
-          "Len": 0,
-          "IsArray": false
-        },
-        "NotNull": true,
-        "Comment": "From: sql_column int(10)",
-        "Id": "c133",
-        "AutoGen": {
-          "Name": "",
-          "GenerationType": ""
-        }
-      },
       "PrimaryKeys": [
         {
           "ColId": "c115",
           "Desc": false,
           "Order": 1
-        },
-        {
-          "ColId": "c133",
-          "Desc": false,
-          "Order": 2
         }
       ],
       "ForeignKeys": null,
