@@ -57,7 +57,9 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
 
   public MySQLResourceManager setUpMySQLResourceManager() {
-    return MySQLResourceManager.builder(testName).build();
+    MySQLResourceManager manager = MySQLResourceManager.builder(testName).build();
+    waitForMySqlReady(manager);
+    return manager;
   }
 
   public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {
@@ -386,6 +388,46 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
       return Class.forName("com.mysql.jdbc.Driver").getCanonicalName();
     } catch (ClassNotFoundException e) {
       throw new IllegalArgumentException(e);
+    }
+  }
+
+  /**
+   * Simple health-check for MySQL that retries {@code SELECT 1} with exponential backoff. Ensures
+   * the container or proxy is ready before applying schema or performing writes.
+   */
+  private void waitForMySqlReady(JDBCResourceManager jdbcResourceManager) {
+    if (!(jdbcResourceManager instanceof MySQLResourceManager)) {
+      return;
+    }
+
+    final String uri = jdbcResourceManager.getUri();
+    final String username = jdbcResourceManager.getUsername();
+    final String password = jdbcResourceManager.getPassword();
+
+    final int maxAttempts = 8;
+    long backoffMillis = 1000L; // 1s initial backoff
+
+    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+      try (Connection conn = DriverManager.getConnection(uri, username, password);
+          Statement stmt = conn.createStatement()) {
+        stmt.execute("SELECT 1");
+        LOG.info("MySQL health-check succeeded on attempt {}", attempt);
+        return;
+      } catch (Exception e) {
+        LOG.warn("MySQL health-check attempt {} failed: {}", attempt, e.getMessage());
+        if (attempt == maxAttempts) {
+          throw new RuntimeException(
+              String.format("MySQL health-check failed after %d attempts at %s", maxAttempts, uri),
+              e);
+        }
+        try {
+          Thread.sleep(backoffMillis);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          throw new RuntimeException("Interrupted during MySQL health-check backoff", ie);
+        }
+        backoffMillis = Math.min(backoffMillis * 2, 16000L); // cap at 16s
+      }
     }
   }
 }

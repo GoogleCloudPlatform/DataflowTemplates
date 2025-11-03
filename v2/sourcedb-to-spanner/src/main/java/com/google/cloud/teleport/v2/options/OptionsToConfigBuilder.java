@@ -181,7 +181,7 @@ public final class OptionsToConfigBuilder {
     if (sqlDialect != SQLDialect.MYSQL) {
       return url;
     }
-    LOG.info("For Mysql, Fetchsize is explicitly configured. So setting `useCursorMode=true`.");
+    LOG.info("For MySQL, fetchSize explicitly configured; enabling `useCursorFetch=true`.");
     String updatedUrl = addParamToJdbcUrl(url, "useCursorFetch", "true");
     return updatedUrl;
   }
