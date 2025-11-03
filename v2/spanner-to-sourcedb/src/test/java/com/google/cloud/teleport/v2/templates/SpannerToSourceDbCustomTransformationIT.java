@@ -55,6 +55,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 /**
  * Integration test for {@link SpannerToSourceDb} Flex template with custom transformation jar
  * supplied.
