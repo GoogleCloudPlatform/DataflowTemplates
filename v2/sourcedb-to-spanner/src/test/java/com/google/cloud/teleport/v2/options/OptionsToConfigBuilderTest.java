@@ -22,9 +22,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.JdbcI
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
@@ -39,25 +37,6 @@ import org.mockito.junit.MockitoJUnitRunner;
 @RunWith(MockitoJUnitRunner.class)
 public class OptionsToConfigBuilderTest {
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
-
-  private static Map<String, String> parseQueryParams(String jdbcUrl) {
-    Map<String, String> params = new HashMap<>();
-    int qIndex = jdbcUrl.indexOf('?');
-    if (qIndex < 0 || qIndex == jdbcUrl.length() - 1) {
-      return params;
-    }
-    String query = jdbcUrl.substring(qIndex + 1);
-    for (String pair : query.split("&")) {
-      if (pair.isEmpty()) {
-        continue;
-      }
-      String[] kv = pair.split("=", 2);
-      String key = kv[0];
-      String value = kv.length > 1 ? kv[1] : "";
-      params.put(key, value);
-    }
-    return params;
-  }
 
   @Test
   public void testConfigWithMySqlDefaultsFromOptions() {
@@ -76,15 +55,13 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2");
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions, List.of("table1", "table2"), null, Wait.on(dummyPCollection));
     assertThat(config.jdbcDriverClassName()).isEqualTo(testDriverClassName);
-    assertThat(config.sourceDbURL()).startsWith(testUrl + "?");
-    Map<String, String> params = parseQueryParams(config.sourceDbURL());
-    assertThat(params).containsEntry("allowMultiQueries", "true");
-    assertThat(params).containsEntry("autoReconnect", "true");
-    assertThat(params).containsEntry("maxReconnects", "10");
+    assertThat(config.sourceDbURL())
+        .isEqualTo(testUrl + "?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
     assertThat(config.tables()).containsExactlyElementsIn(new String[] {"table1", "table2"});
     assertThat(config.dbAuth().getUserName().get()).isEqualTo(testUser);
     assertThat(config.dbAuth().getPassword().get()).isEqualTo(testPassword);
@@ -104,6 +81,7 @@ public class OptionsToConfigBuilderTest {
   @Test
   public void testConfigWithMySqlUrlFromOptions() {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
     JdbcIOWrapperConfig configWithConnectionProperties =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.MYSQL,
@@ -145,21 +123,13 @@ public class OptionsToConfigBuilderTest {
             Wait.on(dummyPCollection),
             null,
             0L);
-    assertThat(configWithConnectionProperties.sourceDbURL())
-        .startsWith("jdbc:mysql://myhost:3306/mydb?");
-    Map<String, String> withProps = parseQueryParams(configWithConnectionProperties.sourceDbURL());
-    assertThat(withProps).containsEntry("testParam", "testValue");
-    assertThat(withProps).containsEntry("allowMultiQueries", "true");
-    assertThat(withProps).containsEntry("autoReconnect", "true");
-    assertThat(withProps).containsEntry("maxReconnects", "10");
 
+    assertThat(configWithConnectionProperties.sourceDbURL())
+        .isEqualTo(
+            "jdbc:mysql://myhost:3306/mydb?testParam=testValue&allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
     assertThat(configWithoutConnectionProperties.sourceDbURL())
-        .startsWith("jdbc:mysql://myhost:3306/mydb?");
-    Map<String, String> withoutProps =
-        parseQueryParams(configWithoutConnectionProperties.sourceDbURL());
-    assertThat(withoutProps).containsEntry("allowMultiQueries", "true");
-    assertThat(withoutProps).containsEntry("autoReconnect", "true");
-    assertThat(withoutProps).containsEntry("maxReconnects", "10");
+        .isEqualTo(
+            "jdbc:mysql://myhost:3306/mydb?allowMultiQueries=true&autoReconnect=true&maxReconnects=10");
   }
 
   @Test
@@ -179,6 +149,7 @@ public class OptionsToConfigBuilderTest {
     sourceDbToSpannerOptions.setPassword(testPassword);
     sourceDbToSpannerOptions.setTables("table1,table2,table3");
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
     JdbcIOWrapperConfig config =
         OptionsToConfigBuilder.getJdbcIOWrapperConfigWithDefaults(
             sourceDbToSpannerOptions,
@@ -197,6 +168,7 @@ public class OptionsToConfigBuilderTest {
   @Test
   public void testConfigWithPostgreSqlUrlFromOptions() {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
     JdbcIOWrapperConfig configWithConnectionParameters =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
@@ -248,6 +220,7 @@ public class OptionsToConfigBuilderTest {
   @Test
   public void testConfigWithPostgreSqlUrlWithNamespace() {
     PCollection<Integer> dummyPCollection = pipeline.apply(Create.of(1));
+    pipeline.run();
     JdbcIOWrapperConfig configWithNamespace =
         OptionsToConfigBuilder.getJdbcIOWrapperConfig(
             SQLDialect.POSTGRESQL,
