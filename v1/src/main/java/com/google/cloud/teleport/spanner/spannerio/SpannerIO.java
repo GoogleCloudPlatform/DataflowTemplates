@@ -2128,20 +2128,34 @@ public class SpannerIO {
     private static class OutputReceiverForFinishBundle
         implements OutputReceiver<Iterable<MutationGroup>> {
 
-      private final FinishBundleContext c;
+      private final OutputBuilderSupplier outputBuilderSupplier;
+      private final DoFn<MutationGroup, Iterable<MutationGroup>>.FinishBundleContext context;
 
-      OutputReceiverForFinishBundle(FinishBundleContext c) {
-        this.c = c;
+      OutputReceiverForFinishBundle(FinishBundleContext context) {
+        this.context = context;
+        this.outputBuilderSupplier =
+            new OutputBuilderSupplier() {
+              @Override
+              public <OutputT> WindowedValues.Builder<OutputT> builder(OutputT value) {
+                return WindowedValues.<OutputT>builder()
+                    .setValue(value)
+                    .setTimestamp(Instant.now())
+                    .setPaneInfo(PaneInfo.NO_FIRING)
+                    .setWindow(GlobalWindow.INSTANCE);
+              }
+            };
       }
 
       @Override
-      public void output(Iterable<MutationGroup> output) {
-        outputWithTimestamp(output, Instant.now());
-      }
-
-      @Override
-      public void outputWithTimestamp(Iterable<MutationGroup> output, Instant timestamp) {
-        c.output(output, timestamp, GlobalWindow.INSTANCE);
+      public OutputBuilder<Iterable<MutationGroup>> builder(Iterable<MutationGroup> value) {
+        return outputBuilderSupplier
+            .builder(value)
+            .setReceiver(
+                wv -> {
+                  for (BoundedWindow window : wv.getWindows()) {
+                    context.output(wv.getValue(), wv.getTimestamp(), window);
+                  }
+                });
       }
     }
   }
