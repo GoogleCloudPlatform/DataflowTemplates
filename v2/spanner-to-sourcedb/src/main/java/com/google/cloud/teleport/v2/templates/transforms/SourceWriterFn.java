@@ -15,12 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import com.datastax.oss.driver.api.core.AllNodesFailedException;
-import com.datastax.oss.driver.api.core.DriverTimeoutException;
-import com.datastax.oss.driver.api.core.NodeUnavailableException;
-import com.datastax.oss.driver.api.core.connection.BusyConnectionException;
-import com.datastax.oss.driver.api.core.connection.ConnectionInitException;
-import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
 import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -51,13 +45,13 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
-import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLDataException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -291,42 +285,32 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // We need to get and inspect the cause while handling the exception.
       } catch (SpannerException ex) {
         Throwable cause = ex.getCause();
+        String message = ex.getMessage();
+        if (cause != null) {
+          message += ", Caused by: " + cause.getMessage();
+        }
+
         if (cause == null) {
+          // Log all retryable errors. It will be helpful for debugging since the files in retryable dlq get deleted on consumption.
+          LOG.debug("Retryable error occurred while processing an event: {}", ex.getMessage());
           // If cause is null, then it is a plain Spanner exception
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
         } else if (cause instanceof InvalidTransformationException) {
           invalidTransformationException.inc();
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
+          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
         } else if (cause instanceof ChangeEventConvertorException
-            || cause instanceof CodecNotFoundException) {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
-        } else if (cause instanceof IllegalStateException
-            || cause instanceof com.mysql.cj.jdbc.exceptions.CommunicationsException
-            || cause instanceof java.sql.SQLIntegrityConstraintViolationException
-            || cause instanceof java.sql.SQLTransientConnectionException
-            || cause instanceof ConnectionInitException
-            || cause instanceof DriverTimeoutException
-            || cause instanceof AllNodesFailedException
-            || cause instanceof BusyConnectionException
-            || cause instanceof NodeUnavailableException
-            || cause instanceof QueryExecutionException
-            || cause instanceof ConnectionException) {
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, cause.getMessage(), spannerRec);
-        } else if (cause instanceof java.sql.SQLNonTransientConnectionException) {
-          SQLNonTransientConnectionException e = (SQLNonTransientConnectionException) cause;
-          // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-          // error codes 1053,1161 and 1159 can be retried
-          if (e.getErrorCode() == 1053 || e.getErrorCode() == 1159 || e.getErrorCode() == 1161) {
-            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, e.getMessage(), spannerRec);
-          } else {
-            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, e.getMessage(), spannerRec);
-          }
+            || cause instanceof CodecNotFoundException
+            || cause instanceof SQLSyntaxErrorException
+            || cause instanceof SQLDataException
+        ) {
+          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
         } else {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
+          LOG.debug("Retryable error occurred while processing an event: {}", message);
+          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
         }
       } catch (Exception ex) {
-        LOG.error("Failed to write to source: {}", ex);
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+        LOG.debug("Retryable error occurred while processing an event: {}", ex.getMessage());
+        outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
       }
     }
   }
