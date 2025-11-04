@@ -27,8 +27,7 @@
         "c129",
         "c130",
         "c131",
-        "c132",
-        "c133"
+        "c132"
       ],
       "ShardIdColumn": "",
       "ColDefs": {
@@ -303,31 +302,11 @@
           }
         }
       },
-      "c133": {
-        "Name": "sql_column",
-        "T": {
-          "Name": "INT64",
-          "Len": 0,
-          "IsArray": false
-        },
-        "NotNull": true,
-        "Comment": "From: sql_column int(10)",
-        "Id": "c133",
-        "AutoGen": {
-          "Name": "",
-          "GenerationType": ""
-        }
-      },
       "PrimaryKeys": [
         {
           "ColId": "c115",
           "Desc": false,
           "Order": 1
-        },
-        {
-          "ColId": "c133",
-          "Desc": false,
-          "Order": 2
         }
       ],
       "ForeignKeys": null,
@@ -412,7 +391,8 @@
         "c129",
         "c130",
         "c131",
-        "c132"
+        "c132",
+        "c136"
       ],
       "ColDefs": {
         "c115": {
@@ -766,6 +746,26 @@
             "AutoIncrement": false
           },
           "Id": "c132"
+        },
+        "c136": {
+          "Name": "sql_column",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c136"
         }
       },
       "PrimaryKeys": [
@@ -773,6 +773,11 @@
           "ColId": "c115",
           "Desc": false,
           "Order": 1
+        },
+        {
+          "ColId": "c136",
+          "Desc": false,
+          "Order": 2
         }
       ],
       "ForeignKeys": null,
