@@ -62,7 +62,6 @@ var (
 			"v2/datastream-mongodb-to-firestore/",
 			"v2/datastream-to-bigquery/",
 			"v2/datastream-to-mongodb/",
-			"v2/datastream-to-postgres/",
 			"v2/datastream-to-sql/",
 		},
 	}
