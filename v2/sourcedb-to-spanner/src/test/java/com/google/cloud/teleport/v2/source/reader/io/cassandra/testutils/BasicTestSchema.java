@@ -29,6 +29,7 @@ public class BasicTestSchema {
   private static final String TEST_RESOURCE_ROOT = "/CassandraUT/";
   public static final String TEST_KEYSPACE = "test_keyspace";
   public static final String TEST_CONFIG = TEST_RESOURCE_ROOT + "basicConfig.yaml";
+  public static final String TEST_CONFIG_SSL = TEST_RESOURCE_ROOT + "basicConfigSsl.yaml";
   public static final String TEST_CQLSH = TEST_RESOURCE_ROOT + "basicTest.cql";
   public static final String BASIC_TEST_TABLE = "basic_test_table";
   public static final String PRIMITIVE_TYPES_TABLE = "primitive_types_table";

@@ -75,7 +75,7 @@ public class MySQLCustomTransformationsNonShardedIT extends SourceDbToSpannerITB
   }
 
   @Test
-  public void simpleTest() throws Exception {
+  public void testCustomTransformationsNonSharded() throws Exception {
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     createAndUploadJarToGcs("CustomTransformationAllTypes");

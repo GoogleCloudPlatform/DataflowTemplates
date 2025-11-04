@@ -24,6 +24,7 @@ import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TYPES_TABLE;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.SET_TYPES_TABLE_AVRO_ROWS;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG;
+import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CONFIG_SSL;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_CQLSH;
 import static com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.BasicTestSchema.TEST_KEYSPACE;
 import static com.google.common.truth.Truth.assertThat;
@@ -31,16 +32,21 @@ import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.when;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.JdkSSLOptions;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.SSLOptions;
 import com.datastax.driver.core.policies.DCAwareRoundRobinPolicy;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.config.OptionsMap;
+import com.datastax.oss.driver.api.core.config.TypedDriverOption;
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions;
 import com.datastax.oss.driver.api.core.cql.ExecutionInfo;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraConnector;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSource;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.CassandraDataSourceOss;
+import com.google.cloud.teleport.v2.source.reader.io.cassandra.iowrapper.SslContextFactory;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaDiscovery;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.schema.CassandraSchemaReference;
 import com.google.cloud.teleport.v2.source.reader.io.cassandra.testutils.SharedEmbeddedCassandra;
@@ -55,6 +61,7 @@ import com.google.common.collect.ImmutableList;
 import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
+import javax.net.ssl.SSLContext;
 import org.jetbrains.annotations.NotNull;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -68,11 +75,16 @@ import org.mockito.junit.MockitoJUnitRunner;
 public class CassandraSourceRowMapperTest {
 
   private static SharedEmbeddedCassandra sharedEmbeddedCassandra = null;
+  private static SharedEmbeddedCassandra sharedEmbeddedCassandraWithSsl = null;
 
   @BeforeClass
   public static void startEmbeddedCassandra() throws IOException {
     if (sharedEmbeddedCassandra == null) {
       sharedEmbeddedCassandra = new SharedEmbeddedCassandra(TEST_CONFIG, TEST_CQLSH);
+    }
+    if (sharedEmbeddedCassandraWithSsl == null) {
+      sharedEmbeddedCassandraWithSsl =
+          new SharedEmbeddedCassandra(TEST_CONFIG_SSL, TEST_CQLSH, true);
     }
   }
 
@@ -81,6 +93,10 @@ public class CassandraSourceRowMapperTest {
     if (sharedEmbeddedCassandra != null) {
       sharedEmbeddedCassandra.close();
       sharedEmbeddedCassandra = null;
+    }
+    if (sharedEmbeddedCassandraWithSsl != null) {
+      sharedEmbeddedCassandraWithSsl.close();
+      sharedEmbeddedCassandraWithSsl = null;
     }
   }
 
@@ -105,6 +121,13 @@ public class CassandraSourceRowMapperTest {
   public void testCassandraSourceRowMapperMap() throws RetriableSchemaDiscoveryException {
     cassandraSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
     astraDbSourceRowMapperTestHelper(MAP_TYPES_TABLE, MAP_TYPES_TABLE_AVRO_ROWS);
+  }
+
+  @Test
+  public void testCassandraSourceRowMapperWithSsl()
+      throws IOException, RetriableSchemaDiscoveryException {
+    cassandraSourceRowMapperSslTestHelper(
+        PRIMITIVE_TYPES_TABLE, PRIMITIVE_TYPES_TABLE_AVRO_ROWS, sharedEmbeddedCassandraWithSsl);
   }
 
   private void cassandraSourceRowMapperTestHelper(String tableName, List<String> expectedRows)
@@ -137,23 +160,20 @@ public class CassandraSourceRowMapperTest {
             .setSourceTableSchema(sourceTableSchemaBuilder.build())
             .build();
 
-    ResultSet resultSet;
     String query = "SELECT * FROM " + tableName;
-    com.datastax.oss.driver.api.core.cql.SimpleStatement statement =
-        SimpleStatement.newInstance(query);
-    Cluster cluster =
-        Cluster.builder()
-            .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
-            .withClusterName(dataSource.cassandra().oss().clusterName())
-            .withoutJMXReporting()
-            .withLoadBalancingPolicy(
-                new DCAwareRoundRobinPolicy.Builder()
-                    .withLocalDc(dataSource.cassandra().oss().localDataCenter())
-                    .build())
-            .build();
-    try (CassandraConnector cassandraConnectorWithSchemaReference =
-        new CassandraConnector(dataSource.cassandra(), sourceSchemaReference.cassandra())) {
-      resultSet = cluster.connect(TEST_KEYSPACE).execute(query);
+    Cluster cluster = null;
+    try {
+      cluster =
+          Cluster.builder()
+              .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
+              .withClusterName(dataSource.cassandra().oss().clusterName())
+              .withoutJMXReporting()
+              .withLoadBalancingPolicy(
+                  new DCAwareRoundRobinPolicy.Builder()
+                      .withLocalDc(dataSource.cassandra().oss().localDataCenter())
+                      .build())
+              .build();
+      ResultSet resultSet = cluster.connect(TEST_KEYSPACE).execute(query);
       ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
       cassandraSourceRowMapper.map(resultSet).forEachRemaining(row -> readRowsBuilder.add(row));
       ImmutableList<SourceRow> readRows = readRowsBuilder.build();
@@ -175,6 +195,94 @@ public class CassandraSourceRowMapperTest {
       assertThrows(
           UnsupportedOperationException.class,
           () -> cassandraSourceRowMapper.saveAsync(readRows.get(0)));
+    } finally {
+      if (cluster != null) {
+        cluster.close();
+      }
+    }
+  }
+
+  private void cassandraSourceRowMapperSslTestHelper(
+      String tableName, List<String> expectedRows, SharedEmbeddedCassandra cassandra)
+      throws RetriableSchemaDiscoveryException {
+
+    SourceSchemaReference sourceSchemaReference =
+        SourceSchemaReference.ofCassandra(
+            CassandraSchemaReference.builder().setKeyspaceName(TEST_KEYSPACE).build());
+
+    OptionsMap optionsMap = OptionsMap.driverDefaults();
+    optionsMap.put(
+        DriverExecutionProfile.DEFAULT_NAME,
+        TypedDriverOption.SSL_TRUSTSTORE_PATH,
+        cassandra.getInstance().getTrustStorePath().toString());
+    optionsMap.put(
+        DriverExecutionProfile.DEFAULT_NAME,
+        TypedDriverOption.SSL_TRUSTSTORE_PASSWORD,
+        "cassandra");
+
+    DataSource dataSource =
+        DataSource.ofCassandra(
+            CassandraDataSource.ofOss(
+                CassandraDataSourceOss.builder()
+                    .setClusterName(cassandra.getInstance().getClusterName())
+                    .setOptionsMap(optionsMap)
+                    .setContactPoints(cassandra.getInstance().getContactPoints())
+                    .setLocalDataCenter(cassandra.getInstance().getLocalDataCenter())
+                    .build()));
+
+    SourceTableSchema.Builder sourceTableSchemaBuilder =
+        SourceTableSchema.builder(MapperType.CASSANDRA).setTableName(tableName);
+    new CassandraSchemaDiscovery()
+        .discoverTableSchema(dataSource, sourceSchemaReference, ImmutableList.of(tableName))
+        .get(tableName)
+        .forEach(sourceTableSchemaBuilder::addSourceColumnNameToSourceColumnType);
+
+    CassandraSourceRowMapper cassandraSourceRowMapper =
+        CassandraSourceRowMapper.builder()
+            .setSourceSchemaReference(sourceSchemaReference)
+            .setSourceTableSchema(sourceTableSchemaBuilder.build())
+            .build();
+
+    Cluster cluster = null;
+    try {
+      SSLContext sslContext =
+          SslContextFactory.createSslContext(
+              cassandra.getInstance().getTrustStorePath().toString(), "cassandra", null, null);
+      SSLOptions sslOptions = JdkSSLOptions.builder().withSSLContext(sslContext).build();
+
+      cluster =
+          Cluster.builder()
+              .addContactPointsWithPorts(dataSource.cassandra().oss().contactPoints())
+              .withClusterName(dataSource.cassandra().oss().clusterName())
+              .withSSL(sslOptions)
+              .withoutJMXReporting()
+              .withLoadBalancingPolicy(
+                  new DCAwareRoundRobinPolicy.Builder()
+                      .withLocalDc(dataSource.cassandra().oss().localDataCenter())
+                      .build())
+              .build();
+
+      String query = "SELECT * FROM " + tableName;
+      ResultSet resultSet = cluster.connect(TEST_KEYSPACE).execute(query);
+      ImmutableList.Builder<SourceRow> readRowsBuilder = ImmutableList.builder();
+      cassandraSourceRowMapper.map(resultSet).forEachRemaining(row -> readRowsBuilder.add(row));
+      ImmutableList<SourceRow> readRows = readRowsBuilder.build();
+
+      readRows.forEach(r -> assertThat(r.tableName() == tableName));
+      readRows.forEach(r -> assertThat(r.sourceSchemaReference() == sourceSchemaReference));
+      assertThat(
+              readRows.stream()
+                  .map(r -> r.getPayload().toString())
+                  .sorted()
+                  .collect(ImmutableList.toImmutableList()))
+          .isEqualTo(expectedRows.stream().sorted().collect(ImmutableList.toImmutableList()));
+
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    } finally {
+      if (cluster != null) {
+        cluster.close();
+      }
     }
   }
 
