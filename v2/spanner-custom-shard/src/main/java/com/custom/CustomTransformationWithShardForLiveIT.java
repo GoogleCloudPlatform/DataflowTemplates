@@ -166,6 +166,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
               + Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))
               + "\'))");
       responseRow.put("year_column", "\'" + yearColumn + "\'");
+      LOG.info("responseRow: {}", responseRow);
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");

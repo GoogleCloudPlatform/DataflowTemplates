@@ -399,6 +399,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(1).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
     assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
+    LOG.info("sql_column value 1: {}",rows.get(0).get("sql_column"));
     assertThat(rows.get(0).get("sql_column")).isEqualTo(98);
     assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
 
@@ -423,6 +424,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(0).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
+    LOG.info("sql_column value 2: {}",rows.get(0).get("sql_column"));
     assertThat(rows.get(0).get("sql_column")).isEqualTo(122);
     assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
 
