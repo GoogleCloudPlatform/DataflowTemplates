@@ -81,6 +81,9 @@ COPY --from=python-base /root/.apache_beam/cache /root/.apache_beam/cache
 # Copy licenses
 COPY --from=python-base /usr/licenses/ /usr/licenses/
 
+# Test jsonschema
+RUN python -c "import jsonschema"
+
 WORKDIR /template
 
 ENTRYPOINT ${entryPoint}
