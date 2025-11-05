@@ -82,7 +82,7 @@ COPY --from=python-base /root/.apache_beam/cache /root/.apache_beam/cache
 COPY --from=python-base /usr/licenses/ /usr/licenses/
 
 # Test jsonschema
-python -c "import jsonschema"
+RUN python -c "import jsonschema"
 
 WORKDIR /template
 
