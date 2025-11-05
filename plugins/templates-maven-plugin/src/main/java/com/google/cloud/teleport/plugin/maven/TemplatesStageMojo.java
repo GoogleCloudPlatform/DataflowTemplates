@@ -56,6 +56,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,6 +65,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
@@ -193,6 +195,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   protected boolean generateSBOM;
 
   private boolean internalMaven;
+  // used to track if same images are scanned
+  private static final Set<ImmutablePair<String, TemplateType>> SCANNED_TYPES = new HashSet<>();
 
   private String mavenRepo;
 
@@ -543,7 +547,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (generateSBOM) {
       // generate SBOM
       File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-      performVulnerabilityScanAndGenerateUserSBOM(imagePathTag, buildProjectId, buildDir);
+      performVulnerabilityScanAndGenerateUserSBOM(
+          imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
       GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
       Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
       String digest = runnable.getDigest();
@@ -1414,10 +1419,25 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private static void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePathTag, String buildProjectId, File buildDir)
+  private void performVulnerabilityScanAndGenerateUserSBOM(
+      String imagePathTag, String buildProjectId, File buildDir, TemplateType imageType)
       throws IOException, InterruptedException {
     LOG.info("Generating user SBOM and Performing security scan for {}...", imagePathTag);
+
+    // Continuous scanning is expensive. Images are built on identical dependencies and only differ
+    // by entry point. We only need to check once.
+    ImmutablePair<String, TemplateType> uniqueImage =
+        ImmutablePair.of(buildDir.getPath(), imageType);
+    String maybeScan = "";
+    if (!SCANNED_TYPES.contains(uniqueImage)) {
+      maybeScan =
+          "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
+              + "  args:\n"
+              + "  - --image="
+              + imagePathTag
+              + "\n";
+      SCANNED_TYPES.add(uniqueImage);
+    }
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -1443,11 +1463,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --uri="
               + imagePathTag
               + "\n"
-              + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
-              + "  args:\n"
-              + "  - --image="
-              + imagePathTag
-              + "\n"
+              + maybeScan
               + "options:\n"
               + "  logging: CLOUD_LOGGING_ONLY\n");
     }
