@@ -34,7 +34,7 @@ RUN python -m venv /venv \
     pip uninstall upgrade_ensurepip -y; \
     python3 -m ensurepip;
 
-RUN python3 -c "import jsonschema"
+RUN /venv/bin/python -c "import jsonschema"
 
 # Cache provider environments for faster startup and expansion time
 RUN mkdir -p ~/.apache_beam/cache/jars
