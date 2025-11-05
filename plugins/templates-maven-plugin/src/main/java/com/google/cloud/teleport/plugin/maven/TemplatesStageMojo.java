@@ -1085,7 +1085,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
+      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + yamlTemplateName + ".tar\n";
       writer.write(
           "steps:\n"
@@ -1097,12 +1097,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --dockerfile="
               + dockerfile
               + "\n"
-              + "  - --cache=true\n"
-              + "  - --cache-ttl=6h\n"
-              + "  - --compressed-caching=false\n"
-              + "  - --cache-copy-layers=true\n"
-              + "  - --cache-repo="
-              + cacheFolder
+              // + "  - --cache=true\n"
+              // + "  - --cache-ttl=6h\n"
+              // + "  - --compressed-caching=false\n"
+              // + "  - --cache-copy-layers=true\n"
+              // + "  - --cache-repo="
+              // + cacheFolder
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1159,7 +1159,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
+      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + containerName + ".tar\n";
       writer.write(
           "steps:\n"
@@ -1168,12 +1168,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --destination="
               + imagePathTag
               + "\n"
-              + "  - --cache=true\n"
-              + "  - --cache-ttl=6h\n"
-              + "  - --compressed-caching=false\n"
-              + "  - --cache-copy-layers=true\n"
-              + "  - --cache-repo="
-              + cacheFolder
+              // + "  - --cache=true\n"
+              // + "  - --cache-ttl=6h\n"
+              // + "  - --compressed-caching=false\n"
+              // + "  - --cache-copy-layers=true\n"
+              // + "  - --cache-repo="
+              // + cacheFolder
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1310,7 +1310,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     String tarPath = "/workspace/" + containerName + ".tar\n";
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
+      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
@@ -1321,12 +1321,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --dockerfile="
               + dockerfile
               + "\n"
-              + "  - --cache=true\n"
-              + "  - --cache-ttl=6h\n"
-              + "  - --compressed-caching=false\n"
-              + "  - --cache-copy-layers=true\n"
-              + "  - --cache-repo="
-              + cacheFolder
+              // + "  - --cache=true\n"
+              // + "  - --cache-ttl=6h\n"
+              // + "  - --compressed-caching=false\n"
+              // + "  - --cache-copy-layers=true\n"
+              // + "  - --cache-repo="
+              // + cacheFolder
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"

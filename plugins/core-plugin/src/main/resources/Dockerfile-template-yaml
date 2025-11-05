@@ -34,8 +34,6 @@ RUN python -m venv /venv \
     pip uninstall upgrade_ensurepip -y; \
     python3 -m ensurepip;
 
-RUN python3 -c "import jsonschema"
-
 # Cache provider environments for faster startup and expansion time
 RUN mkdir -p ~/.apache_beam/cache/jars
 RUN wget -O ~/.apache_beam/cache/jars/beam-sdks-java-io-expansion-service-${beamMavenVersion}.jar ${mavenRepo}/org/apache/beam/beam-sdks-java-io-expansion-service/${beamMavenVersion}/beam-sdks-java-io-expansion-service-${beamMavenVersion}.jar
@@ -82,6 +80,9 @@ COPY --from=python-base /root/.apache_beam/cache /root/.apache_beam/cache
 
 # Copy licenses
 COPY --from=python-base /usr/licenses/ /usr/licenses/
+
+# Test jsonschema
+python -c "import jsonschema"
 
 WORKDIR /template
 
