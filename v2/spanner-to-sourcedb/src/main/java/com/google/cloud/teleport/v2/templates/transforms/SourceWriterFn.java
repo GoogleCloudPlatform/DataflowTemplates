@@ -284,45 +284,14 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
         // wrapped inside a SpannerException.
         // We need to get and inspect the cause while handling the exception.
-      } catch (SpannerException ex) {
+      } catch (Exception ex) {
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
         if (cause != null) {
           message += ", Caused by: " + cause.getMessage();
         }
-
-        if (cause == null) {
-          // Log all retryable errors. It will be helpful for debugging since the files in retryable
-          // dlq get deleted on consumption.
-          LOG.debug("Retryable error occurred while processing an event: {}", ex.getMessage());
-          // If cause is null, then it is a plain Spanner exception
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
-        } else if (cause instanceof InvalidTransformationException) {
-          invalidTransformationException.inc();
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
-        } else if (cause instanceof ChangeEventConvertorException
-            || cause instanceof CodecNotFoundException
-            || cause instanceof SQLSyntaxErrorException
-            || cause instanceof SQLDataException) {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
-        } else if (cause instanceof SQLNonTransientConnectionException e) {
-          // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-          // error codes 1053,1161 and 1159 can be retried
-          if (e.getErrorCode() == 1053 || e.getErrorCode() == 1159 || e.getErrorCode() == 1161) {
-            LOG.debug("Retryable error occurred while processing an event: {}", message);
-            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
-          } else {
-            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
-          }
-        } else {
-          LOG.debug("Retryable error occurred while processing an event: {}", message);
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
-        }
-      } catch (ChangeEventConvertorException ex) {
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
-      } catch (Exception ex) {
-        LOG.debug("Retryable error occurred while processing an event: {}", ex.getMessage());
-        outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+        TupleTag<String> errorTag = classifyException(ex);
+        outputWithTag(c, errorTag, message, spannerRec);
       }
     }
   }
@@ -368,5 +337,38 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       retryableRecordCountMetric.inc();
     }
     c.output(tag, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  TupleTag<String> classifyException(Exception exception) {
+    if (exception instanceof SpannerException e) {
+      return classifySpannerException(e);
+    } else if (exception instanceof ChangeEventConvertorException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    }
+    return Constants.RETRYABLE_ERROR_TAG;
+  }
+
+  TupleTag<String> classifySpannerException(SpannerException exception) {
+    // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
+    // wrapped inside a SpannerException.
+    // We need to get and inspect the cause while handling the exception.
+    Throwable cause = exception.getCause();
+
+    if (cause instanceof InvalidTransformationException
+        || cause instanceof ChangeEventConvertorException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    } else if (cause instanceof CodecNotFoundException
+        || cause instanceof SQLSyntaxErrorException
+        || cause instanceof SQLDataException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    } else if (cause instanceof SQLNonTransientConnectionException e
+        && e.getErrorCode() != 1053
+        && e.getErrorCode() != 1159
+        && e.getErrorCode() != 1161) {
+      // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+      // error codes 1053,1161 and 1159 can be retried
+      return Constants.PERMANENT_ERROR_TAG;
+    }
+    return Constants.RETRYABLE_ERROR_TAG;
   }
 }
