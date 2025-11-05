@@ -35,8 +35,8 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
@@ -335,7 +335,8 @@ public class SourceWriterFnTest {
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("some exception"));
@@ -508,7 +509,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("Required key id not found in change event"));
@@ -539,7 +541,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("Test exception"));
@@ -571,7 +574,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("a foreign key constraint fails"));
@@ -603,7 +607,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("transient connection error"));
@@ -635,7 +640,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("permanent connection error"));
@@ -667,7 +673,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("generic exception"));
@@ -699,7 +706,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("sql syntax error"));
@@ -731,7 +739,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("sql data error"));
@@ -763,7 +772,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("invalid transformation"));
@@ -795,7 +805,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("change event convertor error"));
@@ -827,7 +838,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("test spanner"));
@@ -859,7 +871,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("illegal argument"));
@@ -873,7 +886,8 @@ public class SourceWriterFnTest {
     // Override the default behavior of the transaction runner for this test
     when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
         .thenThrow(
-            SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "plain spanner exception"));
+            SpannerExceptionFactory.newSpannerException(
+                ErrorCode.UNKNOWN, "plain spanner exception"));
 
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
@@ -897,7 +911,8 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
 
     ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    verify(processContext, atLeast(1))
+        .output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
     ChangeStreamErrorRecord actualError =
         gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
     assertTrue(actualError.getErrorMessage().contains("plain spanner exception"));

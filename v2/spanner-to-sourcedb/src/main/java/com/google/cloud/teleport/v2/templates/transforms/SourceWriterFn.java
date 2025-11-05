@@ -292,7 +292,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         }
 
         if (cause == null) {
-          // Log all retryable errors. It will be helpful for debugging since the files in retryable dlq get deleted on consumption.
+          // Log all retryable errors. It will be helpful for debugging since the files in retryable
+          // dlq get deleted on consumption.
           LOG.debug("Retryable error occurred while processing an event: {}", ex.getMessage());
           // If cause is null, then it is a plain Spanner exception
           outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
@@ -302,19 +303,18 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         } else if (cause instanceof ChangeEventConvertorException
             || cause instanceof CodecNotFoundException
             || cause instanceof SQLSyntaxErrorException
-            || cause instanceof SQLDataException
-        ) {
+            || cause instanceof SQLDataException) {
           outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
         } else if (cause instanceof SQLNonTransientConnectionException e) {
           // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
           // error codes 1053,1161 and 1159 can be retried
           if (e.getErrorCode() == 1053 || e.getErrorCode() == 1159 || e.getErrorCode() == 1161) {
             LOG.debug("Retryable error occurred while processing an event: {}", message);
-            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
           } else {
-            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
           }
-      } else {
+        } else {
           LOG.debug("Retryable error occurred while processing an event: {}", message);
           outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
         }
