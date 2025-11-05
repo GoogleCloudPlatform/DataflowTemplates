@@ -35,6 +35,7 @@ import com.google.cloud.spanner.Options.RpcPriority;
 import com.google.cloud.spanner.SpannerExceptionFactory;
 import com.google.cloud.spanner.TransactionRunner;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.Schema;
@@ -57,6 +58,8 @@ import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
+import java.sql.SQLDataException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -164,6 +167,22 @@ public class SourceWriterFnTest {
     doThrow(new RuntimeException("generic exception"))
         .when(mockSqlDao)
         .write(contains("12345"), any()); // to test code path of generic exception
+    doThrow(new SQLSyntaxErrorException("sql syntax error"))
+        .when(mockSqlDao)
+        .write(contains("6666"), any());
+    doThrow(new SQLDataException("sql data error")).when(mockSqlDao).write(contains("7777"), any());
+    doThrow(new InvalidTransformationException("invalid transformation"))
+        .when(mockSqlDao)
+        .write(contains("8888"), any());
+    doThrow(new ChangeEventConvertorException("change event convertor error"))
+        .when(mockSqlDao)
+        .write(contains("9999"), any());
+    doThrow(SpannerExceptionFactory.newSpannerException(ErrorCode.ALREADY_EXISTS, "test spanner"))
+        .when(mockSqlDao)
+        .write(contains("1111"), any());
+    doThrow(new IllegalArgumentException("illegal argument"))
+        .when(mockSqlDao)
+        .write(contains("2222"), any());
     doNothing().when(mockSqlDao).write(contains("parent1"), any());
     testShard = new Shard();
     testShard.setLogicalShardId("shardA");
@@ -315,14 +334,11 @@ public class SourceWriterFnTest {
     sourceWriterFn.processElement(processContext);
     verify(mockSpannerDao, atLeast(1))
         .readShadowTableRecordWithExclusiveLock(any(), any(), any(), any());
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord =
-        new ChangeStreamErrorRecord(
-            jsonRec,
-            "com.google.cloud.teleport.v2.spanner.exceptions.InvalidTransformationException: some exception");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("some exception"));
   }
 
   @Test
@@ -491,15 +507,11 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord =
-        new ChangeStreamErrorRecord(
-            jsonRec,
-            "com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException:"
-                + " Required key id not found in change event");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("Required key id not found in change event"));
   }
 
   @Test
@@ -526,11 +538,11 @@ public class SourceWriterFnTest {
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "Test exception");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("Test exception"));
   }
 
   @Test
@@ -558,12 +570,11 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord =
-        new ChangeStreamErrorRecord(jsonRec, "a foreign key constraint fails");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("a foreign key constraint fails"));
   }
 
   @Test
@@ -591,12 +602,11 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord =
-        new ChangeStreamErrorRecord(jsonRec, "transient connection error");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.RETRYABLE_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("transient connection error"));
   }
 
   @Test
@@ -624,16 +634,15 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord =
-        new ChangeStreamErrorRecord(jsonRec, "permanent connection error");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("permanent connection error"));
   }
 
   @Test
-  public void testPermanentGenericException() throws Exception {
+  public void testGenericExceptionIsRetriable() throws Exception {
     TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 12345);
     record.setShard("shardA");
     when(processContext.element()).thenReturn(KV.of(1L, record));
@@ -657,11 +666,241 @@ public class SourceWriterFnTest {
     sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.processElement(processContext);
-    String jsonRec = gson.toJson(record, TrimmedShardedDataChangeRecord.class);
-    ChangeStreamErrorRecord errorRecord = new ChangeStreamErrorRecord(jsonRec, "generic exception");
-    verify(processContext, atLeast(1))
-        .output(
-            Constants.PERMANENT_ERROR_TAG, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("generic exception"));
+  }
+
+  @Test
+  public void testPermanentErrorWithSQLSyntaxErrorException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 6666);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("sql syntax error"));
+  }
+
+  @Test
+  public void testPermanentErrorWithSQLDataException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 7777);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("sql data error"));
+  }
+
+  @Test
+  public void testPermanentErrorWithInvalidTransformationException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 8888);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("invalid transformation"));
+  }
+
+  @Test
+  public void testPermanentErrorWithChangeEventConvertorException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 9999);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.PERMANENT_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("change event convertor error"));
+  }
+
+  @Test
+  public void testRetryableErrorWithSpannerException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 1111);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("test spanner"));
+  }
+
+  @Test
+  public void testRetryableErrorWithIllegalArgumentException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getChild21TrimmedDataChangeRecord("shardA", 2222);
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("illegal argument"));
+  }
+
+  @Test
+  public void testPlainSpannerExceptionIsRetryable() throws Exception {
+    TrimmedShardedDataChangeRecord record = getParent1TrimmedDataChangeRecord("shardA");
+    record.setShard("shardA");
+    when(processContext.element()).thenReturn(KV.of(1L, record));
+    // Override the default behavior of the transaction runner for this test
+    when(mockTransactionRunner.run(any(TransactionRunner.TransactionCallable.class)))
+        .thenThrow(
+            SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "plain spanner exception"));
+
+    SourceWriterFn sourceWriterFn =
+        new SourceWriterFn(
+            ImmutableList.of(testShard),
+            schemaMapper,
+            mockSpannerConfig,
+            testSourceDbTimezoneOffset,
+            testDdl,
+            shadowTableDdl,
+            testSourceSchema,
+            "shadow_",
+            "skip",
+            500,
+            "mysql",
+            null);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    sourceWriterFn.setObjectMapper(mapper);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
+    sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.processElement(processContext);
+
+    ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+    verify(processContext, atLeast(1)).output(eq(Constants.RETRYABLE_ERROR_TAG), argumentCaptor.capture());
+    ChangeStreamErrorRecord actualError =
+        gson.fromJson(argumentCaptor.getValue(), ChangeStreamErrorRecord.class);
+    assertTrue(actualError.getErrorMessage().contains("plain spanner exception"));
   }
 
   @Test

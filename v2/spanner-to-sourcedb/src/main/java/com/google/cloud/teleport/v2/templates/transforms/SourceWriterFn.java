@@ -51,6 +51,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
 import java.sql.SQLDataException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLSyntaxErrorException;
 import java.util.HashSet;
 import java.util.List;
@@ -304,10 +305,21 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
             || cause instanceof SQLDataException
         ) {
           outputWithTag(c, Constants.PERMANENT_ERROR_TAG, message, spannerRec);
-        } else {
+        } else if (cause instanceof SQLNonTransientConnectionException e) {
+          // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+          // error codes 1053,1161 and 1159 can be retried
+          if (e.getErrorCode() == 1053 || e.getErrorCode() == 1159 || e.getErrorCode() == 1161) {
+            LOG.debug("Retryable error occurred while processing an event: {}", message);
+            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
+          } else {
+            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+          }
+      } else {
           LOG.debug("Retryable error occurred while processing an event: {}", message);
           outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, message, spannerRec);
         }
+      } catch (ChangeEventConvertorException ex) {
+        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
       } catch (Exception ex) {
         LOG.debug("Retryable error occurred while processing an event: {}", ex.getMessage());
         outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
