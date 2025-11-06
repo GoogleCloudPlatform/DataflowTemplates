@@ -10,6 +10,9 @@ import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import java.sql.Clob;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -23,14 +26,11 @@ import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.extensions.avro.io.AvroIO;
 import org.apache.beam.sdk.io.jdbc.JdbcIO;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.values.PCollection;
 import org.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.gson.Gson;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 
 /**
  * Jdbc_to_Storage_Batched:
@@ -68,7 +68,8 @@ public class JdbcToStorageBatched {
         final String outputDirectory;
         final String outputFilenamePrefix;
 
-        TableConfig(String tableName, String query, String outputDirectory, String outputFilenamePrefix) {
+        TableConfig(
+                String tableName, String query, String outputDirectory, String outputFilenamePrefix) {
             this.tableName = tableName;
             this.query = query;
             this.outputDirectory = outputDirectory;
@@ -102,7 +103,8 @@ public class JdbcToStorageBatched {
                                 len,
                                 colName);
                     }
-                    json.put(colName, clobObject.getSubString(1, (int) Math.min(len, Integer.MAX_VALUE)));
+                    json.put(
+                            colName, clobObject.getSubString(1, (int) Math.min(len, Integer.MAX_VALUE)));
                 } else {
                     json.put(colName, value);
                 }
@@ -143,7 +145,8 @@ public class JdbcToStorageBatched {
         }
 
         int maxParallelTables = 8;
-        if (options.getMaxParallelTables() != null && !options.getMaxParallelTables().isEmpty()) {
+        if (options.getMaxParallelTables() != null
+                && !options.getMaxParallelTables().isEmpty()) {
             try {
                 maxParallelTables = Integer.parseInt(options.getMaxParallelTables());
             } catch (NumberFormatException e) {
@@ -159,20 +162,24 @@ public class JdbcToStorageBatched {
                 array.size(),
                 maxParallelTables);
 
-        // --- Build DataSourceConfiguration (reuse Teleport-style pattern) ---
+        // --- Build DataSourceConfiguration using ValueProviders + KMS utils ---
+        ValueProvider<String> decryptedConnectionUrl = maybeDecrypt(options.getConnectionUrl(),
+                options.getKMSEncryptionKey());
+
         JdbcIO.DataSourceConfiguration dataSourceConfiguration = JdbcIO.DataSourceConfiguration.create(
-                StaticValueProvider.of(options.getDriverClassName()),
-                maybeDecrypt(options.getConnectionUrl(), options.getKMSEncryptionKey()))
+                options.getDriverClassName(), decryptedConnectionUrl)
                 .withDriverJars(options.getDriverJars());
 
         if (options.getUsername() != null) {
             dataSourceConfiguration = dataSourceConfiguration.withUsername(
                     maybeDecrypt(options.getUsername(), options.getKMSEncryptionKey()));
         }
+
         if (options.getPassword() != null) {
             dataSourceConfiguration = dataSourceConfiguration.withPassword(
                     maybeDecrypt(options.getPassword(), options.getKMSEncryptionKey()));
         }
+
         if (options.getConnectionProperties() != null) {
             dataSourceConfiguration = dataSourceConfiguration.withConnectionProperties(
                     options.getConnectionProperties());
@@ -183,7 +190,10 @@ public class JdbcToStorageBatched {
             JsonObject obj = array.get(i).getAsJsonObject();
 
             if (!obj.has("table_name") || !obj.has("query") || !obj.has("output_directory")) {
-                LOG.error("Invalid tableConfigs[{}]: missing required fields. Skipping: {}", i, obj);
+                LOG.error(
+                        "Invalid tableConfigs[{}]: missing required fields. Skipping: {}",
+                        i,
+                        obj);
                 continue;
             }
 
@@ -216,8 +226,7 @@ public class JdbcToStorageBatched {
                                 .withNumShards(0));
 
             } catch (Exception e) {
-                // IMPORTANT: config-level failure for this table is logged and does not stop
-                // others.
+                // Config-level failure for this table is logged and does not stop others.
                 LOG.error(
                         "Failed to configure pipeline branch for table '{}'. This table will be skipped.",
                         cfg.tableName,
@@ -225,12 +234,7 @@ public class JdbcToStorageBatched {
             }
         }
 
-        // NOTE:
-        // - If a branch's JdbcIO encounters a runtime failure (e.g. DB unavailable),
-        // the Dataflow job will still fail. To fully isolate per-table failures,
-        // you'd need a custom DoFn that catches SQL exceptions internally.
-        // This template guarantees only that bad per-table CONFIG does not kill others.
-
+        // Runtime JDBC failures will still fail the job, like any Teleport template.
         return pipeline.run();
     }
 }

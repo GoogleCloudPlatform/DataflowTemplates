@@ -13,8 +13,8 @@ import org.apache.beam.sdk.options.Validation;
  * Extra options for the Jdbc_to_Storage_Batched template.
  *
  * In addition to JdbcToStorageOptions (driverJars, driverClassName,
- * connectionUrl,
- * username, password, KMSEncryptionKey, etc.), this template accepts:
+ * connectionUrl, username, password, KMSEncryptionKey, etc.), this template
+ * accepts:
  *
  * - tableConfigs: JSON array of table configs
  * - maxParallelTables: advisory concurrency hint
