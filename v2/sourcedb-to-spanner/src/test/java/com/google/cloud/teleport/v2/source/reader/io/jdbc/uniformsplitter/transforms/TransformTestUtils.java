@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.transforms;
 
+import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -88,6 +89,23 @@ class TransformTestUtils {
     try (Connection connection = getConnection()) {
       Statement statement = connection.createStatement();
       statement.executeUpdate("drop table " + tableName);
+    }
+  }
+
+  static void insertValuesIntoTable(
+      String tableName, ImmutableList<Integer> col1, ImmutableList<String> data)
+      throws SQLException {
+    try (java.sql.Connection connection = getConnection()) {
+      String insertSQL = "INSERT INTO " + tableName + " (col1, col2, data) VALUES (?, ?, ?)";
+      try (PreparedStatement stmtInsert = connection.prepareStatement(insertSQL)) {
+        for (int i = 0; i < col1.size(); i++) {
+          stmtInsert.setInt(1, col1.get(i));
+          stmtInsert.setInt(2, col1.get(i)); // Assuming col2 is same as col1 for simplicity
+          stmtInsert.setString(3, data.get(i));
+          stmtInsert.addBatch();
+        }
+        stmtInsert.executeBatch();
+      }
     }
   }
 

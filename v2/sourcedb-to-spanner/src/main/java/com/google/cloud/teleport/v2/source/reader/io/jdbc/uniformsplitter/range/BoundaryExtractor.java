@@ -42,6 +42,7 @@ public interface BoundaryExtractor<T extends Serializable> extends Serializable 
   Boundary<T> getBoundary(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
-      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      @Nullable BoundaryTypeMapper boundaryTypeMapper,
+      TableIdentifier tableIdentifier)
       throws SQLException;
 }

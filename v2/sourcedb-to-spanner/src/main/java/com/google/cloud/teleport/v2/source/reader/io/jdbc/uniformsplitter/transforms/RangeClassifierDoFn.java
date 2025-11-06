@@ -19,17 +19,44 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary.ColumnForBoundaryQuery;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Classify ranges into ranges to count, split or retain. */
+/**
+ * Classifies ranges into ranges to count, split, retain, or graduate.
+ *
+ * <p>This {@link DoFn} acts as the central logic for the iterative splitting process. It examines a
+ * batch of ranges and decides their next stage based on their current size (count) relative to a
+ * target mean.
+ *
+ * <p>Key features:
+ *
+ * <ul>
+ *   <li><b>Heterogeneous Processing</b>: Handles ranges from multiple tables independently by
+ *       grouping them by {@link TableIdentifier}.
+ *   <li><b>Early Graduation</b>: Implements the "Graduation Lane" optimization where tables that
+ *       have reached their maximum split height are immediately marked as ready for reading.
+ *   <li><b>Multi-Column Splitting</b>: When a range on a single column becomes too large but cannot
+ *       be split further (e.g., all rows have the same value for that column), it triggers the
+ *       addition of the next configured partition column.
+ * </ul>
+ */
 @AutoValue
-public abstract class RangeClassifierDoFn extends DoFn<ImmutableList<Range>, Range>
+public abstract class RangeClassifierDoFn extends DoFn<KV<Integer, ImmutableList<Range>>, Range>
     implements Serializable {
 
   private static final Logger logger = LoggerFactory.getLogger(RangeCountDoFn.class);
@@ -46,6 +73,12 @@ public abstract class RangeClassifierDoFn extends DoFn<ImmutableList<Range>, Ran
   // Dropping this will make `ReadWithUniformPartitionsTest` fail with coder not found error.
   public static final TupleTag<Range> TO_RETAIN_TAG = new TupleTag<Range>() {};
 
+  // Note it is necessary to retain `new TupleTag<Range>() {}`  though editor might point to
+  // dropping `Range` or the `{}`.
+  // It is necessary to retain the type information for the coder inference of beam to work.
+  // Dropping this will make `ReadWithUniformPartitionsTest` fail with coder not found error.
+  public static final TupleTag<Range> READY_TO_READ_TAG = new TupleTag<Range>() {};
+
   // Note it is necessary to retain `new TupleTag<ColumnForBoundaryQuery>() {}`  though editor might
   // point to dropping `ColumnForBoundaryQuery` or the `{}`.
   // It is necessary to retain the type information for the coder inference of beam to work.
@@ -53,14 +86,8 @@ public abstract class RangeClassifierDoFn extends DoFn<ImmutableList<Range>, Ran
   public static final TupleTag<ColumnForBoundaryQuery> TO_ADD_COLUMN_TAG =
       new TupleTag<ColumnForBoundaryQuery>() {};
 
-  /** Partition Columns. */
-  abstract ImmutableList<PartitionColumn> partitionColumns();
-
-  /** Approximate row count of the table. */
-  abstract Long approxTotalRowCount();
-
-  /** Max partitions hint as set or auto-inferred by {@link ReadWithUniformPartitions}. */
-  abstract Long maxPartitionHint();
+  /** Table Split Specification. */
+  abstract ImmutableMap<TableIdentifier, TableSplitSpecification> tableSplitSpecifications();
 
   /**
    * If true, MaxPartitions will be inferred again after total counts of all ranges is not
@@ -71,38 +98,90 @@ public abstract class RangeClassifierDoFn extends DoFn<ImmutableList<Range>, Ran
   /** Stage Index. */
   abstract Long stageIdx();
 
+  /**
+   * Processes a batch of ranges, grouping them by table and classifying them.
+   *
+   * @param input the batch of ranges keyed by a synthetic bucket ID.
+   * @param c the process context.
+   */
   @ProcessElement
-  public void processElement(@Element ImmutableList<Range> input, ProcessContext c) {
+  public void processElement(@Element KV<Integer, ImmutableList<Range>> input, ProcessContext c) {
+    logger.debug("Classifying ranges for batch {} for stage {}.", input.getKey(), stageIdx());
+    if (input.getValue().isEmpty()) {
+      return;
+    }
+    // Group ranges by TableIdentifier to process tables independently.
+    Map<TableIdentifier, List<Range>> rangesByTable = new HashMap<>();
 
-    logger.debug("Classifying ranges {} for stage {}.", input, stageIdx());
+    input.getValue().stream()
+        .forEach(
+            range -> {
+              if (!rangesByTable.containsKey(range.tableIdentifier())) {
+                rangesByTable.put(range.tableIdentifier(), new ArrayList<>());
+              }
+              rangesByTable.get(range.tableIdentifier()).add(range);
+            });
 
-    long totalCount = approxTotalRowCount();
+    for (Map.Entry<TableIdentifier, List<Range>> entry : rangesByTable.entrySet()) {
+      TableIdentifier tableIdentifier = entry.getKey();
+      List<Range> ranges = entry.getValue();
+      Collections.sort(ranges);
+      processTable(tableIdentifier, ranges, c);
+    }
+  }
 
+  private void processTable(TableIdentifier tableId, List<Range> ranges, ProcessContext c) {
+
+    if (!tableSplitSpecifications().containsKey(tableId)) {
+      logger.error(
+          "Got Range {} for unknown tableIdentifier. Known Identifiers are {}",
+          ranges,
+          tableSplitSpecifications());
+      throw new RuntimeException("Invalid Range");
+    }
+    TableSplitSpecification tableSplitSpecification = tableSplitSpecifications().get(tableId);
+
+    // Determine maxSplitHeight for this table
+    long tableMaxSplitHeight = tableSplitSpecification.splitStagesCount();
+
+    // Graduation check: if the table is uniform (not yet implemented, assuming false for now)
+    // or if the current stageIdx has reached or exceeded the table's maxSplitHeight.
+    // TODO(vardhanvthigle): Add actual uniformity check when implemented.
+    if (stageIdx() >= tableMaxSplitHeight) {
+      // THE GRADUATION LANE:
+      // If a table has reached its configured max split height (depth), we graduate all its
+      // ranges immediately to the read phase. This prevents complex or skewed tables from
+      // forcing simple tables to wait through unnecessary loop iterations, significantly
+      // improving pipeline efficiency and resource utilization.
+      logger.debug("Graduating table {} at stage {}.", tableId.tableName(), stageIdx());
+      for (Range range : ranges) {
+        c.output(READY_TO_READ_TAG, range);
+      }
+      return; // All ranges for this table are graduated, no further classification needed.
+    }
+
+    long totalCount = tableSplitSpecification.approxRowCount();
     long mean = 0;
-
     long accumulatedCount = 0;
 
-    // TODO(vardhanvthigle): moving the total count clcuation to combiner will remove code
-    // duplication with {@link MergeRangeDoFn}.
     // Refine the Count.
-    // Refine the Count.
-    for (Range range : input) {
+    for (Range range : ranges) {
       accumulatedCount = range.accumulateCount(accumulatedCount);
     }
     if (accumulatedCount != Range.INDETERMINATE_COUNT) {
       totalCount = accumulatedCount;
     }
 
-    long maxPartitions = maxPartitionHint();
+    long maxPartitions = tableSplitSpecification.maxPartitionsHint();
     if (autoAdjustMaxPartitions()) {
-      maxPartitions = ReadWithUniformPartitions.inferMaxPartitions(totalCount);
+      maxPartitions = TableSplitSpecification.inferMaxPartitions(totalCount);
     }
     mean = Math.max(1, totalCount / maxPartitions);
 
-    for (Range range : input) {
+    for (Range range : ranges) {
       if (range.isUncounted()
           || range.count()
-              > ((1 + ReadWithUniformPartitions.SPLITTER_MAX_RELATIVE_DEVIATION) * mean)) {
+              > ((1 + TableSplitSpecification.SPLITTER_MAX_RELATIVE_DEVIATION) * mean)) {
         if (stageIdx() == 0) {
           // For the first stage, we have an initial split without the counts.
           c.output(TO_COUNT_TAG, range);
@@ -116,10 +195,12 @@ public abstract class RangeClassifierDoFn extends DoFn<ImmutableList<Range>, Ran
           c.output(TO_COUNT_TAG, splitPair.getLeft());
           c.output(TO_COUNT_TAG, splitPair.getRight());
         } else {
-          if (range.height() + 1 < partitionColumns().size()) {
-            PartitionColumn newColumn = partitionColumns().get((int) (range.height() + 1));
+          if (range.height() + 1 < tableSplitSpecification.partitionColumns().size()) {
+            PartitionColumn newColumn =
+                tableSplitSpecification.partitionColumns().get((int) (range.height() + 1));
             ColumnForBoundaryQuery columnForBoundaryQuery =
                 ColumnForBoundaryQuery.builder()
+                    .setTableIdentifier(range.tableIdentifier())
                     .setPartitionColumn(newColumn)
                     .setParentRange(range)
                     .build();
@@ -143,11 +224,21 @@ public abstract class RangeClassifierDoFn extends DoFn<ImmutableList<Range>, Ran
 
   @AutoValue.Builder
   public abstract static class Builder {
-    public abstract Builder setPartitionColumns(ImmutableList<PartitionColumn> value);
 
-    public abstract Builder setApproxTotalRowCount(Long value);
+    abstract ImmutableMap.Builder<TableIdentifier, TableSplitSpecification>
+        tableSplitSpecificationsBuilder();
 
-    public abstract Builder setMaxPartitionHint(Long value);
+    public Builder setTableSplitSpecification(TableSplitSpecification tableSplitSpecification) {
+      tableSplitSpecificationsBuilder()
+          .put(tableSplitSpecification.tableIdentifier(), tableSplitSpecification);
+      return this;
+    }
+
+    public Builder setTableSplitSpecifications(
+        List<TableSplitSpecification> tableSplitSpecificationList) {
+      tableSplitSpecificationList.forEach(t -> setTableSplitSpecification(t));
+      return this;
+    }
 
     public abstract Builder setAutoAdjustMaxPartitions(Boolean value);
 

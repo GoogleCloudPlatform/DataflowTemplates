@@ -35,6 +35,7 @@ import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.Wait.OnSignal;
 import org.apache.beam.sdk.util.FluentBackoff;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
 
@@ -163,7 +164,8 @@ public abstract class JdbcIOWrapperConfig {
    * JdbcIOWrapperConfig#readWithUniformPartitionsFeatureEnabled()} is false. Defaults to null.
    */
   @Nullable
-  public abstract PTransform<PCollection<ImmutableList<Range>>, ?> additionalOperationsOnRanges();
+  public abstract PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?>
+      additionalOperationsOnRanges();
 
   /**
    * Sets the {@code testOnBorrow} property. This property determines whether or not the pool will
@@ -363,7 +365,7 @@ public abstract class JdbcIOWrapperConfig {
     public abstract Builder setDbParallelizationForReads(@Nullable Integer value);
 
     public abstract Builder setAdditionalOperationsOnRanges(
-        @Nullable PTransform<PCollection<ImmutableList<Range>>, ?> value);
+        PTransform<PCollection<KV<Integer, ImmutableList<Range>>>, ?> value);
 
     public abstract Builder setTestOnBorrow(Boolean value);
 

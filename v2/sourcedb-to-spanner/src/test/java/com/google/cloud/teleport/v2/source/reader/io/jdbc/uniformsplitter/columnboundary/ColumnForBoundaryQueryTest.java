@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.BoundarySplitterFactory;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
@@ -30,6 +31,7 @@ public class ColumnForBoundaryQueryTest {
   public void testColumnForBoundaryQuery() {
     Range parentRange =
         Range.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setColName("col1")
             .setColClass(Integer.class)
@@ -38,11 +40,13 @@ public class ColumnForBoundaryQueryTest {
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryWithDefaults =
         ColumnForBoundaryQuery.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setColumnName("col1")
             .setColumnClass(Integer.class)
             .build();
     ColumnForBoundaryQuery columnForBoundaryQueryRange =
         ColumnForBoundaryQuery.builder()
+            .setTableIdentifier(TableIdentifier.builder().setTableName("testTable").build())
             .setColumnName("col2")
             .setColumnClass(Integer.class)
             .setParentRange(parentRange)
@@ -52,5 +56,7 @@ public class ColumnForBoundaryQueryTest {
     assertThat(columnForBoundaryQueryWithDefaults.parentRange()).isNull();
     assertThat(columnForBoundaryQueryRange.columnName()).isEqualTo("col2");
     assertThat(columnForBoundaryQueryRange.parentRange()).isEqualTo(parentRange);
+    assertThat(columnForBoundaryQueryRange.tableIdentifier().tableName()).isEqualTo("testTable");
+    assertThat(columnForBoundaryQueryRange.tableIdentifier().tableName()).isEqualTo("testTable");
   }
 }

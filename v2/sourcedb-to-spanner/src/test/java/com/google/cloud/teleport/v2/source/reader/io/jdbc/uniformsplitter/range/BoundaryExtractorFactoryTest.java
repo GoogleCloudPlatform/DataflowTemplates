@@ -56,8 +56,14 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getLong(1)).thenReturn(0L);
     when(mockResultSet.getLong(2)).thenReturn(42L);
-    Boundary<Long> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Long> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundary.start()).isEqualTo(0L);
     assertThat(boundary.end()).isEqualTo(42L);
     assertThat(boundary.split(null).getLeft().end()).isEqualTo(21L);
@@ -71,7 +77,8 @@ public class BoundaryExtractorFactoryTest {
                     .setColumnClass(Integer.class)
                     .build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -82,8 +89,14 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getInt(1)).thenReturn(0);
     when(mockResultSet.getInt(2)).thenReturn(42);
-    Boundary<Integer> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Integer> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundary.start()).isEqualTo(0);
     assertThat(boundary.end()).isEqualTo(42);
     assertThat(boundary.split(null).getLeft().end()).isEqualTo(21);
@@ -94,7 +107,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -116,9 +130,19 @@ public class BoundaryExtractorFactoryTest {
         .thenReturn(new BigDecimal(unsignedBigIntMax))
         .thenReturn(null);
     Boundary<BigDecimal> boundaryMinMax =
-        extractor.getBoundary(partitionColumn, mockResultSet, null);
-    Boundary<BigDecimal> boundaryNull = extractor.getBoundary(partitionColumn, mockResultSet, null);
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
+    Boundary<BigDecimal> boundaryNull =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundaryMinMax.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundaryMinMax.start()).isEqualTo(new BigDecimal(BigInteger.ZERO));
     assertThat(boundaryMinMax.end()).isEqualTo(new BigDecimal(unsignedBigIntMax));
     assertThat(boundaryMinMax.split(null).getLeft().end())
@@ -133,7 +157,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -151,7 +176,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1)).thenReturn(new BigDecimal("1.1"));
     when(mockResultSet.getBigDecimal(2)).thenReturn(new BigDecimal("1.2"));
-    Boundary<BigDecimal> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<BigDecimal> boundary1 =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     assertThat(boundary1.start()).isEqualTo(new BigDecimal("1.1"));
     assertThat(boundary1.end()).isEqualTo(new BigDecimal("1.2"));
     assertThat(boundary1.split(null).getLeft().end()).isEqualTo(new BigDecimal("1.15"));
@@ -162,7 +192,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1)).thenReturn(new BigDecimal("1.01"));
     when(mockResultSet.getBigDecimal(2)).thenReturn(new BigDecimal("1.02"));
-    Boundary<BigDecimal> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<BigDecimal> boundary2 =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     assertThat(boundary2.isSplittable(null)).isFalse();
 
     // Mismatched Type
@@ -172,7 +207,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -188,8 +224,14 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.getBigDecimal(1)).thenReturn(null);
     // BigInt Unsigned Max in MySQL
     when(mockResultSet.getBigDecimal(2)).thenReturn(null);
-    Boundary<BigDecimal> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<BigDecimal> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
     assertThat(boundary.split(null).getLeft().end()).isNull();
@@ -239,15 +281,22 @@ public class BoundaryExtractorFactoryTest {
                   getCollationMapperView() {
                 return null;
               }
-            });
+            },
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundary.start()).isEqualTo("cloud");
     assertThat(boundary.end()).isEqualTo("spanner");
     assertThat(boundary.isSplittable(null)).isTrue();
     // Null type mapper check
     assertThrows(
         IllegalArgumentException.class,
-        () -> extractor.getBoundary(partitionColumn, mockResultSet, null));
+        () ->
+            extractor.getBoundary(
+                partitionColumn,
+                mockResultSet,
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
     // Mismatched Type
     assertThrows(
         IllegalArgumentException.class,
@@ -258,7 +307,8 @@ public class BoundaryExtractorFactoryTest {
                     .setColumnClass(Integer.class)
                     .build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -270,9 +320,20 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     doReturn(BigInteger.ZERO.toByteArray()).doReturn(null).when(mockResultSet).getBytes(1);
     doReturn(unsignedBigIntMax.toByteArray()).doReturn(null).when(mockResultSet).getBytes(2);
-    Boundary<byte[]> boundaryMinMax = extractor.getBoundary(partitionColumn, mockResultSet, null);
-    Boundary<byte[]> boundaryNull = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<byte[]> boundaryMinMax =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
+    Boundary<byte[]> boundaryNull =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundaryMinMax.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundaryMinMax.start()).isEqualTo(BigInteger.ZERO.toByteArray());
     assertThat(boundaryMinMax.end()).isEqualTo(unsignedBigIntMax.toByteArray());
     assertThat(boundaryMinMax.split(null).getLeft().end())
@@ -287,7 +348,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -301,7 +363,13 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(start);
     when(mockResultSet.getTimestamp(eq(2), any())).thenReturn(end);
-    Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Timestamp> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
     Pair<Boundary<Timestamp>, Boundary<Timestamp>> split = boundary.split(null);
@@ -319,8 +387,14 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(null);
     when(mockResultSet.getTimestamp(eq(2), any())).thenReturn(null);
-    Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Timestamp> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
+    assertThat(boundary.tableIdentifier().tableName()).isEqualTo("testTable");
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
     assertThat(boundary.split(null).getLeft().end()).isNull();
@@ -337,7 +411,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getDate(eq(1), any())).thenReturn(start);
     when(mockResultSet.getDate(eq(2), any())).thenReturn(end);
-    Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Date> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
     Pair<Boundary<Date>, Boundary<Date>> split = boundary.split(null);
@@ -355,7 +434,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getDate(eq(1), any())).thenReturn(null);
     when(mockResultSet.getDate(eq(2), any())).thenReturn(null);
-    Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Date> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
@@ -376,7 +460,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getFloat(1)).thenReturn(1.001f);
     when(mockResultSet.getFloat(2)).thenReturn(1.002f);
-    Boundary<Float> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Float> boundary1 =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     // The diff is > minimum delta, boundary is splittable
     assertThat(boundary1.start()).isEqualTo(1.001f);
     assertThat(boundary1.end()).isEqualTo(1.002f);
@@ -388,7 +477,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getFloat(1)).thenReturn(1.000001f);
     when(mockResultSet.getFloat(2)).thenReturn(1.000002f);
-    Boundary<Float> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Float> boundary2 =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     // The diff is < minimum delta, boundary is NOT splittable
     assertThat(boundary2.isSplittable(null)).isFalse();
 
@@ -399,7 +493,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -416,7 +511,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getDouble(1)).thenReturn(1.001);
     when(mockResultSet.getDouble(2)).thenReturn(1.002);
-    Boundary<Double> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Double> boundary1 =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     // The diff is > minimum delta, boundary is splittable
     assertThat(boundary1.start()).isEqualTo(1.001);
     assertThat(boundary1.end()).isEqualTo(1.002);
@@ -428,7 +528,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getDouble(1)).thenReturn(1.000001);
     when(mockResultSet.getDouble(2)).thenReturn(1.000002);
-    Boundary<Double> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Double> boundary2 =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     // The diff is < minimum delta, boundary is NOT splittable
     assertThat(boundary2.isSplittable(null)).isFalse();
 
@@ -439,7 +544,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -459,7 +565,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(eq(1))).thenReturn(startStr);
     when(mockResultSet.getString(eq(2))).thenReturn(endStr);
-    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Duration> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
     assertThat(boundary.start()).isEqualTo(start);
     assertThat(boundary.end()).isEqualTo(end);
     Pair<Boundary<Duration>, Boundary<Duration>> split = boundary.split(null);
@@ -475,7 +586,8 @@ public class BoundaryExtractorFactoryTest {
             extractor.getBoundary(
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
                 mockResultSet,
-                null));
+                null,
+                TableIdentifier.builder().setTableName("testTable").build()));
   }
 
   @Test
@@ -490,7 +602,12 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getString(eq(1))).thenReturn(null);
     when(mockResultSet.getString(eq(2))).thenReturn(null);
-    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    Boundary<Duration> boundary =
+        extractor.getBoundary(
+            partitionColumn,
+            mockResultSet,
+            null,
+            TableIdentifier.builder().setTableName("testTable").build());
 
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
