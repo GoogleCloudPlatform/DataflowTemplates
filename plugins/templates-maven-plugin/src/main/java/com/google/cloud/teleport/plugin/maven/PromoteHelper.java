@@ -227,7 +227,7 @@ class PromoteHelper {
             "images",
             "list-tags",
             targetPath, // This is the image name, e.g., us.gcr.io/my-project/my-image
-            "--filter=tags:" + tag,
+            "--filter=tags=" + tag,
             "--format",
             "get(digest)"
           };
