@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2026 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -13,24 +13,23 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.source.reader.io;
+package com.google.cloud.teleport.v2.source.reader.io.transform;
 
 import com.google.cloud.teleport.v2.source.reader.io.row.SourceRow;
-import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchema;
 import com.google.cloud.teleport.v2.source.reader.io.schema.SourceTableReference;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
-import org.apache.beam.sdk.transforms.PTransform;
-import org.apache.beam.sdk.values.PBegin;
-import org.apache.beam.sdk.values.PCollection;
+import org.apache.beam.sdk.transforms.DoFn;
 
-/** IO Wrapper Interface for adding new IO sources. */
-public interface IoWrapper {
+/**
+ * DoFn to extract the table name from a {@link SourceRow} and delimit it to match the format used
+ * in {@link SourceTableReference}.
+ */
+class ExtractTableNameFn extends DoFn<SourceRow, String> {
+  @ProcessElement
+  public void processElement(@Element SourceRow row, OutputReceiver<String> out) {
+    out.output(delimitIdentifier(row.tableName()));
+  }
 
-  /** Get a list of reader transforms. */
-  ImmutableMap<ImmutableList<SourceTableReference>, PTransform<PBegin, PCollection<SourceRow>>>
-      getTableReaders();
-
-  /** Discover source schema. */
-  SourceSchema discoverTableSchema();
+  private String delimitIdentifier(String identifier) {
+    return "\"" + identifier.replaceAll("\"", "\"\"") + "\"";
+  }
 }

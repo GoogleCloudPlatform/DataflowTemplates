@@ -16,9 +16,14 @@
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.columnboundary;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.dialectadapter.mysql.MysqlDialectAdapter;
-import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.RangePreparedStatementSetter;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.PartitionColumn;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.Range;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableIdentifier;
+import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range.TableSplitSpecification;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import java.sql.PreparedStatement;
+import java.util.function.Function;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PreparedStatementSetter;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
@@ -31,22 +36,26 @@ import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 public class ColumnForBoundaryQueryPreparedStatementSetter
     implements PreparedStatementSetter<ColumnForBoundaryQuery> {
 
-  /** List of partition columns. */
-  private ImmutableList<String> partitionCols;
+  private final ImmutableMap<TableIdentifier, TableSplitSpecification> tableSplitSpecificationMap;
 
   /**
-   * Construct {@link ColumnForBoundaryQuery}.
+   * Construct {@link ColumnForBoundaryQueryPreparedStatementSetter}.
    *
-   * @param partitionCols partition columns.
+   * @param tableSplitSpecifications list of table split specifications.
    */
-  public ColumnForBoundaryQueryPreparedStatementSetter(ImmutableList<String> partitionCols) {
-    this.partitionCols = partitionCols;
+  public ColumnForBoundaryQueryPreparedStatementSetter(
+      ImmutableList<TableSplitSpecification> tableSplitSpecifications) {
+    this.tableSplitSpecificationMap =
+        tableSplitSpecifications.stream()
+            .collect(
+                ImmutableMap.toImmutableMap(
+                    TableSplitSpecification::tableIdentifier, Function.identity()));
   }
 
   /**
    * Set statement parameters.
    *
-   * @param element details of the colum for which boudnary is to be found.
+   * @param element details of the column for which boundary is to be found.
    * @param preparedStatement the prepared statement.
    * @throws Exception coming form jdbc. Since this is in run-time, beam will retry the exception.
    * @see MysqlDialectAdapter#getBoundaryQuery(String, ImmutableList, String)
@@ -56,8 +65,40 @@ public class ColumnForBoundaryQueryPreparedStatementSetter
       ColumnForBoundaryQuery element,
       @UnknownKeyFor @NonNull @Initialized PreparedStatement preparedStatement)
       throws @UnknownKeyFor @NonNull @Initialized Exception {
+    ImmutableMap.Builder<String, Range> parentRangeMap = ImmutableMap.builder();
+    Range currentRange = element.parentRange();
+    while (currentRange != null) {
+      parentRangeMap.put(currentRange.colName(), currentRange);
+      currentRange = currentRange.childRange();
+    }
+    ImmutableMap<String, Range> parentRanges = parentRangeMap.build();
+
     int parameterIdx = 1;
-    new RangePreparedStatementSetter(partitionCols.size())
-        .setRangeParameters(element.parentRange(), preparedStatement, parameterIdx);
+    for (PartitionColumn partitionColumn :
+        tableSplitSpecificationMap.get(element.tableIdentifier()).partitionColumns()) {
+
+      if (partitionColumn.columnName().equals(element.columnName())) {
+        // For the target column, we want to scan all values, so we disable the predicate.
+        preparedStatement.setObject(parameterIdx++, false); // Disabled
+        preparedStatement.setObject(parameterIdx++, null);
+        preparedStatement.setObject(parameterIdx++, null);
+        preparedStatement.setObject(parameterIdx++, false);
+        preparedStatement.setObject(parameterIdx++, null);
+      } else if (parentRanges.containsKey(partitionColumn.columnName())) {
+        Range rangeForColumn = parentRanges.get(partitionColumn.columnName());
+        preparedStatement.setObject(parameterIdx++, true); // Enabled
+        preparedStatement.setObject(parameterIdx++, rangeForColumn.start());
+        preparedStatement.setObject(parameterIdx++, rangeForColumn.end());
+        preparedStatement.setObject(parameterIdx++, rangeForColumn.isLast());
+        preparedStatement.setObject(parameterIdx++, rangeForColumn.end());
+      } else {
+        // For other partition columns outside the parent path, they are effectively disabled.
+        preparedStatement.setObject(parameterIdx++, false); // Disabled
+        preparedStatement.setObject(parameterIdx++, null);
+        preparedStatement.setObject(parameterIdx++, null);
+        preparedStatement.setObject(parameterIdx++, false);
+        preparedStatement.setObject(parameterIdx++, null);
+      }
+    }
   }
 }
