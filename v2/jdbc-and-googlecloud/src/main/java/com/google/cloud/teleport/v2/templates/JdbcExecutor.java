@@ -24,7 +24,7 @@ import org.slf4j.LoggerFactory;
  * Typical use case: DDL/DML/PLSQL blocks for Oracle, e.g. BEGIN ... END;.
  */
 @Template(
-    name = "Jdbc_Executor_DDL",
+    name = "Jdbc_Executor",
     category = TemplateCategory.BATCH,
     displayName = "JDBC Executor (no output)",
     description = "Executes SQL or PL/SQL statements on a JDBC source (e.g. Oracle BEGIN...END; blocks). "
@@ -83,3 +83,4 @@ public class JdbcExecutor {
     return pipeline.run();
   }
 }
+
