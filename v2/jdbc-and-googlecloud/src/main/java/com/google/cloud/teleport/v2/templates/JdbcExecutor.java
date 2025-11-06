@@ -5,7 +5,7 @@ import static com.google.cloud.teleport.v2.utils.KMSUtils.maybeDecrypt;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
-import com.google.cloud.teleport.v2.options.JdbcToStorageOptions; // reaproveitamos o mesmo options set
+import com.google.cloud.teleport.v2.options.JdbcToStorageOptions;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.Statement;
@@ -83,4 +83,5 @@ public class JdbcExecutor {
     return pipeline.run();
   }
 }
+
 
