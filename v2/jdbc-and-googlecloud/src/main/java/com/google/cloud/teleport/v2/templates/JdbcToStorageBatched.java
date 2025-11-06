@@ -42,7 +42,7 @@ import com.google.gson.JsonObject;
  *
  * Used by Airflow to launch ONE Dataflow job per tenant with multiple tables.
  */
-@Template(name = "Jdbc_to_Storage_Batched_v2", category = TemplateCategory.BATCH, displayName = "JDBC to Cloud Storage (Batched, JSON-in-Avro)", description = "Pipeline that reads from multiple JDBC tables/queries and writes each to its own "
+@Template(name = "Jdbc_to_Storage_Batched", category = TemplateCategory.BATCH, displayName = "JDBC to Cloud Storage (Batched, JSON-in-Avro)", description = "Pipeline that reads from multiple JDBC tables/queries and writes each to its own "
         + "Cloud Storage path as Avro with a single 'data' field containing JSON.", optionsClass = JdbcToStorageBatchedOptions.class, flexContainerName = "jdbc-to-storage-batched-v2", documentation = "https://cloud.google.com/dataflow/docs/guides/templates/provided/jdbc-to-cloud-storage", contactInformation = "https://cloud.google.com/support", preview = true, requirements = {
                 "The JDBC source must exist prior to running the pipeline.",
                 "The output bucket/directory in Cloud Storage must exist prior to running the pipeline."
