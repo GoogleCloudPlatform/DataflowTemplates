@@ -30,6 +30,9 @@ import org.apache.commons.lang3.tuple.Pair;
 public abstract class Boundary<T extends Serializable>
     implements Serializable, Comparable<Boundary> {
 
+  /** Identifier of the table for a given boundary. */
+  abstract TableIdentifier tableIdentifier();
+
   /**
    * @return column details.
    */
@@ -238,12 +241,19 @@ public abstract class Boundary<T extends Serializable>
     if (this.equals(other)) {
       return 0;
     }
-    int colNameComparison = this.colName().compareTo(other.colName());
-    if (colNameComparison != 0) {
-      return colNameComparison; // Different colNames, compare lexicographically
+    // Comparing tableIdentifier before the actual partition columns helps keep all ranges of a
+    // given table together in sorted output.
+    int tableComparison = this.tableIdentifier().compareTo(other.tableIdentifier());
+    if (tableComparison != 0) {
+      return tableComparison;
     }
 
-    // Same colName, compare splitIndex.
+    int colNameComparison = this.colName().compareTo(other.colName());
+    if (colNameComparison != 0) {
+      return colNameComparison;
+    }
+
+    // Same table and colName, compare splitIndex.
     int splitIndexComparison = compareSplitIndex(this.splitIndex(), other.splitIndex());
     Preconditions.checkState(
         splitIndexComparison != 0, "Boundaries with same splitIndex must be equal");
@@ -268,6 +278,8 @@ public abstract class Boundary<T extends Serializable>
 
   @AutoValue.Builder
   public abstract static class Builder<T extends Serializable> {
+
+    public abstract Builder<T> setTableIdentifier(TableIdentifier value);
 
     abstract PartitionColumn.Builder partitionColumnBuilder();
 
