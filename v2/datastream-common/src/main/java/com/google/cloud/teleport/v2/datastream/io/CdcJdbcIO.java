@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.datastream.io;
 
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
+import com.google.api.services.bigquery.model.TableRow;
 import com.google.auto.value.AutoValue;
 import java.io.IOException;
 import java.io.Serializable;
@@ -26,12 +27,16 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import javax.annotation.Nullable;
 import javax.sql.DataSource;
-import org.apache.beam.sdk.io.jdbc.JdbcIO;
+import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
@@ -40,14 +45,22 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
 import org.apache.beam.sdk.transforms.Wait;
 import org.apache.beam.sdk.transforms.display.DisplayData;
 import org.apache.beam.sdk.transforms.display.HasDisplayData;
+import org.apache.beam.sdk.transforms.windowing.BoundedWindow;
+import org.apache.beam.sdk.transforms.windowing.PaneInfo;
 import org.apache.beam.sdk.util.BackOff;
 import org.apache.beam.sdk.util.BackOffUtils;
 import org.apache.beam.sdk.util.FluentBackoff;
 import org.apache.beam.sdk.util.Sleeper;
 import org.apache.beam.sdk.values.PCollection;
-import org.apache.beam.sdk.values.PDone;
+import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PInput;
+import org.apache.beam.sdk.values.POutput;
+import org.apache.beam.sdk.values.PValue;
+import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.joda.time.Duration;
+import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,16 +82,16 @@ import org.slf4j.LoggerFactory;
  *
  * <pre>{@code
  * pipeline
- *   .apply(...)
- *   .apply(JdbcIO.<KV<Integer, String>>write()
- *      .withDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create(
- *            "com.mysql.jdbc.Driver", "jdbc:mysql://hostname:3306/mydb")
- *          .withUsername("username")
- *          .withPassword("password"))
- *    );
+ * .apply(...)
+ * .apply(JdbcIO.<KV<Integer, String>>write()
+ * .withDataSourceConfiguration(JdbcIO.DataSourceConfiguration.create(
+ * "com.mysql.jdbc.Driver", "jdbc:mysql://hostname:3306/mydb")
+ * .withUsername("username")
+ * .withPassword("password"))
+ * );
  * }</pre>
  *
- * <p>NB: in case of transient failures, Beam runners may execute parts of JdbcIO.Write multiple
+ * <p>NB: in case of transient failures, Beam runners may execute parts of CdcJdbcIO.Write multiple
  * times for fault tolerance. Because of that, you should avoid using {@code INSERT} statements,
  * since that risks duplicating records in the database, or failing due to primary key conflicts.
  * Consider using <a href="https://en.wikipedia.org/wiki/Merge_(SQL)">MERGE ("upsert")
@@ -89,7 +102,6 @@ public class CdcJdbcIO {
   private static final Logger LOG = LoggerFactory.getLogger(CdcJdbcIO.class);
 
   private static final long DEFAULT_BATCH_SIZE = 1000L;
-  private static final int DEFAULT_FETCH_SIZE = 50_000;
 
   /**
    * Write data to a JDBC datasource.
@@ -100,10 +112,55 @@ public class CdcJdbcIO {
     return new Write();
   }
 
+  /**
+   * Result of a {@link Write} transform.
+   *
+   * <p>This is modeled after {@link org.apache.beam.sdk.io.gcp.bigquery.WriteResult}
+   */
+  public static class WriteResult implements POutput {
+    private final Pipeline pipeline;
+    private final PCollection<String> failedInserts;
+    private final TupleTag<String> failedInsertsTag;
+
+    public WriteResult(
+        Pipeline pipeline, PCollection<String> failedInserts, TupleTag<String> failedInsertsTag) {
+      this.pipeline = pipeline;
+      this.failedInserts = failedInserts;
+      this.failedInsertsTag = failedInsertsTag;
+    }
+
+    /**
+     * Returns a {@link PCollection} containing the raw JSON strings of records that failed to be
+     * written to the SQL database.
+     *
+     * <p>The message is a JSON string containing the original payload and error details.
+     */
+    public PCollection<String> getFailedInserts() {
+      return failedInserts;
+    }
+
+    @Override
+    public Pipeline getPipeline() {
+      return this.pipeline;
+    }
+
+    @Override
+    public Map<TupleTag<?>, PValue> expand() {
+      return Collections.singletonMap(failedInsertsTag, failedInserts);
+    }
+
+    @Override
+    public void finishSpecifyingOutput(
+        String transformName, PInput input, PTransform<?, ?> transform) {
+      // Nothing to do
+    }
+  }
+
   public static <T> WriteVoid<T> writeVoid() {
     return new AutoValue_CdcJdbcIO_WriteVoid.Builder<T>()
         .setBatchSize(DEFAULT_BATCH_SIZE)
         .setRetryStrategy(new DefaultRetryStrategy())
+        .setDlqJsonFormatter(new DefaultDlqJsonFormatter<>())
         .build();
   }
 
@@ -113,6 +170,8 @@ public class CdcJdbcIO {
    * to identify a deadlock.
    */
   public static class DefaultRetryStrategy implements RetryStrategy {
+    private static final long serialVersionUID = 1L;
+
     @Override
     public boolean apply(SQLException e) {
       return "40001".equals(e.getSQLState());
@@ -268,22 +327,11 @@ public class CdcJdbcIO {
       return builder().setConnectionInitSqls(connectionInitSqls).build();
     }
 
-    /**
-     * Sets the login timeout for the DataSource.
-     *
-     * @param loginTimeout login timeout in seconds
-     * @return updated DataSourceConfiguration
-     */
     public DataSourceConfiguration withLoginTimeout(Integer loginTimeout) {
+      checkArgument(loginTimeout != null, "loginTimeout can not be null");
       return withLoginTimeout(ValueProvider.StaticValueProvider.of(loginTimeout));
     }
 
-    /**
-     * Sets the login timeout for the DataSource.
-     *
-     * @param loginTimeout login timeout in seconds as ValueProvider
-     * @return updated DataSourceConfiguration
-     */
     public DataSourceConfiguration withLoginTimeout(ValueProvider<Integer> loginTimeout) {
       checkArgument(loginTimeout != null, "loginTimeout can not be null");
       return builder().setLoginTimeout(loginTimeout).build();
@@ -314,8 +362,19 @@ public class CdcJdbcIO {
         if (getPassword() != null) {
           basicDataSource.setPassword(getPassword().get());
         }
-        if (getConnectionProperties() != null && getConnectionProperties().get() != null) {
-          basicDataSource.setConnectionProperties(getConnectionProperties().get());
+        String connectionProperties =
+            (getConnectionProperties() != null && getConnectionProperties().get() != null)
+                ? getConnectionProperties().get()
+                : "";
+        if (getLoginTimeout() != null && getLoginTimeout().get() != null) {
+          String loginTimeoutProperty = "loginTimeout=" + getLoginTimeout().get();
+          connectionProperties =
+              connectionProperties.isEmpty()
+                  ? loginTimeoutProperty
+                  : connectionProperties + ";" + loginTimeoutProperty;
+        }
+        if (!connectionProperties.isEmpty()) {
+          basicDataSource.setConnectionProperties(connectionProperties);
         }
         if (getConnectionInitSqls() != null
             && getConnectionInitSqls().get() != null
@@ -324,24 +383,6 @@ public class CdcJdbcIO {
         }
         if (getMaxIdleConnections() != null && getMaxIdleConnections().get() != null) {
           basicDataSource.setMaxIdle(getMaxIdleConnections().get().intValue());
-        }
-        if (getLoginTimeout() != null && getLoginTimeout().get() != null) {
-          // BasicDataSource.setLoginTimeout() is not supported and throws
-          // UnsupportedOperationException.
-          // Instead, we append the loginTimeout as a connection property to the existing
-          // properties.
-          String existingProperties =
-              getConnectionProperties() != null && getConnectionProperties().get() != null
-                  ? getConnectionProperties().get()
-                  : "";
-          String loginTimeoutProperty = "loginTimeout=" + getLoginTimeout().get().toString();
-          String updatedProperties =
-              existingProperties.isEmpty()
-                  ? loginTimeoutProperty
-                  : existingProperties + ";" + loginTimeoutProperty;
-          basicDataSource.setConnectionProperties(updatedProperties);
-        } else if (getConnectionProperties() != null && getConnectionProperties().get() != null) {
-          basicDataSource.setConnectionProperties(getConnectionProperties().get());
         }
 
         return basicDataSource;
@@ -370,11 +411,37 @@ public class CdcJdbcIO {
   }
 
   /**
-   * This class is used as the default return value of {@link JdbcIO#write()}.
-   *
-   * <p>All methods in this class delegate to the appropriate method of {@link JdbcIO.WriteVoid}.
+   * An interface used by the JdbcIO Write to format the dead-letter queue message from a failed
+   * record.
    */
-  public static class Write<T> extends PTransform<PCollection<T>, PDone> {
+  @FunctionalInterface
+  public interface DlqJsonFormatter<T> extends SerializableFunction<T, String> {}
+
+  /**
+   * The default formatter for the DLQ. It will format the message as a JSON string with the
+   * original payload and error details.
+   *
+   * @param <T> The type of the record.
+   */
+  public static class DefaultDlqJsonFormatter<T> implements DlqJsonFormatter<T> {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public String apply(T record) {
+      TableRow errorRow = new TableRow();
+      errorRow.set("payload", record.toString());
+      errorRow.set("timestamp", Instant.now().toString());
+      return errorRow.toString();
+    }
+  }
+
+  /**
+   * This class is used as the default return value of {@link CdcJdbcIO#write()}.
+   *
+   * <p>This {@link PTransform} outputs a {@link WriteResult} which contains a {@link PCollection}
+   * of failed records.
+   */
+  public static class Write<T> extends PTransform<PCollection<T>, WriteResult> {
     WriteVoid<T> inner;
 
     Write() {
@@ -411,6 +478,11 @@ public class CdcJdbcIO {
       return new Write(inner.withRetryStrategy(retryStrategy));
     }
 
+    /** See {@link WriteVoid#withDlqJsonFormatter(DlqJsonFormatter)}. */
+    public Write<T> withDlqJsonFormatter(DlqJsonFormatter<T> dlqJsonFormatter) {
+      return new Write(inner.withDlqJsonFormatter(dlqJsonFormatter));
+    }
+
     /**
      * Returns {@link WriteVoid} transform which can be used in {@link Wait#on(PCollection[])} to
      * wait until all data is written.
@@ -421,9 +493,9 @@ public class CdcJdbcIO {
      *
      * <pre>{@code
      * PCollection<Void> firstWriteResults = data.apply(JdbcIO.write()
-     *     .withDataSourceConfiguration(CONF_DB_1).withResults());
+     * .withDataSourceConfiguration(CONF_DB_1).withResults());
      * data.apply(Wait.on(firstWriteResults))
-     *     .apply(JdbcIO.write().withDataSourceConfiguration(CONF_DB_2));
+     * .apply(JdbcIO.write().withDataSourceConfiguration(CONF_DB_2));
      * }</pre>
      */
     public WriteVoid<T> withResults() {
@@ -436,15 +508,25 @@ public class CdcJdbcIO {
     }
 
     @Override
-    public PDone expand(PCollection<T> input) {
-      inner.expand(input);
-      return PDone.in(input.getPipeline());
+    public WriteResult expand(PCollection<T> input) {
+      PCollectionTuple results = inner.expand(input);
+      return new WriteResult(
+          input.getPipeline(), results.get(WriteVoid.DLQ_TAG), WriteVoid.DLQ_TAG);
     }
   }
 
-  /** A {@link PTransform} to write to a JDBC datasource. */
+  /**
+   * A {@link PTransform} to write to a JDBC datasource.
+   *
+   * <p>This transform returns a {@link PCollectionTuple} containing the main output (Void) and a
+   * DLQ output (String).
+   */
   @AutoValue
-  public abstract static class WriteVoid<T> extends PTransform<PCollection<T>, PCollection<Void>> {
+  public abstract static class WriteVoid<T> extends PTransform<PCollection<T>, PCollectionTuple> {
+
+    /** Tag for records that failed to write and should be sent to the DLQ. */
+    public static final TupleTag<String> DLQ_TAG = new TupleTag<String>("dlqTag");
+
     @Nullable
     abstract SerializableFunction<Void, DataSource> getDataSourceProviderFn();
 
@@ -455,6 +537,9 @@ public class CdcJdbcIO {
 
     @Nullable
     abstract RetryStrategy getRetryStrategy();
+
+    @Nullable
+    abstract DlqJsonFormatter<T> getDlqJsonFormatter();
 
     abstract Builder<T> toBuilder();
 
@@ -468,6 +553,8 @@ public class CdcJdbcIO {
       abstract Builder<T> setStatementFormatter(StatementFormatter<T> formatter);
 
       abstract Builder<T> setRetryStrategy(RetryStrategy deadlockPredicate);
+
+      abstract Builder<T> setDlqJsonFormatter(DlqJsonFormatter<T> dlqJsonFormatter);
 
       abstract WriteVoid<T> build();
     }
@@ -505,17 +592,46 @@ public class CdcJdbcIO {
       return toBuilder().setRetryStrategy(retryStrategy).build();
     }
 
+    public WriteVoid<T> withDlqJsonFormatter(DlqJsonFormatter<T> dlqJsonFormatter) {
+      checkArgument(dlqJsonFormatter != null, "dlqJsonFormatter can not be null");
+      return toBuilder().setDlqJsonFormatter(dlqJsonFormatter).build();
+    }
+
     @Override
-    public PCollection<Void> expand(PCollection<T> input) {
+    public PCollectionTuple expand(PCollection<T> input) {
       checkArgument(
           (getDataSourceProviderFn() != null),
           "withDataSourceConfiguration() or withDataSourceProviderFn() is required");
 
-      return input.apply(ParDo.of(new WriteFn<>(this)));
+      final TupleTag<Void> mainOutputTag = new TupleTag<Void>() {};
+
+      PCollectionTuple results =
+          input.apply(
+              "Write to SQL",
+              ParDo.of(new WriteFn<>(this))
+                  .withOutputTags(mainOutputTag, TupleTagList.of(WriteVoid.DLQ_TAG)));
+
+      // Set coder for DLQ output
+      results.get(WriteVoid.DLQ_TAG).setCoder(StringUtf8Coder.of());
+      return results;
+    }
+
+    /** A simple wrapper to hold an element along with its windowing metadata. */
+    private static class BufferedRecord<T> {
+      final T record;
+      final Instant timestamp;
+      final BoundedWindow window;
+      final PaneInfo pane;
+
+      BufferedRecord(T record, Instant timestamp, BoundedWindow window, PaneInfo pane) {
+        this.record = record;
+        this.timestamp = timestamp;
+        this.window = window;
+        this.pane = pane;
+      }
     }
 
     private static class WriteFn<T> extends DoFn<T, Void> {
-
       private final WriteVoid<T> spec;
 
       private static final int MAX_RETRIES = 5;
@@ -527,7 +643,7 @@ public class CdcJdbcIO {
       private DataSource dataSource;
       private Connection connection;
       private Statement statement;
-      private final List<T> records = new ArrayList<>();
+      private final List<BufferedRecord<T>> records = new ArrayList<>();
 
       public WriteFn(WriteVoid<T> spec) {
         this.spec = spec;
@@ -546,19 +662,44 @@ public class CdcJdbcIO {
       }
 
       @ProcessElement
-      public void processElement(ProcessContext context) throws Exception {
-        T record = context.element();
-
-        records.add(record);
+      public void processElement(ProcessContext context, BoundedWindow window) throws Exception {
+        records.add(
+            new BufferedRecord<>(context.element(), context.timestamp(), window, context.pane()));
 
         if (records.size() >= spec.getBatchSize()) {
-          executeBatch();
+          List<BufferedRecord<T>> failedRecords = executeBatch();
+          for (BufferedRecord<T> failedRecord : failedRecords) {
+            try {
+              // Use outputWithTimestamp and explicit type witness <String>
+              context.<String>outputWithTimestamp(
+                  DLQ_TAG,
+                  spec.getDlqJsonFormatter().apply(failedRecord.record),
+                  failedRecord.timestamp);
+            } catch (Exception e) {
+              LOG.error("Failed to format or output DLQ message: {}", e.getMessage());
+            }
+          }
         }
       }
 
       @FinishBundle
-      public void finishBundle() throws Exception {
-        executeBatch();
+      public void finishBundle(FinishBundleContext context) throws Exception {
+        if (!records.isEmpty()) {
+          List<BufferedRecord<T>> failedRecords = executeBatch();
+          for (BufferedRecord<T> failedRecord : failedRecords) {
+            try {
+              // Use explicit type witness <String> for output
+              context.<String>output(
+                  DLQ_TAG,
+                  spec.getDlqJsonFormatter().apply(failedRecord.record),
+                  failedRecord.timestamp,
+                  failedRecord.window);
+            } catch (Exception e) {
+              LOG.error(
+                  "Failed to format or output DLQ message in finishBundle: {}", e.getMessage());
+            }
+          }
+        }
         try {
           if (statement != null) {
             statement.close();
@@ -570,74 +711,70 @@ public class CdcJdbcIO {
         }
       }
 
-      private void executeBatch() throws SQLException, IOException, InterruptedException {
+      private List<BufferedRecord<T>> executeBatch()
+          throws SQLException, IOException, InterruptedException {
         if (records.isEmpty()) {
-          return;
+          return new ArrayList<>();
         }
+
         Sleeper sleeper = Sleeper.DEFAULT;
         BackOff backoff = BUNDLE_WRITE_BACKOFF.backoff();
         boolean singleStatementMode = false;
+        List<BufferedRecord<T>> failedRecords = new ArrayList<>();
         while (true) {
           try {
-            executeBatchStatementFormatting(singleStatementMode);
+            if (singleStatementMode) {
+              statement = connection.createStatement();
+              Iterator<BufferedRecord<T>> iterator = records.iterator();
+              while (iterator.hasNext()) {
+                BufferedRecord<T> bufferedRecord = iterator.next();
+                String formattedStatement =
+                    spec.getStatementFormatter().formatStatement(bufferedRecord.record);
+                try {
+                  statement.executeUpdate(formattedStatement);
+                  connection.commit();
+                  iterator.remove();
+                } catch (SQLException exception) {
+                  LOG.error(
+                      "SQLException Occurred: {} while executing statement: {}. Adding to failed records.",
+                      exception.toString(),
+                      formattedStatement);
+                  connection.rollback();
+                  failedRecords.add(bufferedRecord);
+                }
+              }
+            } else {
+              statement = connection.createStatement();
+              for (BufferedRecord<T> bufferedRecord : records) {
+                String formattedStatement =
+                    spec.getStatementFormatter().formatStatement(bufferedRecord.record);
+                statement.addBatch(formattedStatement);
+              }
+              statement.executeBatch();
+              connection.commit();
+              records.clear();
+            }
             break;
           } catch (SQLException exception) {
-            // TODO: How should we handle failures?
+            if (singleStatementMode) {
+              LOG.error(
+                  "Errors occurred during single-statement mode. "
+                      + "Records in this batch that failed have been sent to DLQ.",
+                  exception);
+              break; // Exit retry loop
+            }
+
             connection.rollback();
             if (!BackOffUtils.next(sleeper, backoff)) {
-              if (singleStatementMode) {
-                // max batch retries reached, running
-                throw exception;
-              }
-              // attempt to execute one statement at a time as a final attempt
+              LOG.warn(
+                  "Batch write failed: {}. Retrying in single-statement mode.",
+                  exception.getMessage());
               singleStatementMode = true;
             }
-            LOG.warn("SQLException Occurred: {}", exception.toString());
+            LOG.warn("SQLException Occurred, retrying: {}", exception.toString());
           }
         }
-        records.clear();
-      }
-
-      private void executeBatchStatementFormatting(boolean singleStatementMode)
-          throws SQLException, IOException, InterruptedException {
-        if (singleStatementMode) {
-          executeBatchSingleStatementFormatting();
-        } else {
-          executeBatchMultiStatementFormatting();
-        }
-      }
-
-      private void executeBatchMultiStatementFormatting()
-          throws SQLException, IOException, InterruptedException {
-        statement = connection.createStatement();
-
-        for (T record : records) {
-          String formattedStatement = spec.getStatementFormatter().formatStatement(record);
-          statement.addBatch(formattedStatement);
-        }
-
-        // execute the batch
-        statement.executeBatch();
-        connection.commit();
-      }
-
-      private void executeBatchSingleStatementFormatting()
-          throws SQLException, IOException, InterruptedException {
-        statement = connection.createStatement();
-
-        for (T record : records) {
-          String formattedStatement = spec.getStatementFormatter().formatStatement(record);
-          try {
-            statement.executeUpdate(formattedStatement);
-            connection.commit();
-          } catch (SQLException exception) {
-            LOG.error(
-                "SQLException Occurred: {} while executing statement: {}",
-                exception.toString(),
-                formattedStatement);
-            connection.rollback();
-          }
-        }
+        return failedRecords;
       }
     }
   }
