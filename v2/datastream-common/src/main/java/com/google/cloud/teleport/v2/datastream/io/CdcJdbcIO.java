@@ -15,9 +15,12 @@
  */
 package com.google.cloud.teleport.v2.datastream.io;
 
+
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
-import com.google.api.services.bigquery.model.TableRow;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.auto.value.AutoValue;
 import java.io.IOException;
 import java.io.Serializable;
@@ -417,21 +420,29 @@ public class CdcJdbcIO {
   @FunctionalInterface
   public interface DlqJsonFormatter<T> extends SerializableFunction<T, String> {}
 
-  /**
-   * The default formatter for the DLQ. It will format the message as a JSON string with the
-   * original payload and error details.
-   *
-   * @param <T> The type of the record.
-   */
   public static class DefaultDlqJsonFormatter<T> implements DlqJsonFormatter<T> {
     private static final long serialVersionUID = 1L;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Override
     public String apply(T record) {
-      TableRow errorRow = new TableRow();
-      errorRow.set("payload", record.toString());
-      errorRow.set("timestamp", Instant.now().toString());
-      return errorRow.toString();
+      try {
+        ObjectNode jsonWrapper = MAPPER.createObjectNode();
+        // FIX: Parse the string into a JsonNode first, then set it.
+        // This creates {"message": {...}} instead of {"message": "{...}"}
+        JsonNode messageNode = MAPPER.readTree(record.toString());
+        jsonWrapper.set("message", messageNode);
+        
+        jsonWrapper.put("error_message", "Failed insert in CdcJdbcIO");
+        jsonWrapper.put("timestamp", Instant.now().toString());
+        return MAPPER.writeValueAsString(jsonWrapper);
+      } catch (Exception e) {
+        // Fallback for non-JSON records
+        ObjectNode fallback = MAPPER.createObjectNode();
+        fallback.put("message", record.toString());
+        fallback.put("error_message", "Serialization failed: " + e.getMessage());
+        return fallback.toString();
+      }
     }
   }
 

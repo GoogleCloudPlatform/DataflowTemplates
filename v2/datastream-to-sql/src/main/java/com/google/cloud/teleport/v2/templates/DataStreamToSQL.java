@@ -15,7 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
-import com.google.api.services.bigquery.model.TableRow;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -484,38 +486,48 @@ public class DataStreamToSQL {
     return mappings;
   }
 
-  /**
-   * The {@code DmlInfoDlqJsonFormatter} class formats a failed DML info record into a JSON string
-   * for the Dead Letter Queue.
-   */
   public static class DmlInfoDlqJsonFormatter
       implements CdcJdbcIO.DlqJsonFormatter<KV<String, DmlInfo>>, Serializable {
     private static final long serialVersionUID = 1L;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @Override
     public String apply(KV<String, DmlInfo> record) {
-      TableRow errorRow = new TableRow();
-      errorRow.set("payload", record.getValue().getOriginalPayload());
-      errorRow.set("timestamp", Instant.now().toString());
-      return errorRow.toString();
+      try {
+        ObjectNode jsonWrapper = MAPPER.createObjectNode();
+        // FIX: Parse nested object
+        JsonNode messageNode = MAPPER.readTree(record.getValue().getOriginalPayload());
+        jsonWrapper.set("message", messageNode);
+        
+        jsonWrapper.put("error_message", "Failed DML execution");
+        jsonWrapper.put("timestamp", Instant.now().toString());
+        return MAPPER.writeValueAsString(jsonWrapper);
+      } catch (Exception e) {
+         return "{\"message\": \"SERIALIZATION_FAILED\"}";
+      }
     }
   }
 
-  /**
-   * The {@code FailsafeDlqJsonFormatter} class formats a FailsafeElement (typically from upstream
-   * conversion errors) into a JSON string for the Dead Letter Queue.
-   */
   public static class FailsafeDlqJsonFormatter
       extends DoFn<FailsafeElement<String, String>, String> {
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     @ProcessElement
     public void processElement(ProcessContext context) {
-      FailsafeElement<String, String> element = context.element();
-      TableRow errorRow = new TableRow();
-      errorRow.set("payload", element.getOriginalPayload());
-      errorRow.set("error_message", element.getErrorMessage());
-      errorRow.set("stacktrace", element.getStacktrace());
-      errorRow.set("timestamp", Instant.now().toString());
-      context.output(errorRow.toString());
+      try {
+        FailsafeElement<String, String> element = context.element();
+        ObjectNode jsonWrapper = MAPPER.createObjectNode();
+        // FIX: Parse nested object
+        JsonNode messageNode = MAPPER.readTree(element.getOriginalPayload());
+        jsonWrapper.set("message", messageNode);
+
+        jsonWrapper.put("error_message", element.getErrorMessage());
+        jsonWrapper.put("stacktrace", element.getStacktrace());
+        jsonWrapper.put("timestamp", Instant.now().toString());
+        context.output(MAPPER.writeValueAsString(jsonWrapper));
+      } catch (Exception e) {
+        LOG.error("Failed to format failsafe DLQ record", e);
+      }
     }
   }
 
@@ -593,11 +605,25 @@ public class DataStreamToSQL {
                 "DLQ Consumer/cleaner",
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
+                      private final ObjectMapper mapper = new ObjectMapper();
                       @ProcessElement
                       public void process(
                           @Element String input,
                           OutputReceiver<FailsafeElement<String, String>> receiver) {
-                        receiver.output(FailsafeElement.of(input, input));
+                        try {
+                            JsonNode wrapper = mapper.readTree(input);
+                            if (wrapper.has("message")) {
+                                // FIX: Use .toString() to convert the nested JSON Object back to a String.
+                                // .asText() would return null for a JSON Object node.
+                                String payload = wrapper.get("message").toString();
+                                receiver.output(FailsafeElement.of(payload, payload));
+                            } else {
+                                receiver.output(FailsafeElement.of(input, input));
+                            }
+                        } catch (Exception e) {
+                            LOG.warn("Could not parse DLQ wrapper, trying raw: {}", e.getMessage());
+                            receiver.output(FailsafeElement.of(input, input));
+                        }
                       }
                     }))
             .setCoder(FAILSAFE_ELEMENT_CODER);

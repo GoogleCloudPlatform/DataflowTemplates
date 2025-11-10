@@ -102,7 +102,8 @@ public class ProcessDml {
       String numThreads = Integer.toString(Math.abs(stateKey.hashCode()) % NUM_THREADS);
       if (dmlInfo.getAllPkFields().size() == 0) {
         context.output(KV.of(numThreads, dmlInfo));
-      } else if (lastSortKey == null || currentSortKey.compareTo(lastSortKey) > 0) {
+      // FIX: Changed '> 0' to '>= 0' to allow DLQ retries to pass through
+      } else if (lastSortKey == null || currentSortKey.compareTo(lastSortKey) >= 0) {
         myState.write(currentSortKey);
         context.output(KV.of(numThreads, dmlInfo));
 
