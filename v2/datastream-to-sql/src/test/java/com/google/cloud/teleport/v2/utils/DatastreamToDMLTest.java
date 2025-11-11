@@ -1015,7 +1015,6 @@ public class DatastreamToDMLTest {
     // Assert
     assertThat(lowerColumns).isEqualTo("\"mycolumn\",\"another_column\"");
   }
-<<<<<<< HEAD
 
   /**
    * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts JSON
@@ -1040,7 +1039,6 @@ public class DatastreamToDMLTest {
     String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
     assertEquals(expectedJsonb, actualJsonb);
   }
-=======
   @Test
   public void testDmlInfo_initializesWithOriginalPayload() {
     // Arrange
@@ -1292,5 +1290,4 @@ public class DatastreamToDMLTest {
   }
   
 
->>>>>>> 409270374 (Unit tests and code changes)
 }
