@@ -190,6 +190,15 @@ public abstract class DatastreamToDML
               .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     }
   }
+  
+  // NEW METHOD: forcefully clear static caches
+  public static synchronized void clearCaches() {
+    if (tableCache != null || primaryKeyCache != null) {
+        LOG.info("Forcing clear of all JDBC schema caches due to DLQ retry.");
+    }
+    tableCache = null;
+    primaryKeyCache = null;
+  }
 
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow
   public List<String> getDefaultPrimaryKeys() {
