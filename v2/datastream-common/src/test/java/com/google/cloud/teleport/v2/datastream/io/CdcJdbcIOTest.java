@@ -183,10 +183,10 @@ public final class CdcJdbcIOTest {
     assertTrue(resultNode.has("message"));
     assertTrue(resultNode.get("message").isObject());
     assertEquals(1, resultNode.get("message").get("id").asInt());
-    
+
     assertTrue(resultNode.has("error_message"));
     assertEquals("Failed insert in CdcJdbcIO", resultNode.get("error_message").asText());
-    
+
     assertTrue(resultNode.has("timestamp"));
   }
 
@@ -203,7 +203,7 @@ public final class CdcJdbcIOTest {
     assertTrue(resultNode.has("message"));
     // In the fallback case, "message" is just the string, not a nested object
     assertEquals("Not a JSON string", resultNode.get("message").asText());
-    
+
     assertTrue(resultNode.has("error_message"));
     assertThat(resultNode.get("error_message").asText(), containsString("Serialization failed"));
   }
@@ -222,20 +222,20 @@ public final class CdcJdbcIOTest {
 
     PCollection<String> input = pipeline.apply(Create.of("record1", "record2"));
 
-    CdcJdbcIO.WriteResult result = input.apply(
-        CdcJdbcIO.<String>write()
-            .withDataSourceConfiguration(config)
-            .withStatementFormatter(record -> "INSERT INTO table VALUES ('" + record + "')")
-    );
+    CdcJdbcIO.WriteResult result =
+        input.apply(
+            CdcJdbcIO.<String>write()
+                .withDataSourceConfiguration(config)
+                .withStatementFormatter(record -> "INSERT INTO table VALUES ('" + record + "')"));
 
     assertNotNull(result);
     assertNotNull(result.getFailedInserts());
   }
-  
+
   @Test
   public void testRetryStrategy_defaultDetectsDeadlock() {
     CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
-    
+
     SQLException deadlockException = new SQLException("Deadlock found", "40001");
     SQLException otherException = new SQLException("Syntax error", "42601");
 
