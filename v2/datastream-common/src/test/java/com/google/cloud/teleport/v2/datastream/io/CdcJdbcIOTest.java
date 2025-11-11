@@ -15,14 +15,24 @@
  */
 package com.google.cloud.teleport.v2.datastream.io;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.sql.SQLException;
 import javax.sql.DataSource;
 import org.apache.beam.sdk.options.ValueProvider;
+import org.apache.beam.sdk.testing.TestPipeline;
+import org.apache.beam.sdk.transforms.Create;
+import org.apache.beam.sdk.values.PCollection;
 import org.apache.commons.dbcp2.BasicDataSource;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -36,6 +46,8 @@ public final class CdcJdbcIOTest {
   private static final String USERNAME = "testuser";
   private static final String PASSWORD = "testpass";
   private static final Integer LOGIN_TIMEOUT = 30;
+
+  @Rule public final transient TestPipeline pipeline = TestPipeline.create();
 
   @Test
   public void testDataSourceConfiguration_withLoginTimeout_staticValue() {
@@ -154,5 +166,80 @@ public final class CdcJdbcIOTest {
     BasicDataSource basicDataSource = (BasicDataSource) dataSource;
     // Note: BasicDataSource.getLoginTimeout() throws UnsupportedOperationException
     // so we cannot directly verify the login timeout value
+  }
+
+  @Test
+  public void testDefaultDlqJsonFormatter_formatsValidJsonString() throws IOException {
+    CdcJdbcIO.DefaultDlqJsonFormatter<String> formatter = new CdcJdbcIO.DefaultDlqJsonFormatter<>();
+    String inputRecord = "{\"id\": 1, \"name\": \"test\"}";
+
+    String result = formatter.apply(inputRecord);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode resultNode = mapper.readTree(result);
+
+    // Verify strict JSON structure required by FileBasedDeadLetterQueueReconsumer
+    // It must wrap the payload in "message"
+    assertTrue(resultNode.has("message"));
+    assertTrue(resultNode.get("message").isObject());
+    assertEquals(1, resultNode.get("message").get("id").asInt());
+    
+    assertTrue(resultNode.has("error_message"));
+    assertEquals("Failed insert in CdcJdbcIO", resultNode.get("error_message").asText());
+    
+    assertTrue(resultNode.has("timestamp"));
+  }
+
+  @Test
+  public void testDefaultDlqJsonFormatter_formatsInvalidJsonString() throws IOException {
+    CdcJdbcIO.DefaultDlqJsonFormatter<String> formatter = new CdcJdbcIO.DefaultDlqJsonFormatter<>();
+    String inputRecord = "Not a JSON string";
+
+    String result = formatter.apply(inputRecord);
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode resultNode = mapper.readTree(result);
+
+    assertTrue(resultNode.has("message"));
+    // In the fallback case, "message" is just the string, not a nested object
+    assertEquals("Not a JSON string", resultNode.get("message").asText());
+    
+    assertTrue(resultNode.has("error_message"));
+    assertThat(resultNode.get("error_message").asText(), containsString("Serialization failed"));
+  }
+
+  @Test
+  public void testWrite_buildsPipeline() {
+    // Disable the check for pipeline.run() because we only want to verify
+    // that the graph constructs successfully without executing it.
+    pipeline.enableAbandonedNodeEnforcement(false);
+
+    // This test ensures that the PTransform expands successfully without errors.
+    CdcJdbcIO.DataSourceConfiguration config =
+        CdcJdbcIO.DataSourceConfiguration.create(DRIVER_CLASS_NAME, URL)
+            .withUsername(USERNAME)
+            .withPassword(PASSWORD);
+
+    PCollection<String> input = pipeline.apply(Create.of("record1", "record2"));
+
+    CdcJdbcIO.WriteResult result = input.apply(
+        CdcJdbcIO.<String>write()
+            .withDataSourceConfiguration(config)
+            .withStatementFormatter(record -> "INSERT INTO table VALUES ('" + record + "')")
+    );
+
+    assertNotNull(result);
+    assertNotNull(result.getFailedInserts());
+  }
+  
+  @Test
+  public void testRetryStrategy_defaultDetectsDeadlock() {
+    CdcJdbcIO.RetryStrategy strategy = new CdcJdbcIO.DefaultRetryStrategy();
+    
+    SQLException deadlockException = new SQLException("Deadlock found", "40001");
+    SQLException otherException = new SQLException("Syntax error", "42601");
+
+    assertTrue("Should retry on 40001", strategy.apply(deadlockException));
+    assertTrue("Should not retry on other states", !strategy.apply(otherException));
   }
 }
