@@ -611,6 +611,7 @@ public class DataStreamToSQL {
                           @Element String input,
                           OutputReceiver<FailsafeElement<String, String>> receiver) {
                         try {
+                            DatastreamToDML.clearCaches();
                             JsonNode wrapper = mapper.readTree(input);
                             if (wrapper.has("message")) {
                                 // FIX: Use .toString() to convert the nested JSON Object back to a String.
