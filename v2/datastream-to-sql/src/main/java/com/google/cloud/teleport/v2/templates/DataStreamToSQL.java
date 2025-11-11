@@ -498,12 +498,12 @@ public class DataStreamToSQL {
         // FIX: Parse nested object
         JsonNode messageNode = MAPPER.readTree(record.getValue().getOriginalPayload());
         jsonWrapper.set("message", messageNode);
-        
+
         jsonWrapper.put("error_message", "Failed DML execution");
         jsonWrapper.put("timestamp", Instant.now().toString());
         return MAPPER.writeValueAsString(jsonWrapper);
       } catch (Exception e) {
-         return "{\"message\": \"SERIALIZATION_FAILED\"}";
+        return "{\"message\": \"SERIALIZATION_FAILED\"}";
       }
     }
   }
@@ -606,24 +606,26 @@ public class DataStreamToSQL {
                 ParDo.of(
                     new DoFn<String, FailsafeElement<String, String>>() {
                       private final ObjectMapper mapper = new ObjectMapper();
+
                       @ProcessElement
                       public void process(
                           @Element String input,
                           OutputReceiver<FailsafeElement<String, String>> receiver) {
                         try {
-                            DatastreamToDML.clearCaches();
-                            JsonNode wrapper = mapper.readTree(input);
-                            if (wrapper.has("message")) {
-                                // FIX: Use .toString() to convert the nested JSON Object back to a String.
-                                // .asText() would return null for a JSON Object node.
-                                String payload = wrapper.get("message").toString();
-                                receiver.output(FailsafeElement.of(payload, payload));
-                            } else {
-                                receiver.output(FailsafeElement.of(input, input));
-                            }
-                        } catch (Exception e) {
-                            LOG.warn("Could not parse DLQ wrapper, trying raw: {}", e.getMessage());
+                          DatastreamToDML.clearCaches();
+                          JsonNode wrapper = mapper.readTree(input);
+                          if (wrapper.has("message")) {
+                            // FIX: Use .toString() to convert the nested JSON Object back to a
+                            // String.
+                            // .asText() would return null for a JSON Object node.
+                            String payload = wrapper.get("message").toString();
+                            receiver.output(FailsafeElement.of(payload, payload));
+                          } else {
                             receiver.output(FailsafeElement.of(input, input));
+                          }
+                        } catch (Exception e) {
+                          LOG.warn("Could not parse DLQ wrapper, trying raw: {}", e.getMessage());
+                          receiver.output(FailsafeElement.of(input, input));
                         }
                       }
                     }))

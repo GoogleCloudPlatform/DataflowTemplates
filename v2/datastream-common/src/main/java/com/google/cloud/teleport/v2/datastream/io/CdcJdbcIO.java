@@ -15,7 +15,6 @@
  */
 package com.google.cloud.teleport.v2.datastream.io;
 
-
 import static org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions.checkArgument;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -432,7 +431,7 @@ public class CdcJdbcIO {
         // This creates {"message": {...}} instead of {"message": "{...}"}
         JsonNode messageNode = MAPPER.readTree(record.toString());
         jsonWrapper.set("message", messageNode);
-        
+
         jsonWrapper.put("error_message", "Failed insert in CdcJdbcIO");
         jsonWrapper.put("timestamp", Instant.now().toString());
         return MAPPER.writeValueAsString(jsonWrapper);
