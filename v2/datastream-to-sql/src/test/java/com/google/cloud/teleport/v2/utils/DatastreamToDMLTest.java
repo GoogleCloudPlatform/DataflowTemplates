@@ -1280,6 +1280,8 @@ public class DatastreamToDMLTest {
     // We are testing graph construction, not execution.
     assertThat(output.has(CreateDml.DML_MAIN_TAG)).isTrue();
     assertThat(output.has(DatastreamToDML.ERROR_TAG)).isTrue();
+  }
+
   /**
    * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts JSON
    * and JSONB data into correct typed literal syntax.
