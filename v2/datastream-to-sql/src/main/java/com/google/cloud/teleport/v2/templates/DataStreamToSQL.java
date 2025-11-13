@@ -434,8 +434,12 @@ public class DataStreamToSQL {
         CdcJdbcIO.DataSourceConfiguration.create(jdbcDriverName, jdbcDriverConnectionString)
             .withUsername(options.getDatabaseUser())
             .withPassword(options.getDatabasePassword())
-            .withMaxIdleConnections(new Integer(0))
-            .withLoginTimeout(options.getDatabaseLoginTimeout());
+            .withMaxIdleConnections(new Integer(0));
+
+    if (options.getDatabaseLoginTimeout() != null) {
+      dataSourceConfiguration =
+          dataSourceConfiguration.withLoginTimeout(options.getDatabaseLoginTimeout());
+    }
 
     return dataSourceConfiguration;
   }
