@@ -1016,29 +1016,6 @@ public class DatastreamToDMLTest {
     assertThat(lowerColumns).isEqualTo("\"mycolumn\",\"another_column\"");
   }
 
-  /**
-   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts JSON
-   * and JSONB data into correct typed literal syntax.
-   */
-  @Test
-  public void testJsonAndJsonbTypeCoercion() {
-    String json =
-        "{\"json_column\": {\"a\": 1, \"b\": \"test\"},"
-            + "\"jsonb_column\": {\"c\": true, \"d\": [1, 2]}}";
-    JsonNode rowObj = getRowObj(json);
-    Map<String, String> tableSchema = new HashMap<>();
-    tableSchema.put("json_column", "JSON");
-    tableSchema.put("jsonb_column", "JSONB");
-    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
-
-    String expectedJson = "'{\"a\":1,\"b\":\"test\"}'";
-    String actualJson = dml.getValueSql(rowObj, "json_column", tableSchema);
-    assertEquals(expectedJson, actualJson);
-
-    String expectedJsonb = "'{\"c\":true,\"d\":[1,2]}'";
-    String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
-    assertEquals(expectedJsonb, actualJsonb);
-  }
   @Test
   public void testDmlInfo_initializesWithOriginalPayload() {
     // Arrange
@@ -1287,6 +1264,30 @@ public class DatastreamToDMLTest {
     // We are testing graph construction, not execution.
     assertThat(output.has(CreateDml.DML_MAIN_TAG)).isTrue();
     assertThat(output.has(DatastreamToDML.ERROR_TAG)).isTrue();
+  }
+
+  /**
+   * Test whether {@link DatastreamToPostgresDML#getValueSql(JsonNode, String, Map)} converts JSON
+   * and JSONB data into correct typed literal syntax.
+   */
+  @Test
+  public void testJsonAndJsonbTypeCoercion() {
+    String json =
+        "{\"json_column\": {\"a\": 1, \"b\": \"test\"},"
+            + "\"jsonb_column\": {\"c\": true, \"d\": [1, 2]}}";
+    JsonNode rowObj = getRowObj(json);
+    Map<String, String> tableSchema = new HashMap<>();
+    tableSchema.put("json_column", "JSON");
+    tableSchema.put("jsonb_column", "JSONB");
+    DatastreamToPostgresDML dml = DatastreamToPostgresDML.of(null);
+
+    String expectedJson = "'{\"a\":1,\"b\":\"test\"}'";
+    String actualJson = dml.getValueSql(rowObj, "json_column", tableSchema);
+    assertEquals(expectedJson, actualJson);
+
+    String expectedJsonb = "'{\"c\":true,\"d\":[1,2]}'";
+    String actualJsonb = dml.getValueSql(rowObj, "jsonb_column", tableSchema);
+    assertEquals(expectedJsonb, actualJsonb);
   }
   
 
