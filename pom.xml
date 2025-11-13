@@ -84,7 +84,7 @@
     <snappy.version>1.1.10.8</snappy.version>
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
-    <truth.version>1.1.5</truth.version>
+    <truth.version>1.4.5</truth.version>
     <gax.version>2.72.1</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
