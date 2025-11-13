@@ -30,9 +30,7 @@ def get_java_type(param_type):
     elif param_type == 'boolean':
         return 'Boolean'
     else:
-        # Default to String for unknown types
         return 'String'
-
 
 def get_template_parameter_type(param_type):
     """Maps a YAML parameter type to a TemplateParameter annotation type."""
@@ -45,13 +43,17 @@ def get_template_parameter_type(param_type):
     else:
         return 'TemplateParameter.Text'
 
-
-
-
+def wrap_for_java_multiline(text: str, width: int, indent: int) -> str:
+    """Wraps a string and formats it as a multi-line Java string literal."""
+    lines = textwrap.wrap(text.strip().replace('"', '\\"'), width=width, break_long_words=False)
+    if not lines:
+        return ""
+    return ('"\n' + ' ' * indent + '+ "').join(lines)
 
 def generate_java_interface(yaml_path, java_path):
-    """Generates a Java interface file from a YAML template."""
+    """Generates a Java interface file from a YAML blueprint."""
 
+    # Read the YAML file and do some replacements
     with open(yaml_path, 'r') as f:
         content = f.read()
         # Remove Jinja variables before parsing
@@ -67,7 +69,7 @@ def generate_java_interface(yaml_path, java_path):
     class_name = java_path.stem
 
     # Read the Java template
-    template_path = Path(__file__).parent / "java_template.txt"
+    template_path = Path(__file__).parent / "java.tmpl"
     with open(template_path, 'r') as f:
         java_template = f.read()
 
@@ -78,13 +80,9 @@ def generate_java_interface(yaml_path, java_path):
         java_type = get_java_type(param.get('type', 'text'))
         template_param_type = get_template_parameter_type(param.get('type', 'text'))
         getter_name = "get" + param_name[0].upper() + param_name[1:]
-        description = param.get('description', '').strip().replace('"', '\\"')
-        help_text = param.get('help', '').strip().replace('"', '\\"')
+        wrapped_description = wrap_for_java_multiline(param.get('description', ''), width=100, indent=8)
+        wrapped_help_text = wrap_for_java_multiline(param.get('help', ''), width=100, indent=8)
         example = param.get('example', '').strip().replace('"', '\\"')
-
-        # Wrap description
-        wrapped_description = textwrap.fill(description, width=70, subsequent_indent=' ' * 6)
-
 
         param_code = f"""
   @{template_param_type}(
@@ -92,13 +90,15 @@ def generate_java_interface(yaml_path, java_path):
       name = "{param_name}",
       optional = {str(not param.get('required', False)).lower()},
       description = "{wrapped_description}",
-      helpText = "{help_text}",
+      helpText = "{wrapped_help_text}",
       example = "{example}"
     )
 """
+        # required param
         if param.get('required', False):
             param_code += "  @Validation.Required\n"
 
+        # default param
         if 'default' in param:
             if java_type == 'String':
                 param_code += f'  @Default.String("{param["default"]}")\n'
@@ -107,7 +107,9 @@ def generate_java_interface(yaml_path, java_path):
             elif java_type == 'Boolean':
                 param_code += f'  @Default.Boolean({param["default"]})\n'
 
+        # getter name
         param_code += f"  {java_type} {getter_name}();"
+        
         parameters_code.append(param_code)
 
     # Format requirements for Java array
@@ -125,12 +127,15 @@ def generate_java_interface(yaml_path, java_path):
         if req_items:
             reqs_formatted = '{' + ',\n      '.join(req_items) + '\n    }'
 
+    # Wrap the main description for better readability in the generated Java file.
+    formatted_description = wrap_for_java_multiline(template_info.get('description', ''), width=100, indent=8)
+
     # Replace placeholders in the template
     java_code = java_template.format(
         template_info_name=template_info.get('name', ''),
         template_info_category=template_info.get('category', 'STREAMING'),
         template_info_display_name=template_info.get('display_name', ''),
-        template_info_description=template_info.get('description', '').strip(),
+        template_info_description=formatted_description,
         template_info_flex_container_name=template_info.get('flex_container_name', ''),
         yamlTemplateFile=template_info.get('yamlTemplateFile', ''),
         files_to_copy=template_info.get('filesToCopy', {}).strip(),
