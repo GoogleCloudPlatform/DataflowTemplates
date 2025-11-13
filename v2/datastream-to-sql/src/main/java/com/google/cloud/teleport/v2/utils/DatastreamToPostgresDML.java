@@ -117,6 +117,16 @@ public class DatastreamToPostgresDML extends DatastreamToDML {
           return hstoreLiteral;
         }
         return hstoreLiteral + "::hstore";
+      case "JSON":
+      case "JSONB":
+        if (columnValue.equals("")
+            || columnValue.equals("''")
+            || columnValue.equalsIgnoreCase("'NULL'")
+            || columnValue.equalsIgnoreCase("NULL")) {
+          return getNullValueSql();
+        }
+        return "'" + cleanSql(unquote(columnValue)) + "'";
+
       case "LTREE":
         if (columnValue.equals("")
             || columnValue.equals("''")
