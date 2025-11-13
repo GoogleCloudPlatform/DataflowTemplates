@@ -1,0 +1,40 @@
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.google.cloud.teleport.templates.yaml;
+
+import com.google.cloud.teleport.metadata.Template;
+import com.google.cloud.teleport.metadata.TemplateCategory;
+import com.google.cloud.teleport.metadata.TemplateParameter;
+import org.apache.beam.sdk.options.Default;
+import org.apache.beam.sdk.options.Validation;
+
+@Template(
+    name = "{template_info_name}",
+    category = TemplateCategory.{template_info_category},
+    type = Template.TemplateType.YAML,
+    displayName = "{template_info_display_name}",
+    description = "{template_info_description}",
+    flexContainerName = "{template_info_flex_container_name}",
+    yamlTemplateFile = "{yaml_path_name}",
+    filesToCopy = {files_to_copy},
+    documentation = "{documentation}",
+    contactInformation = "{contactInformation}",
+    requirements = {requirements},
+    streaming = {streaming},
+    hidden = {hidden})
+public interface {class_name} {{
+{parameters}
+}}
