@@ -1,0 +1,75 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     https://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This workflow generates or modifies Java template files based on changes
+# to YAML files in a pull request.
+
+name: YAML to Java Template Generation or Modification
+
+on:
+  pull_request:
+    paths:
+      - 'yaml/src/main/yaml/*.yaml'
+
+permissions: write-all
+
+jobs:
+  job-generate-templates:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install pyyaml
+
+      - name: Find changed YAML files
+        id: yaml-files
+        run: |
+          echo "Finding changed YAML files at 'yaml/src/main/yaml/'"
+          FILES=$(find yaml/src/main/yaml -name '*.yaml' | tr '\n' ' ')
+          echo "files found: $FILES"
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
+      - name: Generate Java Templates
+        if: steps.yaml-files.outputs.files
+        run: |
+          echo "Processing YAML files: ${{ steps.yaml-files.outputs.files }}"
+          for file in ${{ steps.yaml-files.outputs.files }}; do
+            python yaml/scripts/generate_yaml_java_templates.py "$file"
+          done
+
+      - name: Fetch and Checkout PR Branch
+        run: |
+          git fetch origin refs/pull/${{ github.event.number }}/head:${{ github.head_ref }}
+          git checkout ${{ github.head_ref }}
+          
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore(templates): Autogenerate/modify Java templates from YAML"
+          branch: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+
+
+
