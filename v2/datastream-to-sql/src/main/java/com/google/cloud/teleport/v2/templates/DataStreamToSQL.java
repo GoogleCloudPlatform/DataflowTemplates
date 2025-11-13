@@ -361,6 +361,7 @@ public class DataStreamToSQL {
 
     @TemplateParameter.Text(
         order = 21,
+        optional = true,
         description = "Dead letter queue directory.",
         helpText =
             "The path that Dataflow uses to write the dead-letter queue output. This path must not be in the same path as the Datastream file output. Defaults to `empty`.")
