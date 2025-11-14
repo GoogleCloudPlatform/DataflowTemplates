@@ -75,6 +75,7 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
   private static final String TABLE = "Users";
   private static final String TABLE_WITH_VIRTUAL_GEN_COL = "TableWithVirtualGeneratedColumn";
   private static final String TABLE_WITH_STORED_GEN_COL = "TableWithStoredGeneratedColumn";
+  private static final String TABLE_WITH_IDENTITY_COL = "TableWithIdentityColumn";
   private static final String BOUNDARY_CHECK_TABLE =
       "testtable_03TpCoVF16ED0KLxM3v808cH3bTGQ0uK_FEXuZHbttvYZPAeGeqiO";
   private static final HashSet<SpannerToSourceDbIT> testInstances = new HashSet<>();
@@ -273,6 +274,23 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     assertBoundaryRowInMySQL();
   }
 
+  @Test
+  public void spannerToSourceDbWithIdentityColumns() {
+    assertThatPipeline(jobInfo).isRunning();
+    // INSERT
+    writeRowsWithIdentityColInSpanner();
+
+    assertThatPipeline(jobInfo).isRunning();
+
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, TEST_TIMEOUT),
+                () -> jdbcResourceManager.getRowCount(TABLE_WITH_IDENTITY_COL) == 2);
+    assertThatResult(result).meetsConditions();
+    assertIdentityColRowsInMySQLAfterInsert();
+  }
+
   private void writeMaxColRowsInSpanner() {
     List<Mutation> mutations = new ArrayList<>();
     Mutation.WriteBuilder mutationBuilder =
@@ -412,5 +430,34 @@ public class SpannerToSourceDbIT extends SpannerToSourceDbITBase {
     long rowCountTable1 = jdbcResourceManager.getRowCount(TABLE_WITH_STORED_GEN_COL);
     long rowCountTable2 = jdbcResourceManager.getRowCount(TABLE_WITH_VIRTUAL_GEN_COL);
     return (rowCountTable1 == 0) && (rowCountTable2 == 0);
+  }
+
+  private void writeRowsWithIdentityColInSpanner() {
+    List<Mutation> mutations = new ArrayList<>();
+    mutations.add(
+        Mutation.newInsertBuilder(TABLE_WITH_IDENTITY_COL)
+            .set("id")
+            .to(1)
+            .set("column1")
+            .to("id1")
+            .build());
+    mutations.add(
+        Mutation.newInsertBuilder(TABLE_WITH_IDENTITY_COL)
+            .set("id")
+            .to(2)
+            .set("column1")
+            .to("id2")
+            .build());
+
+    spannerResourceManager.write(mutations);
+  }
+
+  private void assertIdentityColRowsInMySQLAfterInsert() {
+    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE_WITH_IDENTITY_COL);
+    assertThat(rows).hasSize(2);
+    assertThat(rows.get(0).get("id")).isEqualTo(1);
+    assertThat(rows.get(0).get("column1")).isEqualTo("id1");
+    assertThat(rows.get(1).get("id")).isEqualTo(2);
+    assertThat(rows.get(1).get("column1")).isEqualTo("id2");
   }
 }

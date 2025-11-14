@@ -463,6 +463,36 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
     assertThatResult(result).meetsConditions();
   }
 
+  @Test
+  public void migrationTestWithIdentityColumns() {
+    // Construct a ChainedConditionCheck with 2 stages.
+    // 1. Send initial wave of events
+    // 2. Wait on Spanner to have events
+    ChainedConditionCheck conditionCheck =
+        ChainedConditionCheck.builder(
+                List.of(
+                    uploadDataStreamFile(
+                        jobInfo,
+                        TABLE6,
+                        "identity.avro",
+                        "DataStreamToSpannerDDLIT/Books.avro",
+                        gcsResourceManager),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE6)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build()))
+            .build();
+
+    // Wait for conditions
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(8)), conditionCheck);
+
+    // Assert Conditions
+    assertThatResult(result).meetsConditions();
+    assertBooksBackfillContents();
+  }
+
   private void assertAllDatatypeColumnsTableBackfillContents() {
     List<Map<String, Object>> events = new ArrayList<>();
 
@@ -949,6 +979,28 @@ public class DataStreamToSpannerDDLIT extends DataStreamToSpannerITBase {
 
     SpannerAsserts.assertThatStructs(
             spannerResourceManager.runQuery("select id, name from Authors"))
+        .hasRecordsUnorderedCaseInsensitiveColumns(events);
+  }
+
+  private void assertBooksBackfillContents() {
+    List<Map<String, Object>> events = new ArrayList<>();
+
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", 1);
+    row.put("title", "The Lord of the Rings");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 2);
+    row.put("title", "Pride and Prejudice");
+    events.add(row);
+
+    row = new HashMap<>();
+    row.put("id", 3);
+    row.put("title", "The Hitchhiker's Guide to the Galaxy");
+    events.add(row);
+
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("select id, title from Books"))
         .hasRecordsUnorderedCaseInsensitiveColumns(events);
   }
 }
