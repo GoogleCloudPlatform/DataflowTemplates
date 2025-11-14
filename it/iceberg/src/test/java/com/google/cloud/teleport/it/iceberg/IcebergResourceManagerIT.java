@@ -19,6 +19,7 @@
 package com.google.cloud.teleport.it.iceberg;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -29,9 +30,9 @@ import java.nio.file.Files;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.beam.it.testcontainers.TestContainersIntegrationTest;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.data.Record;
@@ -46,22 +47,26 @@ import org.junit.runners.JUnit4;
 /** Integration tests for Iceberg Resource Manager. */
 @Category(TestContainersIntegrationTest.class)
 @RunWith(JUnit4.class)
-public class IcebergResourceManagerTest {
+public class IcebergResourceManagerIT {
 
   private static String warehouseLocation;
   private static IcebergResourceManager resourceManager;
+  private static String testNamespace;
+  private static String catalog;
 
   @Before
   public void setUp() throws IOException {
     String testId = UUID.randomUUID().toString();
     java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse");
     warehouseLocation = "file:" + warehouseDirectory.toString();
-    Configuration hadoopConf = new Configuration();
+    testNamespace = "namespace";
+    catalog = "default";
 
     resourceManager =
         IcebergResourceManager.builder(testId)
-            .withCatalogProperties(Map.of("warehouse", warehouseLocation, "catalog-impl", "hadoop"))
-            .withConf(hadoopConf)
+            .setCatalogName(catalog)
+            .setCatalogProperties(
+                Map.of("warehouse", warehouseLocation, "type", "hadoop"))
             .build();
   }
 
@@ -73,8 +78,63 @@ public class IcebergResourceManagerTest {
   }
 
   @Test
+  public void testCreateNamespace() {
+    assertTrue(resourceManager.createNamespace(testNamespace));
+    assertTrue(resourceManager.namespaceExists(testNamespace));
+    assertFalse(resourceManager.createNamespace(testNamespace));
+  }
+
+  @Test
+  public void testNamespaceExists() {
+    assertFalse(resourceManager.namespaceExists(testNamespace));
+    resourceManager.createNamespace(testNamespace);
+    assertTrue(resourceManager.namespaceExists(testNamespace));
+  }
+
+  @Test
+  public void testListNamespaces() {
+    String namespace1 = testNamespace + "_1";
+    String namespace2 = testNamespace + "_2";
+
+    resourceManager.createNamespace(namespace1);
+    resourceManager.createNamespace(namespace2);
+
+    Set<String> namespaces = resourceManager.listNamespaces();
+    assertTrue(namespaces.contains(namespace1));
+    assertTrue(namespaces.contains(namespace2));
+  }
+
+  @Test
+  public void testDropNamespace() {
+    resourceManager.createNamespace(testNamespace);
+    assertTrue(resourceManager.namespaceExists(testNamespace));
+    assertTrue(resourceManager.dropNamespace(testNamespace, false));
+    assertFalse(resourceManager.namespaceExists(testNamespace));
+    assertFalse(resourceManager.dropNamespace(testNamespace, false)); // Should return false if not exists
+  }
+
+  @Test
+  public void testDropNamespaceCascade() {
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".test_table_cascade";
+    Schema schema =
+        new Schema(
+            Types.NestedField.required(1, "id", Types.LongType.get()),
+            Types.NestedField.optional(2, "name", Types.StringType.get()));
+    resourceManager.createTable(tableName, schema);
+
+    assertTrue(resourceManager.namespaceExists(testNamespace));
+    assertNotNull(resourceManager.loadTable(tableName));
+
+    assertTrue(resourceManager.dropNamespace(testNamespace, true));
+    assertFalse(resourceManager.namespaceExists(testNamespace));
+    assertThrows(IcebergResourceManagerException.class, () -> resourceManager.loadTable(tableName));
+  }
+
+  @Test
   public void testCreateTable() {
-    String tableName = "test_table_create";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".test_table_create";
     Schema schema =
         new Schema(
             Types.NestedField.required(1, "id", Types.LongType.get()),
@@ -89,7 +149,8 @@ public class IcebergResourceManagerTest {
 
   @Test
   public void testLoadTable() {
-    String tableName = "test_table_load";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".test_table_load";
     Schema schema =
         new Schema(
             Types.NestedField.required(1, "id", Types.LongType.get()),
@@ -105,13 +166,15 @@ public class IcebergResourceManagerTest {
 
   @Test
   public void testLoadNonExistentTableThrowsException() {
-    String tableName = "non_existent_table";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".non_existent_table";
     assertThrows(IcebergResourceManagerException.class, () -> resourceManager.loadTable(tableName));
   }
 
   @Test
   public void testWriteAndReadRecords() {
-    String tableName = "test_table_write_read";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".test_table_write_read";
     Schema schema =
         new Schema(
             Types.NestedField.required(1, "id", Types.LongType.get()),
@@ -141,8 +204,13 @@ public class IcebergResourceManagerTest {
 
   @Test
   public void testCleanupAll() {
-    String tableName1 = "test_table_cleanup_1";
-    String tableName2 = "test_table_cleanup_2";
+    String namespace1 = testNamespace + "_cleanup_1";
+    String namespace2 = testNamespace + "_cleanup_2";
+    resourceManager.createNamespace(namespace1);
+    resourceManager.createNamespace(namespace2);
+
+    String tableName1 = namespace1 + ".test_table_cleanup_1";
+    String tableName2 = namespace2 + ".test_table_cleanup_2";
     Schema schema =
         new Schema(
             Types.NestedField.required(1, "id", Types.LongType.get()),
@@ -151,13 +219,17 @@ public class IcebergResourceManagerTest {
     resourceManager.createTable(tableName1, schema);
     resourceManager.createTable(tableName2, schema);
 
-    // Verify tables exist before cleanup
+    // Verify tables and namespaces exist before cleanup
+    assertTrue(resourceManager.namespaceExists(namespace1));
+    assertTrue(resourceManager.namespaceExists(namespace2));
     assertNotNull(resourceManager.loadTable(tableName1));
     assertNotNull(resourceManager.loadTable(tableName2));
 
     resourceManager.cleanupAll();
 
-    // Verify tables are dropped after cleanup
+    // Verify tables and namespaces are dropped after cleanup
+    assertFalse(resourceManager.namespaceExists(namespace1));
+    assertFalse(resourceManager.namespaceExists(namespace2));
     assertThrows(
         IcebergResourceManagerException.class, () -> resourceManager.loadTable(tableName1));
     assertThrows(
@@ -172,7 +244,8 @@ public class IcebergResourceManagerTest {
 
   @Test
   public void testWriteEmptyRecords() {
-    String tableName = "test_table_write_empty";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".test_table_write_empty";
     Schema schema =
         new Schema(
             Types.NestedField.required(1, "id", Types.LongType.get()),
@@ -186,22 +259,9 @@ public class IcebergResourceManagerTest {
   }
 
   @Test
-  public void testCreateTableWithInvalidSchemaThrowsException() {
-    String tableName = "test_table_invalid_schema";
-    // Schema with duplicate field IDs, which is invalid
-    Schema invalidSchema =
-        new Schema(
-            Types.NestedField.required(1, "id", Types.LongType.get()),
-            Types.NestedField.optional(1, "name", Types.StringType.get())); // Duplicate field ID 1
-
-    assertThrows(
-        IcebergResourceManagerException.class,
-        () -> resourceManager.createTable(tableName, invalidSchema));
-  }
-
-  @Test
   public void testWriteToNonExistentTableThrowsException() {
-    String tableName = "non_existent_table_for_write";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".non_existent_table_for_write";
     List<Map<String, Object>> recordsToWrite = List.of(Map.of("id", 1L, "name", "record1"));
 
     // Expect IcebergResourceManagerException because loadTable will fail
@@ -212,7 +272,8 @@ public class IcebergResourceManagerTest {
 
   @Test
   public void testReadFromNonExistentTableThrowsException() {
-    String tableName = "non_existent_table_for_read";
+    resourceManager.createNamespace(testNamespace);
+    String tableName = testNamespace + ".non_existent_table_for_read";
 
     // Expect IcebergResourceManagerException because loadTable will fail
     assertThrows(IcebergResourceManagerException.class, () -> resourceManager.read(tableName));

@@ -17,13 +17,19 @@
  */
 package com.google.cloud.teleport.it.iceberg;
 
+import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
+import com.google.common.collect.Iterables;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.beam.it.common.ResourceManager;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
@@ -32,11 +38,14 @@ import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.data.GenericRecord;
 import org.apache.iceberg.data.IcebergGenerics;
 import org.apache.iceberg.data.Record;
 import org.apache.iceberg.data.parquet.GenericParquetWriter;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileAppender;
 import org.apache.iceberg.io.FileIO;
@@ -47,7 +56,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Client for managing Iceberg resources.
+ * Client for managing Iceberg resources for integration tests.
  *
  * <p>The class supports one catalog, and multiple tables per catalog object.
  *
@@ -59,61 +68,154 @@ public class IcebergResourceManager implements ResourceManager {
   private static final String DEFAULT_CATALOG_NAME = "default";
 
   private final String testId;
-  private final Catalog catalog;
+  private Catalog cachedCatalog;
   private final String catalogName;
+  private final Map<String, String> catalogProps;
+  private final Map<String, String> configProps;
 
+  /**
+   * Creates a new IcebergResourceManager.
+   *
+   * @param builder The builder for this resource manager.
+   */
   private IcebergResourceManager(Builder builder) {
     this.testId = builder.testId;
     this.catalogName = builder.catalogName != null ? builder.catalogName : DEFAULT_CATALOG_NAME;
-    this.catalog = createIcebergCatalog(this.catalogName, builder.catalogProperties, builder.conf);
-
-    LOG.info("Initialized Iceberg resource manager with catalog '{}'.", catalogName);
+    this.catalogProps = builder.catalogProperties != null ? builder.catalogProperties : new HashMap<>();
+    this.configProps = builder.configProps != null ? builder.configProps : new HashMap<>();
   }
 
+  /**
+   * Creates a builder for {@link IcebergResourceManager}.
+   *
+   * @param testId The ID of the test.
+   * @return A new builder.
+   */
   public static Builder builder(String testId) {
     return new Builder(testId);
   }
 
   /**
-   * Creates an Iceberg table in the catalog.
+   * Returns the Iceberg catalog. If the catalog is not initialized, it will be built using the
+   * provided properties.
    *
-   * @param tableName The name of the table to create.
-   * @param schema The schema of the table.
-   * @return The created Table object.
-   * @throws IcebergResourceManagerException if there is an error creating the table.
+   * @return The Iceberg catalog.
    */
-  public Table createTable(String tableName, Schema schema) {
-    TableIdentifier tableIdentifier = TableIdentifier.of(tableName);
-    LOG.info("Creating Iceberg table '{}' in catalog '{}'.", tableName, catalogName);
+  public Catalog catalog() {
+    if (cachedCatalog == null) {
+        String catalogName = this.catalogName;
+        Configuration config = new Configuration();
+        for (Map.Entry<String, String> prop : configProps.entrySet()) {
+            config.set(prop.getKey(), prop.getValue());
+        }
+        cachedCatalog = CatalogUtil.buildIcebergCatalog(catalogName, catalogProps, config);
+    }
+    return cachedCatalog;
+  }
+
+  /**
+   * Creates a namespace in the Iceberg catalog.
+   *
+   * @param namespace The name of the namespace to create.
+   * @return True if the namespace was created, false if it already exists.
+   * @throws IllegalStateException if the catalog does not support namespaces.
+   */
+  public boolean createNamespace(String namespace) {
+    checkSupportsNamespaces();
+    String[] components = Iterables.toArray(Splitter.on('.').split(namespace), String.class);
+
     try {
-      Table table = catalog.createTable(tableIdentifier, schema);
-      LOG.info("Successfully created Iceberg table '{}'.", tableName);
-      return table;
-    } catch (Exception e) {
-      throw new IcebergResourceManagerException(
-          "Failed to create Iceberg table '" + tableName + "'.", e);
+        ((SupportsNamespaces) catalog()).createNamespace(Namespace.of(components));
+        return true;
+    } catch (AlreadyExistsException e) {
+        return false;
     }
   }
 
   /**
-   * Loads an existing Iceberg table from the catalog.
+   * Checks if a namespace exists in the Iceberg catalog.
    *
-   * @param tableName The name of the table to load.
-   * @return The loaded Table object.
-   * @throws IcebergResourceManagerException if the table does not exist or there is an error
-   *     loading it.
+   * @param namespace The name of the namespace to check.
+   * @return True if the namespace exists, false otherwise.
+   * @throws IllegalStateException if the catalog does not support namespaces.
    */
-  public Table loadTable(String tableName) {
-    TableIdentifier tableIdentifier = TableIdentifier.of(tableName);
-    LOG.info("Loading Iceberg table '{}' from catalog '{}'.", tableName, catalogName);
-    try {
-      Table table = catalog.loadTable(tableIdentifier);
-      LOG.info("Successfully loaded Iceberg table '{}'.", tableName);
-      return table;
-    } catch (Exception e) {
-      throw new IcebergResourceManagerException(
-          "Failed to load Iceberg table '" + tableName + "'.", e);
+  public boolean namespaceExists(String namespace) {
+    checkSupportsNamespaces();
+    return ((SupportsNamespaces) catalog()).namespaceExists(Namespace.of(namespace));
+  }
+
+  /**
+   * Lists all namespaces in the Iceberg catalog.
+   *
+   * @return A set of namespace names.
+   * @throws IllegalStateException if the catalog does not support namespaces.
+   */
+  public Set<String> listNamespaces() {
+    checkSupportsNamespaces();
+
+    return ((SupportsNamespaces) catalog())
+            .listNamespaces().stream().map(Namespace::toString).collect(Collectors.toSet());
+  }
+
+  /**
+   * Drops a namespace from the Iceberg catalog.
+   *
+   * @param namespace The name of the namespace to drop.
+   * @param cascade If true, all tables within the namespace will be dropped first.
+   * @return True if the namespace was dropped, false if it did not exist.
+   * @throws IllegalStateException if the catalog does not support namespaces.
+   */
+  public boolean dropNamespace(String namespace, boolean cascade) {
+    checkSupportsNamespaces();
+
+    String[] components = Iterables.toArray(Splitter.on('.').split(namespace), String.class);
+    Namespace ns = Namespace.of(components);
+
+    if (!((SupportsNamespaces) catalog()).namespaceExists(ns)) {
+        return false;
     }
+
+    // Cascade will delete all contained tables first
+    if (cascade) {
+        catalog().listTables(ns).forEach(catalog()::dropTable);
+    }
+
+    // Drop the namespace
+    return ((SupportsNamespaces) catalog()).dropNamespace(Namespace.of(components));
+  }
+
+  /**
+   * Creates an Iceberg table.
+   *
+   * @param tableIdentifier The identifier of the table to create (e.g., "database.table_name").
+   * @param tableSchema The schema of the table.
+   * @throws IcebergResourceManagerException if the table already exists or there is another error.
+   */
+  public Table createTable(String tableIdentifier, Schema tableSchema) {
+        TableIdentifier icebergIdentifier = TableIdentifier.parse(tableIdentifier);
+        try {
+            return catalog().createTable(icebergIdentifier, tableSchema);
+        } catch (AlreadyExistsException e) {
+            throw new IcebergResourceManagerException(
+                    "Table already Exists '" + tableIdentifier + "'.", e);
+        }
+  }
+
+  /**
+   * Loads an Iceberg table.
+   *
+   * @param tableIdentifier The identifier of the table to load (e.g., "database.table_name").
+   * @return The loaded table.
+   * @throws IcebergResourceManagerException if the table does not exist or there is another error.
+   */
+  public Table loadTable(String tableIdentifier) {
+        TableIdentifier icebergIdentifier = TableIdentifier.parse(tableIdentifier);
+        try {
+            return catalog().loadTable(icebergIdentifier);
+        } catch (NoSuchTableException e) {
+            throw new IcebergResourceManagerException(
+                    "No Such Table found with name" + tableIdentifier + "'.", e);
+        }
   }
 
   /**
@@ -125,11 +227,9 @@ public class IcebergResourceManager implements ResourceManager {
    */
   public void write(String tableName, List<Map<String, Object>> records) {
     Table table = loadTable(tableName);
-    LOG.info("Writing {} records to Iceberg table '{}'.", records.size(), tableName);
 
     FileIO io = table.io();
     String warehouseLocation = table.location();
-
     try {
       for (Map<String, Object> recordMap : records) {
         GenericRecord record = GenericRecord.create(table.schema());
@@ -158,7 +258,6 @@ public class IcebergResourceManager implements ResourceManager {
 
         table.newFastAppend().appendFile(dataFile).commit();
       }
-      LOG.info("Successfully wrote {} records to Iceberg table '{}'.", records.size(), tableName);
     } catch (IOException e) {
       throw new IcebergResourceManagerException(
           "Failed to write records to Iceberg table '" + tableName + "'.", e);
@@ -174,12 +273,8 @@ public class IcebergResourceManager implements ResourceManager {
    */
   public List<Record> read(String tableName) {
     Table table = loadTable(tableName);
-    LOG.info("Reading all records from Iceberg table '{}'.", tableName);
     try (CloseableIterable<Record> records = IcebergGenerics.read(table).build()) {
-      List<Record> result =
-          StreamSupport.stream(records.spliterator(), false).collect(Collectors.toList());
-      LOG.info("Successfully read {} records from Iceberg table '{}'.", result.size(), tableName);
-      return result;
+      return StreamSupport.stream(records.spliterator(), false).collect(Collectors.toList());
     } catch (IOException e) {
       throw new IcebergResourceManagerException(
           "Failed to read records from Iceberg table '" + tableName + "'.", e);
@@ -194,34 +289,23 @@ public class IcebergResourceManager implements ResourceManager {
    */
   @Override
   public synchronized void cleanupAll() throws IcebergResourceManagerException {
-    LOG.info("Attempting to cleanup Iceberg resource manager for test ID: {}.", testId);
-    try {
-      // List and drop all tables in the catalog
-      List<TableIdentifier> tableIdentifiers =
-          catalog.listTables(Namespace.empty()); // List all tables in the default namespace
-      for (TableIdentifier tableIdentifier : tableIdentifiers) {
-        catalog.dropTable(tableIdentifier);
-        LOG.info("Dropped Iceberg table: {}", tableIdentifier);
-      }
-    } catch (Exception e) {
-      throw new IcebergResourceManagerException("Failed to cleanup Iceberg resources.", e);
+    Set<String> namespaces = listNamespaces();
+    for(String namespace : namespaces){
+        dropNamespace(namespace, true);
     }
-    LOG.info("Iceberg resource manager successfully cleaned up.");
+    LOG.info("Cleaned up all resources for test ID: {}.", testId);
   }
 
-  private Catalog createIcebergCatalog(
-      String catalogName, Map<String, String> catalogProperties, Object conf) {
-    if (catalogProperties == null || catalogProperties.isEmpty()) {
-      throw new IcebergResourceManagerException(
-          "Catalog properties must be provided to create an Iceberg Catalog.");
-    }
-
-    try {
-      return CatalogUtil.buildIcebergCatalog(catalogName, catalogProperties, conf);
-    } catch (Exception e) {
-      throw new IcebergResourceManagerException(
-          "Failed to create Iceberg catalog '" + catalogName + "'.", e);
-    }
+  /**
+   * Checks if the current catalog supports namespace operations.
+   *
+   * @throws IllegalStateException if the catalog does not support namespaces.
+   */
+  private void checkSupportsNamespaces() {
+    Preconditions.checkState(
+            catalog() instanceof SupportsNamespaces,
+            "Catalog '%s' does not support handling namespaces.",
+            catalog().name());
   }
 
   /** Builder for {@link IcebergResourceManager}. */
@@ -230,27 +314,55 @@ public class IcebergResourceManager implements ResourceManager {
     private final String testId;
     private String catalogName;
     private Map<String, String> catalogProperties;
-    private Object conf;
+    private Map<String, String> configProps;
 
+    /**
+     * Creates a new Builder for {@link IcebergResourceManager}.
+     *
+     * @param testId The ID of the test.
+     */
     private Builder(String testId) {
       this.testId = testId;
     }
 
+    /**
+     * Sets the catalog name for the resource manager.
+     *
+     * @param catalogName The name of the catalog.
+     * @return The builder instance.
+     */
     public Builder setCatalogName(String catalogName) {
       this.catalogName = catalogName;
       return this;
     }
 
-    public Builder withCatalogProperties(Map<String, String> catalogProperties) {
+    /**
+     * Sets the catalog properties for the resource manager.
+     *
+     * @param catalogProperties A map of catalog properties.
+     * @return The builder instance.
+     */
+    public Builder setCatalogProperties(Map<String, String> catalogProperties) {
       this.catalogProperties = catalogProperties;
       return this;
     }
 
-    public Builder withConf(Object conf) {
-      this.conf = conf;
+    /**
+     * Sets the configuration properties for Hadoop.
+     *
+     * @param configProps A map of configuration properties.
+     * @return The builder instance.
+     */
+    public Builder setConfigProperties(Map<String, String> configProps) {
+      this.configProps = configProps;
       return this;
     }
 
+    /**
+     * Builds a new {@link IcebergResourceManager} instance.
+     *
+     * @return A new {@link IcebergResourceManager} instance.
+     */
     public IcebergResourceManager build() {
       return new IcebergResourceManager(this);
     }
