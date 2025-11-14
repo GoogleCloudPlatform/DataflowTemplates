@@ -99,7 +99,7 @@
     <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
     <okio.version>3.16.2</okio.version>
-    <jetty.version>12.0.12</jetty.version>
+    <jetty.version>12.1.4</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
