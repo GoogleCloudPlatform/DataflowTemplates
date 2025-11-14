@@ -143,7 +143,7 @@ public class IcebergResourceManagerIT {
     Table table = resourceManager.createTable(tableName, schema);
 
     assertNotNull(table);
-    assertEquals(tableName, table.name());
+    assertEquals(catalog+"."+tableName, table.name());
     assertEquals(schema.asStruct(), table.schema().asStruct());
   }
 
@@ -160,7 +160,7 @@ public class IcebergResourceManagerIT {
     Table loadedTable = resourceManager.loadTable(tableName);
 
     assertNotNull(loadedTable);
-    assertEquals(tableName, loadedTable.name());
+    assertEquals(catalog+"."+tableName, loadedTable.name());
     assertEquals(schema.asStruct(), loadedTable.schema().asStruct());
   }
 
