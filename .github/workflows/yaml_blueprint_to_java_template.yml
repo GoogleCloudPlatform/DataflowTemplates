@@ -58,6 +58,14 @@ jobs:
             python yaml/scripts/generate_yaml_java_templates.py "$file"
           done
 
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+
+      - name: Format generated java files
+        run: mvn spotless:apply
+
       - name: Fetch and Checkout PR Branch
         run: |
           git fetch origin refs/pull/${{ github.event.number }}/head:${{ github.head_ref }}
