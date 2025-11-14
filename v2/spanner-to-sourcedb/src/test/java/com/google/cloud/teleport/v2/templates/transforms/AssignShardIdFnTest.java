@@ -49,6 +49,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerColumnType;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SpannerTable;
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SyntheticPKey;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceDatabaseType;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.ShardIdFetcherImpl;
@@ -66,6 +67,7 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -89,6 +91,10 @@ public class AssignShardIdFnTest {
   @Mock private ReadOnlyTransaction mockReadOnlyTransaction;
 
   @Mock private DoFn.ProcessContext processContext;
+
+  @Mock private Options mockOptions;
+
+  @Mock private PCollectionView<Ddl> mockDdlView;
 
   Struct mockRow = mock(Struct.class);
 
@@ -141,12 +147,13 @@ public class AssignShardIdFnTest {
 
   @Test
   public void testGetRowAsMap() throws Exception {
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    // ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl); // OLD LINE
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -158,7 +165,8 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
-    Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
+    Map<String, Object> actual =
+        assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl); // Added ddl
     Map<String, Object> expected = new HashMap<>();
     expected.put("accountId", "Id1");
     expected.put("accountName", "xyz");
@@ -169,12 +177,13 @@ public class AssignShardIdFnTest {
 
   @Test(expected = Exception.class)
   public void cannotGetRowAsMap() throws Exception {
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    // ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl); // OLD LINE
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -187,19 +196,27 @@ public class AssignShardIdFnTest {
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
 
-    assignShardIdFn.getRowAsMap(mockRow, columns, "tableName");
+    assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl); // Added ddl
   }
 
   @Test
   public void testProcessElementInsertModForMultiShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -215,8 +232,10 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
+    // Since processElement handles initialization of schemaMapper and fetcher now, we don't
+    // need to explicitly call setShardIdFetcher here, but for mock behavior consistency in test:
+    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
+    // schemaMapper, "skip"));
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -235,12 +254,20 @@ public class AssignShardIdFnTest {
   public void testProcessElementDeleteModForMultiShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -256,8 +283,8 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
+    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
+    // schemaMapper, "skip")); // Handled by lazy init
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -275,12 +302,20 @@ public class AssignShardIdFnTest {
   public void testProcessElementForSingleShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
+    // Prepare mock for c.sideInput(ddlView) - not strictly needed for single shard, but safe to set
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_SINGLE_SHARD,
             "test",
@@ -298,7 +333,7 @@ public class AssignShardIdFnTest {
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
-    key = 7554L;
+    key = 7554L; // Pre-calculated hash value from original code
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
@@ -309,12 +344,15 @@ public class AssignShardIdFnTest {
     when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
     String shardingCustomClassName = "com.test.CustomShardIdFetcher";
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
+
+    // We only need a valid constructor call for the runtime exception to be expected
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -324,9 +362,9 @@ public class AssignShardIdFnTest {
             "",
             10000L,
             Constants.SOURCE_MYSQL);
-    assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl(
-            customJarPath, shardingCustomClassName, "", schemaMapper, "skip"));
+    // The line below actually triggers the loading logic that throws the exception
+    ShardingLogicImplFetcher.getShardingLogicImpl(
+        customJarPath, shardingCustomClassName, "", schemaMapper, "skip");
   }
 
   @Test
@@ -366,13 +404,20 @@ public class AssignShardIdFnTest {
             .build();
     when(mockReadOnlyTransaction.readRow(eq("Users"), any(Key.class), any(Iterable.class)))
         .thenReturn(allDatatypesRow);
-    ISchemaMapper schemaMapper =
-        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObjectAllDatatypes(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdlForPrimaryKeyTest(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -406,13 +451,20 @@ public class AssignShardIdFnTest {
   public void testProcessElementInsertAllDatatypes() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecordAllDatatypes("shard1");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper =
-        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObjectAllDatatypes(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdlForPrimaryKeyTest(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -442,13 +494,20 @@ public class AssignShardIdFnTest {
   public void testSkippedShardForTableNotInSchema() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper =
-        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObjectAllDatatypes(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdlForPrimaryKeyTest(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -471,12 +530,20 @@ public class AssignShardIdFnTest {
   public void testInvalidShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1/");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -492,8 +559,8 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
+    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
+    // schemaMapper, "skip")); // Handled by lazy init
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -511,13 +578,20 @@ public class AssignShardIdFnTest {
 
     when(mockReadOnlyTransaction.readRow(eq("Users"), any(Key.class), any(Iterable.class)))
         .thenReturn(null);
-    ISchemaMapper schemaMapper =
-        new SessionBasedMapper(getSchemaObjectAllDatatypes(), getTestDdlForPrimaryKeyTest());
+    Ddl ddl = getTestDdlForPrimaryKeyTest();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObjectAllDatatypes(), ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdlForPrimaryKeyTest(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -559,12 +633,20 @@ public class AssignShardIdFnTest {
             1,
             "");
     when(processContext.element()).thenReturn(record);
-    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
+    // Prepare mock for c.sideInput(mockDdlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -579,8 +661,8 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
+    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
+    // schemaMapper, "skip")); // Handled by lazy init
 
     // Triggers the stale read.
     assignShardIdFn.processElement(processContext);
@@ -621,12 +703,20 @@ public class AssignShardIdFnTest {
             .tables(ImmutableMap.of("someothertable", presentTable))
             .build();
 
-    ISchemaMapper schemaMapper = new IdentityMapper(getTestDdl());
+    Ddl ddl = getTestDdl();
+    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
+    // Prepare mock for c.sideInput(ddlView)
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            schemaMapper,
-            getTestDdl(),
+            mockOptions, // Replaced schemaMapper with Options
+            mockDdlView, // Replaced Ddl with PCollectionView
             sourceSchema,
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -637,8 +727,8 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL);
     assignShardIdFn.setMapper(new ObjectMapper());
-    assignShardIdFn.setShardIdFetcher(
-        ShardingLogicImplFetcher.getShardingLogicImpl("", "", "", schemaMapper, "skip"));
+    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
+    // schemaMapper, "skip")); // Handled by lazy init
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -824,18 +914,6 @@ public class AssignShardIdFnTest {
             .column("float_64_col_neg_infinity")
             .float64()
             .endColumn()
-            .column("float_64_col")
-            .float64()
-            .endColumn()
-            .column("float_64_col_nan")
-            .float64()
-            .endColumn()
-            .column("float_64_col_infinity")
-            .float64()
-            .endColumn()
-            .column("float_64_col_neg_infinity")
-            .float64()
-            .endColumn()
             .column("float_32_col")
             .float32()
             .endColumn()
@@ -858,6 +936,9 @@ public class AssignShardIdFnTest {
             .isGenerated(true)
             .isStored(false)
             .endColumn()
+            .primaryKey()
+            .asc("accountId")
+            .end()
             .endTable()
             .build();
     return ddl;
@@ -1223,14 +1304,6 @@ public class AssignShardIdFnTest {
                         .name("date_field2")
                         .type("DATE")
                         .isNullable(true)
-                        .build(),
-                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn.builder(
-                            SourceDatabaseType.MYSQL)
-                        .name("migration_shard_id")
-                        .type("VARCHAR")
-                        .isNullable(false)
-                        .isPrimaryKey(true)
-                        .size(50L)
                         .build()))
             .primaryKeyColumns(
                 ImmutableList.of(
