@@ -159,10 +159,9 @@ def main():
         help="Path to the input directory containing YAML template files or a single YAML file.",
     )
     args = parser.parse_args()
-
     input_path = Path(args.input_dir)
 
-    # Find all YAML files in the input directory or capture file path
+    # Find all YAML files in the input directory or capture single file path
     yaml_files = []
     if input_path.is_file():
         if input_path.suffix.lower() == ".yaml":
@@ -170,12 +169,14 @@ def main():
     elif input_path.is_dir():
         yaml_files = list(input_path.glob("*.yaml"))
     
-    yaml_files = sorted(list(set(yaml_files)))
+    # Sort the list of YAML files
+    yaml_files = sorted(list(yaml_files))
 
     if not yaml_files:
         print(f"No YAML files found in {input_path}", file=sys.stderr)
         sys.exit(1)
 
+    # Convert each YAML file to a Java interface
     try:
         for yaml_path in yaml_files:
             print(f"Processing {yaml_path}")
