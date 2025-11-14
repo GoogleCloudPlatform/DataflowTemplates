@@ -81,7 +81,8 @@ public class IcebergResourceManager implements ResourceManager {
   private IcebergResourceManager(Builder builder) {
     this.testId = builder.testId;
     this.catalogName = builder.catalogName != null ? builder.catalogName : DEFAULT_CATALOG_NAME;
-    this.catalogProps = builder.catalogProperties != null ? builder.catalogProperties : new HashMap<>();
+    this.catalogProps =
+        builder.catalogProperties != null ? builder.catalogProperties : new HashMap<>();
     this.configProps = builder.configProps != null ? builder.configProps : new HashMap<>();
   }
 
@@ -103,12 +104,12 @@ public class IcebergResourceManager implements ResourceManager {
    */
   public Catalog catalog() {
     if (cachedCatalog == null) {
-        String catalogName = this.catalogName;
-        Configuration config = new Configuration();
-        for (Map.Entry<String, String> prop : configProps.entrySet()) {
-            config.set(prop.getKey(), prop.getValue());
-        }
-        cachedCatalog = CatalogUtil.buildIcebergCatalog(catalogName, catalogProps, config);
+      String catalogName = this.catalogName;
+      Configuration config = new Configuration();
+      for (Map.Entry<String, String> prop : configProps.entrySet()) {
+        config.set(prop.getKey(), prop.getValue());
+      }
+      cachedCatalog = CatalogUtil.buildIcebergCatalog(catalogName, catalogProps, config);
     }
     return cachedCatalog;
   }
@@ -125,10 +126,10 @@ public class IcebergResourceManager implements ResourceManager {
     String[] components = Iterables.toArray(Splitter.on('.').split(namespace), String.class);
 
     try {
-        ((SupportsNamespaces) catalog()).createNamespace(Namespace.of(components));
-        return true;
+      ((SupportsNamespaces) catalog()).createNamespace(Namespace.of(components));
+      return true;
     } catch (AlreadyExistsException e) {
-        return false;
+      return false;
     }
   }
 
@@ -154,7 +155,7 @@ public class IcebergResourceManager implements ResourceManager {
     checkSupportsNamespaces();
 
     return ((SupportsNamespaces) catalog())
-            .listNamespaces().stream().map(Namespace::toString).collect(Collectors.toSet());
+        .listNamespaces().stream().map(Namespace::toString).collect(Collectors.toSet());
   }
 
   /**
@@ -172,12 +173,12 @@ public class IcebergResourceManager implements ResourceManager {
     Namespace ns = Namespace.of(components);
 
     if (!((SupportsNamespaces) catalog()).namespaceExists(ns)) {
-        return false;
+      return false;
     }
 
     // Cascade will delete all contained tables first
     if (cascade) {
-        catalog().listTables(ns).forEach(catalog()::dropTable);
+      catalog().listTables(ns).forEach(catalog()::dropTable);
     }
 
     // Drop the namespace
@@ -192,13 +193,13 @@ public class IcebergResourceManager implements ResourceManager {
    * @throws IcebergResourceManagerException if the table already exists or there is another error.
    */
   public Table createTable(String tableIdentifier, Schema tableSchema) {
-        TableIdentifier icebergIdentifier = TableIdentifier.parse(tableIdentifier);
-        try {
-            return catalog().createTable(icebergIdentifier, tableSchema);
-        } catch (AlreadyExistsException e) {
-            throw new IcebergResourceManagerException(
-                    "Table already Exists '" + tableIdentifier + "'.", e);
-        }
+    TableIdentifier icebergIdentifier = TableIdentifier.parse(tableIdentifier);
+    try {
+      return catalog().createTable(icebergIdentifier, tableSchema);
+    } catch (AlreadyExistsException e) {
+      throw new IcebergResourceManagerException(
+          "Table already Exists '" + tableIdentifier + "'.", e);
+    }
   }
 
   /**
@@ -209,13 +210,13 @@ public class IcebergResourceManager implements ResourceManager {
    * @throws IcebergResourceManagerException if the table does not exist or there is another error.
    */
   public Table loadTable(String tableIdentifier) {
-        TableIdentifier icebergIdentifier = TableIdentifier.parse(tableIdentifier);
-        try {
-            return catalog().loadTable(icebergIdentifier);
-        } catch (NoSuchTableException e) {
-            throw new IcebergResourceManagerException(
-                    "No Such Table found with name" + tableIdentifier + "'.", e);
-        }
+    TableIdentifier icebergIdentifier = TableIdentifier.parse(tableIdentifier);
+    try {
+      return catalog().loadTable(icebergIdentifier);
+    } catch (NoSuchTableException e) {
+      throw new IcebergResourceManagerException(
+          "No Such Table found with name" + tableIdentifier + "'.", e);
+    }
   }
 
   /**
@@ -290,8 +291,8 @@ public class IcebergResourceManager implements ResourceManager {
   @Override
   public synchronized void cleanupAll() throws IcebergResourceManagerException {
     Set<String> namespaces = listNamespaces();
-    for(String namespace : namespaces){
-        dropNamespace(namespace, true);
+    for (String namespace : namespaces) {
+      dropNamespace(namespace, true);
     }
     LOG.info("Cleaned up all resources for test ID: {}.", testId);
   }
@@ -303,9 +304,9 @@ public class IcebergResourceManager implements ResourceManager {
    */
   private void checkSupportsNamespaces() {
     Preconditions.checkState(
-            catalog() instanceof SupportsNamespaces,
-            "Catalog '%s' does not support handling namespaces.",
-            catalog().name());
+        catalog() instanceof SupportsNamespaces,
+        "Catalog '%s' does not support handling namespaces.",
+        catalog().name());
   }
 
   /** Builder for {@link IcebergResourceManager}. */

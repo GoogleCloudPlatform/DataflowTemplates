@@ -27,8 +27,12 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.*;
-
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.apache.beam.it.testcontainers.TestContainersIntegrationTest;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
@@ -62,8 +66,7 @@ public class IcebergResourceManagerIT {
     resourceManager =
         IcebergResourceManager.builder(testId)
             .setCatalogName(catalog)
-            .setCatalogProperties(
-                Map.of("warehouse", warehouseLocation, "type", "hadoop"))
+            .setCatalogProperties(Map.of("warehouse", warehouseLocation, "type", "hadoop"))
             .build();
   }
 
@@ -107,7 +110,8 @@ public class IcebergResourceManagerIT {
     assertTrue(resourceManager.namespaceExists(testNamespace));
     assertTrue(resourceManager.dropNamespace(testNamespace, false));
     assertFalse(resourceManager.namespaceExists(testNamespace));
-    assertFalse(resourceManager.dropNamespace(testNamespace, false)); // Should return false if not exists
+    assertFalse(
+        resourceManager.dropNamespace(testNamespace, false)); // Should return false if not exists
   }
 
   @Test
@@ -140,7 +144,7 @@ public class IcebergResourceManagerIT {
     Table table = resourceManager.createTable(tableName, schema);
 
     assertNotNull(table);
-    assertEquals(catalog+"."+tableName, table.name());
+    assertEquals(catalog + "." + tableName, table.name());
     assertEquals(schema.asStruct(), table.schema().asStruct());
   }
 
@@ -157,7 +161,7 @@ public class IcebergResourceManagerIT {
     Table loadedTable = resourceManager.loadTable(tableName);
 
     assertNotNull(loadedTable);
-    assertEquals(catalog+"."+tableName, loadedTable.name());
+    assertEquals(catalog + "." + tableName, loadedTable.name());
     assertEquals(schema.asStruct(), loadedTable.schema().asStruct());
   }
 
