@@ -27,11 +27,8 @@ import static org.junit.Assert.assertTrue;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+
 import org.apache.beam.it.testcontainers.TestContainersIntegrationTest;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
@@ -192,6 +189,7 @@ public class IcebergResourceManagerIT {
     assertNotNull(readRecords);
     assertEquals(2, readRecords.size());
 
+    readRecords.sort(Comparator.comparingLong(r -> (Long) r.getField("id")));
     // Verify records
     Record actualRecord1 = readRecords.get(0);
     Record actualRecord2 = readRecords.get(1);
