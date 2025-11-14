@@ -65,7 +65,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Format generated java files
-        run: mvn -pl yaml spotless:apply
+        run: mvn -B -pl yaml spotless:apply
 
       - name: Fetch and Checkout PR Branch
         run: |
