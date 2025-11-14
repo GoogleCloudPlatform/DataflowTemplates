@@ -132,6 +132,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       // filtered row.
       Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
       Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
+      Long sqlColumn = intColumn - tinyIntColumn;
       Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
@@ -139,6 +140,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       responseRow.put("tinyint_column", tinyIntColumn.toString());
       responseRow.put("text_column", "\'" + requestRow.get("text_column") + " append\'");
       responseRow.put("int_column", intColumn.toString());
+      responseRow.put("sql_column", sqlColumn.toString());
       responseRow.put("bigint_column", bigIntColumn.toString());
       responseRow.put("float_column", floatColumn.add(BigDecimal.ONE).toString());
       responseRow.put("double_column", doubleColumn.add(BigDecimal.ONE).toString());
@@ -164,6 +166,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
               + Base64.getEncoder().encodeToString("5".getBytes(StandardCharsets.UTF_8))
               + "\'))");
       responseRow.put("year_column", "\'" + yearColumn + "\'");
+      LOG.info("responseRow: {}", responseRow);
       try {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
         SimpleDateFormat dateTimeFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssX");
