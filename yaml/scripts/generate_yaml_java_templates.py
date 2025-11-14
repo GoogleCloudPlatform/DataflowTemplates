@@ -150,45 +150,6 @@ def generate_java_interface(yaml_path, java_path):
 
     print(f"Successfully generated {java_path}")
 
-
-# def get_git_root():
-#     """Gets the root directory of the git repository."""
-#     try:
-#         # Using check_output to get the output of the command
-#         return subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip()
-#     except (subprocess.CalledProcessError, FileNotFoundError) as e:
-#         # Handle cases where git command fails or git is not installed
-#         print("Error: Git repository not found. Please ensure Git is installed and in your PATH.")
-#         return e
-
-
-# def run_mvn_spotless():
-#     """Runs the mvn spotless:apply command in the git repository root."""
-#     repo_root = get_git_root()
-#     if not repo_root:
-#         print("Error: Could not determine the root of the git repository.", file=sys.stderr)
-#         # Returning a non-zero exit code to indicate failure
-#         return 1
-
-#     try:
-#         # Execute the command in the repository root directory
-#         subprocess.run(
-#             ["mvn", "spotless:apply"],
-#             check=True,
-#             cwd=repo_root,
-#             # Capture output to prevent polluting stdout, unless there's an error
-#             capture_output=True,
-#             text=True)
-#         print("Successfully ran mvn spotless:apply.")
-#     except FileNotFoundError as e:
-#         print("Error: 'mvn' command not found. Please ensure Maven is installed and in your PATH.")
-#         return e
-#     except subprocess.CalledProcessError as e:
-#         # Print detailed error information
-#         print(f"Error running mvn spotless:apply: {e}", file=sys.stderr)
-#         print(f"Stderr: {e.stderr}", file=sys.stderr)
-#         return e
-
 def main():
     parser = argparse.ArgumentParser(
         description="Generate Java interfaces for YAML Dataflow templates."
@@ -236,12 +197,6 @@ def main():
     except Exception as e:
         print(f"An error occurred when trying to convert yaml blueprint to java template: {e}", file=sys.stderr)
         sys.exit(1)
-
-    # try:
-    #     run_mvn_spotless()
-    # except Exception as e:
-    #     print(f"An error occurred: {e}", file=sys.stderr)
-    #     sys.exit(1)
 
 
 if __name__ == "__main__":
