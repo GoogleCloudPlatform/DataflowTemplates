@@ -196,7 +196,9 @@ public class IcebergResourceManagerTest {
         Mockito.mockStatic(org.apache.iceberg.data.IcebergGenerics.class)) {
       org.apache.iceberg.data.IcebergGenerics.ScanBuilder scanBuilder =
           mock(org.apache.iceberg.data.IcebergGenerics.ScanBuilder.class);
-      genericsMock.when(() -> org.apache.iceberg.data.IcebergGenerics.read(table)).thenReturn(scanBuilder);
+      genericsMock
+          .when(() -> org.apache.iceberg.data.IcebergGenerics.read(table))
+          .thenReturn(scanBuilder);
       when(scanBuilder.build()).thenReturn(records);
 
       List<Record> result = testManager.read(TABLE_IDENTIFIER.toString());
@@ -241,7 +243,7 @@ public class IcebergResourceManagerTest {
       verify(mockAppendFiles).appendFile(any(DataFile.class));
       verify(mockAppendFiles).commit();
     } catch (IOException e) {
-        throw new RuntimeException(e);
+      throw new RuntimeException(e);
     }
   }
 
@@ -267,7 +269,7 @@ public class IcebergResourceManagerTest {
       when(mockWriterBuilder.overwrite()).thenReturn(mockWriterBuilder);
       when(mockWriterBuilder.build()).thenReturn(mockAppender);
 
-        assertThrows(
+      assertThrows(
           IcebergResourceManagerException.class,
           () -> testManager.write(TABLE_IDENTIFIER.toString(), List.of(Map.of("id", 1L))));
     }

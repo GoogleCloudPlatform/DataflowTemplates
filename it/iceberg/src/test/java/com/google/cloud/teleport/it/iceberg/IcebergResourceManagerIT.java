@@ -110,8 +110,7 @@ public class IcebergResourceManagerIT {
     assertTrue(resourceManager.namespaceExists(testNamespace));
     assertTrue(resourceManager.dropNamespace(testNamespace, false));
     assertFalse(resourceManager.namespaceExists(testNamespace));
-    assertFalse(
-        resourceManager.dropNamespace(testNamespace, false));
+    assertFalse(resourceManager.dropNamespace(testNamespace, false));
   }
 
   @Test
