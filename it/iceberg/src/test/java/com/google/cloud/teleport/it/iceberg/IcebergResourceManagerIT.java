@@ -111,7 +111,7 @@ public class IcebergResourceManagerIT {
     assertTrue(resourceManager.dropNamespace(testNamespace, false));
     assertFalse(resourceManager.namespaceExists(testNamespace));
     assertFalse(
-        resourceManager.dropNamespace(testNamespace, false)); // Should return false if not exists
+        resourceManager.dropNamespace(testNamespace, false));
   }
 
   @Test
@@ -237,11 +237,10 @@ public class IcebergResourceManagerIT {
     assertThrows(
         IcebergResourceManagerException.class, () -> resourceManager.loadTable(tableName2));
 
-    // Verify warehouse directory is empty or deleted (HadoopCatalog might not delete the root
-    // warehouse)
+    // Verify warehouse directory is empty or deleted
     File warehouseDir = new File(warehouseLocation.replace("file:", ""));
-    assertTrue(warehouseDir.exists()); // The warehouse directory itself should still exist
-    assertEquals(0, warehouseDir.listFiles().length); // But it should be empty
+    assertTrue(warehouseDir.exists());
+    assertEquals(0, warehouseDir.listFiles().length);
   }
 
   @Test
