@@ -16,8 +16,13 @@
 package com.google.cloud.teleport.v2.templates.changestream;
 
 import com.google.cloud.Timestamp;
+import com.google.cloud.teleport.spanner.spannerio.changestreams.encoder.TimestampEncoding;
 import java.io.Serializable;
 import java.util.Objects;
+import org.apache.avro.reflect.AvroEncode;
+import org.apache.avro.reflect.Nullable;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.coders.DefaultCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 
@@ -25,8 +30,11 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
  * Trimmed version of the Apache Beam DataChangeRecord class that only contains the field we need in
  * this pipeline.
  */
+@DefaultCoder(AvroCoder.class)
 @SuppressWarnings("initialization.fields.uninitialized") // Avro requires the default constructor
 public class TrimmedShardedDataChangeRecord extends java.lang.Object implements Serializable {
+
+  @AvroEncode(using = TimestampEncoding.class)
   private Timestamp commitTimestamp;
   private String serverTransactionId;
   private String recordSequence;
@@ -34,8 +42,9 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private Mod mod;
   private ModType modType;
   private long numberOfRecordsInTransaction;
-  private String transactionTag;
-  private String shard;
+
+  @Nullable private String transactionTag;
+  @Nullable private String shard;
   private boolean isRetryRecord;
 
   public TrimmedShardedDataChangeRecord(

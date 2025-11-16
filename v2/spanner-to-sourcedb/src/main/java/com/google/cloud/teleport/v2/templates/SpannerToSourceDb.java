@@ -76,8 +76,8 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOption
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.coders.KvCoder;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
 import org.apache.beam.sdk.io.FileSystems;
@@ -685,7 +685,7 @@ public class SpannerToSourceDb {
             .apply(
                 "Convert DLQ records to TrimmedShardedDataChangeRecord",
                 ParDo.of(new ConvertDlqRecordToTrimmedShardedDataChangeRecordFn()))
-            .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+            .setCoder(AvroCoder.of(TrimmedShardedDataChangeRecord.class));
     PCollection<TrimmedShardedDataChangeRecord> mergedRecords = null;
 
     if (options.getFailureInjectionParameter() != null
@@ -707,12 +707,12 @@ public class SpannerToSourceDb {
               .apply("Reshuffle", Reshuffle.viaRandomKey())
               .apply("Filteration", ParDo.of(new FilterRecordsFn(options.getFiltrationMode())))
               .apply("Preprocess", ParDo.of(new PreprocessRecordsFn()))
-              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+              .setCoder(AvroCoder.of(TrimmedShardedDataChangeRecord.class));
       mergedRecords =
           PCollectionList.of(changeRecordsFromDB)
               .and(dlqRecords)
               .apply("Flatten", Flatten.pCollections())
-              .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+              .setCoder(AvroCoder.of(TrimmedShardedDataChangeRecord.class));
     } else {
       mergedRecords = dlqRecords;
     }
@@ -755,7 +755,7 @@ public class SpannerToSourceDb {
             // same
             .setCoder(
                 KvCoder.of(
-                    VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
+                    VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
             .apply("Reshuffle2", Reshuffle.of())
             .apply(
                 "Write to source",
