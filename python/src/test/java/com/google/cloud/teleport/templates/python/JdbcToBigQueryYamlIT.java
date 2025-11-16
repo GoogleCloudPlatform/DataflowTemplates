@@ -100,7 +100,7 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "INTEGER NOT NULL");
     columns.put(NAME, "VARCHAR(100)");
-    columns.put(AGE, "INTEGER");
+    columns.put(AGE, "INTEGER NOT NULL");
     JDBCResourceManager.JDBCSchema jdbcSchema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
     postgresResourceManager.createTable(JDBC_TABLE_NAME, jdbcSchema);
 
@@ -173,7 +173,7 @@ public class JdbcToBigQueryYamlIT extends JDBCBaseIT {
     HashMap<String, String> columns = new HashMap<>();
     columns.put(ROW_ID, "INTEGER NOT NULL");
     columns.put(NAME, "VARCHAR(100)");
-    columns.put(AGE, "INTEGER");
+    columns.put(AGE, "INTEGER NOT NULL");
     JDBCResourceManager.JDBCSchema jdbcSchema = new JDBCResourceManager.JDBCSchema(columns, ROW_ID);
     postgresResourceManager.createTable(JDBC_TABLE_NAME, jdbcSchema);
 

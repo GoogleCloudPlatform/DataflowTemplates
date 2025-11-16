@@ -21,6 +21,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -204,7 +205,8 @@ public class JdbcIoWrapperTest {
                         .setIsUnique(true)
                         .setOrdinalPosition(2)
                         .build())));
-    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+    lenient()
+        .when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
 
     assertThrows(
@@ -298,7 +300,8 @@ public class JdbcIoWrapperTest {
     SourceColumnType testColType = new SourceColumnType("INTEGER", new Long[] {}, null);
     when(mockDialectAdapter.discoverTables(any(), (SourceSchemaReference) any()))
         .thenReturn(ImmutableList.of("testTable"));
-    when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
+    lenient()
+        .when(mockDialectAdapter.discoverTableIndexes(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(
             ImmutableMap.of(
                 "testTable",
@@ -312,7 +315,8 @@ public class JdbcIoWrapperTest {
                         .setIsUnique(true)
                         .setOrdinalPosition(1)
                         .build())));
-    when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
+    lenient()
+        .when(mockDialectAdapter.discoverTableSchema(any(), (SourceSchemaReference) any(), any()))
         .thenReturn(ImmutableMap.of("testTable", ImmutableMap.of(testCol, testColType)));
     JdbcIoWrapper jdbcIoWrapper =
         JdbcIoWrapper.of(

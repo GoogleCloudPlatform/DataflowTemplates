@@ -19,10 +19,7 @@ import com.google.auto.value.AutoValue;
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import javax.annotation.Nullable;
-import org.jline.utils.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,9 +29,8 @@ import org.slf4j.LoggerFactory;
  */
 public class SharedEmbeddedCassandra implements AutoCloseable {
 
-  private static ConcurrentHashMap<Configuration, RefCountedEmbeddedCassandra> instances =
-      new ConcurrentHashMap();
-  private static Lock lock = new ReentrantLock();
+  private static final ConcurrentHashMap<Configuration, RefCountedEmbeddedCassandra> instances =
+      new ConcurrentHashMap<>();
   private static final Logger LOG = LoggerFactory.getLogger(SharedEmbeddedCassandra.class);
 
   private Configuration config;
@@ -47,15 +43,14 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
    * @param config - config.yaml
    * @param cqlResource - cql script.
    * @param clientEncryption - set to true if Client side SSL is needed.
-   * @throws IOException
    */
   public SharedEmbeddedCassandra(
-      String config, @Nullable String cqlResource, Boolean clientEncryption) throws IOException {
+      String config, @Nullable String cqlResource, Boolean clientEncryption) {
     this.config = Configuration.create(config, cqlResource, clientEncryption);
     this.embeddedCassandra = getEmbeddedCassandra(this.config);
   }
 
-  public SharedEmbeddedCassandra(String config, @Nullable String cqlResource) throws IOException {
+  public SharedEmbeddedCassandra(String config, @Nullable String cqlResource) {
     this(config, cqlResource, Boolean.FALSE);
   }
 
@@ -73,7 +68,7 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
    * Cassandra} instance is closed only after all the tests sharing it have completed.
    */
   @Override
-  public void close() throws Exception {
+  public void close() {
 
     if (this.embeddedCassandra == null || this.config == null) {
       return;
@@ -83,49 +78,63 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
     this.config = null;
   }
 
-  private static EmbeddedCassandra getEmbeddedCassandra(Configuration configuration)
-      throws IOException {
-    EmbeddedCassandra embeddedCassandra = null;
-    lock.lock();
-    try {
-      Log.info("Getting Shared embedded Cassandra for configuration = {}", configuration);
-      if (instances.containsKey(configuration)) {
-        RefCountedEmbeddedCassandra refCountedEmbeddedCassandra = instances.get(configuration);
-        refCountedEmbeddedCassandra.refIncrementAndGet();
-        embeddedCassandra = refCountedEmbeddedCassandra.embeddedCassandra();
-      } else {
-        Log.info("Starting Shared embedded Cassandra for configuration = {}", configuration);
-        embeddedCassandra =
-            new EmbeddedCassandra(
-                configuration.configYaml(),
-                configuration.cqlScript(),
-                configuration.clientEncryption());
-        RefCountedEmbeddedCassandra refCountedEmbeddedCassandra =
-            RefCountedEmbeddedCassandra.create(embeddedCassandra);
-        refCountedEmbeddedCassandra.refIncrementAndGet();
-        instances.put(configuration, refCountedEmbeddedCassandra);
-      }
-    } finally {
-      lock.unlock();
-    }
-
-    return embeddedCassandra;
+  private static EmbeddedCassandra getEmbeddedCassandra(Configuration configuration) {
+    return instances
+        .compute(
+            configuration,
+            (config, refCountedCassandra) -> {
+              if (refCountedCassandra == null) {
+                LOG.info("Starting Shared embedded Cassandra for configuration = {}", config);
+                try {
+                  EmbeddedCassandra newCassandra =
+                      new EmbeddedCassandra(
+                          config.configYaml(), config.cqlScript(), config.clientEncryption());
+                  // Wait for cassandra to be healthy.
+                  int maxRetries = 60;
+                  int retries = 0;
+                  boolean isHealthy = false;
+                  while (retries < maxRetries && !isHealthy) {
+                    isHealthy = newCassandra.isHealthy();
+                    if (!isHealthy) {
+                      try {
+                        Thread.sleep(2000); // Wait for 2 seconds before retrying.
+                      } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                      }
+                    }
+                    retries++;
+                  }
+                  if (!isHealthy) {
+                    throw new RuntimeException("Embedded cassandra is not healthy after waiting");
+                  }
+                  refCountedCassandra = RefCountedEmbeddedCassandra.create(newCassandra);
+                } catch (IOException e) {
+                  throw new RuntimeException(e);
+                }
+              } else {
+                LOG.info("Getting Shared embedded Cassandra for configuration = {}", config);
+              }
+              refCountedCassandra.refIncrementAndGet();
+              return refCountedCassandra;
+            })
+        .embeddedCassandra();
   }
 
-  private static void putEmbeddedCassandra(Configuration configuration) throws Exception {
-    lock.lock();
-    try {
-      if (instances.containsKey(configuration)) {
-        RefCountedEmbeddedCassandra refCountedEmbeddedCassandra = instances.get(configuration);
-        if (refCountedEmbeddedCassandra.refDecrementAndGet() == 0) {
-          Log.info("Stopping Shared embedded Cassandra for configuration = {}", configuration);
-          instances.remove(configuration);
-          refCountedEmbeddedCassandra.embeddedCassandra().close();
-        }
-      }
-    } finally {
-      lock.unlock();
-    }
+  private static void putEmbeddedCassandra(Configuration configuration) {
+    instances.computeIfPresent(
+        configuration,
+        (config, refCountedCassandra) -> {
+          if (refCountedCassandra.refDecrementAndGet() == 0) {
+            LOG.info("Stopping Shared embedded Cassandra for configuration = {}", config);
+            try {
+              refCountedCassandra.embeddedCassandra().close();
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+            return null; // remove from map
+          }
+          return refCountedCassandra; // keep in map
+        });
   }
 
   @AutoValue
@@ -154,10 +163,7 @@ public class SharedEmbeddedCassandra implements AutoCloseable {
     private AtomicInteger refCount = new AtomicInteger();
 
     public static RefCountedEmbeddedCassandra create(EmbeddedCassandra embeddedCassandra) {
-      AutoValue_SharedEmbeddedCassandra_RefCountedEmbeddedCassandra ret =
-          new AutoValue_SharedEmbeddedCassandra_RefCountedEmbeddedCassandra(embeddedCassandra);
-      ret.refIncrementAndGet();
-      return ret;
+      return new AutoValue_SharedEmbeddedCassandra_RefCountedEmbeddedCassandra(embeddedCassandra);
     }
 
     public abstract EmbeddedCassandra embeddedCassandra();

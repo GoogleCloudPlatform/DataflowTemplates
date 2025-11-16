@@ -53,7 +53,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -62,6 +65,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.annotations.VisibleForTesting;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.model.Plugin;
@@ -191,6 +195,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
   protected boolean generateSBOM;
 
   private boolean internalMaven;
+  // used to track if same images are scanned
+  private static final Set<ImmutablePair<String, TemplateType>> SCANNED_TYPES = new HashSet<>();
 
   private String mavenRepo;
 
@@ -541,7 +547,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     if (generateSBOM) {
       // generate SBOM
       File buildDir = new File(outputClassesDirectory.getAbsolutePath());
-      performVulnerabilityScanAndGenerateUserSBOM(imagePathTag, buildProjectId, buildDir);
+      performVulnerabilityScanAndGenerateUserSBOM(
+          imagePathTag, buildProjectId, buildDir, definition.getTemplateAnnotation().type());
       GenerateSBOMRunnable runnable = new GenerateSBOMRunnable(imagePathTag);
       Failsafe.with(GenerateSBOMRunnable.sbomRetryPolicy()).run(runnable);
       String digest = runnable.getDigest();
@@ -550,6 +557,9 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         // resolve tag to apply
         ImageSpecMetadata metadata = imageSpec.getMetadata();
         String trackTag = "public-image-latest";
+        String dateSuffix =
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
+        String deprecatedTag = "no-new-use-public-image-newer-available-" + dateSuffix;
         if (metadata.isHidden()) {
           trackTag = "no-new-use-public-image-latest";
         } else if (metadata.getName().contains("[Deprecated]")) {
@@ -557,7 +567,8 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         }
         // promote image
         PromoteHelper promoteHelper =
-            new PromoteHelper(imagePath, targetImagePath, stagePrefix, trackTag, digest);
+            new PromoteHelper(
+                imagePath, targetImagePath, stagePrefix, trackTag, deprecatedTag, digest);
         promoteHelper.promote();
 
         if (!stageImageOnly) {
@@ -1079,7 +1090,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
+      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + yamlTemplateName + ".tar\n";
       writer.write(
           "steps:\n"
@@ -1091,84 +1102,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --dockerfile="
               + dockerfile
               + "\n"
-              + "  - --cache=true\n"
-              + "  - --cache-ttl=6h\n"
-              + "  - --compressed-caching=false\n"
-              + "  - --cache-copy-layers=true\n"
-              + "  - --cache-repo="
-              + cacheFolder
-              + (generateSBOM
-                  ? "\n"
-                      + "  - --no-push\n"
-                      + "  - --tar-path="
-                      + tarPath
-                      + "\n"
-                      + "- name: 'gcr.io/cloud-builders/docker'\n"
-                      + "  args:\n"
-                      + "  - load\n"
-                      + "  - --input="
-                      + tarPath
-                      + "\n"
-                      + "images: ['"
-                      + imagePathTag
-                      + "']\n"
-                      + "options:\n"
-                      + "  logging: CLOUD_LOGGING_ONLY\n"
-                      + "  requestedVerifyOption: VERIFIED"
-                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
-    }
-
-    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
-    StringBuilder cloudBuildLogs = new StringBuilder();
-    Process stageProcess =
-        runCommand(
-            new String[] {
-              "gcloud",
-              "builds",
-              "submit",
-              "--config",
-              cloudbuildFile.getAbsolutePath(),
-              "--machine-type",
-              "e2-highcpu-8",
-              "--disk-size",
-              "200",
-              "--project",
-              buildProjectId
-            },
-            directory,
-            cloudBuildLogs);
-
-    int retval = stageProcess.waitFor();
-    if (retval != 0) {
-      throw new RuntimeException(
-          String.format(
-              "Error building yaml image using gcloud. Code %d. Check logs for details.\n%s",
-              retval, cloudBuildLogs));
-    }
-  }
-
-  private void stagePythonUsingDockerfile(
-      String buildProjectId, String imagePathTag, String containerName)
-      throws IOException, InterruptedException {
-    File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + containerName);
-
-    File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
-    try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
-      String tarPath = "/workspace/" + containerName + ".tar\n";
-      writer.write(
-          "steps:\n"
-              + "- name: gcr.io/kaniko-project/executor\n"
-              + "  args:\n"
-              + "  - --destination="
-              + imagePathTag
-              + "\n"
-              + "  - --cache=true\n"
-              + "  - --cache-ttl=6h\n"
-              + "  - --compressed-caching=false\n"
-              + "  - --cache-copy-layers=true\n"
-              + "  - --cache-repo="
-              + cacheFolder
+              // + "  - --cache=true\n"
+              // + "  - --cache-ttl=6h\n"
+              // + "  - --compressed-caching=false\n"
+              // + "  - --cache-copy-layers=true\n"
+              // + "  - --cache-repo="
+              // + cacheFolder
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1214,11 +1153,78 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building Python image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
+    }
+  }
+
+  private void stagePythonUsingDockerfile(
+      String buildProjectId, String imagePathTag, String containerName)
+      throws IOException, InterruptedException {
+    File directory = new File(outputClassesDirectory.getAbsolutePath() + "/" + containerName);
+
+    File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
+    try (FileWriter writer = new FileWriter(cloudbuildFile)) {
+      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
+      String tarPath = "/workspace/" + containerName + ".tar\n";
+      writer.write(
+          "steps:\n"
+              + "- name: gcr.io/kaniko-project/executor\n"
+              + "  args:\n"
+              + "  - --destination="
+              + imagePathTag
+              + "\n"
+              // + "  - --cache=true\n"
+              // + "  - --cache-ttl=6h\n"
+              // + "  - --compressed-caching=false\n"
+              // + "  - --cache-copy-layers=true\n"
+              // + "  - --cache-repo="
+              // + cacheFolder
+              + (generateSBOM
+                  ? "\n"
+                      + "  - --no-push\n"
+                      + "  - --tar-path="
+                      + tarPath
+                      + "\n"
+                      + "- name: 'gcr.io/cloud-builders/docker'\n"
+                      + "  args:\n"
+                      + "  - load\n"
+                      + "  - --input="
+                      + tarPath
+                      + "\n"
+                      + "images: ['"
+                      + imagePathTag
+                      + "']\n"
+                      + "options:\n"
+                      + "  logging: CLOUD_LOGGING_ONLY\n"
+                      + "  requestedVerifyOption: VERIFIED"
+                  : "\noptions:\n" + "  logging: CLOUD_LOGGING_ONLY\n"));
+    }
+
+    LOG.info("Submitting Cloud Build job with config: " + cloudbuildFile.getAbsolutePath());
+    StringBuilder cloudBuildLogs = new StringBuilder();
+    Process stageProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "builds",
+              "submit",
+              "--config",
+              cloudbuildFile.getAbsolutePath(),
+              "--machine-type",
+              "e2-highcpu-8",
+              "--disk-size",
+              "200",
+              "--project",
+              buildProjectId
+            },
+            directory,
+            cloudBuildLogs);
+
+    int retval = stageProcess.waitFor();
+    // Ideally this should raise an exception, but this sometimes return NZE even for successful
+    // runs.
+    if (retval != 0) {
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1296,11 +1302,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Build Flex image nonzero return code {}.  This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1313,7 +1315,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     String tarPath = "/workspace/" + containerName + ".tar\n";
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
+      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
@@ -1324,12 +1326,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --dockerfile="
               + dockerfile
               + "\n"
-              + "  - --cache=true\n"
-              + "  - --cache-ttl=6h\n"
-              + "  - --compressed-caching=false\n"
-              + "  - --cache-copy-layers=true\n"
-              + "  - --cache-repo="
-              + cacheFolder
+              // + "  - --cache=true\n"
+              // + "  - --cache-ttl=6h\n"
+              // + "  - --compressed-caching=false\n"
+              // + "  - --cache-copy-layers=true\n"
+              // + "  - --cache-repo="
+              // + cacheFolder
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1375,11 +1377,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Building Xlang image nonzero return code {}. This does not necessarily mean an error. "
-              + "Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
   }
 
@@ -1421,10 +1419,25 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     }
   }
 
-  private static void performVulnerabilityScanAndGenerateUserSBOM(
-      String imagePathTag, String buildProjectId, File buildDir)
+  private void performVulnerabilityScanAndGenerateUserSBOM(
+      String imagePathTag, String buildProjectId, File buildDir, TemplateType imageType)
       throws IOException, InterruptedException {
     LOG.info("Generating user SBOM and Performing security scan for {}...", imagePathTag);
+
+    // Continuous scanning is expensive. Images are built on identical dependencies and only differ
+    // by entry point. We only need to check once.
+    ImmutablePair<String, TemplateType> uniqueImage =
+        ImmutablePair.of(buildDir.getPath(), imageType);
+    String maybeScan = "";
+    if (!SCANNED_TYPES.contains(uniqueImage)) {
+      maybeScan =
+          "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
+              + "  args:\n"
+              + "  - --image="
+              + imagePathTag
+              + "\n";
+      SCANNED_TYPES.add(uniqueImage);
+    }
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
@@ -1450,11 +1463,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --uri="
               + imagePathTag
               + "\n"
-              + "- name: 'us-docker.pkg.dev/scaevola-builder-integration/release/scanvola/scanvola'\n"
-              + "  args:\n"
-              + "  - --image="
-              + imagePathTag
-              + "\n"
+              + maybeScan
               + "options:\n"
               + "  logging: CLOUD_LOGGING_ONLY\n");
     }
@@ -1479,11 +1488,38 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     // Ideally this should raise an exception, but this sometimes return NZE even for successful
     // runs.
     if (retval != 0) {
-      LOG.warn(
-          "Scanning container nonzero return code {}. This does not necessarily mean an error. Check logs for details. {}",
-          retval,
-          cloudBuildLogs);
+      validateImageExists(imagePathTag, buildProjectId);
     }
+  }
+
+  private static void validateImageExists(String imagePathTag, String buildProjectId)
+      throws IOException, InterruptedException {
+    LOG.info("Validating that image {} was created...", imagePathTag);
+
+    // Tries to describe the image. If it fails, it means the image does not exist.
+    Process validationProcess =
+        runCommand(
+            new String[] {
+              "gcloud",
+              "artifacts",
+              "docker",
+              "images",
+              "describe",
+              imagePathTag,
+              "--project",
+              buildProjectId
+            },
+            null,
+            new StringBuilder());
+
+    if (validationProcess.waitFor() != 0) {
+      throw new RuntimeException(
+          "Image "
+              + imagePathTag
+              + " was not created properly. Check the build logs for more details.");
+    }
+
+    LOG.info("Image {} validated successfully.", imagePathTag);
   }
 
   /** A runnable used for generating system SBOM, fetching image digest for retrivial. */

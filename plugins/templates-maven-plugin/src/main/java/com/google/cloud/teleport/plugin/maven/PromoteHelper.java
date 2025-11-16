@@ -18,6 +18,7 @@ package com.google.cloud.teleport.plugin.maven;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -43,6 +44,7 @@ class PromoteHelper {
   private final String token;
   private final String imageTag;
   private final @Nullable String additionalTag;
+  private final @Nullable String replacementTag;
 
   /**
    * Promote the staged flex template image using MOSS promote API.
@@ -52,6 +54,8 @@ class PromoteHelper {
    * @param imageTag - image tag
    * @param additionalTag - additional destination tag, used by repo managements, e.g.
    *     public-image-latest
+   * @param replacementTag - tag to put on original holder of additionalTag, used by repo
+   *     managements, e.g. no-new-use-public-image-
    * @param sourceDigest - source image digest, e.g. sha256:xxxxx
    */
   public PromoteHelper(
@@ -59,9 +63,17 @@ class PromoteHelper {
       String targetPath,
       String imageTag,
       @Nullable String additionalTag,
+      @Nullable String replacementTag,
       String sourceDigest)
       throws IOException, InterruptedException {
-    this(sourcePath, targetPath, imageTag, additionalTag, sourceDigest, accessToken());
+    this(
+        sourcePath,
+        targetPath,
+        imageTag,
+        additionalTag,
+        replacementTag,
+        sourceDigest,
+        accessToken());
   }
 
   @VisibleForTesting
@@ -70,12 +82,14 @@ class PromoteHelper {
       String targetPath,
       String imageTag,
       @Nullable String additionalTag,
+      @Nullable String replacementTag,
       String sourceDigest,
       String token) {
     this.sourceSpec = new ArtifactRegImageSpec(sourcePath);
     this.targetSpec = new ArtifactRegImageSpec(targetPath);
     this.imageTag = imageTag;
     this.additionalTag = additionalTag;
+    this.replacementTag = replacementTag;
     this.sourceDigest = sourceDigest;
     this.token = token;
     this.targetPath = targetPath;
@@ -83,17 +97,24 @@ class PromoteHelper {
 
   /** Promote the artifact. */
   public void promote() throws IOException, InterruptedException {
+    String originalDigest = null;
+    if (!Strings.isNullOrEmpty(additionalTag) && !Strings.isNullOrEmpty(replacementTag)) {
+      originalDigest = getDigestFromTag(additionalTag);
+    }
     String[] promoteArtifactCmd = getPromoteFlexTemplateImageCmd();
     // promote API returns a long-running-operation
     String responseRLO = TemplatesStageMojo.runCommandCapturesOutput(promoteArtifactCmd, null);
     JsonElement parsed = JsonParser.parseString(responseRLO);
     String operation = parsed.getAsJsonObject().get("name").getAsString();
     waitForComplete(operation);
-    addTag(imageTag);
+    addTag(imageTag, sourceDigest);
     // override latest (for pull default tag) and additionalTag (for vul scan, if present)
-    addTag("latest");
+    addTag("latest", sourceDigest);
     if (additionalTag != null) {
-      addTag(additionalTag);
+      addTag(additionalTag, sourceDigest);
+    }
+    if (!Strings.isNullOrEmpty(originalDigest)) {
+      addTag(replacementTag, originalDigest);
     }
   }
 
@@ -157,7 +178,7 @@ class PromoteHelper {
   }
 
   /** Add tag after promotion. */
-  private void addTag(String tag) throws IOException, InterruptedException {
+  private void addTag(String tag, String digest) throws IOException, InterruptedException {
     // TODO: remove this once copy tag is supported by promote API
     String[] command;
     if (targetSpec.repository.endsWith("gcr.io")) {
@@ -169,7 +190,7 @@ class PromoteHelper {
             "images",
             "add-tag",
             "-q",
-            String.format("%s@%s", targetPath, sourceDigest),
+            String.format("%s@%s", targetPath, digest),
             String.format("%s:%s", targetPath, tag)
           };
     } else {
@@ -180,11 +201,69 @@ class PromoteHelper {
             "docker",
             "tags",
             "add",
-            String.format("%s@%s", targetPath, sourceDigest),
+            String.format("%s@%s", targetPath, digest),
             String.format("%s:%s", targetPath, tag)
           };
     }
     TemplatesStageMojo.runCommandCapturesOutput(command, null);
+  }
+
+  /**
+   * Get the digest of an image with a specific tag.
+   *
+   * @param tag - The tag of the image to retrieve.
+   * @return The digest of the image.
+   */
+  @VisibleForTesting
+  String getDigestFromTag(String tag) {
+    String[] command;
+    String imageReference = String.format("%s:%s", targetPath, tag);
+
+    if (targetSpec.repository.endsWith("gcr.io")) {
+      // gcr.io repository needs to use `gcloud container` to list tags
+      command =
+          new String[] {
+            "gcloud",
+            "container",
+            "images",
+            "list-tags",
+            targetPath, // This is the image name, e.g., us.gcr.io/my-project/my-image
+            "--filter=tags=" + tag,
+            "--format",
+            "get(digest)"
+          };
+    } else {
+      // Artifact Registry repository needs to use `gcloud artifacts docker images describe`
+      command =
+          new String[] {
+            "gcloud",
+            "artifacts",
+            "docker",
+            "images",
+            "describe",
+            imageReference, // This is the full image reference including tag, e.g.,
+            // us-central1-docker.pkg.dev/my-project/my-repo/my-image:tag
+            "--format",
+            "get(image_summary.digest)"
+          };
+    }
+
+    String response = "";
+    try {
+      response = TemplatesStageMojo.runCommandCapturesOutput(command, null);
+    } catch (Exception e) {
+      // Swallow exceptions here - usually this means that the image does not exist with the tag
+      return "";
+    }
+    // The response is expected to be just the digest, e.g., "sha256:..."
+    // Trim any leading/trailing whitespace.
+    response = response.trim();
+    if (response.startsWith("sha256:")) {
+      return response;
+    }
+    // gcloud container doesn't fail on image not found
+    LOG.warn("Unable to get digest from tag: {}", response);
+    return "";
   }
 
   private static class QueryOperationRunnable implements dev.failsafe.function.CheckedRunnable {
