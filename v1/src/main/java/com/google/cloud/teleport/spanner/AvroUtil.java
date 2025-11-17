@@ -24,6 +24,7 @@ public class AvroUtil {
 
   // The property names in Avro schema.
   public static final String DEFAULT_EXPRESSION = "defaultExpression";
+  public static final String ON_UPDATE_EXPRESSION = "onUpdateExpression";
   public static final String GENERATION_EXPRESSION = "generationExpression";
   public static final String GOOGLE_FORMAT_VERSION = "googleFormatVersion";
   public static final String GOOGLE_STORAGE = "googleStorage";

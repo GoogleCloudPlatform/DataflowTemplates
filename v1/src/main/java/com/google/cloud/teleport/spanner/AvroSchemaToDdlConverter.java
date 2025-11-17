@@ -21,6 +21,7 @@ import static com.google.cloud.teleport.spanner.AvroUtil.HIDDEN;
 import static com.google.cloud.teleport.spanner.AvroUtil.IDENTITY_COLUMN;
 import static com.google.cloud.teleport.spanner.AvroUtil.INPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.NOT_NULL;
+import static com.google.cloud.teleport.spanner.AvroUtil.ON_UPDATE_EXPRESSION;
 import static com.google.cloud.teleport.spanner.AvroUtil.OUTPUT;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHANGE_STREAM_FOR_CLAUSE;
 import static com.google.cloud.teleport.spanner.AvroUtil.SPANNER_CHECK_CONSTRAINT;
@@ -632,6 +633,9 @@ public class AvroSchemaToDdlConverter {
           if (nullable) {
             avroType = unpacked;
           }
+        } else {
+          String notNull = f.getProp(NOT_NULL);
+          nullable = notNull != null && !Boolean.parseBoolean(notNull);
         }
         if (Strings.isNullOrEmpty(sqlType)) {
           Type spannerType = inferType(avroType, true);
@@ -639,6 +643,8 @@ public class AvroSchemaToDdlConverter {
         }
         String defaultExpression = f.getProp(DEFAULT_EXPRESSION);
         column.parseType(sqlType).notNull(!nullable).defaultExpression(defaultExpression);
+        String onUpdateExpression = f.getProp(ON_UPDATE_EXPRESSION);
+        column.parseType(sqlType).notNull(!nullable).onUpdateExpression(onUpdateExpression);
       }
       String hidden = f.getProp(HIDDEN);
       if (Boolean.parseBoolean(hidden)) {
