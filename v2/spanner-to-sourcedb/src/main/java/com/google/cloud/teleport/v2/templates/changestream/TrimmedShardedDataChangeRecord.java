@@ -22,8 +22,8 @@ import java.io.Serializable;
 import java.util.Objects;
 import org.apache.avro.reflect.AvroEncode;
 import org.apache.avro.reflect.Nullable;
-import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 
@@ -37,6 +37,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
 
   @AvroEncode(using = TimestampEncoding.class)
   private Timestamp commitTimestamp;
+
   private String serverTransactionId;
   private String recordSequence;
   private String tableName;
@@ -45,7 +46,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private long numberOfRecordsInTransaction;
 
   @Nullable private String transactionTag;
-  @Nullable private String shard;
+  private String shard;
   private boolean isRetryRecord;
 
   @SerializedName("_metadata_retry_count")

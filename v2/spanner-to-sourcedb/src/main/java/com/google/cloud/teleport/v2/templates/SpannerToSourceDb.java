@@ -76,10 +76,10 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOption
 import org.apache.beam.runners.dataflow.options.DataflowPipelineWorkerPoolOptions.AutoscalingAlgorithmType;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.coders.KvCoder;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
 import org.apache.beam.sdk.coders.VarLongCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
 import org.apache.beam.sdk.io.FileSystems;
 import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
@@ -754,8 +754,7 @@ public class SpannerToSourceDb {
                         options.getSourceType()))) // currently assuming that all shards accept the
             // same
             .setCoder(
-                KvCoder.of(
-                    VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
+                KvCoder.of(VarLongCoder.of(), AvroCoder.of(TrimmedShardedDataChangeRecord.class)))
             .apply("Reshuffle2", Reshuffle.of())
             .apply(
                 "Write to source",
