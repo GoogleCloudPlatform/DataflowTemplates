@@ -42,21 +42,8 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml
 
-      - name: Find changed YAML files
-        id: yaml-files
-        run: |
-          echo "Finding changed YAML files at 'yaml/src/main/yaml/'"
-          FILES=$(find yaml/src/main/yaml -name '*.yaml' | tr '\n' ' ')
-          echo "files found: $FILES"
-          echo "files=$FILES" >> $GITHUB_OUTPUT
-
-      - name: Generate Java Templates
-        if: steps.yaml-files.outputs.files
-        run: |
-          echo "Processing YAML files: ${{ steps.yaml-files.outputs.files }}"
-          for file in ${{ steps.yaml-files.outputs.files }}; do
-            python yaml/scripts/generate_yaml_java_templates.py "$file"
-          done
+      - name: Generate Java Templates from YAML
+        run: python yaml/scripts/generate_yaml_java_templates.py yaml/src/main/yaml
 
       - name: Set up JDK
         uses: actions/setup-java@v4
