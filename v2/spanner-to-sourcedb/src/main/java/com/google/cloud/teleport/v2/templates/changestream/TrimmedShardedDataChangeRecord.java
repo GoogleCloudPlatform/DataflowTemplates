@@ -45,8 +45,8 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private ModType modType;
   private long numberOfRecordsInTransaction;
 
-  @Nullable private String transactionTag;
-  private String shard;
+  private String transactionTag;
+  @Nullable private String shard;
   private boolean isRetryRecord;
 
   @SerializedName("_metadata_retry_count")
