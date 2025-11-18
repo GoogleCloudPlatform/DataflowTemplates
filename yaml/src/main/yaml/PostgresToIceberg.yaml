@@ -1,0 +1,61 @@
+template:
+  name: "Postgres_To_Iceberg_Yaml"
+  display_name: "Postgres to Iceberg (Yaml)"
+  description: "A template for Postgres to Iceberg."
+  flex_container_name: "postgres-to-iceberg-yaml"
+  category: "BATCH"
+
+  parameters:
+    # Postgres Read parameters
+    - name: "jdbc_url"
+      help: "Connection URL for the JDBC source."
+      required: true
+      type: text
+    - name: "username"
+      help: "Username for the JDBC source."
+      required: false
+      type: text
+    - name: "password"
+      help: "Password for the JDBC source."
+      required: false
+      type: text
+    - name: "read_query"
+      help: "SQL query used to query the JDBC source."
+      required: true
+      type: text
+
+    # Iceberg Write parameters
+    - name: "table"
+      help: "A fully-qualified table identifier."
+      required: true
+      type: text
+    - name: "catalog_name"
+      help: "Name of the catalog containing the table."
+      required: true
+      type: text
+    - name: "catalog_properties"
+      help: "Properties used to set up the Iceberg catalog. Should be a JSON map."
+      required: true
+      type: text
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromPostgres
+      name: ReadFromPostgres
+      config:
+        url: "{{ jdbc_url }}"
+        driver_class_name: "org.postgresql.Driver"
+        username: "{{ username }}"
+        password: "{{ password }}"
+        query: "{{ read_query }}"
+
+    - type: WriteToIceberg
+      name: WriteToAnIcebergTable
+      config:
+        table: "{{ table }}"
+        catalog_name: "{{ catalog_name }}"
+        catalog_properties: "{{ catalog_properties }}"
+
+options:
+  streaming: false
