@@ -45,6 +45,36 @@ def get_template_parameter_type(param_type):
     else:
         return 'TemplateParameter.Text'
 
+def get_git_root():
+    """Gets the root directory of the git repository."""
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True).strip()
+    except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        # Handle cases where git command fails or git is not installed
+        print("Error: Git repository not found. Please ensure Git is installed and in your PATH.")
+        return e
+
+def run_mvn_spotless():
+    """Runs the mvn spotless:apply command in the git repository root."""
+    repo_root = get_git_root()
+    if not repo_root:
+        raise Exception("Could not determine the root of the git repository.")
+
+    try:
+        subprocess.run(
+            ["mvn", "spotless:apply"],
+            check=True,
+            cwd=repo_root,
+            capture_output=True,
+            text=True)
+        print("Successfully ran mvn spotless:apply.")
+    except FileNotFoundError as e:
+        print("Error: 'mvn' command not found. Please ensure Maven is installed and in your PATH.")
+        return e
+    except subprocess.CalledProcessError as e:
+        print(f"Error running mvn spotless:apply: {e}", file=sys.stderr)
+        return e
+
 def generate_java_interface(yaml_path, java_path):
     """Generates a Java interface file from a YAML blueprint."""
 
@@ -199,6 +229,14 @@ def main():
         print(f"An error occurred when trying to convert yaml blueprint to java template: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Adding this step so that developer doesn't need to remember this step
+    # when pushing a PR and trying to format the template with code will not work
+    # as well compared to just running mvn spotless.
+    try:
+        run_mvn_spotless()
+    except Exception as e:
+        print(f"An error occurred: {e}", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
