@@ -16,7 +16,7 @@
 package com.google.cloud.teleport.v2.templates.changestream;
 
 import com.google.cloud.Timestamp;
-import com.google.cloud.teleport.spanner.spannerio.changestreams.encoder.TimestampEncoding;
+import com.google.cloud.teleport.v2.templates.changestream.encoder.TimestampEncoding;
 import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 import java.util.Objects;
