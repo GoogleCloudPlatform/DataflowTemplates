@@ -309,8 +309,8 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {                                                                                                                                                │
-          response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());                                                                                                                                             │
-          continue;                                                                                                                                                                                                                            │
+        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());                                                                                                                                             │
+        continue;                                                                                                                                                                                                                            │
       }
 
       String spannerColName = "";
