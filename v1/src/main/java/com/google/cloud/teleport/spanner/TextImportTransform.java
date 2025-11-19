@@ -27,6 +27,7 @@ import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
 import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO.Write;
 import com.google.cloud.teleport.spanner.spannerio.SpannerWriteResult;
 import com.google.cloud.teleport.spanner.spannerio.Transaction;
 import com.google.common.annotations.VisibleForTesting;
@@ -78,6 +79,7 @@ import org.apache.beam.sdk.values.PDone;
 import org.apache.beam.sdk.values.TupleTag;
 import org.apache.beam.sdk.values.TupleTagList;
 import org.apache.beam.sdk.values.TypeDescriptor;
+import org.apache.commons.lang3.StringUtils;
 import org.joda.time.Duration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,14 +94,17 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
 
   private final ValueProvider<String> importManifest;
   private final ValueProvider<String> invalidOutputPath;
+  private final String invalidMutationPath;
 
   public TextImportTransform(
       SpannerConfig spannerConfig,
       ValueProvider<String> importManifest,
-      ValueProvider<String> invalidOutputPath) {
+      ValueProvider<String> invalidOutputPath,
+      String invalidMutationPath) {
     this.spannerConfig = spannerConfig;
     this.importManifest = importManifest;
     this.invalidOutputPath = invalidOutputPath;
+    this.invalidMutationPath = invalidMutationPath;
   }
 
   @Override
@@ -198,22 +203,66 @@ public class TextImportTransform extends PTransform<PBegin, PDone> {
                   "Text files as mutations. Depth: " + depth,
                   new TextTableFilesAsMutations(ddlView, tableColumnsView));
 
+      Write write = getSpannerWrite(dialectView);
+
       SpannerWriteResult result =
           mutations
               .apply("Wait for previous depth " + depth, Wait.on(previousComputation))
-              .apply(
-                  "Write mutations " + depth,
-                  SpannerIO.write()
-                      .withSpannerConfig(spannerConfig)
-                      .withCommitDeadline(Duration.standardMinutes(1))
-                      .withMaxCumulativeBackoff(Duration.standardHours(2))
-                      .withMaxNumMutations(10000)
-                      .withGroupingFactor(100)
-                      .withDialectView(dialectView));
+              .apply("Write mutations " + depth, write);
+
+      result = logFailedMutations(depth, result);
+
       previousComputation = result.getOutput();
     }
 
     return PDone.in(begin.getPipeline());
+  }
+
+  @VisibleForTesting
+  protected SpannerWriteResult logFailedMutations(int depth, SpannerWriteResult result) {
+    if (isInvalidMutationPathValid()) {
+      // Capture failed mutations and write them to the invalid output path.
+      result
+          .getFailedMutations()
+          .apply(
+              "Get failed mutations as string " + depth,
+              MapElements.into(TypeDescriptor.of(String.class))
+                  .via(
+                      (com.google.cloud.teleport.spanner.spannerio.MutationGroup
+                              failedMutationGroup) -> failedMutationGroup.toString()))
+          .apply(
+              "Write failed mutations " + depth,
+              TextIO.<String>writeCustomType()
+                  .to(invalidMutationPath)
+                  .skipIfEmpty()
+                  .withFormatFunction(SerializableFunctions.identity())
+                  .withNumShards(1));
+      return result;
+    }
+    return result;
+  }
+
+  @VisibleForTesting
+  protected boolean isInvalidMutationPathValid() {
+    LOG.info("invalidMutation path = {}", invalidMutationPath);
+    return StringUtils.isNotBlank(invalidMutationPath);
+  }
+
+  @VisibleForTesting
+  protected Write getSpannerWrite(PCollectionView<Dialect> dialectView) {
+    Write write =
+        SpannerIO.write()
+            .withSpannerConfig(spannerConfig)
+            .withCommitDeadline(Duration.standardMinutes(1))
+            .withMaxCumulativeBackoff(Duration.standardHours(2))
+            .withMaxNumMutations(10000)
+            .withGroupingFactor(100)
+            .withDialectView(dialectView);
+
+    if (isInvalidMutationPathValid()) {
+      write = write.withFailureMode(SpannerIO.FailureMode.REPORT_FAILURES);
+    }
+    return write;
   }
 
   /** A transform that converts CSV records to Cloud Spanner mutations. */
