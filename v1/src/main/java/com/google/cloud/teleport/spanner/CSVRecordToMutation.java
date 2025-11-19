@@ -259,8 +259,11 @@ class CSVRecordToMutation extends DoFn<KV<String, CSVRecord>, Mutation> {
           break;
         case NUMERIC:
         case JSON:
+          columnValue = isNullValue ? Value.json(null) : Value.json(cellValue.trim().toString());
+          break;
         case PG_JSONB:
-          columnValue = isNullValue ? Value.string(null) : Value.string(cellValue.trim());
+          columnValue =
+              isNullValue ? Value.pgJsonb(null) : Value.pgJsonb(cellValue.trim().toString());
           break;
         case PG_NUMERIC:
           columnValue = isNullValue ? Value.pgNumeric(null) : Value.pgNumeric(cellValue.trim());
