@@ -132,7 +132,7 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       // filtered row.
       Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
       Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
-      Long pkColumn = Long.parseLong((String) requestRow.get("pk_column")) - tinyIntColumn;
+      Long pkColumn = intColumn - tinyIntColumn;
       Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");

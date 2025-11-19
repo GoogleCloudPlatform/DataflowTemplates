@@ -62,7 +62,8 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-//@Ignore("This test is disabled currently")   Disabling this for testing, will revert this change before merging
+// @Ignore("This test is disabled currently")   Disabling this for testing, will revert this change
+// before merging
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
@@ -263,8 +264,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     spannerResourceManager.write(m);
     m =
         Mutation.newInsertBuilder("AllDatatypeTransformation")
-            .set("pk_column")
-            .to(100)
             .set("varchar_column")
             .to("example1")
             .set("bigint_column")
@@ -305,8 +304,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     spannerResourceManager.write(m);
     m =
         Mutation.newInsertBuilder("AllDatatypeTransformation")
-            .set("pk_column")
-            .to(1234)
             .set("varchar_column")
             .to("example")
             .set("bigint_column")
@@ -428,7 +425,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(0).get("timestamp_column"))
         .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
-    assertThat(rows.get(0).get("pk_column")).isEqualTo(1232);
+    assertThat(rows.get(0).get("pk_column")).isEqualTo(122);
     assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
 
     rows =
