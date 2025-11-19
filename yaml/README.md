@@ -5,16 +5,19 @@ More detailed instructions on how to run the template can be found in the associ
 
 ## Steps
 
-1.  **Add YAML Blueprint:** Create the YAML blueprint file that defines the template's structure and parameters.
+1.  **Contribution Instructions:** Read the code contributions located [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md).
+
+1. **Add YAML Blueprint:** Create the YAML blueprint file that defines the template's structure and parameters.
 Place this file in [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/yaml/src/main/yaml).
 
-2.  **Generate YAML Template (Optional):** If desired, create the YAML template using the generation script.
+1.  **Generate YAML Template (Optional):** If desired, create the YAML template using the generation script.
 
 ```shell
 python yaml/scripts/generate_yaml_java_templates.py yaml/src/main/yaml
 ```
 
-3.  **Create Integration Test:** Develop an integration test to validate the functionality of the new template.
+1.  **Create Integration Test:** Develop an integration test to validate the functionality of the new template.
 Place this file in [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/yaml/src/test/java).
+Additional instructions can be located [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/add-integration-or-load-test.md).
 
-4.  **Generate Documentation:** Run the documentation generation script to create the official documentation for the template. You can find instructions on how to do this in the [contributor documentation](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#generated-documentation).
+1.  **Generate Documentation:** Run the documentation generation script to create the official documentation for the template. You can find instructions on how to do this in the [contributor documentation](https://github.com/GoogleCloudPlatform/DataflowTemplates/blob/main/contributor-docs/code-contributions.md#generated-documentation).
