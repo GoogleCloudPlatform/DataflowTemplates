@@ -193,7 +193,7 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     dlqGcsPubSubSubscription = google_pubsub_subscription.dlq_pubsub_subscription.id
     skipDirectoryName        = var.dataflow_params.template_params.skip_directory_name
     maxShardConnections      = var.dataflow_params.template_params.max_shard_connections
-    deadLetterQueueDirectory = "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
+    deadLetterQueueDirectory = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.dataflow_params.template_params.dead_letter_queue_directory : "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
     dlqMaxRetryCount         = var.dataflow_params.template_params.dlq_max_retry_count
     runMode                  = var.dataflow_params.template_params.run_mode
     dlqRetryMinutes          = var.dataflow_params.template_params.dlq_retry_minutes
