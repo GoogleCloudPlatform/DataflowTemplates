@@ -22,28 +22,19 @@ from pathlib import Path
 import yaml
 import textwrap
 
+JAVA_TYPE_BY_YAML_TYPE = {
+    'text': 'String',
+    'integer': 'Integer',
+    'boolean': 'Boolean',
+    'double' : 'Double'
+}
 
-def get_java_type(param_type):
-    """Maps a YAML parameter type to a Java type."""
-    if param_type == 'text':
-        return 'String'
-    elif param_type == 'integer':
-        return 'Integer'
-    elif param_type == 'boolean':
-        return 'Boolean'
-    else:
-        return 'String'
-
-def get_template_parameter_type(param_type):
-    """Maps a YAML parameter type to a TemplateParameter annotation type."""
-    if param_type == 'text':
-        return 'TemplateParameter.Text'
-    elif param_type == 'integer':
-        return 'TemplateParameter.Integer'
-    elif param_type == 'boolean':
-        return 'TemplateParameter.Boolean'
-    else:
-        return 'TemplateParameter.Text'
+TEMPLATE_TYPE_BY_YAML_TYPE = {
+    'text': 'TemplateParameter.Text',
+    'integer': 'TemplateParameter.Integer',
+    'boolean': 'TemplateParameter.Boolean',
+    'double' : 'TemplateParameter.Double'
+}
 
 def get_git_root():
     """Gets the root directory of the git repository."""
@@ -102,8 +93,8 @@ def generate_java_interface(yaml_path, java_path):
     parameters_code = []
     for i, param in enumerate(parameters):
         param_name = param['name']
-        java_type = get_java_type(param.get('type', 'text'))
-        template_param_type = get_template_parameter_type(param.get('type', 'text'))
+        java_type = JAVA_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'), 'String')
+        template_param_type = TEMPLATE_TYPE_BY_YAML_TYPE.get(param.get('type', 'text'))
         getter_name = "get" + param_name[0].upper() + param_name[1:]
         wrapped_description = param.get('description', '').strip()
         wrapped_help_text = param.get('help', '').strip()
@@ -127,10 +118,8 @@ def generate_java_interface(yaml_path, java_path):
         if 'default' in param:
             if java_type == 'String':
                 param_code += f'  @Default.String("{param["default"]}")\n'
-            elif java_type == 'Integer':
-                param_code += f'  @Default.Integer({param["default"]})\n'
-            elif java_type == 'Boolean':
-                param_code += f'  @Default.Boolean({param["default"]})\n'
+            else:        
+                param_code += f"  @Default.{java_type}({param['default']})\n"
 
         # getter name
         param_code += f"  {java_type} {getter_name}();"
