@@ -303,14 +303,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       String sourceColName = sourcePKs.get(i);
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
       if (sourceColDef == null) {
-          LOG.warn(
-              "The source column definition for {} was not found in source schema", sourceColName);
-          return null;
+        LOG.warn(
+            "The source column definition for {} was not found in source schema", sourceColName);
+        return null;
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-          response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
-          continue;
+        response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
+        continue;
       }
 
       String spannerColName = "";

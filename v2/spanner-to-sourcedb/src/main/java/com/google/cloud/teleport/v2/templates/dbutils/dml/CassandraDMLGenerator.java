@@ -410,7 +410,7 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       SourceColumn sourceColDef = sourceTable.column(sourceColName);
       if (sourceColDef == null) {
         LOG.warn(
-          "The source column definition for {} was not found in source schema", sourceColName);
+            "The source column definition for {} was not found in source schema", sourceColName);
         return null;
       }
 
@@ -419,9 +419,9 @@ public class CassandraDMLGenerator implements IDMLGenerator {
         String cassandraType = sourceColDef.type().toLowerCase();
         Object customValue = customTransformationResponse.get(sourceColName);
         columnValue =
-          PreparedStatementValueObject.create(
-          cassandraType,
-          customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
+            PreparedStatementValueObject.create(
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
         response.put(sourceColName, columnValue);
         continue;
       }
