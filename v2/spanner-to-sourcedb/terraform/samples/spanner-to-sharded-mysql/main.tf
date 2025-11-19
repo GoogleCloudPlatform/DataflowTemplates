@@ -186,9 +186,9 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     shadowTablePrefix              = var.dataflow_params.template_params.shadow_table_prefix
     sessionFilePath                = "gs://${google_storage_bucket_object.session_file_object.bucket}/${google_storage_bucket_object.session_file_object.name}"
     filtrationMode                 = var.dataflow_params.template_params.filtration_mode
-    transformationJarPath          = var.common_params.dataflow_params.template_params.transformation_jar_path
-    transformationClassName        = var.common_params.dataflow_params.template_params.transformation_class_name
-    transformationCustomParameters = var.common_params.dataflow_params.template_params.transformation_custom_parameters
+    transformationJarPath          = var.dataflow_params.template_params.transformation_jar_path
+    transformationClassName        = var.dataflow_params.template_params.transformation_class_name
+    transformationCustomParameters = var.dataflow_params.template_params.transformation_custom_parameters
     shardingCustomJarPath          = var.dataflow_params.template_params.sharding_custom_jar_path
     shardingCustomClassName        = var.dataflow_params.template_params.sharding_custom_class_name
     shardingCustomParameters       = var.dataflow_params.template_params.sharding_custom_parameters
