@@ -44,6 +44,7 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
+import org.apache.beam.sdk.transforms.ToString;
 import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
@@ -127,17 +128,19 @@ public final class CSVRecordToMutationTest {
             Create.of(kVRecords)
                 .withCoder(
                     KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
-    PCollection<Mutation> mutations =
-        input.apply(
-            ParDo.of(
-                    new CSVRecordToMutation(
-                        ddlView,
-                        tableColumnsMapView,
-                        dateFormat,
-                        timestampFormat,
-                        invalidOutputPath,
-                        errorTag))
-                .withSideInputs(ddlView, tableColumnsMapView));
+    PCollection<String> mutations =
+        input
+            .apply(
+                ParDo.of(
+                        new CSVRecordToMutation(
+                            ddlView,
+                            tableColumnsMapView,
+                            dateFormat,
+                            timestampFormat,
+                            invalidOutputPath,
+                            errorTag))
+                    .withSideInputs(ddlView, tableColumnsMapView))
+            .apply(ToString.elements());
     PAssert.that(mutations)
         .containsInAnyOrder(
             List.of(
@@ -163,10 +166,11 @@ public final class CSVRecordToMutationTest {
                     .set("numeric_col")
                     .to("-439.25335679")
                     .set("json_col")
-                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .to(Value.json("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}"))
                     .set("uuid_col")
                     .to("11111111-1111-1111-1111-111111111111")
-                    .build(),
+                    .build()
+                    .toString(),
                 Mutation.newInsertOrUpdateBuilder(testTableName)
                     .set("int_col")
                     .to(124)
@@ -189,10 +193,11 @@ public final class CSVRecordToMutationTest {
                     .set("numeric_col")
                     .to("-439.25335679")
                     .set("json_col")
-                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .to(Value.json("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}"))
                     .set("uuid_col")
                     .to("11111111-1111-1111-1111-111111111111")
-                    .build(),
+                    .build()
+                    .toString(),
                 Mutation.newInsertOrUpdateBuilder(testTableName)
                     .set("int_col")
                     .to(125)
@@ -215,10 +220,11 @@ public final class CSVRecordToMutationTest {
                     .set("numeric_col")
                     .to("-439.25335679")
                     .set("json_col")
-                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .to(Value.json("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}"))
                     .set("uuid_col")
                     .to("11111111-1111-1111-1111-111111111111")
-                    .build(),
+                    .build()
+                    .toString(),
                 Mutation.newInsertOrUpdateBuilder(testTableName)
                     .set("int_col")
                     .to(126)
@@ -241,10 +247,11 @@ public final class CSVRecordToMutationTest {
                     .set("numeric_col")
                     .to("-439.25335679")
                     .set("json_col")
-                    .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
+                    .to(Value.json("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}"))
                     .set("uuid_col")
                     .to("11111111-1111-1111-1111-111111111111")
-                    .build()));
+                    .build()
+                    .toString()));
 
     pipeline.run();
   }
@@ -349,17 +356,19 @@ public final class CSVRecordToMutationTest {
             Create.of(KV.of(testTableName, csvRecord))
                 .withCoder(
                     KvCoder.of(StringUtf8Coder.of(), SerializableCoder.of(CSVRecord.class))));
-    PCollection<Mutation> mutations =
-        input.apply(
-            ParDo.of(
-                    new CSVRecordToMutation(
-                        ddlView,
-                        tableColumnsMapView,
-                        dateFormat,
-                        timestampFormat,
-                        invalidOutputPath,
-                        errorTag))
-                .withSideInputs(ddlView, tableColumnsMapView));
+    PCollection<String> mutations =
+        input
+            .apply(
+                ParDo.of(
+                        new CSVRecordToMutation(
+                            ddlView,
+                            tableColumnsMapView,
+                            dateFormat,
+                            timestampFormat,
+                            invalidOutputPath,
+                            errorTag))
+                    .withSideInputs(ddlView, tableColumnsMapView))
+            .apply(ToString.elements());
 
     PAssert.that(mutations)
         .containsInAnyOrder(
@@ -385,8 +394,9 @@ public final class CSVRecordToMutationTest {
                 .set("numeric_col")
                 .to("-439.25335679")
                 .set("json_col")
-                .to("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}")
-                .build());
+                .to(Value.json("{\"a\":[1,null,true],\"b\":{\"a\":\"\\\"hello\\\"\"}}"))
+                .build()
+                .toString());
 
     pipeline.run();
   }
@@ -921,7 +931,7 @@ public final class CSVRecordToMutationTest {
                 .set("numeric_col")
                 .to(Value.pgNumeric("-439.25335679"))
                 .set("jsonb_col")
-                .to("{\"a\": null, \"b\": [true, false, 14.234, \"dsafaaf\"]}")
+                .to(Value.pgJsonb("{\"a\": null, \"b\": [true, false, 14.234, \"dsafaaf\"]}"))
                 .set("date_col")
                 .to(Value.date(Date.parseDate("1910-01-01")))
                 .set("commit_timestamp_col")
