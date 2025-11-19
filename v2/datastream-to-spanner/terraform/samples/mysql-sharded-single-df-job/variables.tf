@@ -33,6 +33,8 @@ variable "common_params" {
       template_params = object({
         shadow_table_prefix                 = optional(string)
         create_shadow_tables                = optional(bool)
+        shadow_table_spanner_instance_id    = optional(string)
+        shadow_table_spanner_database_id    = optional(string)
         rfc_start_date_time                 = optional(string)
         file_read_concurrency               = optional(number)
         spanner_project_id                  = optional(string)
@@ -53,6 +55,7 @@ variable "common_params" {
         filtered_events_directory           = optional(string)
         run_mode                            = optional(string)
         local_sharding_context_path         = optional(string)
+        dead_letter_queue_directory         = optional(string)
         dlq_gcs_pub_sub_subscription        = optional(string)
       })
       runner_params = object({

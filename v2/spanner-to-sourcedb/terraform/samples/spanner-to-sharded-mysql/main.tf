@@ -174,29 +174,32 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
 
   # Parameters from Dataflow Template
   parameters = {
-    changeStreamName         = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream
-    instanceId               = var.dataflow_params.template_params.instance_id
-    databaseId               = var.dataflow_params.template_params.database_id
-    spannerProjectId         = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
-    metadataInstance         = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
-    metadataDatabase         = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
-    sourceShardsFilePath     = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
-    startTimestamp           = var.dataflow_params.template_params.start_timestamp
-    endTimestamp             = var.dataflow_params.template_params.end_timestamp
-    shadowTablePrefix        = var.dataflow_params.template_params.shadow_table_prefix
-    sessionFilePath          = "gs://${google_storage_bucket_object.session_file_object.bucket}/${google_storage_bucket_object.session_file_object.name}"
-    filtrationMode           = var.dataflow_params.template_params.filtration_mode
-    shardingCustomJarPath    = var.dataflow_params.template_params.sharding_custom_jar_path
-    shardingCustomClassName  = var.dataflow_params.template_params.sharding_custom_class_name
-    shardingCustomParameters = var.dataflow_params.template_params.sharding_custom_parameters
-    sourceDbTimezoneOffset   = var.dataflow_params.template_params.source_db_timezone_offset
-    dlqGcsPubSubSubscription = google_pubsub_subscription.dlq_pubsub_subscription.id
-    skipDirectoryName        = var.dataflow_params.template_params.skip_directory_name
-    maxShardConnections      = var.dataflow_params.template_params.max_shard_connections
-    deadLetterQueueDirectory = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.dataflow_params.template_params.dead_letter_queue_directory : "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
-    dlqMaxRetryCount         = var.dataflow_params.template_params.dlq_max_retry_count
-    runMode                  = var.dataflow_params.template_params.run_mode
-    dlqRetryMinutes          = var.dataflow_params.template_params.dlq_retry_minutes
+    changeStreamName               = var.dataflow_params.template_params.change_stream_name != null ? var.dataflow_params.template_params.change_stream_name : local.change_stream
+    instanceId                     = var.dataflow_params.template_params.instance_id
+    databaseId                     = var.dataflow_params.template_params.database_id
+    spannerProjectId               = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
+    metadataInstance               = var.dataflow_params.template_params.metadata_instance_id != null ? var.dataflow_params.template_params.metadata_instance_id : var.dataflow_params.template_params.instance_id
+    metadataDatabase               = var.dataflow_params.template_params.metadata_database_id != null ? var.dataflow_params.template_params.metadata_database_id : local.change_stream
+    sourceShardsFilePath           = "gs://${google_storage_bucket_object.source_shards_file_object.bucket}/${google_storage_bucket_object.source_shards_file_object.name}"
+    startTimestamp                 = var.dataflow_params.template_params.start_timestamp
+    endTimestamp                   = var.dataflow_params.template_params.end_timestamp
+    shadowTablePrefix              = var.dataflow_params.template_params.shadow_table_prefix
+    sessionFilePath                = "gs://${google_storage_bucket_object.session_file_object.bucket}/${google_storage_bucket_object.session_file_object.name}"
+    filtrationMode                 = var.dataflow_params.template_params.filtration_mode
+    transformationJarPath          = var.common_params.dataflow_params.template_params.transformation_jar_path
+    transformationClassName        = var.common_params.dataflow_params.template_params.transformation_class_name
+    transformationCustomParameters = var.common_params.dataflow_params.template_params.transformation_custom_parameters
+    shardingCustomJarPath          = var.dataflow_params.template_params.sharding_custom_jar_path
+    shardingCustomClassName        = var.dataflow_params.template_params.sharding_custom_class_name
+    shardingCustomParameters       = var.dataflow_params.template_params.sharding_custom_parameters
+    sourceDbTimezoneOffset         = var.dataflow_params.template_params.source_db_timezone_offset
+    dlqGcsPubSubSubscription       = google_pubsub_subscription.dlq_pubsub_subscription.id
+    skipDirectoryName              = var.dataflow_params.template_params.skip_directory_name
+    maxShardConnections            = var.dataflow_params.template_params.max_shard_connections
+    deadLetterQueueDirectory       = var.dataflow_params.template_params.dead_letter_queue_directory != null ? var.dataflow_params.template_params.dead_letter_queue_directory : "${google_storage_bucket.reverse_replication_bucket.url}/dlq"
+    dlqMaxRetryCount               = var.dataflow_params.template_params.dlq_max_retry_count
+    runMode                        = var.dataflow_params.template_params.run_mode
+    dlqRetryMinutes                = var.dataflow_params.template_params.dlq_retry_minutes
   }
 
   # Additional Job Configurations

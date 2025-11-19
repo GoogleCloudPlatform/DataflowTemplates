@@ -38,6 +38,8 @@ common_params = {
     template_params = {
       shadow_table_prefix                 = "<YOUR_SHADOW_TABLE_PREFIX>"            # Prefix for shadow tables (e.g., "shadow_")
       create_shadow_tables                = "<TRUE/FALSE>"                          # Whether to create shadow tables in Spanner
+      shadow_table_spanner_instance_id    = "<YOUR_SHADOW_TABLE_INSTANCE_ID>"       # Shadow table instance ID
+      shadow_table_spanner_database_id    = "<YOUR_SHADOW_TABLE_DATABASE_ID>"       # Shadow table database ID
       rfc_start_date_time                 = "<YOUR_RFC_START_DATETIME>"             # RFC 3339 timestamp for the start of replication (optional)
       file_read_concurrency               = "<YOUR_CONCURRENCY>"                    # File read concurrency for Dataflow
       spanner_project_id                  = "<YOUR_PROJECT_ID>"                     # GCP project ID for Spanner
@@ -58,6 +60,7 @@ common_params = {
       transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
       filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
       run_mode                            = "<YOUR_RUN_MODE>"                       # Dataflow run mode ("regular" or "retryDLQ")
+      dead_letter_queue_directory         = "gs://my-bucket/dlq"                    # Optional dead letter queue directory
       dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_SUBSCRIPTION>"               # Pub/Sub subscription for the dead-letter queue (optional)
     }
 
