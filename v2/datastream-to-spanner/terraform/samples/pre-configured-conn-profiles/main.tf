@@ -154,6 +154,8 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     instanceId                      = var.dataflow_params.template_params.spanner_instance_id
     databaseId                      = var.dataflow_params.template_params.spanner_database_id
     projectId                       = var.dataflow_params.template_params.spanner_project_id != null ? var.dataflow_params.template_params.spanner_project_id : var.common_params.project
+    shadowTableSpannerInstanceId    = var.common_params.dataflow_params.template_params.shadow_table_spanner_instance_id
+    shadowTableSpannerDatabaseId    = var.common_params.dataflow_params.template_params.shadow_table_spanner_database_id
     spannerHost                     = var.dataflow_params.template_params.spanner_host
     gcsPubSubSubscription           = google_pubsub_subscription.datastream_subscription.id
     streamName                      = google_datastream_stream.mysql_to_gcs.id
@@ -161,7 +163,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     shouldCreateShadowTables        = tostring(var.dataflow_params.template_params.create_shadow_tables)
     rfcStartDateTime                = var.dataflow_params.template_params.rfc_start_date_time
     fileReadConcurrency             = tostring(var.dataflow_params.template_params.file_read_concurrency)
-    deadLetterQueueDirectory        = "gs://${var.datastream_params.target_gcs_bucket_name}/dlq"
+    deadLetterQueueDirectory        = var.common_params.dataflow_params.template_params.dead_letter_queue_directory != null ? var.common_params.dataflow_params.template_params.dead_letter_queue_directory : "gs://${var.datastream_params.target_gcs_bucket_name}/dlq"
     dlqRetryMinutes                 = tostring(var.dataflow_params.template_params.dlq_retry_minutes)
     dlqMaxRetryCount                = tostring(var.dataflow_params.template_params.dlq_max_retry_count)
     dataStreamRootUrl               = var.dataflow_params.template_params.datastream_root_url

@@ -48,6 +48,7 @@ common_params = {
       spanner_host                        = "<YOUR_SPANNER_HOST>"                   # Spanner host (typically "spanner.googleapis.com")
       dlq_retry_minutes                   = "<YOUR_DLQ_RETRY_MINUTES>"              # Retry interval for dead-letter queue messages (in minutes)
       dlq_max_retry_count                 = "<YOUR_DLQ_MAX_RETRIES>"                # Maximum retry count for dead-letter queue messages
+      dead_letter_queue_directory         = "YOUR_DLQ_BUCKET"                       # Optional dead letter queue directory (e.g., "gs://my-bucket/dlq")
       datastream_root_url                 = "<YOUR_DATASTREAM_ROOT_URL>"            # Datastream API root URL (typically "https://datastream.googleapis.com/v1")
       datastream_source_type              = "<YOUR_DATASTREAM_SOURCE_TYPE>"         # Datastream source type (e.g., "mysql")
       round_json_decimals                 = "<TRUE/FALSE>"                          # Whether to round JSON decimal values in Dataflow
@@ -60,7 +61,6 @@ common_params = {
       transformation_class_name           = "<YOUR_TRANSFORMATION_CLASS_NAME>"      # Fully Classified Class Name(Optional)
       filtered_events_directory           = "<YOUR_GCS_PATH_FOR_FILTERED_EVENTS>"   # GCS path to store the filtered events(Optional)
       run_mode                            = "<YOUR_RUN_MODE>"                       # Dataflow run mode ("regular" or "retryDLQ")
-      dead_letter_queue_directory         = "gs://my-bucket/dlq"                    # Optional dead letter queue directory
       dlq_gcs_pub_sub_subscription        = "<YOUR_DLQ_SUBSCRIPTION>"               # Pub/Sub subscription for the dead-letter queue (optional)
     }
 

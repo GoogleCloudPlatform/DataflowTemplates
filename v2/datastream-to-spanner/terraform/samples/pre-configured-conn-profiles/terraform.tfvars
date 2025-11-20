@@ -29,6 +29,8 @@ dataflow_params = {
     shadow_table_prefix = "<YOUR_SHADOW_TABLE_PREFIX>"
     # e.g., "shadow_"
     create_shadow_tables = true # true or false
+    shadow_table_spanner_instance_id    = "<YOUR_SHADOW_TABLE_INSTANCE_ID>"
+    shadow_table_spanner_database_id    = "<YOUR_SHADOW_TABLE_DATABASE_ID>"
     rfc_start_date_time  = "<YYYY-MM-DDTHH:MM:SSZ>"
     # e.g., "2023-12-31T12:00:00Z" (optional)
     file_read_concurrency = "<FILE_READ_CONCURRENCY_INT>" # Adjust as needed
