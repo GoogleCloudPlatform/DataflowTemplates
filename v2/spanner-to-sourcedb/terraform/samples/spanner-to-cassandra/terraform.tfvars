@@ -46,6 +46,12 @@ dataflow_params = {
     sharding_custom_class_name = "com.example.ShardingClass"
     # Optional parameters for custom sharding
     sharding_custom_parameters = "param1=value1,param2=value2"
+    # Optional GCS path to the custom transformation JAR
+    transformation_jar_path = "/path/to/transformation/jar"
+    # Optional Custom parameters used by the transformation JAR
+    transformation_custom_parameters = "<YOUR_CUSTOM_PARAMETERS_FOR_JAR>"
+    # Optional fully classified class name for custom transformation
+    transformation_class_name = "com.example.CustomTransformationClass"
     # Optional timezone offset for the source database
     source_db_timezone_offset = "+08:00"
     # Optional DLQ GCS Pub/Sub subscription
