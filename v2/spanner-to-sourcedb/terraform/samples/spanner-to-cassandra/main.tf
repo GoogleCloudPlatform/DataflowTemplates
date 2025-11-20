@@ -197,7 +197,7 @@ resource "google_dataflow_flex_template_job" "reverse_replication_job" {
     dlqMaxRetryCount               = var.dataflow_params.template_params.dlq_max_retry_count
     runMode                        = var.dataflow_params.template_params.run_mode
     dlqRetryMinutes                = var.dataflow_params.template_params.dlq_retry_minutes
-    sourceType               = var.dataflow_params.template_params.source_type
+    sourceType                     = var.dataflow_params.template_params.source_type
   }
 
   # Additional Job Configurations
