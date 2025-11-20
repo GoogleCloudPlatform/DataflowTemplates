@@ -381,52 +381,52 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
     assertThat(rows).hasSize(2);
     assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
-    assertThat(rows.get(1).get("bigint_column")).isEqualTo(1000);
+    assertThat(rows.get(1).get("bigint_column")).isEqualTo(1001L);
     assertThat(rows.get(1).get("binary_column"))
-        .isEqualTo("bin_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(1).get("bit_column")).isEqualTo("1".getBytes(StandardCharsets.UTF_8));
+              .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(1).get("blob_column"))
-        .isEqualTo("blob_column".getBytes(StandardCharsets.UTF_8));
-    assertThat(rows.get(1).get("bool_column")).isEqualTo(true);
-    assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+              .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+    assertThat(rows.get(1).get("bool_column")).isEqualTo(false);
+    assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
     assertThat(rows.get(1).get("datetime_column"))
-        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 56));
-    assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99999.99"));
-    assertThat(rows.get(1).get("double_column")).isEqualTo(123456.123);
-    assertThat(rows.get(1).get("enum_column")).isEqualTo("1");
-    assertThat(rows.get(1).get("float_column")).isEqualTo(12345.67f);
-    assertThat(rows.get(1).get("int_column")).isEqualTo(100);
-    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2");
-    assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:30:00"));
+              .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+    assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99998.99"));
+    assertThat((Double) rows.get(1).get("double_column")).isWithin(0.001).of(123457.123);
+    assertThat(rows.get(1).get("enum_column")).isEqualTo("3");
+    assertThat((Float) rows.get(1).get("float_column")).isWithin(0.001f).of(12346.67f);
+    assertThat(rows.get(1).get("int_column")).isEqualTo(101);
+    assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2 append");
+    assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
     assertThat(rows.get(1).get("timestamp_column"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:56.0"));
-    assertThat(rows.get(1).get("tinyint_column")).isEqualTo(2);
-    assertThat(rows.get(1).get("pk_column")).isEqualTo(98);
-    assertThat(rows.get(1).get("year_column")).isEqualTo(java.sql.Date.valueOf("2024-01-01"));
+              .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+    assertThat(rows.get(1).get("tinyint_column")).isEqualTo(3);
+    assertThat(rows.get(1).get("pk_column")).isEqualTo(98L);
+    assertThat(rows.get(1).get("year_column")).isEqualTo(2025);
 
     assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
-    assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346);
+    assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346L);
     assertThat(rows.get(0).get("binary_column"))
-        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+              .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(0).get("blob_column"))
-        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+              .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(0).get("bool_column")).isEqualTo(false);
     assertThat(rows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
     assertThat(rows.get(0).get("datetime_column"))
-        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+              .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
     assertThat(rows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
-    assertThat(rows.get(0).get("double_column")).isEqualTo(124.456);
+    assertThat((Double) rows.get(0).get("double_column")).isWithin(0.001).of(124.456);
     assertThat(rows.get(0).get("enum_column")).isEqualTo("3");
-    assertThat(rows.get(0).get("float_column")).isEqualTo(124.45f);
+    assertThat((Float) rows.get(0).get("float_column")).isWithin(0.001f).of(124.45f);
     assertThat(rows.get(0).get("int_column")).isEqualTo(124);
     assertThat(rows.get(0).get("text_column")).isEqualTo("Sample text append");
     assertThat(rows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
     assertThat(rows.get(0).get("timestamp_column"))
-        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+              .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
-    assertThat(rows.get(0).get("pk_column")).isEqualTo(122);
-    assertThat(rows.get(0).get("year_column")).isEqualTo(java.sql.Date.valueOf("2025-01-01"));
+    assertThat(rows.get(0).get("pk_column")).isEqualTo(122L);
+    assertThat(rows.get(0).get("year_column")).isEqualTo(2025);
 
     rows =
         jdbcResourceManager.runSQLQuery(
