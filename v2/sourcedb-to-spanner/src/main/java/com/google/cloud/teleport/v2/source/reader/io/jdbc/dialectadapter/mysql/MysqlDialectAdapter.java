@@ -357,7 +357,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
-          // Numeric types: Ref https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
           .put("BIGINT UNSIGNED", IndexType.BIG_INT_UNSIGNED)
           .put("BIGINT", IndexType.NUMERIC)
           .put("INTEGER", IndexType.NUMERIC)
@@ -365,7 +364,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("MEDIUMINT", IndexType.NUMERIC)
           .put("SMALLINT", IndexType.NUMERIC)
           .put("TINYINT", IndexType.NUMERIC)
-          .put("FLOAT", IndexType.NUMERIC)
           // String types: Ref https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
           .put("CHAR", IndexType.STRING)
           .put("VARCHAR", IndexType.STRING)
@@ -377,6 +375,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TINYTEXT", IndexType.STRING)
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
+          // Float is listed as numeric types in Mysql Ref https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
+          // But here the end goal is to map to a Java Float.class,
+          // we need a distinct Source IndexType to map to Float.class
+          .put("FLOAT", IndexType.FLOAT)
           .build();
 
   /**
