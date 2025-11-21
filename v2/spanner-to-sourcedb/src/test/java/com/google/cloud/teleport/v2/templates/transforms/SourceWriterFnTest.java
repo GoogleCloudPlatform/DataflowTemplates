@@ -46,6 +46,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
 import com.google.cloud.teleport.v2.spanner.utils.MigrationTransformationResponse;
+import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -69,6 +70,7 @@ import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
 import org.junit.Rule;
@@ -94,6 +96,9 @@ public class SourceWriterFnTest {
   @Mock private DoFn.ProcessContext processContext;
   @Mock private ISpannerMigrationTransformer mockSpannerMigrationTransformer;
   @Mock private SourceProcessor mockSourceProcessor;
+  @Mock private Options mockOptions;
+  @Mock private PCollectionView<Ddl> mockDdlView;
+  @Mock private PCollectionView<Ddl> mockShadowTableDdlView;
   private static Gson gson = new Gson();
 
   private Shard testShard;
@@ -193,21 +198,32 @@ public class SourceWriterFnTest {
     testShard.setDbName("test");
 
     testSchema = SessionFileReader.read("src/test/resources/sourceWriterUTSession.json");
-    schemaMapper = new SessionBasedMapper(testSchema, testDdl);
-    testSourceDbTimezoneOffset = "+00:00";
     testDdl =
         SchemaUtils.buildSpannerDdlFromSessionFile("src/test/resources/sourceWriterUTSession.json");
+    schemaMapper = new SessionBasedMapper(testSchema, testDdl);
     shadowTableDdl =
         SchemaUtils.buildSpannerShadowTableDdlFromSessionFile(
             "src/test/resources/sourceWriterUTSession.json");
     testSourceSchema =
         SchemaUtils.buildSourceSchemaFromSessionFile(
             "src/test/resources/sourceWriterUTSession.json");
+    testSourceDbTimezoneOffset = "+00:00";
     sourceProcessor =
         SourceProcessor.builder()
             .dmlGenerator(new MySQLDMLGenerator())
             .sourceDaoMap(mockDaoMap)
             .build();
+
+    // Mock the options object for use in tests
+    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getTableOverrides()).thenReturn("");
+    when(mockOptions.getColumnOverrides()).thenReturn("");
+    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
+    when(mockOptions.getSourceDbTimezoneOffset()).thenReturn(testSourceDbTimezoneOffset);
+
+    // Mock side input access in ProcessContext
+    when(processContext.sideInput(mockDdlView)).thenReturn(testDdl);
+    when(processContext.sideInput(mockShadowTableDdlView)).thenReturn(shadowTableDdl);
   }
 
   @Test
@@ -218,17 +234,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -249,17 +265,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -279,17 +295,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -314,17 +330,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            customTransformation);
+            customTransformation,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -354,17 +370,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            customTransformation);
+            customTransformation,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -392,17 +408,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            customTransformation);
+            customTransformation,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -428,17 +444,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -461,17 +477,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -492,17 +508,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -524,17 +540,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -556,17 +572,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -589,17 +605,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -622,17 +638,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -655,17 +671,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -923,20 +939,24 @@ public class SourceWriterFnTest {
     TrimmedShardedDataChangeRecord record = getTrimmedDataChangeRecordToSimulateNullDML("shardA");
     record.setShard("shardA");
     when(processContext.element()).thenReturn(KV.of(1L, record));
+    Ddl ddlForNullDML = testDdlForNullDML();
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddlForNullDML);
+    when(processContext.sideInput(mockShadowTableDdlView)).thenReturn(ddlForNullDML);
+
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdlForNullDML(),
-            testDdlForNullDML(),
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -950,17 +970,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.teardown();
@@ -973,17 +993,17 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            schemaMapper,
+            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
-            testDdl,
-            shadowTableDdl,
             testSourceSchema,
             "shadow_",
             "skip",
             500,
             "mysql",
-            null);
+            null,
+            mockDdlView,
+            mockShadowTableDdlView);
     sourceWriterFn.teardown();
     // No exception thrown is success.
   }
