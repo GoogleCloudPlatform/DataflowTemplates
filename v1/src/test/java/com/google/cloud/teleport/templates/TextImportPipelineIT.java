@@ -27,6 +27,7 @@ import com.google.cloud.teleport.metadata.SpannerStagingTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.spanner.TextImportPipeline;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -37,6 +38,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -84,10 +86,10 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00\n"
-            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n"
-            + "4,Jane,Doe,10,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n"
-            + "5,Jane,Doe,0,4.1,2.1,2021-02-03,2023-01-01T17:23:01\n");
+        "1,John,Doe,TRUE,3.5,1.5,2023-02-01,2023-01-01T17:22:00,\"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"\n"
+            + "2,Jane,Doe,TRUE,4.1,2.1,2021-02-03,2023-01-01T17:23:01,\"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"\n"
+            + "4,Jane,Doe,10,4.1,2.1,2021-02-03,2023-01-01T17:23:01,\"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"\n"
+            + "5,Jane,Doe,0,4.1,2.1,2021-02-03,2023-01-01T17:23:01, \"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"\n");
     gcsClient.createArtifact(
         "input/singers2.csv", "3,Elvis,Presley,FALSE,5.0,3.99,2020-03-05,2023-01-01T17:24:02\n");
 
@@ -95,14 +97,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     statements.add("DROP TABLE IF EXISTS Singers");
     statements.add(
         "CREATE TABLE Singers (\n"
-            + "  SingerId      INT64 NOT NULL,\n"
-            + "  FirstName     STRING(1024),\n"
-            + "  LastName      STRING(1024),\n"
-            + "  Active        BOOL,\n"
-            + "  Rating        FLOAT32,\n"
-            + "  Score         FLOAT64,\n"
-            + "  BirthDate     DATE,\n"
-            + "  LastModified  TIMESTAMP,\n"
+            + "  SingerId        INT64 NOT NULL,\n"
+            + "  FirstName       STRING(1024),\n"
+            + "  LastName        STRING(1024),\n"
+            + "  Active          BOOL,\n"
+            + "  Rating          FLOAT32,\n"
+            + "  Score           FLOAT64,\n"
+            + "  BirthDate       DATE,\n"
+            + "  LastModified    TIMESTAMP,\n"
+            + "  JsonProperties  JSON,\n"
             + ") PRIMARY KEY (SingerId)");
     googleSqlResourceManager.executeDdlStatements(statements);
 
@@ -124,7 +127,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
-            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"},\n"
+            + "        {\"column_name\": \"JsonProperties\", \"type_name\": \"JSON\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ]\n"
@@ -162,15 +166,32 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                 "Rating",
                 "Score",
                 "BirthDate",
-                "LastModified"));
+                "LastModified",
+                "JsonProperties"));
     assertThat(structs).hasSize(5);
     assertThatStructs(structs)
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "3.5",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z",
+                    "{\"p_id\":1,\"value\":0.045469999999999997}"),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    "{\"p_id\":1,\"value\":0.045469999999999997}"),
                 createRecordMap(
                     "3",
                     "Elvis",
@@ -179,9 +200,18 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z"),
+                    "2023-01-01T17:24:02Z",
+                    "{\"p_id\":1,\"value\":0.045469999999999997}"),
                 createRecordMap(
-                    "4", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "4",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    "{\"p_id\":1,\"value\":0.045469999999999997}"),
                 createRecordMap(
                     "5",
                     "Jane",
@@ -190,7 +220,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "4.1",
                     "2.1",
                     "2021-02-03",
-                    "2023-01-01T17:23:01Z")));
+                    "2023-01-01T17:23:01Z",
+                    "{\"p_id\":1,\"value\":0.045469999999999997}")));
   }
 
   @Test
@@ -198,7 +229,9 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     // Arrange
     gcsClient.createArtifact(
         "input/singers1.csv",
-        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00\n" + "2,Jane,Doe,5,A\n");
+        "1,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00,\"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"\n"
+            + "2,Jane,Doe,5,A,\"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"\n"
+            + "4,John,Doe,TRUE,4.0,1.5,2023-02-01,2023-01-01T17:22:00,\"{\\\"p_id\\\":1,\\\"value\\\":0.04547}\"\n");
 
     List<String> statements = new ArrayList<>();
     statements.add("DROP TABLE IF EXISTS Singers");
@@ -212,6 +245,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "  Score         FLOAT64,\n"
             + "  BirthDate     DATE,\n"
             + "  LastModified  TIMESTAMP,\n"
+            + "  JsonProperties  JSON,\n"
             + ") PRIMARY KEY (SingerId)");
     googleSqlResourceManager.executeDdlStatements(statements);
 
@@ -233,13 +267,15 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             + "        {\"column_name\": \"Rating\", \"type_name\": \"FLOAT32\"},\n"
             + "        {\"column_name\": \"Score\", \"type_name\": \"FLOAT64\"},\n"
             + "        {\"column_name\": \"BirthDate\", \"type_name\": \"DATE\"},\n"
-            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"}\n"
+            + "        {\"column_name\": \"LastModified\", \"type_name\": \"TIMESTAMP\"},\n"
+            + "        {\"column_name\": \"JsonProperties\", \"type_name\": \"JSON\"}\n"
             + "      ]\n"
             + "    }\n"
             + "  ]\n"
             + "}";
     gcsClient.createArtifact("input/manifest.json", manifestJson.getBytes(StandardCharsets.UTF_8));
 
+    // Add the invalidMutationPath to pipeline options.
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("instanceId", googleSqlResourceManager.getInstanceId())
@@ -249,7 +285,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
             .addParameter("columnDelimiter", ",")
             .addParameter("fieldQualifier", "\"")
             .addParameter("timestampFormat", "yyyy-MM-dd'T'HH:mm:ss")
-            .addParameter("invalidOutputPath", getGcsPath("invalid/bad"))
+            .addParameter("invalidOutputPath", getGcsPath("invalid/"))
+            .addParameter("invalidMutationPath", getGcsPath("invalid-mutations/"))
             .addParameter("spannerHost", googleSqlResourceManager.getSpannerHost());
 
     // Act
@@ -261,6 +298,7 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
 
+    // Assert that the valid row was inserted.
     ImmutableList<Struct> structs =
         googleSqlResourceManager.readTableRecords(
             "Singers",
@@ -272,7 +310,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                 "Rating",
                 "Score",
                 "BirthDate",
-                "LastModified"));
+                "LastModified",
+                "JsonProperties"));
     assertThat(structs).hasSize(1);
     assertThatStructs(structs)
         .hasRecordsUnordered(
@@ -285,11 +324,22 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "4.0",
                     "1.5",
                     "2023-02-01",
-                    "2023-01-01T17:22:00Z")));
+                    "2023-01-01T17:22:00Z",
+                    "{\"p_id\":1,\"value\":0.045469999999999997}")));
 
-    List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*bad.*"));
+    // Assert that the parsing error was written to the invalidOutputPath.
+    List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*"));
     assertThat(artifacts).hasSize(1);
-    assertThatArtifacts(artifacts).hasContent("2,Jane,Doe,5,A");
+    assertThatArtifacts(artifacts)
+        .hasContent("2,Jane,Doe,5,A,\"{\\\"p_id\\\":1,\\\"value\\\":0.045469999999999997}\"");
+
+    // Assert that the mutation error was written to the invalidMutationPath.
+    List<Artifact> mutationArtifacts =
+        gcsClient.listArtifacts("invalid-mutations/", Pattern.compile(".*"));
+    assertThat(mutationArtifacts).hasSize(1);
+    // The content will be the string representation of the MutationGroup, which is complex.
+    // For this test, we'll just check that the primary key of the failed mutation is present.
+    assertThatArtifacts(mutationArtifacts).hasContent("MutationGroup{key=4, mutations=");
   }
 
   @Test
@@ -380,9 +430,25 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
         .hasRecordsUnordered(
             List.of(
                 createRecordMap(
-                    "1", "John", "Doe", "true", "3.5", "1.5", "2023-02-01", "2023-01-01T17:22:00Z"),
+                    "1",
+                    "John",
+                    "Doe",
+                    "true",
+                    "3.5",
+                    "1.5",
+                    "2023-02-01",
+                    "2023-01-01T17:22:00Z",
+                    null),
                 createRecordMap(
-                    "2", "Jane", "Doe", "true", "4.1", "2.1", "2021-02-03", "2023-01-01T17:23:01Z"),
+                    "2",
+                    "Jane",
+                    "Doe",
+                    "true",
+                    "4.1",
+                    "2.1",
+                    "2021-02-03",
+                    "2023-01-01T17:23:01Z",
+                    null),
                 createRecordMap(
                     "3",
                     "Elvis",
@@ -391,7 +457,8 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "5.0",
                     "3.99",
                     "2020-03-05",
-                    "2023-01-01T17:24:02Z")));
+                    "2023-01-01T17:24:02Z",
+                    null)));
   }
 
   // TODO(b/395532087): Consolidate this with other tests after UUID launch.
@@ -592,24 +659,31 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
       String rating,
       String score,
       String birthDate,
-      String lastModified) {
-    return Map.of(
-        "SingerId",
-        singerId,
-        "FirstName",
-        firstName,
-        "LastName",
-        lastName,
-        "Active",
-        active,
-        "Rating",
-        rating,
-        "Score",
-        score,
-        "BirthDate",
-        birthDate,
-        "LastModified",
-        lastModified);
+      String lastModified,
+      @Nullable String jsonProperties) {
+    ImmutableMap.Builder retBuilder = ImmutableMap.<String, Object>builder();
+    retBuilder.putAll(
+        Map.of(
+            "SingerId",
+            singerId,
+            "FirstName",
+            firstName,
+            "LastName",
+            lastName,
+            "Active",
+            active,
+            "Rating",
+            rating,
+            "Score",
+            score,
+            "BirthDate",
+            birthDate,
+            "LastModified",
+            lastModified));
+    if (jsonProperties != null) {
+      retBuilder.put("JsonProperties", jsonProperties);
+    }
+    return retBuilder.build();
   }
 
   @Override
