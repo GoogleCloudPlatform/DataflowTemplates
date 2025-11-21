@@ -391,9 +391,30 @@
         "c129",
         "c130",
         "c131",
-        "c132"
+        "c132",
+        "c136"
       ],
       "ColDefs": {
+        "c136": {
+          "Name": "pk_column",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c136"
+        },
         "c115": {
           "Name": "varchar_column",
           "Type": {
@@ -749,9 +770,14 @@
       },
       "PrimaryKeys": [
         {
-          "ColId": "c115",
+          "ColId": "c136",
           "Desc": false,
           "Order": 1
+        },
+        {
+          "ColId": "c115",
+          "Desc": false,
+          "Order": 2
         }
       ],
       "ForeignKeys": null,

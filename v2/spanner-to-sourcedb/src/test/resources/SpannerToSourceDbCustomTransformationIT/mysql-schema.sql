@@ -9,6 +9,7 @@ CREATE TABLE Users1 (
 
 CREATE TABLE AllDatatypeTransformation (
     varchar_column VARCHAR(20) NOT NULL,
+    pk_column INT NOT NULL,
     tinyint_column TINYINT,
     text_column TEXT,
     date_column DATE,
@@ -26,5 +27,5 @@ CREATE TABLE AllDatatypeTransformation (
     bool_column TINYINT(1),
     binary_column VARBINARY(150),
     bit_column BIT(8),
-    PRIMARY KEY (varchar_column)
+    PRIMARY KEY (pk_column, varchar_column)
 );

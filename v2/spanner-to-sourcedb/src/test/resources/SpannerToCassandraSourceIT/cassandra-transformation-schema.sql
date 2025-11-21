@@ -1,9 +1,10 @@
 DROP TABLE IF EXISTS customers;
 CREATE TABLE customers (
-    id int PRIMARY KEY,
+    id int,
     full_name text,
     first_name text,
     last_name text,
     empty_string text,
-    null_key text
+    null_key text,
+    PRIMARY KEY (id, full_name)
 );
