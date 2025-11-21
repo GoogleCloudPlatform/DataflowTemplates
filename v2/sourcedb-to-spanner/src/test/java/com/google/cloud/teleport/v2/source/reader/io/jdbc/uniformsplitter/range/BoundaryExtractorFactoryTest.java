@@ -277,6 +277,31 @@ public class BoundaryExtractorFactoryTest {
     assertThat(boundary.split(null).getLeft().end()).isNull();
   }
 
+    @Test
+    public void testFromFloat() throws SQLException {
+        PartitionColumn partitionColumn =
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
+        BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
+
+        when(mockResultSet.next()).thenReturn(true);
+        when(mockResultSet.getFloat(1)).thenReturn(-50.0f);
+        when(mockResultSet.getFloat(2)).thenReturn(100.0f);
+        Boundary<Float> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+        assertThat(boundary.start()).isEqualTo(-50.0f);
+        assertThat(boundary.end()).isEqualTo(100.0f);
+        assertThat(boundary.split(null).getLeft().end()).isEqualTo(25.0f);
+        assertThat(boundary.split(null).getRight().start()).isEqualTo(25.0f);
+        // Mismatched Type
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                extractor.getBoundary(
+                    PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                    mockResultSet,
+                    null));
+    }
+
   @Test
   public void testFromUnsupported() {
     assertThrows(
