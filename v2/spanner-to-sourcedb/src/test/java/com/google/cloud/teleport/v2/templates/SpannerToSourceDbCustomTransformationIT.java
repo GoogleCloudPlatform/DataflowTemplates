@@ -383,14 +383,14 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
     assertThat(rows.get(1).get("bigint_column")).isEqualTo(1001L);
     assertThat(rows.get(1).get("binary_column"))
-              .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(1).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(1).get("blob_column"))
-              .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(1).get("bool_column")).isEqualTo(false);
     assertThat(rows.get(1).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
     assertThat(rows.get(1).get("datetime_column"))
-              .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
     assertThat(rows.get(1).get("decimal_column")).isEqualTo(new BigDecimal("99998.99"));
     assertThat((Double) rows.get(1).get("double_column")).isWithin(0.001).of(123457.123);
     assertThat(rows.get(1).get("enum_column")).isEqualTo("3");
@@ -399,7 +399,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(1).get("text_column")).isEqualTo("Sample text for entry 2 append");
     assertThat(rows.get(1).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
     assertThat(rows.get(1).get("timestamp_column"))
-              .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(1).get("tinyint_column")).isEqualTo(3);
     assertThat(rows.get(1).get("pk_column")).isEqualTo(98L);
     assertThat(rows.get(1).get("year_column")).isEqualTo(2025);
@@ -407,14 +407,14 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(0).get("varchar_column")).isEqualTo("example");
     assertThat(rows.get(0).get("bigint_column")).isEqualTo(12346L);
     assertThat(rows.get(0).get("binary_column"))
-              .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("binary_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(0).get("bit_column")).isEqualTo("5".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(0).get("blob_column"))
-              .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
+        .isEqualTo("blob_column_appended".getBytes(StandardCharsets.UTF_8));
     assertThat(rows.get(0).get("bool_column")).isEqualTo(false);
     assertThat(rows.get(0).get("date_column")).isEqualTo(java.sql.Date.valueOf("2024-01-02"));
     assertThat(rows.get(0).get("datetime_column"))
-              .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
+        .isEqualTo(java.time.LocalDateTime.of(2024, 1, 1, 12, 34, 55));
     assertThat(rows.get(0).get("decimal_column")).isEqualTo(new BigDecimal("12344.67"));
     assertThat((Double) rows.get(0).get("double_column")).isWithin(0.001).of(124.456);
     assertThat(rows.get(0).get("enum_column")).isEqualTo("3");
@@ -423,7 +423,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     assertThat(rows.get(0).get("text_column")).isEqualTo("Sample text append");
     assertThat(rows.get(0).get("time_column")).isEqualTo(java.sql.Time.valueOf("14:40:00"));
     assertThat(rows.get(0).get("timestamp_column"))
-              .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
+        .isEqualTo(java.sql.Timestamp.valueOf("2024-01-01 12:34:55.0"));
     assertThat(rows.get(0).get("tinyint_column")).isEqualTo(2);
     assertThat(rows.get(0).get("pk_column")).isEqualTo(122L);
     assertThat(rows.get(0).get("year_column")).isEqualTo(2025);
