@@ -1,5 +1,5 @@
 CREATE TABLE "company" (
-    "company_id" int8 PRIMARY KEY NOT NULL,
+    "company_id" serial PRIMARY KEY NOT NULL,
     "company_name" varchar(100) DEFAULT NULL,
     "created_on" date
 );

@@ -1,6 +1,6 @@
 ALTER USER CURRENT_USER WITH REPLICATION;
 CREATE TABLE "true" (
-  id INT8 PRIMARY KEY,
+  id serial PRIMARY KEY,
   "ALL" text,
   "ANALYSE" text,
   "ANALYZE" text,
