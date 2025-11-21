@@ -357,6 +357,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
   private static final ImmutableMap<String, SourceColumnIndexInfo.IndexType> INDEX_TYPE_MAPPING =
       ImmutableMap.<String, SourceColumnIndexInfo.IndexType>builder()
+          // Numeric types: Ref https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
           .put("BIGINT UNSIGNED", IndexType.BIG_INT_UNSIGNED)
           .put("BIGINT", IndexType.NUMERIC)
           .put("INTEGER", IndexType.NUMERIC)
