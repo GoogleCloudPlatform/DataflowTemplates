@@ -57,15 +57,27 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   private static final Logger LOG = LoggerFactory.getLogger(SourceDbToSpannerITBase.class);
 
   public MySQLResourceManager setUpMySQLResourceManager() {
-    return MySQLResourceManager.builder(testName).build();
+    return setUpMySQLResourceManager(testName);
   }
 
   public CloudMySQLResourceManager setUpCloudMySQLResourceManager() {
-    return CloudMySQLResourceManager.builder(testName).build();
+    return setUpCloudMySQLResourceManager(testName);
   }
 
   public PostgresResourceManager setUpPostgreSQLResourceManager() {
-    return PostgresResourceManager.builder(testName).build();
+    return setUpPostgreSQLResourceManager(testName);
+  }
+
+  static MySQLResourceManager setUpMySQLResourceManager(String id) {
+    return MySQLResourceManager.builder(id).build();
+  }
+
+  static CloudMySQLResourceManager setUpCloudMySQLResourceManager(String id) {
+    return CloudMySQLResourceManager.builder(id).build();
+  }
+
+  static PostgresResourceManager setUpPostgreSQLResourceManager(String id) {
+    return PostgresResourceManager.builder(id).build();
   }
 
   public CassandraResourceManager setupCassandraResourceManager() {
@@ -80,9 +92,11 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
   }
 
   public SpannerResourceManager setUpSpannerResourceManager() {
-    return SpannerResourceManager.builder(testName, PROJECT, REGION)
-        .maybeUseStaticInstance()
-        .build();
+    return setUpSpannerResourceManager(testName);
+  }
+
+  static SpannerResourceManager setUpSpannerResourceManager(String id) {
+    return SpannerResourceManager.builder(id, PROJECT, REGION).maybeUseStaticInstance().build();
   }
 
   protected void loadSQLFileResource(JDBCResourceManager jdbcResourceManager, String resourcePath)
