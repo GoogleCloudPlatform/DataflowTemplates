@@ -56,6 +56,7 @@ import java.sql.SQLSyntaxErrorException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
@@ -64,6 +65,7 @@ import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,12 +85,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final Counter skippedRecordCountMetric =
       Metrics.counter(SourceWriterFn.class, "skipped_record_count");
-
-  private final Distribution lagMetric =
-      Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
-
-  private final Counter invalidTransformationException =
-      Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
+  private static final Distribution SUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SourceWriterFn.class, "successful_write_to_source_latency_ms");
+  private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SourceWriterFn.class, "unsuccessful_write_to_source_latency_ms");
 
   private final ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
@@ -192,6 +192,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       skippedRecordCountMetric.inc();
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
     } else {
+      Stopwatch timer = Stopwatch.createStarted();
       // Get the latest commit timestamp processed at source
       try {
         JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
@@ -284,6 +285,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
         // wrapped inside a SpannerException.
         // We need to get and inspect the cause while handling the exception.
+        SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       } catch (Exception ex) {
         Throwable cause = ex.getCause();
         String message = ex.getMessage();
@@ -292,6 +294,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         }
         TupleTag<String> errorTag = classifyException(ex);
         outputWithTag(c, errorTag, message, spannerRec);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }
     }
   }
