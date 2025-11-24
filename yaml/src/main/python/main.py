@@ -30,13 +30,13 @@ from jinja2 import Environment, meta
 UNDEFINED_MARKER = "__UNDEFINED_JINJA_VARIABLE__"
 
 class _UndefinedMarker(jinja2.Undefined):
-    """A Jinja Undefined class that renders to our special marker string."""
+    """A Jinja Undefined class that renders to special marker string."""
     def __str__(self):
         return UNDEFINED_MARKER
 
 def _clean_undefined_recursively(d):
     """
-    Recursively traverses a data structure and removes all keys or items
+    Recursively traverses the template and remove all keys or items
     that have the value of the UNDEFINED_MARKER.
     """
     if isinstance(d, dict):
@@ -74,13 +74,7 @@ def _get_pipeline_with_options(yaml_pipeline):
     Returns:
         str:  The content of the 'template.yaml' file with options as a string.
     """
-    jinja_expressions = []
-    def replacer(match):
-        jinja_expressions.append(match.group(0))
-        return f"__JINJA_PLACEHOLDER_{len(jinja_expressions) - 1}__"
-    
-    temp_str = re.sub(r'\{\{.*?\}\}', replacer, yaml_pipeline)
-    data = yaml.safe_load(temp_str)
+    data = yaml.safe_load(yaml_pipeline)
     template_section = data.get('template', {})
 
     if 'options_file' in template_section:
@@ -103,15 +97,12 @@ def _get_pipeline_with_options(yaml_pipeline):
 
         data['template']['parameters'] = expanded_params
         del data['template']['options_file']
-        final_template_str = yaml.dump(data)
-        for i, expr in enumerate(jinja_expressions):
-            final_template_str = final_template_str.replace(f"__JINJA_PLACEHOLDER_{i}__", expr, 1)
-        return final_template_str
+        return yaml.dump(data)
     else:
         return yaml_pipeline
 
 
-def _get_final_pipeline(yaml_template, provided_jinja_vars):
+def _get_cleaned_pipeline(yaml_template, provided_jinja_vars):
     """Renders the Jinja template and removes unused optional fields."""
     env = Environment(undefined=_UndefinedMarker)
     template = env.from_string(yaml_template)
@@ -198,16 +189,14 @@ def run(argv=None):
     logging.info("Jinja variables provided: \n%s\n", \
                     pprint.pformat(provided_jinja_vars,indent=2))
 
-
-    # Get the expanded YAML template with Options.
-    yaml_pipeline_with_options = _get_pipeline_with_options(yaml_pipeline)
-
-    # Get the final, cleaned YAML.
-    final_yaml = _get_final_pipeline(yaml_pipeline_with_options, provided_jinja_vars)
-    logging.info("Final YAML to be executed:\n%s", final_yaml)
+    # Get the cleaned YAML removing unused optional fields.
+    cleaned_yaml = _get_cleaned_pipeline(yaml_pipeline, provided_jinja_vars)
+    # Get final YAML pipeline with options merged.
+    yaml_pipeline = _get_pipeline_with_options(cleaned_yaml)
+    logging.info("Final YAML to be executed:\n%s", yaml_pipeline)
 
     # Save the pipeline yaml template to the appropriate pipeline option
-    pipeline_args.append(f'--yaml_pipeline={final_yaml}')
+    pipeline_args.append(f'--yaml_pipeline={yaml_pipeline}')
     logging.info("Final pipeline args: \n%s\n", \
                  pprint.pformat(pipeline_args,indent=2))
 
