@@ -128,21 +128,11 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       if (request.getEventType().equals("DELETE")) {
         return new MigrationTransformationResponse(null, true);
       }
-      LOG.info(
-          "PK_DEBUG: toSourceRow received request for table '{}'. EventType: {}. RequestRow: {}",
-          request.getTableName(),
-          request.getEventType(),
-          requestRow);
       // In case of INSERT update the values for all the columns in all the rows except the
       // filtered row.
       Long tinyIntColumn = Long.parseLong((String) requestRow.get("tinyint_column")) + 1;
       Long intColumn = Long.parseLong((String) requestRow.get("int_column")) + 1;
       Long pkColumn = intColumn - tinyIntColumn;
-      LOG.info(
-          "PK_DEBUG: Calculated pkColumn: {} (intColumn: {} - tinyIntColumn: {})",
-          pkColumn,
-          intColumn,
-          tinyIntColumn);
       Long bigIntColumn = Long.parseLong((String) requestRow.get("bigint_column")) + 1;
       Long yearColumn = Long.parseLong((String) requestRow.get("year_column")) + 1;
       BigDecimal floatColumn = (BigDecimal) requestRow.get("float_column");
@@ -212,10 +202,6 @@ public class CustomTransformationWithShardForLiveIT implements ISpannerMigration
       } catch (Exception e) {
         throw new InvalidTransformationException(e);
       }
-      LOG.info(
-          "PK_DEBUG: toSourceRow for table '{}' is returning responseRow: {}",
-          request.getTableName(),
-          responseRow);
 
       MigrationTransformationResponse response =
           new MigrationTransformationResponse(responseRow, false);

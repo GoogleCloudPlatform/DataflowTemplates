@@ -48,6 +48,7 @@ import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -62,8 +63,7 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-// @Ignore("This test is disabled currently")   Disabling this for testing, will revert this change
-// before merging
+@Ignore("This test is disabled currently")
 public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbITBase {
   private static final Logger LOG =
       LoggerFactory.getLogger(SpannerToSourceDbCustomTransformationIT.class);
@@ -177,7 +177,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private void writeRowInSpanner() {
-    LOG.info("PK_DEBUG: Starting to write rows in Spanner...");
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("Users1").set("id").to(1).set("name").to("AA BB").build();
     spannerResourceManager.write(m);
@@ -346,7 +345,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private void assertRowInMySQL() throws InterruptedException {
-    LOG.info("PK_DEBUG: Starting to assert rows in MySQL...");
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -364,16 +362,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> {
-                  long rowCount = jdbcResourceManager.getRowCount(TABLE2);
-                  LOG.info(
-                      "PK_DEBUG: Checking row count for table '{}', found {}", TABLE2, rowCount);
-                  if (rowCount != 2) {
-                    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE2);
-                    LOG.info("PK_DEBUG: Current rows in '{}': {}", TABLE2, rows);
-                  }
-                  return rowCount == 2;
-                });
+                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
     /*
      * Added to handle updates.
      * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
@@ -390,15 +379,6 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
     rows =
         jdbcResourceManager.runSQLQuery(
             String.format("select * from %s order by %s", TABLE2, "varchar_column"));
-    LOG.info("PK_DEBUG: Found {} rows in '{}'. Starting detailed assertions.", rows.size(), TABLE2);
-    LOG.info(
-        "PK_DEBUG: Actual Row 0 (varchar_column={}): {}",
-        rows.get(0).get("varchar_column"),
-        rows.get(0));
-    LOG.info(
-        "PK_DEBUG: Actual Row 1 (varchar_column={}): {}",
-        rows.get(1).get("varchar_column"),
-        rows.get(1));
     assertThat(rows).hasSize(2);
     assertThat(rows.get(1).get("varchar_column")).isEqualTo("example2");
     assertThat(rows.get(1).get("bigint_column")).isEqualTo(1001L);
