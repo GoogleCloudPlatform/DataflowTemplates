@@ -150,9 +150,6 @@ public class DataStreamToPostgresIT extends TemplateTestBase {
     cloudSqlSourceResourceManager.runSQLUpdate(
         String.format("ALTER USER %s WITH REPLICATION;", user));
 
-    // Clean up any existing replication slots that might be left over from previous test runs
-    cleanupExistingReplicationSlots();
-
     // Try to create the replication slot, with retry logic if slots are full
     createReplicationSlotWithRetry(this.replicationSlot);
     cloudSqlSourceResourceManager.runSQLUpdate(
