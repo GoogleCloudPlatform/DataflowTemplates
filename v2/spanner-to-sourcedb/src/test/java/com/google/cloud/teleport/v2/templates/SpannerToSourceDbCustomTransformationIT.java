@@ -366,7 +366,8 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
                 createConfig(jobInfo, Duration.ofMinutes(15)),
                 () -> {
                   long rowCount = jdbcResourceManager.getRowCount(TABLE2);
-                  LOG.info("PK_DEBUG: Checking row count for table '{}', found {}", TABLE2, rowCount);
+                  LOG.info(
+                      "PK_DEBUG: Checking row count for table '{}', found {}", TABLE2, rowCount);
                   if (rowCount != 2) {
                     List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE2);
                     LOG.info("PK_DEBUG: Current rows in '{}': {}", TABLE2, rows);

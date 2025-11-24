@@ -311,13 +311,16 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if (sourceColDef == null) {
         LOG.warn(
             "The source column definition for {} was not found in source schema", sourceColName);
-        LOG.info("PK_DEBUG: getPkColumnValues returning null because source column definition for {} was not found.", sourceColName);
+        LOG.info(
+            "PK_DEBUG: getPkColumnValues returning null because source column definition for {} was not found.",
+            sourceColName);
         return null;
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
         response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
-        LOG.info("PK_DEBUG: getPkColumnValues CustomTransformColumns entered, response: {}", response);
+        LOG.info(
+            "PK_DEBUG: getPkColumnValues CustomTransformColumns entered, response: {}", response);
         continue;
       }
 
@@ -331,14 +334,18 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",
             sourceColName);
-        LOG.info("PK_DEBUG: getPkColumnValues returning null because spanner column for {} was not found.", sourceColName);
+        LOG.info(
+            "PK_DEBUG: getPkColumnValues returning null because spanner column for {} was not found.",
+            sourceColName);
         return null;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
-        LOG.info("PK_DEBUG: getPkColumnValues returning null because spanner column definition for {} was not found.", spannerColName);
+        LOG.info(
+            "PK_DEBUG: getPkColumnValues returning null because spanner column definition for {} was not found.",
+            spannerColName);
         return null;
       }
       String columnValue = "";
