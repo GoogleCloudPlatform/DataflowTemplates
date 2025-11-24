@@ -5,38 +5,15 @@ template:
   flex_container_name: "postgres-to-iceberg-yaml"
   category: "BATCH"
 
-  parameters:
-    # Postgres Read parameters
-    - name: "jdbc_url"
-      help: "Connection URL for the JDBC source."
-      required: true
-      type: text
-    - name: "username"
-      help: "Username for the JDBC source."
-      required: false
-      type: text
-    - name: "password"
-      help: "Password for the JDBC source."
-      required: false
-      type: text
-    - name: "read_query"
-      help: "SQL query used to query the JDBC source."
-      required: true
-      type: text
+  options_file:
+    - "jdbc_options"
+    - "iceberg_options"
 
-    # Iceberg Write parameters
-    - name: "table"
-      help: "A fully-qualified table identifier."
-      required: true
-      type: text
-    - name: "catalog_name"
-      help: "Name of the catalog containing the table."
-      required: true
-      type: text
-    - name: "catalog_properties"
-      help: "Properties used to set up the Iceberg catalog. Should be a JSON map."
-      required: true
-      type: text
+  parameters:
+    - jdbc_common_options
+    - jdbc_read_options
+    - iceberg_common_options
+    - iceberg_write_options
 
 pipeline:
   type: chain
@@ -44,18 +21,35 @@ pipeline:
     - type: ReadFromPostgres
       name: ReadFromPostgres
       config:
-        url: "{{ jdbc_url }}"
-        driver_class_name: "org.postgresql.Driver"
-        username: "{{ username }}"
-        password: "{{ password }}"
-        query: "{{ read_query }}"
+        driver_class_name: {{ driver_class_name | default("org.postgresql.Driver")}}
+        url: {{ jdbc_url }}
+        username: {{ username }}
+        password: {{ password }}
+        query: {{ read_query }}
+        driver_jars: {{ driver_jars }}
+        connection_properties: {{ connection_properties }}
+        partition_column: {{ partition_column }}
+        table: {{ location }}
+        num_partitions: {{ num_partitions }}
+        fetch_size: {{ fetch_size }}
+        connection_init_sql: {{ connection_init_sql }}
+        disable_auto_commit: {{ disable_auto_commit }}
+        output_parallelization: {{ output_parallelization }}
+        type: {{ jdbc_type | default("postgres") }}
 
     - type: WriteToIceberg
-      name: WriteToAnIcebergTable
+      name: WriteToIceberg
       config:
-        table: "{{ table }}"
-        catalog_name: "{{ catalog_name }}"
-        catalog_properties: "{{ catalog_properties }}"
+        table: {{ table }}
+        catalog_name: {{ catalog_name }}
+        catalog_properties: {{ catalog_properties }}
+        config_properties: {{ config_properties }}
+        drop: {{ drop }}
+        keep: {{ keep }}
+        only: {{ only }}
+        partition_fields: {{ partition_fields }}
+        table_properties: {{ table_properties }}
+        triggering_frequency_seconds: {{ triggering_frequency_seconds }}
 
 options:
   streaming: false

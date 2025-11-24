@@ -16,16 +16,38 @@
 
 import argparse
 import logging
-import json
 import pprint
+import jinja2
+import yaml
+import re
+import datetime
 
 from apache_beam.io.filesystems import FileSystems
 from apache_beam.yaml import cache_provider_artifacts
 from apache_beam.yaml import main
 from jinja2 import Environment, meta
 
+UNDEFINED_MARKER = "__UNDEFINED_JINJA_VARIABLE__"
 
-JINJA_OUTGOING_ARG = '--jinja_variables'
+class _UndefinedMarker(jinja2.Undefined):
+    """A Jinja Undefined class that renders to our special marker string."""
+    def __str__(self):
+        return UNDEFINED_MARKER
+
+def _clean_undefined_recursively(d):
+    """
+    Recursively traverses a data structure and removes all keys or items
+    that have the value of the UNDEFINED_MARKER.
+    """
+    if isinstance(d, dict):
+        return {
+            k: _clean_undefined_recursively(v)
+            for k, v in d.items() if v != UNDEFINED_MARKER
+        }
+    elif isinstance(d, list):
+        return [_clean_undefined_recursively(i) for i in d if i != UNDEFINED_MARKER]
+    return d
+
 
 def _get_pipeline_yaml():
     """Reads the pipeline definition from the 'template.yaml' file.
@@ -42,6 +64,63 @@ def _get_pipeline_yaml():
     with FileSystems.open("template.yaml") as fin:
         pipeline_yaml = fin.read().decode()
     return pipeline_yaml
+
+def _get_pipeline_with_options(yaml_pipeline):
+    """Expands the YAML template by merging options from `options_file` directives.
+
+    Args:
+        yaml_pipeline (str): The YAML pipeline content as a string.
+
+    Returns:
+        str:  The content of the 'template.yaml' file with options as a string.
+    """
+    jinja_expressions = []
+    def replacer(match):
+        jinja_expressions.append(match.group(0))
+        return f"__JINJA_PLACEHOLDER_{len(jinja_expressions) - 1}__"
+    
+    temp_str = re.sub(r'\{\{.*?\}\}', replacer, yaml_pipeline)
+    data = yaml.safe_load(temp_str)
+    template_section = data.get('template', {})
+
+    if 'options_file' in template_section:
+        options_map = {}
+        for name in template_section.get('options_file', []):
+            try:
+                with FileSystems.open(f"options/{name}.yaml") as f:
+                    options_data = yaml.safe_load(f)
+                    for opt in options_data.get('options', []):
+                        options_map[opt['name']] = opt['parameters']
+            except Exception as e:
+                logging.warning(f"Could not read options file: options/{name}.yaml. Error: {e}")
+
+        expanded_params = []
+        for param in template_section.get('parameters', []):
+            if isinstance(param, str) and param in options_map:
+                expanded_params.extend(options_map[param])
+            else:
+                expanded_params.append(param)
+
+        data['template']['parameters'] = expanded_params
+        del data['template']['options_file']
+        final_template_str = yaml.dump(data)
+        for i, expr in enumerate(jinja_expressions):
+            final_template_str = final_template_str.replace(f"__JINJA_PLACEHOLDER_{i}__", expr, 1)
+        return final_template_str
+    else:
+        return yaml_pipeline
+
+
+def _get_final_pipeline(yaml_template, provided_jinja_vars):
+    """Renders the Jinja template and removes unused optional fields."""
+    env = Environment(undefined=_UndefinedMarker)
+    template = env.from_string(yaml_template)
+    rendered_yaml = template.render(datetime=datetime, **provided_jinja_vars)
+
+    data = yaml.safe_load(rendered_yaml)
+    cleaned_data = _clean_undefined_recursively(data)
+    return yaml.dump(cleaned_data)
+
 
 def _extract_jinja_variable_names(yaml_pipeline):
     """Parses a YAML pipeline string to extract Jinja variable names.
@@ -114,19 +193,21 @@ def run(argv=None):
     # Process args as key value pairs for later jinja processing.
     provided_jinja_vars = {}    
     for arg in jinja_pipeline_args:
-        arg_key_value = arg.strip('--').split('=')
+        arg_key_value = arg.strip('--').split('=', 1)
         provided_jinja_vars[arg_key_value[0]] = arg_key_value[1]
     logging.info("Jinja variables provided: \n%s\n", \
                     pprint.pformat(provided_jinja_vars,indent=2))
 
-    # Save jinja vars as pipeline_args command. In theory, there should be
-    # at least one unless there are no manadatory arguments.
-    if provided_jinja_vars:
-        jinja_vars_output =  [f'{JINJA_OUTGOING_ARG}={json.dumps(provided_jinja_vars)}']
-        pipeline_args += jinja_vars_output
+
+    # Get the expanded YAML template with Options.
+    yaml_pipeline_with_options = _get_pipeline_with_options(yaml_pipeline)
+
+    # Get the final, cleaned YAML.
+    final_yaml = _get_final_pipeline(yaml_pipeline_with_options, provided_jinja_vars)
+    logging.info("Final YAML to be executed:\n%s", final_yaml)
 
     # Save the pipeline yaml template to the appropriate pipeline option
-    pipeline_args += [f'--yaml_pipeline={yaml_pipeline}']
+    pipeline_args.append(f'--yaml_pipeline={final_yaml}')
     logging.info("Final pipeline args: \n%s\n", \
                  pprint.pformat(pipeline_args,indent=2))
 

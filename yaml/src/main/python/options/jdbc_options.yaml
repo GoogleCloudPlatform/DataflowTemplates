@@ -1,0 +1,143 @@
+options:
+  - name: "jdbc_common_options"
+    parameters:
+      - order: 1
+        name: "jdbc_url"
+        description: "Connection URL for the JDBC source/sink."
+        help: "The JDBC connection URL, which can be a KMS-encrypted string."
+        example: "jdbc:postgresql://your-host:5432/your-db"
+        required: true
+        type: text
+      - order: 2
+        name: "username"
+        description: "Username for the JDBC connection."
+        help: "The database username, which can be a KMS-encrypted string."
+        example: "my_user"
+        required: false
+        type: text
+      - order: 3
+        name: "password"
+        description: "Password for the JDBC connection."
+        help: "The database password, which can be a KMS-encrypted string."
+        example: "my_secret_password"
+        required: false
+        type: text
+      - order: 4
+        name: "driver_class_name"
+        description: "The fully-qualified class name of the JDBC driver."
+        help: "The fully-qualified class name of the JDBC driver to use."
+        example: "org.postgresql.Driver"
+        required: false
+        type: text
+      - order: 5
+        name: "driver_jars"
+        description: "Comma-separated GCS paths of the JDBC driver jars."
+        help: "A comma-separated list of GCS paths to the JDBC driver JAR files."
+        example: "gs://your-bucket/postgresql-42.2.23.jar"
+        required: false
+        type: text
+      - order: 6
+        name: "connection_properties"
+        description: "JDBC connection properties."
+        help: "A semicolon-separated list of key-value pairs for the JDBC connection."
+        example: "key1=value1;key2=value2"
+        required: false
+        type: text
+      - order: 7
+        name: "connection_init_sql"
+        description: "A list of SQL statements to execute upon connection initialization."
+        help: "A list of SQL statements to execute when a new connection is established."
+        example: '["SET TIME ZONE UTC"]'
+        required: false
+        type: text
+      - order: 8
+        name: "jdbc_type"
+        description: "Type of JDBC source (e.g., postgres, mysql)."
+        help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
+        example: "postgres"
+        required: false
+        type: text
+
+  - name: "jdbc_read_options"
+    parameters:
+      - order: 1
+        name: "location"
+        description: "The name of the table to read from."
+        help: "The name of the database table to read data from."
+        example: "public.my_table"
+        required: false
+        type: text
+      - order: 2
+        name: "read_query"
+        description: "The SQL query to execute for reading data."
+        help: "The SQL query to execute on the source to extract data."
+        example: "SELECT * FROM my_table WHERE status = 'active'"
+        required: false
+        type: text
+      - order: 3
+        name: "partition_column"
+        description: "The name of a numeric column to be used for partitioning."
+        help: "The name of a numeric column that will be used for partitioning the data."
+        example: "id"
+        required: false
+        type: text
+      - order: 4
+        name: "num_partitions"
+        description: "The number of partitions to divide the data into."
+        help: "The number of partitions to create for parallel reading."
+        example: 10
+        required: false
+        type: integer
+      - order: 5
+        name: "fetch_size"
+        description: "The number of rows to fetch from the database at a time."
+        help: "The number of rows to fetch per database call. Use only to troubleshoot memory errors."
+        example: 50000
+        required: false
+        type: integer
+      - order: 6
+        name: "disable_auto_commit"
+        description: "Whether to disable auto-commit on read."
+        help: "Whether to disable auto-commit on read. Required for some databases like Postgres."
+        example: true
+        required: false
+        type: boolean
+      - order: 7
+        name: "output_parallelization"
+        description: "Whether to reshuffle the PCollection to distribute results to all workers."
+        help: "If true, the resulting PCollection will be reshuffled."
+        example: true
+        required: false
+        type: boolean
+
+  - name: "jdbc_write_options"
+    parameters:
+      - order: 1
+        name: "location"
+        description: "The name of the table to write to."
+        help: "The name of the database table to write data to."
+        example: "public.my_destination_table"
+        required: true
+        type: text
+      - order: 2
+        name: "write_statement"
+        description: "The SQL statement to use for inserting records."
+        help: "The SQL query for inserting records, with placeholders for values."
+        example: "INSERT INTO my_table (col1, col2) VALUES(?, ?)"
+        required: false
+        type: text
+      - order: 3
+        name: "batch_size"
+        description: "The number of records to group for each write operation."
+        help: "The number of records to group together for each write."
+        example: 1000
+        required: false
+        type: integer
+        default: 1000
+      - order: 4
+        name: "autosharding"
+        description: "If true, enables using a dynamically determined number of shards to write."
+        help: "If true, a dynamic number of shards will be used for writing."
+        example: false
+        required: false
+        type: boolean
