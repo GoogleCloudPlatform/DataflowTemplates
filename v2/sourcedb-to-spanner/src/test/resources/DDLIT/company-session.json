@@ -97,8 +97,8 @@
           "Comment": "From: employee_id int(10)",
           "Id": "c11",
           "AutoGen": {
-            "Name": "",
-            "GenerationType": ""
+            "Name": "Identity",
+            "GenerationType": "Identity"
           }
         },
         "c12": {
@@ -507,7 +507,11 @@
             "ForeignKey": false,
             "AutoIncrement": false
           },
-          "Id": "c11"
+          "Id": "c11",
+          "AutoGen": {
+            "Name": "Auto Increment",
+            "GenerationType": "Auto Increment"
+          }
         },
         "c12": {
           "Name": "company_id",

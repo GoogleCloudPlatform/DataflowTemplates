@@ -130,3 +130,9 @@ CREATE TABLE `Singers` (
     `last_name` varchar(1024),
     PRIMARY KEY (`singer_id`)
 );
+
+CREATE TABLE `Books` (
+    `id` int NOT NULL AUTO_INCREMENT,
+    `title` varchar(200),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARSET=latin1;

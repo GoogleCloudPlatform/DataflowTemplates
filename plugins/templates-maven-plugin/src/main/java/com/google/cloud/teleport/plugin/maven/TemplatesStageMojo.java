@@ -559,7 +559,7 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
         String trackTag = "public-image-latest";
         String dateSuffix =
             LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd-HH"));
-        String deprecatedTag = "no-new-use-public-image-newer-available-" + dateSuffix;
+        String deprecatedTag = "update-available-" + dateSuffix;
         if (metadata.isHidden()) {
           trackTag = "no-new-use-public-image-latest";
         } else if (metadata.getName().contains("[Deprecated]")) {

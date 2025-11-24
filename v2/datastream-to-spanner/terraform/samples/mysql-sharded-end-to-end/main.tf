@@ -294,6 +294,8 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     instanceId                      = var.common_params.dataflow_params.template_params.spanner_instance_id
     databaseId                      = var.common_params.dataflow_params.template_params.spanner_database_id
     projectId                       = var.common_params.dataflow_params.template_params.spanner_project_id != null ? var.common_params.dataflow_params.template_params.spanner_project_id : var.common_params.project
+    shadowTableSpannerInstanceId    = var.common_params.dataflow_params.template_params.shadow_table_spanner_instance_id
+    shadowTableSpannerDatabaseId    = var.common_params.dataflow_params.template_params.shadow_table_spanner_database_id
     spannerHost                     = var.common_params.dataflow_params.template_params.spanner_host
     gcsPubSubSubscription           = google_pubsub_subscription.datastream_subscription[count.index].id
     streamName                      = google_datastream_stream.mysql_to_gcs[count.index].id
@@ -301,7 +303,7 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     shouldCreateShadowTables        = tostring(var.common_params.dataflow_params.template_params.create_shadow_tables)
     rfcStartDateTime                = var.common_params.dataflow_params.template_params.rfc_start_date_time
     fileReadConcurrency             = tostring(var.common_params.dataflow_params.template_params.file_read_concurrency)
-    deadLetterQueueDirectory        = "${google_storage_bucket.datastream_bucket[count.index].url}/dlq"
+    deadLetterQueueDirectory        = var.common_params.dataflow_params.template_params.dead_letter_queue_directory != null ? var.common_params.dataflow_params.template_params.dead_letter_queue_directory : "${google_storage_bucket.datastream_bucket[count.index].url}/dlq"
     dlqRetryMinutes                 = tostring(var.common_params.dataflow_params.template_params.dlq_retry_minutes)
     dlqMaxRetryCount                = tostring(var.common_params.dataflow_params.template_params.dlq_max_retry_count)
     dataStreamRootUrl               = var.common_params.dataflow_params.template_params.datastream_root_url
