@@ -19,7 +19,6 @@ import logging
 import pprint
 import jinja2
 import yaml
-import re
 import datetime
 
 from apache_beam.io.filesystems import FileSystems
