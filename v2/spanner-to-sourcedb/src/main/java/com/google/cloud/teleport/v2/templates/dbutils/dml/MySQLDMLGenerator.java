@@ -281,6 +281,11 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       JSONObject keyValuesJson,
       String sourceDbTimezoneOffset,
       Map<String, Object> customTransformationResponse) {
+    LOG.info(
+        "PK_DEBUG: getPkColumnValues called. newValues: {}, keyValues: {}, customResponse: {}",
+        newValuesJson,
+        keyValuesJson,
+        customTransformationResponse);
     Map<String, String> response = new HashMap<>();
     /*
     Get all primary key col ids from source table
@@ -294,6 +299,7 @@ public class MySQLDMLGenerator implements IDMLGenerator {
     if the column does not exist in any of the JSON - return null
     */
     List<String> sourcePKs = sourceTable.primaryKeyColumns();
+    LOG.info("PK_DEBUG: Found source PKs: {}", sourcePKs);
     Set<String> customTransformColumns = null;
     if (customTransformationResponse != null) {
       customTransformColumns = customTransformationResponse.keySet();
@@ -305,11 +311,13 @@ public class MySQLDMLGenerator implements IDMLGenerator {
       if (sourceColDef == null) {
         LOG.warn(
             "The source column definition for {} was not found in source schema", sourceColName);
+        LOG.info("PK_DEBUG: getPkColumnValues returning null because source column definition for {} was not found.", sourceColName);
         return null;
       }
 
       if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
         response.put(sourceColName, customTransformationResponse.get(sourceColName).toString());
+        LOG.info("PK_DEBUG: getPkColumnValues CustomTransformColumns entered, response: {}", response);
         continue;
       }
 
@@ -323,12 +331,14 @@ public class MySQLDMLGenerator implements IDMLGenerator {
         LOG.warn(
             "The corresponding spanner table for {} was not found in schema mapping",
             sourceColName);
+        LOG.info("PK_DEBUG: getPkColumnValues returning null because spanner column for {} was not found.", sourceColName);
         return null;
       }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
+        LOG.info("PK_DEBUG: getPkColumnValues returning null because spanner column definition for {} was not found.", spannerColName);
         return null;
       }
       String columnValue = "";
@@ -352,12 +362,16 @@ public class MySQLDMLGenerator implements IDMLGenerator {
                 spannerColDef, sourceColDef, newValuesJson, sourceDbTimezoneOffset);
       } else {
         LOG.warn("The column {} was not found in input record", spannerColName);
+        LOG.info(
+            "PK_DEBUG: getPkColumnValues returning null because column {} was not found in input record.",
+            spannerColName);
         return null;
       }
 
       response.put(sourceColName, columnValue);
     }
 
+    LOG.info("PK_DEBUG: getPkColumnValues returning: {}", response);
     return response;
   }
 

@@ -177,6 +177,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private void writeRowInSpanner() {
+    LOG.info("PK_DEBUG: Starting to write rows in Spanner...");
     Mutation m =
         Mutation.newInsertOrUpdateBuilder("Users1").set("id").to(1).set("name").to("AA BB").build();
     spannerResourceManager.write(m);
@@ -345,6 +346,7 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
   }
 
   private void assertRowInMySQL() throws InterruptedException {
+    LOG.info("PK_DEBUG: Starting to assert rows in MySQL...");
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(
@@ -362,7 +364,15 @@ public class SpannerToSourceDbCustomTransformationIT extends SpannerToSourceDbIT
         pipelineOperator()
             .waitForCondition(
                 createConfig(jobInfo, Duration.ofMinutes(15)),
-                () -> jdbcResourceManager.getRowCount(TABLE2) == 2);
+                () -> {
+                  long rowCount = jdbcResourceManager.getRowCount(TABLE2);
+                  LOG.info("PK_DEBUG: Checking row count for table '{}', found {}", TABLE2, rowCount);
+                  if (rowCount != 2) {
+                    List<Map<String, Object>> rows = jdbcResourceManager.readTable(TABLE2);
+                    LOG.info("PK_DEBUG: Current rows in '{}': {}", TABLE2, rows);
+                  }
+                  return rowCount == 2;
+                });
     /*
      * Added to handle updates.
      * TODO(khajanchi@), explore if this sleep be replaced with something more definite.
