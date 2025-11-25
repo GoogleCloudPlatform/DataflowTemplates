@@ -217,6 +217,10 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
+    // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes
+    // buffer for the dataflow job to process the events before asserting the results.
+    Thread.sleep(600000);
+
     // Read data from Spanner and assert that it exactly matches with SourceDb
     testUtil.assertRows(spannerResourceManager, sourceDBResourceManager);
   }
