@@ -91,7 +91,7 @@ options:
       - order: 5
         name: "fetch_size"
         description: "The number of rows to fetch from the database at a time."
-        help: "The number of rows to fetch per database call. Use only to troubleshoot memory errors."
+        help: "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors."
         example: 50000
         required: false
         type: integer
