@@ -396,7 +396,7 @@
       ],
       "ColDefs": {
         "c136": {
-          "Name": "pk_column",
+          "Name": "source_only_pk",
           "Type": {
             "Name": "int",
             "Mods": [
