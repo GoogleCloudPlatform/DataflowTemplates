@@ -35,7 +35,7 @@ import org.apache.beam.sdk.options.Validation;
       "template.yaml",
       "main.py",
       "requirements.txt",
-      "options/jdbc_options.yaml",
+      "options/postgres_options.yaml",
       "options/iceberg_options.yaml"
     },
     contactInformation = "https://cloud.google.com/support",
@@ -51,7 +51,7 @@ public interface PostgresToIcebergYaml {
       order = 1,
       name = "jdbc_url",
       description = "Connection URL for the JDBC source/sink.",
-      helpText = "The JDBC connection URL, which can be a KMS-encrypted string.",
+      helpText = "The JDBC connection URL.",
       example = "jdbc:postgresql://your-host:5432/your-db")
   @Validation.Required
   String getJdbcUrl();
@@ -61,7 +61,7 @@ public interface PostgresToIcebergYaml {
       name = "username",
       optional = true,
       description = "Username for the JDBC connection.",
-      helpText = "The database username, which can be a KMS-encrypted string.",
+      helpText = "The database username.",
       example = "my_user")
   String getUsername();
 
@@ -70,7 +70,7 @@ public interface PostgresToIcebergYaml {
       name = "password",
       optional = true,
       description = "Password for the JDBC connection.",
-      helpText = "The database password, which can be a KMS-encrypted string.",
+      helpText = "The database password.",
       example = "my_secret_password")
   String getPassword();
 
@@ -78,7 +78,8 @@ public interface PostgresToIcebergYaml {
       order = 4,
       name = "driver_class_name",
       optional = true,
-      description = "The fully-qualified class name of the JDBC driver.",
+      description =
+          "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver",
       helpText = "The fully-qualified class name of the JDBC driver to use.",
       example = "org.postgresql.Driver")
   @Default.String("org.postgresql.Driver")
@@ -115,7 +116,7 @@ public interface PostgresToIcebergYaml {
       order = 8,
       name = "jdbc_type",
       optional = true,
-      description = "Type of JDBC source (e.g., postgres, mysql).",
+      description = "Type of JDBC source. Default: postgres.",
       helpText =
           "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
       example = "postgres")

@@ -6,12 +6,12 @@ template:
   category: "BATCH"
 
   options_file:
-    - "jdbc_options"
+    - "postgres_options"
     - "iceberg_options"
 
   parameters:
-    - jdbc_common_options
-    - jdbc_read_options
+    - postgres_common_options
+    - postgres_read_options
     - iceberg_common_options
     - iceberg_write_options
 
