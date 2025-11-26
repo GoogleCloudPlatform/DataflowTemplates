@@ -9,7 +9,6 @@
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
-
  * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
  * License for the specific language governing permissions and limitations under
  * the License.
@@ -27,15 +26,22 @@ import org.apache.beam.sdk.options.Validation;
     category = TemplateCategory.BATCH,
     type = Template.TemplateType.YAML,
     displayName = "Postgres to Iceberg (YAML)",
-    description = "A YAML template for Postgres to Iceberg is a batch pipeline with executes the user provided SQL query to read data from Postgres table"
-          +"and outputs the records to Iceberg table.",
+    description =
+        "A YAML template for Postgres to Iceberg is a batch pipeline with executes the user provided SQL query to read data from Postgres table"
+            + "and outputs the records to Iceberg table.",
     flexContainerName = "postgres-to-iceberg-yaml",
     yamlTemplateFile = "PostgresToIceberg.yaml",
-    filesToCopy = {"template.yaml", "main.py", "requirements.txt", "options/jdbc_options.yaml", "options/iceberg_options.yaml"},
+    filesToCopy = {
+      "template.yaml",
+      "main.py",
+      "requirements.txt",
+      "options/jdbc_options.yaml",
+      "options/iceberg_options.yaml"
+    },
     contactInformation = "https://cloud.google.com/support",
     requirements = {
-       "The Input Postgres instance and table must exist.",
-       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+      "The Input Postgres instance and table must exist.",
+      "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
     },
     hidden = false)
 public interface PostgresToIcebergYaml {
@@ -110,7 +116,8 @@ public interface PostgresToIcebergYaml {
       name = "jdbc_type",
       optional = true,
       description = "Type of JDBC source (e.g., postgres, mysql).",
-      helpText = "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
+      helpText =
+          "Specifies the type of JDBC source. An appropriate default driver will be packaged.",
       example = "postgres")
   @Default.String("postgres")
   String getJdbcType();
@@ -157,7 +164,8 @@ public interface PostgresToIcebergYaml {
       name = "fetch_size",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
-      helpText = "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
+      helpText =
+          "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors.",
       example = "50000")
   Integer getFetchSize();
 
@@ -166,7 +174,8 @@ public interface PostgresToIcebergYaml {
       name = "disable_auto_commit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
-      helpText = "Whether to disable auto-commit on read. Required for some databases like Postgres.",
+      helpText =
+          "Whether to disable auto-commit on read. Required for some databases like Postgres.",
       example = "true")
   Boolean getDisableAutoCommit();
 

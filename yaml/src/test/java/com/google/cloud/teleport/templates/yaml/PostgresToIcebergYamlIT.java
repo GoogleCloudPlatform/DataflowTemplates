@@ -15,17 +15,12 @@
  */
 package com.google.cloud.teleport.templates.yaml;
 
-import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static com.google.common.truth.Truth.assertThat;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
-import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import org.apache.beam.it.common.PipelineLauncher;
-import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
-import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
-import org.apache.beam.it.common.PipelineOperator;
-import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
+import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -33,6 +28,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.beam.it.common.PipelineLauncher;
+import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
+import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator;
+import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
@@ -81,16 +81,13 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     postgresResourceManager.createTable(tableName, schema);
 
     List<Map<String, Object>> records =
-        List.of(
-            Map.of("id", 1, "active", true),
-            Map.of("id", 2,  "active", false));
+        List.of(Map.of("id", 1, "active", true), Map.of("id", 2, "active", false));
     postgresResourceManager.write(tableName, records);
 
-    //Iceberg Setup
+    // Iceberg Setup
     String catalogName = "hadoop_catalog";
     String catalogProperties =
-        String.format(
-            "{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
+        String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
     String icebergTableName = "iceberg_table";
 
     LaunchConfig.Builder options =
@@ -114,15 +111,17 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     List<Record> icebergRecords = icebergResourceManager.read(icebergTableName);
     List<Map<String, Object>> expectedRecords = new ArrayList<>();
     for (Record record : icebergRecords) {
-      expectedRecords.add(
-          ImmutableMap.of(
-              "id", record.get(0), "active", record.get(2)));
+      expectedRecords.add(ImmutableMap.of("id", record.get(0), "active", record.get(2)));
     }
     assertThat(expectedRecords).containsExactlyElementsIn(records);
   }
 
   @Override
   protected PipelineOperator.Config createConfig(LaunchInfo info) {
-    return PipelineOperator.Config.builder().setJobId(info.jobId()).setProject(PROJECT).setRegion(REGION).build();
+    return PipelineOperator.Config.builder()
+        .setJobId(info.jobId())
+        .setProject(PROJECT)
+        .setRegion(REGION)
+        .build();
   }
 }
