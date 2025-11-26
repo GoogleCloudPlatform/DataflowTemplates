@@ -312,3 +312,8 @@ CREATE TABLE IF NOT EXISTS timestamp_pk_table (
                                                   id TIMESTAMP NOT NULL,
                                                   timestamp_pk_col TIMESTAMP NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS float_pk_table (
+  id FLOAT NOT NULL,
+  float_pk_col FLOATNOT NULL,
+) PRIMARY KEY(id);
