@@ -272,6 +272,11 @@ CREATE TABLE IF NOT EXISTS tiny_int_unsigned_pk_table (
    tiny_int_unsigned_pk_col INT64 NOT NULL,
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS bit_pk_table (
+  id INT64 NOT NULL,
+  bit_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS binary_pk_table (
   id BYTES(20) NOT NULL,
   binary_pk_col BYTES(20) NOT NULL,
