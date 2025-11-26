@@ -62,13 +62,11 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse");
     warehouseLocation = "file:" + warehouseDirectory.toString();
 
-    icebergResourceManager = IcebergResourceManager.builder(testName)
-        .setCatalogName("hadoop")
-        .setCatalogProperties(
-            Map.of(
-                "type", "hadoop",
-                "warehouse", warehouseLocation))
-        .build();
+    icebergResourceManager =
+        IcebergResourceManager.builder(testName)
+            .setCatalogName("hadoop")
+            .setCatalogProperties(Map.of("type", "hadoop", "warehouse", warehouseLocation))
+            .build();
   }
 
   @After
@@ -87,22 +85,25 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
     postgresResourceManager.createTable(tableName, schema);
 
-    List<Map<String, Object>> records = List.of(Map.of("id", 1, "active", true), Map.of("id", 2, "active", false));
+    List<Map<String, Object>> records =
+        List.of(Map.of("id", 1, "active", true), Map.of("id", 2, "active", false));
     postgresResourceManager.write(tableName, records);
 
     // Iceberg Setup
     String catalogName = "hadoop_catalog";
-    String catalogProperties = String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
+    String catalogProperties =
+        String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
     String icebergTableName = "iceberg_table";
 
-    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath)
-        .addParameter("jdbc_url", postgresResourceManager.getUri())
-        .addParameter("username", postgresResourceManager.getUsername())
-        .addParameter("password", postgresResourceManager.getPassword())
-        .addParameter("read_query", String.format(READ_QUERY, tableName))
-        .addParameter("table", icebergTableName)
-        .addParameter("catalog_name", catalogName)
-        .addParameter("catalog_properties", catalogProperties);
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jdbc_url", postgresResourceManager.getUri())
+            .addParameter("username", postgresResourceManager.getUsername())
+            .addParameter("password", postgresResourceManager.getPassword())
+            .addParameter("read_query", String.format(READ_QUERY, tableName))
+            .addParameter("table", icebergTableName)
+            .addParameter("catalog_name", catalogName)
+            .addParameter("catalog_properties", catalogProperties);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
