@@ -146,6 +146,13 @@ public abstract class Boundary<T extends Serializable>
    */
   public boolean isSplittable(@Nullable ProcessContext processContext) {
     T mid = splitPoint(processContext);
+    // TODO: Support approximate values like FLOAT and DOUBLE that does have strict equality
+    // Approximate values are equals when diff < delta
+    // Delta being the minimum step between 2 values.
+    // Delta either come from:
+    // - PartitionColumn.delta which is filled based on the granularity of the source type
+    //   (e.g. Float(size, d), d is the number of decimals)
+    // - Or fallback to Value defined in configuration file
     return !(Objects.equal(end(), mid)) && !(Objects.equal(start(), mid));
   }
 
