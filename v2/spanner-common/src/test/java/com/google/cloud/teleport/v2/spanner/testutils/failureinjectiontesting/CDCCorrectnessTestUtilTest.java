@@ -187,19 +187,6 @@ public class CDCCorrectnessTestUtilTest {
   }
 
   @Test
-  public void testPerformInserts() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil();
-    try (MockedStatic<DriverManager> mockedDriverManager =
-        Mockito.mockStatic(DriverManager.class)) {
-      mockedDriverManager
-          .when(() -> DriverManager.getConnection(anyString(), anyString(), anyString()))
-          .thenReturn(mockConnection);
-      testUtil.performInserts(5, sourceDBResourceManager);
-      verify(mockPreparedStatement, times(5)).executeUpdate();
-    }
-  }
-
-  @Test
   public void testAssertRows_whenRowsMatch_thenPass() throws SQLException {
     testUtil = new CDCCorrectnessTestUtil();
     CDCCorrectnessTestUtil.User user = CDCCorrectnessTestUtil.User.generateRandom(1);

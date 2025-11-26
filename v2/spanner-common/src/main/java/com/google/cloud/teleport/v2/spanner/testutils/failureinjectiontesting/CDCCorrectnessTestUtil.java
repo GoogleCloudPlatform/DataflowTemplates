@@ -159,33 +159,6 @@ public class CDCCorrectnessTestUtil {
         // Else: Do nothing (row remains absent)
       }
     }
-    System.out.print(".");
-  }
-
-  public void performInserts(int numRows, AbstractJDBCResourceManager resourceManager)
-      throws SQLException {
-
-    try (Connection conn =
-        DriverManager.getConnection(
-            resourceManager.getUri(),
-            resourceManager.getUsername(),
-            resourceManager.getPassword())) {
-      for (int k = 0; k < numRows; k++) {
-        // 1. Create Unique Random ID
-        int id;
-        User user;
-        do {
-          id = getRandom().nextInt(1000000);
-          user = User.generateRandom(id);
-        } while (ids.putIfAbsent(id, true) != null);
-
-        // 2. row
-        insertUser(conn, user);
-      }
-    } catch (SQLException e) {
-      LOG.error("Connection to SourceDb failed", e);
-      throw e;
-    }
   }
 
   private static final String INSERT_SQL =
@@ -215,22 +188,22 @@ public class CDCCorrectnessTestUtil {
     String sql = "UPDATE `Users` SET " + columnToUpdate + " = ? WHERE id = ?";
     try (PreparedStatement ps = conn.prepareStatement(sql)) {
       switch (columnToUpdate) {
-        case "first_name":
+        case User.FIRST_NAME:
           ps.setString(1, u.firstName);
           break;
-        case "last_name":
+        case User.LAST_NAME:
           ps.setString(1, u.lastName);
           break;
-        case "age":
+        case User.AGE:
           ps.setInt(1, u.age);
           break;
-        case "status":
+        case User.STATUS:
           ps.setInt(1, u.status ? 1 : 0);
           break;
-        case "col1":
+        case User.COL1:
           ps.setLong(1, u.col1);
           break;
-        case "col2":
+        case User.COL2:
           ps.setLong(1, u.col2);
           break;
       }
@@ -258,13 +231,13 @@ public class CDCCorrectnessTestUtil {
       ResultSet rs = stmt.executeQuery(SELECT_ALL_SQL);
       while (rs.next()) {
         User u = new User();
-        u.id = rs.getInt("id");
-        u.firstName = rs.getString("first_name");
-        u.lastName = rs.getString("last_name");
-        u.age = rs.getInt("age");
-        u.status = rs.getInt("status") == 1; // tinyint mapping
-        u.col1 = rs.getLong("col1");
-        u.col2 = rs.getLong("col2");
+        u.id = rs.getInt(User.ID);
+        u.firstName = rs.getString(User.FIRST_NAME);
+        u.lastName = rs.getString(User.LAST_NAME);
+        u.age = rs.getInt(User.AGE);
+        u.status = rs.getInt(User.STATUS) == 1; // tinyint mapping
+        u.col1 = rs.getLong(User.COL1);
+        u.col2 = rs.getLong(User.COL2);
         users.put(u.id, u);
       }
     }
@@ -278,13 +251,13 @@ public class CDCCorrectnessTestUtil {
 
     for (com.google.cloud.spanner.Struct rs : result) {
       User u = new User();
-      u.id = (int) rs.getLong("id");
-      u.firstName = rs.isNull("first_name") ? null : rs.getString("first_name");
-      u.lastName = rs.isNull("last_name") ? null : rs.getString("last_name");
-      u.age = rs.isNull("age") ? 0 : (int) rs.getLong("age");
-      u.status = !rs.isNull("status") && rs.getBoolean("status");
-      u.col1 = rs.isNull("col1") ? 0 : rs.getLong("col1");
-      u.col2 = rs.isNull("col2") ? 0 : rs.getLong("col2");
+      u.id = (int) rs.getLong(User.ID);
+      u.firstName = rs.isNull(User.FIRST_NAME) ? null : rs.getString(User.FIRST_NAME);
+      u.lastName = rs.isNull(User.LAST_NAME) ? null : rs.getString(User.LAST_NAME);
+      u.age = rs.isNull(User.AGE) ? 0 : (int) rs.getLong(User.AGE);
+      u.status = !rs.isNull(User.STATUS) && rs.getBoolean(User.STATUS);
+      u.col1 = rs.isNull(User.COL1) ? 0 : rs.getLong(User.COL1);
+      u.col2 = rs.isNull(User.COL2) ? 0 : rs.getLong(User.COL2);
       users.put(u.id, u);
     }
     return users;
@@ -339,7 +312,7 @@ public class CDCCorrectnessTestUtil {
   }
 
   /** User POJO with random generation capability. */
-  static class User {
+  public static class User {
     int id;
     String firstName;
     String lastName;
@@ -348,8 +321,15 @@ public class CDCCorrectnessTestUtil {
     long col1;
     long col2;
 
-    static final List<String> UPDATABLE_COLUMNS =
-        ImmutableList.of("first_name", "last_name", "age", "status", "col1", "col2");
+    public static final String ID = "id";
+    public static final String FIRST_NAME = "first_name";
+    public static final String LAST_NAME = "last_name";
+    public static final String AGE = "age";
+    public static final String STATUS = "status";
+    public static final String COL1 = "col1";
+    public static final String COL2 = "col2";
+    public static final List<String> UPDATABLE_COLUMNS =
+        ImmutableList.of(FIRST_NAME, LAST_NAME, AGE, STATUS, COL1, COL2);
 
     static User generateRandom(int id) {
       User u = new User();

@@ -76,6 +76,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
           put("col2", "BIGINT");
         }
       };
+  private static final int NUM_WORKERS = 10;
+  private static final int MAX_WORKERS = 20;
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static SpannerResourceManager spannerResourceManager;
@@ -174,8 +176,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
-            .addEnvironmentVariable("numWorkers", 10)
-            .addEnvironmentVariable("maxWorkers", 20);
+            .addEnvironmentVariable("numWorkers", NUM_WORKERS)
+            .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 
     // launch dataflow template
     PipelineLauncher.LaunchInfo jobInfo =
@@ -200,9 +202,16 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
+    // Kill the dataflow workers multiple times to induce work item assignment rebalancing.
     DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
+    Thread.sleep(20000); // wait for 20 seconds
+    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
+    Thread.sleep(20000);
+    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
+    Thread.sleep(20000);
+    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
+    Thread.sleep(20000);
 
-    // The pipeline has actually started processing the data. Wait for 10 minutes.
     Thread.sleep(600000);
 
     long expectedRows = sourceDBResourceManager.getRowCount(USERS_TABLE);
