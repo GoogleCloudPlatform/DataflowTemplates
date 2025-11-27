@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
+import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -45,7 +46,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PostgresToIcebergYaml} template. */
-@Category(TemplateIntegrationTest.class)
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @RunWith(JUnit4.class)
 @TemplateIntegrationTest(PostgresToIcebergYaml.class)
 public class PostgresToIcebergYamlIT extends TemplateTestBase {
