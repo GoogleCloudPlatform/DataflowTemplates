@@ -43,6 +43,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerSchema;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraConfigFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CassandraDriverConfigLoader;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SecretManagerAccessorImpl;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardFileReader;
 import com.google.cloud.teleport.v2.spanner.sourceddl.CassandraInformationSchemaScanner;
@@ -577,6 +578,11 @@ public class SpannerToSourceDb {
               + " database connections than desired. Either reduce the max allowed workers or"
               + " incease the max shard connections");
     }
+
+    String workerMachineType = pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    LOG.info("workerMachineType: " + workerMachineType);
+    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
+
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
