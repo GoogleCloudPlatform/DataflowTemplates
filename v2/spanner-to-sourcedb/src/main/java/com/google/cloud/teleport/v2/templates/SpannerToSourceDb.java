@@ -739,8 +739,7 @@ public class SpannerToSourceDb {
                 options.getTransformationJarPath(), options.getTransformationClassName())
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
-    // ISchemaMapper schemaMapper is now initialized on the worker side in AssignShardIdFn and
-    // SourceWriterFn
+
 
     if (options.getFailureInjectionParameter() != null
         && !options.getFailureInjectionParameter().isBlank()) {
@@ -760,8 +759,8 @@ public class SpannerToSourceDb {
                 ParDo.of(
                         new AssignShardIdFn(
                             spannerConfig,
-                            options, // Pass options instead of Ddl and SchemaMapper
-                            ddlView, // *** MISSING ARGUMENT ADDED HERE ***
+                            options,
+                            ddlView,
                             sourceSchema,
                             shardingMode,
                             shards.get(0).getLogicalShardId(),
@@ -771,7 +770,7 @@ public class SpannerToSourceDb {
                             options.getShardingCustomParameters(),
                             options.getMaxShardConnections() * shards.size(),
                             options.getSourceType()))
-                    .withSideInputs(ddlView)) // Pass DDL as side input
+                    .withSideInputs(ddlView))
             .setCoder(
                 KvCoder.of(
                     VarLongCoder.of(), SerializableCoder.of(TrimmedShardedDataChangeRecord.class)))
@@ -780,11 +779,11 @@ public class SpannerToSourceDb {
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    options, // Pass options instead of SchemaMapper
+                    options,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
-                    ddlView, // Pass DDL View
-                    shadowTableDdlView, // Pass Shadow DDL View
+                    ddlView,
+                    shadowTableDdlView,
                     sourceSchema,
                     options.getShadowTablePrefix(),
                     options.getSkipDirectoryName(),

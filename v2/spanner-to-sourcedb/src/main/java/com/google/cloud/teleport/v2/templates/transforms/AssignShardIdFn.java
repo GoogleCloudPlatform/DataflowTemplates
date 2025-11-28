@@ -85,7 +85,7 @@ public class AssignShardIdFn
   /* The DDL view for the main Spanner database. Only accessible in processElement. */
   private final PCollectionView<Ddl> ddlView;
 
-  /* The actual Ddl object is retrieved via side input in processElement. */
+
   private transient ISchemaMapper schemaMapper;
 
   // Jackson Object mapper.
@@ -162,7 +162,7 @@ public class AssignShardIdFn
         }
         mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-        // schemaMapper and shardIdFetcher are now initialized in processElement
+
         retry = false;
       } catch (SpannerException e) {
         LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
@@ -194,10 +194,9 @@ public class AssignShardIdFn
    */
   @ProcessElement
   public void processElement(ProcessContext c) throws Exception {
-    // Correctly access DDL from PCollectionView passed in withSideInputs
     Ddl ddl = c.sideInput(ddlView);
 
-    // Lazy initialization of objects dependent on Ddl.
+
     if (this.schemaMapper == null) {
       this.schemaMapper = SpannerToSourceDb.getSchemaMapper(this.options, ddl);
     }

@@ -96,19 +96,18 @@ public class SourceWriterTransform
             ParDo.of(
                     new SourceWriterFn(
                         this.shards,
-                        this.options, // Pass options instead of schemaMapper
+                        this.options,
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
-                        // Ddl and shadowTableDdl removed from constructor
                         this.sourceSchema,
                         this.shadowTablePrefix,
                         this.skipDirName,
                         this.maxThreadPerDataflowWorker,
                         this.source,
                         this.customTransformation,
-                        this.ddlView, // Pass ddlView
-                        this.shadowTableDdlView)) // Pass shadowTableDdlView
-                .withSideInputs(ddlView, shadowTableDdlView) // Pass DDL Views as side inputs
+                        this.ddlView,
+                        this.shadowTableDdlView))
+                .withSideInputs(ddlView, shadowTableDdlView)
                 .withOutputTags(
                     Constants.SUCCESS_TAG,
                     TupleTagList.of(Constants.PERMANENT_ERROR_TAG)

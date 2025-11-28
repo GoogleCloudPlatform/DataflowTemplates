@@ -189,11 +189,9 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-    // Access DDLs from side inputs
     Ddl ddl = c.sideInput(ddlView);
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
 
-    // Lazy initialization of schemaMapper, which depends on DDL
     if (this.schemaMapper == null) {
       this.schemaMapper = SpannerToSourceDb.getSchemaMapper(this.options, ddl);
     }
@@ -265,7 +263,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                             InputRecordProcessor.processRecord(
                                 spannerRec,
                                 schemaMapper,
-                                ddl, // Use local ddl
+                                ddl,
                                 sourceSchema,
                                 sourceDao,
                                 shardId,
@@ -289,7 +287,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                 keysJson,
                                 spannerRec.getCommitTimestamp(),
                                 spannerRec.getRecordSequence(),
-                                ddl), // Pass local ddl
+                                ddl),
                             shadowTransaction);
                       }
                       return null;
@@ -351,7 +349,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       JsonNode keysJson,
       com.google.cloud.Timestamp commitTimestamp,
       String recordSequence,
-      Ddl ddl) // Added ddl parameter
+      Ddl ddl)
       throws ChangeEventConvertorException {
     Mutation.WriteBuilder mutationBuilder = null;
 
