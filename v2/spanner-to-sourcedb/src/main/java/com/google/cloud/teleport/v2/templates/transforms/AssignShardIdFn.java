@@ -337,6 +337,11 @@ public class AssignShardIdFn
    */
   private void marshalSpannerValues(
       ObjectNode newValuesJsonNode, String tableName, String colName, Struct row) {
+    if (row.isNull(colName)) {
+      newValuesJsonNode.putNull(colName);
+      return;
+    }
+
     // TODO(b/430495490): Add support for string arrays on Spanner side.
     switch (ddl.table(tableName).column(colName).type().getCode()) {
       case FLOAT32:

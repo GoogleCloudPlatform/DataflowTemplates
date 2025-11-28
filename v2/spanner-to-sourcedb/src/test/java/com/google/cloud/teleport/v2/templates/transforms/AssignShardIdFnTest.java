@@ -106,9 +106,12 @@ public class AssignShardIdFnTest {
     when(mockRow.getValue("accountId")).thenReturn(Value.string("Id1"));
     when(mockRow.getValue("accountName")).thenReturn(Value.string("xyz"));
     when(mockRow.getValue("migration_shard_id")).thenReturn(Value.string("shard1"));
+    when(mockRow.isNull("string_col_null")).thenReturn(true);
     when(mockRow.getValue("accountNumber")).thenReturn(Value.int64(1));
+    when(mockRow.isNull("int_64_col_null")).thenReturn(true);
     when(mockRow.getValue("bytesCol"))
         .thenReturn(Value.bytes(ByteArray.copyFrom("GOOGLE".getBytes())));
+    when(mockRow.isNull("bytes_col_null")).thenReturn(true);
     when(mockRow.getDouble("float_64_col")).thenReturn(0.5);
     when(mockRow.getValue("float_64_col")).thenReturn(Value.float64(0.5));
     when(mockRow.getDouble("float_64_col_nan")).thenReturn(Double.NaN);
@@ -119,6 +122,7 @@ public class AssignShardIdFnTest {
     when(mockRow.getDouble("float_64_col_neg_infinity")).thenReturn(Double.NEGATIVE_INFINITY);
     when(mockRow.getValue("float_64_col_neg_infinity"))
         .thenReturn(Value.float64(Double.NEGATIVE_INFINITY));
+    when(mockRow.isNull("float_64_col_null")).thenReturn(true);
     when(mockRow.getValue("float_32_col")).thenReturn(Value.float32(0.5f));
     when(mockRow.getFloat("float_32_col")).thenReturn(0.5f);
     when(mockRow.getFloat("float_32_col_nan")).thenReturn(Float.NaN);
@@ -129,8 +133,11 @@ public class AssignShardIdFnTest {
     when(mockRow.getFloat("float_32_col_neg_infinity")).thenReturn(Float.NEGATIVE_INFINITY);
     when(mockRow.getValue("float_32_col_neg_infinity"))
         .thenReturn(Value.float32(Float.NEGATIVE_INFINITY));
+    when(mockRow.isNull("float_32_col_null")).thenReturn(true);
     when(mockRow.getBoolean("bool_col")).thenReturn(true);
     when(mockRow.getValue("bool_col")).thenReturn(Value.bool(true));
+    when(mockRow.isNull("bool_col_null")).thenReturn(true);
+    when(mockRow.isNull("timestamp_col_null")).thenReturn(true);
 
     // Mock readRow
     when(mockReadOnlyTransaction.readRow(eq("tableName"), any(Key.class), any(Iterable.class)))
@@ -224,7 +231,7 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
 
     String newValuesJson =
-        "{\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\"}";
+        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_null\":null,\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -264,7 +271,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     String newValuesJson =
-        "{\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\"}";
+        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_null\":null,\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -806,7 +813,14 @@ public class AssignShardIdFnTest {
             .string()
             .max()
             .endColumn()
+            .column("string_col_null")
+            .string()
+            .max()
+            .endColumn()
             .column("accountNumber")
+            .int64()
+            .endColumn()
+            .column("int_64_col_null")
             .int64()
             .endColumn()
             .column("bytesCol")
@@ -824,16 +838,7 @@ public class AssignShardIdFnTest {
             .column("float_64_col_neg_infinity")
             .float64()
             .endColumn()
-            .column("float_64_col")
-            .float64()
-            .endColumn()
-            .column("float_64_col_nan")
-            .float64()
-            .endColumn()
-            .column("float_64_col_infinity")
-            .float64()
-            .endColumn()
-            .column("float_64_col_neg_infinity")
+            .column("float_64_col_null")
             .float64()
             .endColumn()
             .column("float_32_col")
@@ -848,8 +853,20 @@ public class AssignShardIdFnTest {
             .column("float_32_col_neg_infinity")
             .float32()
             .endColumn()
+            .column("float_32_col_null")
+            .float32()
+            .endColumn()
             .column("bool_col")
             .bool()
+            .endColumn()
+            .column("bool_col_null")
+            .bool()
+            .endColumn()
+            .column("bytes_col_null")
+            .bytes()
+            .endColumn()
+            .column("timestamp_col_null")
+            .timestamp()
             .endColumn()
             // Non-stored Generated Column should not affect any flows
             .column("non_stored_gen_column")
