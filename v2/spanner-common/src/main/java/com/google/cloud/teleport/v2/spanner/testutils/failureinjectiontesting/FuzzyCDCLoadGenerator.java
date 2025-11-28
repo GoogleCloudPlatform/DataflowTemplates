@@ -17,18 +17,12 @@ package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
 import static com.google.common.truth.Truth.assertThat;
 
-import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -38,13 +32,12 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.beam.it.gcp.cloudsql.CloudSqlResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
-import org.apache.beam.it.jdbc.AbstractJDBCResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CDCCorrectnessTestUtil {
+public class FuzzyCDCLoadGenerator {
 
-  private static final Logger LOG = LoggerFactory.getLogger(CDCCorrectnessTestUtil.class);
+  private static final Logger LOG = LoggerFactory.getLogger(FuzzyCDCLoadGenerator.class);
 
   private final Map<Integer, Boolean> ids = new ConcurrentHashMap<>();
   private Random random;
@@ -52,10 +45,10 @@ public class CDCCorrectnessTestUtil {
   private java.util.concurrent.atomic.AtomicInteger counter =
       new java.util.concurrent.atomic.AtomicInteger(0);
 
-  public CDCCorrectnessTestUtil() {}
+  public FuzzyCDCLoadGenerator() {}
 
   /** Constructor for testing purposes. */
-  CDCCorrectnessTestUtil(Random random) {
+  FuzzyCDCLoadGenerator(Random random) {
     this.random = random;
   }
 
@@ -127,7 +120,7 @@ public class CDCCorrectnessTestUtil {
     } while (ids.putIfAbsent(id, true) != null);
 
     // 2. Insert initial row
-    insertUser(conn, user);
+    user.insert(conn);
     counter.incrementAndGet();
     boolean isRowPresent = true;
 
@@ -139,10 +132,10 @@ public class CDCCorrectnessTestUtil {
           // Update in memory
           user.mutateRandomly();
           // Update in DB
-          updateUser(conn, user);
+          user.update(conn, getRandom());
           counter.incrementAndGet();
         } else {
-          deleteUser(conn, user.id);
+          user.delete(conn);
           isRowPresent = false;
           counter.incrementAndGet();
         }
@@ -152,115 +145,13 @@ public class CDCCorrectnessTestUtil {
         if (getRandom().nextDouble() < 0.75) {
           // Insert the row
           user.mutateRandomly();
-          insertUser(conn, user);
+          user.insert(conn);
           isRowPresent = true;
           counter.incrementAndGet();
         }
         // Else: Do nothing (row remains absent)
       }
     }
-  }
-
-  private static final String INSERT_SQL =
-      "INSERT INTO `Users` (id, first_name, last_name, age, status, col1, col2) VALUES (?, ?, ?, ?, ?, ?, ?)";
-  private static final String DELETE_SQL = "DELETE FROM `Users` WHERE id=?";
-  private static final String SELECT_ALL_SQL =
-      "SELECT id, first_name, last_name, age, status, col1, col2 FROM Users";
-
-  void insertUser(Connection conn, User u) throws SQLException {
-    try (PreparedStatement ps = conn.prepareStatement(INSERT_SQL)) {
-      ps.setInt(1, u.id);
-      ps.setString(2, u.firstName);
-      ps.setString(3, u.lastName);
-      ps.setInt(4, u.age);
-      ps.setInt(5, u.status ? 1 : 0); // tinyint mapping
-      ps.setLong(6, u.col1);
-      ps.setLong(7, u.col2);
-      ps.executeUpdate();
-    }
-  }
-
-  void updateUser(Connection conn, User u) throws SQLException {
-    // Randomly select a column to update.
-    String columnToUpdate =
-        User.UPDATABLE_COLUMNS.get(getRandom().nextInt(User.UPDATABLE_COLUMNS.size()));
-
-    String sql = "UPDATE `Users` SET " + columnToUpdate + " = ? WHERE id = ?";
-    try (PreparedStatement ps = conn.prepareStatement(sql)) {
-      switch (columnToUpdate) {
-        case User.FIRST_NAME:
-          ps.setString(1, u.firstName);
-          break;
-        case User.LAST_NAME:
-          ps.setString(1, u.lastName);
-          break;
-        case User.AGE:
-          ps.setInt(1, u.age);
-          break;
-        case User.STATUS:
-          ps.setInt(1, u.status ? 1 : 0);
-          break;
-        case User.COL1:
-          ps.setLong(1, u.col1);
-          break;
-        case User.COL2:
-          ps.setLong(1, u.col2);
-          break;
-      }
-      ps.setInt(2, u.id);
-      ps.executeUpdate();
-    }
-  }
-
-  void deleteUser(Connection conn, int id) throws SQLException {
-    try (PreparedStatement ps = conn.prepareStatement(DELETE_SQL)) {
-      ps.setInt(1, id);
-      ps.executeUpdate();
-    }
-  }
-
-  Map<Integer, User> fetchAllUsers(AbstractJDBCResourceManager resourceManager)
-      throws SQLException {
-    Map<Integer, User> users = new HashMap<>();
-    try (Connection conn =
-        DriverManager.getConnection(
-            resourceManager.getUri(),
-            resourceManager.getUsername(),
-            resourceManager.getPassword())) {
-      Statement stmt = conn.createStatement();
-      ResultSet rs = stmt.executeQuery(SELECT_ALL_SQL);
-      while (rs.next()) {
-        User u = new User();
-        u.id = rs.getInt(User.ID);
-        u.firstName = rs.getString(User.FIRST_NAME);
-        u.lastName = rs.getString(User.LAST_NAME);
-        u.age = rs.getInt(User.AGE);
-        u.status = rs.getInt(User.STATUS) == 1; // tinyint mapping
-        u.col1 = rs.getLong(User.COL1);
-        u.col2 = rs.getLong(User.COL2);
-        users.put(u.id, u);
-      }
-    }
-    return users;
-  }
-
-  Map<Integer, User> fetchAllUsers(SpannerResourceManager spannerResourceManager) {
-    ImmutableList<com.google.cloud.spanner.Struct> result =
-        spannerResourceManager.runQuery(SELECT_ALL_SQL);
-    Map<Integer, User> users = new HashMap<>();
-
-    for (com.google.cloud.spanner.Struct rs : result) {
-      User u = new User();
-      u.id = (int) rs.getLong(User.ID);
-      u.firstName = rs.isNull(User.FIRST_NAME) ? null : rs.getString(User.FIRST_NAME);
-      u.lastName = rs.isNull(User.LAST_NAME) ? null : rs.getString(User.LAST_NAME);
-      u.age = rs.isNull(User.AGE) ? 0 : (int) rs.getLong(User.AGE);
-      u.status = !rs.isNull(User.STATUS) && rs.getBoolean(User.STATUS);
-      u.col1 = rs.isNull(User.COL1) ? 0 : rs.getLong(User.COL1);
-      u.col2 = rs.isNull(User.COL2) ? 0 : rs.getLong(User.COL2);
-      users.put(u.id, u);
-    }
-    return users;
   }
 
   /* Fetch all rows from MySQL and Spanner and assert that they match exactly. */
@@ -270,8 +161,8 @@ public class CDCCorrectnessTestUtil {
     Map<Integer, User> sourceUsers;
     Map<Integer, User> spannerUsers;
     try {
-      sourceUsers = fetchAllUsers(sourceDBResourceManager);
-      spannerUsers = fetchAllUsers(spannerResourceManager);
+      sourceUsers = User.fetchAll(sourceDBResourceManager);
+      spannerUsers = User.fetchAll(spannerResourceManager);
     } catch (SQLException e) {
       throw new RuntimeException(e);
     }
@@ -308,73 +199,6 @@ public class CDCCorrectnessTestUtil {
         LOG.error("Mismatch for user ID {}: Source={}, Spanner={}", id, sourceUser, spannerUser);
       }
       assertThat(spannerUser).isEqualTo(sourceUser);
-    }
-  }
-
-  /** User POJO with random generation capability. */
-  public static class User {
-    int id;
-    String firstName;
-    String lastName;
-    int age;
-    boolean status;
-    long col1;
-    long col2;
-
-    public static final String ID = "id";
-    public static final String FIRST_NAME = "first_name";
-    public static final String LAST_NAME = "last_name";
-    public static final String AGE = "age";
-    public static final String STATUS = "status";
-    public static final String COL1 = "col1";
-    public static final String COL2 = "col2";
-    public static final List<String> UPDATABLE_COLUMNS =
-        ImmutableList.of(FIRST_NAME, LAST_NAME, AGE, STATUS, COL1, COL2);
-
-    static User generateRandom(int id) {
-      User u = new User();
-      u.id = id;
-      u.mutateRandomly();
-      return u;
-    }
-
-    void mutateRandomly() {
-      ThreadLocalRandom rnd = ThreadLocalRandom.current();
-      this.firstName = "Fname_" + rnd.nextInt(10000);
-      this.lastName = "Lname_" + rnd.nextInt(10000);
-      this.age = rnd.nextInt(100);
-      this.status = rnd.nextBoolean();
-      this.col1 = rnd.nextLong();
-      this.col2 = rnd.nextLong();
-    }
-
-    @Override
-    public boolean equals(Object o) {
-      if (this == o) {
-        return true;
-      }
-      if (o == null || getClass() != o.getClass()) {
-        return false;
-      }
-      User user = (User) o;
-      return id == user.id
-          && age == user.age
-          && status == user.status
-          && col1 == user.col1
-          && col2 == user.col2
-          && Objects.equals(firstName, user.firstName)
-          && Objects.equals(lastName, user.lastName);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(id, firstName, lastName, age, status, col1, col2);
-    }
-
-    @Override
-    public String toString() {
-      return String.format(
-          "User{id=%d, fn='%s', age=%d, status=%s, col1=%d}", id, firstName, age, status, col1);
     }
   }
 }

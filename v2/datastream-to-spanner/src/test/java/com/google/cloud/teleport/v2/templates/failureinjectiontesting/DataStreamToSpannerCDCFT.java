@@ -21,8 +21,8 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.CDCCorrectnessTestUtil;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
+import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.FuzzyCDCLoadGenerator;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
@@ -87,6 +87,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
   private static CloudSqlResourceManager sourceDBResourceManager;
   private JDBCSource sourceConnectionProfile;
+  private FuzzyCDCLoadGenerator testUtil;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -116,26 +117,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
-  }
 
-  /**
-   * Cleanup all the resources and resource managers.
-   *
-   * @throws IOException
-   */
-  @After
-  public void cleanUp() throws IOException {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager,
-        sourceDBResourceManager,
-        datastreamResourceManager,
-        gcsResourceManager,
-        pubsubResourceManager);
-  }
-
-  @Test
-  public void liveMigrationCrossDbTxnCdcTest()
-      throws IOException, InterruptedException, SQLException, ExecutionException {
     String testRootDir = getClass().getSimpleName();
     // create subscriptions
     String gcsPrefix =
@@ -171,7 +153,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     int burstIterations = 10000;
 
     // generate Load
-    CDCCorrectnessTestUtil testUtil = new CDCCorrectnessTestUtil();
+    testUtil = new FuzzyCDCLoadGenerator();
     testUtil.generateLoad(numRows, burstIterations, sourceDBResourceManager);
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
@@ -180,7 +162,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 
     // launch dataflow template
-    PipelineLauncher.LaunchInfo jobInfo =
+    jobInfo =
         launchFwdDataflowJob(
             spannerResourceManager,
             gcsPrefix,
@@ -190,6 +172,26 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             dlqSubscription.toString(),
             flexTemplateBuilder,
             shadowTableSpannerResourceManager);
+  }
+
+  /**
+   * Cleanup all the resources and resource managers.
+   *
+   * @throws IOException
+   */
+  @After
+  public void cleanUp() throws IOException {
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager,
+        sourceDBResourceManager,
+        datastreamResourceManager,
+        gcsResourceManager,
+        pubsubResourceManager);
+  }
+
+  @Test
+  public void liveMigrationCrossDbTxnCdcTest()
+      throws IOException, InterruptedException, SQLException, ExecutionException {
 
     // Wait for Forward migration job to be in running state
     assertThatPipeline(jobInfo).isRunning();

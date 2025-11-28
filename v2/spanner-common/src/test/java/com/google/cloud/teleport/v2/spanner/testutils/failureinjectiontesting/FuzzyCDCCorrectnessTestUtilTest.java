@@ -51,9 +51,9 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-/** Unit tests for {@link CDCCorrectnessTestUtil}. */
+/** Unit tests for {@link FuzzyCDCLoadGenerator}. */
 @RunWith(JUnit4.class)
-public class CDCCorrectnessTestUtilTest {
+public class FuzzyCDCCorrectnessTestUtilTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -65,7 +65,7 @@ public class CDCCorrectnessTestUtilTest {
   @Mock private ResultSet mockResultSet;
   @Mock private Random mockRandom;
 
-  private CDCCorrectnessTestUtil testUtil;
+  private FuzzyCDCLoadGenerator testUtil;
 
   @Before
   public void setUp() throws SQLException {
@@ -96,7 +96,7 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_updatePath() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil(mockRandom);
+    testUtil = new FuzzyCDCLoadGenerator(mockRandom);
     // Control random flow: 0.74 < 0.75, so choose update path
     when(mockRandom.nextDouble()).thenReturn(0.74);
     when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID and column selection
@@ -118,7 +118,7 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_deleteAndReinsertPath() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil(mockRandom);
+    testUtil = new FuzzyCDCLoadGenerator(mockRandom);
     // Control random flow:
     // 1. 0.76 > 0.75 (delete)
     // 2. 0.74 < 0.75 (re-insert)
@@ -142,7 +142,7 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_deleteAndDoNothingPath() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil(mockRandom);
+    testUtil = new FuzzyCDCLoadGenerator(mockRandom);
     // Control random flow:
     // 1. 0.76 > 0.75 (delete)
     // 2. 0.76 > 0.76 (do nothing)
@@ -166,7 +166,7 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_handlesSqlExceptionInThread() {
-    testUtil = new CDCCorrectnessTestUtil();
+    testUtil = new FuzzyCDCLoadGenerator();
     SQLException sqlException = new SQLException("Connection failed");
 
     try (MockedStatic<DriverManager> mockedDriverManager = Mockito.mockStatic(DriverManager.class);
@@ -188,8 +188,8 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testAssertRows_whenRowsMatch_thenPass() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil();
-    CDCCorrectnessTestUtil.User user = CDCCorrectnessTestUtil.User.generateRandom(1);
+    testUtil = new FuzzyCDCLoadGenerator();
+    User user = User.generateRandom(1);
 
     // Mock source DB fetch
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
@@ -234,8 +234,8 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testAssertRows_whenRowCountMismatch_thenFail() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil();
-    CDCCorrectnessTestUtil.User user = CDCCorrectnessTestUtil.User.generateRandom(1);
+    testUtil = new FuzzyCDCLoadGenerator();
+    User user = User.generateRandom(1);
 
     // Mock source DB to return one row
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
@@ -259,10 +259,10 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testAssertRows_whenRowContentMismatch_thenFail() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil();
-    CDCCorrectnessTestUtil.User sourceUser = CDCCorrectnessTestUtil.User.generateRandom(1);
+    testUtil = new FuzzyCDCLoadGenerator();
+    User sourceUser = User.generateRandom(1);
     sourceUser.firstName = "SourceFirstName";
-    CDCCorrectnessTestUtil.User spannerUser = CDCCorrectnessTestUtil.User.generateRandom(1);
+    User spannerUser = User.generateRandom(1);
     spannerUser.firstName = "SpannerFirstName";
 
     // Mock source DB fetch
@@ -305,7 +305,7 @@ public class CDCCorrectnessTestUtilTest {
 
   @Test
   public void testAssertRows_throwsRuntimeException_onSqlException() throws SQLException {
-    testUtil = new CDCCorrectnessTestUtil();
+    testUtil = new FuzzyCDCLoadGenerator();
     SQLException sqlException = new SQLException("DB connection failed");
 
     try (MockedStatic<DriverManager> mockedDriverManager =
