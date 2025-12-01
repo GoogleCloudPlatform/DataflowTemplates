@@ -108,7 +108,7 @@ public class FuzzyCDCLoadGeneratorTest {
           .thenReturn(mockConnection);
       mockSynchronousExecutor(mockedExecutors);
 
-      cdcLoadGenerator.generateLoad(1, 1, sourceDBResourceManager);
+      cdcLoadGenerator.generateLoad(1, 1, 0.75, sourceDBResourceManager);
 
       // Verify initial insert and one update
       verify(mockConnection, times(2)).prepareStatement(anyString());
@@ -119,11 +119,9 @@ public class FuzzyCDCLoadGeneratorTest {
   @Test
   public void testGenerateLoad_deleteAndReinsertPath() throws SQLException {
     cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
-    // Control random flow:
-    // 1. 0.76 > 0.75 (delete)
-    // 2. 0.74 < 0.75 (re-insert)
-    when(mockRandom.nextDouble()).thenReturn(0.76, 0.74);
-    when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID
+    // Control random flow: 0.76 > 0.75, so choose delete and reinsert path
+    when(mockRandom.nextDouble()).thenReturn(0.76);
+    when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID and column selection
 
     try (MockedStatic<DriverManager> mockedDriverManager = Mockito.mockStatic(DriverManager.class);
         MockedStatic<Executors> mockedExecutors = Mockito.mockStatic(Executors.class)) {
@@ -132,35 +130,11 @@ public class FuzzyCDCLoadGeneratorTest {
           .thenReturn(mockConnection);
       mockSynchronousExecutor(mockedExecutors);
 
-      cdcLoadGenerator.generateLoad(1, 2, sourceDBResourceManager);
+      cdcLoadGenerator.generateLoad(1, 1, 0.75, sourceDBResourceManager);
 
-      // Verify initial insert, one delete, and one re-insert
+      // Verify initial insert, one delete, and one reinsert
       verify(mockConnection, times(3)).prepareStatement(anyString());
       verify(mockPreparedStatement, times(3)).executeUpdate();
-    }
-  }
-
-  @Test
-  public void testGenerateLoad_deleteAndDoNothingPath() throws SQLException {
-    cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
-    // Control random flow:
-    // 1. 0.76 > 0.75 (delete)
-    // 2. 0.76 > 0.76 (do nothing)
-    when(mockRandom.nextDouble()).thenReturn(0.76, 0.76);
-    when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID
-
-    try (MockedStatic<DriverManager> mockedDriverManager = Mockito.mockStatic(DriverManager.class);
-        MockedStatic<Executors> mockedExecutors = Mockito.mockStatic(Executors.class)) {
-      mockedDriverManager
-          .when(() -> DriverManager.getConnection(anyString(), anyString(), anyString()))
-          .thenReturn(mockConnection);
-      mockSynchronousExecutor(mockedExecutors);
-
-      cdcLoadGenerator.generateLoad(1, 2, sourceDBResourceManager);
-
-      // Verify initial insert and one delete. No second insert.
-      verify(mockConnection, times(2)).prepareStatement(anyString());
-      verify(mockPreparedStatement, times(2)).executeUpdate();
     }
   }
 
@@ -180,7 +154,7 @@ public class FuzzyCDCLoadGeneratorTest {
       RuntimeException e =
           assertThrows(
               RuntimeException.class,
-              () -> cdcLoadGenerator.generateLoad(1, 1, sourceDBResourceManager));
+              () -> cdcLoadGenerator.generateLoad(1, 1, 0.75, sourceDBResourceManager));
 
       assertThat(e).hasMessageThat().contains("Task execution failed");
       assertThat(e).hasCauseThat().isInstanceOf(RuntimeException.class);
@@ -190,7 +164,7 @@ public class FuzzyCDCLoadGeneratorTest {
   @Test
   public void testAssertRows_whenRowsMatch_thenPass() throws SQLException {
     cdcLoadGenerator = new FuzzyCDCLoadGenerator();
-    User user = User.generateRandom(1);
+    User user = User.generateRandom();
 
     // Mock source DB fetch
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
@@ -236,7 +210,7 @@ public class FuzzyCDCLoadGeneratorTest {
   @Test
   public void testAssertRows_whenRowCountMismatch_thenFail() throws SQLException {
     cdcLoadGenerator = new FuzzyCDCLoadGenerator();
-    User user = User.generateRandom(1);
+    User user = User.generateRandom();
 
     // Mock source DB to return one row
     when(mockResultSet.next()).thenReturn(true).thenReturn(false);
@@ -261,9 +235,9 @@ public class FuzzyCDCLoadGeneratorTest {
   @Test
   public void testAssertRows_whenRowContentMismatch_thenFail() throws SQLException {
     cdcLoadGenerator = new FuzzyCDCLoadGenerator();
-    User sourceUser = User.generateRandom(1);
+    User sourceUser = User.generateRandom();
     sourceUser.firstName = "SourceFirstName";
-    User spannerUser = User.generateRandom(1);
+    User spannerUser = User.generateRandom();
     spannerUser.firstName = "SpannerFirstName";
 
     // Mock source DB fetch

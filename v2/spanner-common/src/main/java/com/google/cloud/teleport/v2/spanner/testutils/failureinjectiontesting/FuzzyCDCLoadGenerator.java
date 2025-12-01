@@ -35,6 +35,13 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * A utility class for generating fuzzy CDC load against a database. The class also provides a
+ * method to assert that the data in the MySQL database exactly matches the data in a Spanner
+ * database, which is crucial for verifying CDC pipeline correctness.
+ *
+ * <p>Note: This class is to be used in tests only and should not be used in production.
+ */
 public class FuzzyCDCLoadGenerator {
 
   private static final Logger LOG = LoggerFactory.getLogger(FuzzyCDCLoadGenerator.class);
@@ -42,7 +49,7 @@ public class FuzzyCDCLoadGenerator {
   private final Map<Integer, Boolean> ids = new ConcurrentHashMap<>();
   private Random random;
   // create a private automic integer variable
-  private java.util.concurrent.atomic.AtomicInteger counter =
+  private java.util.concurrent.atomic.AtomicInteger totalEventCount =
       new java.util.concurrent.atomic.AtomicInteger(0);
 
   public FuzzyCDCLoadGenerator() {}
@@ -61,7 +68,12 @@ public class FuzzyCDCLoadGenerator {
 
   /** Generate rows and apply random choices using threads. */
   public int generateLoad(
-      int totalRows, int burstIterations, String jdbcUrl, String username, String password) {
+      int totalRows,
+      int burstIterations,
+      double updateProbability,
+      String jdbcUrl,
+      String username,
+      String password) {
     LOG.info("Creating a thread pool with {} threads.", totalRows);
     ExecutorService executor = Executors.newFixedThreadPool(totalRows);
     try {
@@ -73,7 +85,7 @@ public class FuzzyCDCLoadGenerator {
                 () -> {
                   // Each thread gets its own connection to ensure thread safety
                   try (Connection conn = DriverManager.getConnection(jdbcUrl, username, password)) {
-                    processSingleRow(conn, burstIterations);
+                    processSingleRow(conn, burstIterations, updateProbability);
                   } catch (SQLException e) {
                     LOG.error("Thread processing failed", e);
                     throw new RuntimeException(e);
@@ -95,62 +107,57 @@ public class FuzzyCDCLoadGenerator {
     } finally {
       executor.shutdown();
     }
-    LOG.info("Created {} number of events in the database.", counter.get());
-    return counter.get();
+    LOG.info("Created {} number of events in the database.", totalEventCount.get());
+    return totalEventCount.get();
   }
 
   /** Overloaded generateLoad for use in integration tests with a resource manager. */
   public int generateLoad(
-      int totalRows, int burstIterations, CloudSqlResourceManager resourceManager) {
+      int totalRows,
+      int burstIterations,
+      double updateProbability,
+      CloudSqlResourceManager resourceManager) {
     return generateLoad(
         totalRows,
         burstIterations,
+        updateProbability,
         resourceManager.getUri(),
         resourceManager.getUsername(),
         resourceManager.getPassword());
   }
 
   /** Process a single row: Insert -> Burst Operation. */
-  private void processSingleRow(Connection conn, int burstIterations) throws SQLException {
+  private void processSingleRow(Connection conn, int burstIterations, double updateProbability)
+      throws SQLException {
     // 1. Create Unique Random ID
     int id;
     User user;
     do {
-      id = getRandom().nextInt(2_000_000_000);
-      user = User.generateRandom(id);
+      user = User.generateRandom();
+      id = user.id;
     } while (ids.putIfAbsent(id, true) != null);
 
     // 2. Insert initial row
     user.insert(conn);
-    counter.incrementAndGet();
-    boolean isRowPresent = true;
+    totalEventCount.incrementAndGet();
 
     for (int i = 0; i < burstIterations; ++i) {
-      // If row is present, then update the row with 75% probability and delete the row with 25%
-      // probability
-      if (isRowPresent) {
-        if (getRandom().nextDouble() < 0.75) {
-          // Update in memory
-          user.mutateRandomly();
-          // Update in DB
-          user.update(conn, getRandom());
-          counter.incrementAndGet();
-        } else {
-          user.delete(conn);
-          isRowPresent = false;
-          counter.incrementAndGet();
-        }
+      // Perform update with updateProbability or delete and insert the row otherwise.
+      if (getRandom().nextDouble() < updateProbability) {
+        // Update in memory
+        user.mutateRandomly();
+        // Update in DB
+        user.update(conn, getRandom());
+        totalEventCount.incrementAndGet();
       } else {
-        // If row is not present, then insert the row with 75% probability and do nothing with 25%
-        // probability
-        if (getRandom().nextDouble() < 0.75) {
-          // Insert the row
-          user.mutateRandomly();
-          user.insert(conn);
-          isRowPresent = true;
-          counter.incrementAndGet();
-        }
-        // Else: Do nothing (row remains absent)
+        user.delete(conn);
+        totalEventCount.incrementAndGet();
+
+        // Insert the row
+        user.mutateRandomly();
+        user.insert(conn);
+        totalEventCount.incrementAndGet();
+        ++i; // increment the counter to account for the insert operation.
       }
     }
   }

@@ -154,7 +154,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     // generate Load
     cdcLoadGenerator = new FuzzyCDCLoadGenerator();
-    cdcLoadGenerator.generateLoad(numRows, burstIterations, sourceDBResourceManager);
+    cdcLoadGenerator.generateLoad(numRows, burstIterations, 0.5, sourceDBResourceManager);
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
@@ -204,7 +204,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
-    // Kill the dataflow workers multiple times to induce work item assignment rebalancing.
+    // Kill the dataflow workers multiple times to induce work item assignment rebalancing and
+    // inturn increase the chance of same key being processed by multiple workers parallelly.
     DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
     Thread.sleep(20000); // wait for 20 seconds
     DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());

@@ -152,9 +152,9 @@ public class User {
     return users;
   }
 
-  static User generateRandom(int id) {
+  static User generateRandom() {
     User u = new User();
-    u.id = id;
+    u.id = ThreadLocalRandom.current().nextInt(2_000_000_000);
     u.mutateRandomly();
     return u;
   }
