@@ -373,7 +373,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .build();
     spannerResourceManager.write(m3);
 
-    Mutation m_pk_null =
+    Mutation m4 =
         Mutation.newInsertOrUpdateBuilder(TABLE4)
             .set("not_null_pk")
             .to(1L)
@@ -382,7 +382,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .set("data")
             .to("some data")
             .build();
-    spannerResourceManager.write(m_pk_null);
+    spannerResourceManager.write(m4);
   }
 
   private void deleteRowsInSpanner() {
