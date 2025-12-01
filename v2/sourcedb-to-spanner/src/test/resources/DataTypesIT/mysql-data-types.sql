@@ -239,8 +239,8 @@ CREATE TABLE tiny_int_unsigned_pk_table (
 );
 
 CREATE TABLE bit_pk_table (
-    id BIT PRIMARY KEY,
-    bit_pk_col BIT NOT NULL
+    id BIT(8) PRIMARY KEY,
+    bit_pk_col BIT(8) NOT NULL
 );
 
 CREATE TABLE binary_pk_table (
