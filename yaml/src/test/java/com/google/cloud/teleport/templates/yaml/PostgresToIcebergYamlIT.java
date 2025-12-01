@@ -47,8 +47,8 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PostgresToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
-@RunWith(JUnit4.class)
 @TemplateIntegrationTest(PostgresToIcebergYaml.class)
+@RunWith(JUnit4.class)
 public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
   private static final String READ_QUERY = "SELECT * FROM %s";
@@ -98,13 +98,13 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
-            .addParameter("jdbc_url", postgresResourceManager.getUri())
+            .addParameter("jdbcUrl", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
-            .addParameter("read_query", String.format(READ_QUERY, tableName))
+            .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", icebergTableName)
-            .addParameter("catalog_name", catalogName)
-            .addParameter("catalog_properties", catalogProperties);
+            .addParameter("catalogName", catalogName)
+            .addParameter("catalogProperties", catalogProperties);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
