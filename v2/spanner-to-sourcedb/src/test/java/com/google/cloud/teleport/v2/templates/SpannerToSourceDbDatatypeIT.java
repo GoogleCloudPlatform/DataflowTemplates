@@ -397,9 +397,9 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         Mutation.delete(
             TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
     spannerResourceManager.write(m3);
-    Mutation m_pk_null_delete =
+    Mutation m4 =
         Mutation.delete(TABLE4, Key.newBuilder().append(1L).append((Long) null).build());
-    spannerResourceManager.write(m_pk_null_delete);
+    spannerResourceManager.write(m4);
   }
 
   private List<Throwable> assertionErrors = new ArrayList<>();
