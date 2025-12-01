@@ -397,8 +397,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         Mutation.delete(
             TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
     spannerResourceManager.write(m3);
-    Mutation m4 =
-        Mutation.delete(TABLE4, Key.newBuilder().append(1L).append((Long) null).build());
+    Mutation m4 = Mutation.delete(TABLE4, Key.newBuilder().append(1L).append((Long) null).build());
     spannerResourceManager.write(m4);
   }
 
