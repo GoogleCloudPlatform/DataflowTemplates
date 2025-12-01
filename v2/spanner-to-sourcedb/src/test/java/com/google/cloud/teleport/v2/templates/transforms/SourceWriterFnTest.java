@@ -216,7 +216,7 @@ public class SourceWriterFnTest {
             .build();
 
     // Mock the options object for use in tests
-    when(mockOptions.getSessionFilePath()).thenReturn("sessionFilePath");
+    when(mockOptions.getSessionFilePath()).thenReturn("src/test/resources/sourceWriterUTSession.json");
     when(mockOptions.getTableOverrides()).thenReturn("");
     when(mockOptions.getColumnOverrides()).thenReturn("");
     when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
@@ -225,6 +225,7 @@ public class SourceWriterFnTest {
     // Mock side input access in ProcessContext
     when(processContext.sideInput(mockDdlView)).thenReturn(testDdl);
     when(processContext.sideInput(mockShadowTableDdlView)).thenReturn(shadowTableDdl);
+    when(mockOptions.as(Options.class)).thenReturn(mockOptions);
   }
 
   @Test
@@ -940,6 +941,7 @@ public class SourceWriterFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
     sourceWriterFn.setSpannerDao(mockSpannerDao);
+    sourceWriterFn.setSourceProcessor(sourceProcessor);
     sourceWriterFn.processElement(processContext);
     verify(mockSqlDao, never()).write(contains("567890"), any());
   }

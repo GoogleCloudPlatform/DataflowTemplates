@@ -102,6 +102,7 @@ public class AssignShardIdFnTest {
   public void setUp() {
     mockSpannerReadRow();
     when(processContext.getPipelineOptions()).thenReturn(mockOptions);
+    when(mockOptions.as(Options.class)).thenReturn(mockOptions);
   }
 
   private void mockSpannerReadRow() {
@@ -236,6 +237,7 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -243,7 +245,7 @@ public class AssignShardIdFnTest {
     assignShardIdFn.processElement(processContext);
 
     String newValuesJson =
-        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_null\":null,\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
+        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -282,13 +284,14 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
 
     String newValuesJson =
-        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_null\":null,\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
+        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -314,7 +317,7 @@ public class AssignShardIdFnTest {
             mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_SINGLE_SHARD,
-            "test",
+            "shard1",
             "skip",
             "",
             "",
@@ -323,13 +326,14 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
 
     record.setShard("shard1");
+    assignShardIdFn.setMapper(new ObjectMapper());
+    assignShardIdFn.setSchemaMapper(schemaMapper);
     String newValuesJson =
         "{\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"float_64_col\":0,\"bool_col\":false,\"accountName\":\"xyz\",\"float_64_col_infinity\":0,\"float_64_col_neg_infinity\":0,\"accountNumber\":\"1\",\"float_64_col_nan\":0,\"bytesCol\":\"R09PR0xF\"}";
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
-    key = 7554L; // Pre-calculated hash value from original code
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
@@ -337,7 +341,7 @@ public class AssignShardIdFnTest {
   @Test(expected = RuntimeException.class)
   public void testGetShardIdFetcherImplWithIncorrectCustomJarPath() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
-    when(processContext.element()).thenReturn(record);
+    // when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
     String shardingCustomClassName = "com.test.CustomShardIdFetcher";
     Ddl ddl = getTestDdl();
@@ -430,6 +434,7 @@ public class AssignShardIdFnTest {
     ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     shardIdFetcher.init("just to test this method is called argghhh!!");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -475,6 +480,7 @@ public class AssignShardIdFnTest {
     assignShardIdFn.setMapper(mapper);
     ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -514,11 +520,15 @@ public class AssignShardIdFnTest {
     record.setShard("skip");
     ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
-  @Test()
+  @Test
   public void testInvalidShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1/");
     when(processContext.element()).thenReturn(record);
@@ -550,11 +560,11 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
-    assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
   }
 
@@ -597,6 +607,7 @@ public class AssignShardIdFnTest {
     assignShardIdFn.setMapper(mapper);
     ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
     assignShardIdFn.setShardIdFetcher(shardIdFetcher);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -648,6 +659,7 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     // Triggers the stale read.
     assignShardIdFn.processElement(processContext);
@@ -711,6 +723,7 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL);
     assignShardIdFn.setMapper(new ObjectMapper());
+    assignShardIdFn.setSchemaMapper(schemaMapper);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";

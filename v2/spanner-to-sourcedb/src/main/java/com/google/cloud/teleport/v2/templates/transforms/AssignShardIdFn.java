@@ -145,6 +145,11 @@ public class AssignShardIdFn
     this.shardIdFetcher = shardIdFetcher;
   }
 
+  // setSchemaMapper is added to be used by unit tests
+  public void setSchemaMapper(ISchemaMapper schemaMapper) {
+    this.schemaMapper = schemaMapper;
+  }
+
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
