@@ -194,7 +194,8 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             dlqGcsPrefix,
             subscription.toString(),
             dlqSubscription.toString(),
-            flexTemplateDataflowJobResourceManagerBuilder);
+            flexTemplateDataflowJobResourceManagerBuilder,
+            null);
     assertThatPipeline(jobInfo).isRunning();
     return jobInfo;
   }
@@ -206,12 +207,13 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
       String dlqGcsPrefix,
       String pubSubSubscription,
       String dlqPubSubSubscription,
-      FlexTemplateDataflowJobResourceManager.Builder flexTemplateDataflowJobResourceManagerBuilder)
+      FlexTemplateDataflowJobResourceManager.Builder flexTemplateDataflowJobResourceManagerBuilder,
+      SpannerResourceManager shadowTableSpannerResourceManager)
       throws IOException {
     String artifactBucket = TestProperties.artifactBucket();
 
     // launch dataflow template
-    FlexTemplateDataflowJobResourceManager flexTemplateDataflowJobResourceManager =
+    FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         flexTemplateDataflowJobResourceManagerBuilder
             .withTemplateName("Cloud_Datastream_to_Spanner")
             .withTemplateModulePath("v2/datastream-to-spanner")
@@ -224,11 +226,17 @@ public abstract class DataStreamToSpannerFTBase extends TemplateTestBase {
             .addParameter("gcsPubSubSubscription", pubSubSubscription)
             .addParameter("dlqGcsPubSubSubscription", dlqPubSubSubscription)
             .addParameter("datastreamSourceType", "mysql")
-            .addParameter("inputFileFormat", "avro")
-            .build();
+            .addParameter("inputFileFormat", "avro");
+
+    if (shadowTableSpannerResourceManager != null) {
+      flexTemplateBuilder.addParameter(
+          "shadowTableSpannerInstanceId", shadowTableSpannerResourceManager.getInstanceId());
+      flexTemplateBuilder.addParameter(
+          "shadowTableSpannerDatabaseId", shadowTableSpannerResourceManager.getDatabaseId());
+    }
 
     // Run
-    PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
+    PipelineLauncher.LaunchInfo jobInfo = flexTemplateBuilder.build().launchJob();
     return jobInfo;
   }
 
