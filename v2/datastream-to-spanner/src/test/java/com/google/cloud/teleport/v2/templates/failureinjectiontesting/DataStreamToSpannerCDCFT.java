@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.User.USERS_TABLE;
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.User.USERS_TABLE_MYSQL_DDL;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
@@ -28,7 +30,6 @@ import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -46,6 +47,9 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
+import org.checkerframework.checker.initialization.qual.Initialized;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,19 +67,7 @@ import org.junit.runners.JUnit4;
 public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
   private static final String SPANNER_DDL_RESOURCE = "DataStreamToSpannerCDCFT/spanner-schema.sql";
-  public static final String USERS_TABLE = "Users";
-  public static final HashMap<String, String> USERS_TABLE_COLUMNS =
-      new HashMap<>() {
-        {
-          put("id", "INT NOT NULL");
-          put("first_name", "VARCHAR(200)");
-          put("last_name", "VARCHAR(200)");
-          put("age", "INT");
-          put("status", "TINYINT(1)");
-          put("col1", "BIGINT");
-          put("col2", "BIGINT");
-        }
-      };
+
   private static final int NUM_WORKERS = 10;
   private static final int MAX_WORKERS = 20;
 
@@ -106,7 +98,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     // create Source Resources
     sourceDBResourceManager = CloudMySQLResourceManager.builder(testName).build();
     sourceDBResourceManager.createTable(
-        USERS_TABLE, new JDBCResourceManager.JDBCSchema(USERS_TABLE_COLUMNS, "id"));
+        USERS_TABLE, new JDBCResourceManager.JDBCSchema(USERS_TABLE_MYSQL_DDL, "id"));
     sourceConnectionProfile =
         createMySQLSourceConnectionProfile(sourceDBResourceManager, List.of(USERS_TABLE));
 
@@ -206,24 +198,39 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     // Kill the dataflow workers multiple times to induce work item assignment rebalancing and
     // inturn increase the chance of same key being processed by multiple workers parallelly.
-    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
-    Thread.sleep(20000); // wait for 20 seconds
-    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
-    Thread.sleep(20000);
-    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
-    Thread.sleep(20000);
-    DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
-    Thread.sleep(20000);
+    ConditionCheck workerFailureInjectorAsConditionCheck =
+        new ConditionCheck() {
+          @Override
+          protected @UnknownKeyFor @NonNull @Initialized String getDescription() {
+            return "Kill all workers for job " + jobInfo.jobId();
+          }
 
-    Thread.sleep(600000);
+          @Override
+          protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
+            try {
+              DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+            return new CheckResult(true, "Killed all workers for job " + jobInfo.jobId());
+          }
+        };
 
     long expectedRows = sourceDBResourceManager.getRowCount(USERS_TABLE);
     // Wait for exact number of rows as source to appear in Spanner
-    conditionCheck =
+    ConditionCheck spannerRowCountConditionCheck =
         SpannerRowsCheck.builder(spannerResourceManager, USERS_TABLE)
             .setMinRows((int) expectedRows)
             .setMaxRows((int) expectedRows)
             .build();
+
+    // Implementing workerFailureInjector as condition check to rely on the Condition check
+    // framework to execute the check every 30 seconds until the condition is met. Combining
+    // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
+    // kill dataflow worker function will be called until all the rows appear in spanner i.e., until
+    // the end of migration.
+    conditionCheck = workerFailureInjectorAsConditionCheck.and(spannerRowCountConditionCheck);
+
     result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);

@@ -40,6 +40,7 @@ public class User {
   long col1;
   long col2;
 
+  public static final String USERS_TABLE = "Users";
   public static final String ID = "id";
   public static final String FIRST_NAME = "first_name";
   public static final String LAST_NAME = "last_name";
@@ -49,6 +50,18 @@ public class User {
   public static final String COL2 = "col2";
   public static final List<String> UPDATABLE_COLUMNS =
       ImmutableList.of(FIRST_NAME, LAST_NAME, AGE, STATUS, COL1, COL2);
+  public static final HashMap<String, String> USERS_TABLE_MYSQL_DDL =
+      new HashMap<>() {
+        {
+          put(ID, "INT NOT NULL");
+          put(FIRST_NAME, "VARCHAR(200)");
+          put(LAST_NAME, "VARCHAR(200)");
+          put(AGE, "INT");
+          put(STATUS, "TINYINT(1)");
+          put(COL1, "BIGINT");
+          put(COL2, "BIGINT");
+        }
+      };
 
   private static final String INSERT_SQL =
       "INSERT INTO `Users` (id, first_name, last_name, age, status, col1, col2) VALUES (?, ?, ?, ?, ?, ?, ?)";
