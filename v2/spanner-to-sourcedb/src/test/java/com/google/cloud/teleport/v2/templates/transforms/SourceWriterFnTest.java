@@ -216,7 +216,8 @@ public class SourceWriterFnTest {
             .build();
 
     // Mock the options object for use in tests
-    when(mockOptions.getSessionFilePath()).thenReturn("src/test/resources/sourceWriterUTSession.json");
+    when(mockOptions.getSessionFilePath())
+        .thenReturn("src/test/resources/sourceWriterUTSession.json");
     when(mockOptions.getTableOverrides()).thenReturn("");
     when(mockOptions.getColumnOverrides()).thenReturn("");
     when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");

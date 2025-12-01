@@ -207,7 +207,9 @@ public class AssignShardIdFnTest {
 
   @Test
   public void testProcessElementInsertModForMultiShard() throws Exception {
-    TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
+    TrimmedShardedDataChangeRecord record =
+        getDeleteTrimmedDataChangeRecord(
+            "shard1"); // TODO: This should be getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
     Ddl ddl = getTestDdl();
     ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl);
@@ -239,13 +241,13 @@ public class AssignShardIdFnTest {
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.setSchemaMapper(schemaMapper);
 
-    assignShardIdFn.processElement(processContext);
+    assignShardIdFn.processElement(processContext); // TODO: This should be called only once
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
     assignShardIdFn.processElement(processContext);
 
     String newValuesJson =
-        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
+        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_null\":null,\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -291,7 +293,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     String newValuesJson =
-        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
+        "{\"bool_col_null\":null,\"float_32_col_nan\":\"NaN\",\"bool_col\":true,\"timestamp_col_null\":null,\"accountName\":\"xyz\",\"float_64_col_neg_infinity\":\"-Infinity\",\"float_32_col_neg_infinity\":\"-Infinity\",\"bytes_col_null\":null,\"string_col_null\":null,\"accountNumber\":\"1\",\"bytesCol\":\"R09PR0xF\",\"accountId\":\"Id1\",\"migration_shard_id\":\"shard1\",\"int_64_col_null\":null,\"float_64_col\":0.5,\"float_32_col_infinity\":\"Infinity\",\"float_32_col\":0.5,\"float_64_col_infinity\":\"Infinity\",\"float_64_col_null\":null,\"float_64_col_nan\":\"NaN\",\"float_32_col_null\":null}";
 
     record.setMod(
         new Mod(record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
@@ -341,7 +343,7 @@ public class AssignShardIdFnTest {
   @Test(expected = RuntimeException.class)
   public void testGetShardIdFetcherImplWithIncorrectCustomJarPath() throws Exception {
     TrimmedShardedDataChangeRecord record = getInsertTrimmedDataChangeRecord("shard1");
-    // when(processContext.element()).thenReturn(record);
+    when(processContext.element()).thenReturn(record);
     String customJarPath = "src/test/resources/custom-shard-fetcher.jar";
     String shardingCustomClassName = "com.test.CustomShardIdFetcher";
     Ddl ddl = getTestDdl();
@@ -916,6 +918,9 @@ public class AssignShardIdFnTest {
             .column("float_64_col_neg_infinity")
             .float64()
             .endColumn()
+            .column("float_64_col_null")
+            .float64()
+            .endColumn()
             .column("float_32_col")
             .float32()
             .endColumn()
@@ -950,9 +955,6 @@ public class AssignShardIdFnTest {
             .isGenerated(true)
             .isStored(false)
             .endColumn()
-            .primaryKey()
-            .asc("accountId")
-            .end()
             .endTable()
             .build();
     return ddl;
@@ -1318,6 +1320,15 @@ public class AssignShardIdFnTest {
                         .name("date_field2")
                         .type("DATE")
                         .isNullable(true)
+                        .build(),
+                    com.google.cloud.teleport.v2.spanner.sourceddl.SourceColumn
+                        .builder( // TODO: This is repeated column. might have to be removed.
+                            SourceDatabaseType.MYSQL)
+                        .name("migration_shard_id")
+                        .type("VARCHAR")
+                        .isNullable(false)
+                        .isPrimaryKey(true)
+                        .size(50L)
                         .build()))
             .primaryKeyColumns(
                 ImmutableList.of(
