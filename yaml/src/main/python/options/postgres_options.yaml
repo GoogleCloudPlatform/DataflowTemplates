@@ -1,30 +1,30 @@
 options:
-  - name: "jdbc_common_options"
+  - name: "postgres_common_options"
     parameters:
       - order: 1
         name: "jdbc_url"
         description: "Connection URL for the JDBC source/sink."
-        help: "The JDBC connection URL, which can be a KMS-encrypted string."
+        help: "The JDBC connection URL"
         example: "jdbc:postgresql://your-host:5432/your-db"
         required: true
         type: text
       - order: 2
         name: "username"
         description: "Username for the JDBC connection."
-        help: "The database username, which can be a KMS-encrypted string."
+        help: "The database username"
         example: "my_user"
         required: false
         type: text
       - order: 3
         name: "password"
         description: "Password for the JDBC connection."
-        help: "The database password, which can be a KMS-encrypted string."
+        help: "The database password"
         example: "my_secret_password"
         required: false
         type: text
       - order: 4
         name: "driver_class_name"
-        description: "The fully-qualified class name of the JDBC driver."
+        description: "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver"
         help: "The fully-qualified class name of the JDBC driver to use."
         example: "org.postgresql.Driver"
         required: false
@@ -52,13 +52,13 @@ options:
         type: text
       - order: 8
         name: "jdbc_type"
-        description: "Type of JDBC source (e.g., postgres, mysql)."
+        description: "Type of JDBC source. Default: postgres."
         help: "Specifies the type of JDBC source. An appropriate default driver will be packaged."
         example: "postgres"
         required: false
         type: text
 
-  - name: "jdbc_read_options"
+  - name: "postgres_read_options"
     parameters:
       - order: 1
         name: "location"
@@ -91,7 +91,7 @@ options:
       - order: 5
         name: "fetch_size"
         description: "The number of rows to fetch from the database at a time."
-        help: "The number of rows to fetch per database call. Use only to troubleshoot memory errors."
+        help: "The number of rows to fetch per database call. It should ONLY be used if the default value throws memory errors."
         example: 50000
         required: false
         type: integer
@@ -110,7 +110,7 @@ options:
         required: false
         type: boolean
 
-  - name: "jdbc_write_options"
+  - name: "postgres_write_options"
     parameters:
       - order: 1
         name: "location"

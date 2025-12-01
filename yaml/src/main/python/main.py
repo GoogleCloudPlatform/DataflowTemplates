@@ -15,11 +15,11 @@
 #
 
 import argparse
+import datetime
+import jinja2
 import logging
 import pprint
-import jinja2
 import yaml
-import datetime
 
 from apache_beam.io.filesystems import FileSystems
 from apache_beam.yaml import cache_provider_artifacts
