@@ -61,8 +61,8 @@ import org.junit.runners.JUnit4;
 public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSrcDBMySQLCDCFT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURSE = "SpannerToSrcDBMySQLCDCFT/session.json";
-  private static final int NUM_WORKERS = 10;
-  private static final int MAX_WORKERS = 20;
+  private static final String NUM_WORKERS = "10";
+  private static final String MAX_WORKERS = "20";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
@@ -94,9 +94,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
         GcsResourceManager.builder(artifactBucketName, getClass().getSimpleName(), credentials)
             .build();
     createAndUploadReverseShardConfigToGcs(
-        gcsResourceManager,
-        cloudSqlResourceManager,
-        "10.71.64.10"); // cloudSqlResourceManager.getHost());
+        gcsResourceManager, cloudSqlResourceManager, cloudSqlResourceManager.getHost());
     gcsResourceManager.uploadArtifact(
         "input/session.json", Resources.getResource(SESSION_FILE_RESOURSE).getPath());
 
@@ -118,7 +116,15 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
             null,
-            Map.of("startTimestamp", startTimeStamp.toString()),
+            Map.of(
+                "startTimestamp",
+                startTimeStamp.toString(),
+                "numWorkers",
+                NUM_WORKERS,
+                "maxNumWorkers",
+                MAX_WORKERS,
+                "maxShardConnections",
+                MAX_WORKERS),
             null,
             spannerResourceManager,
             gcsResourceManager,

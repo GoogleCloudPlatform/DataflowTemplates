@@ -122,7 +122,7 @@ public class User {
       ps.executeUpdate();
     }
   }
-  
+
   // Spanner methods
   void insert(DatabaseClient databaseClient) {
     Mutation mutation =
