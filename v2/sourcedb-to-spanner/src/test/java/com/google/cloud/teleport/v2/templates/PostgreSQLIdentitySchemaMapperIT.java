@@ -67,7 +67,7 @@ public class PostgreSQLIdentitySchemaMapperIT extends SourceDbToSpannerITBase {
   }
 
   @Test
-  public void simpleTest() throws Exception {
+  public void testPostgreSQLIdentitySchemaMapping() throws Exception {
     loadSQLFileResource(postgresSQLResourceManager, POSTGRESQL_DDL_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =

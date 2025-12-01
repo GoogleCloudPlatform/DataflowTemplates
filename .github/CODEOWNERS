@@ -11,9 +11,9 @@ v1/src/test/java/com/google/cloud/teleport/templates/SpannerToTextTest.java @Goo
 v1/src/test/java/com/google/cloud/teleport/templates/common/SpannerConverterTest.java @GoogleCloudPlatform/spanner-migrations-team
 
 # Spanner Change Streams templates
-v2/templates/SpannerChangeStreamsToGcs.java @GoogleCloudPlatform/cloud-spanner-change-stream-rotation
-v2/templates/SpannerChangeStreamsToPubSub.java @GoogleCloudPlatform/cloud-spanner-change-stream-rotation
-v2/templates/spannerchangestreamstobigquery/ @GoogleCloudPlatform/cloud-spanner-change-stream-rotation
+v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToGcs.java @GoogleCloudPlatform/cloud-spanner-change-stream-rotation
+v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/SpannerChangeStreamsToPubSub.java @GoogleCloudPlatform/cloud-spanner-change-stream-rotation
+v2/googlecloud-to-googlecloud/src/main/java/com/google/cloud/teleport/v2/templates/spannerchangestreamstobigquery/ @GoogleCloudPlatform/cloud-spanner-change-stream-rotation
 
 # Datastream To spanner template
 v2/datastream-to-spanner/ @GoogleCloudPlatform/spanner-migrations-team
@@ -29,7 +29,6 @@ v2/spanner-to-sourcedb/ @GoogleCloudPlatform/spanner-migrations-team
 # Datastream Templates
 v2/datastream-to-sql/ @GoogleCloudPlatform/datastream
 v2/datastream-to-bigquery/ @GoogleCloudPlatform/datastream
-v2/datastream-to-postgres/ @GoogleCloudPlatform/datastream
 v2/datastream-to-mongodb/ @GoogleCloudPlatform/datastream
 v2/datastream-common/ @GoogleCloudPlatform/datastream @GoogleCloudPlatform/spanner-migrations-team
 

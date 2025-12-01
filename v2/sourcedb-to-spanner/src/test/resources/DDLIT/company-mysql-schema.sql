@@ -10,7 +10,7 @@ INSERT INTO `company` VALUES
                           (3,'ama','1994-07-05');
 
 CREATE TABLE `employee` (
-                            `employee_id` int(11) PRIMARY KEY NOT NULL,
+                            `employee_id` int(11) AUTO_INCREMENT PRIMARY KEY NOT NULL,
                             `company_id` int(11) DEFAULT NULL,
                             `employee_name` varchar(100) DEFAULT NULL,
                             `employee_address` varchar(100) DEFAULT NULL,

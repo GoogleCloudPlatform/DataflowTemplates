@@ -37,7 +37,6 @@ import java.util.Map;
 import org.apache.beam.sdk.metrics.Counter;
 import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.joda.time.Duration;
 import org.json.JSONObject;
 import org.slf4j.Logger;
@@ -147,10 +146,8 @@ public class InputRecordProcessor {
       lagMetric.update(replicationLag); // update the lag metric
       return false;
     } catch (Exception e) {
-      LOG.error(
-          "The exception while processing shardId: {} is {} ",
-          shardId,
-          ExceptionUtils.getStackTrace(e));
+      // Not logging the error here since the error can be retryable error and high number of them
+      // could have side effects on the pipeline execution.
       throw e; // throw the original exception since it needs to go to DLQ
     }
   }

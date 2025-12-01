@@ -18,6 +18,7 @@ package com.google.cloud.teleport.plugin.maven;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -97,7 +98,7 @@ class PromoteHelper {
   /** Promote the artifact. */
   public void promote() throws IOException, InterruptedException {
     String originalDigest = null;
-    if (additionalTag != null) {
+    if (!Strings.isNullOrEmpty(additionalTag) && !Strings.isNullOrEmpty(replacementTag)) {
       originalDigest = getDigestFromTag(additionalTag);
     }
     String[] promoteArtifactCmd = getPromoteFlexTemplateImageCmd();
@@ -112,7 +113,7 @@ class PromoteHelper {
     if (additionalTag != null) {
       addTag(additionalTag, sourceDigest);
     }
-    if (originalDigest != null && !originalDigest.isEmpty()) {
+    if (!Strings.isNullOrEmpty(originalDigest)) {
       addTag(replacementTag, originalDigest);
     }
   }
@@ -214,7 +215,7 @@ class PromoteHelper {
    * @return The digest of the image.
    */
   @VisibleForTesting
-  String getDigestFromTag(String tag) throws IOException, InterruptedException {
+  String getDigestFromTag(String tag) {
     String[] command;
     String imageReference = String.format("%s:%s", targetPath, tag);
 
@@ -227,7 +228,7 @@ class PromoteHelper {
             "images",
             "list-tags",
             targetPath, // This is the image name, e.g., us.gcr.io/my-project/my-image
-            "--filter=tags:" + tag,
+            "--filter=tags=" + tag,
             "--format",
             "get(digest)"
           };
@@ -256,7 +257,13 @@ class PromoteHelper {
     }
     // The response is expected to be just the digest, e.g., "sha256:..."
     // Trim any leading/trailing whitespace.
-    return response.trim();
+    response = response.trim();
+    if (response.startsWith("sha256:")) {
+      return response;
+    }
+    // gcloud container doesn't fail on image not found
+    LOG.warn("Unable to get digest from tag: {}", response);
+    return "";
   }
 
   private static class QueryOperationRunnable implements dev.failsafe.function.CheckedRunnable {

@@ -41,7 +41,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
 
       - name: Setup Environment
         id: setup-env
@@ -125,7 +125,7 @@ jobs:
         shell: bash
 
       - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         if: always() # always run even if the previous step fails
         with:
           name: surefire-integration-test-results-beam-snapshots

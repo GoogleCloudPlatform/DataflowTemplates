@@ -15,12 +15,6 @@
  */
 package com.google.cloud.teleport.v2.templates.transforms;
 
-import com.datastax.oss.driver.api.core.AllNodesFailedException;
-import com.datastax.oss.driver.api.core.DriverTimeoutException;
-import com.datastax.oss.driver.api.core.NodeUnavailableException;
-import com.datastax.oss.driver.api.core.connection.BusyConnectionException;
-import com.datastax.oss.driver.api.core.connection.ConnectionInitException;
-import com.datastax.oss.driver.api.core.servererrors.QueryExecutionException;
 import com.datastax.oss.driver.api.core.type.codec.CodecNotFoundException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -52,16 +46,18 @@ import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
-import com.google.cloud.teleport.v2.templates.exceptions.ConnectionException;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import java.io.Serializable;
+import java.sql.SQLDataException;
 import java.sql.SQLNonTransientConnectionException;
+import java.sql.SQLSyntaxErrorException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.metrics.Counter;
@@ -71,6 +67,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.TupleTag;
+import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Stopwatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -90,12 +87,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final Counter skippedRecordCountMetric =
       Metrics.counter(SourceWriterFn.class, "skipped_record_count");
-
-  private final Distribution lagMetric =
-      Metrics.distribution(SourceWriterFn.class, "replication_lag_in_milli");
-
-  private final Counter invalidTransformationException =
-      Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
+  private static final Distribution SUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SourceWriterFn.class, "successful_write_to_source_latency_ms");
+  private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
+      Metrics.distribution(SourceWriterFn.class, "unsuccessful_write_to_source_latency_ms");
 
 
   private transient ISchemaMapper schemaMapper;
@@ -206,6 +201,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       skippedRecordCountMetric.inc();
       outputWithTag(c, Constants.SKIPPED_TAG, Constants.SKIPPED_TAG_MESSAGE, spannerRec);
     } else {
+      Stopwatch timer = Stopwatch.createStarted();
       // Get the latest commit timestamp processed at source
       try {
         JsonNode keysJson = mapper.readTree(spannerRec.getMod().getKeysJson());
@@ -299,44 +295,16 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
         // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
         // wrapped inside a SpannerException.
         // We need to get and inspect the cause while handling the exception.
-      } catch (SpannerException ex) {
-        Throwable cause = ex.getCause();
-        if (cause == null) {
-          // If cause is null, then it is a plain Spanner exception
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, ex.getMessage(), spannerRec);
-        } else if (cause instanceof InvalidTransformationException) {
-          invalidTransformationException.inc();
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
-        } else if (cause instanceof ChangeEventConvertorException
-            || cause instanceof CodecNotFoundException) {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
-        } else if (cause instanceof IllegalStateException
-            || cause instanceof com.mysql.cj.jdbc.exceptions.CommunicationsException
-            || cause instanceof java.sql.SQLIntegrityConstraintViolationException
-            || cause instanceof java.sql.SQLTransientConnectionException
-            || cause instanceof ConnectionInitException
-            || cause instanceof DriverTimeoutException
-            || cause instanceof AllNodesFailedException
-            || cause instanceof BusyConnectionException
-            || cause instanceof NodeUnavailableException
-            || cause instanceof QueryExecutionException
-            || cause instanceof ConnectionException) {
-          outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, cause.getMessage(), spannerRec);
-        } else if (cause instanceof java.sql.SQLNonTransientConnectionException) {
-          SQLNonTransientConnectionException e = (SQLNonTransientConnectionException) cause;
-          // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
-          // error codes 1053,1161 and 1159 can be retried
-          if (e.getErrorCode() == 1053 || e.getErrorCode() == 1159 || e.getErrorCode() == 1161) {
-            outputWithTag(c, Constants.RETRYABLE_ERROR_TAG, e.getMessage(), spannerRec);
-          } else {
-            outputWithTag(c, Constants.PERMANENT_ERROR_TAG, e.getMessage(), spannerRec);
-          }
-        } else {
-          outputWithTag(c, Constants.PERMANENT_ERROR_TAG, cause.getMessage(), spannerRec);
-        }
+        SUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       } catch (Exception ex) {
-        LOG.error("Failed to write to source: {}", ex);
-        outputWithTag(c, Constants.PERMANENT_ERROR_TAG, ex.getMessage(), spannerRec);
+        Throwable cause = ex.getCause();
+        String message = ex.getMessage();
+        if (cause != null) {
+          message += ", Caused by: " + cause.getMessage();
+        }
+        TupleTag<String> errorTag = classifyException(ex);
+        outputWithTag(c, errorTag, message, spannerRec);
+        UNSUCCESSFUL_WRITE_LATENCY_MS.update(timer.elapsed(TimeUnit.MILLISECONDS));
       }
     }
   }
@@ -383,5 +351,38 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       retryableRecordCountMetric.inc();
     }
     c.output(tag, gson.toJson(errorRecord, ChangeStreamErrorRecord.class));
+  }
+
+  TupleTag<String> classifyException(Exception exception) {
+    if (exception instanceof SpannerException e) {
+      return classifySpannerException(e);
+    } else if (exception instanceof ChangeEventConvertorException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    }
+    return Constants.RETRYABLE_ERROR_TAG;
+  }
+
+  TupleTag<String> classifySpannerException(SpannerException exception) {
+    // Since we have wrapped the logic inside Spanner transaction, the exceptions would also be
+    // wrapped inside a SpannerException.
+    // We need to get and inspect the cause while handling the exception.
+    Throwable cause = exception.getCause();
+
+    if (cause instanceof InvalidTransformationException
+        || cause instanceof ChangeEventConvertorException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    } else if (cause instanceof CodecNotFoundException
+        || cause instanceof SQLSyntaxErrorException
+        || cause instanceof SQLDataException) {
+      return Constants.PERMANENT_ERROR_TAG;
+    } else if (cause instanceof SQLNonTransientConnectionException e
+        && e.getErrorCode() != 1053
+        && e.getErrorCode() != 1159
+        && e.getErrorCode() != 1161) {
+      // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
+      // error codes 1053,1161 and 1159 can be retried
+      return Constants.PERMANENT_ERROR_TAG;
+    }
+    return Constants.RETRYABLE_ERROR_TAG;
   }
 }

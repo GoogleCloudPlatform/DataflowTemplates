@@ -165,7 +165,7 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>4.29.4</version>
+            <version>4.33.1</version>
         </dependency>
     </dependencies>
 
@@ -702,7 +702,6 @@
         <module>datastream-to-bigquery</module>
         <module>datastream-mongodb-to-firestore</module>
         <module>datastream-to-mongodb</module>
-        <module>datastream-to-postgres</module>
         <module>datastream-to-spanner</module>
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
