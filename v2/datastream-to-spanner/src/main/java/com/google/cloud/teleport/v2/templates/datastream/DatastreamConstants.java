@@ -74,10 +74,10 @@ public class DatastreamConstants {
   public static final String ORACLE_TIMESTAMP_KEY = "_metadata_timestamp";
 
   public static final Pair<String, String> ORACLE_TIMESTAMP_SHADOW_INFO =
-      Pair.of("timestamp", "INT64");
+      Pair.of("shadow_timestamp", "INT64");
 
   public static final Pair<String, String> ORACLE_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
-      Pair.of("timestamp", "bigint");
+      Pair.of("shadow_timestamp", "bigint");
 
   public static final String ORACLE_SCN_KEY = "_metadata_scn";
 
@@ -96,10 +96,10 @@ public class DatastreamConstants {
   public static final String MYSQL_TIMESTAMP_KEY = "_metadata_timestamp";
 
   public static final Pair<String, String> MYSQL_TIMESTAMP_SHADOW_INFO =
-      Pair.of("timestamp", "INT64");
+      Pair.of("shadow_timestamp", "INT64");
 
   public static final Pair<String, String> MYSQL_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
-      Pair.of("timestamp", "bigint");
+      Pair.of("shadow_timestamp", "bigint");
 
   public static final String MYSQL_LOGFILE_KEY = "_metadata_log_file";
 
@@ -127,10 +127,10 @@ public class DatastreamConstants {
   public static final String POSTGRES_TIMESTAMP_KEY = "_metadata_timestamp";
 
   public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO =
-      Pair.of("timestamp", "INT64");
+      Pair.of("shadow_timestamp", "INT64");
 
   public static final Pair<String, String> POSTGRES_TIMESTAMP_SHADOW_INFO_PG_DIALECT =
-      Pair.of("timestamp", "bigint");
+      Pair.of("shadow_timestamp", "bigint");
 
   public static final String POSTGRES_LSN_KEY = "_metadata_lsn";
 

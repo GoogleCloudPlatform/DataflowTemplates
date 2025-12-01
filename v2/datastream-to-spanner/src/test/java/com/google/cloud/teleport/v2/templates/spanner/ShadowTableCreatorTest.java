@@ -250,4 +250,34 @@ public class ShadowTableCreatorTest {
     expectedColumnTypes.add(Type.pgVarchar().toString());
     assertThat(columnTypes, is(expectedColumnTypes));
   }
+
+  @Test
+  public void canHandlePkColumnNameCollision() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("timestamp")
+            .timestamp()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("timestamp")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("mysql", "shadow_", Dialect.GOOGLE_STANDARD_SQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(ddl, "MyTable", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(shadowTable.name(), "shadow_MyTable");
+    // Verify that the original PK column is preserved with the correct type.
+    assertEquals(shadowTable.column("timestamp").type().getCode(), Type.Code.TIMESTAMP);
+    // Verify that the new metadata column is present with the new name and correct type.
+    assertEquals(shadowTable.column("shadow_timestamp").type().getCode(), Type.Code.INT64);
+  }
 }
