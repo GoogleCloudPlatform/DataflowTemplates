@@ -125,7 +125,8 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
               "dlqGcsPrefix",
               subscriptionName,
               subscriptionName,
-              flexTemplateBuilder);
+              flexTemplateBuilder,
+              null);
       fail("Expected launch job to fail but it succeeded");
     } catch (RuntimeException e) {
       String jobId = extractJobIdFromError(e.getMessage());
@@ -211,7 +212,8 @@ public class DataStreamToSpannerMySQLSrcPubsubFT extends DataStreamToSpannerFTBa
             dlqGcsPrefix,
             subscription.toString(),
             dlqSubscription.toString(),
-            flexTemplateBuilder);
+            flexTemplateBuilder,
+            null);
     assertThatPipeline(jobInfo).isRunning();
 
     MySQLSrcDataProvider.writeRowsInSourceDB(1, 100, sourceDBResourceManager);
