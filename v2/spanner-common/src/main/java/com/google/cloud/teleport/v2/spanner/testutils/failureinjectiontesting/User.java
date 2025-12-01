@@ -15,6 +15,8 @@
  */
 package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
+import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.Mutation;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -119,6 +121,54 @@ public class User {
       ps.setInt(1, id);
       ps.executeUpdate();
     }
+  }
+  
+  // Spanner methods
+  void insert(DatabaseClient databaseClient) {
+    Mutation mutation =
+        Mutation.newInsertBuilder("Users")
+            .set(ID)
+            .to(id)
+            .set(FIRST_NAME)
+            .to(firstName)
+            .set(LAST_NAME)
+            .to(lastName)
+            .set(AGE)
+            .to(age)
+            .set(STATUS)
+            .to(status)
+            .set(COL1)
+            .to(col1)
+            .set(COL2)
+            .to(col2)
+            .build();
+    databaseClient.write(List.of(mutation));
+  }
+
+  void update(DatabaseClient databaseClient) {
+    Mutation mutation =
+        Mutation.newUpdateBuilder("Users")
+            .set(ID)
+            .to(id)
+            .set(FIRST_NAME)
+            .to(firstName)
+            .set(LAST_NAME)
+            .to(lastName)
+            .set(AGE)
+            .to(age)
+            .set(STATUS)
+            .to(status)
+            .set(COL1)
+            .to(col1)
+            .set(COL2)
+            .to(col2)
+            .build();
+    databaseClient.write(List.of(mutation));
+  }
+
+  void delete(DatabaseClient databaseClient) {
+    Mutation mutation = Mutation.delete(USERS_TABLE, com.google.cloud.spanner.Key.of(id));
+    databaseClient.write(List.of(mutation));
   }
 
   public static Map<Integer, User> fetchAll(AbstractJDBCResourceManager resourceManager)
