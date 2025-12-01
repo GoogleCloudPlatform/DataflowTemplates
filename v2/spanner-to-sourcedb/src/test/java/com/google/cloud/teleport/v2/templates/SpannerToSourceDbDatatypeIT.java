@@ -73,6 +73,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
   private static final String TABLE1 = "AllDatatypeColumns";
   private static final String TABLE2 = "AllDatatypePkColumns1";
   private static final String TABLE3 = "AllDatatypePkColumns2";
+  private static final String TABLE4 = "PkWithNull";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbDatatypeIT/mysql-schema.sql";
 
@@ -178,6 +179,25 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
 
     // Assert events on Mysql
     assertRowInMySQL();
+
+    // Assert that the failed row landed in the DLQ
+    List<com.google.pubsub.v1.PubsubMessage> dlqMessages = new ArrayList<>();
+    for (int i = 0; i < 30; i++) {
+      com.google.pubsub.v1.PullResponse pullResponse =
+          pubsubResourceManager.pull(subscriptionName, 10);
+      if (pullResponse.getReceivedMessagesCount() > 0) {
+        pullResponse.getReceivedMessagesList().forEach(m -> dlqMessages.add(m.getMessage()));
+        break;
+      }
+      Thread.sleep(1000); // wait 1 sec before polling again
+    }
+    LOG.info("Aastha test: dlqMessages = {}", dlqMessages.toString());
+    assertThat(dlqMessages).hasSize(1);
+    String messageData = dlqMessages.get(0).getData().toStringUtf8();
+    assertThat(messageData).contains("\"tableName\":\"" + TABLE4 + "\"");
+    assertThat(messageData).contains("\"not_null_pk\":\"1\"");
+    assertThat(messageData).contains("\"null_pk\":null");
+    assertThat(messageData).contains("cannot be null");
 
     // Delete rows in spanner.
     deleteRowsInSpanner();
@@ -352,6 +372,17 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to(Value.bytes(ByteArray.copyFrom("a")))
             .build();
     spannerResourceManager.write(m3);
+
+    Mutation m_pk_null =
+        Mutation.newInsertOrUpdateBuilder(TABLE4)
+            .set("not_null_pk")
+            .to(1L)
+            .set("null_pk")
+            .to(Value.int64(null)) // Explicitly setting a null PK part
+            .set("data")
+            .to("some data")
+            .build();
+    spannerResourceManager.write(m_pk_null);
   }
 
   private void deleteRowsInSpanner() {
@@ -366,6 +397,9 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         Mutation.delete(
             TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
     spannerResourceManager.write(m3);
+    Mutation m_pk_null_delete =
+        Mutation.delete(TABLE4, Key.newBuilder().append(1L).append((Long) null).build());
+    spannerResourceManager.write(m_pk_null_delete);
   }
 
   private List<Throwable> assertionErrors = new ArrayList<>();
