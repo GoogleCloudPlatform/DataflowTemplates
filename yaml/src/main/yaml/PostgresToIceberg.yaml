@@ -21,35 +21,35 @@ pipeline:
     - type: ReadFromPostgres
       name: ReadFromPostgres
       config:
-        driver_class_name: {{ driver_class_name | default("org.postgresql.Driver")}}
-        url: {{ jdbc_url }}
+        driver_class_name: {{ driverClassName | default("org.postgresql.Driver")}}
+        url: {{ jdbcUrl }}
         username: {{ username }}
         password: {{ password }}
-        query: {{ read_query }}
-        driver_jars: {{ driver_jars }}
-        connection_properties: {{ connection_properties }}
-        partition_column: {{ partition_column }}
+        query: {{ readQuery }}
+        driver_jars: {{ driverJars }}
+        connection_properties: {{ connectionProperties }}
+        partition_column: {{ partitionColumn }}
         table: {{ location }}
-        num_partitions: {{ num_partitions }}
-        fetch_size: {{ fetch_size }}
-        connection_init_sql: {{ connection_init_sql }}
-        disable_auto_commit: {{ disable_auto_commit }}
-        output_parallelization: {{ output_parallelization }}
-        type: {{ jdbc_type | default("postgres") }}
+        num_partitions: {{ numPartitions }}
+        fetch_size: {{ fetchSize }}
+        connection_init_sql: {{ connectionInitSql }}
+        disable_auto_commit: {{ disableAutoCommit }}
+        output_parallelization: {{ outputParallelization }}
+        type: {{ jdbcType | default("postgres") }}
 
     - type: WriteToIceberg
       name: WriteToIceberg
       config:
         table: {{ table }}
-        catalog_name: {{ catalog_name }}
-        catalog_properties: {{ catalog_properties }}
-        config_properties: {{ config_properties }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
         drop: {{ drop }}
         keep: {{ keep }}
         only: {{ only }}
-        partition_fields: {{ partition_fields }}
-        table_properties: {{ table_properties }}
-        triggering_frequency_seconds: {{ triggering_frequency_seconds }}
+        partition_fields: {{ partitionFields }}
+        table_properties: {{ tableProperties }}
+        triggering_frequency_seconds: {{ triggeringFrequencySeconds }}
 
 options:
   streaming: false

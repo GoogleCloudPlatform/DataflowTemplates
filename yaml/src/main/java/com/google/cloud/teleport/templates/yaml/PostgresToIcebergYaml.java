@@ -49,7 +49,7 @@ public interface PostgresToIcebergYaml {
   // Common JDBC Parameters
   @TemplateParameter.Text(
       order = 1,
-      name = "jdbc_url",
+      name = "jdbcUrl",
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
       example = "jdbc:postgresql://your-host:5432/your-db")
@@ -76,7 +76,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 4,
-      name = "driver_class_name",
+      name = "driverClassName",
       optional = true,
       description =
           "The fully-qualified class name of the JDBC driver. Default: org.postgresql.Driver",
@@ -87,7 +87,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 5,
-      name = "driver_jars",
+      name = "driverJars",
       optional = true,
       description = "Comma-separated GCS paths of the JDBC driver jars.",
       helpText = "A comma-separated list of GCS paths to the JDBC driver JAR files.",
@@ -96,7 +96,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 6,
-      name = "connection_properties",
+      name = "connectionProperties",
       optional = true,
       description = "JDBC connection properties.",
       helpText = "A semicolon-separated list of key-value pairs for the JDBC connection.",
@@ -105,7 +105,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 7,
-      name = "connection_init_sql",
+      name = "connectionInitSql",
       optional = true,
       description = "A list of SQL statements to execute upon connection initialization.",
       helpText = "A list of SQL statements to execute when a new connection is established.",
@@ -114,7 +114,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 8,
-      name = "jdbc_type",
+      name = "jdbcType",
       optional = true,
       description = "Type of JDBC source. Default: postgres.",
       helpText =
@@ -135,7 +135,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 10,
-      name = "read_query",
+      name = "readQuery",
       optional = true,
       description = "The SQL query to execute for reading data.",
       helpText = "The SQL query to execute on the source to extract data.",
@@ -144,7 +144,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 11,
-      name = "partition_column",
+      name = "partitionColumn",
       optional = true,
       description = "The name of a numeric column to be used for partitioning.",
       helpText = "The name of a numeric column that will be used for partitioning the data.",
@@ -153,7 +153,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Integer(
       order = 12,
-      name = "num_partitions",
+      name = "numPartitions",
       optional = true,
       description = "The number of partitions to divide the data into.",
       helpText = "The number of partitions to create for parallel reading.",
@@ -162,7 +162,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Integer(
       order = 13,
-      name = "fetch_size",
+      name = "fetchSize",
       optional = true,
       description = "The number of rows to fetch from the database at a time.",
       helpText =
@@ -172,7 +172,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Boolean(
       order = 14,
-      name = "disable_auto_commit",
+      name = "disableAutoCommit",
       optional = true,
       description = "Whether to disable auto-commit on read.",
       helpText =
@@ -182,7 +182,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Boolean(
       order = 15,
-      name = "output_parallelization",
+      name = "outputParallelization",
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
       helpText = "If true, the resulting PCollection will be reshuffled.",
@@ -201,7 +201,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 17,
-      name = "catalog_name",
+      name = "catalogName",
       description = "Name of the catalog containing the table.",
       helpText = "The name of the Iceberg catalog that contains the table.",
       example = "my_hadoop_catalog")
@@ -210,7 +210,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 18,
-      name = "catalog_properties",
+      name = "catalogProperties",
       description = "Properties used to set up the Iceberg catalog.",
       helpText = "A map of properties for setting up the Iceberg catalog.",
       example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
@@ -219,7 +219,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 19,
-      name = "config_properties",
+      name = "configProperties",
       optional = true,
       description = "Properties passed to the Hadoop Configuration.",
       helpText = "A map of properties to pass to the Hadoop Configuration.",
@@ -256,7 +256,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 23,
-      name = "partition_fields",
+      name = "partitionFields",
       optional = true,
       description = "Fields used to create a partition spec for new tables.",
       helpText = "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category'].",
@@ -265,7 +265,7 @@ public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 24,
-      name = "table_properties",
+      name = "tableProperties",
       optional = true,
       description = "Iceberg table properties to be set on table creation.",
       helpText = "A map of Iceberg table properties to set when the table is created.",

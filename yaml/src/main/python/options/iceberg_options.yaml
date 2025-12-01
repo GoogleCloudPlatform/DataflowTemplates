@@ -9,21 +9,21 @@ options:
         required: true
         type: text
       - order: 2
-        name: "catalog_name"
+        name: "catalogName"
         description: "Name of the catalog containing the table."
         help: "The name of the Iceberg catalog that contains the table."
         example: "my_hadoop_catalog"
         required: true
         type: text
       - order: 3
-        name: "catalog_properties"
+        name: "catalogProperties"
         description: "Properties used to set up the Iceberg catalog."
         help: "A map of properties for setting up the Iceberg catalog."
         example: '{"type": "hadoop", "warehouse": "gs://your-bucket/warehouse"}'
         required: true
         type: text
       - order: 4
-        name: "config_properties"
+        name: "configProperties"
         description: "Properties passed to the Hadoop Configuration."
         help: "A map of properties to pass to the Hadoop Configuration."
         example: '{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}'
@@ -54,14 +54,14 @@ options:
         required: false
         type: text
       - order: 2
-        name: "partition_fields"
+        name: "partitionFields"
         description: "Fields used to create a partition spec for new tables."
         help: "A list of fields and transforms for partitioning, e.g., ['day(ts)', 'category']."
         example: '["day(ts)", "bucket(id, 4)"]'
         required: false
         type: text
       - order: 3
-        name: "table_properties"
+        name: "tableProperties"
         description: "Iceberg table properties to be set on table creation."
         help: "A map of Iceberg table properties to set when the table is created."
         example: '{"commit.retry.num-retries": "2"}'
@@ -71,7 +71,7 @@ options:
   - name: "iceberg_streaming_write_options"
     parameters:
       - order: 1
-        name: "triggering_frequency_seconds"
+        name: "triggeringFrequencySeconds"
         description: "For a streaming pipeline, the frequency at which snapshots are produced."
         help: "The frequency in seconds for producing snapshots in a streaming pipeline."
         example: 60
