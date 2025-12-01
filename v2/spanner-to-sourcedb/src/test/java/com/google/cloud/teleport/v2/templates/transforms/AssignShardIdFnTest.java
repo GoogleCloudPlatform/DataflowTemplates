@@ -101,6 +101,7 @@ public class AssignShardIdFnTest {
   @Before
   public void setUp() {
     mockSpannerReadRow();
+    when(processContext.getPipelineOptions()).thenReturn(mockOptions);
   }
 
   private void mockSpannerReadRow() {
@@ -152,7 +153,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -182,7 +182,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -215,7 +214,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -266,7 +264,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -314,7 +311,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_SINGLE_SHARD,
@@ -351,7 +347,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -416,7 +411,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -463,7 +457,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -506,7 +499,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -542,7 +534,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -590,7 +581,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -645,7 +635,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
@@ -715,7 +704,6 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockOptions, // Replaced schemaMapper with Options
             mockDdlView, // Replaced Ddl with PCollectionView
             sourceSchema,
             Constants.SHARDING_MODE_MULTI_SHARD,

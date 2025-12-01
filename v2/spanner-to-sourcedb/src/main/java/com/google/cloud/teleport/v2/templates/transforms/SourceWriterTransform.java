@@ -46,7 +46,7 @@ public class SourceWriterTransform
     extends PTransform<
         PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
 
-  private final SpannerToSourceDb.Options options;
+
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
@@ -58,10 +58,8 @@ public class SourceWriterTransform
   private final int maxThreadPerDataflowWorker;
   private final String source;
   private final CustomTransformation customTransformation;
-
   public SourceWriterTransform(
       List<Shard> shards,
-      SpannerToSourceDb.Options options,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       PCollectionView<Ddl> ddlView,
@@ -73,7 +71,6 @@ public class SourceWriterTransform
       String source,
       CustomTransformation customTransformation) {
 
-    this.options = options;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
@@ -96,7 +93,7 @@ public class SourceWriterTransform
             ParDo.of(
                     new SourceWriterFn(
                         this.shards,
-                        this.options,
+
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
                         this.sourceSchema,

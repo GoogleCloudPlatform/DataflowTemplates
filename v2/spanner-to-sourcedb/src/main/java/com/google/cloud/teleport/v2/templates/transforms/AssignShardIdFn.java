@@ -77,8 +77,7 @@ public class AssignShardIdFn
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
-  /* The options for the overall pipeline. */
-  private final SpannerToSourceDb.Options options;
+
 
   private final SourceSchema sourceSchema;
 
@@ -111,7 +110,6 @@ public class AssignShardIdFn
 
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
-      SpannerToSourceDb.Options options,
       PCollectionView<Ddl> ddlView,
       SourceSchema sourceSchema,
       String shardingMode,
@@ -123,7 +121,6 @@ public class AssignShardIdFn
       Long maxConnectionsAcrossAllShards,
       String sourceTyoe) {
     this.spannerConfig = spannerConfig;
-    this.options = options;
     this.ddlView = ddlView;
     this.sourceSchema = sourceSchema;
     this.shardingMode = shardingMode;
@@ -198,7 +195,8 @@ public class AssignShardIdFn
 
 
     if (this.schemaMapper == null) {
-      this.schemaMapper = SpannerToSourceDb.getSchemaMapper(this.options, ddl);
+      SpannerToSourceDb.Options options = c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
+      this.schemaMapper = SpannerToSourceDb.getSchemaMapper(options, ddl);
     }
     if (this.shardIdFetcher == null) {
       this.shardIdFetcher =

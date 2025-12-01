@@ -59,6 +59,7 @@ import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
+import com.google.cloud.teleport.v2.templates.transforms.SpannerToSourceDbProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -603,36 +604,25 @@ public class SpannerToSourceDb {
             .withDatabaseId(ValueProvider.StaticValueProvider.of(options.getMetadataDatabase()))
             .withRpcPriority(ValueProvider.StaticValueProvider.of(options.getSpannerPriority()));
 
-    ShadowTableCreator shadowTableCreator =
-        new ShadowTableCreator(
-            spannerConfig,
-            spannerMetadataConfig,
-            SpannerAccessor.getOrCreate(spannerMetadataConfig)
-                .getDatabaseAdminClient()
-                .getDatabase(
-                    spannerMetadataConfig.getInstanceId().get(),
-                    spannerMetadataConfig.getDatabaseId().get())
-                .getDialect(),
-            options.getShadowTablePrefix());
+    // Fetch DDLs and create shadow tables in a DoFn to avoid launcher-side timeout.
+    PCollectionTuple ddlTuple =
+        pipeline.apply(
+            "Process Information Schema",
+            new SpannerToSourceDbProcessInformationSchema(
+                spannerConfig,
+                spannerMetadataConfig,
+                options.getShadowTablePrefix()));
+
+    final PCollectionView<Ddl> ddlView =
+        ddlTuple
+            .get(SpannerToSourceDbProcessInformationSchema.MAIN_DDL_TAG)
+            .apply("View Main DDL", View.asSingleton());
 
     DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
 
-    shadowTableCreator.createShadowTablesInSpanner();
-
-    // Fetch DDLs eagerly and convert them to PCollectionViews for side input distribution.
-    Ddl ddl = SpannerSchema.getInformationSchemaAsDdl(spannerConfig);
-    Ddl shadowTableDdl = SpannerSchema.getInformationSchemaAsDdl(spannerMetadataConfig);
-
-    final PCollectionView<Ddl> ddlView =
-        pipeline
-            .apply("Create Main DDL", Create.of(ddl).withCoder(SerializableCoder.of(Ddl.class)))
-            .apply("View Main DDL", View.asSingleton());
-
     final PCollectionView<Ddl> shadowTableDdlView =
-        pipeline
-            .apply(
-                "Create Shadow DDL",
-                Create.of(shadowTableDdl).withCoder(SerializableCoder.of(Ddl.class)))
+        ddlTuple
+            .get(SpannerToSourceDbProcessInformationSchema.SHADOW_TABLE_DDL_TAG)
             .apply("View Shadow DDL", View.asSingleton());
 
     List<Shard> shards;
@@ -759,7 +749,6 @@ public class SpannerToSourceDb {
                 ParDo.of(
                         new AssignShardIdFn(
                             spannerConfig,
-                            options,
                             ddlView,
                             sourceSchema,
                             shardingMode,
@@ -779,7 +768,6 @@ public class SpannerToSourceDb {
                 "Write to source",
                 new SourceWriterTransform(
                     shards,
-                    options,
                     spannerMetadataConfig,
                     options.getSourceDbTimezoneOffset(),
                     ddlView,
@@ -901,6 +889,7 @@ public class SpannerToSourceDb {
   }
 
   private static DeadLetterQueueManager buildDlqManager(Options options) {
+    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()

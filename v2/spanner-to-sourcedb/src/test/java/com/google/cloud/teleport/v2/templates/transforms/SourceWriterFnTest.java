@@ -130,6 +130,7 @@ public class SourceWriterFnTest {
                 return null;
               }
             });
+    when(processContext.getPipelineOptions()).thenReturn(mockOptions);
 
     when(mockSpannerDao.readShadowTableRecordWithExclusiveLock(
             eq("shadow_parent1"), any(), any(), any()))
@@ -215,7 +216,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -246,7 +246,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -276,7 +275,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -311,7 +309,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -353,7 +350,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -391,7 +387,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -427,7 +422,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -460,7 +454,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -491,7 +484,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -526,7 +518,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -557,7 +548,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -590,7 +580,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -623,7 +612,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -656,7 +644,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -692,7 +679,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -716,7 +702,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,
@@ -739,7 +724,6 @@ public class SourceWriterFnTest {
     SourceWriterFn sourceWriterFn =
         new SourceWriterFn(
             ImmutableList.of(testShard),
-            mockOptions, // Replaced ISchemaMapper
             mockSpannerConfig,
             testSourceDbTimezoneOffset,
             testSourceSchema,

@@ -97,7 +97,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final Counter invalidTransformationException =
       Metrics.counter(SourceWriterFn.class, "custom_transformation_exception");
 
-  private final SpannerToSourceDb.Options options;
+
   private transient ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
@@ -108,16 +108,14 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
   private final String source;
-  private SourceProcessor sourceProcessor;
+  private transient SourceProcessor sourceProcessor;
   private final CustomTransformation customTransformation;
-  private ISpannerMigrationTransformer spannerToSourceTransformer;
+  private transient ISpannerMigrationTransformer spannerToSourceTransformer;
 
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Ddl> shadowTableDdlView;
-
   public SourceWriterFn(
       List<Shard> shards,
-      SpannerToSourceDb.Options options,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
       SourceSchema sourceSchema,
@@ -129,7 +127,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       PCollectionView<Ddl> ddlView,
       PCollectionView<Ddl> shadowTableDdlView) {
 
-    this.options = options;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
@@ -193,7 +190,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
 
     if (this.schemaMapper == null) {
-      this.schemaMapper = SpannerToSourceDb.getSchemaMapper(this.options, ddl);
+      SpannerToSourceDb.Options options = c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
+      this.schemaMapper = SpannerToSourceDb.getSchemaMapper(options, ddl);
     }
 
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
