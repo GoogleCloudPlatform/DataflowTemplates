@@ -605,9 +605,7 @@ public class SpannerToSourceDb {
         pipeline.apply(
             "Process Information Schema",
             new SpannerToSourceDbProcessInformationSchema(
-                spannerConfig,
-                spannerMetadataConfig,
-                options.getShadowTablePrefix()));
+                spannerConfig, spannerMetadataConfig, options.getShadowTablePrefix()));
 
     final PCollectionView<Ddl> ddlView =
         ddlTuple
@@ -726,7 +724,6 @@ public class SpannerToSourceDb {
             .setCustomParameters(options.getTransformationCustomParameters())
             .build();
 
-
     if (options.getFailureInjectionParameter() != null
         && !options.getFailureInjectionParameter().isBlank()) {
       spannerMetadataConfig =
@@ -754,7 +751,8 @@ public class SpannerToSourceDb {
                             options.getShardingCustomClassName(),
                             options.getShardingCustomParameters(),
                             options.getMaxShardConnections() * shards.size(),
-                            options.getSourceType()))
+                            options.getSourceType())) // currently assume that all shards accept the
+                    // same source type
                     .withSideInputs(ddlView))
             .setCoder(
                 KvCoder.of(
@@ -885,7 +883,6 @@ public class SpannerToSourceDb {
   }
 
   private static DeadLetterQueueManager buildDlqManager(Options options) {
-    DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()

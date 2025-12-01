@@ -156,11 +156,11 @@ public class AssignShardIdFnTest {
   @Test
   public void testGetRowAsMap() throws Exception {
     Ddl ddl = getTestDdl();
-    // ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl); // OLD LINE
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -172,8 +172,7 @@ public class AssignShardIdFnTest {
             Constants.SOURCE_MYSQL);
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
-    Map<String, Object> actual =
-        assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl); // Added ddl
+    Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl);
     Map<String, Object> expected = new HashMap<>();
     expected.put("accountId", "Id1");
     expected.put("accountName", "xyz");
@@ -185,11 +184,11 @@ public class AssignShardIdFnTest {
   @Test(expected = Exception.class)
   public void cannotGetRowAsMap() throws Exception {
     Ddl ddl = getTestDdl();
-    // ISchemaMapper schemaMapper = new SessionBasedMapper(getSchemaObject(), ddl); // OLD LINE
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -202,7 +201,7 @@ public class AssignShardIdFnTest {
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
 
-    assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl); // Added ddl
+    assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl);
   }
 
   @Test
@@ -221,7 +220,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -237,10 +236,6 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    // Since processElement handles initialization of schemaMapper and fetcher now, we don't
-    // need to explicitly call setShardIdFetcher here, but for mock behavior consistency in test:
-    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
-    // schemaMapper, "skip"));
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -271,7 +266,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -287,8 +282,6 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
-    // schemaMapper, "skip")); // Handled by lazy init
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -318,7 +311,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_SINGLE_SHARD,
             "test",
@@ -354,7 +347,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -418,7 +411,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -464,7 +457,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -506,7 +499,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -541,7 +534,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -557,8 +550,6 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
-    // schemaMapper, "skip")); // Handled by lazy init
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
@@ -588,7 +579,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchemaForPrimaryKeyTest(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -642,7 +633,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             getTestSourceSchema(),
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -657,8 +648,6 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
-    // schemaMapper, "skip")); // Handled by lazy init
 
     // Triggers the stale read.
     assignShardIdFn.processElement(processContext);
@@ -711,7 +700,7 @@ public class AssignShardIdFnTest {
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
-            mockDdlView, // Replaced Ddl with PCollectionView
+            mockDdlView,
             sourceSchema,
             Constants.SHARDING_MODE_MULTI_SHARD,
             "test",
@@ -722,8 +711,6 @@ public class AssignShardIdFnTest {
             10000L,
             Constants.SOURCE_MYSQL);
     assignShardIdFn.setMapper(new ObjectMapper());
-    // assignShardIdFn.setShardIdFetcher(ShardingLogicImplFetcher.getShardingLogicImpl("", "", "",
-    // schemaMapper, "skip")); // Handled by lazy init
 
     assignShardIdFn.processElement(processContext);
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";

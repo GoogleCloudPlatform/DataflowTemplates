@@ -77,13 +77,10 @@ public class AssignShardIdFn
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
-
-
   private final SourceSchema sourceSchema;
 
   /* The DDL view for the main Spanner database. Only accessible in processElement. */
   private final PCollectionView<Ddl> ddlView;
-
 
   private transient ISchemaMapper schemaMapper;
 
@@ -193,9 +190,9 @@ public class AssignShardIdFn
   public void processElement(ProcessContext c) throws Exception {
     Ddl ddl = c.sideInput(ddlView);
 
-
     if (this.schemaMapper == null) {
-      SpannerToSourceDb.Options options = c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
+      SpannerToSourceDb.Options options =
+          c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
       this.schemaMapper = SpannerToSourceDb.getSchemaMapper(options, ddl);
     }
     if (this.shardIdFetcher == null) {

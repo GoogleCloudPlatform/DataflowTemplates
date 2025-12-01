@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.cloud.spanner.BatchClient;
@@ -25,8 +40,10 @@ import org.slf4j.LoggerFactory;
  * Beam transform which 1) Reads information schema from both main and shadow table database. 2)
  * Create shadow tables in the shadow table database 3) Outputs both DDL schemas
  */
-public class SpannerToSourceDbProcessInformationSchema extends PTransform<PBegin, PCollectionTuple> {
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToSourceDbProcessInformationSchema.class);
+public class SpannerToSourceDbProcessInformationSchema
+    extends PTransform<PBegin, PCollectionTuple> {
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerToSourceDbProcessInformationSchema.class);
 
   public static final TupleTag<Ddl> MAIN_DDL_TAG = new TupleTag<>() {};
   public static final TupleTag<Ddl> SHADOW_TABLE_DDL_TAG = new TupleTag<>() {};
@@ -51,9 +68,7 @@ public class SpannerToSourceDbProcessInformationSchema extends PTransform<PBegin
             "Create Shadow tables and return Information Schemas",
             ParDo.of(
                     new ProcessInformationSchemaFn(
-                        spannerConfig,
-                        shadowTableSpannerConfig,
-                        shadowTablePrefix))
+                        spannerConfig, shadowTableSpannerConfig, shadowTablePrefix))
                 .withOutputTags(MAIN_DDL_TAG, TupleTagList.of(SHADOW_TABLE_DDL_TAG)));
   }
 
@@ -87,10 +102,13 @@ public class SpannerToSourceDbProcessInformationSchema extends PTransform<PBegin
               .getDatabase(spannerConfig.getInstanceId().get(), spannerConfig.getDatabaseId().get())
               .getDialect();
 
-      DatabaseAdminClient shadowDatabaseAdminClient = shadowTableSpannerAccessor.getDatabaseAdminClient();
+      DatabaseAdminClient shadowDatabaseAdminClient =
+          shadowTableSpannerAccessor.getDatabaseAdminClient();
       shadowTableDialect =
           shadowDatabaseAdminClient
-              .getDatabase(shadowTableSpannerConfig.getInstanceId().get(), shadowTableSpannerConfig.getDatabaseId().get())
+              .getDatabase(
+                  shadowTableSpannerConfig.getInstanceId().get(),
+                  shadowTableSpannerConfig.getDatabaseId().get())
               .getDialect();
     }
 
@@ -107,22 +125,19 @@ public class SpannerToSourceDbProcessInformationSchema extends PTransform<PBegin
     @ProcessElement
     public void processElement(ProcessContext c) {
       LOG.info("Starting processing of Information Schema...");
-      
+
       // 1. Create Shadow Tables if needed
       ShadowTableCreator shadowTableCreator =
           new ShadowTableCreator(
-              spannerConfig,
-              shadowTableSpannerConfig,
-              shadowTableDialect,
-              shadowTablePrefix);
-      
-      // This method internally fetches DDLs and creates tables. 
-      // We might want to optimize this in the future, but for now moving it to worker is the goal.
+              spannerConfig, shadowTableSpannerConfig, shadowTableDialect, shadowTablePrefix);
+
+      // This method internally fetches DDLs and creates tables.
       shadowTableCreator.createShadowTablesInSpanner();
 
       // 2. Fetch DDLs
       Ddl mainDdl = getInformationSchemaAsDdl(spannerAccessor, dialect);
-      Ddl shadowTableDdl = getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
+      Ddl shadowTableDdl =
+          getInformationSchemaAsDdl(shadowTableSpannerAccessor, shadowTableDialect);
 
       c.output(MAIN_DDL_TAG, mainDdl);
       c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);

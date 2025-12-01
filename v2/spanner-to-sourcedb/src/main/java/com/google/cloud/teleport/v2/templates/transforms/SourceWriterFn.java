@@ -92,7 +92,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
       Metrics.distribution(SourceWriterFn.class, "unsuccessful_write_to_source_latency_ms");
 
-
   private transient ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
@@ -109,6 +108,7 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
 
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Ddl> shadowTableDdlView;
+
   public SourceWriterFn(
       List<Shard> shards,
       SpannerConfig spannerConfig,
@@ -185,7 +185,8 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
 
     if (this.schemaMapper == null) {
-      SpannerToSourceDb.Options options = c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
+      SpannerToSourceDb.Options options =
+          c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
       this.schemaMapper = SpannerToSourceDb.getSchemaMapper(options, ddl);
     }
 
