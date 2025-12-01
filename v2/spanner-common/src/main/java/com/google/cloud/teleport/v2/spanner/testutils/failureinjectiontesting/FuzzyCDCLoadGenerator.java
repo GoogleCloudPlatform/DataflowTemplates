@@ -95,6 +95,7 @@ public class FuzzyCDCLoadGenerator {
     } finally {
       executor.shutdown();
     }
+    LOG.info("Created {} number of events in the database.", counter.get());
     return counter.get();
   }
 
@@ -115,7 +116,7 @@ public class FuzzyCDCLoadGenerator {
     int id;
     User user;
     do {
-      id = getRandom().nextInt(1000000);
+      id = getRandom().nextInt(2_000_000_000);
       user = User.generateRandom(id);
     } while (ids.putIfAbsent(id, true) != null);
 

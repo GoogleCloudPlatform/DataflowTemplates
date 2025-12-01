@@ -53,7 +53,7 @@ import org.mockito.junit.MockitoRule;
 
 /** Unit tests for {@link FuzzyCDCLoadGenerator}. */
 @RunWith(JUnit4.class)
-public class FuzzyCDCCorrectnessTestUtilTest {
+public class FuzzyCDCLoadGeneratorTest {
 
   @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
@@ -65,7 +65,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
   @Mock private ResultSet mockResultSet;
   @Mock private Random mockRandom;
 
-  private FuzzyCDCLoadGenerator testUtil;
+  private FuzzyCDCLoadGenerator cdcLoadGenerator;
 
   @Before
   public void setUp() throws SQLException {
@@ -96,7 +96,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_updatePath() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator(mockRandom);
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
     // Control random flow: 0.74 < 0.75, so choose update path
     when(mockRandom.nextDouble()).thenReturn(0.74);
     when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID and column selection
@@ -108,7 +108,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
           .thenReturn(mockConnection);
       mockSynchronousExecutor(mockedExecutors);
 
-      testUtil.generateLoad(1, 1, sourceDBResourceManager);
+      cdcLoadGenerator.generateLoad(1, 1, sourceDBResourceManager);
 
       // Verify initial insert and one update
       verify(mockConnection, times(2)).prepareStatement(anyString());
@@ -118,7 +118,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_deleteAndReinsertPath() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator(mockRandom);
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
     // Control random flow:
     // 1. 0.76 > 0.75 (delete)
     // 2. 0.74 < 0.75 (re-insert)
@@ -132,7 +132,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
           .thenReturn(mockConnection);
       mockSynchronousExecutor(mockedExecutors);
 
-      testUtil.generateLoad(1, 2, sourceDBResourceManager);
+      cdcLoadGenerator.generateLoad(1, 2, sourceDBResourceManager);
 
       // Verify initial insert, one delete, and one re-insert
       verify(mockConnection, times(3)).prepareStatement(anyString());
@@ -142,7 +142,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_deleteAndDoNothingPath() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator(mockRandom);
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
     // Control random flow:
     // 1. 0.76 > 0.75 (delete)
     // 2. 0.76 > 0.76 (do nothing)
@@ -156,7 +156,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
           .thenReturn(mockConnection);
       mockSynchronousExecutor(mockedExecutors);
 
-      testUtil.generateLoad(1, 2, sourceDBResourceManager);
+      cdcLoadGenerator.generateLoad(1, 2, sourceDBResourceManager);
 
       // Verify initial insert and one delete. No second insert.
       verify(mockConnection, times(2)).prepareStatement(anyString());
@@ -166,7 +166,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
 
   @Test
   public void testGenerateLoad_handlesSqlExceptionInThread() {
-    testUtil = new FuzzyCDCLoadGenerator();
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
     SQLException sqlException = new SQLException("Connection failed");
 
     try (MockedStatic<DriverManager> mockedDriverManager = Mockito.mockStatic(DriverManager.class);
@@ -179,7 +179,8 @@ public class FuzzyCDCCorrectnessTestUtilTest {
       // The method should catch the exception from the thread and wrap it.
       RuntimeException e =
           assertThrows(
-              RuntimeException.class, () -> testUtil.generateLoad(1, 1, sourceDBResourceManager));
+              RuntimeException.class,
+              () -> cdcLoadGenerator.generateLoad(1, 1, sourceDBResourceManager));
 
       assertThat(e).hasMessageThat().contains("Task execution failed");
       assertThat(e).hasCauseThat().isInstanceOf(RuntimeException.class);
@@ -188,7 +189,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
 
   @Test
   public void testAssertRows_whenRowsMatch_thenPass() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator();
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
     User user = User.generateRandom(1);
 
     // Mock source DB fetch
@@ -228,13 +229,13 @@ public class FuzzyCDCCorrectnessTestUtilTest {
           .thenReturn(mockConnection);
 
       // Act & Assert: No exception should be thrown
-      testUtil.assertRows(spannerResourceManager, sourceDBResourceManager);
+      cdcLoadGenerator.assertRows(spannerResourceManager, sourceDBResourceManager);
     }
   }
 
   @Test
   public void testAssertRows_whenRowCountMismatch_thenFail() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator();
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
     User user = User.generateRandom(1);
 
     // Mock source DB to return one row
@@ -253,13 +254,13 @@ public class FuzzyCDCCorrectnessTestUtilTest {
       AssertionError e =
           assertThrows(
               AssertionError.class,
-              () -> testUtil.assertRows(spannerResourceManager, sourceDBResourceManager));
+              () -> cdcLoadGenerator.assertRows(spannerResourceManager, sourceDBResourceManager));
     }
   }
 
   @Test
   public void testAssertRows_whenRowContentMismatch_thenFail() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator();
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
     User sourceUser = User.generateRandom(1);
     sourceUser.firstName = "SourceFirstName";
     User spannerUser = User.generateRandom(1);
@@ -299,13 +300,13 @@ public class FuzzyCDCCorrectnessTestUtilTest {
       AssertionError e =
           assertThrows(
               AssertionError.class,
-              () -> testUtil.assertRows(spannerResourceManager, sourceDBResourceManager));
+              () -> cdcLoadGenerator.assertRows(spannerResourceManager, sourceDBResourceManager));
     }
   }
 
   @Test
   public void testAssertRows_throwsRuntimeException_onSqlException() throws SQLException {
-    testUtil = new FuzzyCDCLoadGenerator();
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
     SQLException sqlException = new SQLException("DB connection failed");
 
     try (MockedStatic<DriverManager> mockedDriverManager =
@@ -318,7 +319,7 @@ public class FuzzyCDCCorrectnessTestUtilTest {
       RuntimeException e =
           assertThrows(
               RuntimeException.class,
-              () -> testUtil.assertRows(spannerResourceManager, sourceDBResourceManager));
+              () -> cdcLoadGenerator.assertRows(spannerResourceManager, sourceDBResourceManager));
       assertThat(e).hasCauseThat().isInstanceOf(SQLException.class);
     }
   }

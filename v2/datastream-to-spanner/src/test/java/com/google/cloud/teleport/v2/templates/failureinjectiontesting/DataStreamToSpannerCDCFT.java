@@ -87,7 +87,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
   private static CloudSqlResourceManager sourceDBResourceManager;
   private JDBCSource sourceConnectionProfile;
-  private FuzzyCDCLoadGenerator testUtil;
+  private FuzzyCDCLoadGenerator cdcLoadGenerator;
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class.
@@ -153,8 +153,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     int burstIterations = 10000;
 
     // generate Load
-    testUtil = new FuzzyCDCLoadGenerator();
-    testUtil.generateLoad(numRows, burstIterations, sourceDBResourceManager);
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
+    cdcLoadGenerator.generateLoad(numRows, burstIterations, sourceDBResourceManager);
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
@@ -233,6 +233,6 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     Thread.sleep(600000);
 
     // Read data from Spanner and assert that it exactly matches with SourceDb
-    testUtil.assertRows(spannerResourceManager, sourceDBResourceManager);
+    cdcLoadGenerator.assertRows(spannerResourceManager, sourceDBResourceManager);
   }
 }
