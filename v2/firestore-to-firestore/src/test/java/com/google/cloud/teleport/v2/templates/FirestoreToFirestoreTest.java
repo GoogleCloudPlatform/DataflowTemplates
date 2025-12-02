@@ -42,8 +42,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class FirestoreToFirestoreTest {
 
-  @Rule
-  public final transient TestPipeline p = TestPipeline.create();
+  @Rule public final transient TestPipeline p = TestPipeline.create();
 
   @Test
   public void testRunQueryResponseToDocument_extractsDocument() {
@@ -103,27 +102,29 @@ public class FirestoreToFirestoreTest {
   @Test
   public void testPrepareWritesFn_preservesFields() {
     String sourceName = "projects/source/databases/(default)/documents/data/item1";
-    MapValue nestedMap = MapValue.newBuilder()
-        .putFields("nested", Value.newBuilder().setBooleanValue(true).build())
-        .build();
-    Document inputDoc = Document.newBuilder()
-        .setName(sourceName)
-        .putFields("fieldA", Value.newBuilder().setStringValue("valueA").build())
-        .putFields("fieldB", Value.newBuilder().setIntegerValue(123).build())
-        .putFields("fieldC", Value.newBuilder().setMapValue(nestedMap).build())
-        .build();
+    MapValue nestedMap =
+        MapValue.newBuilder()
+            .putFields("nested", Value.newBuilder().setBooleanValue(true).build())
+            .build();
+    Document inputDoc =
+        Document.newBuilder()
+            .setName(sourceName)
+            .putFields("fieldA", Value.newBuilder().setStringValue("valueA").build())
+            .putFields("fieldB", Value.newBuilder().setIntegerValue(123).build())
+            .putFields("fieldC", Value.newBuilder().setMapValue(nestedMap).build())
+            .build();
 
     PCollection<Document> input = p.apply(Create.of(inputDoc));
-    PCollection<Write> output = input.apply(
-        ParDo.of(new FirestoreToFirestore.PrepareWritesFn("dest", "(default)")));
+    PCollection<Write> output =
+        input.apply(ParDo.of(new FirestoreToFirestore.PrepareWritesFn("dest", "(default)")));
 
     // Extract the Document from the Write
-    PCollection<Document> outputDocs = output.apply("ExtractUpdate",
-        ParDo.of(new ExtractDocumentFromWriteFn()));
+    PCollection<Document> outputDocs =
+        output.apply("ExtractUpdate", ParDo.of(new ExtractDocumentFromWriteFn()));
 
     // Assert that the fields map is as expected.
-    PCollection<Map<String, Value>> outputFields = outputDocs.apply("ExtractFields",
-        ParDo.of(new ExtractFieldsFn()));
+    PCollection<Map<String, Value>> outputFields =
+        outputDocs.apply("ExtractFields", ParDo.of(new ExtractFieldsFn()));
 
     // Pass the expected map as a List to PAssert
     PAssert.that(outputFields).containsInAnyOrder(ImmutableList.of(inputDoc.getFieldsMap()));
@@ -148,7 +149,6 @@ public class FirestoreToFirestoreTest {
       }
     }
   }
-
 
   // Note: Fully testing the pipeline logic with FirestoreIO requires integration tests
   // or a sophisticated mocking of FirestoreIO's builders and transforms, which is complex.
