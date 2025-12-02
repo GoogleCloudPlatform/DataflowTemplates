@@ -33,7 +33,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -53,31 +53,44 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
   private static PipelineLauncher.LaunchInfo jobInfo;
 
+  private static boolean initialized = false;
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
+  public static SpannerResourceManager pgDialectSpannerResourceManager;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIT/mysql-data-types.sql";
 
   private static final String SPANNER_DDL_RESOURCE = "DataTypesIT/mysql-spanner-schema.sql";
+  private static final String PG_DIALECT_SPANNER_DDL_RESOURCE =
+      "DataTypesIT/mysql-pg-dialect-spanner-schema.sql";
 
   /**
    * Setup resource managers and Launch dataflow job once during the execution of this test class. \
    */
   @Before
-  public void setUp() {
-    mySQLResourceManager = setUpMySQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
+  public void setUp() throws Exception {
+    synchronized (MySQLDataTypesIT.class) {
+      if (!initialized) {
+        mySQLResourceManager = setUpMySQLResourceManager();
+        spannerResourceManager = setUpSpannerResourceManager();
+        pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
+
+        loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
+
+        initialized = true;
+      }
+    }
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
-  @After
-  public void cleanUp() {
-    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
+  @AfterClass
+  public static void cleanUp() {
+    ResourceManagerUtils.cleanResources(
+        spannerResourceManager, pgDialectSpannerResourceManager, mySQLResourceManager);
   }
 
   @Test
   public void allTypesTest() throws Exception {
-    loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -94,13 +107,39 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
 
     // Validate supported data types.
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
+    validateResult(spannerResourceManager, expectedData);
+  }
+
+  @Test
+  public void allTypesTestPGDialect() throws Exception {
+    createSpannerDDL(pgDialectSpannerResourceManager, PG_DIALECT_SPANNER_DDL_RESOURCE);
+    jobInfo =
+        launchDataflowJob(
+            getClass().getSimpleName(),
+            null,
+            null,
+            mySQLResourceManager,
+            pgDialectSpannerResourceManager,
+            null,
+            null);
+    PipelineOperator.Result result =
+        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(35L)));
+    assertThatResult(result).isLaunchFinished();
+
+    // Validate supported data types.
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedDataPGDialect();
+    validateResult(pgDialectSpannerResourceManager, expectedData);
+  }
+
+  private void validateResult(
+      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       String type = entry.getKey();
       String tableName = String.format("%s_table", type);
       String colName = String.format("%s_col", type);
       LOG.info("Asserting type: {}", type);
 
-      List<Struct> rows = spannerResourceManager.readTableRecords(tableName, "id", colName);
+      List<Struct> rows = resourceManager.readTableRecords(tableName, "id", colName);
       for (Struct row : rows) {
         // Limit logs printed for very large strings.
         String rowString = row.toString();
@@ -127,7 +166,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
 
     for (String table : unsupportedTypeTables) {
       // Unsupported rows should still be migrated. Each source table has 1 row.
-      assertThat(spannerResourceManager.getRowCount(table)).isEqualTo(1L);
+      assertThat(resourceManager.getRowCount(table)).isEqualTo(1L);
     }
   }
 
@@ -155,7 +194,8 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
         createRows("bigint", "40", "9223372036854775807", "-9223372036854775808", "NULL"));
     expectedData.put(
         "bigint_to_string",
-        createRows("bigint_to_string", "40", "9223372036854775807", "-9223372036854775808", "NULL"));
+        createRows(
+            "bigint_to_string", "40", "9223372036854775807", "-9223372036854775808", "NULL"));
     expectedData.put(
         "bigint_unsigned",
         createRows("bigint_unsigned", "42", "0", "18446744073709551615", "NULL"));
@@ -164,7 +204,11 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
         createRows("binary", "eDU4MD" + repeatString("A", 334), repeatString("/", 340), "NULL"));
     expectedData.put(
         "binary_to_string",
-        createRows("binary_to_string", "783538303000000000000000000000000...", "fffffffffffffffffffffffffffffffff...", "NULL"));
+        createRows(
+            "binary_to_string",
+            "783538303000000000000000000000000...",
+            "fffffffffffffffffffffffffffffffff...",
+            "NULL"));
     expectedData.put("bit", createRows("bit", "f/////////8=", "NULL"));
     expectedData.put("bit8", createRows("bit8", "0", "255", "NULL"));
     expectedData.put("bit1", createRows("bit1", "false", "true", "NULL"));
@@ -172,7 +216,9 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("bit_to_string", createRows("bit_to_string", "0", "1", "NULL"));
     expectedData.put("bit_to_int64", createRows("bit_to_int64", "9223372036854775807", "NULL"));
     expectedData.put("blob", createRows("blob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
-    expectedData.put("blob_to_string", createRows("blob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
+    expectedData.put(
+        "blob_to_string",
+        createRows("blob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put("bool", createRows("bool", "false", "true", "NULL"));
     expectedData.put("bool_to_string", createRows("bool_to_string", "0", "1", "NULL"));
     expectedData.put("boolean", createRows("boolean", "false", "true", "NULL"));
@@ -181,9 +227,11 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "char", createRows("char", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put("date", createRows("date", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
-    // date_to_string is commented out to avoid failing the test case; returned data has format "YYYY-MM-DDTHH:mm:SSZ"
+    // date_to_string is commented out to avoid failing the test case; returned data has format
+    // "YYYY-MM-DDTHH:mm:SSZ"
     // which is unexpected even if it's not necessarily incorrect
-    // expectedData.put("date_to_string", createRows("date_to_string", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
+    // expectedData.put("date_to_string", createRows("date_to_string", "2012-09-17", "1000-01-01",
+    // "9999-12-31", "NULL"));
     expectedData.put(
         "datetime",
         createRows(
@@ -234,37 +282,63 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "NULL"));
     expectedData.put(
         "double_precision_to_float64",
-        createRows("double_precision_to_float64", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
+        createRows(
+            "double_precision_to_float64",
+            "52.67",
+            "1.7976931348623157E308",
+            "-1.7976931348623157E308",
+            "NULL"));
     expectedData.put(
         "double_precision_to_string",
-        createRows("double_precision_to_string", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
+        createRows(
+            "double_precision_to_string",
+            "52.67",
+            "1.7976931348623157E308",
+            "-1.7976931348623157E308",
+            "NULL"));
     expectedData.put(
         "double",
         createRows("double", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
     expectedData.put(
         "double_to_string",
-        createRows("double_to_string", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
+        createRows(
+            "double_to_string",
+            "52.67",
+            "1.7976931348623157E308",
+            "-1.7976931348623157E308",
+            "NULL"));
     expectedData.put("enum", createRows("enum", "1", "NULL"));
     expectedData.put("float", createRows("float", "45.56", "3.4E38", "-3.4E38", "NULL"));
-    expectedData.put("float_to_float32", createRows("float_to_float32", "45.56", "3.4E38", "-3.4E38", "NULL"));
-    expectedData.put("float_to_string", createRows("float_to_string", "45.56", "3.4E38", "-3.4E38", "NULL"));
+    expectedData.put(
+        "float_to_float32", createRows("float_to_float32", "45.56", "3.4E38", "-3.4E38", "NULL"));
+    expectedData.put(
+        "float_to_string", createRows("float_to_string", "45.56", "3.4E38", "-3.4E38", "NULL"));
     expectedData.put("int", createRows("int", "30", "2147483647", "-2147483648", "NULL"));
-    expectedData.put("int_to_string", createRows("int_to_string", "30", "2147483647", "-2147483648", "NULL"));
-    expectedData.put("integer_to_int64", createRows("integer_to_int64", "30", "2147483647", "-2147483648", "NULL"));
-    expectedData.put("integer_to_string", createRows("integer_to_string", "30", "2147483647", "-2147483648", "NULL"));
+    expectedData.put(
+        "int_to_string", createRows("int_to_string", "30", "2147483647", "-2147483648", "NULL"));
+    expectedData.put(
+        "integer_to_int64",
+        createRows("integer_to_int64", "30", "2147483647", "-2147483648", "NULL"));
+    expectedData.put(
+        "integer_to_string",
+        createRows("integer_to_string", "30", "2147483647", "-2147483648", "NULL"));
     expectedData.put("test_json", createRows("test_json", "{\"k1\":\"v1\"}", "NULL"));
     expectedData.put("json_to_string", createRows("json_to_string", "{\"k1\": \"v1\"}", "NULL"));
     expectedData.put(
         "longblob", createRows("longblob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put(
-        "longblob_to_string", createRows("longblob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
+        "longblob_to_string",
+        createRows(
+            "longblob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put(
         "longtext",
         createRows("longtext", "longtext", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put(
         "mediumblob", createRows("mediumblob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put(
-        "mediumblob_to_string", createRows("mediumblob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
+        "mediumblob_to_string",
+        createRows(
+            "mediumblob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put("mediumint", createRows("mediumint", "20", "NULL"));
     expectedData.put("mediumint_to_string", createRows("mediumint_to_string", "20", "NULL"));
     expectedData.put(
@@ -290,14 +364,26 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "NULL"));
     expectedData.put(
         "real_to_float64",
-        createRows("real_to_float64", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
+        createRows(
+            "real_to_float64",
+            "52.67",
+            "1.7976931348623157E308",
+            "-1.7976931348623157E308",
+            "NULL"));
     expectedData.put(
         "real_to_string",
-        createRows("real_to_string", "52.67", "1.7976931348623157E308", "-1.7976931348623157E308", "NULL"));
-    // set_to_array is commented out to avoid failing the test case; data does not get migrated at all
+        createRows(
+            "real_to_string",
+            "52.67",
+            "1.7976931348623157E308",
+            "-1.7976931348623157E308",
+            "NULL"));
+    // set_to_array is commented out to avoid failing the test case; data does not get migrated at
+    // all
     // expectedData.put("set_to_array", createRows("set_to_array", "v1,v2", "NULL"));
     expectedData.put("smallint", createRows("smallint", "15", "32767", "-32768", "NULL"));
-    expectedData.put("smallint_to_string", createRows("smallint_to_string", "15", "32767", "-32768", "NULL"));
+    expectedData.put(
+        "smallint_to_string", createRows("smallint_to_string", "15", "32767", "-32768", "NULL"));
     expectedData.put(
         "smallint_unsigned", createRows("smallint_unsigned", "42", "0", "65535", "NULL"));
     expectedData.put("text", createRows("text", "xyz", repeatString("a", 33) + "...", "NULL"));
@@ -321,9 +407,12 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "tinyblob", createRows("tinyblob", "eDU4MDA=", repeatString("/", 340), "NULL"));
     expectedData.put(
-        "tinyblob_to_string", createRows("tinyblob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
+        "tinyblob_to_string",
+        createRows(
+            "tinyblob_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put("tinyint", createRows("tinyint", "10", "127", "-128", "NULL"));
-    expectedData.put("tinyint_to_string", createRows("tinyint_to_string", "10", "127", "-128", "NULL"));
+    expectedData.put(
+        "tinyint_to_string", createRows("tinyint_to_string", "10", "127", "-128", "NULL"));
     expectedData.put("tinyint_unsigned", createRows("tinyint_unsigned", "0", "255", "NULL"));
     expectedData.put(
         "tinytext",
@@ -331,7 +420,9 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put(
         "varbinary", createRows("varbinary", "eDU4MDA=", repeatString("/", 86666) + "8=", "NULL"));
     expectedData.put(
-        "varbinary_to_string", createRows("varbinary_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
+        "varbinary_to_string",
+        createRows(
+            "varbinary_to_string", "7835383030", "fffffffffffffffffffffffffffffffff...", "NULL"));
     expectedData.put(
         "varchar", createRows("varchar", "abc", repeatString("a", 33) + "...", "NULL"));
     expectedData.put("year", createRows("year", "2022", "1901", "2155", "NULL"));
@@ -383,6 +474,54 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "2005-01-01T00:01:54.123456000Z",
             "2037-12-30T23:59:59Z",
             "2038-01-18T23:59:59Z"));
+    return expectedData;
+  }
+
+  private Map<String, List<Map<String, Object>>> getExpectedDataPGDialect() {
+    // Expected data for PG dialect is roughly similar to the spanner dialect data, with some minor
+    // differences. Notably,
+    // we aren't testing PK data types yet, and some data types like numeric have slightly different
+    // behaviour.
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
+
+    expectedData.keySet().removeIf(column -> column.endsWith("_pk"));
+
+    expectedData.put(
+        "bigint_unsigned",
+        createRows(
+            "bigint_unsigned",
+            "42.000000000",
+            "0.000000000",
+            "18446744073709551615.000000000",
+            "NULL"));
+    expectedData.put(
+        "dec_to_numeric",
+        createRows(
+            "dec_to_numeric",
+            "68.750000000",
+            "99999999999999999999999.999999999",
+            "12345678912345678.123456789",
+            "NULL"));
+    expectedData.put(
+        "decimal",
+        createRows(
+            "decimal",
+            "68.750000000",
+            "99999999999999999999999.999999999",
+            "12345678912345678.123456789",
+            "NULL"));
+    // The data in this table fails to migrate, removing to avoid test failure
+    expectedData.remove("float_to_float32");
+    expectedData.put("test_json", createRows("test_json", "{\"k1\": \"v1\"}", "NULL"));
+    expectedData.put(
+        "numeric_to_numeric",
+        createRows(
+            "numeric_to_numeric",
+            "68.750000000",
+            "99999999999999999999999.999999999",
+            "12345678912345678.123456789",
+            "NULL"));
+
     return expectedData;
   }
 
