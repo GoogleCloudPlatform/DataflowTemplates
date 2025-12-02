@@ -99,6 +99,8 @@ public class DeadLetterQueueTest {
     assertTrue(dlq.getDlqTransform() instanceof WriteDLQ);
 
     assertTrue(((WriteDLQ) dlq.getDlqTransform()).dlqDirectory().endsWith("testDir/"));
+
+    assertNotNull(((WriteDLQ) dlq.getDlqTransform()).fileNamePrefix());
   }
 
   @Test
