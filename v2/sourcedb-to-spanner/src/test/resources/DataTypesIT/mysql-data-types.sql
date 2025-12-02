@@ -152,6 +152,16 @@ CREATE TABLE `bit_table` (
     `bit_col` BIT(64) DEFAULT NULL
 );
 
+CREATE TABLE `bit8_table` (
+     `id` INT PRIMARY KEY,
+     `bit8_col` BIT(8) DEFAULT NULL
+);
+
+CREATE TABLE `bit1_table` (
+     `id` INT PRIMARY KEY,
+     `bit1_col` BIT(1) DEFAULT NULL
+);
+
 CREATE TABLE `boolean_table` (
     `id` INT PRIMARY KEY,
     `boolean_col` TINYINT(1) DEFAULT NULL
@@ -276,6 +286,8 @@ ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bit_table` MODIFY `id` INT AUTO_INCREMENT;
+ALTER TABLE `bit8_table` MODIFY `id` INT AUTO_INCREMENT;
+ALTER TABLE `bit1_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `blob_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bool_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `boolean_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -318,6 +330,8 @@ INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (184467440737
 INSERT INTO `binary_table` (`binary_col`) VALUES (x'7835383030000000000000000000000000000000');
 INSERT INTO `binary_table` (`binary_col`) VALUES (REPEAT(X'FF', 255));
 INSERT INTO `bit_table` (`bit_col`) VALUES (b'0111111111111111111111111111111111111111111111111111111111111111');
+INSERT INTO `bit8_table` (`bit8_col`) VALUES (b'0'), (b'11111111');
+INSERT INTO `bit1_table` (`bit1_col`) VALUES (b'0'), (b'1');
 INSERT INTO `blob_table` (`blob_col`) VALUES (X'7835383030');
 INSERT INTO `blob_table` (`blob_col`) VALUES (REPEAT(X'FF', 65535));
 INSERT INTO `bool_table` (`bool_col`) VALUES (0);
@@ -427,6 +441,8 @@ INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);
 INSERT INTO `binary_table` (`binary_col`) VALUES (NULL);
 INSERT INTO `bit_table` (`bit_col`) VALUES (NULL);
+INSERT INTO `bit8_table` (`bit8_col`) VALUES (NULL);
+INSERT INTO `bit1_table` (`bit1_col`) VALUES (NULL);
 INSERT INTO `blob_table` (`blob_col`) VALUES (NULL);
 INSERT INTO `bool_table` (`bool_col`) VALUES (NULL);
 INSERT INTO `boolean_table` (`boolean_col`) VALUES (NULL);
