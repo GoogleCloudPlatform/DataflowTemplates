@@ -277,6 +277,11 @@ CREATE TABLE IF NOT EXISTS bit_pk_table (
   bit_pk_col INT64 NOT NULL,
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS bit_1_pk_table (
+    id BOOL NOT NULL,
+    bit_1_pk_col BOOL NOT NULL,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS binary_pk_table (
   id BYTES(20) NOT NULL,
   binary_pk_col BYTES(20) NOT NULL,

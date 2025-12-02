@@ -245,6 +245,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("tiny_int_pk", createRows("tiny_int_pk", "-128", "0", "127"));
     expectedData.put("tiny_int_unsigned_pk", createRows("tiny_int_unsigned_pk", "0", "42", "255"));
     expectedData.put("bit_pk", createRows("bit_pk", "0", "42", "255"));
+    expectedData.put("bit_1_pk", createRows("bit_1_pk", "0", "1"));
     // The binary column is padded with 0s
     expectedData.put(
         "binary_pk",

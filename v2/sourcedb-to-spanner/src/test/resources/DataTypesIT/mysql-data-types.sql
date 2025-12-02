@@ -243,6 +243,11 @@ CREATE TABLE bit_pk_table (
     bit_pk_col BIT(8) NOT NULL
 );
 
+CREATE TABLE bit_1_pk_table (
+    id BIT(1) PRIMARY KEY,
+    bit_1_pk_col BIT(1) NOT NULL
+);
+
 CREATE TABLE binary_pk_table (
    id BINARY(20) PRIMARY KEY,
    binary_pk_col BINARY(20) NOT NULL
@@ -422,6 +427,7 @@ INSERT INTO `small_int_unsigned_pk_table` (`id`, `small_int_unsigned_pk_col`) VA
 INSERT INTO `tiny_int_pk_table` (`id`, `tiny_int_pk_col`) VALUES ('-128', '-128'), ('0', '0'), ('127', '127');
 INSERT INTO `tiny_int_unsigned_pk_table` (`id`, `tiny_int_unsigned_pk_col`) VALUES ('0', '0'), ('42', '42'), ('255', '255');
 INSERT INTO `bit_pk_table` (`id`, `bit_pk_col`) VALUES (b'0', b'0'), (b'101010', b'101010'), (b'11111111', b'11111111');
+INSERT INTO `bit_1_pk_table` (`id`, `bit_1_pk_col`) VALUES (b'0', b'0'), (b'1', b'1');
 INSERT INTO `binary_pk_table` (`id`, `binary_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
 INSERT INTO `varbinary_pk_table` (`id`, `varbinary_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
 INSERT INTO `tiny_blob_pk_table` (`id`, `tiny_blob_pk_col`) VALUES (FROM_BASE64('AA=='), FROM_BASE64('AA==')), (FROM_BASE64('gAAAAAAAAAA='), FROM_BASE64('gAAAAAAAAAA='));
