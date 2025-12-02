@@ -29,6 +29,8 @@ variable "dataflow_params" {
       sharding_custom_jar_path     = optional(string)
       sharding_custom_class_name   = optional(string)
       sharding_custom_parameters   = optional(string)
+      transformation_jar_path      = optional(string)
+      transformation_class_name    = optional(string)
       source_db_timezone_offset    = optional(string)
       dlq_gcs_pub_sub_subscription = optional(string)
       skip_directory_name          = optional(string)

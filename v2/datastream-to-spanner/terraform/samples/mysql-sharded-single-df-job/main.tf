@@ -29,9 +29,9 @@ resource "google_datastream_private_connection" "datastream_private_connection" 
 resource "google_datastream_connection_profile" "source_mysql" {
   count                 = length(var.shard_list)
   depends_on            = [google_project_service.enabled_apis]
-  display_name          = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.source_connection_profile_id}"
+  display_name          = "${local.migration_id}-${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.source_connection_profile_id}"
   location              = var.common_params.region
-  connection_profile_id = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.source_connection_profile_id}"
+  connection_profile_id = "${local.migration_id}-${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.source_connection_profile_id}"
 
   mysql_profile {
     hostname = var.shard_list[count.index].datastream_params.mysql_host
@@ -184,9 +184,9 @@ resource "google_datastream_stream" "mysql_to_gcs" {
     google_pubsub_subscription.datastream_subscription
   ]
   # Create the stream once the source and target profiles are created along with the subscription.
-  stream_id     = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
+  stream_id     = "${local.migration_id}-${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
   location      = var.common_params.region
-  display_name  = "${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
+  display_name  = "${local.migration_id}-${var.shard_list[count.index].shard_id != null ? var.shard_list[count.index].shard_id : random_pet.migration_id[count.index].id}-${var.shard_list[count.index].datastream_params.stream_id}"
   desired_state = "RUNNING"
   dynamic "backfill_all" {
     for_each = var.common_params.datastream_params.enable_backfill ? [1] : []
@@ -261,12 +261,13 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     google_project_service.enabled_apis, google_project_iam_member.live_migration_roles
   ] # Launch the template once the stream is created.
   provider                = google-beta
-  container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Cloud_Datastream_to_Spanner"
-
+  # container_spec_gcs_path = "gs://dataflow-templates-${var.common_params.region}/latest/flex/Cloud_Datastream_to_Spanner"
+  container_spec_gcs_path = "gs://ea-functional-tests/templates-aastha-2025-12-02/flex/Spanner_to_SourceDb "
   # Parameters from Dataflow Template
   parameters = {
     inputFileFormat                 = "avro"
     inputFilePattern                = "gs://replaced-by-pubsub-notification"
+    # sessionFilePath                 = "gs://ea-functional-tests/dev_s5_fos_lb_nodes/lb_nodes.session.json"
     sessionFilePath                 = var.common_params.dataflow_params.template_params.local_session_file_path != null ? "gs://${google_storage_bucket_object.session_file_object[0].bucket}/${google_storage_bucket_object.session_file_object[0].name}" : null
     instanceId                      = var.common_params.dataflow_params.template_params.spanner_instance_id
     databaseId                      = var.common_params.dataflow_params.template_params.spanner_database_id
@@ -275,6 +276,8 @@ resource "google_dataflow_flex_template_job" "live_migration_job" {
     gcsPubSubSubscription           = google_pubsub_subscription.datastream_subscription.id
     datastreamSourceType            = var.common_params.datastream_params.source_type
     shadowTablePrefix               = var.common_params.dataflow_params.template_params.shadow_table_prefix
+    shadowTableSpannerDatabaseId    = var.common_params.dataflow_params.template_params.shadow_table_spanner_db
+    shadowTableSpannerInstanceId    = var.common_params.dataflow_params.template_params.shadow_table_spanner_instance
     shouldCreateShadowTables        = tostring(var.common_params.dataflow_params.template_params.create_shadow_tables)
     rfcStartDateTime                = var.common_params.dataflow_params.template_params.rfc_start_date_time
     fileReadConcurrency             = tostring(var.common_params.dataflow_params.template_params.file_read_concurrency)
