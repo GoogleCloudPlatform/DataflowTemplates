@@ -75,7 +75,7 @@ public final class OracleChangeEventSequenceTest {
             .column("id")
             .int64()
             .endColumn()
-             .column("shadow_timestamp")
+            .column("shadow_timestamp")
             .int64()
             .endColumn()
             .column("scn")

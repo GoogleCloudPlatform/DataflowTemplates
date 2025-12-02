@@ -275,9 +275,7 @@ public class ShadowTableCreatorTest {
         shadowTableCreator.constructShadowTable(ddl, "MyTable", Dialect.GOOGLE_STANDARD_SQL);
 
     assertEquals(shadowTable.name(), "shadow_MyTable");
-    // Verify that the original PK column is preserved with the correct type.
     assertEquals(shadowTable.column("timestamp").type().getCode(), Type.Code.TIMESTAMP);
-    // Verify that the new metadata column is present with the new name and correct type.
     assertEquals(shadowTable.column("shadow_timestamp").type().getCode(), Type.Code.INT64);
   }
 }
