@@ -55,7 +55,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("scn");
     assertThat(columns, is(expectedColumns));
   }
@@ -82,7 +82,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("scn");
     assertThat(columns, is(expectedColumns));
     List<String> columnTypes =
@@ -127,7 +127,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("log_file");
     expectedColumns.add("log_position");
     assertThat(columns, is(expectedColumns));
@@ -155,7 +155,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("log_file");
     expectedColumns.add("log_position");
     assertThat(columns, is(expectedColumns));
@@ -202,7 +202,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("lsn");
     assertThat(columns, is(expectedColumns));
   }
@@ -229,7 +229,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("lsn");
     assertThat(columns, is(expectedColumns));
     List<String> columnTypes =
