@@ -706,6 +706,7 @@
         <module>datastream-to-sql</module>
         <module>elasticsearch-common</module>
         <module>file-format-conversion</module>
+        <module>firestore-to-firestore</module>
         <module>gcs-to-sourcedb</module>
         <module>googlecloud-to-elasticsearch</module>
         <module>googlecloud-to-googlecloud</module>

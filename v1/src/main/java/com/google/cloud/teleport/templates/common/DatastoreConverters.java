@@ -151,6 +151,15 @@ public class DatastoreConverters {
     ValueProvider<String> getFirestoreReadNamespace();
 
     void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
+
+    @TemplateParameter.Text(
+        order = 7,
+        optional = true,
+        description = "Database ID",
+        helpText = "The ID of the Firestore database that you want to read data from.")
+    ValueProvider<String> getFirestoreReadDatabaseId();
+
+    void setFirestoreReadDatabaseId(ValueProvider<String> firestoreReadDatabaseId);
   }
 
   /** Options for writing Datastore Entities. */
@@ -273,6 +282,15 @@ public class DatastoreConverters {
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
+
+    @TemplateParameter.Text(
+        order = 9,
+        optional = true,
+        description = "Database ID",
+        helpText = "The ID of the Firestore database to write entities to.")
+    ValueProvider<String> getFirestoreWriteDatabaseId();
+
+    void setFirestoreWriteDatabaseId(ValueProvider<String> firestoreWriteDatabaseId);
   }
 
   /** Options for deleting Datastore Entities. */
