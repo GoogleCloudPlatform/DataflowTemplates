@@ -73,7 +73,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
   private static final String TABLE1 = "AllDatatypeColumns";
   private static final String TABLE2 = "AllDatatypePkColumns1";
   private static final String TABLE3 = "AllDatatypePkColumns2";
-  private static final String TABLE4 = "PkWithNull";
+  private static final String TABLE4 = "SpannerPkWithNull";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbDatatypeIT/mysql-schema.sql";
 
