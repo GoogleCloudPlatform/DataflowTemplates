@@ -163,7 +163,16 @@ public class FuzzyCDCLoadGenerator {
     }
   }
 
-  /** Overloaded generateLoad to generate load on Spanner. */
+  /**
+   * Overloaded generateLoad to generate load on Spanner. Not re-using the generateLoad method of
+   * MySQL above because, the way we are handling connections are different between Spanner and
+   * JDBC. Spanner's databaseClient itself acts as a connection pool with active sessions maintained
+   * internally, whereas for JDBC, in the above method, we create and handle connections inside each
+   * thread. Secondly, we are using SQL queries to insert data into MySQL, whereas mutations to
+   * insert data into Spanner. Overall it would involve much more work to generify, create and
+   * implement interfaces to re-use code. Hence, we have chosen to overload the generateLoad method
+   * for Spanner with some code duplication.
+   */
   public int generateLoad(
       int totalRows,
       int burstIterations,

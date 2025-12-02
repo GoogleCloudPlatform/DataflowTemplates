@@ -31,7 +31,6 @@ import com.google.common.io.Resources;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.PipelineUtils;
@@ -149,8 +148,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
   }
 
   @Test
-  public void dataflowWorkerFailureTest()
-      throws IOException, ExecutionException, InterruptedException {
+  public void reverseReplicationCrossDbTxnCdcTest() throws IOException, InterruptedException {
 
     assertThatPipeline(jobInfo).isRunning();
 
