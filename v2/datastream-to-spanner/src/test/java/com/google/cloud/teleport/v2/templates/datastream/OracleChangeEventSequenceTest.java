@@ -75,7 +75,7 @@ public final class OracleChangeEventSequenceTest {
             .column("id")
             .int64()
             .endColumn()
-            .column("timestamp")
+             .column("shadow_timestamp")
             .int64()
             .endColumn()
             .column("scn")
@@ -92,7 +92,7 @@ public final class OracleChangeEventSequenceTest {
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
     when(mockRow.getLong("id")).thenReturn(1L);
-    when(mockRow.getLong("timestamp")).thenReturn(1615159728L);
+    when(mockRow.getLong("shadow_timestamp")).thenReturn(1615159728L);
     when(mockRow.getLong("scn")).thenReturn(100L);
 
     ResultSet mockResultSet = mock(ResultSet.class);

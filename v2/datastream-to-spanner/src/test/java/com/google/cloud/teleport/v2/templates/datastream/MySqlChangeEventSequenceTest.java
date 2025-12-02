@@ -111,7 +111,7 @@ public final class MySqlChangeEventSequenceTest {
             .column("id")
             .int64()
             .endColumn()
-            .column("timestamp")
+            .column("shadow_timestamp")
             .int64()
             .endColumn()
             .column("log_file")
@@ -131,7 +131,7 @@ public final class MySqlChangeEventSequenceTest {
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
     when(mockRow.getLong("id")).thenReturn(1L);
-    when(mockRow.getLong("timestamp")).thenReturn(1615159728L); // Updated to match new column
+    when(mockRow.getLong("shadow_timestamp")).thenReturn(1615159728L); // Updated to match new column
     when(mockRow.getString("log_file")).thenReturn("file1.log");
     when(mockRow.getLong("log_position")).thenReturn(2L); // Updated to match new column
 
