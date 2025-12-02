@@ -16,6 +16,7 @@
 package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
 import static com.google.common.truth.Truth.assertThat;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -26,6 +27,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Struct;
 import com.google.common.collect.ImmutableList;
 import java.sql.Connection;
@@ -63,6 +65,7 @@ public class FuzzyCDCLoadGeneratorTest {
   @Mock private PreparedStatement mockPreparedStatement;
   @Mock private Statement mockStatement;
   @Mock private ResultSet mockResultSet;
+  @Mock private DatabaseClient mockDatabaseClient;
   @Mock private Random mockRandom;
 
   private FuzzyCDCLoadGenerator cdcLoadGenerator;
@@ -158,6 +161,65 @@ public class FuzzyCDCLoadGeneratorTest {
 
       assertThat(e).hasMessageThat().contains("Task execution failed");
       assertThat(e).hasCauseThat().isInstanceOf(RuntimeException.class);
+    }
+  }
+
+  @Test
+  public void testGenerateLoad_updatePath_Spanner() throws SQLException {
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
+    // Control random flow: 0.74 < 0.75, so choose update path
+    when(mockRandom.nextDouble()).thenReturn(0.74);
+    when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID and column selection
+
+    try (MockedStatic<Executors> mockedExecutors = Mockito.mockStatic(Executors.class)) {
+      mockSynchronousExecutor(mockedExecutors);
+      when(spannerResourceManager.getDatabaseClient()).thenReturn(mockDatabaseClient);
+
+      cdcLoadGenerator.generateLoad(1, 1, 0.75, spannerResourceManager);
+
+      // Verify write is called on mockDatabaseClient
+      verify(mockDatabaseClient, times(2)).write(any());
+    }
+  }
+
+  @Test
+  public void testGenerateLoad_deleteAndReinsertPath_Spanner() throws SQLException {
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator(mockRandom);
+    // Control random flow: 0.76 > 0.75, so choose delete and reinsert path
+    when(mockRandom.nextDouble()).thenReturn(0.76);
+    when(mockRandom.nextInt(anyInt())).thenReturn(0); // for unique ID and column selection
+
+    try (MockedStatic<Executors> mockedExecutors = Mockito.mockStatic(Executors.class)) {
+      mockSynchronousExecutor(mockedExecutors);
+      when(spannerResourceManager.getDatabaseClient()).thenReturn(mockDatabaseClient);
+
+      cdcLoadGenerator.generateLoad(1, 1, 0.75, spannerResourceManager);
+
+      verify(mockDatabaseClient, times(3)).write(any());
+    }
+  }
+
+  @Test
+  public void testGenerateLoad_handlesSpannerExceptionInThread() {
+    cdcLoadGenerator = new FuzzyCDCLoadGenerator();
+    RuntimeException spannerException = new RuntimeException("Spanner write failed");
+
+    try (MockedStatic<Executors> mockedExecutors = Mockito.mockStatic(Executors.class);
+        MockedStatic<User> mockedUserStatic = Mockito.mockStatic(User.class)) {
+      mockSynchronousExecutor(mockedExecutors);
+      when(spannerResourceManager.getDatabaseClient()).thenReturn(mockDatabaseClient);
+      User mockUser = mock(User.class);
+      mockedUserStatic.when(User::generateRandom).thenReturn(mockUser);
+      mockedUserStatic.when(() -> mockUser.insert(mockDatabaseClient)).thenThrow(spannerException);
+
+      RuntimeException e =
+          assertThrows(
+              RuntimeException.class,
+              () -> cdcLoadGenerator.generateLoad(1, 1, 0.75, spannerResourceManager));
+
+      assertNotNull(e.getCause());
+      assertThat(e.getCause()).isInstanceOf(RuntimeException.class);
+      assertThat(e.getCause().getMessage()).contains("Spanner write failed");
     }
   }
 

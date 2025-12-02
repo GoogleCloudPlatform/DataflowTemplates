@@ -1,0 +1,492 @@
+{
+  "SessionName": "NewSession",
+  "EditorName": "",
+  "DatabaseType": "mysql",
+  "DatabaseName": "cdc_ordering_ft",
+  "Dialect": "google_standard_sql",
+  "Notes": null,
+  "Tags": null,
+  "SpSchema": {
+    "t1": {
+      "Name": "Users",
+      "ColIds": [
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8"
+      ],
+      "ShardIdColumn": "",
+      "ColDefs": {
+        "c2": {
+          "Name": "id",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": true,
+          "Comment": "From: id int(10)",
+          "Id": "c2",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c3": {
+          "Name": "first_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: first_name varchar(200)",
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c4": {
+          "Name": "last_name",
+          "T": {
+            "Name": "STRING",
+            "Len": 200,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: last_name varchar(200)",
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c5": {
+          "Name": "age",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: age int(10)",
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c6": {
+          "Name": "status",
+          "T": {
+            "Name": "BOOL",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: status tinyint(1)",
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c7": {
+          "Name": "col1",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: col1 bigint(19)",
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        },
+        "c8": {
+          "Name": "col2",
+          "T": {
+            "Name": "INT64",
+            "Len": 0,
+            "IsArray": false
+          },
+          "NotNull": false,
+          "Comment": "From: col2 bigint(19)",
+          "Id": "c8",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          },
+          "Opts": null
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c2",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "Indexes": null,
+      "ParentTable": {
+        "Id": "",
+        "OnDelete": "",
+        "InterleaveType": ""
+      },
+      "CheckConstraints": null,
+      "Comment": "Spanner schema for source table Users",
+      "Id": "t1"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "Users",
+      "Schema": "cdc_ordering_ft",
+      "ColIds": [
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8"
+      ],
+      "ColDefs": {
+        "c2": {
+          "Name": "id",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": true,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c2",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c3": {
+          "Name": "first_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c3",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c4": {
+          "Name": "last_name",
+          "Type": {
+            "Name": "varchar",
+            "Mods": [
+              200
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c4",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c5": {
+          "Name": "age",
+          "Type": {
+            "Name": "int",
+            "Mods": [
+              10
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c5",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c6": {
+          "Name": "status",
+          "Type": {
+            "Name": "tinyint",
+            "Mods": [
+              1
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c6",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c7": {
+          "Name": "col1",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c7",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        },
+        "c8": {
+          "Name": "col2",
+          "Type": {
+            "Name": "bigint",
+            "Mods": [
+              19
+            ],
+            "ArrayBounds": null
+          },
+          "NotNull": false,
+          "Ignored": {
+            "Check": false,
+            "Identity": false,
+            "Default": false,
+            "Exclusion": false,
+            "ForeignKey": false,
+            "AutoIncrement": false
+          },
+          "Id": "c8",
+          "AutoGen": {
+            "Name": "",
+            "GenerationType": ""
+          },
+          "DefaultValue": {
+            "IsPresent": false,
+            "Value": {
+              "ExpressionId": "",
+              "Statement": ""
+            }
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c2",
+          "Desc": false,
+          "Order": 1
+        }
+      ],
+      "ForeignKeys": null,
+      "CheckConstraints": null,
+      "Indexes": null,
+      "Id": "t1"
+    }
+  },
+  "SchemaIssues": {
+    "t1": {
+      "ColumnLevelIssues": {
+        "c2": [
+          14
+        ],
+        "c5": [
+          14
+        ]
+      },
+      "TableLevelIssues": null
+    }
+  },
+  "InvalidCheckExp": null,
+  "ToSpanner": {
+    "Users": {
+      "Name": "Users",
+      "Cols": {
+        "age": "age",
+        "col1": "col1",
+        "col2": "col2",
+        "first_name": "first_name",
+        "id": "id",
+        "last_name": "last_name",
+        "status": "status"
+      }
+    }
+  },
+  "Location": {},
+  "TimezoneOffset": "+00:00",
+  "SpDialect": "google_standard_sql",
+  "UniquePKey": {},
+  "Rules": [],
+  "IsSharded": false,
+  "SpRegion": "",
+  "ResourceValidation": false,
+  "UI": false,
+  "SpSequences": {},
+  "SrcSequences": {},
+  "SpProjectId": "test-project",
+  "SpInstanceId": "test-instance",
+  "Source": "mysql"
+}
