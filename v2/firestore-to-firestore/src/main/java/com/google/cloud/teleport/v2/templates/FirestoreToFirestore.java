@@ -43,14 +43,14 @@ import org.joda.time.Instant;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-      "The Firestore to Firestore template is a batch pipeline that reads documents from a<a"
-          + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-          + " them to another Firestore database.",
-      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-          + " written to the destination database.\n",
-      "Any errors that occur during operation are recorded in error queues. The error"
-          + " queue is a Cloud Storage folder which stores all the Datastream events that had"
-          + " encountered errors."
+        "The Firestore to Firestore template is a batch pipeline that reads documents from a<a"
+            + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+            + " them to another Firestore database.",
+        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+            + " written to the destination database.\n",
+        "Any errors that occur during operation are recorded in error queues. The error"
+            + " queue is a Cloud Storage folder which stores all the Datastream events that had"
+            + " encountered errors."
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class,
@@ -65,62 +65,11 @@ public class FirestoreToFirestore {
   /**
    * Options supported by the pipeline.
    *
-   * <p>Inherits standard configuration options.
+   * <p>Inherits standard Firestore configuration options.
    */
   public interface Options
       extends DatastoreReadOptions, DatastoreWriteOptions, DataflowPipelineOptions {
 
-    // String getSourceProjectId();
-    //
-    // void setSourceProjectId(String value);
-    //
-    // @TemplateParameter.Text(
-    //     groupName = "Source",
-    //     order = 8,
-    //     description = "Database ID",
-    //     helpText = "The database to read from.",
-    //     example = "(default)")
-    // @Default.String("(default)")
-    // String getSourceDatabaseId();
-    //
-    // void setSourceDatabaseId(String value);
-    //
-    // @TemplateParameter.Text(
-    //     groupName = "Destination",
-    //     order = 8,
-    //     description = "Database ID",
-    //     helpText = "The database to write to.",
-    //     example = "(default)")
-    // @Default.String("(default)")
-    // String getDestinationDatabaseId();
-    //
-    // void setDestinationDatabaseId(String value);
-    //
-    // @TemplateParameter.Text(
-    //     groupName = "Destination",
-    //     order = 9,
-    //     description = "Database collection filter (optional)",
-    //     helpText =
-    //         "If specified, only replicate this collection. If not specified, replicate all
-    // collections.",
-    //     example = "my-collection",
-    //     optional = true)
-    // String getDatabaseCollection();
-
-    //
-    // Long getPartitionCount();
-    //
-    // void setPartitionCount(Long value);
-    //
-    // @TemplateParameter.Integer(
-    //     order = 11,
-    //     optional = true,
-    //     description = "Batch size",
-    //     helpText = "The batch size for writing to Database.")
-    // @Default.Integer(500)
-    // Integer getBatchSize();
-    //
-    // void setBatchSize(Integer value);
   }
 
   public static void main(String[] args) {
@@ -191,13 +140,13 @@ public class FirestoreToFirestore {
         partitionedQueries
             // TODO: pacoavila - Include the project / database here.
             .apply(
-            "ExecutePartitions",
-            FirestoreIO.v1()
-                .read()
-                .runQuery()
-                .withReadTime(readTime)
-                .withRpcQosOptions(rpcQosOptions)
-                .build());
+                "ExecutePartitions",
+                FirestoreIO.v1()
+                    .read()
+                    .runQuery()
+                    .withReadTime(readTime)
+                    .withRpcQosOptions(rpcQosOptions)
+                    .build());
 
     // 5. Process the documents from the responses
     PCollection<Document> documents =

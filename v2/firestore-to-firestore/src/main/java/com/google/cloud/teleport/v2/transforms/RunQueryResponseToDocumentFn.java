@@ -6,7 +6,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 
 
 /**
- * DoFn to extract Documents from RunQueryResponse
+ * DoFn to extract Documents from a RunQueryResponse.
  */
 public class RunQueryResponseToDocumentFn extends DoFn<RunQueryResponse, Document> {
   @ProcessElement
