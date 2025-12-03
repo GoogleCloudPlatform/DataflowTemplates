@@ -20,7 +20,6 @@ import sys
 from pathlib import Path
 
 import yaml
-import textwrap
 
 JAVA_TYPE_BY_YAML_TYPE = {
     'text': 'String',
@@ -67,7 +66,18 @@ def run_mvn_spotless():
         return e
 
 def generate_java_interface(yaml_path, java_path):
-    """Generates a Java interface file from a YAML blueprint."""
+    """Generates a Java interface file from a YAML template.
+
+    This function reads a YAML file that defines a Dataflow template, including
+    its metadata and parameters. It then uses a Java template file (java.tmpl)
+    to generate a corresponding Java interface file with the appropriate
+    annotations for a Dataflow Flex Template.
+
+    Args:
+        yaml_path (pathlib.Path): The path to the input YAML template file.
+        java_path (pathlib.Path): The path where the output Java interface file
+            will be written.
+    """
 
     # Read the YAML file and do some replacements
     with open(yaml_path, 'r') as f:
@@ -151,7 +161,7 @@ def generate_java_interface(yaml_path, java_path):
         template_info_description=description,
         template_info_flex_container_name=template_info.get('flex_container_name', ''),
         template_info_yamlTemplateFile=template_info.get('yamlTemplateFile', ''),
-        template_info_files_to_copy=template_info.get('filesToCopy', {}).strip(),
+        template_info_files_to_copy=template_info.get('filesToCopy', '').strip(),
         template_info_documentation=template_info.get('documentation', '').strip(),
         template_info_contactInformation=template_info.get('contactInformation', ''),
         template_info_yaml_template_file=yaml_path.name,
