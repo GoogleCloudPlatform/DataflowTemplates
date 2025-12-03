@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS bit_to_int64_table (
 
 CREATE TABLE IF NOT EXISTS bit_to_string_table (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  bit_to_string_col BIT
+  bit_to_string_col BIT(16)
 );
 
 CREATE TABLE IF NOT EXISTS bool_to_string_table (
@@ -518,8 +518,7 @@ INSERT INTO `bit8_table` (`bit8_col`) VALUES (b'0'), (b'11111111');
 INSERT INTO `bit1_table` (`bit1_col`) VALUES (b'0'), (b'1');
 INSERT INTO `bit_to_bool_table` (`bit_to_bool_col`) VALUES (b'0');
 INSERT INTO `bit_to_bool_table` (`bit_to_bool_col`) VALUES (b'1');
-INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VALUES (b'0');
-INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VALUES (b'1');
+INSERT INTO `bit_to_string_table` (`bit_to_string_col`) VALUES (b'0111111111111111');
 INSERT INTO `bit_to_int64_table` (`bit_to_int64_col`) VALUES (b'0111111111111111111111111111111111111111111111111111111111111111');
 INSERT INTO `blob_table` (`blob_col`) VALUES (X'7835383030');
 INSERT INTO `blob_table` (`blob_col`) VALUES (REPEAT(X'FF', 65535));

@@ -34,6 +34,18 @@ CREATE TABLE IF NOT EXISTS bit_table (
   PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS bit8_table (
+  id INT8 NOT NULL,
+  bit8_col INT8,
+  PRIMARY KEY(id)
+);
+
+CREATE TABLE IF NOT EXISTS bit1_table (
+  id INT8 NOT NULL,
+  bit1_col BOOL,
+  PRIMARY KEY(id)
+);
+
 CREATE TABLE IF NOT EXISTS bit_to_bool_table (
   id INT8 NOT NULL,
   bit_to_bool_col BOOL,
