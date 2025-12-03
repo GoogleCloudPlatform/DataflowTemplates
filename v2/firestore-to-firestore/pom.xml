@@ -29,7 +29,7 @@
   <artifactId>firestore-to-firestore</artifactId>
 
   <description>
-    Stream Data from One Firestore Database to Another
+    Copy Data from One Firestore Database to Another
   </description>
 
   <dependencies>
