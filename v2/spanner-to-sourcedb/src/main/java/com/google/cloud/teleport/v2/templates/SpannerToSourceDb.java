@@ -580,7 +580,6 @@ public class SpannerToSourceDb {
     }
 
     String workerMachineType = pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
-    LOG.info("workerMachineType: " + workerMachineType);
     DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
 
 
