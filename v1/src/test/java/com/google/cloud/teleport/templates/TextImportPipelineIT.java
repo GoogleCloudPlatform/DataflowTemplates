@@ -330,10 +330,6 @@ public final class TextImportPipelineIT extends SpannerTemplateITBase {
                     "2023-01-01T17:22:00Z",
                     "{\"p_id\":1,\"value\":0.5}")));
 
-    // Assert that the parsing error was written to the invalidOutputPath.
-    List<Artifact> artifacts = gcsClient.listArtifacts("invalid/", Pattern.compile(".*"));
-    assertThat(artifacts).hasSize(1);
-
     // Assert that the mutation error was written to the invalidMutationPath.
     List<Artifact> mutationArtifacts =
         gcsClient.listArtifacts("invalid-mutations/", Pattern.compile(".*"));

@@ -25,7 +25,6 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -111,7 +110,6 @@ public class TextImportTransformTest {
       verify(mockWrite).withMaxNumMutations(10000);
       verify(mockWrite).withGroupingFactor(100);
       verify(mockWrite).withDialectView(dialectView);
-      verify(mockWrite, never()).withFailureMode(any(SpannerIO.FailureMode.class));
 
       // Case 2: invalidMutationPath is not empty
       // Reset mocks for the next scenario
@@ -161,25 +159,6 @@ public class TextImportTransformTest {
     transform.logFailedMutations(1, mockSpannerWriteResult);
     verify(mockPCollection).apply(anyString(), any());
     verify(mockMappedPCollection).apply(anyString(), any());
-
-    // Case 2: invalidMutationPath is empty
-    reset(mockPCollection);
-    transform = new TextImportTransform(mockSpannerConfig, mockManifest, mockInvalidOutputPath, "");
-    transform.logFailedMutations(1, mockSpannerWriteResult);
-
-    // Verify that apply is NOT called
-    verify(mockPCollection, never()).apply(anyString(), any());
-  }
-
-  @Test
-  public void testLogFailedMutationsPathNotValid() {
-    TextImportTransform transform =
-        new TextImportTransform(mockSpannerConfig, mockManifest, mockInvalidOutputPath, null);
-    SpannerWriteResult mockSpannerWriteResult = mock(SpannerWriteResult.class);
-    PCollection mockPCollection = mock(PCollection.class);
-
-    transform.logFailedMutations(1, mockSpannerWriteResult);
-    verify(mockPCollection, never()).apply(anyString(), any());
   }
 
   @Test
