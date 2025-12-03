@@ -150,6 +150,10 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
+            .withAdditionalMavenProfile("failureInjectionTest")
+            .addParameter(
+                "failureInjectionParameter",
+                "{\"policyType\":\"InitialLimitedDurationDelayInjectionPolicy\"}")
             .addEnvironmentVariable("numWorkers", NUM_WORKERS)
             .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 
