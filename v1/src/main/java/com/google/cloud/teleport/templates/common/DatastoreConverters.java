@@ -159,7 +159,28 @@ public class DatastoreConverters {
         helpText = "The ID of the Firestore database that you want to read data from.")
     ValueProvider<String> getFirestoreReadDatabaseId();
 
-    void setFirestoreReadDatabaseId(ValueProvider<String> firestoreReadDatabaseId);
+    void setFirestoreReadDatabaseId(ValueProvider<String> firestoreReadCollection);
+
+    @TemplateParameter.Text(
+        order = 8,
+        optional = true,
+        regexes = {"^[0-9A-Za-z._-]{0,100}$"},
+        description = "Collection",
+        helpText =
+            "The collection of the requested entities.")
+    ValueProvider<String> getFirestoreReadCollection();
+
+    void setFirestoreReadCollection(ValueProvider<String> firestoreReadCollection);
+
+    @TemplateParameter.DateTime(
+        order = 9,
+        optional = true,
+        description = "Read Time",
+        helpText = "The read time of the Firestore read operations.")
+    @Default.String("")
+    ValueProvider<String> getFirestoreReadTime();
+
+    void setFirestoreReadTime(ValueProvider<String> firestoreReadTime);
   }
 
   /** Options for writing Datastore Entities. */

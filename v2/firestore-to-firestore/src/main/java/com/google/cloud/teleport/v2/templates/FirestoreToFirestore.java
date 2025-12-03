@@ -19,13 +19,14 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
 import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreWriteOptions;
+import com.google.cloud.teleport.v2.transforms.PrepareWritesFn;
+import com.google.cloud.teleport.v2.transforms.RunQueryResponseToDocumentFn;
 import com.google.firestore.v1.Document;
 import com.google.firestore.v1.DocumentRootName;
 import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.RunQueryRequest;
 import com.google.firestore.v1.RunQueryResponse;
 import com.google.firestore.v1.StructuredQuery;
-import com.google.firestore.v1.StructuredQuery.CollectionSelector;
 import com.google.firestore.v1.Write;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -33,7 +34,6 @@ import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
-import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Instant;
@@ -42,23 +42,24 @@ import org.joda.time.Instant;
     name = "Cloud_Firestore_to_Firestore",
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
-    // TODO: pacoavila - update this.
     description = {
-      "The Firestore to Firestore template is a batch pipeline that reads <a"
-          + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> documents from a"
-          + " Firestore database and writes them to a Firestore with MongoDB compatibility database. It is intended for data"
-          + " migration from Firestore Standard to Firestore with MongoDB compatibility.\n",
-      "Data consistency is guaranteed only at the end of migration when all data has been written"
-          + " to the destination database.\n",
-      "The pipeline by default processes backfill events first with batch write, which is"
-          + " optimized for performance, followed by cdc events. This is configurable via setting"
-          + " `processBackfillFirst` to false to process backfill and cdc events together.\n",
+      "The Firestore to Firestore template is a batch pipeline that reads documents from a<a"
+          + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+          + " them to another Firestore database.",
+      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+          + " written to the destination database.\n",
       "Any errors that occur during operation are recorded in error queues. The error"
           + " queue is a Cloud Storage folder which stores all the Datastream events that had"
           + " encountered errors."
     },
     flexContainerName = "firestore-to-firestore",
-    optionsClass = FirestoreToFirestore.Options.class)
+    optionsClass = FirestoreToFirestore.Options.class,
+    skipOptions = {
+        "firestoreReadGqlQuery",
+        "datastoreReadGqlQuery",
+        "datastoreReadProjectId",
+        "datastoreWriteProjectId"
+    })
 public class FirestoreToFirestore {
 
   /**
@@ -138,8 +139,7 @@ public class FirestoreToFirestore {
             ? "(default)"
             : options.getFirestoreWriteProjectId().get();
 
-    // TODO:pacoavila - dedicated param.
-    String collectionId = options.getFirestoreWriteEntityKind().get();
+    String collectionId = options.getFirestoreReadCollection().get();
     long partitionCount =
         options.getFirestoreHintNumWorkers() != null
             ? options.getFirestoreHintNumWorkers().get()
@@ -153,7 +153,8 @@ public class FirestoreToFirestore {
     // 1. Define the base query to be partitioned
     StructuredQuery baseQuery =
         StructuredQuery.newBuilder()
-            .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId))
+            // TODO: pacoavila - uncomment
+            // .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId))
             .addOrderBy(
                 StructuredQuery.Order.newBuilder()
                     .setField(StructuredQuery.FieldReference.newBuilder().setFieldPath("__name__"))
@@ -168,8 +169,10 @@ public class FirestoreToFirestore {
             .setPartitionCount(partitionCount)
             .build();
 
-    // TODO: pacoavila - Add read time flag.
-    Instant readTime = Instant.now();
+    Instant readTime =
+        options.getFirestoreReadTime().get().isEmpty()
+            ? Instant.now()
+            : Instant.parse(options.getFirestoreReadTime().get());
 
     // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
     PCollection<RunQueryRequest> partitionedQueries =
@@ -198,7 +201,7 @@ public class FirestoreToFirestore {
 
     // 5. Process the documents from the responses
     PCollection<Document> documents =
-        responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocument()));
+        responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
 
     // 3. Prepare documents for writing to the destination database
     PCollection<Write> writes = documents.apply(ParDo.of(new PrepareWritesFn(destProject, destDb)));
@@ -214,41 +217,5 @@ public class FirestoreToFirestore {
             .build());
 
     p.run().waitUntilFinish();
-  }
-
-  // DoFn to extract Documents from RunQueryResponse
-  static class RunQueryResponseToDocument extends DoFn<RunQueryResponse, Document> {
-
-    @ProcessElement
-    public void processElement(ProcessContext c) {
-      RunQueryResponse response = c.element();
-      if (response != null && response.hasDocument()) {
-        c.output(response.getDocument());
-      }
-    }
-  }
-
-  // DoFn to convert Document to Write requests for the destination database
-  static class PrepareWritesFn extends DoFn<Document, Write> {
-
-    private final String projectId;
-    private final String databaseId;
-
-    PrepareWritesFn(String projectId, String databaseId) {
-      this.projectId = projectId;
-      this.databaseId = databaseId;
-    }
-
-    @ProcessElement
-    public void processElement(ProcessContext c) {
-      Document doc = c.element();
-      // Rebuild the document name for the destination project/database
-      String originalName = doc.getName();
-      String path = originalName.substring(originalName.indexOf("/documents/") + 1);
-      String newName = String.format("projects/%s/databases/%s/%s", projectId, databaseId, path);
-
-      Document newDoc = doc.toBuilder().setName(newName).build();
-      c.output(Write.newBuilder().setUpdate(newDoc).build());
-    }
   }
 }
