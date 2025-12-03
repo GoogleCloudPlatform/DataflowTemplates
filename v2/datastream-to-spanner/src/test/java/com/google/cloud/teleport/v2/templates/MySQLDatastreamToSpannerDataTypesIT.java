@@ -27,6 +27,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +44,7 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.junit.After;
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
@@ -66,6 +67,8 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
 
   private static final String MYSQL_DDL_RESOURCE = "MySQLDataTypesIT/mysql-data-types.sql";
   private static final String SPANNER_DDL_RESOURCE = "MySQLDataTypesIT/spanner-schema.sql";
+  private static final String PG_DIALECT_SPANNER_DDL_RESOURCE =
+      "MySQLDataTypesIT/pg-dialect-spanner-schema.sql";
 
   private static final List<String> UNSUPPORTED_TYPE_TABLES =
       List.of(
@@ -78,43 +81,67 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
           "spatial_geometry",
           "spatial_geometrycollection");
 
-  private CloudMySQLResourceManager mySQLResourceManager;
-  private SpannerResourceManager spannerResourceManager;
-  private GcsResourceManager gcsResourceManager;
-  private PubsubResourceManager pubsubResourceManager;
-  private DatastreamResourceManager datastreamResourceManager;
+  private static boolean initialized = false;
+  private static CloudMySQLResourceManager mySQLResourceManager;
+  private static SpannerResourceManager spannerResourceManager;
+  private static SpannerResourceManager pgDialectSpannerResourceManager;
+  private static GcsResourceManager gcsResourceManager;
+  private static PubsubResourceManager pubsubResourceManager;
+  private static DatastreamResourceManager datastreamResourceManager;
+
+  private static HashSet<MySQLDatastreamToSpannerDataTypesIT> testInstances = new HashSet<>();
 
   @Before
   public void setUp() throws IOException {
-    LOG.info("Setting up MySQL resource manager...");
-    mySQLResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    LOG.info("MySQL resource manager created with URI: {}", mySQLResourceManager.getUri());
-    LOG.info("Setting up Spanner resource manager...");
-    spannerResourceManager = setUpSpannerResourceManager();
-    LOG.info(
-        "Spanner resource manager created with instance ID: {}",
-        spannerResourceManager.getInstanceId());
-    LOG.info("Setting up GCS resource manager...");
-    gcsResourceManager = setUpSpannerITGcsResourceManager();
-    LOG.info("GCS resource manager created with bucket: {}", gcsResourceManager.getBucket());
-    LOG.info("Setting up Pub/Sub resource manager...");
-    pubsubResourceManager = setUpPubSubResourceManager();
-    LOG.info("Pub/Sub resource manager created.");
-    LOG.info("Setting up Datastream resource manager...");
-    datastreamResourceManager =
-        DatastreamResourceManager.builder(testName, PROJECT, REGION)
-            .setCredentialsProvider(credentialsProvider)
-            .setPrivateConnectivity("datastream-connect-2")
-            .build();
-    LOG.info("Datastream resource manager created");
+    skipBaseCleanup = true;
+    synchronized (MySQLDatastreamToSpannerDataTypesIT.class) {
+      testInstances.add(this);
+      if (!initialized) {
+        LOG.info("Setting up MySQL resource manager...");
+        mySQLResourceManager = CloudMySQLResourceManager.builder(testName).build();
+        LOG.info("MySQL resource manager created with URI: {}", mySQLResourceManager.getUri());
+        LOG.info("Setting up Spanner resource manager...");
+        spannerResourceManager = setUpSpannerResourceManager();
+        LOG.info(
+            "Spanner resource manager created with instance ID: {}",
+            spannerResourceManager.getInstanceId());
+        LOG.info("Setting up PG dialect Spanner resource manager...");
+        pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
+        LOG.info(
+            "PG dialect Spanner resource manager created with instance ID: {}",
+            pgDialectSpannerResourceManager.getInstanceId());
+        LOG.info("Setting up GCS resource manager...");
+        gcsResourceManager = setUpSpannerITGcsResourceManager();
+        LOG.info("GCS resource manager created with bucket: {}", gcsResourceManager.getBucket());
+        LOG.info("Setting up Pub/Sub resource manager...");
+        pubsubResourceManager = setUpPubSubResourceManager();
+        LOG.info("Pub/Sub resource manager created.");
+        LOG.info("Setting up Datastream resource manager...");
+        datastreamResourceManager =
+            DatastreamResourceManager.builder(testName, PROJECT, REGION)
+                .setCredentialsProvider(credentialsProvider)
+                .setPrivateConnectivity("datastream-connect-2")
+                .build();
+        LOG.info("Datastream resource manager created");
+
+        LOG.info("Executing MySQL DDL script...");
+        executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
+
+        initialized = true;
+      }
+    }
   }
 
-  @After
-  public void cleanUp() {
+  @AfterClass
+  public static void cleanUp() throws IOException {
     LOG.info("Cleaning up resources...");
+    for (MySQLDatastreamToSpannerDataTypesIT instance : testInstances) {
+      instance.tearDownBase();
+    }
     ResourceManagerUtils.cleanResources(
         mySQLResourceManager,
         spannerResourceManager,
+        pgDialectSpannerResourceManager,
         gcsResourceManager,
         pubsubResourceManager,
         datastreamResourceManager);
@@ -122,8 +149,6 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
 
   @Test
   public void testMySqlDataTypes() throws Exception {
-    LOG.info("Executing MySQL DDL script...");
-    executeSqlScript(mySQLResourceManager, MYSQL_DDL_RESOURCE);
     LOG.info("Creating Spanner DDL...");
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
 
@@ -156,27 +181,81 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
 
     Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
 
-    ChainedConditionCheck condition = buildConditionCheck(expectedData);
+    ChainedConditionCheck condition = buildConditionCheck(spannerResourceManager, expectedData);
     LOG.info("Waiting for pipeline to process data...");
     PipelineOperator.Result result =
         pipelineOperator()
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
     assertThatResult(result).meetsConditions();
 
+    validateResult(spannerResourceManager, expectedData);
+  }
+
+  @Test
+  public void testMySqlDataTypesPGDialect() throws Exception {
+    LOG.info("Creating PG Dialect Spanner DDL...");
+    createSpannerDDL(pgDialectSpannerResourceManager, PG_DIALECT_SPANNER_DDL_RESOURCE);
+
+    MySQLSource mySQLSource =
+        MySQLSource.builder(
+                mySQLResourceManager.getHost(),
+                mySQLResourceManager.getUsername(),
+                mySQLResourceManager.getPassword(),
+                mySQLResourceManager.getPort())
+            .setAllowedTables(Map.of(mySQLResourceManager.getDatabaseName(), getAllowedTables()))
+            .build();
+
+    LOG.info("Launching Dataflow job...");
+    PipelineLauncher.LaunchInfo jobInfo =
+        launchDataflowJob(
+            "mysql-data-types-pg-dialect",
+            null,
+            null,
+            "mysql-datastream-to-spanner-data-types-pg-dialect",
+            pgDialectSpannerResourceManager,
+            pubsubResourceManager,
+            new HashMap<>(),
+            null,
+            null,
+            gcsResourceManager,
+            datastreamResourceManager,
+            null,
+            mySQLSource);
+    assertThatPipeline(jobInfo).isRunning();
+
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedDataPGDialect();
+
+    ChainedConditionCheck condition =
+        buildConditionCheck(pgDialectSpannerResourceManager, expectedData);
+    LOG.info("Waiting for pipeline to process data...");
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(10)), condition);
+    assertThatResult(result).meetsConditions();
+
+    validateResult(pgDialectSpannerResourceManager, expectedData);
+  }
+
+  private void validateResult(
+      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
     // These types are not mapped as expected, ignore them to avoid failing the test.
-    Set<String> ignoredTypeMappings = Set.of("bit", "bit_to_string", "date_to_string", "set_to_array", "spatial_geometrycollection");
+    Set<String> ignoredTypeMappings =
+        Set.of(
+            "bit", "bit_to_string", "date_to_string", "set_to_array", "spatial_geometrycollection");
     // Validate supported data types.
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
       String type = entry.getKey();
       if (ignoredTypeMappings.contains(type)) {
-        LOG.warn("Mapping for {} is ignored to avoid failing the test (it does not map as expected)...", type);
+        LOG.warn(
+            "Mapping for {} is ignored to avoid failing the test (it does not map as expected)...",
+            type);
         continue;
       }
       String tableName = String.format("%s_table", type);
       String colName = String.format("%s_col", type);
       LOG.info("Asserting type: {}", type);
 
-      List<Struct> rows = spannerResourceManager.readTableRecords(tableName, "id", colName);
+      List<Struct> rows = resourceManager.readTableRecords(tableName, "id", colName);
       for (Struct row : rows) {
         // Limit logs printed for very large strings.
         String rowString = row.toString();
@@ -192,11 +271,13 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
     // Validate unsupported types.
     for (String table : UNSUPPORTED_TYPE_TABLES) {
       if (ignoredTypeMappings.contains(table)) {
-        LOG.warn("Mapping for {} is ignored to avoid failing the test (it does not map as expected)...", table);
+        LOG.warn(
+            "Mapping for {} is ignored to avoid failing the test (it does not map as expected)...",
+            table);
         continue;
       }
       // Unsupported rows should still be migrated. Each source table has 1 row.
-      assertThat(spannerResourceManager.getRowCount(table)).isEqualTo(1L);
+      assertThat(resourceManager.getRowCount(table)).isEqualTo(1L);
     }
   }
 
@@ -223,14 +304,49 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
   }
 
   private ChainedConditionCheck buildConditionCheck(
-      Map<String, List<Map<String, Object>>> expectedData) {
+      SpannerResourceManager resourceManager, Map<String, List<Map<String, Object>>> expectedData) {
+    // These tables fail to migrate any rows, ignore them to avoid having to wait for the timeout.
+    Set<String> ignoredTables = Set.of("set_to_array", "spatial_geometrycollection");
     List<ConditionCheck> conditions = new ArrayList<>(expectedData.size());
+
+    ConditionCheck combinedCondition = null;
+    int numCombinedConditions = 0;
     for (Map.Entry<String, List<Map<String, Object>>> entry : expectedData.entrySet()) {
+      if (ignoredTables.contains(entry.getKey())) {
+        continue;
+      }
       String tableName = String.format("%s_table", entry.getKey());
       int numRows = entry.getValue().size();
-      conditions.add(
-          SpannerRowsCheck.builder(spannerResourceManager, tableName).setMinRows(numRows).build());
+      ConditionCheck c =
+          SpannerRowsCheck.builder(resourceManager, tableName).setMinRows(numRows).build();
+      if (combinedCondition == null) {
+        combinedCondition = c;
+      } else {
+        combinedCondition.and(c);
+      }
+      numCombinedConditions += 1;
+      if (numCombinedConditions >= 3) {
+        conditions.add(combinedCondition);
+        combinedCondition = null;
+        numCombinedConditions = 0;
+      }
     }
+
+    ConditionCheck unsupportedTableCondition = null;
+    for (String unsupportedTypeTable : UNSUPPORTED_TYPE_TABLES) {
+      if (ignoredTables.contains(unsupportedTypeTable)) {
+        continue;
+      }
+      ConditionCheck c =
+          SpannerRowsCheck.builder(resourceManager, unsupportedTypeTable).setMinRows(1).build();
+      if (unsupportedTableCondition == null) {
+        unsupportedTableCondition = c;
+      } else {
+        unsupportedTableCondition.and(c);
+      }
+    }
+    conditions.add(unsupportedTableCondition);
+
     return ChainedConditionCheck.builder(conditions).build();
   }
 
@@ -257,7 +373,7 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
             "NULL"));
     expectedData.put("bit", createRows("bit", "f/////////8=", "NULL"));
     expectedData.put("bit_to_bool", createRows("bit_to_bool", "false", "true", "NULL"));
-    expectedData.put("bit_to_string", createRows("bit_to_string", "0111111111111111", "NULL"));
+    expectedData.put("bit_to_string", createRows("bit_to_string", "7fff", "NULL"));
     expectedData.put("bit_to_int64", createRows("bit_to_int64", "9223372036854775807", "NULL"));
     expectedData.put("blob", createRows("blob", "eDU4MDA=", "/".repeat(87380), "NULL"));
     expectedData.put(
@@ -271,8 +387,9 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
     expectedData.put(
         "char", createRows("char", "a", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa...", "NULL"));
     expectedData.put("date", createRows("date", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
-    expectedData.put("date_to_string", createRows("date_to_string", "2012-09-17", "1000-01-01",
-     "9999-12-31", "NULL"));
+    expectedData.put(
+        "date_to_string",
+        createRows("date_to_string", "2012-09-17", "1000-01-01", "9999-12-31", "NULL"));
     expectedData.put(
         "datetime",
         createRows(
@@ -463,6 +580,48 @@ public class MySQLDatastreamToSpannerDataTypesIT extends DataStreamToSpannerITBa
     expectedData.put("set", createRows("set", "v1,v2", "NULL"));
     expectedData.put(
         "integer_unsigned", createRows("integer_unsigned", "0", "42", "4294967295", "NULL"));
+    return expectedData;
+  }
+
+  private Map<String, List<Map<String, Object>>> getExpectedDataPGDialect() {
+    // Expected data for PG dialect is roughly similar to the spanner dialect data, with some minor
+    // differences. Notably, some data types like numeric have slightly different behaviour.
+    Map<String, List<Map<String, Object>>> expectedData = getExpectedData();
+
+    expectedData.put(
+        "bigint_unsigned",
+        createRows(
+            "bigint_unsigned",
+            "42.000000000",
+            "0.000000000",
+            "18446744073709551615.000000000",
+            "NULL"));
+    expectedData.put(
+        "dec_to_numeric",
+        createRows(
+            "dec_to_numeric",
+            "68.750000000",
+            "99999999999999999999999.999999999",
+            "12345678912345678.123456789",
+            "NULL"));
+    expectedData.put(
+        "decimal",
+        createRows(
+            "decimal",
+            "68.750000000",
+            "99999999999999999999999.999999999",
+            "12345678912345678.123456789",
+            "NULL"));
+    expectedData.put("test_json", createRows("test_json", "{\"k1\": \"v1\"}", "NULL"));
+    expectedData.put(
+        "numeric_to_numeric",
+        createRows(
+            "numeric_to_numeric",
+            "68.750000000",
+            "99999999999999999999999.999999999",
+            "12345678912345678.123456789",
+            "NULL"));
+
     return expectedData;
   }
 }

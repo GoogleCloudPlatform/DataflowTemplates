@@ -20,6 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import com.google.cloud.datastream.v1.DestinationConfig;
 import com.google.cloud.datastream.v1.SourceConfig;
 import com.google.cloud.datastream.v1.Stream;
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
@@ -74,6 +75,12 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
 
   public SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder(testName, PROJECT, REGION)
+        .maybeUseStaticInstance()
+        .build();
+  }
+
+  public SpannerResourceManager setUpPGDialectSpannerResourceManager() {
+    return SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
         .maybeUseStaticInstance()
         .build();
   }
