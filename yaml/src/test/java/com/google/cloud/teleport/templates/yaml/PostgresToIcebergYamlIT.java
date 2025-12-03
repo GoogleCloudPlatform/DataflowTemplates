@@ -38,7 +38,9 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.Record;
+import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,17 +60,30 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
 
+  // Iceberg Setup
+  private static final String CATALOG_NAME = "hadoop_catalog";
+  private static final String NAMESPACE = "iceberg_namespace";
+  private static final String ICEBERG_TABLE_NAME = "iceberg_table";
+  private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
+  private static final Schema ICEBERG_SCHEMA =
+      new Schema(
+          Types.NestedField.required(1, "id", Types.IntegerType.get()),
+          Types.NestedField.required(2, "active", Types.IntegerType.get()));
+
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
     java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse");
     warehouseLocation = "file:" + warehouseDirectory.toString();
-
+    Map<String, String> catalogProperties =
+        Map.of("type", "hadoop", "warehouse", warehouseLocation);
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
-            .setCatalogName("hadoop")
-            .setCatalogProperties(Map.of("type", "hadoop", "warehouse", warehouseLocation))
+            .setCatalogName(CATALOG_NAME)
+            .setCatalogProperties(catalogProperties)
             .build();
+    icebergResourceManager.createNamespace(NAMESPACE);
+    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, ICEBERG_SCHEMA);
   }
 
   @After
@@ -91,11 +106,8 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
         List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
     postgresResourceManager.write(tableName, records);
 
-    // Iceberg Setup
-    String catalogName = "hadoop_catalog";
     String catalogProperties =
         String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
-    String icebergTableName = "iceberg_table";
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -103,8 +115,8 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
-            .addParameter("table", icebergTableName)
-            .addParameter("catalogName", catalogName)
+            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("catalogName", CATALOG_NAME)
             .addParameter("catalogProperties", catalogProperties);
 
     // Act
@@ -115,7 +127,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
-    List<Record> icebergRecords = icebergResourceManager.read(icebergTableName);
+    List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
     List<Map<String, Object>> expectedRecords = new ArrayList<>();
     for (Record record : icebergRecords) {
       expectedRecords.add(
