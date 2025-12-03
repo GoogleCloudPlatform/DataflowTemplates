@@ -42,7 +42,9 @@ public class DLQWriteTransform {
   public abstract static class WriteDLQ extends PTransform<PCollection<String>, PDone> {
 
     public static Builder newBuilder() {
-      return new AutoValue_DLQWriteTransform_WriteDLQ.Builder().setIncludePaneInfo(false);
+      return new AutoValue_DLQWriteTransform_WriteDLQ.Builder()
+          .setIncludePaneInfo(false)
+          .setFileNamePrefix("error");
     }
 
     public abstract String dlqDirectory();
@@ -50,6 +52,8 @@ public class DLQWriteTransform {
     public abstract String tmpDirectory();
 
     public abstract boolean includePaneInfo();
+
+    public abstract String fileNamePrefix();
 
     @Override
     public PDone expand(PCollection<String> input) {
@@ -80,7 +84,7 @@ public class DLQWriteTransform {
                   .to(
                       WindowedFilenamePolicy.writeWindowedFiles()
                           .withOutputDirectory(dlqDirectory())
-                          .withOutputFilenamePrefix("error")
+                          .withOutputFilenamePrefix(fileNamePrefix())
                           .withShardTemplate(getShardTemplate())
                           .withSuffix(".json"))
                   .withTempDirectory(
@@ -112,6 +116,10 @@ public class DLQWriteTransform {
       }
 
       public abstract Builder setIncludePaneInfo(boolean value);
+
+      public abstract Builder setFileNamePrefix(String value);
+
+      public abstract String fileNamePrefix();
 
       public abstract boolean includePaneInfo();
 
