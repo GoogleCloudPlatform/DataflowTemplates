@@ -89,6 +89,31 @@ public class ErrorInjectionPolicyFactoryTest {
   }
 
   @Test
+  public void shouldReturnInitialLimitedDurationDelayPolicyForValidConfig() {
+    String json = createJsonWithTextInput("InitialLimitedDurationDelayInjectionPolicy", "PT10M");
+    ErrorInjectionPolicy policy = ErrorInjectionPolicyFactory.getErrorInjectionPolicy(json);
+
+    assertNotNull("Policy should not be null", policy);
+    assertTrue(
+        "Policy should be an instance of InitialLimitedDurationDelayInjectionPolicy",
+        policy instanceof InitialLimitedDurationDelayInjectionPolicy);
+  }
+
+  @Test
+  public void shouldReturnInitialLimitedDurationDelayPolicyForValidConfigWithObjectInput() {
+    ObjectNode input = JsonNodeFactory.instance.objectNode();
+    input.put("delayDuration", "PT5S");
+    input.put("injectionWindowDuration", "PT10M");
+    String json = createJson("InitialLimitedDurationDelayInjectionPolicy", input);
+    ErrorInjectionPolicy policy = ErrorInjectionPolicyFactory.getErrorInjectionPolicy(json);
+
+    assertNotNull("Policy should not be null", policy);
+    assertTrue(
+        "Policy should be an instance of InitialLimitedDurationDelayInjectionPolicy",
+        policy instanceof InitialLimitedDurationDelayInjectionPolicy);
+  }
+
+  @Test
   public void shouldReturnNoOpPolicyForNoOpType() {
     String json = createJsonWithTextInput("NoOp", "");
     ErrorInjectionPolicy policy = ErrorInjectionPolicyFactory.getErrorInjectionPolicy(json);
