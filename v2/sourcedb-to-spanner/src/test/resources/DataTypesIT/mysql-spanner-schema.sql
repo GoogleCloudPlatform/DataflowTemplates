@@ -300,3 +300,8 @@ CREATE TABLE IF NOT EXISTS timestamp_pk_table (
                                                   id TIMESTAMP NOT NULL,
                                                   timestamp_pk_col TIMESTAMP NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS bool_pk_table (
+  id INT64 NOT NULL,
+  bool_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);

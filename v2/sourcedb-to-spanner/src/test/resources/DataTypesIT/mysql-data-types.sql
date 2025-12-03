@@ -272,6 +272,12 @@ CREATE TABLE timestamp_pk_table (
                                     CONSTRAINT PRIMARY KEY (id)
 );
 
+CREATE TABLE bool_pk_table (
+    id BOOL PRIMARY KEY,
+    bool_pk_col BOOL NOT NULL
+);
+
+
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -422,6 +428,8 @@ INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('1970-01-01 
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');
 SET time_zone = SYSTEM;
+
+INSERT INTO `bool_pk_table` (`id`, `bool_pk_col`) VALUES (TRUE, TRUE), (FALSE, FALSE);
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);
