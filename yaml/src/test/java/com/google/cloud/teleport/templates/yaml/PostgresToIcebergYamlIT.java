@@ -24,7 +24,6 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -47,12 +46,16 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link PostgresToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PostgresToIcebergYaml.class)
 @RunWith(JUnit4.class)
 public class PostgresToIcebergYamlIT extends TemplateTestBase {
+
+  private static final Logger LOG = LoggerFactory.getLogger(PostgresToIcebergYamlIT.class);
 
   private static final String READ_QUERY = "SELECT * FROM %s";
   private static String warehouseLocation;
@@ -73,8 +76,8 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
-    java.nio.file.Path warehouseDirectory = Files.createTempDirectory("test-warehouse");
-    warehouseLocation = "file:" + warehouseDirectory.toString();
+    warehouseLocation = gcsClient.getBucket();
+    LOG.info("Warehouse Location: {}", warehouseLocation);
     Map<String, String> catalogProperties =
         Map.of("type", "hadoop", "warehouse", warehouseLocation);
     icebergResourceManager =
