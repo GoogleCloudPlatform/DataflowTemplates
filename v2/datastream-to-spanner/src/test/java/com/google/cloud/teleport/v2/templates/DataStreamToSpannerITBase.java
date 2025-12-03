@@ -49,6 +49,7 @@ import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -555,6 +556,25 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     } catch (Exception e) {
       LOG.error("Error while creating datastream", e);
       throw e;
+    }
+  }
+
+  protected void executeSqlScript(JDBCResourceManager resourceManager, String resourceName)
+      throws IOException {
+    String ddl =
+        String.join(
+            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
+    ddl = ddl.trim();
+    List<String> ddls = Arrays.stream(ddl.split(";")).toList();
+    for (String d : ddls) {
+      if (!d.isBlank()) {
+        try {
+          resourceManager.runSQLUpdate(d);
+        } catch (Exception e) {
+          LOG.error("Exception while executing DDL {}", d, e);
+          throw e;
+        }
+      }
     }
   }
 }
