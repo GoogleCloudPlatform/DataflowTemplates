@@ -36,6 +36,7 @@
   <properties>
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
+    <postgresql.version>42.6.1</postgresql.version>
   </properties>
 
   <dependencies>
@@ -66,8 +67,9 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-it-jdbc</artifactId>
+      <groupId>com.google.cloud.teleport</groupId>
+      <artifactId>it-jdbc</artifactId>
+      <version>${project.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

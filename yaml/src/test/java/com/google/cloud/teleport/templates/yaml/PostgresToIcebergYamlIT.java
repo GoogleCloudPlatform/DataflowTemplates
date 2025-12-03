@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -81,13 +82,13 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     String tableName = "source_table";
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INTEGER");
-    columns.put("active", "BOOLEAN");
+    columns.put("active", "INTEGER");
     JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
     postgresResourceManager.createTable(tableName, schema);
 
     List<Map<String, Object>> records =
-        List.of(Map.of("id", 1, "active", true), Map.of("id", 2, "active", false));
+        List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
     postgresResourceManager.write(tableName, records);
 
     // Iceberg Setup
@@ -117,7 +118,12 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     List<Record> icebergRecords = icebergResourceManager.read(icebergTableName);
     List<Map<String, Object>> expectedRecords = new ArrayList<>();
     for (Record record : icebergRecords) {
-      expectedRecords.add(ImmutableMap.of("id", record.get(0), "active", record.get(2)));
+      expectedRecords.add(
+          ImmutableMap.of(
+              "id",
+              Objects.requireNonNull(record.get(0)),
+              "active",
+              Objects.requireNonNull(record.get(2))));
     }
     assertThat(expectedRecords).containsExactlyElementsIn(records);
   }

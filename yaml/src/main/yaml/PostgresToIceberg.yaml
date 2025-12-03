@@ -22,9 +22,9 @@ pipeline:
       name: ReadFromPostgres
       config:
         driver_class_name: {{ driverClassName | default("org.postgresql.Driver")}}
-        url: {{ jdbcUrl }}
-        username: {{ username }}
-        password: {{ password }}
+        url: "{{ jdbcUrl }}"
+        username: "{{ username }}"
+        password: "{{ password }}"
         query: {{ readQuery }}
         driver_jars: {{ driverJars }}
         connection_properties: {{ connectionProperties }}
