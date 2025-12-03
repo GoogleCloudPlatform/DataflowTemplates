@@ -579,9 +579,9 @@ public class SpannerToSourceDb {
               + " incease the max shard connections");
     }
 
-    String workerMachineType = pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
     DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
-
 
     // Prepare Spanner config
     SpannerConfig spannerConfig =
