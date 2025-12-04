@@ -28,6 +28,7 @@ const (
 	SPANNER    = "SPANNER"
 	BIGTABLE   = "BIGTABLE"
 	DATASTREAM = "DATASTREAM"
+	YAML       = "YAML"
 )
 
 // Avoid making these vars public.
@@ -64,6 +65,7 @@ var (
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-sql/",
 		},
+		YAML: {"yaml/"},
 	}
 )
 
