@@ -33,7 +33,6 @@ import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
-import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
@@ -141,9 +140,9 @@ public class FirestoreToFirestore {
         description = "Read Time",
         helpText = "The read time of the Firestore read operations.")
     @Default.String("")
-    ValueProvider<String> getReadTime();
+    String getReadTime();
 
-    void setReadTime(ValueProvider<String> ReadTime);
+    void setReadTime(String readTime);
 
   }
 
@@ -192,9 +191,9 @@ public class FirestoreToFirestore {
             .build();
 
     Instant readTime =
-        options.getReadTime().get().isEmpty()
+        options.getReadTime().isEmpty()
             ? Instant.now()
-            : Instant.parse(options.getReadTime().get());
+            : Instant.parse(options.getReadTime());
 
     // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
     PCollection<RunQueryRequest> partitionedQueries =
