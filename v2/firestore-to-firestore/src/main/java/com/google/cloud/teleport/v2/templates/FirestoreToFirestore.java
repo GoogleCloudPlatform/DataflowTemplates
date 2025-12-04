@@ -17,8 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
-import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreReadOptions;
-import com.google.cloud.teleport.templates.common.DatastoreConverters.DatastoreWriteOptions;
+import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.transforms.PrepareWritesFn;
 import com.google.cloud.teleport.v2.transforms.RunQueryResponseToDocumentFn;
 import com.google.firestore.v1.Document;
@@ -32,7 +31,9 @@ import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
+import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
+import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
@@ -67,8 +68,82 @@ public class FirestoreToFirestore {
    *
    * <p>Inherits standard Firestore configuration options.
    */
-  public interface Options
-      extends DatastoreReadOptions, DatastoreWriteOptions, DataflowPipelineOptions {
+  public interface Options extends DataflowPipelineOptions {
+
+    @TemplateParameter.Text(
+        groupName = "Source",
+        order = 1,
+        description = "Source Project ID",
+        helpText = "The source project to read from.",
+        example = "my-project")
+    String getSourceProjectId();
+
+    void setSourceProjectId(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Destination",
+        order = 1,
+        description = "Destination Project ID",
+        helpText = "The destination project to write to.",
+        example = "my-project")
+    String getDestinationProjectId();
+
+    void setDestinationProjectId(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Source",
+        order = 1,
+        description = "Source Database ID",
+        helpText = "The source database to read from.",
+        example = "my-database")
+    @Default.String("(default)")
+    String getSourceDatabaseId();
+
+    void setSourceDatabaseId(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Destination",
+        order = 1,
+        description = "Destination Database ID",
+        helpText = "The destination database to write to.",
+        example = "my-database")
+    @Default.String("(default)")
+    String getDestinationDatabaseId();
+
+    void setDestinationDatabaseId(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Target",
+        order = 9,
+        description = "Database collection filter (optional)",
+        helpText =
+            "If specified, only replicate this collection. If not specified, replicate all collections.",
+        example = "my-collection",
+        optional = true)
+    String getDatabaseCollection();
+
+    void setDatabaseCollection(String value);
+
+    @TemplateParameter.Integer(
+        order = 11,
+        optional = true,
+        description = "Batch size",
+        helpText = "The batch size for writing to Database.")
+    @Default.Integer(500)
+    Integer getBatchSize();
+
+    void setBatchSize(Integer value);
+
+
+    @TemplateParameter.DateTime(
+        order = 9,
+        optional = true,
+        description = "Read Time",
+        helpText = "The read time of the Firestore read operations.")
+    @Default.String("")
+    ValueProvider<String> getReadTime();
+
+    void setReadTime(ValueProvider<String> ReadTime);
 
   }
 
@@ -76,23 +151,21 @@ public class FirestoreToFirestore {
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
     Pipeline p = Pipeline.create(options);
 
-    String sourceProject = options.getFirestoreReadProjectId().get();
+    String sourceProject = options.getSourceProjectId();
     String sourceDb =
-        options.getFirestoreReadDatabaseId().get().isEmpty()
+        options.getSourceDatabaseId().isEmpty()
             ? "(default)"
-            : options.getFirestoreReadDatabaseId().get();
+            : options.getSourceDatabaseId();
 
-    String destProject = options.getFirestoreWriteProjectId().get();
+    String destProject = options.getDestinationProjectId();
     String destDb =
-        options.getFirestoreWriteDatabaseId().get().isEmpty()
+        options.getDestinationDatabaseId().isEmpty()
             ? "(default)"
-            : options.getFirestoreWriteProjectId().get();
+            : options.getDestinationProjectId();
 
-    String collectionId = options.getFirestoreReadCollection().get();
+    String collectionId = options.getDatabaseCollection();
     long partitionCount =
-        options.getFirestoreHintNumWorkers() != null
-            ? options.getFirestoreHintNumWorkers().get()
-            : 500L;
+        options.getBatchSize();
 
     RpcQosOptions rpcQosOptions =
         RpcQosOptions.newBuilder()
@@ -119,9 +192,9 @@ public class FirestoreToFirestore {
             .build();
 
     Instant readTime =
-        options.getFirestoreReadTime().get().isEmpty()
+        options.getReadTime().get().isEmpty()
             ? Instant.now()
-            : Instant.parse(options.getFirestoreReadTime().get());
+            : Instant.parse(options.getReadTime().get());
 
     // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
     PCollection<RunQueryRequest> partitionedQueries =

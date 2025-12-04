@@ -20,7 +20,6 @@ import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.StructuredQuery;
 import com.google.firestore.v1.StructuredQuery.CollectionSelector;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.options.ValueProvider.StaticValueProvider;
 import org.apache.beam.sdk.testing.TestPipeline;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.DoFn;
@@ -45,20 +44,20 @@ public class FirestoreToFirestoreTest {
     FirestoreToFirestore.Options options =
         TestPipeline.testingPipelineOptions().as(FirestoreToFirestore.Options.class);
 
-    options.setFirestoreReadProjectId(StaticValueProvider.of("test-source-project"));
-    options.setFirestoreReadDatabaseId(StaticValueProvider.of("test-source-db"));
-    options.setFirestoreReadCollection(StaticValueProvider.of("my-collection"));
-    options.setFirestoreWriteProjectId(StaticValueProvider.of("test-dest-project"));
-    options.setFirestoreWriteDatabaseId(StaticValueProvider.of("(default)"));
+    options.setSourceProjectId("test-source-project");
+    options.setSourceDatabaseId("test-source-db");
+    options.setDatabaseCollection("my-collection");
+    options.setDestinationProjectId("test-dest-project");
+    options.setDestinationDatabaseId("(default)");
 
     // Simply creating the pipeline and calling main to ensure it constructs without exceptions
     // We are not running it as it would try to connect to actual Firestore.
     try {
       Pipeline testP = Pipeline.create(options);
 
-      String sourceProject = options.getFirestoreReadProjectId().get();
-      String sourceDb = options.getFirestoreReadDatabaseId().get();
-      String collectionId = options.getFirestoreWriteEntityKind().get();
+      String sourceProject = options.getSourceProjectId();
+      String sourceDb = options.getSourceDatabaseId();
+      String collectionId = options.getDatabaseCollection();
 
       // The following lines would normally be part of the pipeline run,
       // but we can't execute them in a unit test without extensive mocking.
