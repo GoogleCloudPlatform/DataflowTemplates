@@ -79,10 +79,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     warehouseLocation = "gs://cloud-teleport-testing-it-gitactions";
     LOG.info("Warehouse Location: {}, {}", warehouseLocation, getGcsBasePath());
     Map<String, String> catalogHadoopConf =
-        Map.of(
-            "fs.gs.project.id", PROJECT,
-            "fs.gs.auth.type", "APPLICATION_DEFAULT",
-            "fs.gs.impl", "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem");
+        Map.of("fs.gs.project.id", PROJECT, "fs.gs.auth.type", "APPLICATION_DEFAULT");
 
     Map<String, String> catalogProperties =
         Map.of(
@@ -91,7 +88,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             "warehouse",
             warehouseLocation,
             "io-impl",
-            "org.apache.iceberg.gcs.GcsFileIO");
+            "org.apache.iceberg.gcp.gcs.GCSFileIO");
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
@@ -124,11 +121,11 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
     String catalogProperties =
         String.format(
-            "{\"type\": \"hadoop\", \"warehouse\": \"%s\", \"io-impl\": \"org.apache.iceberg.gcs.GcsFileIO\"}",
+            "{\"type\": \"hadoop\", \"warehouse\": \"%s\", \"io-impl\": \"org.apache.iceberg.gcp.gcs.GCSFileIO\"}",
             warehouseLocation);
     String configProperties =
         String.format(
-            "{\"fs.gs.project.id\": \"%s\", \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\", \"fs.gs.impl\": \"com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem\"}",
+            "{\"fs.gs.project.id\": \"%s\", \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\"}",
             PROJECT);
 
     LaunchConfig.Builder options =
