@@ -151,36 +151,6 @@ public class DatastoreConverters {
     ValueProvider<String> getFirestoreReadNamespace();
 
     void setFirestoreReadNamespace(ValueProvider<String> firestoreReadNamespace);
-
-    @TemplateParameter.Text(
-        order = 7,
-        optional = true,
-        description = "Database ID",
-        helpText = "The ID of the Firestore database that you want to read data from.")
-    ValueProvider<String> getFirestoreReadDatabaseId();
-
-    void setFirestoreReadDatabaseId(ValueProvider<String> firestoreReadCollection);
-
-    @TemplateParameter.Text(
-        order = 8,
-        optional = true,
-        regexes = {"^[0-9A-Za-z._-]{0,100}$"},
-        description = "Collection",
-        helpText =
-            "The collection of the requested entities.")
-    ValueProvider<String> getFirestoreReadCollection();
-
-    void setFirestoreReadCollection(ValueProvider<String> firestoreReadCollection);
-
-    @TemplateParameter.DateTime(
-        order = 9,
-        optional = true,
-        description = "Read Time",
-        helpText = "The read time of the Firestore read operations.")
-    @Default.String("")
-    ValueProvider<String> getFirestoreReadTime();
-
-    void setFirestoreReadTime(ValueProvider<String> firestoreReadTime);
   }
 
   /** Options for writing Datastore Entities. */
@@ -303,15 +273,6 @@ public class DatastoreConverters {
     ValueProvider<Integer> getFirestoreHintNumWorkers();
 
     void setFirestoreHintNumWorkers(ValueProvider<Integer> value);
-
-    @TemplateParameter.Text(
-        order = 9,
-        optional = true,
-        description = "Database ID",
-        helpText = "The ID of the Firestore database to write entities to.")
-    ValueProvider<String> getFirestoreWriteDatabaseId();
-
-    void setFirestoreWriteDatabaseId(ValueProvider<String> firestoreWriteDatabaseId);
   }
 
   /** Options for deleting Datastore Entities. */
