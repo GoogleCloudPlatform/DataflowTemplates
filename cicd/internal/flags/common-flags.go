@@ -28,6 +28,7 @@ const (
 	SPANNER    = "SPANNER"
 	BIGTABLE   = "BIGTABLE"
 	DATASTREAM = "DATASTREAM"
+	YAML       = "YAML"
 )
 
 // Avoid making these vars public.
@@ -35,7 +36,8 @@ var (
 	modulesToBuild string
 	moduleMap      = map[string][]string{
 		ALL:     {},
-		DEFAULT: {
+		DEFAULT: {},
+		YAML: {
 			"it/iceberg/",
 			"yaml/",
 		},
