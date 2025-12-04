@@ -45,7 +45,7 @@
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
     <kafka.clients.version>1.0.0</kafka.clients.version>
-    <threetenbp.version>1.4.4</threetenbp.version>
+    <threetenbp.version>1.7.2</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
     <tensorflow.version>1.0.0</tensorflow.version>
     <dlp.version>3.72.0</dlp.version>
