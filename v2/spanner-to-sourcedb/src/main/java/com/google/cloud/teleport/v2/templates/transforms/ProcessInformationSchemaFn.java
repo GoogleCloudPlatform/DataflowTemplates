@@ -86,7 +86,6 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
 
   @ProcessElement
   public void processElement(ProcessContext c) {
-    LOG.info("Starting processing of Information Schema...");
 
     // 1. Create Shadow Tables if needed
     ShadowTableCreator shadowTableCreator =
@@ -102,7 +101,6 @@ public class ProcessInformationSchemaFn extends DoFn<Void, Ddl> {
 
     c.output(MAIN_DDL_TAG, mainDdl);
     c.output(SHADOW_TABLE_DDL_TAG, shadowTableDdl);
-    LOG.info("Finished processing of Information Schema.");
   }
 
   private Ddl getInformationSchemaAsDdl(SpannerAccessor accessor, Dialect dialect) {
