@@ -76,7 +76,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
-    warehouseLocation = gcsClient.getBucket();
+    warehouseLocation = getGcsBasePath();
     LOG.info("Warehouse Location: {}", warehouseLocation);
     Map<String, String> catalogProperties =
         Map.of("type", "hadoop", "warehouse", warehouseLocation);
