@@ -94,6 +94,11 @@
       <artifactId>gcs-connector</artifactId>
       <version>3.1.10</version>
     </dependency>
+    <dependency>
+      <groupId>com.google.cloud.bigdataoss</groupId>
+      <artifactId>util</artifactId>
+      <version>3.1.10</version>
+    </dependency>
   </dependencies>
 
   <build>
