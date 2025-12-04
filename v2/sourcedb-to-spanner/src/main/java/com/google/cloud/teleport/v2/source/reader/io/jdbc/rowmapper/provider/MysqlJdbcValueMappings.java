@@ -27,7 +27,6 @@ import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.ByteBuffer;
 import java.sql.Blob;
@@ -52,10 +51,6 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
    * pass through from jdbc to avro.
    */
   private static final ResultSetValueMapper<?> valuePassThrough = (value, schema) -> value;
-
-  /** Map the bytes returned by BIT(N) type to long. MySql Bit(N) has max 64 bits. */
-  private static final ResultSetValueMapper<byte[]> bytesToLong =
-      (value, schema) -> new BigInteger(value).longValue();
 
   /** Map BigDecimal type to Byte array. */
   private static final ResultSetValueMapper<BigDecimal> bigDecimalToByteArray =
@@ -197,7 +192,7 @@ public class MysqlJdbcValueMappings implements JdbcValueMappingsProvider {
           .put("BIGINT", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("BIGINT UNSIGNED", Pair.of(ResultSet::getBigDecimal, bigDecimalToAvroNumber))
           .put("BINARY", Pair.of(ResultSet::getBytes, bytesToHexString))
-          .put("BIT", Pair.of(ResultSet::getBytes, bytesToLong))
+          .put("BIT", Pair.of(ResultSet::getLong, valuePassThrough))
           .put("BLOB", Pair.of(ResultSet::getBlob, blobToHexString))
           .put("BOOL", Pair.of(ResultSet::getInt, valuePassThrough))
           .put("CHAR", Pair.of(ResultSet::getString, valuePassThrough))
