@@ -407,6 +407,25 @@ public class CassandraDMLGenerator implements IDMLGenerator {
       customTransformColumns = customTransformationResponse.keySet();
     }
     for (String sourceColName : sourcePKs) {
+      SourceColumn sourceColDef = sourceTable.column(sourceColName);
+      if (sourceColDef == null) {
+        LOG.warn(
+            "The source column definition for {} was not found in source schema", sourceColName);
+        return null;
+      }
+
+      PreparedStatementValueObject<?> columnValue;
+      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
+        String cassandraType = sourceColDef.type().toLowerCase();
+        Object customValue = customTransformationResponse.get(sourceColName);
+        columnValue =
+            PreparedStatementValueObject.create(
+                cassandraType,
+                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
+        response.put(sourceColName, columnValue);
+        continue;
+      }
+
       String spannerColName = "";
       try {
         spannerColName = schemaMapper.getSpannerColumnName("", sourceTable.name(), sourceColName);
@@ -419,27 +438,13 @@ public class CassandraDMLGenerator implements IDMLGenerator {
             sourceColName);
         return null;
       }
-      SourceColumn sourceColDef = sourceTable.column(sourceColName);
-      if (sourceColDef == null) {
-        LOG.warn(
-            "The source column definition for {} was not found in source schema", sourceColName);
-        return null;
-      }
       Column spannerColDef = spannerTable.column(spannerColName);
       if (spannerColDef == null) {
         LOG.warn(
             "The spanner column definition for {} was not found in spanner schema", spannerColName);
         return null;
       }
-      PreparedStatementValueObject<?> columnValue;
-      if (customTransformColumns != null && customTransformColumns.contains(sourceColName)) {
-        String cassandraType = sourceColDef.type().toLowerCase();
-        Object customValue = customTransformationResponse.get(sourceColName);
-        columnValue =
-            PreparedStatementValueObject.create(
-                cassandraType,
-                customValue == null ? CassandraTypeHandler.NullClass.INSTANCE : customValue);
-      } else if (keyValuesJson.has(spannerColName)) {
+      if (keyValuesJson.has(spannerColName)) {
         columnValue =
             getMappedColumnValue(
                 spannerColDef, sourceColDef, keyValuesJson, sourceDbTimezoneOffset);
