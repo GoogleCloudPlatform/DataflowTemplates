@@ -76,7 +76,6 @@
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
-    <json-smart.version>2.6.0</json-smart.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>2.0.17</slf4j.version>
@@ -85,7 +84,6 @@
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.4.5</truth.version>
-    <gax.version>2.72.1</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -103,9 +101,6 @@
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
-
-    <!-- Security vulnerability fixes -->
-    <httpclient.version>4.5.13</httpclient.version>
 
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
