@@ -76,14 +76,24 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
-    warehouseLocation = getGcsBasePath();
-    LOG.info("Warehouse Location: {}", warehouseLocation);
+    warehouseLocation = "gs://cloud-teleport-testing-it-gitactions";
+    LOG.info("Warehouse Location: {}, {}", warehouseLocation, getGcsBasePath());
+    Map<String, String> catalogHadoopConf =
+        Map.of("fs.gs.project.id", PROJECT, "fs.gs.auth.type", "APPLICATION_DEFAULT");
+
     Map<String, String> catalogProperties =
-        Map.of("type", "hadoop", "warehouse", warehouseLocation);
+        Map.of(
+            "type",
+            "hadoop",
+            "warehouse",
+            warehouseLocation,
+            "io-impl",
+            "org.apache.iceberg.gcp.gcs.GCSFileIO");
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(catalogProperties)
+            .setConfigProperties(catalogHadoopConf)
             .build();
     icebergResourceManager.createNamespace(NAMESPACE);
     icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, ICEBERG_SCHEMA);
@@ -110,7 +120,13 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     postgresResourceManager.write(tableName, records);
 
     String catalogProperties =
-        String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
+        String.format(
+            "{\"type\": \"hadoop\", \"warehouse\": \"%s\", \"io-impl\": \"org.apache.iceberg.gcp.gcs.GCSFileIO\"}",
+            warehouseLocation);
+    String configProperties =
+        String.format(
+            "{\"fs.gs.project.id\": \"%s\", \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\"}",
+            PROJECT);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -120,7 +136,8 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
-            .addParameter("catalogProperties", catalogProperties);
+            .addParameter("catalogProperties", catalogProperties)
+            .addParameter("configProperties", configProperties);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
