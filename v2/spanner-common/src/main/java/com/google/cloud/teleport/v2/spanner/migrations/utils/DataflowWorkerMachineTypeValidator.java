@@ -15,62 +15,62 @@
  */
 package com.google.cloud.teleport.v2.spanner.migrations.utils;
 
+import com.google.common.base.Preconditions;
+import org.apache.commons.lang3.StringUtils;
+
 public class DataflowWorkerMachineTypeValidator {
 
   public static void validateMachineSpecs(String workerMachineType, Integer minCPUs) {
-    if (workerMachineType == null || workerMachineType.trim().isEmpty()) {
-      throw new IllegalArgumentException(
-          String.format(
-              "Policy Violation: You must specify a workerMachineType with at least %d vCPUs.",
-              minCPUs));
-    }
+    Preconditions.checkArgument(
+        workerMachineType != null && !StringUtils.isBlank(workerMachineType),
+        "Policy Violation: You must specify a workerMachineType with at least %s vCPUs.",
+        minCPUs);
 
     // Handle custom machine types first, format is custom-{vCPU}-{RAM}
     if (workerMachineType.startsWith("custom-")) {
       String[] parts = workerMachineType.split("-");
-      if (parts.length != 3) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Invalid custom machine type format: '%s'. Expected format: custom-{vCPU}-{RAM}.",
-                workerMachineType));
-      }
+      Preconditions.checkArgument(
+          parts.length == 3,
+          "Invalid custom machine type format: '%s'. Expected format: custom-{vCPU}-{RAM}.",
+          workerMachineType);
+      Integer vCpus = null;
       try {
-        int vCpus = Integer.parseInt(parts[1]);
-        if (vCpus < minCPUs) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Policy Violation: Custom machine type '%s' has %d vCPUs. Minimum allowed is %d. Please use a higher machine type.",
-                  workerMachineType, vCpus, minCPUs));
-        }
+        vCpus = Integer.parseInt(parts[1]);
       } catch (NumberFormatException e) {
-        throw new IllegalArgumentException(
-            String.format("Invalid vCPU number in custom machine type: '%s'", workerMachineType),
-            e);
+        Preconditions.checkArgument(
+            false, "Invalid vCPU number in custom machine type: '%s'", workerMachineType);
       }
+      Preconditions.checkArgument(
+          vCpus >= minCPUs,
+          "Policy Violation: Custom machine type '%s' has %s vCPUs. Minimum allowed is %s. Please use a higher machine type.",
+          workerMachineType,
+          vCpus,
+          minCPUs);
     } else {
       // Handle standard machine types.
       java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(".*-(\\d+)$");
       java.util.regex.Matcher matcher = pattern.matcher(workerMachineType);
 
       if (matcher.find()) {
+        Integer vCpus = null;
         try {
-          int vCpus = Integer.parseInt(matcher.group(1));
-          if (vCpus < minCPUs) {
-            throw new IllegalArgumentException(
-                String.format(
-                    "Policy Violation: Machine type '%s' has %d vCPUs. Minimum allowed is %d.",
-                    workerMachineType, vCpus, minCPUs));
-          }
+          vCpus = Integer.parseInt(matcher.group(1));
         } catch (NumberFormatException e) {
-          // This should be rare given the regex, but good practice to handle.
-          throw new IllegalArgumentException(
-              String.format("Invalid vCPU number in machine type: '%s'", workerMachineType), e);
+          Preconditions.checkArgument(
+              false, "Invalid vCPU number in machine type: '%s'", workerMachineType);
         }
+        Preconditions.checkArgument(
+            vCpus >= minCPUs,
+            "Policy Violation: Machine type '%s' has %s vCPUs. Minimum allowed is %s.",
+            workerMachineType,
+            vCpus,
+            minCPUs);
       } else {
-        throw new IllegalArgumentException(
-            String.format(
-                "Unknown machine type format: '%s'. Please use a standard machine type (e.g., n1-standard-4) or a custom machine type (e.g., custom-4-4096) with at least %d vCPUs.",
-                workerMachineType, minCPUs));
+        Preconditions.checkArgument(
+            false,
+            "Unknown machine type format: '%s'. Please use a standard machine type (e.g., n1-standard-4) or a custom machine type (e.g., custom-4-4096) with at least %s vCPUs.",
+            workerMachineType,
+            minCPUs);
       }
     }
   }
