@@ -37,10 +37,6 @@ var (
 	moduleMap      = map[string][]string{
 		ALL:     {},
 		DEFAULT: {},
-		YAML: {
-			"it/iceberg/",
-			"yaml/",
-		},
 		KAFKA: {"v2/kafka-common/",
 			"v2/kafka-to-bigquery/",
 			"v2/kafka-to-gcs/",
@@ -68,6 +64,9 @@ var (
 			"v2/datastream-to-bigquery/",
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-sql/",
+		},
+		YAML: {
+			"yaml",
 		},
 	}
 )
