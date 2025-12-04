@@ -136,7 +136,11 @@
                  <arguments>
                    <argument>-m</argument>
                    <argument>unittest</argument>
-                   <argument>src/test/python/yaml_syntax_test.py</argument>
+                   <argument>discover</argument>
+                   <argument>-s</argument>
+                   <argument>src/test/python</argument>
+                   <argument>-p</argument>
+                   <argument>*_test.py</argument>
                  </arguments>
                </configuration>
              </execution>
