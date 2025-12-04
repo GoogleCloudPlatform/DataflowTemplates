@@ -37,6 +37,8 @@
     <maven.compiler.source>17</maven.compiler.source>
     <maven.compiler.target>17</maven.compiler.target>
     <postgresql.version>42.6.1</postgresql.version>
+    <iceberg.version>1.6.1</iceberg.version>
+    <bigdataoss.version>3.1.10</bigdataoss.version>
   </properties>
 
   <dependencies>
@@ -84,7 +86,30 @@
       <version>${postgresql.version}</version>
       <scope>test</scope>
     </dependency>
-
+        <dependency>
+            <groupId>org.apache.iceberg</groupId>
+            <artifactId>iceberg-gcp</artifactId>
+            <version>${iceberg.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>gcsio</artifactId>
+            <version>${bigdataoss.version}</version>
+            <scope>test</scope>
+       </dependency>
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>gcs-connector</artifactId>
+            <version>${bigdataoss.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.cloud.bigdataoss</groupId>
+            <artifactId>util-hadoop</artifactId>
+            <version>${bigdataoss.version}</version>
+            <scope>test</scope>
+        </dependency>
   </dependencies>
 
   <build>

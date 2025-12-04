@@ -35,7 +35,10 @@ var (
 	modulesToBuild string
 	moduleMap      = map[string][]string{
 		ALL:     {},
-		DEFAULT: {},
+		DEFAULT: {
+			"it/iceberg/",
+			"yaml/",
+		},
 		KAFKA: {"v2/kafka-common/",
 			"v2/kafka-to-bigquery/",
 			"v2/kafka-to-gcs/",
