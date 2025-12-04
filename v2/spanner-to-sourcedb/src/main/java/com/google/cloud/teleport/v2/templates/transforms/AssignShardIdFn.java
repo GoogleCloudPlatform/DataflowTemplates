@@ -33,10 +33,10 @@ import com.google.cloud.teleport.v2.spanner.type.Type;
 import com.google.cloud.teleport.v2.spanner.utils.IShardIdFetcher;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdRequest;
 import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -105,6 +105,11 @@ public class AssignShardIdFn
 
   private final String sourceType;
 
+  private final String sessionFilePath;
+  private final String schemaOverridesFilePath;
+  private final String tableOverrides;
+  private final String columnOverrides;
+
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
       PCollectionView<Ddl> ddlView,
@@ -116,7 +121,11 @@ public class AssignShardIdFn
       String shardingCustomClassName,
       String shardingCustomParameters,
       Long maxConnectionsAcrossAllShards,
-      String sourceTyoe) {
+      String sourceType,
+      String sessionFilePath,
+      String schemaOverridesFilePath,
+      String tableOverrides,
+      String columnOverrides) {
     this.spannerConfig = spannerConfig;
     this.ddlView = ddlView;
     this.sourceSchema = sourceSchema;
@@ -127,7 +136,11 @@ public class AssignShardIdFn
     this.shardingCustomClassName = shardingCustomClassName;
     this.shardingCustomParameters = shardingCustomParameters;
     this.maxConnectionsAcrossAllShards = maxConnectionsAcrossAllShards;
-    this.sourceType = sourceTyoe;
+    this.sourceType = sourceType;
+    this.sessionFilePath = sessionFilePath;
+    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.tableOverrides = tableOverrides;
+    this.columnOverrides = columnOverrides;
   }
 
   // setSpannerAccessor is added to be used by unit tests
@@ -195,13 +208,17 @@ public class AssignShardIdFn
   public void processElement(ProcessContext c) throws Exception {
     Ddl ddl = c.sideInput(ddlView);
 
-    if (this.schemaMapper == null) {
-      SpannerToSourceDb.Options options =
-          c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
-      this.schemaMapper = SpannerToSourceDb.getSchemaMapper(options, ddl);
+    // SchemaMapper depends on Ddl side input, which is only available in processElement.
+    ISchemaMapper schemaMapper = this.schemaMapper; // This is required for unit tests.
+    if (schemaMapper == null) {
+      schemaMapper =
+          SchemaMapperUtils.getSchemaMapper(
+              sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
     }
-    if (this.shardIdFetcher == null) {
-      this.shardIdFetcher =
+
+    IShardIdFetcher shardIdFetcher = this.shardIdFetcher;
+    if (shardIdFetcher == null) {
+      shardIdFetcher =
           ShardingLogicImplFetcher.getShardingLogicImpl(
               customJarPath,
               shardingCustomClassName,
@@ -224,7 +241,7 @@ public class AssignShardIdFn
         qualifiedShard = this.shardName;
       } else {
         // Skip from processing if table not found at source.
-        boolean doesTableExist = doesTableExistAtSource(tableName);
+        boolean doesTableExist = doesTableExistAtSource(tableName, schemaMapper);
         if (!doesTableExist) {
           LOG.warn(
               "Writing record for table {} to skipped directory name {} since table not present in"
@@ -236,7 +253,7 @@ public class AssignShardIdFn
         } else {
           ShardIdRequest shardIdRequest = new ShardIdRequest(tableName, spannerRecord);
 
-          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest);
+          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest, shardIdFetcher);
 
           qualifiedShard = shardIdResponse.getLogicalShardId();
           if (qualifiedShard == null || qualifiedShard.isEmpty() || qualifiedShard.contains("/")) {
@@ -587,7 +604,7 @@ public class AssignShardIdFn
     }
   }
 
-  private boolean doesTableExistAtSource(String tableName) {
+  private boolean doesTableExistAtSource(String tableName, ISchemaMapper schemaMapper) {
     try {
       String sourceTableName = schemaMapper.getSourceTableName("", tableName);
       if (sourceTableName == null || sourceTableName.isEmpty()) {
@@ -624,7 +641,8 @@ public class AssignShardIdFn
     return spannerRecord;
   }
 
-  private ShardIdResponse getShardIdResponse(ShardIdRequest shardIdRequest) throws Exception {
+  private ShardIdResponse getShardIdResponse(
+      ShardIdRequest shardIdRequest, IShardIdFetcher shardIdFetcher) throws Exception {
     ShardIdResponse shardIdResponse = new ShardIdResponse();
     if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
       Distribution getShardIdResponseTimeMetric =

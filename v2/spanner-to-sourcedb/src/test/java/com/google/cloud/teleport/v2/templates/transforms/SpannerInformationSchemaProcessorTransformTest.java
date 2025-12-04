@@ -31,7 +31,6 @@ import com.google.cloud.spanner.Dialect;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
 import com.google.cloud.teleport.v2.spanner.ddl.InformationSchemaScanner;
-import com.google.cloud.teleport.v2.templates.transforms.SpannerToSourceDbProcessInformationSchema.ProcessInformationSchemaFn;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableCreator;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
@@ -48,7 +47,7 @@ import org.mockito.MockedStatic;
 import org.mockito.MockitoAnnotations;
 
 @RunWith(JUnit4.class)
-public class SpannerToSourceDbProcessInformationSchemaTest {
+public class SpannerInformationSchemaProcessorTransformTest {
 
   @Mock private SpannerConfig spannerConfig;
   @Mock private SpannerConfig shadowTableSpannerConfig;
@@ -127,9 +126,9 @@ public class SpannerToSourceDbProcessInformationSchemaTest {
 
       fn.processElement(processContext);
 
-      verify(processContext).output(SpannerToSourceDbProcessInformationSchema.MAIN_DDL_TAG, ddl);
+      verify(processContext).output(SpannerInformationSchemaProcessorTransform.MAIN_DDL_TAG, ddl);
       verify(processContext)
-          .output(SpannerToSourceDbProcessInformationSchema.SHADOW_TABLE_DDL_TAG, ddl);
+          .output(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG, ddl);
 
       assert (mockedShadowTableCreator.constructed().size() == 1);
       verify(mockedShadowTableCreator.constructed().get(0)).createShadowTablesInSpanner();

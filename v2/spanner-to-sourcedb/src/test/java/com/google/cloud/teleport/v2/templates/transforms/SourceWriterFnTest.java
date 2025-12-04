@@ -246,7 +246,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -276,7 +280,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -305,7 +313,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -339,7 +351,11 @@ public class SourceWriterFnTest {
             "mysql",
             customTransformation,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -378,7 +394,11 @@ public class SourceWriterFnTest {
             "mysql",
             customTransformation,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -415,7 +435,11 @@ public class SourceWriterFnTest {
             "mysql",
             customTransformation,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -450,7 +474,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -482,7 +510,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -512,7 +544,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -543,7 +579,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -574,7 +614,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -606,7 +650,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -638,7 +686,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -670,7 +722,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -702,7 +758,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -734,7 +794,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -766,7 +830,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -798,7 +866,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -830,7 +902,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -862,7 +938,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -900,7 +980,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -937,7 +1021,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     sourceWriterFn.setObjectMapper(mapper);
@@ -961,7 +1049,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     sourceWriterFn.setSpannerDao(mockSpannerDao);
     sourceWriterFn.setSourceProcessor(mockSourceProcessor);
     sourceWriterFn.teardown();
@@ -983,7 +1075,11 @@ public class SourceWriterFnTest {
             "mysql",
             null,
             mockDdlView,
-            mockShadowTableDdlView);
+            mockShadowTableDdlView,
+            "src/test/resources/sourceWriterUTSession.json",
+            "",
+            "",
+            "");
     sourceWriterFn.teardown();
     // No exception thrown is success.
   }

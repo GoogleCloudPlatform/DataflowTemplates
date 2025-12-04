@@ -56,6 +56,10 @@ public class SourceWriterTransform
   private final int maxThreadPerDataflowWorker;
   private final String source;
   private final CustomTransformation customTransformation;
+  private final String sessionFilePath;
+  private final String schemaOverridesFilePath;
+  private final String tableOverrides;
+  private final String columnOverrides;
 
   public SourceWriterTransform(
       List<Shard> shards,
@@ -68,7 +72,11 @@ public class SourceWriterTransform
       String skipDirName,
       int maxThreadPerDataflowWorker,
       String source,
-      CustomTransformation customTransformation) {
+      CustomTransformation customTransformation,
+      String sessionFilePath,
+      String schemaOverridesFilePath,
+      String tableOverrides,
+      String columnOverrides) {
 
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
@@ -81,6 +89,10 @@ public class SourceWriterTransform
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
     this.source = source;
     this.customTransformation = customTransformation;
+    this.sessionFilePath = sessionFilePath;
+    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.tableOverrides = tableOverrides;
+    this.columnOverrides = columnOverrides;
   }
 
   @Override
@@ -101,7 +113,11 @@ public class SourceWriterTransform
                         this.source,
                         this.customTransformation,
                         this.ddlView,
-                        this.shadowTableDdlView))
+                        this.shadowTableDdlView,
+                        this.sessionFilePath,
+                        this.schemaOverridesFilePath,
+                        this.tableOverrides,
+                        this.columnOverrides))
                 .withSideInputs(ddlView, shadowTableDdlView)
                 .withOutputTags(
                     Constants.SUCCESS_TAG,

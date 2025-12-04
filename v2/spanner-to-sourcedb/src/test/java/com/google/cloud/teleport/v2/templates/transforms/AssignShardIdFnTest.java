@@ -170,7 +170,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber");
     Map<String, Object> actual = assignShardIdFn.getRowAsMap(mockRow, columns, "tableName", ddl);
@@ -198,7 +202,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
     List<String> columns =
         List.of("accountId", "accountName", "migration_shard_id", "accountNumber", "missingColumn");
 
@@ -232,7 +240,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -279,7 +291,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -325,7 +341,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setMapper(new ObjectMapper());
@@ -362,7 +382,11 @@ public class AssignShardIdFnTest {
             shardingCustomClassName,
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
     // The line below actually triggers the loading logic that throws the exception
     ShardingLogicImplFetcher.getShardingLogicImpl(
         customJarPath, shardingCustomClassName, "", schemaMapper, "skip");
@@ -426,7 +450,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -473,7 +501,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -516,7 +548,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     record.setShard("skip");
@@ -555,7 +591,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -600,7 +640,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     record.setShard("shard1");
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
@@ -655,7 +699,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
 
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
@@ -723,7 +771,11 @@ public class AssignShardIdFnTest {
             "",
             "",
             10000L,
-            Constants.SOURCE_MYSQL);
+            Constants.SOURCE_MYSQL,
+            "sessionFilePath",
+            "schemaOverridesFilePath",
+            "tableOverrides",
+            "columnOverrides");
     assignShardIdFn.setMapper(new ObjectMapper());
     assignShardIdFn.setSchemaMapper(schemaMapper);
 

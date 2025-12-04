@@ -35,7 +35,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTran
 import com.google.cloud.teleport.v2.spanner.migrations.utils.CustomTransformationImplFetcher;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
 import com.google.cloud.teleport.v2.spanner.utils.ISpannerMigrationTransformer;
-import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.cloud.teleport.v2.templates.changestream.ChangeStreamErrorRecord;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -47,6 +46,7 @@ import com.google.cloud.teleport.v2.templates.dbutils.processor.InputRecordProce
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessor;
 import com.google.cloud.teleport.v2.templates.dbutils.processor.SourceProcessorFactory;
 import com.google.cloud.teleport.v2.templates.exceptions.UnsupportedSourceException;
+import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
@@ -92,7 +92,6 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private static final Distribution UNSUCCESSFUL_WRITE_LATENCY_MS =
       Metrics.distribution(SourceWriterFn.class, "unsuccessful_write_to_source_latency_ms");
 
-  private transient ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
@@ -109,6 +108,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
   private final PCollectionView<Ddl> ddlView;
   private final PCollectionView<Ddl> shadowTableDdlView;
 
+  private final String sessionFilePath;
+  private final String schemaOverridesFilePath;
+  private final String tableOverrides;
+  private final String columnOverrides;
+
   public SourceWriterFn(
       List<Shard> shards,
       SpannerConfig spannerConfig,
@@ -120,7 +124,11 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       String source,
       CustomTransformation customTransformation,
       PCollectionView<Ddl> ddlView,
-      PCollectionView<Ddl> shadowTableDdlView) {
+      PCollectionView<Ddl> shadowTableDdlView,
+      String sessionFilePath,
+      String schemaOverridesFilePath,
+      String tableOverrides,
+      String columnOverrides) {
 
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
@@ -133,6 +141,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     this.customTransformation = customTransformation;
     this.ddlView = ddlView;
     this.shadowTableDdlView = shadowTableDdlView;
+    this.sessionFilePath = sessionFilePath;
+    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.tableOverrides = tableOverrides;
+    this.columnOverrides = columnOverrides;
   }
 
   // for unit testing purposes
@@ -184,11 +196,10 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
     Ddl ddl = c.sideInput(ddlView);
     Ddl shadowTableDdl = c.sideInput(shadowTableDdlView);
 
-    if (this.schemaMapper == null) {
-      SpannerToSourceDb.Options options =
-          c.getPipelineOptions().as(SpannerToSourceDb.Options.class);
-      this.schemaMapper = SpannerToSourceDb.getSchemaMapper(options, ddl);
-    }
+    // SchemaMapper depends on Ddl side input, which is only available in processElement.
+    ISchemaMapper schemaMapper =
+        SchemaMapperUtils.getSchemaMapper(
+            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
 
     KV<Long, TrimmedShardedDataChangeRecord> element = c.element();
     TrimmedShardedDataChangeRecord spannerRec = element.getValue();

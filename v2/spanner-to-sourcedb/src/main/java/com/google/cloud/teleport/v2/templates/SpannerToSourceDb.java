@@ -32,11 +32,6 @@ import com.google.cloud.teleport.v2.cdc.dlq.StringDeadLetterQueueSanitizer;
 import com.google.cloud.teleport.v2.coders.FailsafeElementCoder;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.IdentityMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaFileOverridesBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverridesBasedMapper;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.SessionBasedMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.CassandraShard;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
@@ -57,7 +52,7 @@ import com.google.cloud.teleport.v2.templates.transforms.ConvertDlqRecordToTrimm
 import com.google.cloud.teleport.v2.templates.transforms.FilterRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.PreprocessRecordsFn;
 import com.google.cloud.teleport.v2.templates.transforms.SourceWriterTransform;
-import com.google.cloud.teleport.v2.templates.transforms.SpannerToSourceDbProcessInformationSchema;
+import com.google.cloud.teleport.v2.templates.transforms.SpannerInformationSchemaProcessorTransform;
 import com.google.cloud.teleport.v2.templates.transforms.UpdateDlqMetricsFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
@@ -604,19 +599,19 @@ public class SpannerToSourceDb {
     PCollectionTuple ddlTuple =
         pipeline.apply(
             "Process Information Schema",
-            new SpannerToSourceDbProcessInformationSchema(
+            new SpannerInformationSchemaProcessorTransform(
                 spannerConfig, spannerMetadataConfig, options.getShadowTablePrefix()));
 
     final PCollectionView<Ddl> ddlView =
         ddlTuple
-            .get(SpannerToSourceDbProcessInformationSchema.MAIN_DDL_TAG)
+            .get(SpannerInformationSchemaProcessorTransform.MAIN_DDL_TAG)
             .apply("View Main DDL", View.asSingleton());
 
     DataflowPipelineDebugOptions debugOptions = options.as(DataflowPipelineDebugOptions.class);
 
     final PCollectionView<Ddl> shadowTableDdlView =
         ddlTuple
-            .get(SpannerToSourceDbProcessInformationSchema.SHADOW_TABLE_DDL_TAG)
+            .get(SpannerInformationSchemaProcessorTransform.SHADOW_TABLE_DDL_TAG)
             .apply("View Shadow DDL", View.asSingleton());
 
     List<Shard> shards;
@@ -751,7 +746,13 @@ public class SpannerToSourceDb {
                             options.getShardingCustomClassName(),
                             options.getShardingCustomParameters(),
                             options.getMaxShardConnections() * shards.size(),
-                            options.getSourceType())) // currently assume that all shards accept the
+                            options.getSourceType(),
+                            options.getSessionFilePath(),
+                            options.getSchemaOverridesFilePath(),
+                            options.getTableOverrides(),
+                            options
+                                .getColumnOverrides())) // currently assume that all shards accept
+                    // the
                     // same source type
                     .withSideInputs(ddlView))
             .setCoder(
@@ -771,7 +772,11 @@ public class SpannerToSourceDb {
                     options.getSkipDirectoryName(),
                     connectionPoolSizePerWorker,
                     options.getSourceType(),
-                    customTransformation));
+                    customTransformation,
+                    options.getSessionFilePath(),
+                    options.getSchemaOverridesFilePath(),
+                    options.getTableOverrides(),
+                    options.getColumnOverrides()));
 
     PCollection<FailsafeElement<String, String>> dlqPermErrorRecords =
         reconsumedElements
@@ -957,46 +962,5 @@ public class SpannerToSourceDb {
       throw new RuntimeException("Unable to discover jdbc schema", e);
     }
     return sourceSchema;
-  }
-
-  public static ISchemaMapper getSchemaMapper(Options options, Ddl ddl) {
-    // Check if config types are specified
-    boolean hasSessionFile =
-        options.getSessionFilePath() != null && !options.getSessionFilePath().equals("");
-    boolean hasSchemaOverridesFile =
-        options.getSchemaOverridesFilePath() != null
-            && !options.getSchemaOverridesFilePath().equals("");
-    boolean hasStringOverrides =
-        (options.getTableOverrides() != null && !options.getTableOverrides().equals(""))
-            || (options.getColumnOverrides() != null && !options.getColumnOverrides().equals(""));
-
-    int overrideTypesCount = 0;
-    if (hasSessionFile) {
-      overrideTypesCount++;
-    }
-    if (hasSchemaOverridesFile) {
-      overrideTypesCount++;
-    }
-    if (hasStringOverrides) {
-      overrideTypesCount++;
-    }
-
-    if (overrideTypesCount > 1) {
-      throw new IllegalArgumentException(
-          "Only one type of schema override can be specified. Please use only one of: sessionFilePath, "
-              + "schemaOverridesFilePath, or tableOverrides/columnOverrides.");
-    }
-
-    ISchemaMapper schemaMapper = new IdentityMapper(ddl);
-    if (hasSessionFile) {
-      schemaMapper = new SessionBasedMapper(options.getSessionFilePath(), ddl);
-    } else if (hasSchemaOverridesFile) {
-      schemaMapper = new SchemaFileOverridesBasedMapper(options.getSchemaOverridesFilePath(), ddl);
-    } else if (hasStringOverrides) {
-      schemaMapper =
-          new SchemaStringOverridesBasedMapper(
-              options.getTableOverrides(), options.getColumnOverrides(), ddl);
-    }
-    return schemaMapper;
   }
 }
