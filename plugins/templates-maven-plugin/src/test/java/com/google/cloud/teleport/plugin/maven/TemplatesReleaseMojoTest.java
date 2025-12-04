@@ -99,8 +99,7 @@ public class TemplatesReleaseMojoTest {
       // Check bucketname
       assertEquals("test-bucket", capturedBlobInfo.getBucket());
       // Check yaml file name captured
-      assertEquals(
-          "test-prefix/yaml-blueprints/my-blueprint.yaml", capturedBlobInfo.getName());
+      assertEquals("test-prefix/yaml-blueprints/my-blueprint.yaml", capturedBlobInfo.getName());
 
       // Check yaml content
       assertEquals(yamlContent, new String(bytesCaptor.getValue()));
@@ -108,8 +107,7 @@ public class TemplatesReleaseMojoTest {
   }
 
   private static String getYamlContent() {
-    return 
-    """
+    return """
 template:
   name: "Kafka_to_BigQuery_Yaml"
   category: "STREAMING"
@@ -130,6 +128,4 @@ pipeline:
           output: errors
     """;
   }
-
-
 }

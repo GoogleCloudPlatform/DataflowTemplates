@@ -279,8 +279,6 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         LOG.warn("YAML blueprints not published in this module.");
       }
 
-
-
     } catch (DependencyResolutionRequiredException e) {
       throw new MojoExecutionException("Dependency resolution failed", e);
     } catch (MalformedURLException e) {
