@@ -19,6 +19,15 @@ import static org.hamcrest.Matchers.equalTo;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.spanner.TextImportTransform.ReadImportManifest;
@@ -28,6 +37,9 @@ import com.google.cloud.teleport.spanner.common.Type.Code;
 import com.google.cloud.teleport.spanner.ddl.Ddl;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest;
 import com.google.cloud.teleport.spanner.proto.TextImportProtos.ImportManifest.TableManifest.Column;
+import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import com.google.cloud.teleport.spanner.spannerio.SpannerIO;
+import com.google.cloud.teleport.spanner.spannerio.SpannerWriteResult;
 import com.google.common.collect.Lists;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -46,13 +58,108 @@ import org.apache.beam.sdk.transforms.View;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
+import org.joda.time.Duration;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.junit.MockitoJUnitRunner;
 
 /** Tests for TextImportTransform class. */
+@RunWith(MockitoJUnitRunner.class)
 public class TextImportTransformTest {
 
   @Rule public final transient TestPipeline pipeline = TestPipeline.create();
+
+  @Mock private SpannerConfig mockSpannerConfig;
+  @Mock private ValueProvider<String> mockManifest;
+  @Mock private ValueProvider<String> mockInvalidOutputPath;
+
+  @Test
+  public void testGetSpannerWrite() {
+
+    PCollectionView<Dialect> dialectView =
+        pipeline
+            .apply("Dialect", Create.of(Dialect.GOOGLE_STANDARD_SQL))
+            .apply("Dialect As PCollectionView", View.asSingleton());
+
+    try (MockedStatic<SpannerIO> mockedSpannerIO = mockStatic(SpannerIO.class)) {
+      SpannerIO.Write mockWrite = mock(SpannerIO.Write.class);
+
+      mockedSpannerIO.when(SpannerIO::write).thenReturn(mockWrite);
+
+      when(mockWrite.withSpannerConfig(any(SpannerConfig.class))).thenReturn(mockWrite);
+      when(mockWrite.withCommitDeadline(any(Duration.class))).thenReturn(mockWrite);
+      when(mockWrite.withMaxCumulativeBackoff(any(Duration.class))).thenReturn(mockWrite);
+      when(mockWrite.withMaxNumMutations(anyLong())).thenReturn(mockWrite);
+      when(mockWrite.withGroupingFactor(anyInt())).thenReturn(mockWrite);
+      when(mockWrite.withDialectView(any())).thenReturn(mockWrite);
+      when(mockWrite.withFailureMode(any())).thenReturn(mockWrite);
+
+      // Case 1: invalidMutationPath is empty
+      TextImportTransform transform =
+          new TextImportTransform(mockSpannerConfig, mockManifest, mockInvalidOutputPath, "");
+
+      transform.getSpannerWrite(dialectView);
+
+      // Verify initial configurations
+      verify(mockWrite).withSpannerConfig(mockSpannerConfig);
+      verify(mockWrite).withCommitDeadline(Duration.standardMinutes(1));
+      verify(mockWrite).withMaxCumulativeBackoff(Duration.standardHours(2));
+      verify(mockWrite).withMaxNumMutations(10000);
+      verify(mockWrite).withGroupingFactor(100);
+      verify(mockWrite).withDialectView(dialectView);
+
+      // Case 2: invalidMutationPath is not empty
+      // Reset mocks for the next scenario
+      reset(mockWrite);
+      transform =
+          new TextImportTransform(
+              mockSpannerConfig, mockManifest, mockInvalidOutputPath, "dummy-path");
+      mockedSpannerIO.when(SpannerIO::write).thenReturn(mockWrite);
+
+      when(mockWrite.withSpannerConfig(any(SpannerConfig.class))).thenReturn(mockWrite);
+      when(mockWrite.withCommitDeadline(any(Duration.class))).thenReturn(mockWrite);
+      when(mockWrite.withMaxCumulativeBackoff(any(Duration.class))).thenReturn(mockWrite);
+      when(mockWrite.withMaxNumMutations(anyLong())).thenReturn(mockWrite);
+      when(mockWrite.withGroupingFactor(anyInt())).thenReturn(mockWrite);
+      when(mockWrite.withDialectView(any(PCollectionView.class))).thenReturn(mockWrite);
+      when(mockWrite.withFailureMode(any(SpannerIO.FailureMode.class))).thenReturn(mockWrite);
+
+      transform.getSpannerWrite(dialectView);
+
+      // Verify initial configurations (these should be the same as before)
+      verify(mockWrite).withSpannerConfig(mockSpannerConfig);
+      verify(mockWrite).withCommitDeadline(Duration.standardMinutes(1));
+      verify(mockWrite).withMaxCumulativeBackoff(Duration.standardHours(2));
+      verify(mockWrite).withMaxNumMutations(10000);
+      verify(mockWrite).withGroupingFactor(100);
+      verify(mockWrite).withDialectView(dialectView);
+      // Verify that withFailureMode is called with REPORT_FAILURES
+      verify(mockWrite).withFailureMode(SpannerIO.FailureMode.REPORT_FAILURES);
+    }
+    pipeline.run();
+  }
+
+  @Test
+  public void testLogFailedMutations() {
+    SpannerWriteResult mockSpannerWriteResult = mock(SpannerWriteResult.class);
+    PCollection mockPCollection = mock(PCollection.class);
+    PCollection mockMappedPCollection = mock(PCollection.class);
+
+    when(mockSpannerWriteResult.getFailedMutations()).thenReturn(mockPCollection);
+    when(mockPCollection.apply(anyString(), any())).thenReturn(mockMappedPCollection);
+
+    // Case 1: invalidMutationPath is not empty
+    TextImportTransform transform =
+        new TextImportTransform(
+            mockSpannerConfig, mockManifest, mockInvalidOutputPath, "dummy-path");
+    when(mockSpannerWriteResult.getFailedMutations()).thenReturn(mockPCollection);
+    transform.logFailedMutations(1, mockSpannerWriteResult);
+    verify(mockPCollection).apply(anyString(), any());
+    verify(mockMappedPCollection).apply(anyString(), any());
+  }
 
   @Test
   public void readImportManifest() throws Exception {
