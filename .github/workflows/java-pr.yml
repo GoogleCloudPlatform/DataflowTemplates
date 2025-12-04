@@ -86,7 +86,7 @@ jobs:
       - name: Run Integration Tests
         run: |
           ./cicd/run-it-tests \
-          --modules-to-build="YAML" \
+          --modules-to-build="DEFAULT" \
           --it-region="${{ env.IT_REGION }}" \
           --it-project="cloud-teleport-testing" \
           --it-integration-test-parallelism=6 \
