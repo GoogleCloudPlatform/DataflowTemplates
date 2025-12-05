@@ -290,7 +290,7 @@ public class MysqlDialectAdapterTest {
                 .setIsPrimary(false)
                 .setCardinality(42L)
                 .setOrdinalPosition(1)
-                .setIndexType(IndexType.OTHER)
+                .setIndexType(IndexType.FLOAT)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testCol1")

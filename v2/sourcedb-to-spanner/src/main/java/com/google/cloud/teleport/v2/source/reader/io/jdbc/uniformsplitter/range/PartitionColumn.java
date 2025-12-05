@@ -35,6 +35,10 @@ public abstract class PartitionColumn implements Serializable {
    */
   public abstract Class columnClass();
 
+  // TODO: Add optional delta value that is used to set the granularity of approximate types like Float or Double
+  // For example to support Mysql primary key FLOAT(size, d) and DOUBLE PRECISION(size, d) where d is the number of decimals
+  // and represent the minimal delta between 2 values.
+
   /**
    * String Collation. Must be set for if {@link PartitionColumn#columnClass()} is {@link String}
    * and must not be set otherwise. Defaults to null.
