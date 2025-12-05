@@ -280,7 +280,7 @@ public class MysqlDialectAdapterTest {
   public void testDiscoverIndexesBasic() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
-        ImmutableList.of("float", "integer", "char", "varbinary", "binary");
+        ImmutableList.of("float", "integer", "char", "varbinary", "binary", "year");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
@@ -335,6 +335,16 @@ public class MysqlDialectAdapterTest {
                 .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(4)
                 .build());
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColYear")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(100L)
+                .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(6)
+                .build();
+
 
     final JdbcSchemaReference sourceSchemaReference =
         JdbcSchemaReference.builder().setDbName("testDB").build();

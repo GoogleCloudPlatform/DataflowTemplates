@@ -271,6 +271,10 @@ CREATE TABLE timestamp_pk_table (
                                     timestamp_pk_col TIMESTAMP(6) NOT NULL,
                                     CONSTRAINT PRIMARY KEY (id)
 );
+CREATE TABLE year_pk_table (
+    id YEAR PRIMARY KEY,
+    year_pk_col YEAR NOT NULL
+);
 
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -422,6 +426,7 @@ INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('1970-01-01 
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');
 SET time_zone = SYSTEM;
+INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 2000);
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);
