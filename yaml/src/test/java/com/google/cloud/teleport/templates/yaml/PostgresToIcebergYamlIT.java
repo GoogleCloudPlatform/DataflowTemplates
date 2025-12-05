@@ -20,7 +20,7 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipelin
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
-import com.google.cloud.teleport.metadata.SkipRunnerV2Test;
+import com.google.cloud.teleport.metadata.DirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
@@ -48,7 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link PostgresToIcebergYaml} template. */
-@Category({TemplateIntegrationTest.class, SkipRunnerV2Test.class})
+@Category({TemplateIntegrationTest.class, DirectRunnerTest.class})
 @TemplateIntegrationTest(PostgresToIcebergYaml.class)
 @RunWith(JUnit4.class)
 public class PostgresToIcebergYamlIT extends TemplateTestBase {
@@ -70,7 +70,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
-    warehouseLocation = "gs://cloud-teleport-testing-it-gitactions";
+    warehouseLocation = getGcsBasePath();
     LOG.info("Warehouse Location: {}, {}", warehouseLocation, getGcsBasePath());
     Map<String, String> catalogHadoopConf =
         Map.of("fs.gs.project.id", PROJECT, "fs.gs.auth.type", "APPLICATION_DEFAULT");

@@ -64,6 +64,10 @@ var (
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-sql/",
 		},
+		ALL_V1_V2: {
+			"v1/",
+			"v2/",
+		},
 	}
 )
 
