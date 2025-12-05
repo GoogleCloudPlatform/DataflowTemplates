@@ -112,7 +112,9 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     postgresResourceManager.write(tableName, records);
 
     String catalogProperties =
-        String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
+        String.format(
+            "{\"type\": \"hadoop\", \"warehouse\": \"%s\"}",
+            "gs://cloud-teleport-testing-it-gitactions/");
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
