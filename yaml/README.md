@@ -12,9 +12,9 @@ Place this file in [here](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 1.  **Generate YAML Template (Optional):** If desired, create the YAML template using the generation script.
 
-```shell
-python yaml/src/main/python/generate_yaml_java_templates.py yaml/src/main/yaml
-```
+    ```shell
+    python yaml/src/main/python/generate_yaml_java_templates.py yaml/src/main/yaml
+    ```
 
 1.  **Create Integration Test:** Develop an integration test to validate the functionality of the new template.
 Place this file in [here](https://github.com/GoogleCloudPlatform/DataflowTemplates/yaml/src/test/java).
