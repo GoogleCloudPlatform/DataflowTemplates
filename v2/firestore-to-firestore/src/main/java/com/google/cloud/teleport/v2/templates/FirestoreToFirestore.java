@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.templates;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
+import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
 import com.google.cloud.teleport.v2.transforms.PrepareWritesFn;
 import com.google.cloud.teleport.v2.transforms.RunQueryResponseToDocumentFn;
 import com.google.firestore.v1.Document;
@@ -146,120 +147,127 @@ public class FirestoreToFirestore {
   }
 
   public static void main(String[] args) {
-    UncaughtExceptionLogger.register();
+    try {
+      UncaughtExceptionLogger.register();
 
-    LOG.info("Starting Firestore to Firestore pipeline...");
+      LOG.info("Starting Firestore to Firestore pipeline...");
 
-    Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
-    LOG.info("Pipeline options parsed and validated.");
+      Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+      LOG.info("Pipeline options parsed and validated.");
 
-    Pipeline p = Pipeline.create(options);
-    LOG.info("Pipeline created.");
+      Pipeline p = Pipeline.create(options);
+      LOG.info("Pipeline created.");
 
-    String sourceProject = options.getSourceProjectId();
-    String sourceDb =
-        options.getSourceDatabaseId().isEmpty()
-            ? "(default)"
-            : options.getSourceDatabaseId();
+      String sourceProject = options.getSourceProjectId();
+      String sourceDb =
+          options.getSourceDatabaseId().isEmpty()
+              ? "(default)"
+              : options.getSourceDatabaseId();
 
-    String destProject = options.getDestinationProjectId();
-    String destDb =
-        options.getDestinationDatabaseId().isEmpty()
-            ? "(default)"
-            : options.getDestinationProjectId();
+      String destProject = options.getDestinationProjectId();
+      String destDb =
+          options.getDestinationDatabaseId().isEmpty()
+              ? "(default)"
+              : options.getDestinationProjectId();
 
-    String collectionId = options.getDatabaseCollection();
-    long partitionCount =
-        options.getBatchSize();
+      String collectionId = options.getDatabaseCollection();
+      long partitionCount =
+          options.getBatchSize();
 
-    int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
-    RpcQosOptions rpcQosOptions =
-        RpcQosOptions.newBuilder()
-            .withHintMaxNumWorkers(maxNumWorkers)
-            .build();
+      int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
+      RpcQosOptions rpcQosOptions =
+          RpcQosOptions.newBuilder()
+              .withHintMaxNumWorkers(maxNumWorkers)
+              .build();
 
-    Instant readTime =
-        options.getReadTime().isEmpty()
-            ? Instant.now()
-            : Instant.parse(options.getReadTime());
+      Instant readTime =
+          options.getReadTime().isEmpty()
+              ? Instant.now()
+              : Instant.parse(options.getReadTime());
 
-    LOG.info(
-        "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
-            + "destinationProjectId={}, destinationDatabaseId={}, maxNumWorkers={}, readTime={}",
-        sourceProject,
-        sourceDb,
-        destProject,
-        destDb,
-        maxNumWorkers,
-        readTime);
+      LOG.info(
+          "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
+              + "destinationProjectId={}, destinationDatabaseId={}, maxNumWorkers={}, readTime={}",
+          sourceProject,
+          sourceDb,
+          destProject,
+          destDb,
+          maxNumWorkers,
+          readTime);
 
-    // 1. Define the base query to be partitioned
-    StructuredQuery baseQuery =
-        StructuredQuery.newBuilder()
-            // TODO: pacoavila - uncomment
-            // .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId))
-            .addOrderBy(
-                StructuredQuery.Order.newBuilder()
-                    .setField(StructuredQuery.FieldReference.newBuilder().setFieldPath("__name__"))
-                    .setDirection(StructuredQuery.Direction.ASCENDING))
-            .build();
+      // 1. Define the base query to be partitioned
+      StructuredQuery baseQuery =
+          StructuredQuery.newBuilder()
+              // TODO: pacoavila - uncomment
+              // .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId))
+              .addOrderBy(
+                  StructuredQuery.Order.newBuilder()
+                      .setField(
+                          StructuredQuery.FieldReference.newBuilder().setFieldPath("__name__"))
+                      .setDirection(StructuredQuery.Direction.ASCENDING))
+              .build();
 
-    // 2. Create the PartitionQueryRequest
-    PartitionQueryRequest partitionRequest =
-        PartitionQueryRequest.newBuilder()
-            .setParent(DocumentRootName.format(sourceProject, sourceDb))
-            .setStructuredQuery(baseQuery)
-            .setPartitionCount(partitionCount)
-            .build();
+      // 2. Create the PartitionQueryRequest
+      PartitionQueryRequest partitionRequest =
+          PartitionQueryRequest.newBuilder()
+              .setParent(DocumentRootName.format(sourceProject, sourceDb))
+              .setStructuredQuery(baseQuery)
+              .setPartitionCount(partitionCount)
+              .build();
 
-    // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
-    PCollection<RunQueryRequest> partitionedQueries =
-        p.apply("CreatePartitionRequest", Create.of(partitionRequest))
-            .apply(
-                "GetPartitions",
-                FirestoreIO.v1()
-                    .read()
-                    .partitionQuery()
-                    .withReadTime(readTime)
-                    .withRpcQosOptions(rpcQosOptions)
-                    .build());
-    LOG.info("Completed constructing PartitionQuery requests.");
+      // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
+      PCollection<RunQueryRequest> partitionedQueries =
+          p.apply("CreatePartitionRequest", Create.of(partitionRequest))
+              .apply(
+                  "GetPartitions",
+                  FirestoreIO.v1()
+                      .read()
+                      .partitionQuery()
+                      .withReadTime(readTime)
+                      .withRpcQosOptions(rpcQosOptions)
+                      .build());
+      LOG.info("Completed constructing PartitionQuery requests.");
 
-    // 4. Execute each partitioned query
-    PCollection<RunQueryResponse> responses =
-        partitionedQueries
-            // TODO: pacoavila - Include the project / database here.
-            .apply(
-                "ExecutePartitions",
-                FirestoreIO.v1()
-                    .read()
-                    .runQuery()
-                    .withReadTime(readTime)
-                    .withRpcQosOptions(rpcQosOptions)
-                    .build());
-    LOG.info("Completed PartitionQuery requests.");
+      // 4. Execute each partitioned query
+      PCollection<RunQueryResponse> responses =
+          partitionedQueries
+              // TODO: pacoavila - Include the project / database here.
+              .apply(
+                  "ExecutePartitions",
+                  FirestoreIO.v1()
+                      .read()
+                      .runQuery()
+                      .withReadTime(readTime)
+                      .withRpcQosOptions(rpcQosOptions)
+                      .build());
+      LOG.info("Completed PartitionQuery requests.");
 
-    // 5. Process the documents from the responses
-    PCollection<Document> documents =
-        responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
-    LOG.info("Finished converting PartitionQuery results into Documents");
+      // 5. Process the documents from the responses
+      PCollection<Document> documents =
+          responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
+      LOG.info("Finished converting PartitionQuery results into Documents");
 
-    // 6. Prepare documents for writing to the destination database
-    PCollection<Write> writes = documents.apply(ParDo.of(new PrepareWritesFn(destProject, destDb)));
-    LOG.info("Finished converting Documents to Write requests.");
+      // 6. Prepare documents for writing to the destination database
+      PCollection<Write> writes = documents.apply(
+          ParDo.of(new PrepareWritesFn(destProject, destDb)));
+      LOG.info("Finished converting Documents to Write requests.");
 
-    // 7. Write documents to the destination Firestore database
-    writes.apply(
-        FirestoreIO.v1()
-            .write()
-            .withProjectId(destProject)
-            .withDatabaseId(destDb)
-            .batchWrite()
-            .withRpcQosOptions(rpcQosOptions)
-            .build());
-    LOG.info("Finished applying writes to destination database.");
+      // 7. Write documents to the destination Firestore database
+      writes.apply(
+          FirestoreIO.v1()
+              .write()
+              .withProjectId(destProject)
+              .withDatabaseId(destDb)
+              .batchWrite()
+              .withRpcQosOptions(rpcQosOptions)
+              .build());
+      LOG.info("Finished applying writes to destination database.");
 
-    p.run().waitUntilFinish();
-    LOG.info("Pipeline Finished!");
+      p.run().waitUntilFinish();
+      LOG.info("Pipeline Finished!");
+    } catch (Exception e) {
+      LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
+      throw e;
+    }
   }
 }
