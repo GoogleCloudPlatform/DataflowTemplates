@@ -30,6 +30,7 @@ import com.google.firestore.v1.StructuredQuery;
 import com.google.firestore.v1.Write;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
+import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.options.Default;
@@ -37,6 +38,7 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
+import org.jline.utils.Log;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,7 +145,6 @@ public class FirestoreToFirestore {
     String getReadTime();
 
     void setReadTime(String readTime);
-
   }
 
   public static void main(String[] args) {
@@ -263,8 +264,8 @@ public class FirestoreToFirestore {
               .build());
       LOG.info("Finished applying writes to destination database.");
 
-      p.run().waitUntilFinish();
-      LOG.info("Pipeline Finished!");
+      p.run();
+      LOG.info("Pipeline.run() called.");
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
