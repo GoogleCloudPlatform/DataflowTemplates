@@ -27,10 +27,10 @@ import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.RunQueryRequest;
 import com.google.firestore.v1.RunQueryResponse;
 import com.google.firestore.v1.StructuredQuery;
+import com.google.firestore.v1.StructuredQuery.CollectionSelector;
 import com.google.firestore.v1.Write;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.PipelineResult;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
 import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
 import org.apache.beam.sdk.options.Default;
@@ -38,7 +38,6 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
-import org.jline.utils.Log;
 import org.joda.time.Instant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -171,9 +170,8 @@ public class FirestoreToFirestore {
               ? "(default)"
               : options.getDestinationProjectId();
 
+      // TODO: support multiple collections
       String collectionId = options.getDatabaseCollection();
-      long partitionCount =
-          options.getBatchSize();
 
       int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
       RpcQosOptions rpcQosOptions =
@@ -188,19 +186,21 @@ public class FirestoreToFirestore {
 
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
-              + "destinationProjectId={}, destinationDatabaseId={}, maxNumWorkers={}, readTime={}",
+              + "destinationProjectId={}, destinationDatabaseId={}, collections={}, "
+              + "maxNumWorkers={}, readTime={}",
           sourceProject,
           sourceDb,
           destProject,
           destDb,
+          collectionId,
           maxNumWorkers,
           readTime);
 
       // 1. Define the base query to be partitioned
       StructuredQuery baseQuery =
           StructuredQuery.newBuilder()
-              // TODO: pacoavila - uncomment
-              // .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId))
+              .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId)
+                  .setAllDescendants(true))
               .addOrderBy(
                   StructuredQuery.Order.newBuilder()
                       .setField(
@@ -213,7 +213,8 @@ public class FirestoreToFirestore {
           PartitionQueryRequest.newBuilder()
               .setParent(DocumentRootName.format(sourceProject, sourceDb))
               .setStructuredQuery(baseQuery)
-              .setPartitionCount(partitionCount)
+              // TODO:maybe dedicated param here
+              .setPartitionCount(maxNumWorkers)
               .build();
 
       // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
