@@ -168,7 +168,7 @@ public class FirestoreToFirestore {
       String destDb =
           options.getDestinationDatabaseId().isEmpty()
               ? "(default)"
-              : options.getDestinationProjectId();
+              : options.getDestinationDatabaseId();
 
       // TODO: support multiple collections
       String collectionId = options.getDatabaseCollection();
