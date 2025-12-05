@@ -266,7 +266,10 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
               java.util.stream.Stream<Path> paths = Files.list(yamlPath)) {
             paths
-                .filter(path -> path.toString().endsWith(".yaml"))
+                .filter(
+                    path ->
+                        Files.isRegularFile(path)
+                            && path.getFileName().toString().endsWith(".yaml"))
                 .forEach(
                     path -> {
                       String fileName = path.getFileName().toString();
