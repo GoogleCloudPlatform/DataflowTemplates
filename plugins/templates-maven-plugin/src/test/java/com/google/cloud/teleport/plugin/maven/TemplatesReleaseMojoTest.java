@@ -87,13 +87,14 @@ public class TemplatesReleaseMojoTest {
       when(mockStorageOptions.getService()).thenReturn(mockStorage);
 
       ArgumentCaptor<BlobInfo> blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-      final byte[][] uploadedBytes = new byte[1][1];
+      final java.util.concurrent.atomic.AtomicReference<byte[]> uploadedBytes =
+          new java.util.concurrent.atomic.AtomicReference<>();
 
       // Read the input stream upon call, as it will be closed afterwards.
       Mockito.doAnswer(
               invocation -> {
                 java.io.InputStream inputStream = invocation.getArgument(1);
-                uploadedBytes[0] = inputStream.readAllBytes();
+                uploadedBytes.set(inputStream.readAllBytes());
                 return null;
               })
           .when(mockStorage)
@@ -112,7 +113,7 @@ public class TemplatesReleaseMojoTest {
 
       // Check yaml content
       assertEquals(
-          yamlContent, new String(uploadedBytes[0], java.nio.charset.StandardCharsets.UTF_8));
+          yamlContent, new String(uploadedBytes.get(), java.nio.charset.StandardCharsets.UTF_8));
     }
   }
 
