@@ -32,8 +32,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -79,13 +81,9 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
       throw new IllegalStateException("DDL file is empty: " + spannerSchemaFile);
     }
 
-    String[] ddls = ddl.trim().split(";");
-    for (String d : ddls) {
-      d = d.trim();
-      if (!d.isEmpty()) {
-        spannerResourceManager.executeDdlStatement(d);
-      }
-    }
+    List<String> ddls = Arrays.stream(ddl.split(";")).toList();
+    spannerResourceManager.executeDdlStatements(ddls);
+
     return spannerResourceManager;
   }
 
