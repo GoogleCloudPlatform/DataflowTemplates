@@ -79,13 +79,14 @@
       <version>${bigdataoss.version}</version>
     </dependency>
     <dependency>
+      <groupId>com.google.cloud.bigdataoss</groupId>
+      <artifactId>gcsio</artifactId>
+      <version>${bigdataoss.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.apache.iceberg</groupId>
       <artifactId>iceberg-gcp</artifactId>
       <version>${iceberg.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.beam</groupId>
-      <artifactId>beam-sdks-java-io-iceberg</artifactId>
     </dependency>
     <dependency>
       <groupId>com.google.cloud.teleport</groupId>
@@ -105,13 +106,6 @@
       <version>${postgresql.version}</version>
       <scope>test</scope>
     </dependency>
-
-        <dependency>
-            <groupId>com.google.cloud.bigdataoss</groupId>
-            <artifactId>gcsio</artifactId>
-            <version>${bigdataoss.version}</version>
-            <scope>test</scope>
-       </dependency>
 
   </dependencies>
 

@@ -37,9 +37,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
-import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -68,10 +66,6 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
-  private static final Schema ICEBERG_SCHEMA =
-      new Schema(
-          Types.NestedField.required(1, "id", Types.IntegerType.get()),
-          Types.NestedField.required(2, "active", Types.IntegerType.get()));
 
   @Before
   public void setUp() throws IOException {
@@ -95,8 +89,6 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .setCatalogProperties(catalogProperties)
             .setConfigProperties(catalogHadoopConf)
             .build();
-    icebergResourceManager.createNamespace(NAMESPACE);
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, ICEBERG_SCHEMA);
   }
 
   @After
@@ -120,13 +112,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     postgresResourceManager.write(tableName, records);
 
     String catalogProperties =
-        String.format(
-            "{\"type\": \"hadoop\", \"warehouse\": \"%s\", \"io-impl\": \"org.apache.iceberg.gcp.gcs.GCSFileIO\"}",
-            warehouseLocation);
-    String configProperties =
-        String.format(
-            "{\"fs.gs.project.id\": \"%s\", \"fs.gs.auth.type\": \"APPLICATION_DEFAULT\"}",
-            PROJECT);
+        String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
@@ -136,8 +122,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
-            .addParameter("catalogProperties", catalogProperties)
-            .addParameter("configProperties", configProperties);
+            .addParameter("catalogProperties", catalogProperties);
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
@@ -147,6 +132,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
     // Assert
     assertThatResult(result).isLaunchFinished();
+    LOG.info("Dataflow job {}finished successfully", info.jobId());
     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
     List<Map<String, Object>> expectedRecords = new ArrayList<>();
     for (Record record : icebergRecords) {
