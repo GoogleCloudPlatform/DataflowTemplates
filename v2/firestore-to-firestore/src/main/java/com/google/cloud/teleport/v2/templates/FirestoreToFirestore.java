@@ -37,6 +37,8 @@ import org.apache.beam.sdk.transforms.Create;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.joda.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Template(
     name = "Cloud_Firestore_to_Firestore",
@@ -53,14 +55,11 @@ import org.joda.time.Instant;
             + " encountered errors."
     },
     flexContainerName = "firestore-to-firestore",
-    optionsClass = FirestoreToFirestore.Options.class,
-    skipOptions = {
-        "firestoreReadGqlQuery",
-        "datastoreReadGqlQuery",
-        "datastoreReadProjectId",
-        "datastoreWriteProjectId"
-    })
+    optionsClass = FirestoreToFirestore.Options.class)
 public class FirestoreToFirestore {
+
+  private static final Logger LOG = LoggerFactory.getLogger(FirestoreToFirestore.class);
+
 
   /**
    * Options supported by the pipeline.
@@ -147,8 +146,15 @@ public class FirestoreToFirestore {
   }
 
   public static void main(String[] args) {
+    UncaughtExceptionLogger.register();
+
+    LOG.info("Starting Firestore to Firestore pipeline...");
+
     Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+    LOG.info("Pipeline options parsed and validated.");
+
     Pipeline p = Pipeline.create(options);
+    LOG.info("Pipeline created.");
 
     String sourceProject = options.getSourceProjectId();
     String sourceDb =
@@ -166,10 +172,26 @@ public class FirestoreToFirestore {
     long partitionCount =
         options.getBatchSize();
 
+    int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
     RpcQosOptions rpcQosOptions =
         RpcQosOptions.newBuilder()
-            .withHintMaxNumWorkers(options.as(DataflowPipelineOptions.class).getMaxNumWorkers())
+            .withHintMaxNumWorkers(maxNumWorkers)
             .build();
+
+    Instant readTime =
+        options.getReadTime().isEmpty()
+            ? Instant.now()
+            : Instant.parse(options.getReadTime());
+
+    LOG.info(
+        "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
+            + "destinationProjectId={}, destinationDatabaseId={}, maxNumWorkers={}, readTime={}",
+        sourceProject,
+        sourceDb,
+        destProject,
+        destDb,
+        maxNumWorkers,
+        readTime);
 
     // 1. Define the base query to be partitioned
     StructuredQuery baseQuery =
@@ -190,11 +212,6 @@ public class FirestoreToFirestore {
             .setPartitionCount(partitionCount)
             .build();
 
-    Instant readTime =
-        options.getReadTime().isEmpty()
-            ? Instant.now()
-            : Instant.parse(options.getReadTime());
-
     // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
     PCollection<RunQueryRequest> partitionedQueries =
         p.apply("CreatePartitionRequest", Create.of(partitionRequest))
@@ -206,6 +223,7 @@ public class FirestoreToFirestore {
                     .withReadTime(readTime)
                     .withRpcQosOptions(rpcQosOptions)
                     .build());
+    LOG.info("Completed constructing PartitionQuery requests.");
 
     // 4. Execute each partitioned query
     PCollection<RunQueryResponse> responses =
@@ -219,15 +237,18 @@ public class FirestoreToFirestore {
                     .withReadTime(readTime)
                     .withRpcQosOptions(rpcQosOptions)
                     .build());
+    LOG.info("Completed PartitionQuery requests.");
 
     // 5. Process the documents from the responses
     PCollection<Document> documents =
         responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
+    LOG.info("Finished converting PartitionQuery results into Documents");
 
-    // 3. Prepare documents for writing to the destination database
+    // 6. Prepare documents for writing to the destination database
     PCollection<Write> writes = documents.apply(ParDo.of(new PrepareWritesFn(destProject, destDb)));
+    LOG.info("Finished converting Documents to Write requests.");
 
-    // 4. Write documents to the destination Firestore database
+    // 7. Write documents to the destination Firestore database
     writes.apply(
         FirestoreIO.v1()
             .write()
@@ -236,7 +257,9 @@ public class FirestoreToFirestore {
             .batchWrite()
             .withRpcQosOptions(rpcQosOptions)
             .build());
+    LOG.info("Finished applying writes to destination database.");
 
     p.run().waitUntilFinish();
+    LOG.info("Pipeline Finished!");
   }
 }
