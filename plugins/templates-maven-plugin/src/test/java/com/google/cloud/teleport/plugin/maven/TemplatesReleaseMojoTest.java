@@ -25,7 +25,10 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.MavenProject;
@@ -76,7 +79,7 @@ public class TemplatesReleaseMojoTest {
     yamlDir.mkdirs();
     File yamlFile = new File(yamlDir, "my-blueprint.yaml");
     String yamlContent = getYamlContent();
-    Files.write(yamlFile.toPath(), yamlContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    Files.write(yamlFile.toPath(), yamlContent.getBytes(StandardCharsets.UTF_8));
 
     // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
     try (MockedStatic<StorageOptions> storageOptionsMock =
@@ -87,18 +90,17 @@ public class TemplatesReleaseMojoTest {
       when(mockStorageOptions.getService()).thenReturn(mockStorage);
 
       ArgumentCaptor<BlobInfo> blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-      final java.util.concurrent.atomic.AtomicReference<byte[]> uploadedBytes =
-          new java.util.concurrent.atomic.AtomicReference<>();
+      final AtomicReference<byte[]> uploadedBytes = new AtomicReference<>();
 
       // Read the input stream upon call, as it will be closed afterwards.
       Mockito.doAnswer(
               invocation -> {
-                java.io.InputStream inputStream = invocation.getArgument(1);
+                InputStream inputStream = invocation.getArgument(1);
                 uploadedBytes.set(inputStream.readAllBytes());
                 return null;
               })
           .when(mockStorage)
-          .create(blobInfoCaptor.capture(), Mockito.any(java.io.InputStream.class));
+          .create(blobInfoCaptor.capture(), Mockito.any(InputStream.class));
 
       // Act
       mojo.execute();
@@ -112,8 +114,7 @@ public class TemplatesReleaseMojoTest {
       assertEquals("test-prefix/yaml-blueprints/my-blueprint.yaml", capturedBlobInfo.getName());
 
       // Check yaml content
-      assertEquals(
-          yamlContent, new String(uploadedBytes.get(), java.nio.charset.StandardCharsets.UTF_8));
+      assertEquals(yamlContent, new String(uploadedBytes.get(), StandardCharsets.UTF_8));
     }
   }
 
@@ -147,7 +148,7 @@ public class TemplatesReleaseMojoTest {
       // Assert
       // Verify that no file was uploaded
       verify(mockStorage, Mockito.never())
-          .create(Mockito.any(BlobInfo.class), Mockito.any(java.io.InputStream.class));
+          .create(Mockito.any(BlobInfo.class), Mockito.any(InputStream.class));
     }
   }
 

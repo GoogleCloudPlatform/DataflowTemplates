@@ -32,6 +32,7 @@ import com.google.cloud.teleport.plugin.TemplateSpecsGenerator;
 import com.google.cloud.teleport.plugin.model.ImageSpec;
 import com.google.cloud.teleport.plugin.model.TemplateDefinitions;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -39,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.maven.artifact.DependencyResolutionRequiredException;
 import org.apache.maven.plugin.BuildPluginManager;
@@ -264,7 +266,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
           LOG.warn("YAML blueprints directory not found, skipping upload: {}", yamlPath);
         } else {
           try (Storage storage = StorageOptions.getDefaultInstance().getService();
-              java.util.stream.Stream<Path> paths = Files.list(yamlPath)) {
+              Stream<Path> paths = Files.list(yamlPath)) {
             paths
                 .filter(
                     path ->
@@ -277,7 +279,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                           String.join("/", stagePrefix, yamlBlueprintsGCSBucket, fileName);
                       BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
                       BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
-                      try (java.io.InputStream inputStream = Files.newInputStream(path)) {
+                      try (InputStream inputStream = Files.newInputStream(path)) {
                         storage.create(blobInfo, inputStream);
                         LOG.info(
                             "Uploaded {} to gs://{}/{}",
