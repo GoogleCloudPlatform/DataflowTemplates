@@ -263,30 +263,28 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
           LOG.warn("YAML blueprints directory not found, skipping upload: {}", yamlPath);
         } else {
-          try {
-            Storage storage = StorageOptions.getDefaultInstance().getService();
-            try (java.util.stream.Stream<Path> paths = Files.list(yamlPath)) {
-              paths
-                  .filter(path -> path.toString().endsWith(".yaml"))
-                  .forEach(
-                      path -> {
-                        String fileName = path.getFileName().toString();
-                        String objectName =
-                            String.join("/", stagePrefix, yamlBlueprintsGCSBucket, fileName);
-                        BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
-                        BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
-                        try (java.io.InputStream inputStream = Files.newInputStream(path)) {
-                          storage.create(blobInfo, inputStream);
-                          LOG.info(
-                              "Uploaded {} to gs://{}/{}",
-                              fileName,
-                              bucketNameOnly(bucketName),
-                              objectName);
-                        } catch (IOException e) {
-                          throw new RuntimeException("Error reading file " + fileName, e);
-                        }
-                      });
-            }
+          try (Storage storage = StorageOptions.getDefaultInstance().getService();
+              java.util.stream.Stream<Path> paths = Files.list(yamlPath)) {
+            paths
+                .filter(path -> path.toString().endsWith(".yaml"))
+                .forEach(
+                    path -> {
+                      String fileName = path.getFileName().toString();
+                      String objectName =
+                          String.join("/", stagePrefix, yamlBlueprintsGCSBucket, fileName);
+                      BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
+                      BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
+                      try (java.io.InputStream inputStream = Files.newInputStream(path)) {
+                        storage.create(blobInfo, inputStream);
+                        LOG.info(
+                            "Uploaded {} to gs://{}/{}",
+                            fileName,
+                            bucketNameOnly(bucketName),
+                            objectName);
+                      } catch (IOException e) {
+                        throw new RuntimeException("Error reading file " + fileName, e);
+                      }
+                    });
           } catch (Exception e) {
             throw new MojoExecutionException("Error uploading YAML blueprints", e);
           }
