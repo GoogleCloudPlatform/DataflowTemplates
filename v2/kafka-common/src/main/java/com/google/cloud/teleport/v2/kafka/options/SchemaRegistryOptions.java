@@ -115,6 +115,8 @@ public interface SchemaRegistryOptions extends PipelineOptions {
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.NONE),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.TLS),
         @TemplateParameter.TemplateEnumOption(KafkaAuthenticationMethod.OAUTH),
+        @TemplateParameter.TemplateEnumOption(
+            KafkaAuthenticationMethod.APPLICATION_DEFAULT_CREDENTIALS),
       },
       optional = true,
       description = "Authentication Mode",

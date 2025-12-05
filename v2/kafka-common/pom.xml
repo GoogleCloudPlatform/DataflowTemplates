@@ -48,6 +48,12 @@
         </exclusion>
       </exclusions>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/com.google.cloud.hosted.kafka/managed-kafka-auth-login-handler -->
+    <dependency>
+        <groupId>com.google.cloud.hosted.kafka</groupId>
+        <artifactId>managed-kafka-auth-login-handler</artifactId>
+        <version>1.0.6</version>
+    </dependency>
   </dependencies>
 
   <build>
