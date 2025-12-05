@@ -76,7 +76,7 @@ public class TemplatesReleaseMojoTest {
     yamlDir.mkdirs();
     File yamlFile = new File(yamlDir, "my-blueprint.yaml");
     String yamlContent = getYamlContent();
-    Files.write(yamlFile.toPath(), yamlContent.getBytes());
+    Files.write(yamlFile.toPath(), yamlContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
     // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
     try (MockedStatic<StorageOptions> storageOptionsMock =
