@@ -114,7 +114,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     jobInfo =
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
-            null,
+            "failureInjectionTest",
             Map.of(
                 "startTimestamp",
                 startTimeStamp.toString(),
@@ -123,7 +123,9 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
                 "maxNumWorkers",
                 MAX_WORKERS,
                 "maxShardConnections",
-                MAX_WORKERS),
+                MAX_WORKERS,
+                "failureInjectionParameter",
+                "{\"policyType\":\"InitialLimitedDurationDelayInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT10M\", \"delayDuration\": \"PT15S\" }}"),
             null,
             spannerResourceManager,
             gcsResourceManager,
