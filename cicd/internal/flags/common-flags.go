@@ -28,6 +28,7 @@ const (
 	SPANNER    = "SPANNER"
 	BIGTABLE   = "BIGTABLE"
 	DATASTREAM = "DATASTREAM"
+	ALL_V1_V2  = "ALL_V1_V2"
 )
 
 // Avoid making these vars public.
