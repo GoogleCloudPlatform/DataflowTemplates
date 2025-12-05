@@ -29,7 +29,6 @@ import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.io.Resources;
 import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -52,6 +51,7 @@ import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -63,11 +63,15 @@ import org.slf4j.LoggerFactory;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SpannerToSourceDb.class)
 @RunWith(JUnit4.class)
-public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
+@Ignore("Reverse migration not supported for PG dialect.")
+public class SpannerToMySqlDataTypesPGDialectIT extends SpannerToSourceDbITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(SpannerToMySqlDataTypesIT.class);
-  private static final String SPANNER_DDL_RESOURCE = "SpannerToMySqlDataTypesIT/spanner-schema.sql";
-  private static final String SESSION_FILE_RESOURCE = "SpannerToMySqlDataTypesIT/session.json";
+  private static final Logger LOG =
+      LoggerFactory.getLogger(SpannerToMySqlDataTypesPGDialectIT.class);
+  private static final String SPANNER_DDL_RESOURCE =
+      "SpannerToMySqlDataTypesIT/pg-dialect-spanner-schema.sql";
+  private static final String SESSION_FILE_RESOURCE =
+      "SpannerToMySqlDataTypesIT/pg-dialect-session.json";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToMySqlDataTypesIT/mysql-schema.sql";
 
@@ -85,12 +89,14 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
    */
   @Before
   public void setUp() throws IOException {
-    spannerResourceManager = createSpannerDatabase(SpannerToMySqlDataTypesIT.SPANNER_DDL_RESOURCE);
-    spannerMetadataResourceManager = createSpannerMetadataDatabase();
+    spannerResourceManager = setUpPGDialectSpannerResourceManager();
+    createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+    spannerMetadataResourceManager = createPGDialectSpannerMetadataDatabase();
 
     jdbcResourceManager = MySQLResourceManager.builder(testName).build();
 
-    createMySQLSchema(jdbcResourceManager, SpannerToMySqlDataTypesIT.MYSQL_SCHEMA_FILE_RESOURCE);
+    createMySQLSchema(
+        jdbcResourceManager, SpannerToMySqlDataTypesPGDialectIT.MYSQL_SCHEMA_FILE_RESOURCE);
 
     gcsResourceManager = setUpSpannerITGcsResourceManager();
     createAndUploadShardConfigToGcs(gcsResourceManager, jdbcResourceManager);
@@ -136,7 +142,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
   }
 
   @Test
-  public void spannerToMySqlDataTypes() {
+  public void spannerToMySqlDataTypesPGDialect() {
     assertThatPipeline(jobInfo).isRunning();
 
     Map<String, List<Value>> spannerTableData = getSpannerTableData();
@@ -281,10 +287,10 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     spannerRowData.put(
         "bigint_unsigned",
         List.of(
-            Value.numeric(new BigDecimal(42)),
-            Value.numeric(new BigDecimal(0)),
-            Value.numeric(new BigDecimal("18446744073709551615")),
-            Value.numeric(null)));
+            Value.pgNumeric("42"),
+            Value.pgNumeric("0"),
+            Value.pgNumeric("18446744073709551615"),
+            Value.pgNumeric(null)));
     spannerRowData.put(
         "binary",
         List.of(
@@ -354,10 +360,10 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     spannerRowData.put(
         "dec_to_numeric",
         List.of(
-            Value.numeric(new BigDecimal("68.75")),
-            Value.numeric(new BigDecimal("99999999999999999999999.999999999")),
-            Value.numeric(new BigDecimal("12345678912345678.123456789")),
-            Value.numeric(null)));
+            Value.pgNumeric("68.75"),
+            Value.pgNumeric("99999999999999999999999.999999999"),
+            Value.pgNumeric("12345678912345678.123456789"),
+            Value.pgNumeric(null)));
     spannerRowData.put(
         "dec_to_string",
         List.of(
@@ -368,10 +374,10 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     spannerRowData.put(
         "decimal",
         List.of(
-            Value.numeric(new BigDecimal("68.75")),
-            Value.numeric(new BigDecimal("99999999999999999999999.999999999")),
-            Value.numeric(new BigDecimal("12345678912345678.123456789")),
-            Value.numeric(null)));
+            Value.pgNumeric("68.75"),
+            Value.pgNumeric("99999999999999999999999.999999999"),
+            Value.pgNumeric("12345678912345678.123456789"),
+            Value.pgNumeric(null)));
     spannerRowData.put(
         "decimal_to_string",
         List.of(
@@ -454,7 +460,7 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     spannerRowData.put(
         "integer_unsigned",
         List.of(Value.int64(0), Value.int64(42), Value.int64(4294967295L), Value.int64(null)));
-    spannerRowData.put("test_json", List.of(Value.json("{\"k1\":\"v1\"}"), Value.json(null)));
+    spannerRowData.put("test_json", List.of(Value.pgJsonb("{\"k1\":\"v1\"}"), Value.json(null)));
     spannerRowData.put(
         "json_to_string", List.of(Value.string("{\"k1\": \"v1\"}"), Value.string(null)));
     spannerRowData.put(
@@ -489,10 +495,10 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
     spannerRowData.put(
         "numeric_to_numeric",
         List.of(
-            Value.numeric(new BigDecimal("68.75")),
-            Value.numeric(new BigDecimal("99999999999999999999999.999999999")),
-            Value.numeric(new BigDecimal("12345678912345678.123456789")),
-            Value.numeric(null)));
+            Value.pgNumeric("68.75"),
+            Value.pgNumeric("99999999999999999999999.999999999"),
+            Value.pgNumeric("12345678912345678.123456789"),
+            Value.pgNumeric(null)));
     spannerRowData.put(
         "numeric_to_string",
         List.of(
