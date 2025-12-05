@@ -67,8 +67,9 @@ public class TemplatesReleaseMojoTest {
 
   @Test
   public void testExecute_publishesYamlBlueprints() throws MojoExecutionException, IOException {
-    // Arrange
     mojo.publishYamlBlueprints = true;
+    mojo.yamlBlueprintsPath = "yaml/src/main/yaml";
+    mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
 
     // Create a fake yaml file to be uploaded
     File yamlDir = new File(baseDir, "yaml/src/main/yaml");
@@ -85,15 +86,23 @@ public class TemplatesReleaseMojoTest {
       storageOptionsMock.when(StorageOptions::getDefaultInstance).thenReturn(mockStorageOptions);
       when(mockStorageOptions.getService()).thenReturn(mockStorage);
 
+      ArgumentCaptor<BlobInfo> blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
+      final byte[][] uploadedBytes = new byte[1][1];
+
+      // Read the input stream upon call, as it will be closed afterwards.
+      Mockito.doAnswer(
+              invocation -> {
+                java.io.InputStream inputStream = invocation.getArgument(1);
+                uploadedBytes[0] = inputStream.readAllBytes();
+                return null;
+              })
+          .when(mockStorage)
+          .create(blobInfoCaptor.capture(), Mockito.any(java.io.InputStream.class));
+
       // Act
       mojo.execute();
 
       // Assert
-      ArgumentCaptor<BlobInfo> blobInfoCaptor = ArgumentCaptor.forClass(BlobInfo.class);
-      ArgumentCaptor<byte[]> bytesCaptor = ArgumentCaptor.forClass(byte[].class);
-
-      verify(mockStorage).create(blobInfoCaptor.capture(), bytesCaptor.capture());
-
       BlobInfo capturedBlobInfo = blobInfoCaptor.getValue();
 
       // Check bucketname
@@ -102,7 +111,42 @@ public class TemplatesReleaseMojoTest {
       assertEquals("test-prefix/yaml-blueprints/my-blueprint.yaml", capturedBlobInfo.getName());
 
       // Check yaml content
-      assertEquals(yamlContent, new String(bytesCaptor.getValue()));
+      assertEquals(yamlContent, new String(uploadedBytes[0], "UTF-8"));
+    }
+  }
+
+  @Test
+  public void testExecute_yamlBlueprintsDirectoryMissing_skipsUpload()
+      throws MojoExecutionException {
+    mojo.publishYamlBlueprints = true;
+    setupAndAssertNoFilesUploaded();
+  }
+
+  @Test
+  public void testExecute_publishYamlBlueprintsFalse_skipsUpload() throws MojoExecutionException {
+    mojo.publishYamlBlueprints = false;
+    setupAndAssertNoFilesUploaded();
+  }
+
+  private void setupAndAssertNoFilesUploaded() throws MojoExecutionException {
+    mojo.yamlBlueprintsPath = "yaml/src/main/yaml";
+    mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
+
+    // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
+    try (MockedStatic<StorageOptions> storageOptionsMock =
+        Mockito.mockStatic(StorageOptions.class)) {
+      Storage mockStorage = mock(Storage.class);
+      StorageOptions mockStorageOptions = mock(StorageOptions.class);
+      storageOptionsMock.when(StorageOptions::getDefaultInstance).thenReturn(mockStorageOptions);
+      when(mockStorageOptions.getService()).thenReturn(mockStorage);
+
+      // Act
+      mojo.execute();
+
+      // Assert
+      // Verify that no file was uploaded
+      verify(mockStorage, Mockito.never())
+          .create(Mockito.any(BlobInfo.class), Mockito.any(java.io.InputStream.class));
     }
   }
 
@@ -112,7 +156,7 @@ template:
   name: "Kafka_to_BigQuery_Yaml"
   category: "STREAMING"
   type: "YAML"
-  display_name: "Kafka to BigQuery (YAML)
+  display_name: "Kafka to BigQuery (YAML)"
 
 pipeline:
   transforms:
