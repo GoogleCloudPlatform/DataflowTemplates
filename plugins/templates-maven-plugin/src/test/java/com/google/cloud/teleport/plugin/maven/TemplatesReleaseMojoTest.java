@@ -121,6 +121,8 @@ public class TemplatesReleaseMojoTest {
   public void testExecute_yamlBlueprintsDirectoryMissing_skipsUpload()
       throws MojoExecutionException {
     mojo.publishYamlBlueprints = true;
+    mojo.yamlBlueprintsPath = "a-path-that-does-not-exist";
+    mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
     setupAndAssertNoFilesUploaded();
   }
 
@@ -131,9 +133,6 @@ public class TemplatesReleaseMojoTest {
   }
 
   private void setupAndAssertNoFilesUploaded() throws MojoExecutionException {
-    mojo.yamlBlueprintsPath = "yaml/src/main/yaml";
-    mojo.yamlBlueprintsGCSBucket = "yaml-blueprints";
-
     // Mock the static `StorageOptions.getDefaultInstance()` to return a mock Storage service.
     try (MockedStatic<StorageOptions> storageOptionsMock =
         Mockito.mockStatic(StorageOptions.class)) {
