@@ -28,6 +28,7 @@ const (
 	SPANNER    = "SPANNER"
 	BIGTABLE   = "BIGTABLE"
 	DATASTREAM = "DATASTREAM"
+	ALL_V1_V2  = "ALL_V1_V2"
 )
 
 // Avoid making these vars public.
@@ -63,6 +64,10 @@ var (
 			"v2/datastream-to-bigquery/",
 			"v2/datastream-to-mongodb/",
 			"v2/datastream-to-sql/",
+		},
+		ALL_V1_V2: {
+			"v1/",
+			"v2/",
 		},
 	}
 )
