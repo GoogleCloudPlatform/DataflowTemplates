@@ -156,17 +156,17 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
   protected boolean publishYamlBlueprints;
 
   @Parameter(
-    defaultValue = "yaml/src/main/yaml",
-    property = "yamlBlueprintsPath",
-    readonly = true,
-    required = false)
+      defaultValue = "yaml/src/main/yaml",
+      property = "yamlBlueprintsPath",
+      readonly = true,
+      required = false)
   protected String yamlBlueprintsPath;
 
   @Parameter(
-    defaultValue = "yaml-blueprints",
-    property = "yamlBlueprintsGCSBucket",
-    readonly = true,
-    required = false)
+      defaultValue = "yaml-blueprints",
+      property = "yamlBlueprintsGCSBucket",
+      readonly = true,
+      required = false)
   protected String yamlBlueprintsGCSBucket;
 
   public void execute() throws MojoExecutionException {
@@ -259,8 +259,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
 
       if (publishYamlBlueprints) {
         LOG.info("Trying to upload YAML blueprints to bucket '{}'...", bucketNameOnly(bucketName));
-        Path yamlPath =
-            Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
+        Path yamlPath = Paths.get(project.getBasedir().getAbsolutePath(), yamlBlueprintsPath);
         if (!Files.exists(yamlPath) || !Files.isDirectory(yamlPath)) {
           LOG.warn("YAML blueprints directory not found, skipping upload: {}", yamlPath);
         } else {
@@ -272,7 +271,8 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                   .forEach(
                       path -> {
                         String fileName = path.getFileName().toString();
-                        String objectName = String.join("/", stagePrefix, yamlBlueprintsGCSBucket, fileName);
+                        String objectName =
+                            String.join("/", stagePrefix, yamlBlueprintsGCSBucket, fileName);
                         BlobId blobId = BlobId.of(bucketNameOnly(bucketName), objectName);
                         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).build();
                         try (java.io.InputStream inputStream = Files.newInputStream(path)) {
@@ -286,7 +286,7 @@ public class TemplatesReleaseMojo extends TemplatesBaseMojo {
                           throw new RuntimeException("Error reading file " + fileName, e);
                         }
                       });
-                    }
+            }
           } catch (Exception e) {
             throw new MojoExecutionException("Error uploading YAML blueprints", e);
           }
