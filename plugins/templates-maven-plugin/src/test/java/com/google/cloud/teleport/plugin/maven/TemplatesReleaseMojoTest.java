@@ -111,7 +111,8 @@ public class TemplatesReleaseMojoTest {
       assertEquals("test-prefix/yaml-blueprints/my-blueprint.yaml", capturedBlobInfo.getName());
 
       // Check yaml content
-      assertEquals(yamlContent, new String(uploadedBytes[0], "UTF-8"));
+      assertEquals(
+          yamlContent, new String(uploadedBytes[0], java.nio.charset.StandardCharsets.UTF_8));
     }
   }
 
