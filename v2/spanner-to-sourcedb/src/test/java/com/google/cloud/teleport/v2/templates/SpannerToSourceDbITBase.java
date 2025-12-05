@@ -231,6 +231,7 @@ public abstract class SpannerToSourceDbITBase extends TemplateTestBase {
             put("maxNumWorkers", "1");
             put("numWorkers", "1");
             put("sourceType", sourceType);
+            put("workerMachineType", "n2-standard-4");
           }
         };
     if (jobParameters != null) {
