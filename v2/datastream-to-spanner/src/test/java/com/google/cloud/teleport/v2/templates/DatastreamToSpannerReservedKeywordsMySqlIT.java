@@ -22,11 +22,8 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.io.Resources;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,24 +168,5 @@ public class DatastreamToSpannerReservedKeywordsMySqlIT extends DataStreamToSpan
             List.of(
                 Map.ofEntries(
                     entry("id", 1), entry("ALL", "all"), entry("AND", "and"), entry("AS", "as"))));
-  }
-
-  private void executeSqlScript(CloudMySQLResourceManager resourceManager, String resourceName)
-      throws IOException {
-    String ddl =
-        String.join(
-            " ", Resources.readLines(Resources.getResource(resourceName), StandardCharsets.UTF_8));
-    ddl = ddl.trim();
-    List<String> ddls = Arrays.stream(ddl.split(";")).toList();
-    for (String d : ddls) {
-      if (!d.isBlank()) {
-        try {
-          resourceManager.runSQLUpdate(d);
-        } catch (Exception e) {
-          LOG.error("Exception while executing Mysql ddl {}", d, e);
-          throw e;
-        }
-      }
-    }
   }
 }
