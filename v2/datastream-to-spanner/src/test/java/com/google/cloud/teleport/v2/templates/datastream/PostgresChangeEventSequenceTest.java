@@ -124,7 +124,7 @@ public final class PostgresChangeEventSequenceTest {
             .column("id")
             .int64()
             .endColumn()
-            .column("timestamp")
+            .column("shadow_timestamp")
             .int64()
             .endColumn()
             .column("lsn")
@@ -141,7 +141,7 @@ public final class PostgresChangeEventSequenceTest {
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
     when(mockRow.getLong("id")).thenReturn(1L);
-    when(mockRow.getLong("timestamp")).thenReturn(1615159728L);
+    when(mockRow.getLong("shadow_timestamp")).thenReturn(1615159728L);
     when(mockRow.getString("lsn")).thenReturn("0/123456");
 
     ResultSet mockResultSet = mock(ResultSet.class);

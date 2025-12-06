@@ -55,7 +55,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("scn");
     assertThat(columns, is(expectedColumns));
   }
@@ -82,7 +82,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("scn");
     assertThat(columns, is(expectedColumns));
     List<String> columnTypes =
@@ -127,7 +127,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("log_file");
     expectedColumns.add("log_position");
     assertThat(columns, is(expectedColumns));
@@ -155,7 +155,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("log_file");
     expectedColumns.add("log_position");
     assertThat(columns, is(expectedColumns));
@@ -202,7 +202,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("lsn");
     assertThat(columns, is(expectedColumns));
   }
@@ -229,7 +229,7 @@ public class ShadowTableCreatorTest {
         testDdl.table("Users_interleaved").primaryKeys().stream()
             .map(c -> c.name())
             .collect(Collectors.toSet());
-    expectedColumns.add("timestamp");
+    expectedColumns.add("shadow_timestamp");
     expectedColumns.add("lsn");
     assertThat(columns, is(expectedColumns));
     List<String> columnTypes =
@@ -249,5 +249,33 @@ public class ShadowTableCreatorTest {
     expectedColumnTypes.add(Type.pgInt8().toString());
     expectedColumnTypes.add(Type.pgVarchar().toString());
     assertThat(columnTypes, is(expectedColumnTypes));
+  }
+
+  @Test
+  public void canHandlePkColumnNameCollision() {
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("timestamp")
+            .timestamp()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("timestamp")
+            .end()
+            .endTable()
+            .build();
+
+    ShadowTableCreator shadowTableCreator =
+        new ShadowTableCreator("mysql", "shadow_", Dialect.GOOGLE_STANDARD_SQL);
+    Table shadowTable =
+        shadowTableCreator.constructShadowTable(ddl, "MyTable", Dialect.GOOGLE_STANDARD_SQL);
+
+    assertEquals(shadowTable.name(), "shadow_MyTable");
+    assertEquals(shadowTable.column("timestamp").type().getCode(), Type.Code.TIMESTAMP);
+    assertEquals(shadowTable.column("shadow_timestamp").type().getCode(), Type.Code.INT64);
   }
 }
