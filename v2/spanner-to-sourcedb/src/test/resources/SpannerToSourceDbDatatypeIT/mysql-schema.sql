@@ -74,3 +74,10 @@ CREATE TABLE `AllDatatypePkColumns2` (
                                          `varbinary_column` varbinary(20),
                                          `bit_column` bit(7),
                                          PRIMARY KEY (`char_column`,`tinyblob_column`(10),`tinytext_column`(10),`blob_column`(10),`mediumblob_column`(10),`mediumtext_column`(10),`longblob_column`(10),`longtext_column`(10),`enum_column`,`bool_column`,`other_bool_column`,`binary_column`,`varbinary_column`,`bit_column`));
+
+CREATE TABLE `SpannerPkWithNull` (
+    `not_null_pk` BIGINT NOT NULL,
+    `null_pk` BIGINT,
+    `data`     VARCHAR(128),
+    PRIMARY KEY (`not_null_pk`, `null_pk`)
+);
