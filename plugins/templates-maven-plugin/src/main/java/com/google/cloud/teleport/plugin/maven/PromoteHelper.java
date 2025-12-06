@@ -141,7 +141,7 @@ class PromoteHelper {
         ImmutableMap.<String, String>builder()
             .put("source_repository", sourceRepo)
             .put("source_version", sourceVersion)
-            .put("attachment_behavior", "EXCLUDE")
+            .put("attachment_behavior", "PUBLIC_BCID_VSA_ONLY")
             .build();
     String postData = new Gson().toJson(postDataCollect);
     return new String[] {

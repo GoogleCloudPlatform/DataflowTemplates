@@ -43,7 +43,7 @@ public class PromoteHelperTest {
             + "--header=Content-Type: application/json "
             + "--post-data={\"source_repository\":\"projects/source-project/locations/us/repositories/source-repo\","
             + "\"source_version\":\"projects/source-project/locations/us/repositories/source-repo/packages/some-prefix%2Fio_to_io/"
-            + "versions/sha256:123\",\"attachment_behavior\":\"EXCLUDE\"} https://artifactregistry.googleapis.com/v1/"
+            + "versions/sha256:123\",\"attachment_behavior\":\"PUBLIC_BCID_VSA_ONLY\"} https://artifactregistry.googleapis.com/v1/"
             + "projects/target-project/locations/us/repositories/target-repo:promoteArtifact",
         cmd);
   }
