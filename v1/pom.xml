@@ -34,7 +34,7 @@
   </description>
 
   <properties>
-    <mock-server-netty.version>5.14.0</mock-server-netty.version>
+    <mock-server-netty.version>5.15.0</mock-server-netty.version>
     <open-census.version>0.31.1</open-census.version>
     <!-- TODO: check if this could be declared on a Beam BOM instead of here -->
     <bigtable-beam-import.version>2.14.2</bigtable-beam-import.version>
