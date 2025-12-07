@@ -15,20 +15,19 @@
  */
 package com.google.cloud.teleport.templates.yaml;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
@@ -113,16 +112,16 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     // Assert
     assertThatResult(result).isLaunchFinished();
     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
-    List<Map<String, Object>> expectedRecords = new ArrayList<>();
-    for (Record record : icebergRecords) {
-      expectedRecords.add(
-          ImmutableMap.of(
-              "id",
-              Objects.requireNonNull(record.get(0)),
-              "active",
-              Objects.requireNonNull(record.get(2))));
-    }
-    assertThat(expectedRecords).containsExactlyElementsIn(records);
+    assertNotNull(icebergRecords);
+    assertEquals(2, icebergRecords.size());
+    icebergRecords.sort(Comparator.comparingLong(r -> (Long) r.getField("id")));
+    // Verify records
+    Record actualRecord1 = icebergRecords.get(0);
+    Record actualRecord2 = icebergRecords.get(1);
+    assertEquals(1, actualRecord1.getField("id"));
+    assertEquals(1, actualRecord1.getField("active"));
+    assertEquals(2, actualRecord2.getField("id"));
+    assertEquals(0, actualRecord2.getField("active"));
   }
 
   @Override
