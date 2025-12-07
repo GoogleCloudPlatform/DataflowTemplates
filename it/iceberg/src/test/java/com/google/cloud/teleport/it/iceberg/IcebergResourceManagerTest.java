@@ -46,9 +46,8 @@ import org.apache.iceberg.data.Record;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.CloseableIterable;
-import org.apache.iceberg.io.FileAppender;
+import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.parquet.Parquet;
 import org.apache.iceberg.types.Types;
@@ -216,25 +215,22 @@ public class IcebergResourceManagerTest {
     when(table.schema()).thenReturn(TABLE_SCHEMA);
     OutputFile mockOutputFile = mock(OutputFile.class);
     when(fileIO.newOutputFile(any(String.class))).thenReturn(mockOutputFile);
-    InputFile mockInputFile = mock(InputFile.class);
-    when(fileIO.newInputFile(any(String.class))).thenReturn(mockInputFile);
 
-    FileAppender mockAppender = mock(FileAppender.class);
+    DataWriter mockAppender = mock(DataWriter.class);
     AppendFiles mockAppendFiles = mock(AppendFiles.class);
-    when(table.newFastAppend()).thenReturn(mockAppendFiles);
+    when(table.newAppend()).thenReturn(mockAppendFiles);
 
-    try (MockedStatic<Parquet> parquetMock =
-            Mockito.mockStatic(Parquet.class, Mockito.RETURNS_DEEP_STUBS);
+    try (MockedStatic<Parquet> parquetMock = Mockito.mockStatic(Parquet.class);
         MockedStatic<DataFiles> dataFilesMock =
             Mockito.mockStatic(DataFiles.class, Mockito.RETURNS_DEEP_STUBS)) {
-      Parquet.WriteBuilder mockWriterBuilder = mock(Parquet.WriteBuilder.class);
-      parquetMock.when(() -> Parquet.write(any(OutputFile.class))).thenReturn(mockWriterBuilder);
-      when(mockWriterBuilder.createWriterFunc(any())).thenReturn(mockWriterBuilder);
-      when(mockWriterBuilder.schema(any(Schema.class))).thenReturn(mockWriterBuilder);
-      when(mockWriterBuilder.overwrite()).thenReturn(mockWriterBuilder);
+      Parquet.DataWriteBuilder mockWriterBuilder =
+          mock(Parquet.DataWriteBuilder.class, Mockito.RETURNS_SELF);
+      parquetMock
+          .when(() -> Parquet.writeData(any(OutputFile.class)))
+          .thenReturn(mockWriterBuilder);
       when(mockWriterBuilder.build()).thenReturn(mockAppender);
       DataFile mockDataFile = mock(DataFile.class);
-      when(DataFiles.builder(any()).build()).thenReturn(mockDataFile);
+      when(mockAppender.toDataFile()).thenReturn(mockDataFile);
 
       when(mockAppendFiles.appendFile(any(DataFile.class))).thenReturn(mockAppendFiles);
 
@@ -257,16 +253,15 @@ public class IcebergResourceManagerTest {
     OutputFile mockOutputFile = mock(OutputFile.class);
     when(fileIO.newOutputFile(any(String.class))).thenReturn(mockOutputFile);
 
-    FileAppender mockAppender = mock(FileAppender.class);
+    DataWriter mockAppender = mock(DataWriter.class);
     doThrow(new IOException("Could not close appender")).when(mockAppender).close();
 
-    try (MockedStatic<Parquet> parquetMock =
-        Mockito.mockStatic(Parquet.class, Mockito.RETURNS_DEEP_STUBS)) {
-      Parquet.WriteBuilder mockWriterBuilder = mock(Parquet.WriteBuilder.class);
-      parquetMock.when(() -> Parquet.write(any(OutputFile.class))).thenReturn(mockWriterBuilder);
-      when(mockWriterBuilder.createWriterFunc(any())).thenReturn(mockWriterBuilder);
-      when(mockWriterBuilder.schema(any(Schema.class))).thenReturn(mockWriterBuilder);
-      when(mockWriterBuilder.overwrite()).thenReturn(mockWriterBuilder);
+    try (MockedStatic<Parquet> parquetMock = Mockito.mockStatic(Parquet.class)) {
+      Parquet.DataWriteBuilder mockWriterBuilder =
+          mock(Parquet.DataWriteBuilder.class, Mockito.RETURNS_SELF);
+      parquetMock
+          .when(() -> Parquet.writeData(any(OutputFile.class)))
+          .thenReturn(mockWriterBuilder);
       when(mockWriterBuilder.build()).thenReturn(mockAppender);
 
       assertThrows(
