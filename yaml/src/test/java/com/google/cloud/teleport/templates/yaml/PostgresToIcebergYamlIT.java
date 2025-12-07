@@ -138,7 +138,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     return Map.of(
         "type", "rest",
         "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
-        "warehouse", getGcsBasePath(),
+        "warehouse", "gs://cloud-teleport-testing-it-gitactions",
         "header.x-goog-user-project", PROJECT,
         "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
         "rest-metrics-reporting-enabled", "false");
