@@ -43,6 +43,8 @@ import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Integration test for {@link PostgresToIcebergYaml} template. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
@@ -54,6 +56,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
+  private static final Logger LOG = LoggerFactory.getLogger(PostgresToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
@@ -108,13 +111,15 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+    LOG.info("Pipeline executed successfully");
 
     // Assert
     assertThatResult(result).isLaunchFinished();
     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+    LOG.info("Iceberg records: {}", icebergRecords);
     assertNotNull(icebergRecords);
     assertEquals(2, icebergRecords.size());
-    icebergRecords.sort(Comparator.comparingLong(r -> (Long) r.getField("id")));
+    icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.getField("id")));
     // Verify records
     Record actualRecord1 = icebergRecords.get(0);
     Record actualRecord2 = icebergRecords.get(1);
