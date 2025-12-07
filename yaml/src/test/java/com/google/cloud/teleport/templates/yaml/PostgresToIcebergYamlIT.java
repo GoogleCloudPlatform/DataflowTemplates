@@ -35,6 +35,7 @@ import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.Record;
@@ -47,7 +48,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Integration test for {@link PostgresToIcebergYaml} template. */
-@Category({ TemplateIntegrationTest.class, SkipDirectRunnerTest.class })
+@Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PostgresToIcebergYaml.class)
 @RunWith(JUnit4.class)
 public class PostgresToIcebergYamlIT extends TemplateTestBase {
@@ -62,18 +63,20 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
-  private static final Schema ICEBERG_SCHEMA = new Schema(
-      Types.NestedField.required(1, "id", Types.IntegerType.get()),
-      Types.NestedField.required(2, "active", Types.IntegerType.get()));
+  private static final Schema ICEBERG_SCHEMA =
+      new Schema(
+          Types.NestedField.required(1, "id", Types.IntegerType.get()),
+          Types.NestedField.required(2, "active", Types.IntegerType.get()));
 
   @Before
   public void setUp() throws IOException {
     // postgresResourceManager = PostgresResourceManager.builder(testName).build();
 
-    icebergResourceManager = IcebergResourceManager.builder(testName)
-        .setCatalogName(CATALOG_NAME)
-        .setCatalogProperties(getCatalogProperties())
-        .build();
+    icebergResourceManager =
+        IcebergResourceManager.builder(testName)
+            .setCatalogName(CATALOG_NAME)
+            .setCatalogProperties(getCatalogProperties())
+            .build();
     icebergResourceManager.createNamespace(NAMESPACE);
     icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, ICEBERG_SCHEMA);
   }
@@ -90,23 +93,24 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     HashMap<String, String> columns = new HashMap<>();
     columns.put("id", "INTEGER");
     columns.put("active", "INTEGER");
-    // JDBCResourceManager.JDBCSchema schema = new
-    // JDBCResourceManager.JDBCSchema(columns, "id");
+    JDBCResourceManager.JDBCSchema schema = new JDBCResourceManager.JDBCSchema(columns, "id");
 
-    // postgresResourceManager.createTable(tableName, schema);
+    postgresResourceManager.createTable(tableName, schema);
 
-    List<Map<String, Object>> records = List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
-    // postgresResourceManager.write(tableName, records);
+    List<Map<String, Object>> records =
+        List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
+    postgresResourceManager.write(tableName, records);
 
-    LaunchConfig.Builder options = LaunchConfig.builder(testName, specPath)
-        .addParameter("jdbcUrl", postgresResourceManager.getUri())
-        .addParameter("username", postgresResourceManager.getUsername())
-        .addParameter("password", postgresResourceManager.getPassword())
-        .addParameter("readQuery", String.format(READ_QUERY, tableName))
-        .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
-        .addParameter("catalogName", CATALOG_NAME)
-        .addParameter(
-            "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
+    LaunchConfig.Builder options =
+        LaunchConfig.builder(testName, specPath)
+            .addParameter("jdbcUrl", postgresResourceManager.getUri())
+            .addParameter("username", postgresResourceManager.getUsername())
+            .addParameter("password", postgresResourceManager.getPassword())
+            .addParameter("readQuery", String.format(READ_QUERY, tableName))
+            .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
+            .addParameter("catalogName", CATALOG_NAME)
+            .addParameter(
+                "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
