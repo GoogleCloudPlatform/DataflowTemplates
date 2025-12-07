@@ -70,7 +70,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
   @Before
   public void setUp() throws IOException {
-    // postgresResourceManager = PostgresResourceManager.builder(testName).build();
+    postgresResourceManager = PostgresResourceManager.builder(testName).build();
 
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
