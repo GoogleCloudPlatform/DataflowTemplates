@@ -242,6 +242,7 @@ public class IcebergResourceManager implements ResourceManager {
         DataWriter<Record> icebergDataWriter =
             Parquet.writeData(outputFile)
                 .createWriterFunc(GenericParquetWriter::create)
+                .withSpec(table.spec())
                 .schema(table.schema())
                 .overwrite()
                 .build();
