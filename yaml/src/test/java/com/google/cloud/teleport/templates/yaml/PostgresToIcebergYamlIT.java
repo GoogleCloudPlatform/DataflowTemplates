@@ -37,9 +37,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
-import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -63,10 +61,6 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
-  private static final Schema ICEBERG_SCHEMA =
-      new Schema(
-          Types.NestedField.required(1, "id", Types.IntegerType.get()),
-          Types.NestedField.required(2, "active", Types.IntegerType.get()));
 
   @Before
   public void setUp() throws IOException {
@@ -77,8 +71,6 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
-    icebergResourceManager.createNamespace(NAMESPACE);
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, ICEBERG_SCHEMA);
   }
 
   @After
