@@ -1,60 +1,113 @@
 template:
 
-  name: "Kafka_To_BigQuery_Yaml"
-  display_name: "Kafka To BigQuery (Yaml)"
-  description: "A template for Kafka to BigQuery."
-  flex_container_name: "kafka-to-bigquery-yaml"
+  name: "Kafka_to_BigQuery_Yaml"
   category: "STREAMING"
+  type: "YAML"
+  display_name: "Kafka to BigQuery (YAML)"
+  description: >
+    The Apache Kafka to BigQuery template is a streaming pipeline which ingests 
+    text data from Apache Kafka, executes a user-defined function (UDF), and 
+    outputs the resulting records to BigQuery. Any errors which occur in the 
+    transformation of the data, execution of the UDF, or inserting into the 
+    output table are inserted into a separate errors table in BigQuery. 
+    If the errors table does not exist prior to execution, then it is created.
+  flex_container_name: "kafka-to-bigquery-yaml"
+  yamlTemplateFile: "KafkaToBigQuery.yaml"
+  filesToCopy: >
+    {"template.yaml", "main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "The output BigQuery table must exist.",
+    "The Apache Kafka broker server must be running and be reachable from the Dataflow worker machines.",
+    "The Apache Kafka topics must exist and the messages must be encoded in a valid JSON format."
+  }
+  streaming: true
+  hidden: false
 
   parameters:
     - name: "readBootstrapServers"
+      description: "Kafka Bootstrap Server list"
       help: "Kafka Bootstrap Server list, separated by commas."
+      example: "localhost:9092,127.0.0.1:9093"
       required: true
       type: text
+      order: 1
 
     - name: "kafkaReadTopics"
-      help: "Kafka topic to read the input from."
+      description: "Kafka topic(s) to read the input from."
+      help: "Kafka topic(s) to read the input from."
+      example: "topic1,topic2"
       required: true
       type: text
+      order: 2
 
     - name: "outputTableSpec"
-      help: "BigQuery table location to write the output to."
+      description: "BigQuery output table"
+      help: >
+        BigQuery table location to write the output to. The name should be in 
+        the format <project>:<dataset>.<table_name>`. The table's schema must 
+        match input objects.
       required: true
       type: text
+      order: 3
 
     - name: "outputDeadletterTable"
-      help: "The dead-letter table name to output failed messages to BigQuery."
+      description: "The dead-letter table name to output failed messages to BigQuery"
+      help: >
+        BigQuery table for failed messages. Messages failed to reach the output 
+        table for different reasons (e.g., mismatched schema, malformed json) 
+        are written to this table. If it doesn't exist, it will be created 
+        during pipeline execution. If not specified, 
+        'outputTableSpec_error_records' is used instead. The dead-letter table
+        name to output failed messages to BigQuery.
+      example: "your-project-id:your-dataset.your-table-name"
       required: true
       type: text
+      order: 4
 
     - name: "messageFormat"
+      description: "The message format."
       help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
-      required: false
       default: JSON
+      required: false
       type: text
+      order: 5
 
     - name: "schema"
+      description: "Kafka schema."
       help: >
         Kafka schema. A schema is required if data format is JSON, AVRO or
         PROTO.
       required: true
       type: text
+      order: 6
 
     - name: "numStorageWriteApiStreams"
+      description: "Number of streams for BigQuery Storage Write API"
       help: >
-        Number of streams defines the parallelism of the BigQueryIO’s Write.
+        Number of streams defines the parallelism of the BigQueryIO’s Write 
+        transform and roughly corresponds to the number of Storage Write API’s 
+        streams which will be used by the pipeline. See
+        https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api
+        for the recommended values. The default value is 1.
       required: false
       default: 1
       type: integer
+      order: 7
 
     - name: "storageWriteApiTriggeringFrequencySec"
+      description: "Triggering frequency in seconds for BigQuery Storage Write API"
       help: >
-        Triggering frequency will determine how soon the data will be visible
-        for querying in BigQuery.
+        Triggering frequency will determine how soon the data will be visible 
+        for querying in BigQuery. See
+        https://cloud.google.com/blog/products/data-analytics/streaming-data-into-bigquery-using-storage-write-api
+        for the recommended values. The default value is 5.
       required: false
       default: 5
       type: integer
-
+      order: 8
 
 pipeline:
   transforms:

@@ -346,6 +346,17 @@ public final class SpannerResourceManager implements ResourceManager {
   }
 
   /**
+   * Creates and returns Spanner Database Client.
+   *
+   * @return Spanner Database Client
+   */
+  public synchronized DatabaseClient getDatabaseClient() {
+    checkIsUsable();
+    checkHasInstanceAndDatabase();
+    return spanner.getDatabaseClient(DatabaseId.of(projectId, instanceId, databaseId));
+  }
+
+  /**
    * Writes a given record into a table. This method requires {@link
    * SpannerResourceManager#executeDdlStatement(String)} to be called for the target table
    * beforehand.

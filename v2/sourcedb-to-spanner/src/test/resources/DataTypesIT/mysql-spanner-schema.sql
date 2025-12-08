@@ -18,6 +18,18 @@ CREATE TABLE IF NOT EXISTS bit_table (
   bit_col BYTES(MAX),
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS bit8_table (
+  id INT64 NOT NULL,
+  -- testing mapping bit to int64
+  bit8_col INT64,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS bit1_table (
+  id INT64 NOT NULL,
+  -- testing mapping bit to Bool
+  bit1_col BOOL,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS blob_table (
   id INT64 NOT NULL,
   blob_col BYTES(MAX),
@@ -258,6 +270,16 @@ CREATE TABLE IF NOT EXISTS tiny_int_pk_table (
 CREATE TABLE IF NOT EXISTS tiny_int_unsigned_pk_table (
    id INT64 NOT NULL,
    tiny_int_unsigned_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS bit_pk_table (
+  id INT64 NOT NULL,
+  bit_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS bit_1_pk_table (
+    id BOOL NOT NULL,
+    bit_1_pk_col BOOL NOT NULL,
 ) PRIMARY KEY(id);
 
 CREATE TABLE IF NOT EXISTS binary_pk_table (

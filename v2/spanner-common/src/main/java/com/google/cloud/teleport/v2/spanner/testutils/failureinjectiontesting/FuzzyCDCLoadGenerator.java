@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
 import static com.google.common.truth.Truth.assertThat;
 
+import com.google.cloud.spanner.DatabaseClient;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -156,6 +157,92 @@ public class FuzzyCDCLoadGenerator {
         // Insert the row
         user.mutateRandomly();
         user.insert(conn);
+        totalEventCount.incrementAndGet();
+        ++i; // increment the counter to account for the insert operation.
+      }
+    }
+  }
+
+  /**
+   * Overloaded generateLoad to generate load on Spanner. Not re-using the generateLoad method of
+   * MySQL above because, the way we are handling connections are different between Spanner and
+   * JDBC. Spanner's databaseClient itself acts as a connection pool with active sessions maintained
+   * internally, whereas for JDBC, in the above method, we create and handle connections inside each
+   * thread. Secondly, we are using SQL queries to insert data into MySQL, whereas mutations to
+   * insert data into Spanner. Overall it would involve much more work to generify, create and
+   * implement interfaces to re-use code. Hence, we have chosen to overload the generateLoad method
+   * for Spanner with some code duplication.
+   */
+  public int generateLoad(
+      int totalRows,
+      int burstIterations,
+      double updateProbability,
+      SpannerResourceManager spannerResourceManager) {
+    LOG.info("Creating a thread pool with {} threads.", totalRows);
+    ExecutorService executor = Executors.newFixedThreadPool(totalRows);
+    DatabaseClient databaseClient = spannerResourceManager.getDatabaseClient();
+    try {
+      List<Future<?>> futures = new ArrayList<>();
+
+      for (int i = 0; i < totalRows; i++) {
+        futures.add(
+            executor.submit(
+                () -> {
+                  // Each thread gets its own connection to ensure thread safety
+                  try {
+                    processSingleRow(databaseClient, burstIterations, updateProbability);
+                  } catch (Exception e) {
+                    LOG.error("Thread processing failed", e);
+                    throw new RuntimeException(e);
+                  }
+                }));
+      }
+
+      // Wait for all threads to finish
+      for (Future<?> future : futures) {
+        future.get(2, TimeUnit.HOURS); // Wait for each task to complete
+      }
+    } catch (Exception e) {
+      LOG.error("Task execution failed", e);
+      if (e instanceof InterruptedException) {
+        executor.shutdownNow();
+        Thread.currentThread().interrupt();
+      }
+      throw new RuntimeException("Task execution failed", e);
+    } finally {
+      executor.shutdown();
+    }
+    return totalEventCount.get();
+  }
+
+  private void processSingleRow(
+      DatabaseClient databaseClient, int burstIterations, double updateProbability) {
+    int id;
+    User user;
+    do {
+      user = User.generateRandom();
+      id = user.id;
+    } while (ids.putIfAbsent(id, true) != null);
+
+    // 2. Insert initial row
+    user.insert(databaseClient);
+    totalEventCount.incrementAndGet();
+
+    for (int i = 0; i < burstIterations; ++i) {
+      // Perform update with updateProbability or delete and insert the row otherwise.
+      if (getRandom().nextDouble() < updateProbability) {
+        // Update in memory
+        user.mutateRandomly();
+        // Update in DB
+        user.update(databaseClient);
+        totalEventCount.incrementAndGet();
+      } else {
+        user.delete(databaseClient);
+        totalEventCount.incrementAndGet();
+
+        // Insert the row
+        user.mutateRandomly();
+        user.insert(databaseClient);
         totalEventCount.incrementAndGet();
         ++i; // increment the counter to account for the insert operation.
       }
