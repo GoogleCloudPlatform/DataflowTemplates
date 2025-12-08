@@ -343,7 +343,7 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(4)
-                .build());
+                .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColBool")
                 .setIndexName("primary")
@@ -352,7 +352,7 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(2L)
                 .setIndexType(IndexType.NUMERIC)
                 .setOrdinalPosition(5)
-                .build(),
+                .build());
 
 
     final JdbcSchemaReference sourceSchemaReference =
