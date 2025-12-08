@@ -15,31 +15,29 @@
  */
 package com.google.cloud.teleport.templates.yaml;
 
-import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 
 import com.google.cloud.teleport.it.iceberg.IcebergResourceManager;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
 import org.apache.beam.it.jdbc.PostgresResourceManager;
-import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.types.Types;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,43 +53,40 @@ import org.slf4j.LoggerFactory;
 @RunWith(JUnit4.class)
 public class PostgresToIcebergYamlIT extends TemplateTestBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(PostgresToIcebergYamlIT.class);
-
   private static final String READ_QUERY = "SELECT * FROM %s";
-  private static String warehouseLocation;
 
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
+  private GcsResourceManager warehouseGcsResourceManager;
+  private static final Logger LOG = LoggerFactory.getLogger(PostgresToIcebergYamlIT.class);
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
-  private static final Schema ICEBERG_SCHEMA =
-      new Schema(
-          Types.NestedField.required(1, "id", Types.IntegerType.get()),
-          Types.NestedField.required(2, "active", Types.IntegerType.get()));
+  private static final String WAREHOUSE_BUCKET = "cloud-teleport-testing-it-gitactions";
+  private static final String WAREHOUSE = "gs://" + WAREHOUSE_BUCKET;
 
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
-    warehouseLocation = getGcsBasePath();
-    LOG.info("Warehouse Location: {}", warehouseLocation);
-    Map<String, String> catalogProperties =
-        Map.of("type", "hadoop", "warehouse", warehouseLocation);
+
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
-            .setCatalogProperties(catalogProperties)
+            .setCatalogProperties(getCatalogProperties())
             .build();
-    icebergResourceManager.createNamespace(NAMESPACE);
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, ICEBERG_SCHEMA);
+    warehouseGcsResourceManager =
+        GcsResourceManager.builder(WAREHOUSE_BUCKET, getClass().getSimpleName(), credentials)
+            .build();
+    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
   }
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(postgresResourceManager, icebergResourceManager);
+    ResourceManagerUtils.cleanResources(
+        postgresResourceManager, icebergResourceManager, warehouseGcsResourceManager);
   }
 
   @Test
@@ -109,9 +104,6 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
         List.of(Map.of("id", 1, "active", 1), Map.of("id", 2, "active", 0));
     postgresResourceManager.write(tableName, records);
 
-    String catalogProperties =
-        String.format("{\"type\": \"hadoop\", \"warehouse\": \"%s\"}", warehouseLocation);
-
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter("jdbcUrl", postgresResourceManager.getUri())
@@ -120,27 +112,30 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
             .addParameter("readQuery", String.format(READ_QUERY, tableName))
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
-            .addParameter("catalogProperties", catalogProperties);
+            .addParameter(
+                "catalogProperties", new org.json.JSONObject(getCatalogProperties()).toString());
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
     assertThatPipeline(info).isRunning();
 
     PipelineOperator.Result result = pipelineOperator().waitUntilDone(createConfig(info));
+    LOG.info("Pipeline executed successfully");
 
     // Assert
     assertThatResult(result).isLaunchFinished();
     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
-    List<Map<String, Object>> expectedRecords = new ArrayList<>();
-    for (Record record : icebergRecords) {
-      expectedRecords.add(
-          ImmutableMap.of(
-              "id",
-              Objects.requireNonNull(record.get(0)),
-              "active",
-              Objects.requireNonNull(record.get(2))));
-    }
-    assertThat(expectedRecords).containsExactlyElementsIn(records);
+    LOG.info("Iceberg records: {}", icebergRecords);
+    assertNotNull(icebergRecords);
+    assertEquals(2, icebergRecords.size());
+    icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.getField("id")));
+    // Verify records
+    Record actualRecord1 = icebergRecords.get(0);
+    Record actualRecord2 = icebergRecords.get(1);
+    assertEquals(1, actualRecord1.getField("id"));
+    assertEquals(1, actualRecord1.getField("active"));
+    assertEquals(2, actualRecord2.getField("id"));
+    assertEquals(0, actualRecord2.getField("active"));
   }
 
   @Override
@@ -150,5 +145,15 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
         .setProject(PROJECT)
         .setRegion(REGION)
         .build();
+  }
+
+  private Map<String, String> getCatalogProperties() {
+    return Map.of(
+        "type", "rest",
+        "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
+        "warehouse", WAREHOUSE,
+        "header.x-goog-user-project", PROJECT,
+        "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
+        "rest-metrics-reporting-enabled", "false");
   }
 }
