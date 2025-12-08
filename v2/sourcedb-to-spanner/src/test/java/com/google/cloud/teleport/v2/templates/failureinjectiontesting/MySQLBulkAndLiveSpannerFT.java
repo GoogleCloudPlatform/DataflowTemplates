@@ -95,8 +95,10 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
     // The Author name is inserted as "author_name_" + i, and length of author name column is
     // configured as STRING(13) in Spanner. Hence, insertion of rows from id 1 to 9 would succeed in
     // Spanner (author_name_9 is 13 chars) and from id 10 onwards it would fail. At the end of Bulk
-    // migration, we expect 9 rows to be inserted and 191 rows to be in the DLQ folder.
-    MySQLSrcDataProvider.writeAuthorRowsInSourceDB(1, 200, sourceDBResourceManager);
+    // migration, we expect 9 rows to be inserted and 191 rows to be in the DLQ folder,
+    // also, the corresponding 9 child rows in Books to be migrated to Spanner and 191 rows of Books
+    // table to be in DLQ.
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 200, sourceDBResourceManager);
 
     // create pubsub manager
     pubsubResourceManager = setUpPubSubResourceManager();
@@ -132,7 +134,6 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
-
     ConditionCheck conditionCheck =
         // Total events = successfully processed events + errors in output folder
         new TotalEventsProcessedCheck(
@@ -140,11 +141,11 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
                 List.of(AUTHORS_TABLE, BOOKS_TABLE),
                 gcsResourceManager,
                 "output/dlq/severe/",
-                200)
+                400)
             .and(
                 // Check that there are at least 191 errors in DLQ
                 DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
-                    .setMinEvents(191)
+                    .setMinEvents(382)
                     .build());
 
     assertTrue(conditionCheck.get());
@@ -168,6 +169,7 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
             bulkErrorFolderFullPath + "/dlq",
             dlqSubscription);
 
+    // TODO: Add number of rows check on Books table after b/465412503 is fixed.
     conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
