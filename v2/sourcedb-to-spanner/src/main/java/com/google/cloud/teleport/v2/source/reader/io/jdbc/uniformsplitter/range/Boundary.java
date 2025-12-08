@@ -116,11 +116,9 @@ public abstract class Boundary<T extends Serializable>
    *   TODO: Time(fsp)
    */
   public boolean areValuesEqual(Object valueA, Object valueB) {
-    if (valueA instanceof Float) {
-      float f1 = (Float) valueA;
-      float f2 = (Float) valueB;
-      BigDecimal b1 = new BigDecimal(Float.toString(f1));
-      BigDecimal b2 = new BigDecimal(Float.toString(f2));
+    if (valueA instanceof Float f1 && valueB instanceof Float f2) {
+      BigDecimal b1 = new BigDecimal(f1.toString());
+      BigDecimal b2 = new BigDecimal(f2.toString());
 
       BigDecimal diff = b1.subtract(b2).abs();
       BigDecimal stepSize = java.util.Objects.requireNonNullElse(
