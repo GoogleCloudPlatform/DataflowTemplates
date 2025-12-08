@@ -37,9 +37,7 @@ public class PreprocessRecordsFnTest {
   @Test
   public void basicTest() {
     PCollection<TrimmedShardedDataChangeRecord> output =
-        pipeline
-            .apply(Create.of(getDataChangeRecord()))
-            .apply(ParDo.of(new PreprocessRecordsFn()));
+        pipeline.apply(Create.of(getDataChangeRecord())).apply(ParDo.of(new PreprocessRecordsFn()));
 
     PAssert.that(output)
         .containsInAnyOrder(

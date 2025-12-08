@@ -53,8 +53,7 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private long metadataRetryCount;
 
   // AvroCoder requires the default constructor
-  public TrimmedShardedDataChangeRecord() {
-  }
+  public TrimmedShardedDataChangeRecord() {}
 
   public TrimmedShardedDataChangeRecord(
       com.google.cloud.Timestamp commitTimestamp,
