@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 
 /** Helper class to create shadow tables for different source types. */
-class ShadowTableCreator {
+public class ShadowTableCreator {
 
   private final String sourceType;
   private final String shadowTablePrefix;
@@ -83,16 +83,37 @@ class ShadowTableCreator {
     }
 
     // Add extra column to track ChangeEventSequence information
-    addChangeEventSequenceColumns(shadowTableBuilder);
+    addChangeEventSequenceColumns(shadowTableBuilder, primaryKeyColNames);
 
     return shadowTableBuilder.build();
   }
 
-  private void addChangeEventSequenceColumns(Table.Builder shadowTableBuilder) {
+  private void addChangeEventSequenceColumns(
+      Table.Builder shadowTableBuilder, Set<String> primaryKeyColNames) {
     for (Pair<String, String> shadowInfo : sortOrderMap.values()) {
-      Column.Builder versionColumnBuilder = shadowTableBuilder.column(shadowInfo.getLeft());
+      String desiredName = shadowInfo.getLeft();
+      String safeName = getSafeShadowColumnName(desiredName, primaryKeyColNames);
+      Column.Builder versionColumnBuilder = shadowTableBuilder.column(safeName);
       versionColumnBuilder.parseType(shadowInfo.getRight());
       versionColumnBuilder.endColumn();
     }
+  }
+
+  /**
+   * Generates a safe column name for a shadow table by checking for collisions with existing column
+   * names and iteratively prepending a prefix until a unique name is found.
+   *
+   * @param desiredName the initial desired name for the shadow column
+   * @param existingColumnNames a set of existing column names in the data table (should be
+   *     lowercase)
+   * @return a unique and safe column name
+   */
+  public static String getSafeShadowColumnName(
+      String desiredName, Set<String> existingPrimaryKeyColumnNames) {
+    String safeName = desiredName;
+    while (existingPrimaryKeyColumnNames.contains(safeName.toLowerCase())) {
+      safeName = "shadow_" + safeName;
+    }
+    return safeName;
   }
 }

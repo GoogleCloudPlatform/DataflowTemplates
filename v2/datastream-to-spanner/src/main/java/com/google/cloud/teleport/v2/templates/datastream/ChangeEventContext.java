@@ -63,13 +63,20 @@ public abstract class ChangeEventContext {
   protected String dataTable;
 
   // Abstract method to generate shadow table mutation.
-  abstract Mutation generateShadowTableMutation(Ddl ddl) throws ChangeEventConvertorException;
+  abstract Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+      throws ChangeEventConvertorException;
 
   // Helper method to convert change event to mutation.
   protected void convertChangeEventToMutation(Ddl ddl, Ddl shadowTableDdl)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
     ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
+
+    LOG.info(
+        "aastha convertChangeEventToMutation ddl: {} \nshadowTableDdl: {} \nchangeEvent: {}",
+        ddl,
+        shadowTableDdl,
+        changeEvent);
     this.primaryKey =
         ChangeEventSpannerConvertor.changeEventToPrimaryKey(
             changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText(),
@@ -77,7 +84,7 @@ public abstract class ChangeEventContext {
             changeEvent,
             /* convertNameToLowerCase= */ true);
     this.dataMutation = ChangeEventConvertor.changeEventToMutation(ddl, changeEvent);
-    this.shadowTableMutation = generateShadowTableMutation(shadowTableDdl);
+    this.shadowTableMutation = generateShadowTableMutation(ddl, shadowTableDdl);
   }
 
   public JsonNode getChangeEvent() {
