@@ -53,11 +53,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -1090,7 +1092,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + yamlTemplateName + ".tar\n";
       writer.write(
           "steps:\n"
@@ -1102,12 +1103,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --dockerfile="
               + dockerfile
               + "\n"
-              // + "  - --cache=true\n"
-              // + "  - --cache-ttl=6h\n"
-              // + "  - --compressed-caching=false\n"
-              // + "  - --cache-copy-layers=true\n"
-              // + "  - --cache-repo="
-              // + cacheFolder
+              + "  - --cache=true\n"
+              + "  - --cache-ttl=6h\n"
+              + "  - --compressed-caching=false\n"
+              + "  - --cache-copy-layers=true\n"
+              + "  - --cache-repo="
+              + getCacheFolder(imagePathTag)
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1164,7 +1165,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
 
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       String tarPath = "/workspace/" + containerName + ".tar\n";
       writer.write(
           "steps:\n"
@@ -1173,12 +1173,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --destination="
               + imagePathTag
               + "\n"
-              // + "  - --cache=true\n"
-              // + "  - --cache-ttl=6h\n"
-              // + "  - --compressed-caching=false\n"
-              // + "  - --cache-copy-layers=true\n"
-              // + "  - --cache-repo="
-              // + cacheFolder
+              + "  - --cache=true\n"
+              + "  - --cache-ttl=6h\n"
+              + "  - --compressed-caching=false\n"
+              + "  - --cache-copy-layers=true\n"
+              + "  - --cache-repo="
+              + getCacheFolder(imagePathTag)
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1315,7 +1315,6 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     File cloudbuildFile = File.createTempFile("cloudbuild", ".yaml");
     String tarPath = "/workspace/" + containerName + ".tar\n";
     try (FileWriter writer = new FileWriter(cloudbuildFile)) {
-      // String cacheFolder = imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache";
       writer.write(
           "steps:\n"
               + "- name: gcr.io/kaniko-project/executor\n"
@@ -1326,12 +1325,12 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
               + "  - --dockerfile="
               + dockerfile
               + "\n"
-              // + "  - --cache=true\n"
-              // + "  - --cache-ttl=6h\n"
-              // + "  - --compressed-caching=false\n"
-              // + "  - --cache-copy-layers=true\n"
-              // + "  - --cache-repo="
-              // + cacheFolder
+              + "  - --cache=true\n"
+              + "  - --cache-ttl=6h\n"
+              + "  - --compressed-caching=false\n"
+              + "  - --cache-copy-layers=true\n"
+              + "  - --cache-repo="
+              + getCacheFolder(imagePathTag)
               + (generateSBOM
                   ? "\n"
                       + "  - --no-push\n"
@@ -1595,5 +1594,13 @@ public class TemplatesStageMojo extends TemplatesBaseMojo {
     TemplatePluginUtils.redirectLinesLog(process.getInputStream(), LOG, cloudBuildLogs);
     TemplatePluginUtils.redirectLinesLog(process.getErrorStream(), LOG, cloudBuildLogs);
     return process;
+  }
+
+  private static String getCacheFolder(String imagePathTag) {
+    LocalDate today = LocalDate.now();
+    // cache dir moves weekly
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("YYYY-ww").withLocale(Locale.ROOT);
+    String yearWeek = today.format(formatter);
+    return imagePathTag.substring(0, imagePathTag.lastIndexOf('/')) + "/cache/" + yearWeek;
   }
 }
