@@ -36,6 +36,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Pattern;
+
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -427,8 +429,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
         @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
         @Nullable String padSpace = getPadSpaceString(rs);
+        int numericScale = rs.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL);
         logger.debug(
-            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}",
+            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numeric-scale {}",
             colName,
             indexName,
             isUnique,
@@ -437,7 +440,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
             ordinalPosition,
             characterSet,
             collation,
-            padSpace);
+            padSpace,
+            numericScale);
         // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
         // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
@@ -455,6 +459,13 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           stringMaxLength = null;
         }
 
+        // TODO: Support DOUBLE and DECIMAL
+        BigDecimal decimalStepSize = null;
+        if (indexType.equals(IndexType.FLOAT) && numericScale > 0) {
+          // Example: If scale is 2, decimal step is 0.01
+          decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+        }
+
         indexesBuilder.add(
             SourceColumnIndexInfo.builder()
                 .setColumnName(colName)
@@ -466,6 +477,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setIndexType(indexType)
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
+                .setDecimalStepSize(decimalStepSize)
                 .build());
       }
     } catch (java.sql.SQLException e) {
@@ -699,6 +711,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String CHAR_MAX_LENGTH_COL = "cols.CHARACTER_MAXIMUM_LENGTH";
     public static final String CHARACTER_SET_COL = "cols.CHARACTER_SET_NAME";
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
+    public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
 
     // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
@@ -714,6 +727,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           CHAR_MAX_LENGTH_COL,
           CHARACTER_SET_COL,
           COLLATION_COL,
+          NUMERIC_SCALE_COL,
           PAD_SPACE_COL);
     }
 

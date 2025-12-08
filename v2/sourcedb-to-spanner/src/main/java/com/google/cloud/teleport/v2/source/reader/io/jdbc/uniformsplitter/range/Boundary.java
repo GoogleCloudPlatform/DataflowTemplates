@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.commons.lang3.tuple.Pair;
@@ -105,13 +106,46 @@ public abstract class Boundary<T extends Serializable>
   }
 
   /**
+   * Custom equality check that relies on Object.equals() for most types,
+   * but switches to delta/min-step based comparison for:
+   * - Floating-point types (Float, Double)
+   * - Source DB type where there is a defined precision
+   *   Examples: Float(p, d)
+   *   TODO: Double(p, d)
+   *   TODO: Decimal(p, d),
+   *   TODO: Time(fsp)
+   */
+  public boolean areValuesEqual(Object valueA, Object valueB) {
+    if (valueA instanceof Float) {
+      float f1 = (Float) valueA;
+      float f2 = (Float) valueB;
+      BigDecimal b1 = new BigDecimal(Float.toString(f1));
+      BigDecimal b2 = new BigDecimal(Float.toString(f2));
+
+      BigDecimal diff = b1.subtract(b2).abs();
+      BigDecimal stepSize = java.util.Objects.requireNonNullElse(
+        partitionColumn().decimalStepSize(),
+        // Trying to pick a sane default 1e-5 (there is no defined default step for float point type)
+        BigDecimal.valueOf(0.00001f)
+      );
+
+      return diff.compareTo(stepSize) < 0;
+    }
+    // TODO special step size for Double
+    // TODO special step size for Decimal
+    // TODO special step size for Time(fractional seconds)
+
+    return Objects.equal(valueA, valueB);
+  }
+
+  /**
    * Checks if two boundaries can be merged with each other.
    *
    * @param other other boundary.
    * @return true if ranges are mergable.
    */
   public boolean isMergable(Boundary<?> other) {
-    return Objects.equal(this.end(), other.start()) || Objects.equal(this.start(), other.end());
+    return areValuesEqual(this.end(), other.start()) || areValuesEqual(this.start(), other.end());
   }
 
   /**
@@ -132,7 +166,7 @@ public abstract class Boundary<T extends Serializable>
         (compareSplitIndex(splitIndex(), other.splitIndex()) < 0)
             ? other.splitIndex()
             : splitIndex();
-    if (Objects.equal(this.end(), other.start())) {
+    if (areValuesEqual(this.end(), other.start())) {
       return this.toBuilder().setEnd((T) other.end()).setSplitIndex(maxSplitIndex).build();
     } else {
       return this.toBuilder().setStart((T) other.start()).setSplitIndex(maxSplitIndex).build();
@@ -146,14 +180,7 @@ public abstract class Boundary<T extends Serializable>
    */
   public boolean isSplittable(@Nullable ProcessContext processContext) {
     T mid = splitPoint(processContext);
-    // TODO: Support approximate values like FLOAT and DOUBLE that does have strict equality
-    // Approximate values are equals when diff < delta
-    // Delta being the minimum step between 2 values.
-    // Delta either come from:
-    // - PartitionColumn.delta which is filled based on the granularity of the source type
-    //   (e.g. Float(size, d), d is the number of decimals)
-    // - Or fallback to Value defined in configuration file
-    return !(Objects.equal(end(), mid)) && !(Objects.equal(start(), mid));
+    return !(areValuesEqual(end(), mid)) && !(areValuesEqual(start(), mid));
   }
 
   /**

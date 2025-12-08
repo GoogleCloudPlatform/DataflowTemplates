@@ -82,6 +82,9 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract Integer stringMaxLength();
 
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -126,6 +129,8 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     public abstract Builder setCollationReference(CollationReference value);
 
     public abstract Builder setStringMaxLength(@Nullable Integer value);
+
+    public abstract Builder setDecimalStepSize(@Nullable BigDecimal value);
 
     abstract SourceColumnIndexInfo autoBuild();
 

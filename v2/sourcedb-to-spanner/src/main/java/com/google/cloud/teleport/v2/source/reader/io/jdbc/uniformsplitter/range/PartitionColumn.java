@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import javax.annotation.Nullable;
 
 /** Details about a partition column. */
@@ -35,9 +36,8 @@ public abstract class PartitionColumn implements Serializable {
    */
   public abstract Class columnClass();
 
-  // TODO: Add optional delta value that is used to set the granularity of approximate types like Float or Double
-  // For example to support Mysql primary key FLOAT(size, d) and DOUBLE PRECISION(size, d) where d is the number of decimals
-  // and represent the minimal delta between 2 values.
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
 
   /**
    * String Collation. Must be set for if {@link PartitionColumn#columnClass()} is {@link String}
@@ -55,7 +55,8 @@ public abstract class PartitionColumn implements Serializable {
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
-        .setStringMaxLength(null);
+        .setStringMaxLength(null)
+        .setDecimalStepSize(null);
   }
 
   public abstract Builder toBuilder();
@@ -70,6 +71,8 @@ public abstract class PartitionColumn implements Serializable {
     public abstract Builder setStringCollation(CollationReference value);
 
     public abstract Builder setStringMaxLength(Integer value);
+
+    public abstract Builder setDecimalStepSize(BigDecimal value);
 
     abstract PartitionColumn autoBuild();
 

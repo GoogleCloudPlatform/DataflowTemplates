@@ -371,6 +371,7 @@ public final class JdbcIoWrapper implements IoWrapper {
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
+        .setDecimalStepSize(idxInfo.decimalStepSize())
         .build();
   }
 
