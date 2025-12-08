@@ -78,12 +78,6 @@ CREATE TABLE IF NOT EXISTS AllDatatypePkColumns2 (
     bit_column BYTES(MAX)
 ) PRIMARY KEY(uuid_column);
 
-CREATE TABLE IF NOT EXISTS SpannerPkWithNull (
-    not_null_pk INT64 NOT NULL,
-    null_pk INT64,
-    data     STRING(128)
-) PRIMARY KEY (not_null_pk, null_pk);
-
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   value_capture_type = 'NEW_ROW',

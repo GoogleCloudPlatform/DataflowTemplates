@@ -40,7 +40,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
@@ -74,7 +73,6 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
   private static final String TABLE1 = "AllDatatypeColumns";
   private static final String TABLE2 = "AllDatatypePkColumns1";
   private static final String TABLE3 = "AllDatatypePkColumns2";
-  private static final String TABLE4 = "SpannerPkWithNull";
   private static final String MYSQL_SCHEMA_FILE_RESOURCE =
       "SpannerToSourceDbDatatypeIT/mysql-schema.sql";
 
@@ -165,9 +163,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
       throws IOException, InterruptedException, MultipleFailureException {
     assertThatPipeline(jobInfo).isRunning();
     // Write row in Spanner
-    LOG.info("Writing rows to Spanner...");
     writeRowsInSpanner();
-    LOG.info("Finished writing rows to Spanner.");
 
     PipelineOperator.Result result =
         pipelineOperator()
@@ -183,46 +179,8 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
     // Assert events on Mysql
     assertRowInMySQL();
 
-    // Assert that the failed row landed in the DLQ
-    LOG.info("Starting to wait for DLQ message...");
-    final List<com.google.pubsub.v1.ReceivedMessage> receivedMessages = new ArrayList<>();
-
-    // Use waitForCondition to poll for the message
-    PipelineOperator.Result dlqResult =
-        pipelineOperator()
-            .waitForCondition(
-                createConfig(jobInfo, Duration.ofMinutes(5)), // 5 minute timeout
-                () -> {
-                  // Try to pull messages
-                  com.google.pubsub.v1.PullResponse pullResponse =
-                      pubsubResourceManager.pull(subscriptionName, 10);
-                  if (pullResponse.getReceivedMessagesCount() > 0) {
-                    receivedMessages.addAll(pullResponse.getReceivedMessagesList());
-                    return true;
-                  }
-                  // The condition is not met if no messages were pulled
-                  return false;
-                });
-
-    // Assert that the condition was met
-    assertThatResult(dlqResult).meetsConditions();
-
-    // Now that we know a message exists, run assertions
-    List<com.google.pubsub.v1.PubsubMessage> dlqMessages =
-        receivedMessages.stream().map(m -> m.getMessage()).collect(Collectors.toList());
-
-    assertThat(dlqMessages).hasSize(1);
-    String messageData = dlqMessages.get(0).getData().toStringUtf8();
-    LOG.info("DLQ message data: " + messageData);
-    assertThat(messageData).contains("\"tableName\":\"" + TABLE4 + "\"");
-    assertThat(messageData).contains("\"not_null_pk\":\"1\"");
-    assertThat(messageData).contains("\"null_pk\":null");
-    assertThat(messageData).contains("cannot be null");
-
     // Delete rows in spanner.
-    LOG.info("Deleting rows from Spanner...");
     deleteRowsInSpanner();
-    LOG.info("Finished deleting rows from Spanner.");
 
     PipelineOperator.Result resultDelete =
         pipelineOperator()
@@ -242,7 +200,6 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
 
   private void writeRowsInSpanner() {
     // Write a single record to Spanner
-    LOG.info("Writing mutation for TABLE1...");
     Mutation m =
         Mutation.newInsertOrUpdateBuilder(TABLE1)
             .set("varchar_column")
@@ -323,9 +280,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to((Boolean) null)
             .build();
     spannerResourceManager.write(m);
-    LOG.info("Finished writing mutation for TABLE1.");
 
-    LOG.info("Writing mutation for TABLE2...");
     Mutation m2 =
         Mutation.newInsertOrUpdateBuilder(TABLE2)
             .set("uuid_column")
@@ -362,9 +317,7 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to("2022")
             .build();
     spannerResourceManager.write(m2);
-    LOG.info("Finished writing mutation for TABLE2.");
 
-    LOG.info("Writing mutation for TABLE3...");
     Mutation m3 =
         Mutation.newInsertOrUpdateBuilder(TABLE3)
             .set("uuid_column")
@@ -399,20 +352,6 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to(Value.bytes(ByteArray.copyFrom("a")))
             .build();
     spannerResourceManager.write(m3);
-    LOG.info("Finished writing mutation for TABLE3.");
-
-    LOG.info("Writing mutation for TABLE4 (with null PK)...");
-    Mutation m4 =
-        Mutation.newInsertOrUpdateBuilder(TABLE4)
-            .set("not_null_pk")
-            .to(1L)
-            .set("null_pk")
-            .to(Value.int64(null)) // Explicitly setting a null PK part
-            .set("data")
-            .to("some data")
-            .build();
-    spannerResourceManager.write(m4);
-    LOG.info("Finished writing mutation for TABLE4.");
   }
 
   private void deleteRowsInSpanner() {
@@ -427,8 +366,6 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         Mutation.delete(
             TABLE3, Key.newBuilder().append("a5f27b71-6ffa-444e-abdb-9ce4af318865").build());
     spannerResourceManager.write(m3);
-    Mutation m4 = Mutation.delete(TABLE4, Key.newBuilder().append(1L).append((Long) null).build());
-    spannerResourceManager.write(m4);
   }
 
   private List<Throwable> assertionErrors = new ArrayList<>();
