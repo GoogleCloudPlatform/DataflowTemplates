@@ -345,7 +345,6 @@ public class MysqlDialectAdapterTest {
                 .setOrdinalPosition(6)
                 .build());
 
-
     final JdbcSchemaReference sourceSchemaReference =
         JdbcSchemaReference.builder().setDbName("testDB").build();
     ResultSet mockResultSet = mock(ResultSet.class);
