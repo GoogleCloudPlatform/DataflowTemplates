@@ -65,22 +65,21 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
-  private static final String WAREHOUSE_BUCKET = "cloud-teleport-testing-it-gitactions";
-  private static final String WAREHOUSE = "gs://" + WAREHOUSE_BUCKET;
 
   @Before
   public void setUp() throws IOException {
     postgresResourceManager = PostgresResourceManager.builder(testName).build();
+
+    warehouseGcsResourceManager =
+        GcsResourceManager.builder(getClass().getSimpleName(), credentials).build();
+    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
+    LOG.info("warehouse bucket created {}", warehouseGcsResourceManager.getBucket());
 
     icebergResourceManager =
         IcebergResourceManager.builder(testName)
             .setCatalogName(CATALOG_NAME)
             .setCatalogProperties(getCatalogProperties())
             .build();
-    warehouseGcsResourceManager =
-        GcsResourceManager.builder(WAREHOUSE_BUCKET, getClass().getSimpleName(), credentials)
-            .build();
-    warehouseGcsResourceManager.registerTempDir(NAMESPACE);
   }
 
   @After
@@ -151,7 +150,7 @@ public class PostgresToIcebergYamlIT extends TemplateTestBase {
     return Map.of(
         "type", "rest",
         "uri", "https://biglake.googleapis.com/iceberg/v1beta/restcatalog",
-        "warehouse", WAREHOUSE,
+        "warehouse", "gs://" + warehouseGcsResourceManager.getBucket(),
         "header.x-goog-user-project", PROJECT,
         "rest.auth.type", "org.apache.iceberg.gcp.auth.GoogleAuthManager",
         "rest-metrics-reporting-enabled", "false");
