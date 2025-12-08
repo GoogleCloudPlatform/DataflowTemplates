@@ -78,6 +78,7 @@ CREATE TABLE IF NOT EXISTS AllDatatypePkColumns2 (
     bit_column BYTES(MAX)
 ) PRIMARY KEY(uuid_column);
 
+
 CREATE CHANGE STREAM allstream
   FOR ALL OPTIONS (
   value_capture_type = 'NEW_ROW',
