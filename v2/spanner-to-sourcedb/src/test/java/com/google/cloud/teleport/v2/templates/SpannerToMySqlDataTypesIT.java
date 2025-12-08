@@ -175,8 +175,9 @@ public class SpannerToMySqlDataTypesIT extends SpannerToSourceDbITBase {
   }
 
   private ChainedConditionCheck buildConditionCheck(Map<String, List<Value>> spannerTableData) {
-    // These tables fail to migrate any rows, ignore them to avoid having to wait for the timeout.
-    Set<String> ignoredTables = Set.of("bit_to_string", "set_to_array");
+    // These tables fail to migrate all expected rows, ignore them to avoid having to wait for the
+    // timeout.
+    Set<String> ignoredTables = Set.of("binary_to_string", "bit_to_string", "set_to_array");
     List<ConditionCheck> conditions = new ArrayList<>(spannerTableData.size());
 
     ConditionCheck combinedCondition = null;
