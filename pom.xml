@@ -76,7 +76,6 @@
     <jackson.version>2.15.4</jackson.version>
     <jettison.version>1.5.4</jettison.version>
     <json.version>20250517</json.version>
-    <json-smart.version>2.6.0</json-smart.version>
     <junit.version>4.13.2</junit.version>
     <re2j.version>1.6</re2j.version>
     <slf4j.version>2.0.17</slf4j.version>
@@ -85,7 +84,6 @@
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.4.5</truth.version>
-    <gax.version>2.72.1</gax.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -98,14 +96,11 @@
     <ojdbc8.version>23.9.0.25.07</ojdbc8.version>
     <mssql-jdbc.version>13.2.1.jre11</mssql-jdbc.version>
     <neo4j-driver.version>4.4.18</neo4j-driver.version>
-    <okio.version>3.16.2</okio.version>
-    <jetty.version>12.1.4</jetty.version>
+    <okio.version>3.16.4</okio.version>
+    <jetty.version>12.1.5</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
     <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
-
-    <!-- Security vulnerability fixes -->
-    <httpclient.version>4.5.13</httpclient.version>
 
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
@@ -210,36 +205,6 @@
         <groupId>org.json</groupId>
         <artifactId>json</artifactId>
         <version>${json.version}</version>
-      </dependency>
-
-      <!-- Enforce non-vulnerable version of httpclient to fix CVE-2020-13956 -->
-      <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
-      <!-- TODO: Remove once Beam releases 2.68.0. -->
-      <dependency>
-        <groupId>org.apache.httpcomponents</groupId>
-        <artifactId>httpclient</artifactId>
-        <version>${httpclient.version}</version>
-      </dependency>
-  
-      <!-- Enforce non-vulnerable version of json-smart (CVE-2023-1370) -->
-      <!-- Caused by beam-vendor-calcite-1_28_0-0.2.jar-->
-      <!-- TODO: Remove once Beam releases 2.68.0. -->
-      <dependency>
-        <groupId>net.minidev</groupId>
-        <artifactId>json-smart</artifactId>
-        <version>${json-smart.version}</version>
-      </dependency>
-
-      <!-- TODO(https://github.com/apache/beam/issues/30700): Remove once Beam gets the latest version of gax. -->
-      <dependency>
-        <groupId>com.google.api</groupId>
-        <artifactId>gax-grpc</artifactId>
-        <version>${gax.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>com.google.api</groupId>
-        <artifactId>gax</artifactId>
-        <version>${gax.version}</version>
       </dependency>
 
       <!-- Enforce non-vulnerable version of okio (CVE-2023-3635) -->
