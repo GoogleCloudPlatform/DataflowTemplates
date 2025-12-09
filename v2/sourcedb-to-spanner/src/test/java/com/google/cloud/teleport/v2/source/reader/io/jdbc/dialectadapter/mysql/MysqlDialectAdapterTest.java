@@ -38,6 +38,8 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+
+import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -280,17 +282,30 @@ public class MysqlDialectAdapterTest {
   public void testDiscoverIndexesBasic() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
-        ImmutableList.of("float", "integer", "bit", "char", "varbinary", "binary", "year");
+        ImmutableList.of(
+                "float",
+                "float", // float(p, d)
+                "integer", "bit", "char", "varbinary", "binary", "year");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
-                .setColumnName("testCol0")
-                .setIndexName("testIndex1")
+                .setColumnName("testColFloat1")
+                .setIndexName("testIndexFloat1")
                 .setIsUnique(false)
                 .setIsPrimary(false)
                 .setCardinality(42L)
                 .setOrdinalPosition(1)
                 .setIndexType(IndexType.FLOAT)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColFloat2")
+                .setIndexName("testIndexFloat2")
+                .setIsUnique(false)
+                .setIsPrimary(false)
+                .setCardinality(42L)
+                .setOrdinalPosition(1)
+                .setIndexType(IndexType.FLOAT)
+                .setDecimalStepSize(new BigDecimal("0.000001"))
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testCol1")
@@ -526,6 +541,13 @@ public class MysqlDialectAdapterTest {
               ? null
               : (info.collationReference().padSpace() ? "PAD SPACE" : "NO PAD");
       stubPadSpaceCol = stubPadSpaceCol.thenReturn(ret);
+    }
+    OngoingStubbing stubNumericScaleCol =
+        when(mockResultSet.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      Integer ret =
+              (info.decimalStepSize() == null) ? 0 : info.decimalStepSize().scale();
+      stubNumericScaleCol = stubNumericScaleCol.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());
     for (long i = 0; i < expectedSourceColumnIndexInfos.size(); i++) {
