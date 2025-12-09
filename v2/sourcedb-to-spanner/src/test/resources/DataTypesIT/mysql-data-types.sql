@@ -272,6 +272,11 @@ CREATE TABLE timestamp_pk_table (
                                     CONSTRAINT PRIMARY KEY (id)
 );
 
+CREATE TABLE decimal_pk_table (
+    id DECIMAL(10,2) PRIMARY KEY,
+    decimal_pk_col DECIMAL(10,2) NOT NULL
+);
+
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -422,6 +427,8 @@ INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('1970-01-01 
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');
 SET time_zone = SYSTEM;
+
+INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.67, 12345.67), (0.01, 0.01), (99999999.99, 99999999.99);
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

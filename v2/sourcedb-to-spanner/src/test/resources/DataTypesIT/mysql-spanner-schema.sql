@@ -300,3 +300,8 @@ CREATE TABLE IF NOT EXISTS timestamp_pk_table (
                                                   id TIMESTAMP NOT NULL,
                                                   timestamp_pk_col TIMESTAMP NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS decimal_pk_table (
+  id NUMERIC NOT NULL,
+  decimal_pk_col NUMERIC NOT NULL,
+) PRIMARY KEY(id);

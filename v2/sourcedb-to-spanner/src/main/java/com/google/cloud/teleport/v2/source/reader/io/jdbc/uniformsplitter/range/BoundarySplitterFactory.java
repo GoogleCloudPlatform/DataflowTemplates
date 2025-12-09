@@ -163,13 +163,25 @@ public class BoundarySplitterFactory {
   }
 
   private static BigDecimal splitBigDecimal(BigDecimal start, BigDecimal end) {
-    BigInteger startBigInt = (start == null) ? null : start.toBigInteger();
-    BigInteger endBigInt = (end == null) ? null : end.toBigInteger();
-    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
-    if (split == null) {
+    if (start == null && end == null) {
       return null;
     }
-    return new BigDecimal(split);
+    if (start == null) {
+      start = BigDecimal.ZERO;
+    }
+    if (end == null) {
+      end = BigDecimal.ZERO;
+    }
+    int scale = Math.max(start.scale(), end.scale());
+
+    BigInteger startInt = start.movePointRight(scale).toBigInteger();
+    BigInteger endInt = end.movePointRight(scale).toBigInteger();
+
+    BigInteger splitInt = splitBigIntegers(startInt, endInt);
+    if (splitInt == null) {
+      return null;
+    }
+    return new BigDecimal(splitInt, scale);
   }
 
   private static byte[] splitBytes(byte[] start, byte[] end) {
