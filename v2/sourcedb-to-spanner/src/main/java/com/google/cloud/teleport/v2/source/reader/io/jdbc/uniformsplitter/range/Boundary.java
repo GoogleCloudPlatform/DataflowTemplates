@@ -112,7 +112,7 @@ public abstract class Boundary<T extends Serializable>
    * - Source DB type where there is a defined precision
    *   Examples: Float(p, d)
    *   TODO: Double(p, d)
-   *   TODO: Decimal(p, d),
+   *   TODO: Decimal(size, d),
    *   TODO: Time(fsp)
    */
   public boolean areValuesEqual(Object valueA, Object valueB) {

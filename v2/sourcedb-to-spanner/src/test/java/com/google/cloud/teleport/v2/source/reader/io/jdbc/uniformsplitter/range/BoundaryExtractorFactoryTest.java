@@ -331,7 +331,6 @@ public class BoundaryExtractorFactoryTest {
         .setDecimalStepSize(new BigDecimal("0.01"))
         .build();
 
-
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getFloat(1)).thenReturn(1.001f);
     when(mockResultSet.getFloat(2)).thenReturn(1.002f);
