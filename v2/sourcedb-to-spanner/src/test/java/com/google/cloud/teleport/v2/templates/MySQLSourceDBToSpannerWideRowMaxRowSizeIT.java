@@ -65,8 +65,9 @@ public class MySQLSourceDBToSpannerWideRowMaxRowSizeIT extends SourceDbToSpanner
         pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
         initialized = true;
       }
-      // Separate the initialization of the resources and the loading of data so that if the data loading fails, the
-      // resources are not re-initialized (which would leave dangling resources in GCP).
+      // Separate the initialization of the resources and the loading of data so that if the data
+      // loading fails, the resources are not re-initialized (which would leave dangling resources
+      // in GCP).
       if (!dataLoaded) {
         loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
         dataLoaded = true;
