@@ -219,6 +219,8 @@ public class FirestoreToFirestore {
                   FirestoreIO.v1()
                       .read()
                       .partitionQuery()
+                      .withProjectId(sourceProject)
+                      .withDatabaseId(sourceDb)
                       .withReadTime(readTime)
                       .withRpcQosOptions(rpcQosOptions)
                       .build());
@@ -227,14 +229,13 @@ public class FirestoreToFirestore {
       // 4. Execute each partitioned query
       PCollection<RunQueryResponse> responses =
           partitionedQueries
-              // TODO: pacoavila - Include the project / database here.
               .apply(
               "ExecutePartitions",
               FirestoreIO.v1()
                   .read()
                   .runQuery()
-                  .withProjectId(destProject)
-                  .withDatabaseId(destDb)
+                  .withProjectId(sourceProject)
+                  .withDatabaseId(sourceDb)
                   .withReadTime(readTime)
                   .withRpcQosOptions(rpcQosOptions)
                   .build());
