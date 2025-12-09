@@ -343,16 +343,16 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(4)
-                .build());
-    SourceColumnIndexInfo.builder()
-        .setColumnName("testColYear")
-        .setIndexName("primary")
-        .setIsUnique(true)
-        .setIsPrimary(true)
-        .setCardinality(100L)
-        .setIndexType(IndexType.NUMERIC)
-        .setOrdinalPosition(6)
-        .build();
+                .build(),
+          SourceColumnIndexInfo.builder()
+              .setColumnName("testColYear")
+              .setIndexName("primary")
+              .setIsUnique(true)
+              .setIsPrimary(true)
+              .setCardinality(100L)
+              .setIndexType(IndexType.NUMERIC)
+              .setOrdinalPosition(6)
+              .build());
 
     final JdbcSchemaReference sourceSchemaReference =
         JdbcSchemaReference.builder().setDbName("testDB").build();
