@@ -158,6 +158,8 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
         "binary",
         createRows("binary", "eDU4MD" + repeatString("A", 334), repeatString("/", 340), "NULL"));
     expectedData.put("bit", createRows("bit", "f/////////8=", "NULL"));
+    expectedData.put("bit8", createRows("bit8", "0", "255", "NULL"));
+    expectedData.put("bit1", createRows("bit1", "false", "true", "NULL"));
     expectedData.put("blob", createRows("blob", "eDU4MDA=", repeatString("/", 87380), "NULL"));
     expectedData.put("bool", createRows("bool", "false", "true", "NULL"));
     expectedData.put("boolean", createRows("boolean", "false", "true", "NULL"));
@@ -242,6 +244,8 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
         "small_int_unsigned_pk", createRows("small_int_unsigned_pk", "0", "42", "65535"));
     expectedData.put("tiny_int_pk", createRows("tiny_int_pk", "-128", "0", "127"));
     expectedData.put("tiny_int_unsigned_pk", createRows("tiny_int_unsigned_pk", "0", "42", "255"));
+    expectedData.put("bit_pk", createRows("bit_pk", "0", "42", "255"));
+    expectedData.put("bit_1_pk", createRows("bit_1_pk", "false", "true"));
     // The binary column is padded with 0s
     expectedData.put(
         "binary_pk",
@@ -274,6 +278,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "2037-12-30T23:59:59Z",
             "2038-01-18T23:59:59Z"));
     expectedData.put("decimal_pk", createRows("decimal_pk", "12345.67", "0.01", "99999999.99"));
+    expectedData.put("year_pk", createRows("year_pk", "1901", "2000"));
     return expectedData;
   }
 

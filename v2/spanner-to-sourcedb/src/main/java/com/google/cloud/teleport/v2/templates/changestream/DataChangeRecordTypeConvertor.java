@@ -162,11 +162,10 @@ public class DataChangeRecordTypeConvertor {
    */
   private static boolean containsValue(JsonNode changeEvent, String key, boolean requiredField)
       throws DataChangeRecordConvertorException {
-    boolean containsValue = changeEvent.hasNonNull(key);
-    if (requiredField && !containsValue) {
+    if (requiredField && !changeEvent.has(key)) {
       throw new DataChangeRecordConvertorException(
           "Required key " + key + " not found in change event");
     }
-    return containsValue;
+    return changeEvent.hasNonNull(key);
   }
 }
