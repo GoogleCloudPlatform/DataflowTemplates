@@ -396,8 +396,8 @@ public class ChangeEventConvertorTest {
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
   }
 
-  @Test(expected = ChangeEventConvertorException.class)
-  public void cannotConvertValidChangeEventWithNullKeyColumnsToMutation() throws Exception {
+  @Test
+  public void canConvertValidChangeEventWithNullKeyColumnsToMutation() throws Exception {
     Ddl ddl = getTestDdl();
     JSONObject changeEvent = new JSONObject();
     changeEvent.put("first_name", "A");
@@ -405,6 +405,11 @@ public class ChangeEventConvertorTest {
     changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "Users");
     JsonNode ce = parseChangeEvent(changeEvent.toString());
     Mutation mutation = ChangeEventConvertor.changeEventToMutation(ddl, ce);
+    Map<String, Value> actual = mutation.asMap();
+
+    // We expect "first_name" to be "A" and "last_name" to be NULL.
+    assertThat(actual.get("first_name").getAsString(), is("A"));
+    assertThat(actual.get("last_name").isNull(), is(true));
   }
 
   @Test(expected = ChangeEventConvertorException.class)
