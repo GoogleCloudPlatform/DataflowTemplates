@@ -326,4 +326,7 @@ CREATE TABLE IF NOT EXISTS timestamp_pk_table (
 CREATE TABLE IF NOT EXISTS date_pk_table (
   id TIMESTAMP NOT NULL,
   date_pk_col TIMESTAMP NOT NULL,
+CREATE TABLE IF NOT EXISTS year_pk_table (
+  id INT64 NOT NULL,
+  year_pk_col INT64 NOT NULL,
 ) PRIMARY KEY(id);

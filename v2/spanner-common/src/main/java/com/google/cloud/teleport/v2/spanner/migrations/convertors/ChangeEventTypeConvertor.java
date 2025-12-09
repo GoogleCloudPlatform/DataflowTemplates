@@ -236,11 +236,11 @@ public class ChangeEventTypeConvertor {
    */
   private static boolean containsValue(JsonNode changeEvent, String key, boolean requiredField)
       throws ChangeEventConvertorException {
-    boolean containsValue = changeEvent.hasNonNull(key);
-    if (requiredField && !containsValue) {
+
+    if (requiredField && !changeEvent.has(key)) {
       throw new ChangeEventConvertorException("Required key " + key + " not found in change event");
     }
-    return containsValue;
+    return changeEvent.hasNonNull(key);
   }
 
   private static java.util.Date parseDate(String date) {
