@@ -17,7 +17,7 @@ template:
       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
    }
   streaming: false
-  hidden: true
+  hidden: false
 
   options_file:
     - "postgres_options"

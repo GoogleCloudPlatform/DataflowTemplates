@@ -44,7 +44,7 @@ import org.apache.beam.sdk.options.Validation;
       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
     },
     streaming = false,
-    hidden = true)
+    hidden = false)
 public interface PostgresToIcebergYaml {
 
   @TemplateParameter.Text(
