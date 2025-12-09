@@ -1,9 +1,23 @@
 template:
+
   name: "Postgres_To_Iceberg_Yaml"
-  display_name: "Postgres to Iceberg (Yaml)"
-  description: "A template for Postgres to Iceberg."
-  flex_container_name: "postgres-to-iceberg-yaml"
   category: "BATCH"
+  type: "YAML"
+  display_name: "Postgres to Iceberg (YAML)"
+  description: >
+    The Postgres to Iceberg template is a batch pipeline executes the user provided SQL query to read data from Postgres table
+    and outputs the records to Iceberg table.
+  flex_container_name: "postgres-to-iceberg-yaml"
+  yamlTemplateFile: "PostgresToIceberg.yaml"
+  filesToCopy: >
+    {"template.yaml", "main.py", "requirements.txt", "options/postgres_options.yaml", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+     "The Input Postgres instance and table must exist.",
+      "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+   }
+  streaming: false
+  hidden: true
 
   options_file:
     - "postgres_options"
