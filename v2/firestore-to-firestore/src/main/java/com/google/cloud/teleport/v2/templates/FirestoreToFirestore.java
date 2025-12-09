@@ -47,21 +47,20 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-        "The Firestore to Firestore template is a batch pipeline that reads documents from a<a"
-            + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-            + " them to another Firestore database.",
-        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-            + " written to the destination database.\n",
-        "Any errors that occur during operation are recorded in error queues. The error"
-            + " queue is a Cloud Storage folder which stores all the Datastream events that had"
-            + " encountered errors."
+      "The Firestore to Firestore template is a batch pipeline that reads documents from a<a"
+          + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+          + " them to another Firestore database.",
+      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+          + " written to the destination database.\n",
+      "Any errors that occur during operation are recorded in error queues. The error"
+          + " queue is a Cloud Storage folder which stores all the Datastream events that had"
+          + " encountered errors."
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
 public class FirestoreToFirestore {
 
   private static final Logger LOG = LoggerFactory.getLogger(FirestoreToFirestore.class);
-
 
   /**
    * Options supported by the pipeline.
@@ -134,7 +133,6 @@ public class FirestoreToFirestore {
 
     void setBatchSize(Integer value);
 
-
     @TemplateParameter.DateTime(
         order = 7,
         optional = true,
@@ -160,9 +158,7 @@ public class FirestoreToFirestore {
 
       String sourceProject = options.getSourceProjectId();
       String sourceDb =
-          options.getSourceDatabaseId().isEmpty()
-              ? "(default)"
-              : options.getSourceDatabaseId();
+          options.getSourceDatabaseId().isEmpty() ? "(default)" : options.getSourceDatabaseId();
 
       String destProject = options.getDestinationProjectId();
       String destDb =
@@ -175,14 +171,10 @@ public class FirestoreToFirestore {
 
       int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
       RpcQosOptions rpcQosOptions =
-          RpcQosOptions.newBuilder()
-              .withHintMaxNumWorkers(maxNumWorkers)
-              .build();
+          RpcQosOptions.newBuilder().withHintMaxNumWorkers(maxNumWorkers).build();
 
       Instant readTime =
-          options.getReadTime().isEmpty()
-              ? Instant.now()
-              : Instant.parse(options.getReadTime());
+          options.getReadTime().isEmpty() ? Instant.now() : Instant.parse(options.getReadTime());
 
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
@@ -199,8 +191,10 @@ public class FirestoreToFirestore {
       // 1. Define the base query to be partitioned
       StructuredQuery baseQuery =
           StructuredQuery.newBuilder()
-              .addFrom(CollectionSelector.newBuilder().setCollectionId(collectionId)
-                  .setAllDescendants(true))
+              .addFrom(
+                  CollectionSelector.newBuilder()
+                      .setCollectionId(collectionId)
+                      .setAllDescendants(true))
               .addOrderBy(
                   StructuredQuery.Order.newBuilder()
                       .setField(
@@ -235,15 +229,15 @@ public class FirestoreToFirestore {
           partitionedQueries
               // TODO: pacoavila - Include the project / database here.
               .apply(
-                  "ExecutePartitions",
-                  FirestoreIO.v1()
-                      .read()
-                      .runQuery()
-                      .withProjectId(destProject)
-                      .withDatabaseId(destDb)
-                      .withReadTime(readTime)
-                      .withRpcQosOptions(rpcQosOptions)
-                      .build());
+              "ExecutePartitions",
+              FirestoreIO.v1()
+                  .read()
+                  .runQuery()
+                  .withProjectId(destProject)
+                  .withDatabaseId(destDb)
+                  .withReadTime(readTime)
+                  .withRpcQosOptions(rpcQosOptions)
+                  .build());
       LOG.info("Completed PartitionQuery requests.");
 
       // 5. Process the documents from the responses
@@ -252,8 +246,8 @@ public class FirestoreToFirestore {
       LOG.info("Finished converting PartitionQuery results into Documents");
 
       // 6. Prepare documents for writing to the destination database
-      PCollection<Write> writes = documents.apply(
-          ParDo.of(new PrepareWritesFn(destProject, destDb)));
+      PCollection<Write> writes =
+          documents.apply(ParDo.of(new PrepareWritesFn(destProject, destDb)));
       LOG.info("Finished converting Documents to Write requests.");
 
       // 7. Write documents to the destination Firestore database

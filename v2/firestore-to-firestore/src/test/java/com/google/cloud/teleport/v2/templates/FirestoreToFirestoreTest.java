@@ -33,8 +33,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class FirestoreToFirestoreTest {
 
-  @Rule
-  public final transient TestPipeline p = TestPipeline.create();
+  @Rule public final transient TestPipeline p = TestPipeline.create();
 
   // Note: Fully testing the pipeline logic with FirestoreIO requires integration tests
   // or a sophisticated mocking of FirestoreIO's builders and transforms, which is complex.
