@@ -26,6 +26,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Random;
 import org.junit.Test;
 
 /** Test class for {@link InitialLimitedDurationDelayInjectionPolicy}. */
@@ -112,6 +113,15 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
     InitialLimitedDurationDelayInjectionPolicy policy =
         new InitialLimitedDurationDelayInjectionPolicy(input, clock);
 
+    // Force delay injection
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.1; // Less than 0.2
+          }
+        });
+
     // First call at t=0s, should be inside the window
     long startTime = System.currentTimeMillis();
     policy.shouldInjectionError();
@@ -134,12 +144,55 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   }
 
   @Test
+  public void shouldInjectDelay_respectsProbability() {
+    JsonNode input = createInputObject("PT5S", "PT0.1S");
+    Clock clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+    InitialLimitedDurationDelayInjectionPolicy policy =
+        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+
+    // Case 1: Random < 0.2 -> Should delay
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.1;
+          }
+        });
+    long startTime = System.currentTimeMillis();
+    policy.shouldInjectionError();
+    long endTime = System.currentTimeMillis();
+    assertThat(endTime - startTime).isAtLeast(100L);
+
+    // Case 2: Random >= 0.2 -> Should NOT delay
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.3;
+          }
+        });
+    startTime = System.currentTimeMillis();
+    policy.shouldInjectionError();
+    endTime = System.currentTimeMillis();
+    assertThat(endTime - startTime).isLessThan(50L);
+  }
+
+  @Test
   public void shouldInjectDelay_isThreadSafe() throws InterruptedException {
     JsonNode input = createInputObject("PT0.5S", "PT0.2S"); // 0.5-second window
     Instant t0 = Instant.parse("2025-01-01T00:00:00Z");
     Clock clock = Clock.fixed(t0, ZoneOffset.UTC);
     InitialLimitedDurationDelayInjectionPolicy policy =
         new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+
+    // Force delay injection for all threads
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.1;
+          }
+        });
 
     // All threads should experience a delay during the initial window.
     // The test will take ~2 seconds to run.

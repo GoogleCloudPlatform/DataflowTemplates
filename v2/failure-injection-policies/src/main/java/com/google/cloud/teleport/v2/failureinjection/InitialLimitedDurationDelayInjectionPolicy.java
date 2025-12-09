@@ -36,16 +36,22 @@ public class InitialLimitedDurationDelayInjectionPolicy
       LoggerFactory.getLogger(InitialLimitedDurationDelayInjectionPolicy.class);
   private static final long serialVersionUID = 1L;
 
-  private static final String DEFAULT_INJECTION_WINDOW_DURATION = "PT10M"; // 10 minutes
-  private static final String DEFAULT_DELAY_DURATION = "PT10S"; // 10 seconds
-  private static final String INJECTION_WINDOW_FIELD = "injectionWindowDuration";
-  private static final String DELAY_DURATION_FIELD = "delayDuration";
+  private static final String DEFAULT_BAKE_DURATION = "PT2H"; // 2 Hours
+  private static final String DEFAULT_TRANSACTION_DELAY_DURATION = "PT5M"; // 5 Minutes
+
+  // The JSON field name for the duration during which delays will be injected.
+  private static final String TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD =
+      "transactionTimeoutBakeDuration";
+
+  // The JSON field name for the duration of the delay itself.
+  private static final String TRANSACTION_DELAY_DURATION_FIELD = "transactionDelayDuration";
 
   private final Duration injectionWindowDuration;
   private final Duration delayDuration;
 
   private transient Clock clock;
   private Instant startTime;
+  private java.util.Random random = new java.util.Random();
 
   public InitialLimitedDurationDelayInjectionPolicy(JsonNode inputParameter) {
     this(inputParameter, Clock.systemUTC());
@@ -53,22 +59,25 @@ public class InitialLimitedDurationDelayInjectionPolicy
 
   InitialLimitedDurationDelayInjectionPolicy(JsonNode inputParameter, Clock clock) {
     this.clock = clock;
-    String injectionWindowStr = DEFAULT_INJECTION_WINDOW_DURATION;
-    String delayDurationStr = DEFAULT_DELAY_DURATION;
+    String injectionWindowStr = DEFAULT_BAKE_DURATION;
+    String delayDurationStr = DEFAULT_TRANSACTION_DELAY_DURATION;
 
     if (inputParameter != null && inputParameter.isObject()) {
       injectionWindowStr =
-          inputParameter.has(INJECTION_WINDOW_FIELD)
-              ? inputParameter.get(INJECTION_WINDOW_FIELD).asText(injectionWindowStr)
+          inputParameter.has(TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD)
+              ? inputParameter
+                  .get(TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD)
+                  .asText(injectionWindowStr)
               : injectionWindowStr;
       delayDurationStr =
-          inputParameter.has(DELAY_DURATION_FIELD)
-              ? inputParameter.get(DELAY_DURATION_FIELD).asText(delayDurationStr)
+          inputParameter.has(TRANSACTION_DELAY_DURATION_FIELD)
+              ? inputParameter.get(TRANSACTION_DELAY_DURATION_FIELD).asText(delayDurationStr)
               : delayDurationStr;
     }
 
-    this.injectionWindowDuration = parseDuration(injectionWindowStr, INJECTION_WINDOW_FIELD);
-    this.delayDuration = parseDuration(delayDurationStr, DELAY_DURATION_FIELD);
+    this.injectionWindowDuration =
+        parseDuration(injectionWindowStr, TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD);
+    this.delayDuration = parseDuration(delayDurationStr, TRANSACTION_DELAY_DURATION_FIELD);
   }
 
   @Override
@@ -91,12 +100,14 @@ public class InitialLimitedDurationDelayInjectionPolicy
     // Compare elapsed time with the configured duration.
     // elapsed.compareTo(injectionWindowDuration) < 0 means elapsed < injectionWindowDuration
     if (elapsed.compareTo(injectionWindowDuration) < 0) {
-      // Introduce delay
-      try {
-        Thread.sleep(delayDuration.toMillis());
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        LOG.warn("Delay injection interrupted", e);
+      // Introduce delay with 20% probability
+      if (random.nextDouble() < 0.2) {
+        try {
+          Thread.sleep(delayDuration.toMillis());
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOG.warn("Delay injection interrupted", e);
+        }
       }
     }
 
@@ -122,5 +133,9 @@ public class InitialLimitedDurationDelayInjectionPolicy
 
   public void setClockForTesting(Clock clock) {
     this.clock = clock;
+  }
+
+  public void setRandomForTesting(java.util.Random random) {
+    this.random = random;
   }
 }
