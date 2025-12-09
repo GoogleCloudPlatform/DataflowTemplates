@@ -326,4 +326,7 @@ CREATE TABLE IF NOT EXISTS timestamp_pk_table (
 CREATE TABLE IF NOT EXISTS bool_pk_table (
   id BOOL NOT NULL,
   bool_pk_col BOOL NOT NULL,
+CREATE TABLE IF NOT EXISTS year_pk_table (
+  id INT64 NOT NULL,
+  year_pk_col INT64 NOT NULL,
 ) PRIMARY KEY(id);
