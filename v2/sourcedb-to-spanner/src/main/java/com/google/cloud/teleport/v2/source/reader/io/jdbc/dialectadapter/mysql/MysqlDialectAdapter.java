@@ -461,9 +461,14 @@ public final class MysqlDialectAdapter implements DialectAdapter {
 
         // TODO: Support DOUBLE and DECIMAL
         BigDecimal decimalStepSize = null;
-        if (indexType.equals(IndexType.FLOAT) && numericScale > 0) {
-          // Example: If scale is 2, decimal step is 0.01
-          decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+        if (indexType.equals(IndexType.FLOAT)) {
+          if (numericScale > 0) {
+            // Example: If scale is 2, decimal step is 0.01
+            decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+          } else {
+            // Trying to pick a sane default 1e-5 (there is no defined default step for float point type)
+            decimalStepSize = BigDecimal.valueOf(0.00001f);
+          }
         }
 
         indexesBuilder.add(

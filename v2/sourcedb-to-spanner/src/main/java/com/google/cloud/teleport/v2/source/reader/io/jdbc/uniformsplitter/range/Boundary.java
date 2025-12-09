@@ -98,6 +98,11 @@ public abstract class Boundary<T extends Serializable>
     return partitionColumn().stringMaxLength();
   }
 
+  @Nullable
+  BigDecimal decimalStepSize() {
+    return partitionColumn().decimalStepSize();
+  }
+
   /**
    * @return builder for {@link Boundary}.
    */
@@ -121,13 +126,7 @@ public abstract class Boundary<T extends Serializable>
       BigDecimal b2 = new BigDecimal(f2.toString());
 
       BigDecimal diff = b1.subtract(b2).abs();
-      BigDecimal stepSize = java.util.Objects.requireNonNullElse(
-        partitionColumn().decimalStepSize(),
-        // Trying to pick a sane default 1e-5 (there is no defined default step for float point type)
-        BigDecimal.valueOf(0.00001f)
-      );
-
-      return diff.compareTo(stepSize) < 0;
+      return diff.compareTo(decimalStepSize()) < 0;
     }
     // TODO special step size for Double
     // TODO special step size for Decimal
