@@ -81,18 +81,8 @@ public class FirestoreToFirestore {
     void setSourceProjectId(String value);
 
     @TemplateParameter.Text(
-        groupName = "Destination",
-        order = 1,
-        description = "Destination Project ID",
-        helpText = "The destination project to write to.",
-        example = "my-project")
-    String getDestinationProjectId();
-
-    void setDestinationProjectId(String value);
-
-    @TemplateParameter.Text(
         groupName = "Source",
-        order = 1,
+        order = 2,
         description = "Source Database ID",
         helpText = "The source database to read from.",
         example = "my-database")
@@ -102,20 +92,9 @@ public class FirestoreToFirestore {
     void setSourceDatabaseId(String value);
 
     @TemplateParameter.Text(
-        groupName = "Destination",
-        order = 1,
-        description = "Destination Database ID",
-        helpText = "The destination database to write to.",
-        example = "my-database")
-    @Default.String("(default)")
-    String getDestinationDatabaseId();
-
-    void setDestinationDatabaseId(String value);
-
-    @TemplateParameter.Text(
-        groupName = "Target",
-        order = 9,
-        description = "Database collection filter (optional)",
+        groupName = "Source",
+        order = 3,
+        description = "Database collections to copy",
         helpText =
             "If specified, only replicate this collection. If not specified, replicate all collections.",
         example = "my-collection",
@@ -124,8 +103,29 @@ public class FirestoreToFirestore {
 
     void setDatabaseCollection(String value);
 
+    @TemplateParameter.Text(
+        groupName = "Destination",
+        order = 4,
+        description = "Destination Project ID",
+        helpText = "The destination project to write to.",
+        example = "my-project")
+    String getDestinationProjectId();
+
+    void setDestinationProjectId(String value);
+
+    @TemplateParameter.Text(
+        groupName = "Destination",
+        order = 5,
+        description = "Destination Database ID",
+        helpText = "The destination database to write to.",
+        example = "my-database")
+    @Default.String("(default)")
+    String getDestinationDatabaseId();
+
+    void setDestinationDatabaseId(String value);
+
     @TemplateParameter.Integer(
-        order = 11,
+        order = 6,
         optional = true,
         description = "Batch size",
         helpText = "The batch size for writing to Database.")
@@ -136,7 +136,7 @@ public class FirestoreToFirestore {
 
 
     @TemplateParameter.DateTime(
-        order = 9,
+        order = 7,
         optional = true,
         description = "Read Time",
         helpText = "The read time of the Firestore read operations.")
@@ -239,6 +239,8 @@ public class FirestoreToFirestore {
                   FirestoreIO.v1()
                       .read()
                       .runQuery()
+                      .withProjectId(destProject)
+                      .withDatabaseId(destDb)
                       .withReadTime(readTime)
                       .withRpcQosOptions(rpcQosOptions)
                       .build());
