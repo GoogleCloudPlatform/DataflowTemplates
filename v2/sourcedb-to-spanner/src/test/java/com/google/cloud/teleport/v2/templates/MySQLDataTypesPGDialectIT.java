@@ -54,7 +54,6 @@ public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
   private static PipelineLauncher.LaunchInfo jobInfo;
 
   public static MySQLResourceManager mySQLResourceManager;
-  public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager pgDialectSpannerResourceManager;
 
   private static final String MYSQL_DUMP_FILE_RESOURCE = "DataTypesIT/mysql-data-types.sql";
@@ -68,15 +67,13 @@ public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
   @Before
   public void setUp() throws Exception {
     mySQLResourceManager = setUpMySQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
     pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, pgDialectSpannerResourceManager, mySQLResourceManager);
+    ResourceManagerUtils.cleanResources(pgDialectSpannerResourceManager, mySQLResourceManager);
   }
 
   @Test
@@ -93,7 +90,7 @@ public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             null,
             null);
     PipelineOperator.Result result =
-        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(35L)));
+        pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(15L)));
     assertThatResult(result).isLaunchFinished();
 
     // Validate supported data types.
