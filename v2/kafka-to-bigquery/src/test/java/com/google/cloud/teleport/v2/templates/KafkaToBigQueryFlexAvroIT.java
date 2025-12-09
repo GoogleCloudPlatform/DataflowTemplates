@@ -159,6 +159,30 @@ public final class KafkaToBigQueryFlexAvroIT extends TemplateTestBase {
   }
 
   @Test
+  public void testKafkaToBigQueryAvroWithGCPSchemaRegistryWithKey()
+      throws IOException, RestClientException {
+    baseKafkaToBigQueryAvro(
+        b ->
+            b.addParameter("messageFormat", "AVRO_CONFLUENT_WIRE_FORMAT")
+                .addParameter("schemaFormat", "SCHEMA_REGISTRY")
+                // If this test fails, check if the below schema registry has
+                // correct schemas registered with the following IDs:
+                // - 5 (avro_schema.avsc)
+                // - 4 (other_avro_schema.avsc)
+                .addParameter(
+                    "schemaRegistryConnectionUrl",
+                    "https://managedkafka.googleapis.com/v1/projects/cloud-teleport-testing/locations/us-central1/schemaRegistries/dataflow_kafka_templates")
+                .addParameter("schemaRegistryAuthenticationMode", "APPLICATION_DEFAULT_CREDENTIALS")
+                .addParameter("writeMode", "DYNAMIC_TABLE_NAMES")
+                .addParameter("outputProject", PROJECT)
+                .addParameter("outputDataset", bqDatasetId)
+                .addParameter("bqTableNamePrefix", "")
+                .addParameter("useBigQueryDLQ", "false")
+                .addParameter("kafkaReadAuthenticationMode", "NONE")
+                .addParameter("persistKafkaKey", "true"));
+  }
+
+  @Test
   public void testKafkaToBigQueryAvroInNonConfluentFormat()
       throws IOException, RestClientException {
     tableId = bigQueryClient.createTable(testName, bqSchema);
