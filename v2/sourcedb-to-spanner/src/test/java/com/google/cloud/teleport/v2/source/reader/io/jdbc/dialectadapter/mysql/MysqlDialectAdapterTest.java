@@ -305,7 +305,7 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setOrdinalPosition(1)
                 .setIndexType(IndexType.FLOAT)
-                .setDecimalStepSize(new BigDecimal("0.000001"))
+                .setDecimalStepSize(new BigDecimal("0.000001")) // FLOAT(p, d = 6)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testCol1")
