@@ -353,6 +353,8 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setIndexType(IndexType.DECIMAL)
                 .setOrdinalPosition(5)
+                .setPrecision(10)
+                .setScale(2)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColYear")

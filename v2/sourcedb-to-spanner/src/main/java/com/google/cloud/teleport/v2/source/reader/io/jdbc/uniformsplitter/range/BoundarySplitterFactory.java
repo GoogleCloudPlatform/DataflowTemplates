@@ -172,7 +172,7 @@ public class BoundarySplitterFactory {
     if (end == null) {
       end = BigDecimal.ZERO;
     }
-    int scale = Math.max(start.scale(), end.scale());
+    int scale = partitionColumn.getScale();
 
     BigInteger startInt = start.movePointRight(scale).toBigInteger();
     BigInteger endInt = end.movePointRight(scale).toBigInteger();
