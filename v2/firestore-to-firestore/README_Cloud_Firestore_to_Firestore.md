@@ -2,7 +2,7 @@
 Firestore to Firestore template
 ---
 The Firestore to Firestore template is a batch pipeline that reads documents from
-one<a href="https://cloud.google.com/firestore/docs">Firestore</a> database and
+one <a href="https://cloud.google.com/firestore/docs">Firestore</a> database and
 writes them to another Firestore database.
 
 Data consistency is guaranteed only at the end of the pipeline when all data has
@@ -26,7 +26,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional parameters
 
 * **databaseCollection**: If specified, only replicate this collection. If not specified, replicate all collections. For example, `my-collection`.
-* **readTime**: The read time of the Firestore read operations. Defaults to empty.
+* **readTime**: The read time of the Firestore read operations. Uses current timestamp if not set. For example, `2021-10-12T07:20:50.52Z`. Defaults to empty.
 
 
 
