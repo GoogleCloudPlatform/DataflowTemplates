@@ -57,10 +57,6 @@ import org.slf4j.LoggerFactory;
             + " them to another Firestore database.",
         "Data consistency is guaranteed only at the end of the pipeline when all data has been"
             + " written to the destination database.\n",
-        // TODO: determine how we will collect error info.
-        // "Any errors that occur during operation are recorded in error queues. The error"
-        //     + " queue is a Cloud Storage folder which stores all the Datastream events that had"
-        //     + " encountered errors."
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -89,9 +85,8 @@ public class FirestoreToFirestore {
         groupName = "Source",
         order = 2,
         description = "Source Database ID",
-        helpText = "The source database to read from.",
+        helpText = "The source database to read from. Use '(default)' for the default database.",
         example = "my-database")
-    @Default.String("(default)")
     String getSourceDatabaseId();
 
     void setSourceDatabaseId(String value);
@@ -126,9 +121,8 @@ public class FirestoreToFirestore {
         groupName = "Destination",
         order = 5,
         description = "Destination Database ID",
-        helpText = "The destination database to write to.",
+        helpText = "The destination database to write to. Use '(default)' for the default database.",
         example = "my-database")
-    @Default.String("(default)")
     String getDestinationDatabaseId();
 
     void setDestinationDatabaseId(String value);
@@ -159,18 +153,14 @@ public class FirestoreToFirestore {
       LOG.info("Pipeline created.");
 
       String sourceProjectId = options.getSourceProjectId();
-      String sourceDatabaseId =
-          options.getSourceDatabaseId().isEmpty() ? "(default)" : options.getSourceDatabaseId();
+      String sourceDatabaseId = options.getSourceDatabaseId();
 
       String destinationProjectId = options.getDestinationProjectId().isEmpty() ? sourceProjectId
           : options.getDestinationProjectId();
-      String destinationDatabaseId =
-          options.getDestinationDatabaseId().isEmpty()
-              ? "(default)"
-              : options.getDestinationDatabaseId();
+      String destinationDatabaseId = options.getDestinationDatabaseId();
 
-      String collectionIds = options.getCollectionIds();
       List<String> collectionIdsList;
+      String collectionIds = options.getCollectionIds();
       if (collectionIds == null || collectionIds.isEmpty()) {
         try {
           collectionIdsList = getAllCollectionIds(sourceProjectId, sourceDatabaseId);
