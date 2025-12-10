@@ -119,6 +119,9 @@ public class ChangeEventConvertor {
     String shadowTableName = shadowTablePrefix + tableName;
     try {
       Table table = ddl.table(shadowTableName);
+      if (table == null) {
+        throw new DroppedTableException(shadowTableName + " not found in spanner DDL");
+      }
       ImmutableList<IndexColumn> keyColumns = table.primaryKeys();
       List<String> keyColumnNames =
           keyColumns.stream()

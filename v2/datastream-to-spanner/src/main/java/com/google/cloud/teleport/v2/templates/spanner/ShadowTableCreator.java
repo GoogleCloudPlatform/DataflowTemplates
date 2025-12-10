@@ -91,9 +91,9 @@ public class ShadowTableCreator {
   private void addChangeEventSequenceColumns(
       Table.Builder shadowTableBuilder, Set<String> primaryKeyColNames) {
     for (Pair<String, String> shadowInfo : sortOrderMap.values()) {
-      String desiredName = shadowInfo.getLeft();
-      String safeName = getSafeShadowColumnName(desiredName, primaryKeyColNames);
-      Column.Builder versionColumnBuilder = shadowTableBuilder.column(safeName);
+      String baseShadowColumnName = shadowInfo.getLeft();
+      String finalShadowColumnName = getSafeShadowColumnName(baseShadowColumnName, primaryKeyColNames);
+      Column.Builder versionColumnBuilder = shadowTableBuilder.column(finalShadowColumnName);
       versionColumnBuilder.parseType(shadowInfo.getRight());
       versionColumnBuilder.endColumn();
     }
@@ -103,15 +103,15 @@ public class ShadowTableCreator {
    * Generates a safe column name for a shadow table by checking for collisions with existing column
    * names and iteratively prepending a prefix until a unique name is found.
    *
-   * @param desiredName the initial desired name for the shadow column
-   * @param existingColumnNames a set of existing column names in the data table (should be
+   * @param baseShadowColumnName the initial desired name for the shadow column
+   * @param existingPrimaryKeyColumnNames a set of existing column names in the data table (should be
    *     lowercase)
    * @return a unique and safe column name
    */
   public static String getSafeShadowColumnName(
-      String desiredName, Set<String> existingPrimaryKeyColumnNames) {
-    String safeName = desiredName;
-    while (existingPrimaryKeyColumnNames.contains(safeName.toLowerCase())) {
+      String baseShadowColumnName, Set<String> existingPrimaryKeyColumnNames) {
+    String safeName = baseShadowColumnName;
+    while (existingPrimaryKeyColumnNames.stream().anyMatch(safeName::equalsIgnoreCase)) {
       safeName = "shadow_" + safeName;
     }
     return safeName;

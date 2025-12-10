@@ -26,7 +26,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventCon
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,24 +98,25 @@ class MySqlChangeEventSequence extends ChangeEventSequence {
   /*
    * Creates a MySqlChangeEventSequence by reading from a shadow table.
    * @param transactionContext The transaction context to use for reading from the shadow table
-   * @param shadowTable The name of the shadow table to read from
-   * @param primaryKey The primary key to look up in the shadow table
+   * @param context The change event context with resolved safe shadow column names
    * @param useSqlStatements If true, performs shadow table read using SQL statement with exclusive lock on row
    */
   public static MySqlChangeEventSequence createFromShadowTable(
       final TransactionContext transactionContext,
-      String shadowTable,
+      ChangeEventContext context,
       Ddl shadowTableDdl,
-      Key primaryKey,
       boolean useSqlStatements)
       throws ChangeEventSequenceCreationException {
 
     try {
+      String shadowTable = context.getShadowTable();
+      Key primaryKey = context.getPrimaryKey();
       // Read columns from shadow table
       List<String> readColumnList =
-          DatastreamConstants.MYSQL_SORT_ORDER.values().stream()
-              .map(p -> p.getLeft())
-              .collect(Collectors.toList());
+          java.util.Arrays.asList(
+              context.getSafeTimestampColumn(),
+              context.getSafeLogFileColumn(),
+              context.getSafeLogPositionColumn());
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.

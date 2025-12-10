@@ -41,6 +41,18 @@ class OracleChangeEventContext extends ChangeEventContext {
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
+
+    Table dataTable = ddl.table(this.dataTable);
+    Set<String> primaryKeyColNames =
+        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
+
+    this.safeTimestampColumn =
+        ShadowTableCreator.getSafeShadowColumnName(
+            DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), primaryKeyColNames);
+    this.safeScnColumn =
+        ShadowTableCreator.getSafeShadowColumnName(
+            DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), primaryKeyColNames);
+
     convertChangeEventToMutation(ddl, shadowTableDdl);
   }
 
@@ -55,18 +67,11 @@ class OracleChangeEventContext extends ChangeEventContext {
         ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
             shadowDdl, changeEvent, shadowTablePrefix);
 
-    Table dataTable = ddl.table(this.dataTable);
-    Set<String> primaryKeyColNames =
-        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
-
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /* requiredField= */ true);
-    String timestampColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft(), primaryKeyColNames);
-    builder.set(timestampColumn).to(Value.int64(changeEventTimestamp));
+    builder.set(this.safeTimestampColumn).to(Value.int64(changeEventTimestamp));
 
     /* Oracle backfill events "can" have SCN value as null.
      * Set the value to a value smaller than any real value.
@@ -78,10 +83,7 @@ class OracleChangeEventContext extends ChangeEventContext {
       changeEventSCN = new Long(-1);
     }
     // Add scn information to shadow table mutation
-    String scnColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft(), primaryKeyColNames);
-    builder.set(scnColumn).to(Value.int64(changeEventSCN));
+    builder.set(this.safeScnColumn).to(Value.int64(changeEventSCN));
 
     return builder.build();
   }

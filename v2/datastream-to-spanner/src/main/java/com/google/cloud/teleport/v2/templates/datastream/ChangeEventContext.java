@@ -62,6 +62,13 @@ public abstract class ChangeEventContext {
   // Data table for the change event.
   protected String dataTable;
 
+  // The following fields store the "safe" names (to avoid collision with data column names) of the shadow table columns.
+  protected String safeTimestampColumn;
+  protected String safeLogFileColumn;
+  protected String safeLogPositionColumn;
+  protected String safeScnColumn;
+  protected String safeLsnColumn;
+
   // Abstract method to generate shadow table mutation.
   abstract Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
       throws ChangeEventConvertorException;
@@ -119,6 +126,27 @@ public abstract class ChangeEventContext {
   // Getter method for the shadow table.
   public String getShadowTable() {
     return shadowTable;
+  }
+
+  // Getters for the safe shadow table column names.
+  public String getSafeTimestampColumn() {
+    return this.safeTimestampColumn;
+  }
+
+  public String getSafeLogFileColumn() {
+    return this.safeLogFileColumn;
+  }
+
+  public String getSafeLogPositionColumn() {
+    return this.safeLogPositionColumn;
+  }
+
+  public String getSafeScnColumn() {
+    return this.safeScnColumn;
+  }
+
+  public String getSafeLsnColumn() {
+    return this.safeLsnColumn;
   }
 
   // Fires a read on Data table with lock scanned ranges. Used to acquire exclusive lock on Data row

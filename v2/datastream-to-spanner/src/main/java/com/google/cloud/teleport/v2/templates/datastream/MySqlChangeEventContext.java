@@ -41,6 +41,21 @@ class MySqlChangeEventContext extends ChangeEventContext {
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
+
+    Table dataTable = ddl.table(this.dataTable);
+    Set<String> primaryKeyColNames =
+        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
+
+    this.safeTimestampColumn =
+        ShadowTableCreator.getSafeShadowColumnName(
+            DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), primaryKeyColNames);
+    this.safeLogFileColumn =
+        ShadowTableCreator.getSafeShadowColumnName(
+            DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), primaryKeyColNames);
+    this.safeLogPositionColumn =
+        ShadowTableCreator.getSafeShadowColumnName(
+            DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), primaryKeyColNames);
+
     convertChangeEventToMutation(ddl, shadowTableDdl);
   }
 
@@ -55,18 +70,11 @@ class MySqlChangeEventContext extends ChangeEventContext {
         ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
             shadowDdl, changeEvent, shadowTablePrefix);
 
-    Table dataTable = ddl.table(this.dataTable);
-    Set<String> primaryKeyColNames =
-        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
-
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
-    String timestampColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft(), primaryKeyColNames);
-    builder.set(timestampColumn).to(Value.int64(changeEventTimestamp));
+    builder.set(this.safeTimestampColumn).to(Value.int64(changeEventTimestamp));
 
     /* MySql backfill events "can" have log file and log file position as null.
      * Set their value to a value (lexicographically) smaller than any real value.
@@ -78,10 +86,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
       logFile = "";
     }
     // Add log file information to shadow table mutation
-    String logFileColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft(), primaryKeyColNames);
-    builder.set(logFileColumn).to(logFile);
+    builder.set(this.safeLogFileColumn).to(logFile);
 
     Long logPosition =
         ChangeEventTypeConvertor.toLong(
@@ -90,10 +95,7 @@ class MySqlChangeEventContext extends ChangeEventContext {
       logPosition = new Long(-1);
     }
     // Add logfile position information to shadow table mutation
-    String logPositionColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft(), primaryKeyColNames);
-    builder.set(logPositionColumn).to(Value.int64(logPosition));
+    builder.set(this.safeLogPositionColumn).to(Value.int64(logPosition));
 
     return builder.build();
   }
