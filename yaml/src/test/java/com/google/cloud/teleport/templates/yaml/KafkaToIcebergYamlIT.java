@@ -35,9 +35,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.kafka.KafkaResourceManager;
-import org.apache.iceberg.Schema;
 import org.apache.iceberg.data.Record;
-import org.apache.iceberg.types.Types;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -95,13 +93,6 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
   @Test
   public void testKafkaToIceberg() throws IOException {
     String topicName = kafkaResourceManager.createTopic(testName, 5);
-    Schema icebergSchema =
-        new Schema(
-            Types.NestedField.required(1, "id", Types.IntegerType.get()),
-            Types.NestedField.required(2, "name", Types.StringType.get()));
-
-    // Create Iceberg Table
-    icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, icebergSchema);
 
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
