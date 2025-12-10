@@ -67,6 +67,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<Timestamp>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitTimestamps(start, end))
+          .put(
+              Date.class,
+              (BoundarySplitter<Date>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDates(start, end))
           .build();
 
   /**
@@ -171,6 +176,38 @@ public class BoundarySplitterFactory {
     }
     return new BigDecimal(split);
   }
+
+  private static Date splitDates(Date start, Date end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = Date.valueOf(LocalDate.MIN);
+    }
+    if (end == null) {
+      end = Date.valueOf(LocalDate.MIN);
+    }
+
+    int startDateInt = convertDateToInt(start);
+    int endDateInt   = convertDateToInt(end);
+
+    int dateMid = splitIntegers(startDateInt, endDateInt);
+
+    return convertIntToSqlDate(dateMid);
+  }
+
+  private static int convertDateToInt(Date sqlDate) {
+    LocalDate localDate = sqlDate.toLocalDate();
+    String dateString = localDate.format(DateTimeFormatter.BASIC_ISO_DATE);
+    return Integer.parseInt(dateString);
+  }
+
+  private static Date convertIntToSqlDate(int dateInt) {
+    String dateString = String.valueOf(dateInt);
+    LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE);
+    return Date.valueOf(localDate);
+  }
+
 
   private static byte[] splitBytes(byte[] start, byte[] end) {
     BigInteger startBigInt = (start == null) ? null : new BigInteger(start);

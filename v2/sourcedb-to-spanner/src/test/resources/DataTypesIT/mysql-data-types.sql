@@ -456,9 +456,7 @@ INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('1970-01-01 
                                                                    ('2001-01-01 00:01:54.123456', '2001-01-01 00:01:54.123456'),
                                                                    ('2037-12-30 23:59:59', '2037-12-30 23:59:59'),  ('2038-01-18 23:59:59', '2038-01-18 23:59:59');
 
-SET time_zone = 'UTC';
 INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01-01'), ('2005-01-01', '2005-01-01'), ('9999-12-31', '9999-12-31');
-SET time_zone = SYSTEM;
 
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');

@@ -350,7 +350,7 @@ public class MysqlDialectAdapterTest {
                 .setIsUnique(true)
                 .setIsPrimary(true)
                 .setCardinality(3L)
-                .setIndexType(IndexType.TIME_STAMP)
+                .setIndexType(IndexType.DATE)
                 .setOrdinalPosition(6)
                 .build(),
           SourceColumnIndexInfo.builder()
