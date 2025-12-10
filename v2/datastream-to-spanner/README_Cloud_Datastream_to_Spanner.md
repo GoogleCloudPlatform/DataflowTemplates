@@ -139,10 +139,8 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--pl v2/datastream-to-spanner -am
+-f v2/datastream-to-spanner
 ```
-
-Note: This command must be executed from the root directory of the DataflowTemplates repository.
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
 If not provided, it defaults to `gcr.io/<project>`.
