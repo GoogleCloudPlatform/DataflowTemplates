@@ -1,0 +1,102 @@
+options:
+  - name: "kafka_read_options"
+    parameters:
+      - order: 1
+        name: "bootstrap_servers"
+        description: "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster."
+        help: "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2"
+        example: "host1:port1,host2:port2"
+        required: true
+        type: text
+      - order: 2
+        name: "topic"
+        description: "Kafka topic to read from."
+        help: "Kafka topic to read from. For example: my_topic"
+        example: "my_topic"
+        required: true
+        type: text
+      - order: 3
+        name: "allow_duplicates"
+        description: "If the Kafka read allows duplicates."
+        help: "If the Kafka read allows duplicates. For example: true"
+        example: "true"
+        required: false
+        type: boolean
+      - order: 4
+        name: "confluent_schema_registry_subject"
+        description: "The subject name for the Confluent Schema Registry."
+        help: "The subject name for the Confluent Schema Registry. For example: my_subject"
+        example: "my_subject"
+        required: false
+        type: text
+      - order: 5
+        name: "confluent_schema_registry_url"
+        description: "The URL for the Confluent Schema Registry."
+        help: "The URL for the Confluent Schema Registry. For example: http://schema-registry:8081"
+        example: "http://schema-registry:8081"
+        required: false
+        type: text
+      - order: 6
+        name: "consumer_config_updates"
+        description: "A list of key-value pairs that act as configuration parameters for Kafka consumers."
+        help: "A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'}"
+        example: '{"group.id": "my_group"}'
+        required: false
+        type: map
+      - order: 7
+        name: "file_descriptor_path"
+        description: "The path to the Protocol Buffer File Descriptor Set file."
+        help: "The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb"
+        example: "gs://bucket/path/to/descriptor.pb"
+        required: false
+        type: text
+      - order: 8
+        name: "format"
+        description: "The encoding format for the data stored in Kafka."
+        help: "The encoding format for the data stored in Kafka. Valid options are: RAW,STRING,AVRO,JSON,PROTO. For example: JSON"
+        example: "JSON"
+        required: false
+        default: "JSON"
+        type: text
+      - order: 9
+        name: "message_name"
+        description: "The name of the Protocol Buffer message to be used for schema extraction and data conversion."
+        help: "The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage"
+        example: "MyMessage"
+        required: false
+        type: text
+      - order: 10
+        name: "offset_deduplication"
+        description: "If the redistribute is using offset deduplication mode."
+        help: "If the redistribute is using offset deduplication mode. For example: true"
+        example: "true"
+        required: false
+        type: boolean
+      - order: 11
+        name: "redistribute_by_record_key"
+        description: "If the redistribute keys by the Kafka record key."
+        help: "If the redistribute keys by the Kafka record key. For example: true"
+        example: "true"
+        required: false
+        type: boolean
+      - order: 12
+        name: "redistribute_num_keys"
+        description: "The number of keys for redistributing Kafka inputs."
+        help: "The number of keys for redistributing Kafka inputs. For example: 10"
+        example: "10"
+        required: false
+        type: integer
+      - order: 13
+        name: "redistributed"
+        description: "If the Kafka read should be redistributed."
+        help: "If the Kafka read should be redistributed. For example: true"
+        example: "true"
+        required: false
+        type: boolean
+      - order: 14
+        name: "schema"
+        description: "The schema in which the data is encoded in the Kafka topic."
+        help: "The schema in which the data is encoded in the Kafka topic. For example: {'type': 'record', 'name': 'User', 'fields': [{'name': 'name', 'type': 'string'}]}"
+        example: '{"type": "record", "name": "User", "fields": [{"name": "name", "type": "string"}]}'
+        required: false
+        type: text
