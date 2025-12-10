@@ -49,9 +49,9 @@
     <jacoco.version>0.8.13</jacoco.version>
 
     <!-- Beam and linked versions -->
-    <beam.version>2.69.0</beam.version>
-    <beam-python.version>2.69.0</beam-python.version>
-    <beam-maven-repo></beam-maven-repo>
+    <beam.version>2.70.0</beam.version>
+    <beam-python.version>2.70.0</beam-python.version>
+    <beam-maven-repo>https://repository.apache.org/content/repositories/orgapachebeam-1419</beam-maven-repo>
 
     <!-- Common dependency versions -->
     <autovalue.version>1.10.4</autovalue.version>
@@ -888,7 +888,7 @@
     <profile>
       <id>validateCandidate</id>
       <activation>
-        <activeByDefault>false</activeByDefault>
+        <jdk>[1.)</jdk>
       </activation>
       <repositories>
         <repository>
