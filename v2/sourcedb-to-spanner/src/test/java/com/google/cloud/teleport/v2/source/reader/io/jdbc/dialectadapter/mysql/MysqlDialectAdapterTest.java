@@ -280,7 +280,8 @@ public class MysqlDialectAdapterTest {
   public void testDiscoverIndexesBasic() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
-        ImmutableList.of("float", "integer", "bit", "char", "varbinary", "binary", "decimal", "year");
+        ImmutableList.of(
+            "float", "integer", "bit", "char", "varbinary", "binary", "decimal", "year");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
