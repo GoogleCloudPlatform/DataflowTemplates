@@ -98,6 +98,11 @@ public abstract class Boundary<T extends Serializable>
     return partitionColumn().stringMaxLength();
   }
 
+  @Nullable
+  BigDecimal decimalStepSize() {
+    return partitionColumn().decimalStepSize();
+  }
+
   /**
    * @return builder for {@link Boundary}.
    */
@@ -121,7 +126,7 @@ public abstract class Boundary<T extends Serializable>
       BigDecimal b2 = new BigDecimal(f2.toString());
 
       BigDecimal diff = b1.subtract(b2).abs();
-      return diff.compareTo(partitionColumn().decimalStepSize()) < 0;
+      return diff.compareTo(decimalStepSize()) < 0;
     }
     // TODO special step size for Double
     // TODO special step size for Decimal
@@ -271,6 +276,11 @@ public abstract class Boundary<T extends Serializable>
 
     public Builder<T> setCollation(CollationReference value) {
       this.partitionColumnBuilder().setStringCollation(value);
+      return this;
+    }
+
+    public Builder<T> setDecimalStepSize(BigDecimal value) {
+      this.partitionColumnBuilder().setDecimalStepSize(value);
       return this;
     }
 
