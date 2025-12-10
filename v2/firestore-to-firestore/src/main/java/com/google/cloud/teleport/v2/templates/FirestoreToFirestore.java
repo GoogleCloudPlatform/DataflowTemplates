@@ -47,14 +47,15 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-      "The Firestore to Firestore template is a batch pipeline that reads documents from a<a"
+      "The Firestore to Firestore template is a batch pipeline that reads documents from one<a"
           + " href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
           + " them to another Firestore database.",
       "Data consistency is guaranteed only at the end of the pipeline when all data has been"
           + " written to the destination database.\n",
-      "Any errors that occur during operation are recorded in error queues. The error"
-          + " queue is a Cloud Storage folder which stores all the Datastream events that had"
-          + " encountered errors."
+        // TODO: determine how we will collect error info.
+      // "Any errors that occur during operation are recorded in error queues. The error"
+      //     + " queue is a Cloud Storage folder which stores all the Datastream events that had"
+      //     + " encountered errors."
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -123,18 +124,8 @@ public class FirestoreToFirestore {
 
     void setDestinationDatabaseId(String value);
 
-    @TemplateParameter.Integer(
-        order = 6,
-        optional = true,
-        description = "Batch size",
-        helpText = "The batch size for writing to Database.")
-    @Default.Integer(500)
-    Integer getBatchSize();
-
-    void setBatchSize(Integer value);
-
     @TemplateParameter.DateTime(
-        order = 7,
+        order = 6,
         optional = true,
         description = "Read Time",
         helpText = "The read time of the Firestore read operations.")
@@ -207,7 +198,6 @@ public class FirestoreToFirestore {
           PartitionQueryRequest.newBuilder()
               .setParent(DocumentRootName.format(sourceProject, sourceDb))
               .setStructuredQuery(baseQuery)
-              // TODO:maybe dedicated param here
               .setPartitionCount(maxNumWorkers)
               .build();
 
