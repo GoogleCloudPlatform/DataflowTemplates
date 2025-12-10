@@ -12,8 +12,8 @@ sys.modules['apache_beam.yaml'] = MagicMock()
 sys.modules['apache_beam.yaml.cache_provider_artifacts'] = MagicMock()
 sys.modules['apache_beam.yaml.main'] = MagicMock()
 
-# Add the current directory to sys.path to import main
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add the src/main/python directory to sys.path to import main
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../main/python')))
 
 import main
 

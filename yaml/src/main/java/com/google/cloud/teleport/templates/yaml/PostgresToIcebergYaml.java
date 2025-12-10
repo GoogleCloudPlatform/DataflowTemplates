@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2024 Google LLC
+ * Copyright (C) 2025 Google LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not
  * use this file except in compliance with the License. You may obtain a copy of
@@ -27,8 +27,7 @@ import org.apache.beam.sdk.options.Validation;
     type = Template.TemplateType.YAML,
     displayName = "Postgres to Iceberg (YAML)",
     description =
-        "A YAML template for Postgres to Iceberg is a batch pipeline with executes the user provided SQL query to read data from Postgres table"
-            + "and outputs the records to Iceberg table.",
+        "The Postgres to Iceberg template is a batch pipeline executes the user provided SQL query to read data from Postgres table and outputs the records to Iceberg table.",
     flexContainerName = "postgres-to-iceberg-yaml",
     yamlTemplateFile = "PostgresToIceberg.yaml",
     filesToCopy = {
@@ -38,18 +37,20 @@ import org.apache.beam.sdk.options.Validation;
       "options/postgres_options.yaml",
       "options/iceberg_options.yaml"
     },
+    documentation = "",
     contactInformation = "https://cloud.google.com/support",
     requirements = {
       "The Input Postgres instance and table must exist.",
       "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
     },
+    streaming = false,
     hidden = false)
 public interface PostgresToIcebergYaml {
 
-  // Common JDBC Parameters
   @TemplateParameter.Text(
       order = 1,
       name = "jdbcUrl",
+      optional = false,
       description = "Connection URL for the JDBC source/sink.",
       helpText = "The JDBC connection URL.",
       example = "jdbc:postgresql://your-host:5432/your-db")
@@ -123,7 +124,6 @@ public interface PostgresToIcebergYaml {
   @Default.String("postgres")
   String getJdbcType();
 
-  // JDBC Read Parameters
   @TemplateParameter.Text(
       order = 9,
       name = "location",
@@ -131,7 +131,7 @@ public interface PostgresToIcebergYaml {
       description = "The name of the table to read from.",
       helpText = "The name of the database table to read data from.",
       example = "public.my_table")
-  String getReadLocation();
+  String getLocation();
 
   @TemplateParameter.Text(
       order = 10,
@@ -177,7 +177,7 @@ public interface PostgresToIcebergYaml {
       description = "Whether to disable auto-commit on read.",
       helpText =
           "Whether to disable auto-commit on read. Required for some databases like Postgres.",
-      example = "true")
+      example = "True")
   Boolean getDisableAutoCommit();
 
   @TemplateParameter.Boolean(
@@ -186,13 +186,13 @@ public interface PostgresToIcebergYaml {
       optional = true,
       description = "Whether to reshuffle the PCollection to distribute results to all workers.",
       helpText = "If true, the resulting PCollection will be reshuffled.",
-      example = "true")
+      example = "True")
   Boolean getOutputParallelization();
 
-  // Iceberg Common Parameters
   @TemplateParameter.Text(
       order = 16,
       name = "table",
+      optional = false,
       description = "A fully-qualified table identifier.",
       helpText = "A fully-qualified table identifier, e.g., my_dataset.my_table.",
       example = "my_dataset.my_table")
@@ -202,6 +202,7 @@ public interface PostgresToIcebergYaml {
   @TemplateParameter.Text(
       order = 17,
       name = "catalogName",
+      optional = false,
       description = "Name of the catalog containing the table.",
       helpText = "The name of the Iceberg catalog that contains the table.",
       example = "my_hadoop_catalog")
@@ -211,6 +212,7 @@ public interface PostgresToIcebergYaml {
   @TemplateParameter.Text(
       order = 18,
       name = "catalogProperties",
+      optional = false,
       description = "Properties used to set up the Iceberg catalog.",
       helpText = "A map of properties for setting up the Iceberg catalog.",
       example = "{\"type\": \"hadoop\", \"warehouse\": \"gs://your-bucket/warehouse\"}")
@@ -244,7 +246,6 @@ public interface PostgresToIcebergYaml {
       example = "[\"field_to_keep_1\", \"field_to_keep_2\"]")
   String getKeep();
 
-  // Iceberg Write Parameters
   @TemplateParameter.Text(
       order = 22,
       name = "only",
