@@ -163,23 +163,28 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
             .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
-    // Kill the dataflow workers multiple times to induce work item assignment rebalancing and
-    // inturn increase the chance of same key being processed by multiple workers parallelly.
+    // Update the minNumWorkers for the dataflow job multiple times to induce work item assignment
+    // rebalancing and inturn increase the chance of same key being processed by multiple workers
+    // parallelly.
     ConditionCheck workerFailureInjectorAsConditionCheck =
         new ConditionCheck() {
           @Override
           protected String getDescription() {
-            return "Kill all workers for job " + jobInfo.jobId();
+            return "Update minNumWorkers for job " + jobInfo.jobId();
           }
 
           @Override
           protected CheckResult check() {
             try {
-              DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
+              int minNumWorkers =
+                  java.util.concurrent.ThreadLocalRandom.current()
+                      .nextInt(Integer.parseInt(NUM_WORKERS), Integer.parseInt(MAX_WORKERS) + 1);
+              DataflowFailureInjector.updateMinNumWorkers(
+                  jobInfo.projectId(), REGION, jobInfo.jobId(), minNumWorkers);
             } catch (Exception e) {
               throw new RuntimeException(e);
             }
-            return new CheckResult(true, "Killed all workers for job " + jobInfo.jobId());
+            return new CheckResult(true, "Updated minNumWorkers for job " + jobInfo.jobId());
           }
         };
 
@@ -194,7 +199,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     // Implementing workerFailureInjector as condition check to rely on the Condition check
     // framework to execute the check every 30 seconds until the condition is met. Combining
     // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
-    // kill dataflow worker function will be called until all the rows appear in spanner i.e., until
+    // update minNumWorkers function will be called until all the rows appear in spanner i.e., until
     // the end of migration.
     conditionCheck = workerFailureInjectorAsConditionCheck.and(sourceDbRowCountCondition);
 

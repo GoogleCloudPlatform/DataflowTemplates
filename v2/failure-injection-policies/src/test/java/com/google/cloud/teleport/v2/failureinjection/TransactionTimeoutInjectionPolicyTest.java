@@ -35,10 +35,10 @@ public class TransactionTimeoutInjectionPolicyTest {
   private ObjectNode createInputObject(String windowDuration, String delayDuration) {
     ObjectNode node = JsonNodeFactory.instance.objectNode();
     if (windowDuration != null) {
-      node.put("injectionWindowDuration", windowDuration);
+      node.put("transactionTimeoutBakeDuration", windowDuration);
     }
     if (delayDuration != null) {
-      node.put("delayDuration", delayDuration);
+      node.put("transactionDelayDuration", delayDuration);
     }
     return node;
   }
@@ -58,7 +58,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    assertEquals(Duration.ofSeconds(10), policy.getDelay());
+    assertEquals(Duration.ofSeconds(260), policy.getDelay());
   }
 
   @Test
@@ -67,7 +67,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    assertEquals(Duration.ofSeconds(10), policy.getDelay());
+    assertEquals(Duration.ofSeconds(260), policy.getDelay());
   }
 
   @Test
@@ -76,7 +76,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    assertEquals(Duration.ofSeconds(10), policy.getDelay());
+    assertEquals(Duration.ofSeconds(260), policy.getDelay());
   }
 
   @Test
@@ -87,7 +87,7 @@ public class TransactionTimeoutInjectionPolicyTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new TransactionTimeoutInjectionPolicy(input, clock));
-    assertThat(e).hasMessageThat().contains("Failed to parse injectionWindowDuration");
+    assertThat(e).hasMessageThat().contains("Failed to parse transactionTimeoutBakeDuration");
   }
 
   @Test
@@ -98,7 +98,7 @@ public class TransactionTimeoutInjectionPolicyTest {
         assertThrows(
             IllegalArgumentException.class,
             () -> new TransactionTimeoutInjectionPolicy(input, clock));
-    assertThat(e).hasMessageThat().contains("Failed to parse delayDuration");
+    assertThat(e).hasMessageThat().contains("Failed to parse transactionDelayDuration");
   }
 
   @Test
@@ -173,7 +173,7 @@ public class TransactionTimeoutInjectionPolicyTest {
 
   @Test
   public void shouldInjectDelay_isThreadSafe() throws InterruptedException {
-    JsonNode input = createInputObject("PT0.5S", "PT0.2S"); // 0.5-second window
+    JsonNode input = createInputObject("PT0.5S", "PT0.05S"); // 0.5-second window, 50ms delay
     Instant t0 = Instant.parse("2025-01-01T00:00:00Z");
     Clock clock = Clock.fixed(t0, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
@@ -196,7 +196,7 @@ public class TransactionTimeoutInjectionPolicyTest {
           long taskStart = System.currentTimeMillis();
           policy.shouldInjectionError();
           long taskEnd = System.currentTimeMillis();
-          assertThat(taskEnd - taskStart).isAtLeast(200L);
+          assertThat(taskEnd - taskStart).isAtLeast(40L);
         };
 
     Thread t1 = new Thread(task);

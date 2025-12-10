@@ -15,10 +15,19 @@
  */
 package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
+import com.google.api.client.googleapis.util.Utils;
 import com.google.api.gax.longrunning.OperationFuture;
+import com.google.api.services.dataflow.Dataflow;
+import com.google.api.services.dataflow.model.AutoscalingSettings;
+import com.google.api.services.dataflow.model.Environment;
+import com.google.api.services.dataflow.model.Job;
+import com.google.api.services.dataflow.model.WorkerPool;
+import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.compute.v1.InstancesClient;
 import com.google.cloud.compute.v1.Operation;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -81,5 +90,50 @@ public class DataflowFailureInjector {
         }
       }
     }
+  }
+
+  /**
+   * Updates the minimum number of workers for a Dataflow job.
+   *
+   * @param projectId The Google Cloud project ID.
+   * @param region The Google Cloud region.
+   * @param jobId The Dataflow job ID.
+   * @param minNumWorkers The new minimum number of workers.
+   */
+  public static void updateMinNumWorkers(
+      String projectId, String region, String jobId, int minNumWorkers) throws IOException {
+    Dataflow dataflow =
+        new Dataflow(
+            Utils.getDefaultTransport(),
+            Utils.getDefaultJsonFactory(),
+            new HttpCredentialsAdapter(GoogleCredentials.getApplicationDefault()));
+
+    Job job = dataflow.projects().locations().jobs().get(projectId, region, jobId).execute();
+
+    if (job.getEnvironment() == null) {
+      job.setEnvironment(new Environment());
+    }
+    if (job.getEnvironment().getWorkerPools() == null) {
+      job.getEnvironment().setWorkerPools(Collections.singletonList(new WorkerPool()));
+    }
+
+    WorkerPool workerPool = job.getEnvironment().getWorkerPools().get(0);
+    if (workerPool.getAutoscalingSettings() == null) {
+      workerPool.setAutoscalingSettings(new AutoscalingSettings());
+    }
+    workerPool.getAutoscalingSettings().set("minNumWorkers", minNumWorkers);
+
+    Job updateJob = new Job();
+    updateJob.setEnvironment(new Environment());
+    updateJob
+        .getEnvironment()
+        .setWorkerPools(
+            Collections.singletonList(
+                new WorkerPool()
+                    .setAutoscalingSettings(
+                        new AutoscalingSettings().set("minNumWorkers", minNumWorkers))));
+
+    dataflow.projects().locations().jobs().update(projectId, region, jobId, updateJob).execute();
+    LOG.info("Updated minNumWorkers to {} for job {}", minNumWorkers, jobId);
   }
 }
