@@ -15,6 +15,9 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import com.google.cloud.firestore.CollectionReference;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.FirestoreOptions;
 import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
@@ -27,6 +30,7 @@ import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.RunQueryRequest;
 import com.google.firestore.v1.RunQueryResponse;
 import com.google.firestore.v1.Write;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -163,14 +167,19 @@ public class FirestoreToFirestore {
               : options.getDestinationDatabaseId();
 
       String collectionIds = options.getCollectionIds();
+      List<String> collectionIdsList;
       if (collectionIds == null || collectionIds.isEmpty()) {
-        // TODO: support multiple collections
-        throw new IllegalArgumentException("collectionIds is required");
+        try {
+          collectionIdsList = getAllCollectionIds(sourceProject, sourceDb);
+        } catch (Exception e) {
+          LOG.error("Failed to list collections: {}", e.getMessage(), e);
+          return;
+        }
+      } else {
+        collectionIdsList = Arrays.stream(collectionIds.split(","))
+            .map(String::trim)
+            .collect(Collectors.toList());
       }
-
-      List<String> collectionIdsList = Arrays.stream(collectionIds.split(","))
-          .map(String::trim)
-          .collect(Collectors.toList());
 
       int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
       RpcQosOptions rpcQosOptions =
@@ -252,6 +261,20 @@ public class FirestoreToFirestore {
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
+    }
+  }
+
+  private static List<String> getAllCollectionIds(String projectId, String databaseId)
+      throws Exception {
+    FirestoreOptions firestoreOptions =
+        FirestoreOptions.newBuilder().setProjectId(projectId).setDatabaseId(databaseId).build();
+    try (Firestore db = firestoreOptions.getService()) {
+      List<String> collectionIds = new ArrayList<>();
+      Iterable<CollectionReference> collections = db.listCollections();
+      for (CollectionReference collRef : collections) {
+        collectionIds.add(collRef.getId());
+      }
+      return collectionIds;
     }
   }
 }
