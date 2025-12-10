@@ -70,7 +70,7 @@ public class BoundarySplitterFactory {
           .put(
               Float.class,
               (BoundarySplitter<Float>)
-                      (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitFloats(start, end))
           .build();
 
@@ -270,27 +270,27 @@ public class BoundarySplitterFactory {
   }
 
   private static Float splitFloats(Float start, Float end) {
-      if (start == null && end == null) {
-          return null;
-      }
-      if (start == null) {
-          start = -Float.MAX_VALUE;
-      }
-      if (end == null) {
-          end = Float.MAX_VALUE;
-      }
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = -Float.MAX_VALUE;
+    }
+    if (end == null) {
+      end = Float.MAX_VALUE;
+    }
 
-      // Calculate overflow safe mid-point
+    // Calculate overflow safe mid-point
 
-      // If signs are different, simple addition is safe from overflow
-      // because the values cancel each other out towards zero.
-      if ((start < 0 && end > 0) || (start > 0 && end < 0)) {
-          return (start + end) / 2.0f;
-      }
+    // If signs are different, simple addition is safe from overflow
+    // because the values cancel each other out towards zero.
+    if ((start < 0 && end > 0) || (start > 0 && end < 0)) {
+      return (start + end) / 2.0f;
+    }
 
-      // If signs are the same (both positive or both negative),
-      // we use the offset formula to prevent overflow (Infinity).
-      // This works regardless of whether start > end or start < end.
-      return start + (end - start) / 2.0f;
+    // If signs are the same (both positive or both negative),
+    // we use the offset formula to prevent overflow (Infinity).
+    // This works regardless of whether start > end or start < end.
+    return start + (end - start) / 2.0f;
   }
 }

@@ -111,14 +111,10 @@ public abstract class Boundary<T extends Serializable>
   }
 
   /**
-   * Custom equality check that relies on Object.equals() for most types,
-   * but switches to delta/min-step based comparison for:
-   * - Floating-point types (Float, Double)
-   * - Source DB type where there is a defined precision
-   *   Examples: Float(p, d)
-   *   TODO: Double(p, d)
-   *   TODO: Decimal(size, d),
-   *   TODO: Time(fsp)
+   * Custom equality check that relies on Object.equals() for most types. But switches to
+   * delta/min-step based comparison for: - Floating-point types (Float, Double) - Source DB type
+   * where there is a defined precision Examples: Float(p, d) TODO: Double(p, d) TODO: Decimal(size,
+   * d), TODO: Time(fsp).
    */
   public boolean areValuesEqual(Object valueA, Object valueB) {
     if (valueA instanceof Float f1 && valueB instanceof Float f2) {

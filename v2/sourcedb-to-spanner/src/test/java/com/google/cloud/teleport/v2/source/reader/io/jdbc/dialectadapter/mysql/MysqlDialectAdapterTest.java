@@ -38,7 +38,6 @@ import com.google.cloud.teleport.v2.source.reader.io.schema.SourceSchemaReferenc
 import com.google.cloud.teleport.v2.spanner.migrations.schema.SourceColumnType;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -283,9 +282,14 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
         ImmutableList.of(
-                "float",
-                "float", // float(p, d)
-                "integer", "bit", "char", "varbinary", "binary", "year");
+            "float",
+            "float", // float(p, d)
+            "integer",
+            "bit",
+            "char",
+            "varbinary",
+            "binary",
+            "year");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
@@ -359,15 +363,15 @@ public class MysqlDialectAdapterTest {
                 .setIndexType(IndexType.BINARY)
                 .setOrdinalPosition(4)
                 .build(),
-          SourceColumnIndexInfo.builder()
-              .setColumnName("testColYear")
-              .setIndexName("primary")
-              .setIsUnique(true)
-              .setIsPrimary(true)
-              .setCardinality(100L)
-              .setIndexType(IndexType.NUMERIC)
-              .setOrdinalPosition(6)
-              .build());
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColYear")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(100L)
+                .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(6)
+                .build());
 
     final JdbcSchemaReference sourceSchemaReference =
         JdbcSchemaReference.builder().setDbName("testDB").build();
@@ -545,8 +549,7 @@ public class MysqlDialectAdapterTest {
     OngoingStubbing stubNumericScaleCol =
         when(mockResultSet.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
-      Integer ret =
-              (info.decimalStepSize() == null) ? 0 : info.decimalStepSize().scale();
+      Integer ret = (info.decimalStepSize() == null) ? 0 : info.decimalStepSize().scale();
       stubNumericScaleCol = stubNumericScaleCol.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());

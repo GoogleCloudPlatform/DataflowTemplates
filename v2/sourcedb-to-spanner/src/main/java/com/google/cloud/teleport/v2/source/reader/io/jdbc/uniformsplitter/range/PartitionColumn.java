@@ -88,9 +88,10 @@ public abstract class PartitionColumn implements Serializable {
           "String columns must specify collation, and non string columns must not specify collation. PartitionColum = "
               + partitionColumn);
       Preconditions.checkState(
-              (partitionColumn.columnClass() == Float.class && partitionColumn.decimalStepSize() != null)
+          (partitionColumn.columnClass() == Float.class
+                  && partitionColumn.decimalStepSize() != null)
               || (partitionColumn.columnClass() != Float.class),
-              "Float columns must specify decimalStepSize. PartitionColum = " + partitionColumn);
+          "Float columns must specify decimalStepSize. PartitionColum = " + partitionColumn);
       return partitionColumn;
     }
   }

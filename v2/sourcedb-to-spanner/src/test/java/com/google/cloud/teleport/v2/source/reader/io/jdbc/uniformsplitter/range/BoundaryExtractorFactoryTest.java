@@ -280,7 +280,7 @@ public class BoundaryExtractorFactoryTest {
   @Test
   public void testFromFloat() throws SQLException {
     PartitionColumn partitionColumn =
-      PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
     BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
 
     when(mockResultSet.next()).thenReturn(true);
@@ -295,18 +295,18 @@ public class BoundaryExtractorFactoryTest {
     assertThat(boundary.isSplittable(null)).isTrue();
     // Mismatched Type
     assertThrows(
-      IllegalArgumentException.class,
-      () ->
-        extractor.getBoundary(
-          PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
-          mockResultSet,
-          null));
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
   }
 
   @Test
   public void testFromFloatMinStep() throws SQLException {
     PartitionColumn partitionColumn =
-      PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
     BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
 
     // If step between values > default min step delta 1e-5
@@ -327,27 +327,32 @@ public class BoundaryExtractorFactoryTest {
 
     // The database column can set a custom number of decimals precision
     PartitionColumn partitionColumnWithCustomDecimals =
-      PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class)
-        .setDecimalStepSize(new BigDecimal("0.01"))
-        .build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Float.class)
+            .setDecimalStepSize(new BigDecimal("0.01"))
+            .build();
 
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getFloat(1)).thenReturn(1.001f);
     when(mockResultSet.getFloat(2)).thenReturn(1.002f);
-    Boundary<Float> boundary3 = extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
+    Boundary<Float> boundary3 =
+        extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
     assertThat(boundary3.isSplittable(null)).isFalse();
 
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getFloat(1)).thenReturn(1.1f);
     when(mockResultSet.getFloat(2)).thenReturn(1.2f);
-    Boundary<Float> boundary4 = extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
+    Boundary<Float> boundary4 =
+        extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
     assertThat(boundary4.isSplittable(null)).isTrue();
 
     // sign does not matter, diff is computed as absolute
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getFloat(1)).thenReturn(-1.1f);
     when(mockResultSet.getFloat(2)).thenReturn(-1.2f);
-    Boundary<Float> boundary5 = extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
+    Boundary<Float> boundary5 =
+        extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
     assertThat(boundary5.isSplittable(null)).isTrue();
   }
 

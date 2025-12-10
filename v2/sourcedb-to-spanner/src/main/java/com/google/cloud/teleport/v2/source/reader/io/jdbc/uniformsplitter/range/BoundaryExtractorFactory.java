@@ -56,9 +56,7 @@ public class BoundaryExtractorFactory {
           .put(
               Timestamp.class,
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
-          .put(
-              Float.class,
-                  (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
+          .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
           .build();
 
   /**
@@ -181,21 +179,21 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
-    private static Boundary<Float> fromFloats(
-            PartitionColumn partitionColumn,
-            ResultSet resultSet,
-            @Nullable BoundaryTypeMapper boundaryTypeMapper)
-            throws SQLException {
-        Preconditions.checkArgument(partitionColumn.columnClass().equals(Float.class));
-        resultSet.next();
-        return Boundary.<Float>builder()
-                .setPartitionColumn(partitionColumn)
-                .setStart(resultSet.getFloat(1))
-                .setEnd(resultSet.getFloat(2))
-                .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
-                .setBoundaryTypeMapper(boundaryTypeMapper)
-                .build();
-    }
+  private static Boundary<Float> fromFloats(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Float.class));
+    resultSet.next();
+    return Boundary.<Float>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getFloat(1))
+        .setEnd(resultSet.getFloat(2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
 
   private BoundaryExtractorFactory() {}
 }

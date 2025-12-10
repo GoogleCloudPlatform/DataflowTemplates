@@ -378,7 +378,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
           .put("YEAR", IndexType.NUMERIC)
-          // Float is listed as numeric types in Mysql Ref https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
+          // Float is listed as numeric types in Mysql Ref
+          // https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
           // But here the end goal is to map to a Java Float.class,
           // we need a distinct Source IndexType to map to Float.class
           .put("FLOAT", IndexType.FLOAT)
@@ -466,7 +467,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
             // Example: If scale is 2, decimal step is 0.01
             decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
           } else {
-            // Trying to pick a sane default 1e-5 (there is no defined default step for float point type)
+            // Trying to pick a sane default 1e-5 (there is no defined default step for float point
+            // type)
             decimalStepSize = BigDecimal.valueOf(0.00001f);
           }
         }
