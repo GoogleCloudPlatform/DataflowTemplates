@@ -45,7 +45,7 @@ public class FirestoreToFirestoreTest {
 
     options.setSourceProjectId("test-source-project");
     options.setSourceDatabaseId("test-source-db");
-    options.setDatabaseCollection("my-collection");
+    options.setCollectionIds("my-collection1,my-collection2");
     options.setDestinationProjectId("test-dest-project");
     options.setDestinationDatabaseId("(default)");
 
@@ -56,7 +56,7 @@ public class FirestoreToFirestoreTest {
 
       String sourceProject = options.getSourceProjectId();
       String sourceDb = options.getSourceDatabaseId();
-      String collectionId = options.getDatabaseCollection();
+      String collectionId = options.getCollectionIds();
 
       // The following lines would normally be part of the pipeline run,
       // but we can't execute them in a unit test without extensive mocking.

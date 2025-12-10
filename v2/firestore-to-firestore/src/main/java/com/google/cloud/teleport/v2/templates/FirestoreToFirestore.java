@@ -19,16 +19,17 @@ import com.google.cloud.teleport.metadata.Template;
 import com.google.cloud.teleport.metadata.TemplateCategory;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.v2.common.UncaughtExceptionLogger;
+import com.google.cloud.teleport.v2.transforms.CreatePartitionQueryRequestFn;
 import com.google.cloud.teleport.v2.transforms.PrepareWritesFn;
 import com.google.cloud.teleport.v2.transforms.RunQueryResponseToDocumentFn;
 import com.google.firestore.v1.Document;
-import com.google.firestore.v1.DocumentRootName;
 import com.google.firestore.v1.PartitionQueryRequest;
 import com.google.firestore.v1.RunQueryRequest;
 import com.google.firestore.v1.RunQueryResponse;
-import com.google.firestore.v1.StructuredQuery;
-import com.google.firestore.v1.StructuredQuery.CollectionSelector;
 import com.google.firestore.v1.Write;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.gcp.firestore.FirestoreIO;
@@ -96,12 +97,14 @@ public class FirestoreToFirestore {
         order = 3,
         description = "Database collections to copy",
         helpText =
-            "If specified, only replicate this collection. If not specified, replicate all collections.",
-        example = "my-collection",
+            "If specified, only replicate these collections."
+                + " If not specified, copy all collections.",
+        example = "my-collection1,my-collection2",
         optional = true)
-    String getDatabaseCollection();
+    @Default.String("")
+    String getCollectionIds();
 
-    void setDatabaseCollection(String value);
+    void setCollectionIds(String value);
 
     @TemplateParameter.Text(
         groupName = "Destination",
@@ -159,8 +162,15 @@ public class FirestoreToFirestore {
               ? "(default)"
               : options.getDestinationDatabaseId();
 
-      // TODO: support multiple collections
-      String collectionId = options.getDatabaseCollection();
+      String collectionIds = options.getCollectionIds();
+      if (collectionIds == null || collectionIds.isEmpty()) {
+        // TODO: support multiple collections
+        throw new IllegalArgumentException("collectionIds is required");
+      }
+
+      List<String> collectionIdsList = Arrays.stream(collectionIds.split(","))
+          .map(String::trim)
+          .collect(Collectors.toList());
 
       int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
       RpcQosOptions rpcQosOptions =
@@ -171,41 +181,24 @@ public class FirestoreToFirestore {
 
       LOG.info(
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
-              + "destinationProjectId={}, destinationDatabaseId={}, collections={}, "
+              + "destinationProjectId={}, destinationDatabaseId={}, collectionIds={}, "
               + "maxNumWorkers={}, readTime={}",
           sourceProject,
           sourceDb,
           destProject,
           destDb,
-          collectionId,
+          collectionIdsList,
           maxNumWorkers,
           readTime);
 
-      // 1. Define the base query to be partitioned
-      StructuredQuery baseQuery =
-          StructuredQuery.newBuilder()
-              .addFrom(
-                  CollectionSelector.newBuilder()
-                      .setCollectionId(collectionId)
-                      .setAllDescendants(true))
-              .addOrderBy(
-                  StructuredQuery.Order.newBuilder()
-                      .setField(
-                          StructuredQuery.FieldReference.newBuilder().setFieldPath("__name__"))
-                      .setDirection(StructuredQuery.Direction.ASCENDING))
-              .build();
+      // 1. Construct the PartitionQuery requests for the collections.
+      PCollection<PartitionQueryRequest> partitionQueryRequests = p.apply(
+              Create.of(collectionIdsList))
+          .apply(new CreatePartitionQueryRequestFn(sourceProject, sourceDb, maxNumWorkers));
 
-      // 2. Create the PartitionQueryRequest
-      PartitionQueryRequest partitionRequest =
-          PartitionQueryRequest.newBuilder()
-              .setParent(DocumentRootName.format(sourceProject, sourceDb))
-              .setStructuredQuery(baseQuery)
-              .setPartitionCount(maxNumWorkers)
-              .build();
-
-      // 3. Apply FirestoreIO to get partitions (as RunQueryRequests)
+      // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
-          p.apply("CreatePartitionRequest", Create.of(partitionRequest))
+          partitionQueryRequests
               .apply(
                   "GetPartitions",
                   FirestoreIO.v1()
@@ -218,11 +211,11 @@ public class FirestoreToFirestore {
                       .build());
       LOG.info("Completed constructing PartitionQuery requests.");
 
-      // 4. Execute each partitioned query
+      // 3. Execute each partitioned query
       PCollection<RunQueryResponse> responses =
           partitionedQueries
               .apply(
-                  "ExecutePartitions",
+                  "QueryDocumentsInPartitions",
                   FirestoreIO.v1()
                       .read()
                       .runQuery()
@@ -233,17 +226,17 @@ public class FirestoreToFirestore {
                       .build());
       LOG.info("Completed PartitionQuery requests.");
 
-      // 5. Process the documents from the responses
+      // 4. Process the documents from the responses
       PCollection<Document> documents =
           responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
       LOG.info("Finished converting PartitionQuery results into Documents");
 
-      // 6. Prepare documents for writing to the destination database
+      // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
           documents.apply(ParDo.of(new PrepareWritesFn(destProject, destDb)));
       LOG.info("Finished converting Documents to Write requests.");
 
-      // 7. Write documents to the destination Firestore database
+      // 6. Write documents to the destination Firestore database
       writes.apply(
           FirestoreIO.v1()
               .write()
