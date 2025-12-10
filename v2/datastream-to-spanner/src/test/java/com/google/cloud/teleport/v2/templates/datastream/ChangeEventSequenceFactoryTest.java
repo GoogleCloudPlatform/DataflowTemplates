@@ -186,12 +186,22 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLogFileColumn())
+        .thenReturn(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLogPositionColumn())
+        .thenReturn(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp, 1L);
-    when(mockRow.getString(any(String.class))).thenReturn("oldlogfile.log");
+    when(mockRow.getLong(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft()))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getLong(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft()))
+        .thenReturn(1L);
+    when(mockRow.getString(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft()))
+        .thenReturn("oldlogfile.log");
     when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
 
@@ -214,12 +224,21 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLogFileColumn())
+        .thenReturn(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLogPositionColumn())
+        .thenReturn(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp, -1L);
-    when(mockRow.getString(any(String.class))).thenReturn("");
+    when(mockRow.getLong(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft()))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getLong(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft()))
+        .thenReturn(-1L);
+    when(mockRow.getString(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft())).thenReturn("");
     when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
 
@@ -241,6 +260,12 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLogFileColumn())
+        .thenReturn(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLogPositionColumn())
+        .thenReturn(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft());
 
     // mock transaction which cannot find a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
@@ -311,11 +336,17 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeScnColumn())
+        .thenReturn(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp, 1L);
+    when(mockRow.getLong(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft()))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getLong(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft())).thenReturn(1L);
     when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
 
@@ -337,11 +368,17 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeScnColumn())
+        .thenReturn(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp, -1L);
+    when(mockRow.getLong(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft()))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getLong(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft())).thenReturn(-1L);
     when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
 
@@ -362,6 +399,10 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeScnColumn())
+        .thenReturn(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft());
 
     // mock transaction which cannot find a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
@@ -435,12 +476,18 @@ public final class ChangeEventSequenceFactoryTest {
     ChangeEventContext mockContext =
         getMockPostgresChangeEventContext(
             /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLsnColumn())
+        .thenReturn(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp);
-    when(mockRow.getString(any(String.class))).thenReturn("13/314");
+    when(mockRow.getLong(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft()))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getString(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft()))
+        .thenReturn("13/314");
     when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
 
@@ -463,12 +510,17 @@ public final class ChangeEventSequenceFactoryTest {
     ChangeEventContext mockContext =
         getMockPostgresChangeEventContext(
             /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLsnColumn())
+        .thenReturn(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong(any(String.class))).thenReturn(previousEventTimestamp);
-    when(mockRow.getString(any(String.class))).thenReturn("");
+    when(mockRow.getLong(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft()))
+        .thenReturn(previousEventTimestamp);
+    when(mockRow.getString(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft())).thenReturn("");
     when(mockTransaction.readRow(any(String.class), any(Key.class), any(Iterable.class)))
         .thenReturn(mockRow);
 
@@ -490,6 +542,10 @@ public final class ChangeEventSequenceFactoryTest {
     ChangeEventContext mockContext =
         getMockPostgresChangeEventContext(
             /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
+    when(mockContext.getSafeTimestampColumn())
+        .thenReturn(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft());
+    when(mockContext.getSafeLsnColumn())
+        .thenReturn(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft());
 
     // mock transaction which cannot find a row from shadow table.
     TransactionContext mockTransaction = mock(TransactionContext.class);

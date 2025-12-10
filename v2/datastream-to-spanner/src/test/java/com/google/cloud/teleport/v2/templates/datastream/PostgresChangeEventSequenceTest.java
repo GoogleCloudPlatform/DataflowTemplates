@@ -117,7 +117,6 @@ public final class PostgresChangeEventSequenceTest {
   public void testCreateFromShadowTableWithUseSqlStatements_Postgres() throws Exception {
     // Arrange
     TransactionContext transactionContext = mock(TransactionContext.class);
-    String shadowTable = "shadow_table_postgres";
     Ddl shadowTableDdl =
         Ddl.builder()
             .createTable("shadow_table_postgres")
@@ -135,12 +134,16 @@ public final class PostgresChangeEventSequenceTest {
             .end()
             .endTable()
             .build();
-    Key primaryKey = Key.of(1L);
     boolean useSqlStatements = true;
+
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getShadowTable()).thenReturn("shadow_table_postgres");
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
+    when(mockContext.getSafeTimestampColumn()).thenReturn("shadow_timestamp");
+    when(mockContext.getSafeLsnColumn()).thenReturn("lsn");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
-    when(mockRow.getLong("id")).thenReturn(1L);
     when(mockRow.getLong("shadow_timestamp")).thenReturn(1615159728L);
     when(mockRow.getString("lsn")).thenReturn("0/123456");
 
@@ -152,7 +155,7 @@ public final class PostgresChangeEventSequenceTest {
     // Act
     PostgresChangeEventSequence result =
         PostgresChangeEventSequence.createFromShadowTable(
-            transactionContext, shadowTable, shadowTableDdl, primaryKey, useSqlStatements);
+            transactionContext, mockContext, shadowTableDdl, useSqlStatements);
 
     // Assert
     assertNotNull(result);

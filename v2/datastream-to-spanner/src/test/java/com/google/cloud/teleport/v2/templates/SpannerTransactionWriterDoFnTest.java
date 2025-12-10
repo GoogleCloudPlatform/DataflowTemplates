@@ -204,7 +204,7 @@ public class SpannerTransactionWriterDoFnTest {
     Mutation.WriteBuilder shadowBuilder = Mutation.newInsertOrUpdateBuilder("shadow_Users");
     shadowBuilder.set("first_name").to("Johnny");
     shadowBuilder.set("last_name").to("Depp");
-    shadowBuilder.set("shadow_timestamp").to(12345);
+    shadowBuilder.set("timestamp").to(12345);
     shadowBuilder.set("log_file").to("");
     shadowBuilder.set("log_position").to(-1);
     Mutation expectedShadowMutation = shadowBuilder.build();

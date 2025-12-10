@@ -455,7 +455,7 @@ public class ProcessInformationSchemaTest {
                 + "\t`timestamp_field`                       TIMESTAMP,\n"
                 + "\t`date_field`                            DATE,\n"
                 + "\t`id`                                    INT64,\n"
-                + "\t`shadow_timestamp`                      INT64,\n"
+                + "\t`timestamp`                             INT64,\n"
                 + "\t`log_file`                              STRING(MAX),\n"
                 + "\t`log_position`                          INT64,\n"
                 + ") PRIMARY KEY (`first_name` ASC, `last_name` DESC, `age` ASC, `bool_field` ASC, `int64_field` ASC, `float64_field` ASC, `string_field` ASC, `bytes_field` ASC, `timestamp_field` ASC, `date_field` ASC, `id` ASC)");
@@ -500,7 +500,7 @@ public class ProcessInformationSchemaTest {
         Collections.singletonList(
             "CREATE TABLE `shadow_table2` (\n"
                 + "\t`id`                                    INT64,\n"
-                + "\t`shadow_timestamp`                      INT64,\n"
+                + "\t`timestamp`                             INT64,\n"
                 + "\t`log_file`                              STRING(MAX),\n"
                 + "\t`log_position`                          INT64,\n"
                 + ") PRIMARY KEY (`id` ASC)");

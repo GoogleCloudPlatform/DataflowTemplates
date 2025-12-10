@@ -104,7 +104,6 @@ public final class MySqlChangeEventSequenceTest {
   public void testCreateFromShadowTableWithUseSqlStatements() throws Exception {
     // Arrange
     TransactionContext transactionContext = mock(TransactionContext.class);
-    String shadowTable = "shadow_table1";
     Ddl shadowTableDdl =
         Ddl.builder()
             .createTable("shadow_table1")
@@ -125,8 +124,15 @@ public final class MySqlChangeEventSequenceTest {
             .end()
             .endTable()
             .build();
-    Key primaryKey = Key.of(1L);
     boolean useSqlStatements = true;
+
+    // Mock the ChangeEventContext
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getShadowTable()).thenReturn("shadow_table1");
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
+    when(mockContext.getSafeTimestampColumn()).thenReturn("shadow_timestamp");
+    when(mockContext.getSafeLogFileColumn()).thenReturn("log_file");
+    when(mockContext.getSafeLogPositionColumn()).thenReturn("log_position");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
@@ -144,7 +150,7 @@ public final class MySqlChangeEventSequenceTest {
     // Act
     MySqlChangeEventSequence result =
         MySqlChangeEventSequence.createFromShadowTable(
-            transactionContext, shadowTable, shadowTableDdl, primaryKey, useSqlStatements);
+            transactionContext, mockContext, shadowTableDdl, useSqlStatements);
 
     // Assert
     assertNotNull(result);

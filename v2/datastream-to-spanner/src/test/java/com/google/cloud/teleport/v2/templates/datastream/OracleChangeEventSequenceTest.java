@@ -68,7 +68,6 @@ public final class OracleChangeEventSequenceTest {
   public void testCreateFromShadowTableWithUseSqlStatements_Oracle() throws Exception {
     // Arrange
     TransactionContext transactionContext = mock(TransactionContext.class);
-    String shadowTable = "shadow_table_oracle";
     Ddl shadowTableDdl =
         Ddl.builder()
             .createTable("shadow_table_oracle")
@@ -86,8 +85,13 @@ public final class OracleChangeEventSequenceTest {
             .end()
             .endTable()
             .build();
-    Key primaryKey = Key.of(1L);
     boolean useSqlStatements = true;
+
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getShadowTable()).thenReturn("shadow_table_oracle");
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
+    when(mockContext.getSafeTimestampColumn()).thenReturn("shadow_timestamp");
+    when(mockContext.getSafeScnColumn()).thenReturn("scn");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
@@ -103,7 +107,7 @@ public final class OracleChangeEventSequenceTest {
     // Act
     OracleChangeEventSequence result =
         OracleChangeEventSequence.createFromShadowTable(
-            transactionContext, shadowTable, shadowTableDdl, primaryKey, useSqlStatements);
+            transactionContext, mockContext, shadowTableDdl, useSqlStatements);
 
     // Assert
     assertNotNull(result);
