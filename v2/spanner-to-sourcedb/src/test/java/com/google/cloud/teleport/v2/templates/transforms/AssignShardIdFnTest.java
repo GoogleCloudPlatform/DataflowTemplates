@@ -100,7 +100,6 @@ public class AssignShardIdFnTest {
   public void setUp() {
     mockSpannerReadRow();
     when(processContext.getPipelineOptions()).thenReturn(mockOptions);
-    when(mockOptions.as(Options.class)).thenReturn(mockOptions);
   }
 
   private void mockSpannerReadRow() {
@@ -216,7 +215,6 @@ public class AssignShardIdFnTest {
   @Test
   public void testProcessElementInsertModForMultiShard() throws Exception {
     TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
-    // TODO: This should be getInsertTrimmedDataChangeRecord("shard1");
     when(processContext.element()).thenReturn(record);
 
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
@@ -276,10 +274,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -327,10 +321,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView) - not strictly needed for single shard, but safe to set
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -440,10 +430,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(ALL_TYPES_SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -495,10 +481,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(ALL_TYPES_SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -558,10 +540,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(ALL_TYPES_SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -606,10 +584,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -655,10 +629,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(ALL_TYPES_SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -717,10 +687,6 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(mockDdlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
-    when(mockOptions.getSessionFilePath()).thenReturn(SESSION_FILE_PATH);
-    when(mockOptions.getTableOverrides()).thenReturn("");
-    when(mockOptions.getColumnOverrides()).thenReturn("");
-    when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
