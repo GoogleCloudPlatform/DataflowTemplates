@@ -125,8 +125,9 @@ for more information.
 
 If the plan is to just stage the template (i.e., make it available to use) by
 the `gcloud` command or Dataflow "Create job from template" UI,
-the `-PtemplatesStage` profile should be used:
+the `-PtemplatesStage` profile should be used.
 
+Note: This command must be executed from the root directory of the DataflowTemplates repository.
 ```shell
 export PROJECT=<my-project>
 export BUCKET_NAME=<bucket-name>
@@ -139,7 +140,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_Spanner" \
--f v2/datastream-to-spanner
+-pl v2/datastream-to-spanner -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
