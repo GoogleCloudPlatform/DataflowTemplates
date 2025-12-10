@@ -20,12 +20,12 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **sourceProjectId**: The source project to read from. For example, `my-project`.
 * **sourceDatabaseId**: The source database to read from. For example, `my-database`. Defaults to: (default).
-* **destinationProjectId**: The destination project to write to. For example, `my-project`.
 * **destinationDatabaseId**: The destination database to write to. For example, `my-database`. Defaults to: (default).
 
 ### Optional parameters
 
 * **collectionIds**: If specified, only replicate these collections. If not specified, copy all collections. For example, `my-collection1,my-collection2`. Defaults to empty.
+* **destinationProjectId**: The destination project to write to. Defaults to the source project if not set For example, `my-project`.
 * **readTime**: The read time of the Firestore read operations. Uses current timestamp if not set. For example, `2021-10-12T07:20:50.52Z`. Defaults to empty.
 
 
@@ -121,11 +121,11 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Firestore_t
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
 export SOURCE_DATABASE_ID=(default)
-export DESTINATION_PROJECT_ID=<destinationProjectId>
 export DESTINATION_DATABASE_ID=(default)
 
 ### Optional
 export COLLECTION_IDS=""
+export DESTINATION_PROJECT_ID=""
 export READ_TIME=""
 
 gcloud dataflow flex-template run "cloud-firestore-to-firestore-job" \
@@ -158,11 +158,11 @@ export REGION=us-central1
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
 export SOURCE_DATABASE_ID=(default)
-export DESTINATION_PROJECT_ID=<destinationProjectId>
 export DESTINATION_DATABASE_ID=(default)
 
 ### Optional
 export COLLECTION_IDS=""
+export DESTINATION_PROJECT_ID=""
 export READ_TIME=""
 
 mvn clean package -PtemplatesRun \
@@ -219,9 +219,9 @@ resource "google_dataflow_flex_template_job" "cloud_firestore_to_firestore" {
   parameters        = {
     sourceProjectId = "<sourceProjectId>"
     sourceDatabaseId = "(default)"
-    destinationProjectId = "<destinationProjectId>"
     destinationDatabaseId = "(default)"
     # collectionIds = ""
+    # destinationProjectId = ""
     # readTime = ""
   }
 }

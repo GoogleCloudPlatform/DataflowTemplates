@@ -114,8 +114,10 @@ public class FirestoreToFirestore {
         groupName = "Destination",
         order = 4,
         description = "Destination Project ID",
-        helpText = "The destination project to write to.",
-        example = "my-project")
+        helpText = "The destination project to write to. Defaults to the source project if not set",
+        example = "my-project",
+        optional = true)
+    @Default.String("")
     String getDestinationProjectId();
 
     void setDestinationProjectId(String value);
@@ -160,7 +162,8 @@ public class FirestoreToFirestore {
       String sourceDatabaseId =
           options.getSourceDatabaseId().isEmpty() ? "(default)" : options.getSourceDatabaseId();
 
-      String destinationProjectId = options.getDestinationProjectId();
+      String destinationProjectId = options.getDestinationProjectId().isEmpty() ? sourceProjectId
+          : options.getDestinationProjectId();
       String destinationDatabaseId =
           options.getDestinationDatabaseId().isEmpty()
               ? "(default)"
@@ -203,7 +206,8 @@ public class FirestoreToFirestore {
       // 1. Construct the PartitionQuery requests for the collections.
       PCollection<PartitionQueryRequest> partitionQueryRequests = p.apply(
               Create.of(collectionIdsList))
-          .apply(new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers));
+          .apply(
+              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
@@ -242,7 +246,8 @@ public class FirestoreToFirestore {
 
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
-          documents.apply(ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
+          documents.apply(
+              ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
       LOG.info("Finished converting Documents to Write requests.");
 
       // 6. Write documents to the destination Firestore database
