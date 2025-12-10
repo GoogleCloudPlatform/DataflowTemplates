@@ -29,8 +29,8 @@ import java.time.ZoneOffset;
 import java.util.Random;
 import org.junit.Test;
 
-/** Test class for {@link InitialLimitedDurationDelayInjectionPolicy}. */
-public class InitialLimitedDurationDelayInjectionPolicyTest {
+/** Test class for {@link TransactionTimeoutInjectionPolicy}. */
+public class TransactionTimeoutInjectionPolicyTest {
 
   private ObjectNode createInputObject(String windowDuration, String delayDuration) {
     ObjectNode node = JsonNodeFactory.instance.objectNode();
@@ -47,8 +47,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   public void constructor_shouldParseValidDurations() {
     JsonNode input = createInputObject("PT5S", "PT0.5S");
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     assertEquals(Duration.ofMillis(500), policy.getDelay());
   }
@@ -57,8 +56,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   public void constructor_shouldUseDefaultsWhenInputMissing() {
     JsonNode input = JsonNodeFactory.instance.missingNode();
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     assertEquals(Duration.ofSeconds(10), policy.getDelay());
   }
@@ -67,8 +65,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   public void constructor_shouldUseDefaultsWhenInputNull() {
     JsonNode input = JsonNodeFactory.instance.nullNode();
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     assertEquals(Duration.ofSeconds(10), policy.getDelay());
   }
@@ -77,8 +74,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   public void constructor_shouldUseDefaultsWhenFieldsMissing() {
     ObjectNode input = JsonNodeFactory.instance.objectNode(); // Empty object
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     assertEquals(Duration.ofSeconds(10), policy.getDelay());
   }
@@ -90,7 +86,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
     IllegalArgumentException e =
         assertThrows(
             IllegalArgumentException.class,
-            () -> new InitialLimitedDurationDelayInjectionPolicy(input, clock));
+            () -> new TransactionTimeoutInjectionPolicy(input, clock));
     assertThat(e).hasMessageThat().contains("Failed to parse injectionWindowDuration");
   }
 
@@ -101,7 +97,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
     IllegalArgumentException e =
         assertThrows(
             IllegalArgumentException.class,
-            () -> new InitialLimitedDurationDelayInjectionPolicy(input, clock));
+            () -> new TransactionTimeoutInjectionPolicy(input, clock));
     assertThat(e).hasMessageThat().contains("Failed to parse delayDuration");
   }
 
@@ -110,8 +106,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
     JsonNode input = createInputObject("PT5S", "PT0.1S"); // 5-second window
     Instant t0 = Instant.parse("2025-01-01T00:00:00Z");
     Clock clock = Clock.fixed(t0, ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     // Force delay injection
     policy.setRandomForTesting(
@@ -147,8 +142,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   public void shouldInjectDelay_respectsProbability() {
     JsonNode input = createInputObject("PT5S", "PT0.1S");
     Clock clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     // Case 1: Random < 0.2 -> Should delay
     policy.setRandomForTesting(
@@ -182,8 +176,7 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
     JsonNode input = createInputObject("PT0.5S", "PT0.2S"); // 0.5-second window
     Instant t0 = Instant.parse("2025-01-01T00:00:00Z");
     Clock clock = Clock.fixed(t0, ZoneOffset.UTC);
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, clock);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
     // Force delay injection for all threads
     policy.setRandomForTesting(
@@ -226,8 +219,8 @@ public class InitialLimitedDurationDelayInjectionPolicyTest {
   @Test
   public void shouldInjectError_alwaysReturnsFalse() {
     JsonNode input = createInputObject("PT1S", "PT0.1S");
-    InitialLimitedDurationDelayInjectionPolicy policy =
-        new InitialLimitedDurationDelayInjectionPolicy(input, Clock.systemUTC());
+    TransactionTimeoutInjectionPolicy policy =
+        new TransactionTimeoutInjectionPolicy(input, Clock.systemUTC());
 
     // The method should always return false, as its purpose is to delay, not to inject an error.
     assertThat(policy.shouldInjectionError()).isFalse();

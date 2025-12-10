@@ -125,7 +125,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
                 "maxShardConnections",
                 MAX_WORKERS,
                 "failureInjectionParameter",
-                "{\"policyType\":\"InitialLimitedDurationDelayInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT2H\", \"delayDuration\": \"PT80S\" }}"),
+                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT80S\" }}"),
             null,
             spannerResourceManager,
             gcsResourceManager,

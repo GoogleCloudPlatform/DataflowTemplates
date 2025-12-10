@@ -90,13 +90,13 @@ public class ErrorInjectionPolicyFactoryTest {
 
   @Test
   public void shouldReturnInitialLimitedDurationDelayPolicyForValidConfig() {
-    String json = createJsonWithTextInput("InitialLimitedDurationDelayInjectionPolicy", "PT10M");
+    String json = createJsonWithTextInput("TransactionTimeoutInjectionPolicy", "PT10M");
     ErrorInjectionPolicy policy = ErrorInjectionPolicyFactory.getErrorInjectionPolicy(json);
 
     assertNotNull("Policy should not be null", policy);
     assertTrue(
-        "Policy should be an instance of InitialLimitedDurationDelayInjectionPolicy",
-        policy instanceof InitialLimitedDurationDelayInjectionPolicy);
+        "Policy should be an instance of TransactionTimeoutInjectionPolicy",
+        policy instanceof TransactionTimeoutInjectionPolicy);
   }
 
   @Test
@@ -104,13 +104,13 @@ public class ErrorInjectionPolicyFactoryTest {
     ObjectNode input = JsonNodeFactory.instance.objectNode();
     input.put("delayDuration", "PT5S");
     input.put("injectionWindowDuration", "PT10M");
-    String json = createJson("InitialLimitedDurationDelayInjectionPolicy", input);
+    String json = createJson("TransactionTimeoutInjectionPolicy", input);
     ErrorInjectionPolicy policy = ErrorInjectionPolicyFactory.getErrorInjectionPolicy(json);
 
     assertNotNull("Policy should not be null", policy);
     assertTrue(
-        "Policy should be an instance of InitialLimitedDurationDelayInjectionPolicy",
-        policy instanceof InitialLimitedDurationDelayInjectionPolicy);
+        "Policy should be an instance of TransactionTimeoutInjectionPolicy",
+        policy instanceof TransactionTimeoutInjectionPolicy);
   }
 
   @Test

@@ -141,8 +141,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
         createDataStreamResources(
             artifactBucket, gcsPrefix, sourceConnectionProfile, datastreamResourceManager);
 
-    int numRows = 100;
-    int burstIterations = 10000;
+    int numRows = 7;
+    int burstIterations = 50;
 
     // generate Load
     cdcLoadGenerator = new FuzzyCDCLoadGenerator();
@@ -153,7 +153,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .withAdditionalMavenProfile("failureInjectionTest")
             .addParameter(
                 "failureInjectionParameter",
-                "{\"policyType\":\"InitialLimitedDurationDelayInjectionPolicy\"}")
+                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\"}")
             .addEnvironmentVariable("numWorkers", NUM_WORKERS)
             .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 

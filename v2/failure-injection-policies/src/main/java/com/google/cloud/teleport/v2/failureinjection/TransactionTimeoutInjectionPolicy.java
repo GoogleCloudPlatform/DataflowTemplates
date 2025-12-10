@@ -29,15 +29,14 @@ import org.slf4j.LoggerFactory;
  *
  * <p>After the initial duration has passed, it will no longer signal for delays to be injected.
  */
-public class InitialLimitedDurationDelayInjectionPolicy
-    implements ErrorInjectionPolicy, Serializable {
+public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, Serializable {
 
   private static final Logger LOG =
-      LoggerFactory.getLogger(InitialLimitedDurationDelayInjectionPolicy.class);
+      LoggerFactory.getLogger(TransactionTimeoutInjectionPolicy.class);
   private static final long serialVersionUID = 1L;
 
-  private static final String DEFAULT_BAKE_DURATION = "PT2H"; // 2 Hours
-  private static final String DEFAULT_TRANSACTION_DELAY_DURATION = "PT5M"; // 5 Minutes
+  private static final String DEFAULT_BAKE_DURATION = "PT30M"; // 30 Minutes
+  private static final String DEFAULT_TRANSACTION_DELAY_DURATION = "PT260S"; // 4 Minutes 20 seconds
 
   // The JSON field name for the duration during which delays will be injected.
   private static final String TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD =
@@ -53,11 +52,11 @@ public class InitialLimitedDurationDelayInjectionPolicy
   private Instant startTime;
   private java.util.Random random = new java.util.Random();
 
-  public InitialLimitedDurationDelayInjectionPolicy(JsonNode inputParameter) {
+  public TransactionTimeoutInjectionPolicy(JsonNode inputParameter) {
     this(inputParameter, Clock.systemUTC());
   }
 
-  InitialLimitedDurationDelayInjectionPolicy(JsonNode inputParameter, Clock clock) {
+  TransactionTimeoutInjectionPolicy(JsonNode inputParameter, Clock clock) {
     this.clock = clock;
     String injectionWindowStr = DEFAULT_BAKE_DURATION;
     String delayDurationStr = DEFAULT_TRANSACTION_DELAY_DURATION;
@@ -82,6 +81,9 @@ public class InitialLimitedDurationDelayInjectionPolicy
 
   @Override
   public boolean shouldInjectionError() {
+    if (this.clock == null) {
+      this.clock = Clock.systemUTC();
+    }
     if (this.startTime == null) {
       synchronized (this) {
         if (this.startTime == null) {

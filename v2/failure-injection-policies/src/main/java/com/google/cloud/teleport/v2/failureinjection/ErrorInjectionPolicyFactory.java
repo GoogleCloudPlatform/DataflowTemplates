@@ -39,8 +39,8 @@ public class ErrorInjectionPolicyFactory {
   private static final String TYPE_INITIAL_LIMITED_DURATION =
       "InitialLimitedDurationErrorInjectionPolicy";
   private static final String TYPE_NO_OP = "NoOp";
-  private static final String TYPE_INITIAL_LIMITED_DURATION_DELAY =
-      "InitialLimitedDurationDelayInjectionPolicy";
+  private static final String TYPE_TRANSACTION_TIMEOUT_INJECTION_POLICY =
+      "TransactionTimeoutInjectionPolicy";
 
   /**
    * Creates an {@link ErrorInjectionPolicy} based on a JSON configuration string.
@@ -106,8 +106,8 @@ public class ErrorInjectionPolicyFactory {
         case TYPE_INITIAL_LIMITED_DURATION:
           return new InitialLimitedDurationErrorInjectionPolicy(policyInputNode);
 
-        case TYPE_INITIAL_LIMITED_DURATION_DELAY:
-          return new InitialLimitedDurationDelayInjectionPolicy(policyInputNode);
+        case TYPE_TRANSACTION_TIMEOUT_INJECTION_POLICY:
+          return new TransactionTimeoutInjectionPolicy(policyInputNode);
 
         case TYPE_NO_OP:
         default:
