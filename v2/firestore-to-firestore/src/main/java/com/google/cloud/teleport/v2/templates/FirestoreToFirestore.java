@@ -147,6 +147,7 @@ public class FirestoreToFirestore {
       LOG.info("Starting Firestore to Firestore pipeline...");
 
       Options options = PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
+      validateOptions(options);
       LOG.info("Pipeline options parsed and validated.");
 
       Pipeline p = Pipeline.create(options);
@@ -256,6 +257,22 @@ public class FirestoreToFirestore {
     } catch (Exception e) {
       LOG.error("Failed to run pipeline: {}", e.getMessage(), e);
       throw e;
+    }
+  }
+
+
+  private static void validateOptions(Options options) {
+    String sourceProjectId = options.getSourceProjectId();
+    if (sourceProjectId == null || sourceProjectId.isEmpty()) {
+      throw new IllegalArgumentException("sourceProjectId must be provided");
+    }
+    String sourceDatabaseId = options.getSourceDatabaseId();
+    if (sourceDatabaseId == null || sourceDatabaseId.isEmpty()) {
+      throw new IllegalArgumentException("sourceDatabaseId must be provided");
+    }
+    String destinationDatabaseId = options.getDestinationDatabaseId();
+    if (destinationDatabaseId == null || destinationDatabaseId.isEmpty()) {
+      throw new IllegalArgumentException("destinationDatabaseId must be provided");
     }
   }
 
