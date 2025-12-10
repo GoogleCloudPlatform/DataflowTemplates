@@ -92,7 +92,8 @@ public class ShadowTableCreator {
       Table.Builder shadowTableBuilder, Set<String> primaryKeyColNames) {
     for (Pair<String, String> shadowInfo : sortOrderMap.values()) {
       String baseShadowColumnName = shadowInfo.getLeft();
-      String finalShadowColumnName = getSafeShadowColumnName(baseShadowColumnName, primaryKeyColNames);
+      String finalShadowColumnName =
+          getSafeShadowColumnName(baseShadowColumnName, primaryKeyColNames);
       Column.Builder versionColumnBuilder = shadowTableBuilder.column(finalShadowColumnName);
       versionColumnBuilder.parseType(shadowInfo.getRight());
       versionColumnBuilder.endColumn();
@@ -104,8 +105,8 @@ public class ShadowTableCreator {
    * names and iteratively prepending a prefix until a unique name is found.
    *
    * @param baseShadowColumnName the initial desired name for the shadow column
-   * @param existingPrimaryKeyColumnNames a set of existing column names in the data table (should be
-   *     lowercase)
+   * @param existingPrimaryKeyColumnNames a set of existing column names in the data table (should
+   *     be lowercase)
    * @return a unique and safe column name
    */
   public static String getSafeShadowColumnName(

@@ -62,7 +62,8 @@ public abstract class ChangeEventContext {
   // Data table for the change event.
   protected String dataTable;
 
-  // The following fields store the "safe" names (to avoid collision with data column names) of the shadow table columns.
+  // The following fields store the "safe" names (to avoid collision with data column names) of the
+  // shadow table columns.
   protected String safeTimestampColumn;
   protected String safeLogFileColumn;
   protected String safeLogPositionColumn;
@@ -79,11 +80,6 @@ public abstract class ChangeEventContext {
     ChangeEventConvertor.convertChangeEventColumnKeysToLowerCase(changeEvent);
     ChangeEventConvertor.verifySpannerSchema(ddl, changeEvent);
 
-    LOG.info(
-        "aastha convertChangeEventToMutation ddl: {} \nshadowTableDdl: {} \nchangeEvent: {}",
-        ddl,
-        shadowTableDdl,
-        changeEvent);
     this.primaryKey =
         ChangeEventSpannerConvertor.changeEventToPrimaryKey(
             changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText(),
