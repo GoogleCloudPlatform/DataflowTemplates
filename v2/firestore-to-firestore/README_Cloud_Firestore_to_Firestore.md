@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
-* **databaseCollection**: If specified, only replicate this collection. If not specified, replicate all collections. For example, `my-collection`.
+* **collectionIds**: If specified, only replicate these collections. If not specified, copy all collections. For example, `my-collection1,my-collection2`. Defaults to empty.
 * **readTime**: The read time of the Firestore read operations. Uses current timestamp if not set. For example, `2021-10-12T07:20:50.52Z`. Defaults to empty.
 
 
@@ -125,7 +125,7 @@ export DESTINATION_PROJECT_ID=<destinationProjectId>
 export DESTINATION_DATABASE_ID=(default)
 
 ### Optional
-export DATABASE_COLLECTION=<databaseCollection>
+export COLLECTION_IDS=""
 export READ_TIME=""
 
 gcloud dataflow flex-template run "cloud-firestore-to-firestore-job" \
@@ -134,7 +134,7 @@ gcloud dataflow flex-template run "cloud-firestore-to-firestore-job" \
   --template-file-gcs-location "$TEMPLATE_SPEC_GCSPATH" \
   --parameters "sourceProjectId=$SOURCE_PROJECT_ID" \
   --parameters "sourceDatabaseId=$SOURCE_DATABASE_ID" \
-  --parameters "databaseCollection=$DATABASE_COLLECTION" \
+  --parameters "collectionIds=$COLLECTION_IDS" \
   --parameters "destinationProjectId=$DESTINATION_PROJECT_ID" \
   --parameters "destinationDatabaseId=$DESTINATION_DATABASE_ID" \
   --parameters "readTime=$READ_TIME"
@@ -162,7 +162,7 @@ export DESTINATION_PROJECT_ID=<destinationProjectId>
 export DESTINATION_DATABASE_ID=(default)
 
 ### Optional
-export DATABASE_COLLECTION=<databaseCollection>
+export COLLECTION_IDS=""
 export READ_TIME=""
 
 mvn clean package -PtemplatesRun \
@@ -172,7 +172,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="cloud-firestore-to-firestore-job" \
 -DtemplateName="Cloud_Firestore_to_Firestore" \
--Dparameters="sourceProjectId=$SOURCE_PROJECT_ID,sourceDatabaseId=$SOURCE_DATABASE_ID,databaseCollection=$DATABASE_COLLECTION,destinationProjectId=$DESTINATION_PROJECT_ID,destinationDatabaseId=$DESTINATION_DATABASE_ID,readTime=$READ_TIME" \
+-Dparameters="sourceProjectId=$SOURCE_PROJECT_ID,sourceDatabaseId=$SOURCE_DATABASE_ID,collectionIds=$COLLECTION_IDS,destinationProjectId=$DESTINATION_PROJECT_ID,destinationDatabaseId=$DESTINATION_DATABASE_ID,readTime=$READ_TIME" \
 -f v2/firestore-to-firestore
 ```
 
@@ -221,7 +221,7 @@ resource "google_dataflow_flex_template_job" "cloud_firestore_to_firestore" {
     sourceDatabaseId = "(default)"
     destinationProjectId = "<destinationProjectId>"
     destinationDatabaseId = "(default)"
-    # databaseCollection = "<databaseCollection>"
+    # collectionIds = ""
     # readTime = ""
   }
 }

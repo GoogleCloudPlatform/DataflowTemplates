@@ -1,7 +1,5 @@
 package com.google.cloud.teleport.v2.transforms;
 
-import static org.junit.Assert.assertEquals;
-
 import com.google.common.collect.ImmutableList;
 import com.google.firestore.v1.DocumentRootName;
 import com.google.firestore.v1.PartitionQueryRequest;
@@ -22,7 +20,8 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class CreatePartitionQueryRequestFnTest {
 
-  @Rule public final transient TestPipeline p = TestPipeline.create();
+  @Rule
+  public final transient TestPipeline p = TestPipeline.create();
 
   private static final String PROJECT_ID = "test-project";
   private static final String DATABASE_ID = "test-db";
