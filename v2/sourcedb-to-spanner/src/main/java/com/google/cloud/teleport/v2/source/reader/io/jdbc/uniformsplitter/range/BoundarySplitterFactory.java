@@ -189,7 +189,7 @@ public class BoundarySplitterFactory {
     }
 
     int startDateInt = convertDateToInt(start);
-    int endDateInt   = convertDateToInt(end);
+    int endDateInt = convertDateToInt(end);
 
     int dateMid = splitIntegers(startDateInt, endDateInt);
 
@@ -207,7 +207,6 @@ public class BoundarySplitterFactory {
     LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE);
     return Date.valueOf(localDate);
   }
-
 
   private static byte[] splitBytes(byte[] start, byte[] end) {
     BigInteger startBigInt = (start == null) ? null : new BigInteger(start);
