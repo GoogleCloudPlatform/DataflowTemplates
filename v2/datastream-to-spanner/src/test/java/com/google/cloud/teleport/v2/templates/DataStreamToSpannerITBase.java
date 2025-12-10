@@ -417,7 +417,9 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
     LaunchConfig.Builder options = LaunchConfig.builder(jobName, specPath);
 
     options.setParameters(params);
-    options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
+    options
+        .addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE")
+        .addEnvironment("workerMachineType", "n2-standard-4");
 
     // Run
     LOG.info("Launching Dataflow job with parameters: {}", params);

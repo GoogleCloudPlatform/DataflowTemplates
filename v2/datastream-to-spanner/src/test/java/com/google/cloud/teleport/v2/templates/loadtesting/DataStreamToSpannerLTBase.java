@@ -185,7 +185,10 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
     params.putAll(templateParameters);
 
     LaunchConfig.Builder options = LaunchConfig.builder(getClass().getSimpleName(), SPEC_PATH);
-    options.addEnvironment("maxWorkers", maxWorkers).addEnvironment("numWorkers", numWorkers);
+    options
+        .addEnvironment("maxWorkers", maxWorkers)
+        .addEnvironment("numWorkers", numWorkers)
+        .addEnvironment("workerMachineType", "n2-standard-4");
 
     // Set all environment options
     environmentOptions.forEach((key, value) -> options.addEnvironment(key, value));
