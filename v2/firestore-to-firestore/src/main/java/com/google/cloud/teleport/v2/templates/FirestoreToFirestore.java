@@ -156,12 +156,12 @@ public class FirestoreToFirestore {
       Pipeline p = Pipeline.create(options);
       LOG.info("Pipeline created.");
 
-      String sourceProject = options.getSourceProjectId();
-      String sourceDb =
+      String sourceProjectId = options.getSourceProjectId();
+      String sourceDatabaseId =
           options.getSourceDatabaseId().isEmpty() ? "(default)" : options.getSourceDatabaseId();
 
-      String destProject = options.getDestinationProjectId();
-      String destDb =
+      String destinationProjectId = options.getDestinationProjectId();
+      String destinationDatabaseId =
           options.getDestinationDatabaseId().isEmpty()
               ? "(default)"
               : options.getDestinationDatabaseId();
@@ -170,7 +170,7 @@ public class FirestoreToFirestore {
       List<String> collectionIdsList;
       if (collectionIds == null || collectionIds.isEmpty()) {
         try {
-          collectionIdsList = getAllCollectionIds(sourceProject, sourceDb);
+          collectionIdsList = getAllCollectionIds(sourceProjectId, sourceDatabaseId);
         } catch (Exception e) {
           LOG.error("Failed to list collections: {}", e.getMessage(), e);
           return;
@@ -192,10 +192,10 @@ public class FirestoreToFirestore {
           "Starting pipeline execution with options: sourceProjectId={}, sourceDatabaseId={}, "
               + "destinationProjectId={}, destinationDatabaseId={}, collectionIds={}, "
               + "maxNumWorkers={}, readTime={}",
-          sourceProject,
-          sourceDb,
-          destProject,
-          destDb,
+          sourceProjectId,
+          sourceDatabaseId,
+          destinationProjectId,
+          destinationDatabaseId,
           collectionIdsList,
           maxNumWorkers,
           readTime);
@@ -203,7 +203,7 @@ public class FirestoreToFirestore {
       // 1. Construct the PartitionQuery requests for the collections.
       PCollection<PartitionQueryRequest> partitionQueryRequests = p.apply(
               Create.of(collectionIdsList))
-          .apply(new CreatePartitionQueryRequestFn(sourceProject, sourceDb, maxNumWorkers));
+          .apply(new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
@@ -213,8 +213,8 @@ public class FirestoreToFirestore {
                   FirestoreIO.v1()
                       .read()
                       .partitionQuery()
-                      .withProjectId(sourceProject)
-                      .withDatabaseId(sourceDb)
+                      .withProjectId(sourceProjectId)
+                      .withDatabaseId(sourceDatabaseId)
                       .withReadTime(readTime)
                       .withRpcQosOptions(rpcQosOptions)
                       .build());
@@ -228,8 +228,8 @@ public class FirestoreToFirestore {
                   FirestoreIO.v1()
                       .read()
                       .runQuery()
-                      .withProjectId(sourceProject)
-                      .withDatabaseId(sourceDb)
+                      .withProjectId(sourceProjectId)
+                      .withDatabaseId(sourceDatabaseId)
                       .withReadTime(readTime)
                       .withRpcQosOptions(rpcQosOptions)
                       .build());
@@ -242,15 +242,15 @@ public class FirestoreToFirestore {
 
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
-          documents.apply(ParDo.of(new PrepareWritesFn(destProject, destDb)));
+          documents.apply(ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
       LOG.info("Finished converting Documents to Write requests.");
 
       // 6. Write documents to the destination Firestore database
       writes.apply(
           FirestoreIO.v1()
               .write()
-              .withProjectId(destProject)
-              .withDatabaseId(destDb)
+              .withProjectId(destinationProjectId)
+              .withDatabaseId(destinationDatabaseId)
               .batchWrite()
               .withRpcQosOptions(rpcQosOptions)
               .build());
