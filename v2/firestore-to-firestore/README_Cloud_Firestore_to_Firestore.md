@@ -19,8 +19,8 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **sourceProjectId**: The source project to read from. For example, `my-project`.
-* **sourceDatabaseId**: The source database to read from. For example, `my-database`. Defaults to: (default).
-* **destinationDatabaseId**: The destination database to write to. For example, `my-database`. Defaults to: (default).
+* **sourceDatabaseId**: The source database to read from. Use '(default)' for the default database. For example, `my-database`.
+* **destinationDatabaseId**: The destination database to write to. Use '(default)' for the default database. For example, `my-database`.
 
 ### Optional parameters
 
@@ -120,8 +120,8 @@ export TEMPLATE_SPEC_GCSPATH="gs://$BUCKET_NAME/templates/flex/Cloud_Firestore_t
 
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
-export SOURCE_DATABASE_ID=(default)
-export DESTINATION_DATABASE_ID=(default)
+export SOURCE_DATABASE_ID=<sourceDatabaseId>
+export DESTINATION_DATABASE_ID=<destinationDatabaseId>
 
 ### Optional
 export COLLECTION_IDS=""
@@ -157,8 +157,8 @@ export REGION=us-central1
 
 ### Required
 export SOURCE_PROJECT_ID=<sourceProjectId>
-export SOURCE_DATABASE_ID=(default)
-export DESTINATION_DATABASE_ID=(default)
+export SOURCE_DATABASE_ID=<sourceDatabaseId>
+export DESTINATION_DATABASE_ID=<destinationDatabaseId>
 
 ### Optional
 export COLLECTION_IDS=""
@@ -218,8 +218,8 @@ resource "google_dataflow_flex_template_job" "cloud_firestore_to_firestore" {
   region            = var.region
   parameters        = {
     sourceProjectId = "<sourceProjectId>"
-    sourceDatabaseId = "(default)"
-    destinationDatabaseId = "(default)"
+    sourceDatabaseId = "<sourceDatabaseId>"
+    destinationDatabaseId = "<destinationDatabaseId>"
     # collectionIds = ""
     # destinationProjectId = ""
     # readTime = ""
