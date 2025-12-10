@@ -95,11 +95,8 @@ public class CreatePartitionQueryRequestFnTest {
   @Test
   public void testTransformWithDefaultDatabase() {
     String collectionId = "items";
-    // N.B. DocumentRootName.of() handles "(default)" in the same way as an empty string.
     String defaultDbId = "(default)";
-    String expectedParentPath = DocumentRootName.of(PROJECT_ID, defaultDbId).toString();
-    assertEquals(expectedParentPath, "projects/test-project/databases/(default)");
-
+    String expectedParentPath = "projects/test-project/databases/(default)";
 
     PCollection<String> input = p.apply(Create.of(collectionId));
 
