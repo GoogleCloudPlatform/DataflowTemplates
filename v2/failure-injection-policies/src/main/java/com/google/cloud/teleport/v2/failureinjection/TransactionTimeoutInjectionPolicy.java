@@ -102,8 +102,8 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
     // Compare elapsed time with the configured duration.
     // elapsed.compareTo(injectionWindowDuration) < 0 means elapsed < injectionWindowDuration
     if (elapsed.compareTo(injectionWindowDuration) < 0) {
-      // Introduce delay with 20% probability
-      if (random.nextDouble() < 0.2) {
+      // Introduce delay with 5% probability
+      if (random.nextDouble() < 0.05) {
         try {
           Thread.sleep(delayDuration.toMillis());
         } catch (InterruptedException e) {

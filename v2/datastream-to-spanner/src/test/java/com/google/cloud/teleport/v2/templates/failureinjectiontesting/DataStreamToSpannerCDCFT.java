@@ -68,8 +68,8 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
   private static final String SPANNER_DDL_RESOURCE = "DataStreamToSpannerCDCFT/spanner-schema.sql";
 
-  private static final int NUM_WORKERS = 10;
-  private static final int MAX_WORKERS = 20;
+  private static final int NUM_WORKERS = 13;
+  private static final int MAX_WORKERS = 16;
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   private static SpannerResourceManager spannerResourceManager;
@@ -216,7 +216,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
               int minNumWorkers =
                   java.util.concurrent.ThreadLocalRandom.current()
                       .nextInt(NUM_WORKERS, MAX_WORKERS);
-              DataflowFailureInjector.updateMinNumWorkers(
+              DataflowFailureInjector.updateNumWorkers(
                   jobInfo.projectId(), REGION, jobInfo.jobId(), minNumWorkers);
             } catch (Exception e) {
               throw new RuntimeException(e);

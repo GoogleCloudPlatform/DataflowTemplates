@@ -16,17 +16,12 @@
 package com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting;
 
 import static org.junit.Assert.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.api.gax.longrunning.OperationFuture;
-import com.google.api.services.dataflow.Dataflow;
-import com.google.api.services.dataflow.model.Job;
 import com.google.cloud.compute.v1.Instance;
 import com.google.cloud.compute.v1.InstancesClient;
 import com.google.cloud.compute.v1.InstancesClient.AggregatedListPagedResponse;
@@ -133,38 +128,42 @@ public class DataflowFailureInjectorTest {
   }
 
   @Test
-  public void testUpdateMinNumWorkers() throws IOException {
-    // Mock Dataflow client and related objects
-    Dataflow mockDataflow = mock(Dataflow.class);
-    Dataflow.Projects mockProjects = mock(Dataflow.Projects.class);
-    Dataflow.Projects.Locations mockLocations = mock(Dataflow.Projects.Locations.class);
-    Dataflow.Projects.Locations.Jobs mockJobs = mock(Dataflow.Projects.Locations.Jobs.class);
-    Dataflow.Projects.Locations.Jobs.Get mockGet = mock(Dataflow.Projects.Locations.Jobs.Get.class);
-    Dataflow.Projects.Locations.Jobs.Update mockUpdate =
-        mock(Dataflow.Projects.Locations.Jobs.Update.class);
-
-    when(mockDataflow.projects()).thenReturn(mockProjects);
-    when(mockProjects.locations()).thenReturn(mockLocations);
-    when(mockLocations.jobs()).thenReturn(mockJobs);
-    when(mockJobs.get(anyString(), anyString(), anyString())).thenReturn(mockGet);
-    when(mockJobs.update(anyString(), anyString(), anyString(), any(Job.class)))
-        .thenReturn(mockUpdate);
-
-    Job mockJob = new Job();
-    when(mockGet.execute()).thenReturn(mockJob);
-    when(mockUpdate.execute()).thenReturn(new Job());
-
-    try (MockedConstruction<Dataflow> mockedDataflow =
+  public void testUpdateNumWorkers_success() throws IOException, InterruptedException {
+    try (MockedConstruction<ProcessBuilder> mockedProcessBuilder =
         Mockito.mockConstruction(
-            Dataflow.class,
+            ProcessBuilder.class,
             (mock, context) -> {
-              when(mock.projects()).thenReturn(mockProjects);
+              Process mockProcess = mock(Process.class);
+              when(mock.start()).thenReturn(mockProcess);
+              when(mockProcess.waitFor()).thenReturn(0);
+              when(mockProcess.getInputStream())
+                  .thenReturn(new java.io.ByteArrayInputStream("Success".getBytes()));
             })) {
 
-      DataflowFailureInjector.updateMinNumWorkers(PROJECT_ID, ZONE_1, JOB_ID, 5);
+      DataflowFailureInjector.updateNumWorkers(PROJECT_ID, ZONE_1, JOB_ID, 5);
 
-      verify(mockJobs, times(1)).get(PROJECT_ID, ZONE_1, JOB_ID);
-      verify(mockJobs, times(1)).update(eq(PROJECT_ID), eq(ZONE_1), eq(JOB_ID), any(Job.class));
+      ProcessBuilder mockPb = mockedProcessBuilder.constructed().get(0);
+      verify(mockPb).redirectErrorStream(true);
+      verify(mockPb).start();
+    }
+  }
+
+  @Test
+  public void testUpdateNumWorkers_failure() throws IOException, InterruptedException {
+    try (MockedConstruction<ProcessBuilder> mockedProcessBuilder =
+        Mockito.mockConstruction(
+            ProcessBuilder.class,
+            (mock, context) -> {
+              Process mockProcess = mock(Process.class);
+              when(mock.start()).thenReturn(mockProcess);
+              when(mockProcess.waitFor()).thenReturn(1);
+              when(mockProcess.getInputStream())
+                  .thenReturn(new java.io.ByteArrayInputStream("Error".getBytes()));
+            })) {
+
+      assertThrows(
+          IOException.class,
+          () -> DataflowFailureInjector.updateNumWorkers(PROJECT_ID, ZONE_1, JOB_ID, 5));
     }
   }
 }

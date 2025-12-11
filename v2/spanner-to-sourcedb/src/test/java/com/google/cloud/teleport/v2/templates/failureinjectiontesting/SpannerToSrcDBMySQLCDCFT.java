@@ -60,8 +60,8 @@ import org.junit.runners.JUnit4;
 public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSrcDBMySQLCDCFT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURSE = "SpannerToSrcDBMySQLCDCFT/session.json";
-  private static final String NUM_WORKERS = "10";
-  private static final String MAX_WORKERS = "20";
+  private static final String NUM_WORKERS = "13";
+  private static final String MAX_WORKERS = "16";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
@@ -179,7 +179,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
               int minNumWorkers =
                   java.util.concurrent.ThreadLocalRandom.current()
                       .nextInt(Integer.parseInt(NUM_WORKERS), Integer.parseInt(MAX_WORKERS) + 1);
-              DataflowFailureInjector.updateMinNumWorkers(
+              DataflowFailureInjector.updateNumWorkers(
                   jobInfo.projectId(), REGION, jobInfo.jobId(), minNumWorkers);
             } catch (Exception e) {
               throw new RuntimeException(e);
