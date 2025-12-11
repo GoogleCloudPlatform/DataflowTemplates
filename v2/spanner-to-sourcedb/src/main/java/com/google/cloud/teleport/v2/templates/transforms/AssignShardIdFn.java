@@ -99,7 +99,7 @@ public class AssignShardIdFn
 
   private final String shardingCustomParameters;
 
-  private transient IShardIdFetcher shardIdFetcher;
+  private IShardIdFetcher shardIdFetcher;
 
   private final Long maxConnectionsAcrossAllShards;
 
@@ -184,7 +184,7 @@ public class AssignShardIdFn
   /** Teardown function disconnects from the Cloud Spanner. */
   @Teardown
   public void teardown() {
-    if (spannerAccessor != null) {
+    if (spannerConfig != null) {
       spannerAccessor.close();
     }
   }
