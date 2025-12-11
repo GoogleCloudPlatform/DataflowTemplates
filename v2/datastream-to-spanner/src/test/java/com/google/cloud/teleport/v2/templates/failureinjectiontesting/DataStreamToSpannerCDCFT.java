@@ -238,7 +238,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
     // update minNumWorkers function will be called until all the rows appear in spanner i.e., until
     // the end of migration.
-    conditionCheck = workerFailureInjectorAsConditionCheck.and(spannerRowCountConditionCheck);
+    conditionCheck = spannerRowCountConditionCheck.and(workerFailureInjectorAsConditionCheck);
 
     result =
         pipelineOperator()

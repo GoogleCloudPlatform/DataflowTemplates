@@ -201,7 +201,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
     // update minNumWorkers function will be called until all the rows appear in spanner i.e., until
     // the end of migration.
-    conditionCheck = workerFailureInjectorAsConditionCheck.and(sourceDbRowCountCondition);
+    conditionCheck = sourceDbRowCountCondition.and(workerFailureInjectorAsConditionCheck);
 
     result =
         pipelineOperator()
