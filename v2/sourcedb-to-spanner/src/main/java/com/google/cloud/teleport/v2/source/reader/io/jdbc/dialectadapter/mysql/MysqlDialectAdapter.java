@@ -469,7 +469,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           } else {
             // Trying to pick a sane default 1e-5 (there is no defined default step for float point
             // type)
-            decimalStepSize = BigDecimal.valueOf(0.00001f);
+            decimalStepSize = new BigDecimal("0.00001");
           }
         }
 
