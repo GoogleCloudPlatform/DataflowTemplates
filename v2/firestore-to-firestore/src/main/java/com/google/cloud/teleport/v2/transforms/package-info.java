@@ -13,4 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+
+/**
+ * Transforms for batch copying data from one Firestore database to another.
+ *
+ * <p>This package contains a template for copying documents between Firestore databases.
+ */
 package com.google.cloud.teleport.v2.transforms;

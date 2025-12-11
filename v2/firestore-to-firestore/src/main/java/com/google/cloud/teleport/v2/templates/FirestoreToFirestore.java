@@ -67,7 +67,7 @@ public class FirestoreToFirestore {
   /**
    * Options supported by the pipeline.
    *
-   * <p>Inherits standard Firestore configuration options.
+   * <p>Inherits standard Dataflow configuration options.
    */
   public interface Options extends DataflowPipelineOptions {
 

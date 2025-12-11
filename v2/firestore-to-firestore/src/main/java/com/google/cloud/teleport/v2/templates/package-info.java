@@ -15,9 +15,8 @@
  */
 
 /**
- * Templates for streaming data from DataStream to MongoDB.
+ * Templates for batch copying data from one Firestore database to another.
  *
- * <p>This package contains a template for streaming data from DataStream to MongoDB using the
- * MongoDB IO connector. The template allows direct writing of BSON documents.
+ * <p>This package contains a template for copying documents between Firestore databases.
  */
 package com.google.cloud.teleport.v2.templates;
