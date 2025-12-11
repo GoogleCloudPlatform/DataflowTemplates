@@ -125,6 +125,25 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
+  public void testBigDecimalBoundarySplitterWithScale() {
+    BoundarySplitter<BigDecimal> splitter = BoundarySplitterFactory.create(BigDecimal.class);
+    BigDecimal start = new BigDecimal("1.23");
+    BigDecimal end = new BigDecimal("1.2345");
+    BigDecimal expectedMid = new BigDecimal("1.23225");
+
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
+
+    BigDecimal same = new BigDecimal("42.42");
+
+    assertThat(splitter.getSplitPoint(same, same, null, null, null)).isEqualTo(same);
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+    assertThat(splitter.getSplitPoint(null, end, null, null, null))
+        .isEqualTo(new BigDecimal("0.61725"));
+    assertThat(splitter.getSplitPoint(start, null, null, null, null))
+        .isEqualTo(new BigDecimal("0.615"));
+  }
+
+  @Test
   public void testBytesIntegerBoundarySplitter() {
     BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
     byte[] start =

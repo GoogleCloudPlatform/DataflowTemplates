@@ -21,6 +21,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.sql.Timestamp;
 import javax.annotation.Nullable;
 
