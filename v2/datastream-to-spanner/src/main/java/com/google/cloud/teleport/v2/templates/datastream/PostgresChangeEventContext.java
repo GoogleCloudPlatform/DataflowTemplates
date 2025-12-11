@@ -37,7 +37,8 @@ class PostgresChangeEventContext extends ChangeEventContext {
   public PostgresChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-    this.changeEvent = changeEvent;
+      super(changeEvent, ddl, DatastreamConstants.POSTGRES_SORT_ORDER);
+      this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
@@ -45,13 +46,6 @@ class PostgresChangeEventContext extends ChangeEventContext {
     Table dataTable = ddl.table(this.dataTable);
     Set<String> primaryKeyColNames =
         dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
-
-    this.safeTimestampColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft(), primaryKeyColNames);
-    this.safeLsnColumn =
-        ShadowTableCreator.getSafeShadowColumnName(
-            DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft(), primaryKeyColNames);
 
     convertChangeEventToMutation(ddl, shadowTableDdl);
   }
@@ -71,7 +65,7 @@ class PostgresChangeEventContext extends ChangeEventContext {
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.POSTGRES_TIMESTAMP_KEY, /* requiredField= */ true);
-    builder.set(this.safeTimestampColumn).to(Value.int64(changeEventTimestamp));
+    builder.set(getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY)).to(Value.int64(changeEventTimestamp));
 
     /* Postgres backfill events "can" have LSN value as null.
      * Set the value to a value smaller than any real value.
@@ -83,7 +77,7 @@ class PostgresChangeEventContext extends ChangeEventContext {
       changeEventLSN = "";
     }
     // Add lsn information to shadow table mutation
-    builder.set(this.safeLsnColumn).to(changeEventLSN);
+    builder.set(getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY)).to(changeEventLSN);
 
     return builder.build();
   }

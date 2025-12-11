@@ -22,16 +22,23 @@ import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventSpannerConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
 import com.google.cloud.teleport.v2.spanner.migrations.spanner.SpannerReadUtils;
+import com.google.cloud.teleport.v2.templates.spanner.ShadowTableCreator;
+import com.google.common.collect.ImmutableMap;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 
 /**
  * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
@@ -64,11 +71,31 @@ public abstract class ChangeEventContext {
 
   // The following fields store the "safe" names (to avoid collision with data column names) of the
   // shadow table columns.
-  protected String safeTimestampColumn;
-  protected String safeLogFileColumn;
-  protected String safeLogPositionColumn;
-  protected String safeScnColumn;
-  protected String safeLsnColumn;
+  protected final ImmutableMap<String, String> safeShadowColNames;
+
+  protected ChangeEventContext(
+      JsonNode changeEvent, Ddl ddl, Map<String, Pair<String, String>> shadowColumnConstants)
+      throws InvalidChangeEventException, DroppedTableException {
+    this.changeEvent = changeEvent;
+    this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
+    Table table = ddl.table(this.dataTable);
+    if (table == null) {
+      throw new DroppedTableException("Table not found in DDL: " + this.dataTable);
+    }
+
+    Set<String> existingPrimaryKeyColumnNames =
+        table.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
+
+    ImmutableMap.Builder<String, String> mapBuilder = ImmutableMap.builder();
+    for (Map.Entry<String, Pair<String, String>> entry : shadowColumnConstants.entrySet()) {
+      String metadataKey = entry.getKey();
+      String originalShadowName = entry.getValue().getLeft();
+      String safeName =
+          ShadowTableCreator.getSafeShadowColumnName(originalShadowName, existingPrimaryKeyColumnNames);
+      mapBuilder.put(metadataKey, safeName);
+    }
+    this.safeShadowColNames = mapBuilder.build();
+  }
 
   // Abstract method to generate shadow table mutation.
   abstract Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
@@ -124,25 +151,9 @@ public abstract class ChangeEventContext {
     return shadowTable;
   }
 
-  // Getters for the safe shadow table column names.
-  public String getSafeTimestampColumn() {
-    return this.safeTimestampColumn;
-  }
-
-  public String getSafeLogFileColumn() {
-    return this.safeLogFileColumn;
-  }
-
-  public String getSafeLogPositionColumn() {
-    return this.safeLogPositionColumn;
-  }
-
-  public String getSafeScnColumn() {
-    return this.safeScnColumn;
-  }
-
-  public String getSafeLsnColumn() {
-    return this.safeLsnColumn;
+  // Getter for the safe shadow table column names.
+  public String getSafeShadowColumn(String key) {
+    return safeShadowColNames.get(key);
   }
 
   // Fires a read on Data table with lock scanned ranges. Used to acquire exclusive lock on Data row

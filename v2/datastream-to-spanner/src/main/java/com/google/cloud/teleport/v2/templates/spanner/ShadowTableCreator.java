@@ -111,8 +111,10 @@ public class ShadowTableCreator {
    */
   public static String getSafeShadowColumnName(
       String baseShadowColumnName, Set<String> existingPrimaryKeyColumnNames) {
+    Set<String> normalizedKeys =
+        existingPrimaryKeyColumnNames.stream().map(String::toLowerCase).collect(Collectors.toSet());
     String safeName = baseShadowColumnName;
-    while (existingPrimaryKeyColumnNames.stream().anyMatch(safeName::equalsIgnoreCase)) {
+    while (normalizedKeys.contains(safeName.toLowerCase())) {
       safeName = "shadow_" + safeName;
     }
     return safeName;
