@@ -113,6 +113,37 @@ public interface {java_path.stem} {{
     )
   @Default.Integer(10)
   Integer getParam2();
+
+  @TemplateParameter.Enum(
+      order = 3,
+      name = "param3",
+      optional = true,
+      description = "An enum parameter",
+      helpText = "",
+      example = ""
+    )
+  @Default.Enum(VALUE1)
+  Enum getParam3();
+
+  @TemplateParameter.Password(
+      order = 4,
+      name = "param4",
+      optional = true,
+      description = "A password parameter",
+      helpText = "",
+      example = ""
+    )
+  String getParam4();
+
+  @TemplateParameter.Text(
+      order = 5,
+      name = "param5",
+      optional = true,
+      description = "A map parameter",
+      helpText = "",
+      example = ""
+    )
+  String getParam5();
 }}
 """
     self.assertMultiLineEqual(generated_code.strip(), expected_code.strip())
