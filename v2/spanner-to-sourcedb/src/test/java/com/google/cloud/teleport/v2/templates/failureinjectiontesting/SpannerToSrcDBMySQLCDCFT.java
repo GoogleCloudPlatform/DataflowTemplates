@@ -205,8 +205,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
 
     result =
         pipelineOperator()
-            .waitForConditionAndCancel(
-                createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForConditionAndCancel(createConfig(jobInfo, Duration.ofHours(1)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes

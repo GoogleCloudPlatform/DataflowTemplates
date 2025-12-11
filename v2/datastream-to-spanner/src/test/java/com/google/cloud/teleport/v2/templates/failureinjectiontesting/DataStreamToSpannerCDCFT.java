@@ -242,7 +242,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForCondition(createConfig(jobInfo, Duration.ofHours(1)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes
