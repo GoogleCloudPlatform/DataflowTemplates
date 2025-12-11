@@ -78,10 +78,6 @@ public abstract class ChangeEventContext {
     this.changeEvent = changeEvent;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     Table table = ddl.table(this.dataTable);
-    if (table == null) {
-      throw new DroppedTableException("Table not found in DDL: " + this.dataTable);
-    }
-
     Set<String> existingPrimaryKeyColumnNames =
         table.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
 
