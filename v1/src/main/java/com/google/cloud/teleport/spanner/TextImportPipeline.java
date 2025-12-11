@@ -298,6 +298,18 @@ public class TextImportPipeline {
     ValueProvider<String> getInvalidOutputPath();
 
     void setInvalidOutputPath(ValueProvider<String> value);
+
+    @TemplateParameter.GcsWriteFolder(
+        order = 17,
+        description = "Mutation error output path",
+        optional = true,
+        helpText =
+            "The Cloud Storage path to use when writing mutations that cannot be applied to Spanner.",
+        example = "gs://your-bucket/your-path")
+    @Default.String("")
+    String getMutationErrorOutputPath();
+
+    void setMutationErrorOutputPath(String value);
   }
 
   public static void main(String[] args) {
@@ -326,7 +338,10 @@ public class TextImportPipeline {
 
     p.apply(
         new TextImportTransform(
-            spannerConfig, options.getImportManifest(), options.getInvalidOutputPath()));
+            spannerConfig,
+            options.getImportManifest(),
+            options.getInvalidOutputPath(),
+            options.getMutationErrorOutputPath()));
 
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
