@@ -198,8 +198,7 @@ public class BoundarySplitterFactory {
 
   private static int convertDateToInt(Date sqlDate) {
     LocalDate localDate = sqlDate.toLocalDate();
-    String dateString = localDate.format(DateTimeFormatter.BASIC_ISO_DATE);
-    return Integer.parseInt(dateString);
+    return (int) localDate.toEpochDay();
   }
 
   private static Date convertIntToSqlDate(int dateInt) {
