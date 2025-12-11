@@ -198,7 +198,7 @@ public class FirestoreToFirestore {
       PCollection<PartitionQueryRequest> partitionQueryRequests = p.apply(
               Create.of(collectionIdsList))
           .apply(
-              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers));
+              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers > 1 ? maxNumWorkers : 20L));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
