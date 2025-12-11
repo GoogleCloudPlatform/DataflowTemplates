@@ -17,77 +17,30 @@ template:
     https://cloud.google.com/dataflow/docs/guides/templates/provided-yaml/pubsub-to-bigtable
   contactInformation: "https://cloud.google.com/support"
   requirements: {
-    "The output BigTable table must exist.",
     "The input Pub/Sub topic must exist.",
-    "The error Pub/Sub topic must exist."
+    "The mapToField Pub/Sub error topic must exist.",
+    "The output BigTable table must exist."
   }
   streaming: true
   hidden: false
 
+  options_file:
+    - "pubsub_options"
+    - "maptofields_options"
+    - "bigtable_options"
+
   parameters:
-    - name: "topic"
-      description: "Pub/Sub input topic"
-      help: "Pub/Sub topic to read the input from."
-      example: "projects/your-project-id/topics/your-topic-name"
-      required: true
-      type: text
-      order: 1
+    - pubsub_common_options
+    - maptofields_common_options
+    - bigtable_common_options
 
-    - name: "table_id"
-      description: "BigTable output table"
-      help: "BigTable table ID to write the output to."
-      required: true
-      type: text
-      order: 2
-
-    - name: "instance_id"
-      description: "BigTable instance ID"
-      help: "The BigTable instance ID."
-      required: true
-      type: text
-      order: 3
-
-    - name: "project_id"
-      description: "BigTable project ID"
-      help: "The Google Cloud project ID of the BigTable instance."
-      required: true
-      type: text
-      order: 4
-
-    - name: "error_topic"
-      description: "Pub/Sub error topic"
-      help: "Pub/Sub topic for failed messages."
+    - name: "outputDeadLetterPubSubTopic"
+      description: "Pub/Sub transformation error topic"
+      help: "Pub/Sub error topic for failed transformation messages."
       example: "projects/your-project-id/topics/your-error-topic-name"
       required: true
       type: text
-      order: 5
-
-    - name: "format"
-      description: "The message format."
-      help: "The message format. One of: AVRO, JSON, PROTO, RAW, or STRING."
-      default: JSON
-      required: false
-      type: text
-      order: 6
-
-    - name: "schema"
-      description: "Data schema."
-      help: >
-        A schema is required if data format is JSON, AVRO or
-        PROTO. For JSON, this is a JSON schema. For AVRO and PROTO, this is the full schema definition.
-      required: false
-      type: text
-      order: 7
-
-    - name: "mapping"
-      description: "Field mapping configuration"
-      help: >
-        A YAML/JSON string that defines the mapping for the MapToFields transform.
-        e.g., 'language: python\nfields:\n  key:\n    value: str(uuid.uuid4()).encode()'
-      required: true
-      type: text
-      order: 8
-
+      order: 4
 
 
 pipeline:
@@ -100,20 +53,21 @@ pipeline:
         format: {{ format }}
         schema: |
           {{ schema }}
-        error_handling:
-          output: errors
     - type: MapToFields
       name: ConvertStringsToBytes
       config:
-        {{ (mapping + '\nerror_handling:\n  output: errors') | indent(8) }}
+        language: {{ language }}
+        fields: {{ fields }}
+        error_handling:
+          output: errors
     - type: WriteToBigTable
       config:
         project: {{ project_id }}
         instance: {{ instance_id }}
         table: {{ table_id }}
     - type: WriteToPubSub
-      name: WriteReadErrorsToDeadLetterQueue
-      input: ReadMessages.errors
+      name: WriteTransformationErrorsToDeadLetterQueue
+      input: ConvertStringsToBytes.errors
       config:
         topic: {{ outputDeadLetterPubSubTopic }}
         format: {{ format }}
