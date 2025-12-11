@@ -22,6 +22,8 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.base.MoreObjects;
+import com.google.firestore.admin.v1.Database.DatabaseEdition;
+import com.google.firestore.admin.v1.Database.DatabaseType;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -33,6 +35,7 @@ import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
+import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
 import org.apache.beam.it.gcp.firestore.FirestoreResourceManager;
 import org.junit.After;
 import org.junit.Before;
@@ -46,9 +49,12 @@ import org.junit.runners.JUnit4;
 @TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
 public final class FirestoreToFirestoreIT extends TemplateTestBase {
+
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Firestore_to_Firestore");
+
+  private FirestoreAdminResourceManager firestoreAdminResourceManager;
 
   private FirestoreResourceManager sourceFirestoreResourceManager;
 
@@ -56,12 +62,21 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
-  // TODO: configure these on pipeline options.
   private static final String SOURCE_DATABASE_ID = "source-database";
   private static final String DESTINATION_DATABASE_ID = "destination-database";
 
   @Before
   public void setUp() {
+    firestoreAdminResourceManager =
+        FirestoreAdminResourceManager.builder(testName)
+            .setProject(PROJECT)
+            .setRegion(REGION)
+            .setCredentials(TestProperties.googleCredentials())
+            .build();
+    firestoreAdminResourceManager.createDatabase(
+        SOURCE_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+    firestoreAdminResourceManager.createDatabase(
+        DESTINATION_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.ENTERPRISE);
     sourceFirestoreResourceManager =
         FirestoreResourceManager.builder(testName)
             .setProject(PROJECT)
