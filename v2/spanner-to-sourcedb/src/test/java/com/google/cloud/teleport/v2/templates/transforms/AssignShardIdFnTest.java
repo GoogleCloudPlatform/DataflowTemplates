@@ -45,7 +45,6 @@ import com.google.cloud.teleport.v2.templates.SpannerToSourceDb.Options;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.utils.SchemaUtils;
-import com.google.cloud.teleport.v2.templates.utils.ShardIdFetcherImpl;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -100,6 +99,7 @@ public class AssignShardIdFnTest {
   public void setUp() {
     mockSpannerReadRow();
     when(processContext.getPipelineOptions()).thenReturn(mockOptions);
+    ShardingLogicImplFetcher.reset();
   }
 
   private void mockSpannerReadRow() {
@@ -455,11 +455,6 @@ public class AssignShardIdFnTest {
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
 
-    ISchemaMapper schemaMapper = new SessionBasedMapper(ALL_TYPES_SESSION_FILE_PATH, ddl);
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
-    shardIdFetcher.init("just to test this method is called argghhh!!");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
-
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
     Long key = keyStr.hashCode() % 10000L;
@@ -505,10 +500,6 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-
-    ISchemaMapper schemaMapper = new SessionBasedMapper(ALL_TYPES_SESSION_FILE_PATH, ddl);
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "shard1";
@@ -561,10 +552,6 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     record.setShard("skip");
-
-    ISchemaMapper schemaMapper = new SessionBasedMapper(ALL_TYPES_SESSION_FILE_PATH, ddl);
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -653,10 +640,6 @@ public class AssignShardIdFnTest {
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
-
-    ISchemaMapper schemaMapper = new SessionBasedMapper(ALL_TYPES_SESSION_FILE_PATH, ddl);
-    ShardIdFetcherImpl shardIdFetcher = new ShardIdFetcherImpl(schemaMapper, "skip");
-    assignShardIdFn.setShardIdFetcher(shardIdFetcher);
 
     assignShardIdFn.processElement(processContext);
     String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "skip";

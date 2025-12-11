@@ -153,16 +153,6 @@ public class AssignShardIdFn
     this.mapper = mapper;
   }
 
-  // setShardIdFetcher is added to be used by unit tests
-  public void setShardIdFetcher(IShardIdFetcher shardIdFetcher) {
-    this.shardIdFetcher = shardIdFetcher;
-  }
-
-  // setSchemaMapper is added to be used by unit tests
-  public void setSchemaMapper(ISchemaMapper schemaMapper) {
-    this.schemaMapper = schemaMapper;
-  }
-
   /** Setup function connects to Cloud Spanner. */
   @Setup
   public void setup() {
@@ -208,24 +198,17 @@ public class AssignShardIdFn
   public void processElement(ProcessContext c) throws Exception {
     Ddl ddl = c.sideInput(ddlView);
 
-    // SchemaMapper depends on Ddl side input, which is only available in processElement.
-    ISchemaMapper schemaMapper = this.schemaMapper; // This is required for unit tests.
-    if (schemaMapper == null) {
-      schemaMapper =
-          SchemaMapperUtils.getSchemaMapper(
-              sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
-    }
+    schemaMapper =
+        SchemaMapperUtils.getSchemaMapper(
+            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
 
-    IShardIdFetcher shardIdFetcher = this.shardIdFetcher;
-    if (shardIdFetcher == null) {
-      shardIdFetcher =
-          ShardingLogicImplFetcher.getShardingLogicImpl(
-              customJarPath,
-              shardingCustomClassName,
-              shardingCustomParameters,
-              schemaMapper,
-              skipDirName);
-    }
+    shardIdFetcher =
+        ShardingLogicImplFetcher.getShardingLogicImpl(
+            customJarPath,
+            shardingCustomClassName,
+            shardingCustomParameters,
+            schemaMapper,
+            skipDirName);
 
     TrimmedShardedDataChangeRecord record = new TrimmedShardedDataChangeRecord(c.element());
     String qualifiedShard = "";
