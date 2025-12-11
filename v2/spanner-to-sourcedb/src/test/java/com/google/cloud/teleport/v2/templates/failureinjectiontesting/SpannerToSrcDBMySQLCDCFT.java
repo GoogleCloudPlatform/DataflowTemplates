@@ -163,7 +163,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
 
     PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(
+            .waitForCondition(
                 createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
     assertThatResult(result).meetsConditions();
 
