@@ -68,8 +68,8 @@ public abstract class ChangeEventContext {
   // Data table for the change event.
   protected String dataTable;
 
-  // The following fields store the "safe" names (to avoid collision with data column names) of the
-  // shadow table columns.
+  // Immutable map to store the "safe" column names of the shadow table (to avoid collision with
+  // data column names). <key: metadata name, value: safe shadow col name>
   protected final ImmutableMap<String, String> safeShadowColNames;
 
   protected ChangeEventContext(

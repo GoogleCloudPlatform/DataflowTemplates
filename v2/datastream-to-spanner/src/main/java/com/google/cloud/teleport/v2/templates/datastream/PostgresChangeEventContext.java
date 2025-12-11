@@ -78,7 +78,9 @@ class PostgresChangeEventContext extends ChangeEventContext {
       changeEventLSN = "";
     }
     // Add lsn information to shadow table mutation
-    builder.set(getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY)).to(changeEventLSN);
+    builder
+        .set(getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY))
+        .to(Value.string(changeEventLSN));
 
     return builder.build();
   }
