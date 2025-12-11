@@ -59,4 +59,10 @@ public class DatastreamToSpannerConstants {
 
   /* The counter name for Retryable errors */
   public static final String RETRYABLE_ERRORS_COUNTER_NAME = "Retryable errors";
+
+  /* Regular Mode */
+  public static final String RUN_MODE_REGULAR = "regular";
+  public static final String RUN_MODE_RETRY = "retryDLQ";
+  public static final Integer RUN_MODE_REGULAR_DEFAULT_RETRY_COUNT = 500;
+  public static final Integer RUN_MODE_RETRY_DEFAULT_RETRY_COUNT = 5;
 }

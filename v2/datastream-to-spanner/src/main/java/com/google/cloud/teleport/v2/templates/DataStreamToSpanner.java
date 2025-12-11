@@ -15,6 +15,11 @@
  */
 package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RUN_MODE_REGULAR;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RUN_MODE_REGULAR_DEFAULT_RETRY_COUNT;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RUN_MODE_RETRY;
+import static com.google.cloud.teleport.v2.templates.constants.DatastreamToSpannerConstants.RUN_MODE_RETRY_DEFAULT_RETRY_COUNT;
+
 import com.google.api.gax.retrying.RetrySettings;
 import com.google.api.services.datastream.v1.model.SourceConfig;
 import com.google.cloud.spanner.Options.RpcPriority;
@@ -48,6 +53,7 @@ import com.google.cloud.teleport.v2.templates.spanner.ProcessInformationSchema;
 import com.google.cloud.teleport.v2.templates.transform.ChangeEventTransformerDoFn;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.values.FailsafeElement;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -321,8 +327,9 @@ public class DataStreamToSpanner {
         optional = true,
         description = "Dead letter queue maximum retry count",
         helpText =
-            "The max number of times temporary errors can be retried through DLQ. Defaults to `500`.")
-    @Default.Integer(500)
+            "The max number of times temporary errors can be retried through DLQ. Defaults to `-1`."
+                + "Default value of -1 implies a retry count of `500` when running in regular and `5` when running in retry mode.")
+    @Default.Integer(-1)
     Integer getDlqMaxRetryCount();
 
     void setDlqMaxRetryCount(Integer value);
@@ -367,10 +374,11 @@ public class DataStreamToSpanner {
     @TemplateParameter.Enum(
         order = 20,
         optional = true,
-        description = "Run mode - currently supported are : regular or retryDLQ",
-        enumOptions = {@TemplateEnumOption("regular"), @TemplateEnumOption("retryDLQ")},
+        description =
+            "Run mode - currently supported are : " + RUN_MODE_REGULAR + " or " + RUN_MODE_RETRY,
+        enumOptions = {@TemplateEnumOption(RUN_MODE_REGULAR), @TemplateEnumOption(RUN_MODE_RETRY)},
         helpText = "This is the run mode type, whether regular or with retryDLQ.")
-    @Default.String("regular")
+    @Default.String(RUN_MODE_REGULAR)
     String getRunMode();
 
     void setRunMode(String value);
@@ -707,7 +715,7 @@ public class DataStreamToSpanner {
     // A DLQManager is to be created using PipelineOptions, and it is in charge
     // of building pieces of the DLQ.
     PCollectionTuple reconsumedElements = null;
-    boolean isRegularMode = "regular".equals(options.getRunMode());
+    boolean isRegularMode = RUN_MODE_REGULAR.equals(options.getRunMode());
     if (isRegularMode && (!Strings.isNullOrEmpty(options.getDlqGcsPubSubSubscription()))) {
       reconsumedElements =
           dlqManager.getReconsumerDataTransformForFiles(
@@ -939,7 +947,8 @@ public class DataStreamToSpanner {
                 .build());
   }
 
-  private static DeadLetterQueueManager buildDlqManager(Options options) {
+  @VisibleForTesting
+  protected static DeadLetterQueueManager buildDlqManager(Options options) {
     String tempLocation =
         options.as(DataflowPipelineOptions.class).getTempLocation().endsWith("/")
             ? options.as(DataflowPipelineOptions.class).getTempLocation()
@@ -950,15 +959,21 @@ public class DataStreamToSpanner {
             : options.getDeadLetterQueueDirectory();
     LOG.info("Dead-letter queue directory: {}", dlqDirectory);
     options.setDeadLetterQueueDirectory(dlqDirectory);
-    if ("regular".equals(options.getRunMode())) {
-      return DeadLetterQueueManager.create(dlqDirectory, options.getDlqMaxRetryCount());
+    Integer dlqRetryCount =
+        options.getDlqMaxRetryCount() > 0
+            ? options.getDlqMaxRetryCount()
+            : (RUN_MODE_REGULAR.equals(options.getRunMode()))
+                ? RUN_MODE_REGULAR_DEFAULT_RETRY_COUNT
+                : RUN_MODE_RETRY_DEFAULT_RETRY_COUNT;
+    if (RUN_MODE_REGULAR.equals(options.getRunMode())) {
+      return DeadLetterQueueManager.create(dlqDirectory, dlqRetryCount);
     } else {
       String retryDlqUri =
           FileSystems.matchNewResource(dlqDirectory, true)
               .resolve("severe", StandardResolveOptions.RESOLVE_DIRECTORY)
               .toString();
       LOG.info("Dead-letter retry directory: {}", retryDlqUri);
-      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, 0);
+      return DeadLetterQueueManager.create(dlqDirectory, retryDlqUri, dlqRetryCount);
     }
   }
 
