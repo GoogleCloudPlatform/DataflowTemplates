@@ -23,7 +23,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.FuzzyCDCLoadGenerator;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.pubsub.v1.SubscriptionName;
@@ -47,9 +46,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.checkerframework.checker.initialization.qual.Initialized;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -200,8 +196,10 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .setMaxRows((int) expectedRows)
             .build();
 
-      PipelineOperator.Result result = pipelineOperator()
-              .waitForCondition(createConfig(jobInfo, Duration.ofHours(1)), spannerRowCountConditionCheck);
+    PipelineOperator.Result result =
+        pipelineOperator()
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofHours(1)), spannerRowCountConditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes

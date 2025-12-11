@@ -24,7 +24,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.FuzzyCDCLoadGenerator;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.common.io.Resources;
@@ -162,9 +161,10 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
             .setMaxRows((int) expectedRows)
             .build();
 
-      PipelineOperator.Result result =
+    PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
+            .waitForConditionAndCancel(
+                createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes
