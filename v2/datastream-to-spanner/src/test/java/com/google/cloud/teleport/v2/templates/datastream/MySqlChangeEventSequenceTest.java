@@ -130,9 +130,12 @@ public final class MySqlChangeEventSequenceTest {
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
     when(mockContext.getShadowTable()).thenReturn("shadow_table1");
     when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
-    when(mockContext.getSafeTimestampColumn()).thenReturn("shadow_timestamp");
-    when(mockContext.getSafeLogFileColumn()).thenReturn("log_file");
-    when(mockContext.getSafeLogPositionColumn()).thenReturn("log_position");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
+        .thenReturn("shadow_timestamp");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY))
+        .thenReturn("log_file");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
+        .thenReturn("log_position");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);

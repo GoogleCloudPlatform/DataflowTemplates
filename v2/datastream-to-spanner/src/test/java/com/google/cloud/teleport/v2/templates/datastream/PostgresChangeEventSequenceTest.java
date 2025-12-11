@@ -139,8 +139,9 @@ public final class PostgresChangeEventSequenceTest {
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
     when(mockContext.getShadowTable()).thenReturn("shadow_table_postgres");
     when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
-    when(mockContext.getSafeTimestampColumn()).thenReturn("shadow_timestamp");
-    when(mockContext.getSafeLsnColumn()).thenReturn("lsn");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY))
+        .thenReturn("shadow_timestamp");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY)).thenReturn("lsn");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);

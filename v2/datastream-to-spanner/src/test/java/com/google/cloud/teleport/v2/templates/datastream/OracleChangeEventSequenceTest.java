@@ -90,8 +90,9 @@ public final class OracleChangeEventSequenceTest {
     ChangeEventContext mockContext = mock(ChangeEventContext.class);
     when(mockContext.getShadowTable()).thenReturn("shadow_table_oracle");
     when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
-    when(mockContext.getSafeTimestampColumn()).thenReturn("shadow_timestamp");
-    when(mockContext.getSafeScnColumn()).thenReturn("scn");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
+        .thenReturn("shadow_timestamp");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY)).thenReturn("scn");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);

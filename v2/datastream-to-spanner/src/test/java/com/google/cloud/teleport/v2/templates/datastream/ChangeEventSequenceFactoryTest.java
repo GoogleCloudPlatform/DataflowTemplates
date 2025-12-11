@@ -186,11 +186,11 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLogFileColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY))
         .thenReturn(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLogPositionColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
         .thenReturn(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
@@ -224,11 +224,11 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLogFileColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY))
         .thenReturn(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLogPositionColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
         .thenReturn(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
@@ -260,11 +260,11 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockMySqlChangeEventContext(/* addMysqlPositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.MYSQL_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLogFileColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGFILE_KEY))
         .thenReturn(DatastreamConstants.MYSQL_LOGFILE_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLogPositionColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
         .thenReturn(DatastreamConstants.MYSQL_LOGPOSITION_SHADOW_INFO.getLeft());
 
     // mock transaction which cannot find a row from shadow table.
@@ -336,9 +336,9 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeScnColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY))
         .thenReturn(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
@@ -368,9 +368,9 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeScnColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY))
         .thenReturn(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
@@ -399,9 +399,9 @@ public final class ChangeEventSequenceFactoryTest {
 
     ChangeEventContext mockContext =
         getMockOracleChangeEventContext(/* addOraclePositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeScnColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY))
         .thenReturn(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft());
 
     // mock transaction which cannot find a row from shadow table.
@@ -476,9 +476,9 @@ public final class ChangeEventSequenceFactoryTest {
     ChangeEventContext mockContext =
         getMockPostgresChangeEventContext(
             /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLsnColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY))
         .thenReturn(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
@@ -510,9 +510,9 @@ public final class ChangeEventSequenceFactoryTest {
     ChangeEventContext mockContext =
         getMockPostgresChangeEventContext(
             /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLsnColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY))
         .thenReturn(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft());
 
     // Mock transaction which can read a row from shadow table.
@@ -542,9 +542,9 @@ public final class ChangeEventSequenceFactoryTest {
     ChangeEventContext mockContext =
         getMockPostgresChangeEventContext(
             /* addPostgresPositionFields= */ true, /* cdcEvent= */ true);
-    when(mockContext.getSafeTimestampColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY))
         .thenReturn(DatastreamConstants.POSTGRES_TIMESTAMP_SHADOW_INFO.getLeft());
-    when(mockContext.getSafeLsnColumn())
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY))
         .thenReturn(DatastreamConstants.POSTGRES_LSN_SHADOW_INFO.getLeft());
 
     // mock transaction which cannot find a row from shadow table.

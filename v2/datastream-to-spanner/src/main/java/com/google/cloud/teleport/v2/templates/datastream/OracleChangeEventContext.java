@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
-import com.google.cloud.teleport.v2.templates.spanner.ShadowTableCreator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,8 +36,8 @@ class OracleChangeEventContext extends ChangeEventContext {
   public OracleChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-      super(changeEvent, ddl, DatastreamConstants.ORACLE_SORT_ORDER);
-      this.changeEvent = changeEvent;
+    super(changeEvent, ddl, DatastreamConstants.ORACLE_SORT_ORDER);
+    this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
@@ -65,7 +64,9 @@ class OracleChangeEventContext extends ChangeEventContext {
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /* requiredField= */ true);
-    builder.set(getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY)).to(Value.int64(changeEventTimestamp));
+    builder
+        .set(getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
+        .to(Value.int64(changeEventTimestamp));
 
     /* Oracle backfill events "can" have SCN value as null.
      * Set the value to a value smaller than any real value.
@@ -77,7 +78,9 @@ class OracleChangeEventContext extends ChangeEventContext {
       changeEventSCN = new Long(-1);
     }
     // Add scn information to shadow table mutation
-    builder.set(getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY)).to(Value.int64(changeEventSCN));
+    builder
+        .set(getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY))
+        .to(Value.int64(changeEventSCN));
 
     return builder.build();
   }

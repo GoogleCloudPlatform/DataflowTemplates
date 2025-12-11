@@ -39,7 +39,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 /**
  * ChangeEventContext class converts change events to Cloud Spanner mutations and stores all
  * intermediary objects prior to applying them to Cloud Spanner.
@@ -91,7 +90,8 @@ public abstract class ChangeEventContext {
       String metadataKey = entry.getKey();
       String originalShadowName = entry.getValue().getLeft();
       String safeName =
-          ShadowTableCreator.getSafeShadowColumnName(originalShadowName, existingPrimaryKeyColumnNames);
+          ShadowTableCreator.getSafeShadowColumnName(
+              originalShadowName, existingPrimaryKeyColumnNames);
       mapBuilder.put(metadataKey, safeName);
     }
     this.safeShadowColNames = mapBuilder.build();

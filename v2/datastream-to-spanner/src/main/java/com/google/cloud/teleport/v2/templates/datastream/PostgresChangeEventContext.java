@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
-import com.google.cloud.teleport.v2.templates.spanner.ShadowTableCreator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,8 +36,8 @@ class PostgresChangeEventContext extends ChangeEventContext {
   public PostgresChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-      super(changeEvent, ddl, DatastreamConstants.POSTGRES_SORT_ORDER);
-      this.changeEvent = changeEvent;
+    super(changeEvent, ddl, DatastreamConstants.POSTGRES_SORT_ORDER);
+    this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
@@ -65,7 +64,9 @@ class PostgresChangeEventContext extends ChangeEventContext {
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.POSTGRES_TIMESTAMP_KEY, /* requiredField= */ true);
-    builder.set(getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY)).to(Value.int64(changeEventTimestamp));
+    builder
+        .set(getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY))
+        .to(Value.int64(changeEventTimestamp));
 
     /* Postgres backfill events "can" have LSN value as null.
      * Set the value to a value smaller than any real value.

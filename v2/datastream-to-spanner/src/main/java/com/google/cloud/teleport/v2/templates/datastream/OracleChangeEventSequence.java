@@ -87,8 +87,9 @@ class OracleChangeEventSequence extends ChangeEventSequence {
       Key primaryKey = context.getPrimaryKey();
       // Read columns from shadow table
       List<String> readColumnList =
-          java.util.Arrays.asList(context.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY),
-                  context.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY));
+          java.util.Arrays.asList(
+              context.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.

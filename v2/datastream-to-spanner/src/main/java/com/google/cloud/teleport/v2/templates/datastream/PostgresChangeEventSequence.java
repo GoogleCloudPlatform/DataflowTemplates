@@ -88,8 +88,8 @@ class PostgresChangeEventSequence extends ChangeEventSequence {
       // Read columns from shadow table
       List<String> readColumnList =
           java.util.Arrays.asList(
-                  context.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY),
-                  context.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY));
+              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_TIMESTAMP_KEY),
+              context.getSafeShadowColumn(DatastreamConstants.POSTGRES_LSN_KEY));
       Struct row;
       // TODO: After beam release, use the latest client lib version which supports setting lock
       // hints via the read api. SQL string generation should be removed.

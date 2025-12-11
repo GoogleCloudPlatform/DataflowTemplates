@@ -24,7 +24,6 @@ import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTyp
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
-import com.google.cloud.teleport.v2.templates.spanner.ShadowTableCreator;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -37,8 +36,8 @@ class MySqlChangeEventContext extends ChangeEventContext {
   public MySqlChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
-      super(changeEvent, ddl, DatastreamConstants.MYSQL_SORT_ORDER);
-      this.changeEvent = changeEvent;
+    super(changeEvent, ddl, DatastreamConstants.MYSQL_SORT_ORDER);
+    this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
@@ -65,7 +64,9 @@ class MySqlChangeEventContext extends ChangeEventContext {
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.MYSQL_TIMESTAMP_KEY, /* requiredField= */ true);
-    builder.set(getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY)).to(Value.int64(changeEventTimestamp));
+    builder
+        .set(getSafeShadowColumn(DatastreamConstants.MYSQL_TIMESTAMP_KEY))
+        .to(Value.int64(changeEventTimestamp));
 
     /* MySql backfill events "can" have log file and log file position as null.
      * Set their value to a value (lexicographically) smaller than any real value.
@@ -86,7 +87,9 @@ class MySqlChangeEventContext extends ChangeEventContext {
       logPosition = new Long(-1);
     }
     // Add logfile position information to shadow table mutation
-    builder.set(getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY)).to(Value.int64(logPosition));
+    builder
+        .set(getSafeShadowColumn(DatastreamConstants.MYSQL_LOGPOSITION_KEY))
+        .to(Value.int64(logPosition));
 
     return builder.build();
   }
