@@ -52,11 +52,11 @@ import org.slf4j.LoggerFactory;
     category = TemplateCategory.BATCH,
     displayName = "Firestore to Firestore",
     description = {
-        "The Firestore to Firestore template is a batch pipeline that reads documents from one"
-            + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
-            + " them to another Firestore database.",
-        "Data consistency is guaranteed only at the end of the pipeline when all data has been"
-            + " written to the destination database.\n",
+      "The Firestore to Firestore template is a batch pipeline that reads documents from one"
+          + " <a href=\"https://cloud.google.com/firestore/docs\">Firestore</a> database and writes"
+          + " them to another Firestore database.",
+      "Data consistency is guaranteed only at the end of the pipeline when all data has been"
+          + " written to the destination database.\n",
     },
     flexContainerName = "firestore-to-firestore",
     optionsClass = FirestoreToFirestore.Options.class)
@@ -109,8 +109,8 @@ public class FirestoreToFirestore {
         groupName = "Destination",
         order = 4,
         description = "Destination Project ID",
-        helpText = "The destination project to write to."
-            + " Defaults to the source project if not set.",
+        helpText =
+            "The destination project to write to." + " Defaults to the source project if not set.",
         example = "my-project",
         optional = true)
     @Default.String("")
@@ -122,7 +122,8 @@ public class FirestoreToFirestore {
         groupName = "Destination",
         order = 5,
         description = "Destination Database ID",
-        helpText = "The destination database to write to. Use '(default)' for the default database.",
+        helpText =
+            "The destination database to write to. Use '(default)' for the default database.",
         example = "my-database")
     String getDestinationDatabaseId();
 
@@ -132,8 +133,9 @@ public class FirestoreToFirestore {
         order = 6,
         optional = true,
         description = "Read Time",
-        helpText = "The read time of the Firestore read operations."
-            + " Uses current timestamp if not set.",
+        helpText =
+            "The read time of the Firestore read operations."
+                + " Uses current timestamp if not set.",
         example = "2021-10-12T07:20:50.52Z")
     @Default.String("")
     String getReadTime();
@@ -157,8 +159,10 @@ public class FirestoreToFirestore {
       String sourceProjectId = options.getSourceProjectId();
       String sourceDatabaseId = options.getSourceDatabaseId();
 
-      String destinationProjectId = options.getDestinationProjectId().isEmpty() ? sourceProjectId
-          : options.getDestinationProjectId();
+      String destinationProjectId =
+          options.getDestinationProjectId().isEmpty()
+              ? sourceProjectId
+              : options.getDestinationProjectId();
       String destinationDatabaseId = options.getDestinationDatabaseId();
 
       List<String> collectionIdsList;
@@ -171,9 +175,8 @@ public class FirestoreToFirestore {
           return;
         }
       } else {
-        collectionIdsList = Arrays.stream(collectionIds.split(","))
-            .map(String::trim)
-            .collect(Collectors.toList());
+        collectionIdsList =
+            Arrays.stream(collectionIds.split(",")).map(String::trim).collect(Collectors.toList());
       }
 
       int maxNumWorkers = options.as(DataflowPipelineOptions.class).getMaxNumWorkers();
@@ -196,39 +199,37 @@ public class FirestoreToFirestore {
           readTime);
 
       // 1. Construct the PartitionQuery requests for the collections.
-      PCollection<PartitionQueryRequest> partitionQueryRequests = p.apply(
-              Create.of(collectionIdsList))
-          .apply(
-              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId,
-                  maxNumWorkers > 1 ? maxNumWorkers : 20L));
+      PCollection<PartitionQueryRequest> partitionQueryRequests =
+          p.apply(Create.of(collectionIdsList))
+              .apply(
+                  new CreatePartitionQueryRequestFn(
+                      sourceProjectId, sourceDatabaseId, maxNumWorkers > 1 ? maxNumWorkers : 20L));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =
-          partitionQueryRequests
-              .apply(
-                  "GetPartitions",
-                  FirestoreIO.v1()
-                      .read()
-                      .partitionQuery()
-                      .withProjectId(sourceProjectId)
-                      .withDatabaseId(sourceDatabaseId)
-                      .withReadTime(readTime)
-                      .withRpcQosOptions(rpcQosOptions)
-                      .build());
+          partitionQueryRequests.apply(
+              "GetPartitions",
+              FirestoreIO.v1()
+                  .read()
+                  .partitionQuery()
+                  .withProjectId(sourceProjectId)
+                  .withDatabaseId(sourceDatabaseId)
+                  .withReadTime(readTime)
+                  .withRpcQosOptions(rpcQosOptions)
+                  .build());
 
       // 3. Execute each partitioned query
       PCollection<RunQueryResponse> responses =
-          partitionedQueries
-              .apply(
-                  "QueryDocumentsInPartitions",
-                  FirestoreIO.v1()
-                      .read()
-                      .runQuery()
-                      .withProjectId(sourceProjectId)
-                      .withDatabaseId(sourceDatabaseId)
-                      .withReadTime(readTime)
-                      .withRpcQosOptions(rpcQosOptions)
-                      .build());
+          partitionedQueries.apply(
+              "QueryDocumentsInPartitions",
+              FirestoreIO.v1()
+                  .read()
+                  .runQuery()
+                  .withProjectId(sourceProjectId)
+                  .withDatabaseId(sourceDatabaseId)
+                  .withReadTime(readTime)
+                  .withRpcQosOptions(rpcQosOptions)
+                  .build());
 
       // 4. Process the documents from the responses
       PCollection<Document> documents =
@@ -256,7 +257,6 @@ public class FirestoreToFirestore {
       throw e;
     }
   }
-
 
   private static void validateOptions(Options options) {
     String sourceProjectId = options.getSourceProjectId();
