@@ -59,8 +59,8 @@ import org.junit.runners.JUnit4;
 public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
   private static final String SPANNER_DDL_RESOURCE = "SpannerToSrcDBMySQLCDCFT/spanner-schema.sql";
   private static final String SESSION_FILE_RESOURSE = "SpannerToSrcDBMySQLCDCFT/session.json";
-  private static final String NUM_WORKERS = "13";
-  private static final String MAX_WORKERS = "16";
+  private static final String NUM_WORKERS = "10";
+  private static final String MAX_WORKERS = "20";
 
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static SpannerResourceManager spannerResourceManager;
