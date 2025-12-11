@@ -86,7 +86,7 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             spannerResourceManager,
-            null,
+            Map.of("maxConnections", "4"),
             null);
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(15L)));

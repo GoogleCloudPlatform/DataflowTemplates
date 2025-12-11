@@ -87,7 +87,7 @@ public class MySQLDataTypesPGDialectIT extends SourceDbToSpannerITBase {
             null,
             mySQLResourceManager,
             pgDialectSpannerResourceManager,
-            null,
+            Map.of("maxConnections", "4"),
             null);
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(15L)));
