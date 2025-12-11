@@ -44,6 +44,8 @@ public class FirestoreResourceManager implements ResourceManager {
   private final String projectId;
   private final String databaseId;
   private final Firestore firestore;
+  // TODO: provision test databases on demand.
+  // private final FirestoreAdmin firestoreAdmin;
   private final Set<String> collectionIds;
 
   private FirestoreResourceManager(Builder builder) {

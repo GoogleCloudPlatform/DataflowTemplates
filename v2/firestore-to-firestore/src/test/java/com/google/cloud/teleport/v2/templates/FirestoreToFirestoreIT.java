@@ -17,15 +17,19 @@ package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
+import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
 import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
+import com.google.common.base.MoreObjects;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
+import org.apache.beam.it.common.PipelineOperator.Result;
 import org.apache.beam.it.common.TestProperties;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
@@ -39,8 +43,12 @@ import org.junit.runners.JUnit4;
 
 /** Integration test for {@link FirestoreToFirestore}. */
 @Category(TemplateIntegrationTest.class)
+@TemplateIntegrationTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
 public final class FirestoreToFirestoreIT extends TemplateTestBase {
+  private static final String SPEC_PATH =
+      MoreObjects.firstNonNull(
+          TestProperties.specPath(), "gs://dataflow-templates/latest/flex/Firestore_to_Firestore");
 
   private FirestoreResourceManager sourceFirestoreResourceManager;
 
@@ -49,8 +57,8 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
   // TODO: configure these on pipeline options.
-  private static final String SOURCE_DATABASE_ID = "sourceDatabase";
-  private static final String DESTINATION_DATABASE_ID = "destinationDatabase";
+  private static final String SOURCE_DATABASE_ID = "source-database";
+  private static final String DESTINATION_DATABASE_ID = "destination-database";
 
   @Before
   public void setUp() {
@@ -92,18 +100,21 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
 
     sourceFirestoreResourceManager.write(collectionId, inputData);
 
-    // TODO: use actual pipeline params.
-    LaunchConfig.Builder options =
-        LaunchConfig.builder(testName, "Firestore_to_Firestore")
+    LaunchConfig options =
+        LaunchConfig.builder(testName, SPEC_PATH)
             .addParameter("sourceProjectId", PROJECT)
             .addParameter("sourceDatabaseId", SOURCE_DATABASE_ID)
             .addParameter("destinationProjectId", PROJECT)
             .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
             .addParameter("collectionIds", collectionId)
-            .addParameter("maxNumWorkers", "10");
+            .addParameter("maxNumWorkers", "10")
+            .build();
 
-    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options.build());
+    LaunchInfo info = pipelineLauncher.launch(PROJECT, REGION, options);
     assertThatPipeline(info).isRunning();
+
+    Result result = pipelineOperator().waitUntilDone(createConfig(info, Duration.ofMinutes(10)));
+    assertThatResult(result).isLaunchFinished();
 
     List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(collectionId);
     assertThat(documents).hasSize(numDocuments);
