@@ -162,7 +162,7 @@ public class FirestoreToFirestore {
 
       List<String> collectionIdsList;
       String collectionIds = options.getCollectionIds();
-      if (collectionIds == null || collectionIds.isEmpty()) {
+      if (collectionIds.isEmpty()) {
         try {
           collectionIdsList = getAllCollectionIds(sourceProjectId, sourceDatabaseId);
         } catch (Exception e) {
@@ -213,7 +213,6 @@ public class FirestoreToFirestore {
                       .withReadTime(readTime)
                       .withRpcQosOptions(rpcQosOptions)
                       .build());
-      LOG.info("Completed constructing PartitionQuery requests.");
 
       // 3. Execute each partitioned query
       PCollection<RunQueryResponse> responses =
@@ -228,18 +227,15 @@ public class FirestoreToFirestore {
                       .withReadTime(readTime)
                       .withRpcQosOptions(rpcQosOptions)
                       .build());
-      LOG.info("Completed PartitionQuery requests.");
 
       // 4. Process the documents from the responses
       PCollection<Document> documents =
           responses.apply("ExtractDocuments", ParDo.of(new RunQueryResponseToDocumentFn()));
-      LOG.info("Finished converting PartitionQuery results into Documents");
 
       // 5. Prepare documents for writing to the destination database
       PCollection<Write> writes =
           documents.apply(
               ParDo.of(new PrepareWritesFn(destinationProjectId, destinationDatabaseId)));
-      LOG.info("Finished converting Documents to Write requests.");
 
       // 6. Write documents to the destination Firestore database
       writes.apply(
@@ -250,7 +246,6 @@ public class FirestoreToFirestore {
               .batchWrite()
               .withRpcQosOptions(rpcQosOptions)
               .build());
-      LOG.info("Finished applying writes to destination database.");
 
       p.run();
       LOG.info("Pipeline.run() called.");
