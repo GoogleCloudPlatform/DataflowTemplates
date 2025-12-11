@@ -35,7 +35,11 @@ public class PrepareWritesFn extends DoFn<Document, Write> {
     Document doc = c.element();
     // Rebuild the document name for the destination project/database
     String originalName = doc.getName();
-    String path = originalName.substring(originalName.indexOf("/documents/") + 1);
+    int documentsPathIndex = originalName.indexOf("/documents/");
+    if (documentsPathIndex < 0) {
+      throw new IllegalArgumentException("Invalid document name format: " + originalName);
+    }
+    String path = originalName.substring(documentsPathIndex + 1);
     String newName = String.format("projects/%s/databases/%s/%s", projectId, databaseId, path);
 
     Document newDoc = doc.toBuilder().setName(newName).build();

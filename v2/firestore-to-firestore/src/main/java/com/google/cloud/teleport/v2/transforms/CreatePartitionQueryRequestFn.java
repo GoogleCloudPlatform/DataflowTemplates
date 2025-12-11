@@ -46,7 +46,7 @@ public class CreatePartitionQueryRequestFn extends
                 );
             PartitionQueryRequest request = PartitionQueryRequest.newBuilder()
                 .setParent(DocumentRootName.of(projectId, databaseId).toString())
-                .setPartitionCount(partitionCount - 1)
+                .setPartitionCount(partitionCount)
                 .setStructuredQuery(query)
                 .build();
             ctx.output(request);

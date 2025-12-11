@@ -51,7 +51,7 @@ public class CreatePartitionQueryRequestFnTest {
                         Order.newBuilder()
                             .setField(FieldReference.newBuilder().setFieldPath("__name__"))
                             .setDirection(Direction.ASCENDING)))
-            .setPartitionCount(PARTITION_COUNT - 1) // Verifying the -1 behavior
+            .setPartitionCount(PARTITION_COUNT)
             .build();
 
     PAssert.that(output).containsInAnyOrder(expected);
@@ -83,7 +83,7 @@ public class CreatePartitionQueryRequestFnTest {
                           Order.newBuilder()
                               .setField(FieldReference.newBuilder().setFieldPath("__name__"))
                               .setDirection(Direction.ASCENDING)))
-              .setPartitionCount(PARTITION_COUNT - 1)
+              .setPartitionCount(PARTITION_COUNT)
               .build());
     }
 
@@ -116,7 +116,7 @@ public class CreatePartitionQueryRequestFnTest {
                         Order.newBuilder()
                             .setField(FieldReference.newBuilder().setFieldPath("__name__"))
                             .setDirection(Direction.ASCENDING)))
-            .setPartitionCount(PARTITION_COUNT - 1)
+            .setPartitionCount(PARTITION_COUNT)
             .build();
 
     PAssert.that(output).containsInAnyOrder(expected);

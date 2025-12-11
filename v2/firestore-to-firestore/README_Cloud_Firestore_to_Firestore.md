@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Optional parameters
 
 * **collectionIds**: If specified, only replicate these collections. If not specified, copy all collections. For example, `my-collection1,my-collection2`. Defaults to empty.
-* **destinationProjectId**: The destination project to write to. Defaults to the source project if not set For example, `my-project`.
+* **destinationProjectId**: The destination project to write to. Defaults to the source project if not set. For example, `my-project`.
 * **readTime**: The read time of the Firestore read operations. Uses current timestamp if not set. For example, `2021-10-12T07:20:50.52Z`. Defaults to empty.
 
 

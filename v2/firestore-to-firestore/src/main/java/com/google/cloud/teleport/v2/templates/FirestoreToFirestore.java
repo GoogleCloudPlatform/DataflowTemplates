@@ -109,7 +109,8 @@ public class FirestoreToFirestore {
         groupName = "Destination",
         order = 4,
         description = "Destination Project ID",
-        helpText = "The destination project to write to. Defaults to the source project if not set",
+        helpText = "The destination project to write to."
+            + " Defaults to the source project if not set.",
         example = "my-project",
         optional = true)
     @Default.String("")
@@ -198,7 +199,8 @@ public class FirestoreToFirestore {
       PCollection<PartitionQueryRequest> partitionQueryRequests = p.apply(
               Create.of(collectionIdsList))
           .apply(
-              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId, maxNumWorkers > 1 ? maxNumWorkers : 20L));
+              new CreatePartitionQueryRequestFn(sourceProjectId, sourceDatabaseId,
+                  maxNumWorkers > 1 ? maxNumWorkers : 20L));
 
       // 2. Apply FirestoreIO to get partitions (as RunQueryRequests)
       PCollection<RunQueryRequest> partitionedQueries =

@@ -53,7 +53,7 @@ variable "collectionIds" {
 
 variable "destinationProjectId" {
   type = string
-  description = "The destination project to write to. Defaults to the source project if not set For example, `my-project`"
+  description = "The destination project to write to. Defaults to the source project if not set. For example, `my-project`"
   default = null
 }
 
