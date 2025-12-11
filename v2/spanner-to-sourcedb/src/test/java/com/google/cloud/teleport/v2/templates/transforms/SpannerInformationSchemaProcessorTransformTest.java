@@ -36,20 +36,19 @@ import org.mockito.junit.MockitoRule;
 public class SpannerInformationSchemaProcessorTransformTest {
 
   @Rule
-  public final transient TestPipeline pipeline = TestPipeline.create().enableAbandonedNodeEnforcement(false);
+  public final transient TestPipeline pipeline =
+      TestPipeline.create().enableAbandonedNodeEnforcement(false);
 
-  @Rule
-  public final MockitoRule mockito = MockitoJUnit.rule();
+  @Rule public final MockitoRule mockito = MockitoJUnit.rule();
 
-  @Mock
-  private SpannerConfig spannerConfig;
-  @Mock
-  private SpannerConfig shadowTableSpannerConfig;
+  @Mock private SpannerConfig spannerConfig;
+  @Mock private SpannerConfig shadowTableSpannerConfig;
 
   @Test
   public void testExpand() {
-    SpannerInformationSchemaProcessorTransform transform = new SpannerInformationSchemaProcessorTransform(
-        spannerConfig, shadowTableSpannerConfig, "shadow_");
+    SpannerInformationSchemaProcessorTransform transform =
+        new SpannerInformationSchemaProcessorTransform(
+            spannerConfig, shadowTableSpannerConfig, "shadow_");
 
     PCollectionTuple output = pipeline.apply(transform);
 

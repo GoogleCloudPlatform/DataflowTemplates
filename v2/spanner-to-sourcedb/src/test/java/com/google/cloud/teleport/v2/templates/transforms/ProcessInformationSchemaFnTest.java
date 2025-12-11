@@ -49,30 +49,18 @@ import org.mockito.MockitoAnnotations;
 @RunWith(JUnit4.class)
 public class ProcessInformationSchemaFnTest {
 
-  @Mock
-  private SpannerConfig spannerConfig;
-  @Mock
-  private SpannerConfig shadowTableSpannerConfig;
-  @Mock
-  private SpannerAccessor spannerAccessor;
-  @Mock
-  private SpannerAccessor shadowTableSpannerAccessor;
-  @Mock
-  private DatabaseAdminClient databaseAdminClient;
-  @Mock
-  private DatabaseAdminClient shadowDatabaseAdminClient;
-  @Mock
-  private Database database;
-  @Mock
-  private Database shadowDatabase;
-  @Mock
-  private BatchClient batchClient;
-  @Mock
-  private BatchReadOnlyTransaction batchReadOnlyTransaction;
-  @Mock
-  private DoFn<Void, Ddl>.ProcessContext processContext;
-  @Mock
-  private Ddl ddl;
+  @Mock private SpannerConfig spannerConfig;
+  @Mock private SpannerConfig shadowTableSpannerConfig;
+  @Mock private SpannerAccessor spannerAccessor;
+  @Mock private SpannerAccessor shadowTableSpannerAccessor;
+  @Mock private DatabaseAdminClient databaseAdminClient;
+  @Mock private DatabaseAdminClient shadowDatabaseAdminClient;
+  @Mock private Database database;
+  @Mock private Database shadowDatabase;
+  @Mock private BatchClient batchClient;
+  @Mock private BatchReadOnlyTransaction batchReadOnlyTransaction;
+  @Mock private DoFn<Void, Ddl>.ProcessContext processContext;
+  @Mock private Ddl ddl;
 
   private MockedStatic<SpannerAccessor> mockedSpannerAccessor;
 
@@ -118,20 +106,23 @@ public class ProcessInformationSchemaFnTest {
 
   @Test
   public void testProcessElement() throws Exception {
-    ProcessInformationSchemaFn fn = new ProcessInformationSchemaFn(spannerConfig, shadowTableSpannerConfig, "shadow_");
+    ProcessInformationSchemaFn fn =
+        new ProcessInformationSchemaFn(spannerConfig, shadowTableSpannerConfig, "shadow_");
 
     fn.setup();
 
-    try (MockedConstruction<ShadowTableCreator> mockedShadowTableCreator = mockConstruction(
-        ShadowTableCreator.class,
-        (mock, context) -> {
-          doNothing().when(mock).createShadowTablesInSpanner();
-        });
-        MockedConstruction<InformationSchemaScanner> mockedScanner = mockConstruction(
-            InformationSchemaScanner.class,
-            (mock, context) -> {
-              when(mock.scan()).thenReturn(ddl);
-            })) {
+    try (MockedConstruction<ShadowTableCreator> mockedShadowTableCreator =
+            mockConstruction(
+                ShadowTableCreator.class,
+                (mock, context) -> {
+                  doNothing().when(mock).createShadowTablesInSpanner();
+                });
+        MockedConstruction<InformationSchemaScanner> mockedScanner =
+            mockConstruction(
+                InformationSchemaScanner.class,
+                (mock, context) -> {
+                  when(mock.scan()).thenReturn(ddl);
+                })) {
 
       fn.processElement(processContext);
 

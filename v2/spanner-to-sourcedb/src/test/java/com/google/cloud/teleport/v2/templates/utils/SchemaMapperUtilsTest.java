@@ -1,3 +1,18 @@
+/*
+ * Copyright (C) 2025 Google LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.google.cloud.teleport.v2.templates.utils;
 
 import static org.junit.Assert.assertNotNull;
@@ -41,7 +56,8 @@ public class SchemaMapperUtilsTest {
 
   @Test
   public void testGetSchemaMapper_sessionBasedMapper() {
-    try (MockedConstruction<SessionBasedMapper> mocked = mockConstruction(SessionBasedMapper.class)) {
+    try (MockedConstruction<SessionBasedMapper> mocked =
+        mockConstruction(SessionBasedMapper.class)) {
       ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper("some/path", null, null, null, ddl);
       assertNotNull(mapper);
       assertTrue(mapper instanceof SessionBasedMapper);
@@ -51,8 +67,8 @@ public class SchemaMapperUtilsTest {
 
   @Test
   public void testGetSchemaMapper_fileOverridesBasedMapper() {
-    try (MockedConstruction<SchemaFileOverridesBasedMapper> mocked = mockConstruction(
-        SchemaFileOverridesBasedMapper.class)) {
+    try (MockedConstruction<SchemaFileOverridesBasedMapper> mocked =
+        mockConstruction(SchemaFileOverridesBasedMapper.class)) {
       ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper(null, "some/path", null, null, ddl);
       assertNotNull(mapper);
       assertTrue(mapper instanceof SchemaFileOverridesBasedMapper);
@@ -62,9 +78,10 @@ public class SchemaMapperUtilsTest {
 
   @Test
   public void testGetSchemaMapper_stringOverridesBasedMapper() {
-    try (MockedConstruction<SchemaStringOverridesBasedMapper> mocked = mockConstruction(
-        SchemaStringOverridesBasedMapper.class)) {
-      ISchemaMapper mapper = SchemaMapperUtils.getSchemaMapper(null, null, "table1:table2", "col1:col2", ddl);
+    try (MockedConstruction<SchemaStringOverridesBasedMapper> mocked =
+        mockConstruction(SchemaStringOverridesBasedMapper.class)) {
+      ISchemaMapper mapper =
+          SchemaMapperUtils.getSchemaMapper(null, null, "table1:table2", "col1:col2", ddl);
       assertNotNull(mapper);
       assertTrue(mapper instanceof SchemaStringOverridesBasedMapper);
       assertTrue(mocked.constructed().size() == 1);
