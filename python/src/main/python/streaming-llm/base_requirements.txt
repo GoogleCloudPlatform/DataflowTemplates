@@ -1,4 +1,4 @@
-apache-beam[gcp]==2.70.0rc2
+apache-beam[gcp]==2.70.0rc3
 torch
 transformers
 torchvision
