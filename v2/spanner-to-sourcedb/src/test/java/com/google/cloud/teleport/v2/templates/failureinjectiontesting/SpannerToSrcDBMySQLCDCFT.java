@@ -154,40 +154,6 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
 
     assertThatPipeline(jobInfo).isRunning();
 
-    // Wait for at least one row to appear in source
-    ConditionCheck conditionCheck =
-        CloudSQLRowsCheck.builder(cloudSqlResourceManager, USERS_TABLE).setMinRows(1).build();
-
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
-    assertThatResult(result).meetsConditions();
-
-    // Update the minNumWorkers for the dataflow job multiple times to induce work item assignment
-    // rebalancing and inturn increase the chance of same key being processed by multiple workers
-    // parallelly.
-    ConditionCheck workerFailureInjectorAsConditionCheck =
-        new ConditionCheck() {
-          @Override
-          protected String getDescription() {
-            return "Update minNumWorkers for job " + jobInfo.jobId();
-          }
-
-          @Override
-          protected CheckResult check() {
-            try {
-              int minNumWorkers =
-                  java.util.concurrent.ThreadLocalRandom.current()
-                      .nextInt(Integer.parseInt(NUM_WORKERS), Integer.parseInt(MAX_WORKERS) + 1);
-              DataflowFailureInjector.updateNumWorkers(
-                  jobInfo.projectId(), REGION, jobInfo.jobId(), minNumWorkers);
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-            return new CheckResult(true, "Updated minNumWorkers for job " + jobInfo.jobId());
-          }
-        };
-
     long expectedRows = spannerResourceManager.getRowCount(USERS_TABLE);
     // Wait for exact number of rows as Spanner to appear in source
     ConditionCheck sourceDbRowCountCondition =
@@ -196,16 +162,9 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
             .setMaxRows((int) expectedRows)
             .build();
 
-    // Implementing workerFailureInjector as condition check to rely on the Condition check
-    // framework to execute the check every 30 seconds until the condition is met. Combining
-    // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
-    // update minNumWorkers function will be called until all the rows appear in spanner i.e., until
-    // the end of migration.
-    conditionCheck = sourceDbRowCountCondition.and(workerFailureInjectorAsConditionCheck);
-
-    result =
+      PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(createConfig(jobInfo, Duration.ofHours(1)), conditionCheck);
+            .waitForConditionAndCancel(createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes

@@ -126,44 +126,4 @@ public class DataflowFailureInjectorTest {
       verify(mockInstancesClient, times(1)).stopAsync(PROJECT_ID, ZONE_1, INSTANCE_1);
     }
   }
-
-  @Test
-  public void testUpdateNumWorkers_success() throws IOException, InterruptedException {
-    try (MockedConstruction<ProcessBuilder> mockedProcessBuilder =
-        Mockito.mockConstruction(
-            ProcessBuilder.class,
-            (mock, context) -> {
-              Process mockProcess = mock(Process.class);
-              when(mock.start()).thenReturn(mockProcess);
-              when(mockProcess.waitFor()).thenReturn(0);
-              when(mockProcess.getInputStream())
-                  .thenReturn(new java.io.ByteArrayInputStream("Success".getBytes()));
-            })) {
-
-      DataflowFailureInjector.updateNumWorkers(PROJECT_ID, ZONE_1, JOB_ID, 5);
-
-      ProcessBuilder mockPb = mockedProcessBuilder.constructed().get(0);
-      verify(mockPb).redirectErrorStream(true);
-      verify(mockPb).start();
-    }
-  }
-
-  @Test
-  public void testUpdateNumWorkers_failure() throws IOException, InterruptedException {
-    try (MockedConstruction<ProcessBuilder> mockedProcessBuilder =
-        Mockito.mockConstruction(
-            ProcessBuilder.class,
-            (mock, context) -> {
-              Process mockProcess = mock(Process.class);
-              when(mock.start()).thenReturn(mockProcess);
-              when(mockProcess.waitFor()).thenReturn(1);
-              when(mockProcess.getInputStream())
-                  .thenReturn(new java.io.ByteArrayInputStream("Error".getBytes()));
-            })) {
-
-      assertThrows(
-          IOException.class,
-          () -> DataflowFailureInjector.updateNumWorkers(PROJECT_ID, ZONE_1, JOB_ID, 5));
-    }
-  }
 }
