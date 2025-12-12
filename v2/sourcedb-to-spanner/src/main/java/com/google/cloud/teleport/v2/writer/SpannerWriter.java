@@ -47,7 +47,7 @@ public class SpannerWriter implements Serializable {
     return setBatchSize(
         SpannerIO.write()
             .withSpannerConfig(spannerConfig)
-            .withFailureMode(FailureMode.REPORT_FAILURES));
+            .withFailureMode(FailureMode.REPORT_FAILURES)).withGroupingFactor(100);
   }
 
   protected Write setBatchSize(Write write) {
