@@ -218,6 +218,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
+            put("workerMachineType", "n2-standard-4");
           }
         };
     if (sourceResourceManager instanceof JDBCResourceManager) {
@@ -259,11 +260,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
-    if (System.getProperty("numWorkers") != null) {
-      options.addEnvironment("numWorkers", Integer.parseInt(System.getProperty("numWorkers")));
-    } else {
-      options.addEnvironment("numWorkers", 2);
-    }
+    options.addEnvironment("numWorkers", 2);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);

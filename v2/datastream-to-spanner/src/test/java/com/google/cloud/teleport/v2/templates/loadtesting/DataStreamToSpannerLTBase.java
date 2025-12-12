@@ -164,6 +164,7 @@ public class DataStreamToSpannerLTBase extends TemplateLoadTestBase {
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("datastreamSourceType", "mysql");
             put("inputFileFormat", "avro");
+            put("workerMachineType", "n2-standard-4");
           }
         };
 
