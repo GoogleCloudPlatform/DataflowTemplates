@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import javax.annotation.Nullable;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
 import org.apache.commons.lang3.tuple.Pair;
@@ -97,11 +98,37 @@ public abstract class Boundary<T extends Serializable>
     return partitionColumn().stringMaxLength();
   }
 
+  @Nullable
+  BigDecimal decimalStepSize() {
+    return partitionColumn().decimalStepSize();
+  }
+
   /**
    * @return builder for {@link Boundary}.
    */
   public static <T extends Serializable> Builder<T> builder() {
     return (new AutoValue_Boundary.Builder<T>()).setSplitIndex("1").setBoundaryTypeMapper(null);
+  }
+
+  /**
+   * Custom equality check that relies on Object.equals() for most types. But switches to
+   * delta/min-step based comparison for: - Floating-point types (Float, Double) - Source DB type
+   * where there is a defined precision Examples: Float(p, d) TODO: Double(p, d) TODO: Decimal(size,
+   * d), TODO: Time(fsp).
+   */
+  public boolean areValuesEqual(Object valueA, Object valueB) {
+    if (valueA instanceof Float f1 && valueB instanceof Float f2) {
+      BigDecimal b1 = new BigDecimal(f1.toString());
+      BigDecimal b2 = new BigDecimal(f2.toString());
+
+      BigDecimal diff = b1.subtract(b2).abs();
+      return diff.compareTo(decimalStepSize()) < 0;
+    }
+    // TODO special step size for Double
+    // TODO special step size for Decimal
+    // TODO special step size for Time(fractional seconds)
+
+    return Objects.equal(valueA, valueB);
   }
 
   /**
@@ -111,7 +138,7 @@ public abstract class Boundary<T extends Serializable>
    * @return true if ranges are mergable.
    */
   public boolean isMergable(Boundary<?> other) {
-    return Objects.equal(this.end(), other.start()) || Objects.equal(this.start(), other.end());
+    return areValuesEqual(this.end(), other.start()) || areValuesEqual(this.start(), other.end());
   }
 
   /**
@@ -132,7 +159,7 @@ public abstract class Boundary<T extends Serializable>
         (compareSplitIndex(splitIndex(), other.splitIndex()) < 0)
             ? other.splitIndex()
             : splitIndex();
-    if (Objects.equal(this.end(), other.start())) {
+    if (areValuesEqual(this.end(), other.start())) {
       return this.toBuilder().setEnd((T) other.end()).setSplitIndex(maxSplitIndex).build();
     } else {
       return this.toBuilder().setStart((T) other.start()).setSplitIndex(maxSplitIndex).build();
@@ -146,7 +173,7 @@ public abstract class Boundary<T extends Serializable>
    */
   public boolean isSplittable(@Nullable ProcessContext processContext) {
     T mid = splitPoint(processContext);
-    return !(Objects.equal(end(), mid)) && !(Objects.equal(start(), mid));
+    return !(areValuesEqual(end(), mid)) && !(areValuesEqual(start(), mid));
   }
 
   /**
@@ -245,6 +272,11 @@ public abstract class Boundary<T extends Serializable>
 
     public Builder<T> setCollation(CollationReference value) {
       this.partitionColumnBuilder().setStringCollation(value);
+      return this;
+    }
+
+    public Builder<T> setDecimalStepSize(BigDecimal value) {
+      this.partitionColumnBuilder().setDecimalStepSize(value);
       return this;
     }
 

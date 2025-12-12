@@ -82,6 +82,9 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract Integer stringMaxLength();
 
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -127,6 +130,8 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
     public abstract Builder setStringMaxLength(@Nullable Integer value);
 
+    public abstract Builder setDecimalStepSize(@Nullable BigDecimal value);
+
     abstract SourceColumnIndexInfo autoBuild();
 
     public SourceColumnIndexInfo build() {
@@ -143,6 +148,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     BINARY,
     STRING,
     TIME_STAMP,
+    FLOAT,
     OTHER
   };
 
@@ -153,5 +159,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.STRING, String.class,
           IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
           IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
-          IndexType.TIME_STAMP, Timestamp.class);
+          IndexType.TIME_STAMP, Timestamp.class,
+          IndexType.FLOAT, Float.class);
 }

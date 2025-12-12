@@ -20,6 +20,7 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -166,6 +167,57 @@ public class BoundaryTest {
     assertThat(
             secondBoundary.toBuilder()
                 .setStart(firstBoundary.end() + 1)
+                .build()
+                .isMergable(firstBoundary))
+        .isFalse();
+    assertThat(firstBoundary.merge(secondBoundary)).isEqualTo(mergedBoundary);
+    assertThat(secondBoundary.merge(firstBoundary)).isEqualTo(mergedBoundary);
+  }
+
+  @Test
+  public void testFloatBoundaryMerge() {
+    BigDecimal decimalStepSize = BigDecimal.valueOf(0.01);
+
+    Boundary<Float> firstBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.01f)
+            .setEnd(1.02f)
+            .setDecimalStepSize(decimalStepSize)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+
+    Boundary<Float> secondBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.02f)
+            .setEnd(1.03f)
+            .setDecimalStepSize(decimalStepSize)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+
+    Boundary<Float> mergedBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.01f)
+            .setEnd(1.03f)
+            .setDecimalStepSize(decimalStepSize)
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+    assertThat(firstBoundary.isMergable(secondBoundary)).isTrue();
+    assertThat(secondBoundary.isMergable(firstBoundary)).isTrue();
+    assertThat(
+            firstBoundary.toBuilder()
+                .setEnd(secondBoundary.start() + 0.01f)
+                .build()
+                .isMergable(secondBoundary))
+        .isFalse();
+    assertThat(
+            secondBoundary.toBuilder()
+                .setStart(firstBoundary.end() + 0.01f)
                 .build()
                 .isMergable(firstBoundary))
         .isFalse();

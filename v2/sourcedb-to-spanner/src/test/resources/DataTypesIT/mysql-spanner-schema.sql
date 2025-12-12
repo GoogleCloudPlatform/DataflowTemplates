@@ -327,3 +327,8 @@ CREATE TABLE IF NOT EXISTS year_pk_table (
   id INT64 NOT NULL,
   year_pk_col INT64 NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS float_pk_table (
+  id FLOAT NOT NULL,
+  float_pk_col FLOAT NOT NULL,
+) PRIMARY KEY(id);
