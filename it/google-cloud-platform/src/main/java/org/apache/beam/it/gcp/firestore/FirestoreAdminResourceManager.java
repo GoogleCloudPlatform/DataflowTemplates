@@ -2,7 +2,6 @@ package org.apache.beam.it.gcp.firestore;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import com.google.auth.Credentials;
 import com.google.cloud.firestore.v1.FirestoreAdminClient;
 import com.google.common.base.Strings;
 import com.google.firestore.admin.v1.CreateDatabaseRequest;
@@ -16,7 +15,7 @@ import org.apache.beam.it.common.ResourceManager;
 
 public class FirestoreAdminResourceManager implements ResourceManager {
 
-  private FirestoreAdminClient firestoreAdminClient;
+  private final FirestoreAdminClient firestoreAdminClient;
 
   private final String projectId;
   private final String region;
@@ -91,7 +90,6 @@ public class FirestoreAdminResourceManager implements ResourceManager {
     private final String testId;
     private String projectId;
     private String region;
-    private Credentials credentials;
 
     private Builder(String testId) {
       this.testId = testId;
@@ -107,15 +105,7 @@ public class FirestoreAdminResourceManager implements ResourceManager {
       return this;
     }
 
-    public FirestoreAdminResourceManager.Builder setCredentials(Credentials credentials) {
-      this.credentials = credentials;
-      return this;
-    }
-
     public FirestoreAdminResourceManager build() {
-      if (credentials == null) {
-        throw new IllegalArgumentException("Credentials must be provided");
-      }
       if (projectId == null) {
         throw new IllegalArgumentException("Project ID must be provided");
       }

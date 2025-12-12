@@ -71,7 +71,6 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
         FirestoreAdminResourceManager.builder(testName)
             .setProject(PROJECT)
             .setRegion(REGION)
-            .setCredentials(TestProperties.googleCredentials())
             .build();
     firestoreAdminResourceManager.createDatabase(
         SOURCE_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
@@ -95,15 +94,7 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
   public void tearDown() {
     ResourceManagerUtils.cleanResources(sourceFirestoreResourceManager);
     ResourceManagerUtils.cleanResources(destinationFirestoreResourceManager);
-  }
-
-  private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
-    Map<String, Map<String, Object>> testDocuments = new HashMap<>();
-    for (int i = 1; i <= numDocuments; i++) {
-      Map<String, Object> data = Map.of("id", i, "name", "test-doc-" + i);
-      testDocuments.put("doc-" + i, data);
-    }
-    return testDocuments;
+    ResourceManagerUtils.cleanResources(firestoreAdminResourceManager);
   }
 
   @Test
@@ -137,5 +128,14 @@ public final class FirestoreToFirestoreIT extends TemplateTestBase {
     for (QueryDocumentSnapshot document : documents) {
       assertThat(document.getData()).containsEntry("name", "test-doc-" + document.get("id"));
     }
+  }
+
+  private Map<String, Map<String, Object>> generateTestDocuments(int numDocuments) {
+    Map<String, Map<String, Object>> testDocuments = new HashMap<>();
+    for (int i = 1; i <= numDocuments; i++) {
+      Map<String, Object> data = Map.of("id", i, "name", "test-doc-" + i);
+      testDocuments.put("doc-" + i, data);
+    }
+    return testDocuments;
   }
 }
