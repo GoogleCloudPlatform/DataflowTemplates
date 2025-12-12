@@ -355,6 +355,7 @@ public class MysqlDialectAdapterTest {
                 .setOrdinalPosition(5)
                 .setPrecision(10)
                 .setScale(2)
+                .setDecimalStepSize(BigDecimal.ONE.scaleByPowerOfTen(-2))
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColYear")

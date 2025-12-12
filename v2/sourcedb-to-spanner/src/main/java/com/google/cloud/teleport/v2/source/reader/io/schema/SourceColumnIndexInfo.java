@@ -156,5 +156,5 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
           IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
           IndexType.TIME_STAMP, Timestamp.class,
-          IndexType.DECIMAL, BigInteger.class);
+          IndexType.DECIMAL, BigDecimal.class);
 }
