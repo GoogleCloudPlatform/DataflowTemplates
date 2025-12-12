@@ -391,10 +391,11 @@ public class InformationSchemaScanner {
           resultSet.isNull(13) ? null : Long.valueOf(resultSet.getString(13));
       Long identitySkipRangeMax =
           resultSet.isNull(14) ? null : Long.valueOf(resultSet.getString(14));
+      String onUpdateExpression = resultSet.isNull(15) ? null : resultSet.getString(15);
       boolean isHidden =
           dialect == Dialect.GOOGLE_STANDARD_SQL
-              ? resultSet.getBoolean(15)
-              : resultSet.getString(15).equalsIgnoreCase("YES");
+              ? resultSet.getBoolean(16)
+              : resultSet.getString(16).equalsIgnoreCase("YES");
       boolean isPlacementKey = resultSet.getBoolean(16);
 
       builder
@@ -407,6 +408,7 @@ public class InformationSchemaScanner {
           .generationExpression(generationExpression)
           .isStored(isStored)
           .defaultExpression(defaultExpression)
+          .onUpdateExpression(onUpdateExpression)
           .isIdentityColumn(isIdentity)
           .sequenceKind(sequenceKind)
           .counterStartValue(identityStartWithCounter)
@@ -434,7 +436,8 @@ public class InformationSchemaScanner {
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored,"
                 + " c.column_default, c.is_identity, c.identity_kind, c.identity_start_with_counter,"
-                + " c.identity_skip_range_min, c.identity_skip_range_max, c.is_hidden,"
+                + " c.identity_skip_range_min, c.identity_skip_range_max,"
+                + " c.on_update_expression, c.is_hidden,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"
@@ -450,7 +453,8 @@ public class InformationSchemaScanner {
                 + " c.ordinal_position, c.spanner_type, c.is_nullable,"
                 + " c.is_generated, c.generation_expression, c.is_stored, c.column_default,"
                 + " c.is_identity, c.identity_kind, c.identity_start_with_counter, "
-                + " c.identity_skip_range_min, c.identity_skip_range_max, c.is_hidden,"
+                + " c.identity_skip_range_min, c.identity_skip_range_max,"
+                + " c.on_update_expression, c.is_hidden,"
                 + " pkc.constraint_name IS NOT NULL AS is_placement_key"
                 + " FROM information_schema.columns as c"
                 + " LEFT JOIN placementkeycolumns AS pkc"
