@@ -24,7 +24,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.FuzzyCDCLoadGenerator;
 import com.google.cloud.teleport.v2.templates.SpannerToSourceDb;
 import com.google.common.io.Resources;
@@ -114,7 +113,7 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
     jobInfo =
         launchRRDataflowJob(
             PipelineUtils.createJobName("rr" + getClass().getSimpleName()),
-            null,
+            "failureInjectionTest",
             Map.of(
                 "startTimestamp",
                 startTimeStamp.toString(),
@@ -123,7 +122,9 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
                 "maxNumWorkers",
                 MAX_WORKERS,
                 "maxShardConnections",
-                MAX_WORKERS),
+                MAX_WORKERS,
+                "failureInjectionParameter",
+                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT80S\" }}"),
             null,
             spannerResourceManager,
             gcsResourceManager,
@@ -152,35 +153,6 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
 
     assertThatPipeline(jobInfo).isRunning();
 
-    // Wait for at least one row to appear in source
-    ConditionCheck conditionCheck =
-        CloudSQLRowsCheck.builder(cloudSqlResourceManager, USERS_TABLE).setMinRows(1).build();
-
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
-    assertThatResult(result).meetsConditions();
-
-    // Kill the dataflow workers multiple times to induce work item assignment rebalancing and
-    // inturn increase the chance of same key being processed by multiple workers parallelly.
-    ConditionCheck workerFailureInjectorAsConditionCheck =
-        new ConditionCheck() {
-          @Override
-          protected String getDescription() {
-            return "Kill all workers for job " + jobInfo.jobId();
-          }
-
-          @Override
-          protected CheckResult check() {
-            try {
-              DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-            return new CheckResult(true, "Killed all workers for job " + jobInfo.jobId());
-          }
-        };
-
     long expectedRows = spannerResourceManager.getRowCount(USERS_TABLE);
     // Wait for exact number of rows as Spanner to appear in source
     ConditionCheck sourceDbRowCountCondition =
@@ -189,17 +161,10 @@ public class SpannerToSrcDBMySQLCDCFT extends SpannerToSourceDbFTBase {
             .setMaxRows((int) expectedRows)
             .build();
 
-    // Implementing workerFailureInjector as condition check to rely on the Condition check
-    // framework to execute the check every 30 seconds until the condition is met. Combining
-    // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
-    // kill dataflow worker function will be called until all the rows appear in spanner i.e., until
-    // the end of migration.
-    conditionCheck = workerFailureInjectorAsConditionCheck.and(sourceDbRowCountCondition);
-
-    result =
+    PipelineOperator.Result result =
         pipelineOperator()
-            .waitForConditionAndCancel(
-                createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofHours(1)), sourceDbRowCountCondition);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes

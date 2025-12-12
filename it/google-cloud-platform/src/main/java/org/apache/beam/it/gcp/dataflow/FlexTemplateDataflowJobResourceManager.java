@@ -19,8 +19,11 @@ import com.google.auth.Credentials;
 import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.beam.it.common.PipelineLauncher;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
@@ -234,35 +237,42 @@ public class FlexTemplateDataflowJobResourceManager implements ResourceManager {
       additionalMavenProfile = "," + additionalMavenProfile;
     }
 
-    return new String[] {
-      "mvn",
-      "compile",
-      "package",
-      "-q",
-      "-f",
-      pomPath,
-      "-pl",
-      moduleBuild,
-      "-am",
-      "-PtemplatesStage,pluginOutputDir" + additionalMavenProfile,
-      // Skip shading for now due to flakiness / slowness in the process.
-      "-DskipShade=" + true,
-      "-DskipTests",
-      "-Dmaven.test.skip",
-      "-Dcheckstyle.skip",
-      "-Dmdep.analyze.skip",
-      "-Dspotless.check.skip",
-      "-Denforcer.skip",
-      "-DprojectId=" + TestProperties.project(),
-      "-Dregion=" + TestProperties.region(),
-      "-DbucketName=" + bucketName,
-      "-DgcpTempLocation=" + bucketName,
-      "-DstagePrefix=" + prefix,
-      "-DtemplateName=" + templateName,
-      "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
-      // Print stacktrace when command fails
-      "-e",
-      "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16),
-    };
+    List<String> mavenCmd =
+        new ArrayList<>(
+            Arrays.asList(
+                "mvn",
+                "compile",
+                "package",
+                "-q",
+                "-f",
+                pomPath,
+                "-pl",
+                moduleBuild,
+                "-am",
+                "-PtemplatesStage,pluginOutputDir" + additionalMavenProfile,
+                // Skip shading for now due to flakiness / slowness in the process.
+                "-DskipShade=" + true,
+                "-DskipTests",
+                "-Dmaven.test.skip",
+                "-Dcheckstyle.skip",
+                "-Dmdep.analyze.skip",
+                "-Dspotless.check.skip",
+                "-Denforcer.skip",
+                "-DprojectId=" + TestProperties.project(),
+                "-Dregion=" + TestProperties.region(),
+                "-DbucketName=" + bucketName,
+                "-DgcpTempLocation=" + bucketName,
+                "-DstagePrefix=" + prefix,
+                "-DtemplateName=" + templateName,
+                "-DunifiedWorker=" + System.getProperty("unifiedWorker"),
+                // Print stacktrace when command fails
+                "-e",
+                "-DpluginRunId=" + RandomStringUtils.randomAlphanumeric(16)));
+
+    if (additionalMavenProfile.contains("failureInjectionTest")) {
+      mavenCmd.add("-DactivateFailureInjection=true");
+    }
+
+    return mavenCmd.toArray(new String[0]);
   }
 }

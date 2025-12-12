@@ -21,6 +21,7 @@ import com.google.cloud.spanner.SpannerOptions;
 import com.google.cloud.spanner.spi.v1.SpannerInterceptorProvider;
 import com.google.cloud.teleport.v2.failureinjection.ErrorInjectionPolicy;
 import com.google.cloud.teleport.v2.failureinjection.ErrorInjectionPolicyFactory;
+import com.google.cloud.teleport.v2.failureinjection.TransactionTimeoutInjectionPolicy;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
@@ -52,8 +53,14 @@ public class SpannerService implements ServiceFactory<Spanner, SpannerOptions>, 
     }
 
     boolean isCloudSpannerDataAPI(String fullMethodName) {
+      // For TransactionTimeoutInjectionPolicy, we only want to inject errors into Commit calls.
+      if (errorInjectionPolicy instanceof TransactionTimeoutInjectionPolicy) {
+        return fullMethodName.startsWith("google.spanner.v1.Spanner/Commit");
+      }
+
       if (fullMethodName.startsWith("google.spanner.v1.Spanner/BatchCreateSessions")
-          || fullMethodName.startsWith("google.spanner.v1.Spanner/CreateSession")) {
+          || fullMethodName.startsWith("google.spanner.v1.Spanner/CreateSession")
+          || fullMethodName.startsWith("google.spanner.v1.Spanner/CloseSession")) {
         // filter out create session calls.
         return false;
       }
