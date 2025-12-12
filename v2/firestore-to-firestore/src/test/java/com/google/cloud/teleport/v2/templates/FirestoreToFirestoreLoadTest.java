@@ -45,9 +45,7 @@ import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/**
- * Performance test for {@link FirestoreToFirestore Firestore to Firestore} template.
- */
+/** Performance test for {@link FirestoreToFirestore Firestore to Firestore} template. */
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -62,8 +60,8 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
       MoreObjects.firstNonNull(
           TestProperties.specPath(), "gs://dataflow-templates/latest/Firestore_to_Firestore");
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
-  private static final String TEST_ROOT_DIR = FirestoreToFirestoreLoadTest.class.getSimpleName()
-      .toLowerCase();
+  private static final String TEST_ROOT_DIR =
+      FirestoreToFirestoreLoadTest.class.getSimpleName().toLowerCase();
   // 35,000,000 messages of the given schema make up approximately 10GB
   private static final String NUM_MESSAGES = "35000000";
   private static final String INPUT_PCOLLECTION =
@@ -100,8 +98,11 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
 
   @After
   public void tearDown() {
-    ResourceManagerUtils.cleanResources(sourceFirestoreResourceManager,
-        destinationFirestoreResourceManager, firestoreAdminResourceManager, gcsClient);
+    ResourceManagerUtils.cleanResources(
+        sourceFirestoreResourceManager,
+        destinationFirestoreResourceManager,
+        firestoreAdminResourceManager,
+        gcsClient);
   }
 
   @Test
