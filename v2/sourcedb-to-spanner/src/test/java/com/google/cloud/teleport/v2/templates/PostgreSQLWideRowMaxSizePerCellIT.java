@@ -26,7 +26,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
-import org.apache.beam.it.jdbc.MySQLResourceManager;
+import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,35 +37,33 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpannerITBase {
+public class PostgreSQLWideRowMaxSizePerCellIT extends SourceDbToSpannerITBase {
 
   private static boolean initialized = false;
   private static PipelineLauncher.LaunchInfo jobInfo;
-  public static MySQLResourceManager mySQLResourceManager;
+  public static PostgresResourceManager postgresResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager pgDialectSpannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/RowMaxSizeString/mysql-schema.sql";
+  private static final String POSTGRESQL_DUMP_FILE_RESOURCE =
+      "WideRow/RowMaxSizeString/postgresql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/RowMaxSizeString/spanner-schema.sql";
   private static final String PG_DIALECT_SPANNER_SCHEMA_FILE_RESOURCE =
       "WideRow/RowMaxSizeString/pg-dialect-spanner-schema.sql";
 
   private static final String TABLE = "WideRowTable";
-  private static final int MAX_ALLOWED_PACKET = 20 * 1024 * 1024;
 
   /** Setup resource managers once during the execution of this test class. */
   @Before
   public void setUp() throws Exception {
-    synchronized (MySQLSourceDBToSpannerWideRowMaxSizeStringIT.class) {
+    synchronized (PostgreSQLWideRowMaxSizePerCellIT.class) {
       if (!initialized) {
-        mySQLResourceManager = setUpMySQLResourceManager();
+        postgresResourceManager = setUpPostgreSQLResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
         pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
 
-        increasePacketSize();
-        loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
+        loadSQLFileResource(postgresResourceManager, POSTGRESQL_DUMP_FILE_RESOURCE);
 
         initialized = true;
       }
@@ -75,12 +73,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
   @AfterClass
   public static void cleanUp() throws Exception {
     ResourceManagerUtils.cleanResources(
-        mySQLResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
-  }
-
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
+        postgresResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
   }
 
   @Test
@@ -91,7 +84,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
             getClass().getSimpleName(),
             null,
             null,
-            mySQLResourceManager,
+            postgresResourceManager,
             spannerResourceManager,
             null,
             null);
@@ -114,7 +107,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
             getClass().getSimpleName(),
             null,
             null,
-            mySQLResourceManager,
+            postgresResourceManager,
             pgDialectSpannerResourceManager,
             null,
             null);
