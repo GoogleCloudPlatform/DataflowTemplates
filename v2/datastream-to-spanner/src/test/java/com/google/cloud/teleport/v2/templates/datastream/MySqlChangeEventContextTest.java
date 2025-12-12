@@ -180,6 +180,73 @@ public final class MySqlChangeEventContextTest {
   }
 
   @Test
+  public void canGenerateShadowTableMutationWithCollision() throws Exception {
+    long eventTimestamp = 1615159728L;
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("log_file")
+            .int64()
+            .max()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("log_file")
+            .end()
+            .endTable()
+            .build();
+    Ddl shadowDdl =
+        Ddl.builder()
+            .createTable("shadow_MyTable")
+            .column("log_file")
+            .int64()
+            .max()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .column("shadow_log_file")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("log_file")
+            .end()
+            .endTable()
+            .build();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("log_file", 3);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.MYSQL_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.MYSQL_LOGFILE_KEY, "mysql-bin.00001");
+    changeEvent.put(DatastreamConstants.MYSQL_LOGPOSITION_KEY, 100L);
+
+    ChangeEventContext changeEventContext =
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()),
+            ddl,
+            shadowDdl,
+            "shadow_",
+            DatastreamConstants.MYSQL_SOURCE_TYPE);
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // The PK column 'log_file' should be present.
+    assertEquals(actual.get("log_file"), Value.int64(3));
+    // The conflicting shadow column should be renamed to 'shadow_log_file'.
+    assertEquals(actual.get("shadow_log_file"), Value.string("mysql-bin.00001"));
+    // The other shadow columns should be present with their default names.
+    assertEquals(actual.get("timestamp"), Value.int64(eventTimestamp));
+    assertEquals(actual.get("log_position"), Value.int64(100L));
+  }
+
+  @Test
   public void testReadDataTable() throws Exception {
     long eventTimestamp = 1615159728L;
     Ddl ddl = ChangeEventConvertorTest.getTestDdl();

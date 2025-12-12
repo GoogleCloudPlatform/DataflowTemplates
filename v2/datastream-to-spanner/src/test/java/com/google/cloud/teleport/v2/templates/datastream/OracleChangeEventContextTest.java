@@ -157,4 +157,64 @@ public final class OracleChangeEventContextTest {
     assertEquals(shadowMutation.getTable(), "shadow_Users2");
     assertEquals(shadowMutation.getOperation(), Mutation.Op.INSERT_OR_UPDATE);
   }
+
+  @Test
+  public void canGenerateShadowTableMutationWithCollision() throws Exception {
+    long eventTimestamp = 1615159728L;
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("scn")
+            .string()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("scn")
+            .end()
+            .endTable()
+            .build();
+    Ddl shadowDdl =
+        Ddl.builder()
+            .createTable("shadow_MyTable")
+            .column("scn")
+            .string()
+            .max()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .column("shadow_scn")
+            .int64()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("scn")
+            .end()
+            .endTable()
+            .build();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("scn", "scn_string");
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.ORACLE_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.ORACLE_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.ORACLE_SCN_KEY, 999L);
+
+    ChangeEventContext changeEventContext =
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_", "oracle");
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // The PK column 'scn' should be present.
+    assertEquals(actual.get("scn"), Value.string("scn_string"));
+    // The conflicting shadow column should be renamed to 'shadow_scn'.
+    assertEquals(actual.get("shadow_scn"), Value.int64(999L));
+    // The other shadow columns should be present with their default names.
+    assertEquals(actual.get("timestamp"), Value.int64(eventTimestamp));
+  }
 }

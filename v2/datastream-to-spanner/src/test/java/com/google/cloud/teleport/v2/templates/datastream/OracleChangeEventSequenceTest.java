@@ -68,14 +68,13 @@ public final class OracleChangeEventSequenceTest {
   public void testCreateFromShadowTableWithUseSqlStatements_Oracle() throws Exception {
     // Arrange
     TransactionContext transactionContext = mock(TransactionContext.class);
-    String shadowTable = "shadow_table_oracle";
     Ddl shadowTableDdl =
         Ddl.builder()
             .createTable("shadow_table_oracle")
             .column("id")
             .int64()
             .endColumn()
-            .column("timestamp")
+            .column("shadow_timestamp")
             .int64()
             .endColumn()
             .column("scn")
@@ -86,13 +85,19 @@ public final class OracleChangeEventSequenceTest {
             .end()
             .endTable()
             .build();
-    Key primaryKey = Key.of(1L);
     boolean useSqlStatements = true;
+
+    ChangeEventContext mockContext = mock(ChangeEventContext.class);
+    when(mockContext.getShadowTable()).thenReturn("shadow_table_oracle");
+    when(mockContext.getPrimaryKey()).thenReturn(Key.of(1L));
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
+        .thenReturn("shadow_timestamp");
+    when(mockContext.getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY)).thenReturn("scn");
 
     // Mock the behavior of the transaction context
     Struct mockRow = mock(Struct.class);
     when(mockRow.getLong("id")).thenReturn(1L);
-    when(mockRow.getLong("timestamp")).thenReturn(1615159728L);
+    when(mockRow.getLong("shadow_timestamp")).thenReturn(1615159728L);
     when(mockRow.getLong("scn")).thenReturn(100L);
 
     ResultSet mockResultSet = mock(ResultSet.class);
@@ -103,7 +108,7 @@ public final class OracleChangeEventSequenceTest {
     // Act
     OracleChangeEventSequence result =
         OracleChangeEventSequence.createFromShadowTable(
-            transactionContext, shadowTable, shadowTableDdl, primaryKey, useSqlStatements);
+            transactionContext, mockContext, shadowTableDdl, useSqlStatements);
 
     // Assert
     assertNotNull(result);
