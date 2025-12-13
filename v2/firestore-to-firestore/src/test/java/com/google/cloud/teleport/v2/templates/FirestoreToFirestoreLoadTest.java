@@ -16,10 +16,10 @@
 package com.google.cloud.teleport.v2.templates;
 
 import static com.google.common.truth.Truth.assertThat;
-import static org.apache.beam.it.gcp.artifacts.utils.ArtifactUtils.getFullGcsPath;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.cloud.firestore.QueryDocumentSnapshot;
 import com.google.cloud.teleport.metadata.TemplateLoadTest;
 import com.google.common.base.MoreObjects;
 import com.google.firestore.admin.v1.Database.DatabaseEdition;
@@ -27,8 +27,8 @@ import com.google.firestore.admin.v1.Database.DatabaseType;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Duration;
+import java.util.List;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 import org.apache.beam.it.common.PipelineLauncher.LaunchConfig;
 import org.apache.beam.it.common.PipelineLauncher.LaunchInfo;
 import org.apache.beam.it.common.PipelineOperator.Result;
@@ -38,14 +38,20 @@ import org.apache.beam.it.gcp.TemplateLoadTestBase;
 import org.apache.beam.it.gcp.firestore.FirestoreAdminResourceManager;
 import org.apache.beam.it.gcp.firestore.FirestoreResourceManager;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
+import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
+import org.apache.beam.sdk.io.gcp.firestore.RpcQosOptions;
+import org.apache.beam.sdk.testing.TestPipeline;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-/** Performance test for {@link FirestoreToFirestore Firestore to Firestore} template. */
+/**
+ * Performance test for {@link FirestoreToFirestore Firestore to Firestore} template.
+ */
 @Category(TemplateLoadTest.class)
 @TemplateLoadTest(FirestoreToFirestore.class)
 @RunWith(JUnit4.class)
@@ -53,8 +59,9 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
 
   private static final String PROJECT = TestProperties.project();
   private static final String REGION = TestProperties.region();
-  private static final String SOURCE_DATABASE_ID = "source-database";
-  private static final String DESTINATION_DATABASE_ID = "destination-database";
+  private static final String SOURCE_DATABASE_ID = "loadtest-source";
+  private static final String DESTINATION_DATABASE_ID = "loadtest-destination";
+  private static final String COLLECTION_ID = "it-load-data";
 
   private static final String SPEC_PATH =
       MoreObjects.firstNonNull(
@@ -62,8 +69,9 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
   private static final String ARTIFACT_BUCKET = TestProperties.artifactBucket();
   private static final String TEST_ROOT_DIR =
       FirestoreToFirestoreLoadTest.class.getSimpleName().toLowerCase();
-  // 35,000,000 messages of the given schema make up approximately 10GB
-  private static final String NUM_MESSAGES = "35000000";
+
+  private static final int LOAD_DATA_TARGET_SIZE_GIB = 10;
+  private static final int LOAD_DATA_MAX_WORKERS = 500;
   private static final String INPUT_PCOLLECTION =
       "Read all records/Read from Cloud Firestore/Read from Partitions.out0";
   private static final String OUTPUT_PCOLLECTION =
@@ -71,7 +79,12 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
   private static FirestoreResourceManager sourceFirestoreResourceManager;
   private static FirestoreResourceManager destinationFirestoreResourceManager;
   private static FirestoreAdminResourceManager firestoreAdminResourceManager;
+  // TODO: Do we really need this?
   private static GcsResourceManager gcsClient;
+
+  @Rule
+  public TestPipeline pipeline = TestPipeline.create();
+
 
   @Before
   public void setup() throws IOException {
@@ -99,6 +112,7 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
   @After
   public void tearDown() {
     ResourceManagerUtils.cleanResources(
+        true,
         sourceFirestoreResourceManager,
         destinationFirestoreResourceManager,
         firestoreAdminResourceManager,
@@ -107,38 +121,28 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
 
   @Test
   public void testBacklog10gb() throws IOException, ParseException, InterruptedException {
-    testBacklog(this::disableRunnerV2);
+    testPipeline(this::disableRunnerV2);
   }
 
   @Test
   public void testBacklog10gbUsingRunnerV2()
       throws IOException, ParseException, InterruptedException {
-    testBacklog(this::enableRunnerV2);
+    testPipeline(this::enableRunnerV2);
   }
 
-  public void testBacklog(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
+  public void testPipeline(Function<LaunchConfig.Builder, LaunchConfig.Builder> paramsAdder)
       throws IOException, ParseException, InterruptedException {
-    // Arrange
-    String name = testName;
-    firestoreAdminResourceManager.createDatabase(
-        "source-" + name, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
-    firestoreAdminResourceManager.createDatabase(
-        "destination-" + name, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.ENTERPRISE);
-    // TODO: Load data with our own thing.
-    // DataGenerator dataGenerator =
-    //     DataGenerator.builderWithSchemaTemplate(testName, "GAME_EVENT")
-    //         .setQPS("1000000")
-    //         .setMessagesLimit(NUM_MESSAGES)
-    //         .setSinkType("SPANNER")
-    //         .setProjectId(project)
-    //         .setFirestoreInstanceName(firestoreResourceManager.getInstanceId())
-    //         .setFirestoreDatabaseName(firestoreResourceManager.getDatabaseId())
-    //         .setFirestoreTableName(name)
-    //         .setNumWorkers("50")
-    //         .setMaxNumWorkers("100")
-    //         .build();
-    // dataGenerator.execute(Duration.ofMinutes(30));
-    LaunchConfig options =
+    if (false) {
+      firestoreAdminResourceManager.createDatabase(
+          SOURCE_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.STANDARD);
+      firestoreAdminResourceManager.createDatabase(
+          DESTINATION_DATABASE_ID, DatabaseType.FIRESTORE_NATIVE, DatabaseEdition.ENTERPRISE);
+    }
+    generateLoad();
+
+    LaunchInfo info = pipelineLauncher.launch(
+        project,
+        region,
         paramsAdder
             .apply(
                 LaunchConfig.builder(testName, SPEC_PATH)
@@ -147,23 +151,37 @@ public class FirestoreToFirestoreLoadTest extends TemplateLoadTestBase {
                     .addParameter("destinationProjectId", PROJECT)
                     .addParameter("destinationDatabaseId", DESTINATION_DATABASE_ID)
                     .addParameter("maxNumWorkers", "500"))
-            .build();
-
-    // Act
-    LaunchInfo info = pipelineLauncher.launch(project, region, options);
+            .build());
     assertThatPipeline(info).isRunning();
-    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
 
-    // Assert
+    Result result = pipelineOperator.waitUntilDone(createConfig(info, Duration.ofMinutes(60)));
     assertThatResult(result).isLaunchFinished();
-    // check to see if messages reached the output bucket
-    assertThat(gcsClient.listArtifacts(name, Pattern.compile(".*"))).isNotEmpty();
+
+    List<QueryDocumentSnapshot> documents = destinationFirestoreResourceManager.read(COLLECTION_ID);
+    // TODO: check actual doc count.
+    assertThat(documents.size()).isGreaterThan(0);
 
     // export results
     exportMetricsToBigQuery(info, getMetrics(info, INPUT_PCOLLECTION, OUTPUT_PCOLLECTION));
   }
 
-  private String getTestMethodDirPath() {
-    return getFullGcsPath(ARTIFACT_BUCKET, TEST_ROOT_DIR, gcsClient.runId(), testName);
+  private void generateLoad() {
+
+    DataflowPipelineOptions options = pipeline.getOptions().as(DataflowPipelineOptions.class);
+
+    // Set the streaming option to prevent OOMing on too much data.
+    options.setStreaming(true);
+    pipeline.apply(
+        "GenerateFirestoreLoad",
+        new FirestoreLoadGeneratorTransform(
+            PROJECT, SOURCE_DATABASE_ID, COLLECTION_ID, LOAD_DATA_TARGET_SIZE_GIB,
+            RpcQosOptions.newBuilder().withHintMaxNumWorkers(LOAD_DATA_MAX_WORKERS).build()));
+
+    pipeline.run();
+
+    List<QueryDocumentSnapshot> documents = sourceFirestoreResourceManager.read(COLLECTION_ID);
+    // TODO: check actual doc count.
+    assertThat(documents.size()).isGreaterThan(0);
+    // ... assertions after pipeline run ...
   }
 }
