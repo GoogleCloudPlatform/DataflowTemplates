@@ -1,0 +1,374 @@
+{
+  "SpSchema": {
+    "t1": {
+      "Name": "Users",
+      "ColIds": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8",
+        "c9",
+        "c10",
+        "c11",
+        "c12",
+        "c13"
+      ],
+      "ColDefs": {
+        "c11": {
+          "Name": "date_field",
+          "T": {
+            "Name": "DATE",
+            "IsArray": false
+          }
+        },
+        "c10": {
+          "Name": "timestamp_field2",
+          "T": {
+            "Name": "TIMESTAMP",
+            "IsArray": false
+          }
+        },
+        "c13": {
+          "Name": "migration_shard_id",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c12": {
+          "Name": "date_field2",
+          "T": {
+            "Name": "DATE",
+            "IsArray": false
+          }
+        },
+        "c1": {
+          "Name": "first_name",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c2": {
+          "Name": "age",
+          "T": {
+            "Name": "NUMERIC",
+            "IsArray": false
+          }
+        },
+        "c3": {
+          "Name": "bool_field",
+          "T": {
+            "Name": "BOOL",
+            "IsArray": false
+          }
+        },
+        "c4": {
+          "Name": "int64_field",
+          "T": {
+            "Name": "INT64",
+            "IsArray": false
+          }
+        },
+        "c5": {
+          "Name": "float64_field",
+          "T": {
+            "Name": "FLOAT64",
+            "IsArray": false
+          }
+        },
+        "c6": {
+          "Name": "string_field",
+          "T": {
+            "Name": "STRING",
+            "IsArray": false
+          }
+        },
+        "c7": {
+          "Name": "json_field",
+          "T": {
+            "Name": "JSON",
+            "IsArray": false
+          }
+        },
+        "c8": {
+          "Name": "bytes_field",
+          "T": {
+            "Name": "BYTES",
+            "IsArray": false
+          }
+        },
+        "c9": {
+          "Name": "timestamp_field",
+          "T": {
+            "Name": "TIMESTAMP",
+            "IsArray": false
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c1",
+          "Order": 1
+        },
+        {
+          "ColId": "c13",
+          "Order": 2
+        },
+        {
+          "ColId": "c2",
+          "Order": 3
+        },
+        {
+          "ColId": "c3",
+          "Order": 4
+        },
+        {
+          "ColId": "c4",
+          "Order": 5
+        },
+        {
+          "ColId": "c5",
+          "Order": 6
+        },
+        {
+          "ColId": "c6",
+          "Order": 7
+        },
+        {
+          "ColId": "c8",
+          "Order": 8
+        },
+        {
+          "ColId": "c9",
+          "Order": 9
+        },
+        {
+          "ColId": "c11",
+          "Order": 10
+        }
+      ],
+      "ShardIdColumn": "c13"
+    }
+  },
+  "SyntheticPKeys": {},
+  "SrcSchema": {
+    "t1": {
+      "Name": "Users",
+      "ColIds": [
+        "c1",
+        "c2",
+        "c3",
+        "c4",
+        "c5",
+        "c6",
+        "c7",
+        "c8",
+        "c9",
+        "c10",
+        "c11",
+        "c12"
+      ],
+      "ColDefs": {
+        "c3": {
+          "Name": "bool_field",
+          "Type": {
+            "Name": "BOOLEAN"
+          }
+        },
+        "c4": {
+          "Name": "int64_field",
+          "Type": {
+            "Name": "BIGINT"
+          }
+        },
+        "c5": {
+          "Name": "float64_field",
+          "Type": {
+            "Name": "DOUBLE"
+          }
+        },
+        "c11": {
+          "Name": "date_field",
+          "Type": {
+            "Name": "DATE"
+          }
+        },
+        "c6": {
+          "Name": "string_field",
+          "Type": {
+            "Name": "VARCHAR",
+            "Mods": [
+              255
+            ]
+          }
+        },
+        "c10": {
+          "Name": "timestamp_field2",
+          "Type": {
+            "Name": "TIMESTAMP"
+          }
+        },
+        "c7": {
+          "Name": "json_field",
+          "Type": {
+            "Name": "JSON"
+          }
+        },
+        "c8": {
+          "Name": "bytes_field",
+          "Type": {
+            "Name": "BLOB"
+          }
+        },
+        "c12": {
+          "Name": "date_field2",
+          "Type": {
+            "Name": "DATE"
+          }
+        },
+        "c9": {
+          "Name": "timestamp_field",
+          "Type": {
+            "Name": "TIMESTAMP"
+          }
+        },
+        "c1": {
+          "Name": "first_name",
+          "Type": {
+            "Name": "VARCHAR",
+            "Mods": [
+              255
+            ]
+          }
+        },
+        "c2": {
+          "Name": "age",
+          "Type": {
+            "Name": "DECIMAL"
+          }
+        }
+      },
+      "PrimaryKeys": [
+        {
+          "ColId": "c1",
+          "Order": 1
+        },
+        {
+          "ColId": "c2",
+          "Order": 2
+        },
+        {
+          "ColId": "c3",
+          "Order": 3
+        },
+        {
+          "ColId": "c4",
+          "Order": 4
+        },
+        {
+          "ColId": "c5",
+          "Order": 5
+        },
+        {
+          "ColId": "c6",
+          "Order": 6
+        },
+        {
+          "ColId": "c8",
+          "Order": 7
+        },
+        {
+          "ColId": "c9",
+          "Order": 8
+        },
+        {
+          "ColId": "c11",
+          "Order": 9
+        }
+      ]
+    }
+  },
+  "ToSpanner": {
+    "Users": {
+      "Name": "Users",
+      "Cols": {
+        "float64_field": "float64_field",
+        "date_field2": "date_field2",
+        "bool_field": "bool_field",
+        "json_field": "json_field",
+        "int64_field": "int64_field",
+        "bytes_field": "bytes_field",
+        "timestamp_field2": "timestamp_field2",
+        "timestamp_field": "timestamp_field",
+        "first_name": "first_name",
+        "age": "age",
+        "string_field": "string_field",
+        "date_field": "date_field"
+      }
+    }
+  },
+  "ToSource": {
+    "Users": {
+      "Name": "Users",
+      "Cols": {
+        "float64_field": "float64_field",
+        "date_field2": "date_field2",
+        "bool_field": "bool_field",
+        "json_field": "json_field",
+        "int64_field": "int64_field",
+        "bytes_field": "bytes_field",
+        "timestamp_field2": "timestamp_field2",
+        "timestamp_field": "timestamp_field",
+        "first_name": "first_name",
+        "age": "age",
+        "string_field": "string_field",
+        "date_field": "date_field"
+      }
+    }
+  },
+  "SrcToID": {
+    "Users": {
+      "Name": "t1",
+      "Cols": {
+        "float64_field": "c5",
+        "date_field2": "c12",
+        "bool_field": "c3",
+        "json_field": "c7",
+        "int64_field": "c4",
+        "bytes_field": "c8",
+        "timestamp_field2": "c10",
+        "timestamp_field": "c9",
+        "first_name": "c1",
+        "age": "c2",
+        "string_field": "c6",
+        "date_field": "c11"
+      }
+    }
+  },
+  "SpannerToID": {
+    "Users": {
+      "Name": "t1",
+      "Cols": {
+        "float64_field": "c5",
+        "json_field": "c7",
+        "int64_field": "c4",
+        "timestamp_field": "c9",
+        "string_field": "c6",
+        "date_field": "c11",
+        "date_field2": "c12",
+        "migration_shard_id": "c13",
+        "bool_field": "c3",
+        "bytes_field": "c8",
+        "timestamp_field2": "c10",
+        "first_name": "c1",
+        "age": "c2"
+      }
+    }
+  },
+  "Empty": false
+}

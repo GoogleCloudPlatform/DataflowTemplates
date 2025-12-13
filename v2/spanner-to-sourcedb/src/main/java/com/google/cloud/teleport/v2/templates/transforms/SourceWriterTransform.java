@@ -17,7 +17,6 @@ package com.google.cloud.teleport.v2.templates.transforms;
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
-import com.google.cloud.teleport.v2.spanner.migrations.schema.ISchemaMapper;
 import com.google.cloud.teleport.v2.spanner.migrations.shard.Shard;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.sourceddl.SourceSchema;
@@ -34,6 +33,7 @@ import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionTuple;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.apache.beam.sdk.values.PInput;
 import org.apache.beam.sdk.values.POutput;
 import org.apache.beam.sdk.values.PValue;
@@ -45,45 +45,54 @@ public class SourceWriterTransform
     extends PTransform<
         PCollection<KV<Long, TrimmedShardedDataChangeRecord>>, SourceWriterTransform.Result> {
 
-  private final ISchemaMapper schemaMapper;
   private final String sourceDbTimezoneOffset;
   private final List<Shard> shards;
   private final SpannerConfig spannerConfig;
-  private final Ddl ddl;
-  private final Ddl shadowTableDdl;
+  private final PCollectionView<Ddl> ddlView;
+  private final PCollectionView<Ddl> shadowTableDdlView;
   private final SourceSchema sourceSchema;
   private final String shadowTablePrefix;
   private final String skipDirName;
   private final int maxThreadPerDataflowWorker;
   private final String source;
   private final CustomTransformation customTransformation;
+  private final String sessionFilePath;
+  private final String schemaOverridesFilePath;
+  private final String tableOverrides;
+  private final String columnOverrides;
 
   public SourceWriterTransform(
       List<Shard> shards,
-      ISchemaMapper schemaMapper,
       SpannerConfig spannerConfig,
       String sourceDbTimezoneOffset,
-      Ddl ddl,
-      Ddl shadowTableDdl,
+      PCollectionView<Ddl> ddlView,
+      PCollectionView<Ddl> shadowTableDdlView,
       SourceSchema sourceSchema,
       String shadowTablePrefix,
       String skipDirName,
       int maxThreadPerDataflowWorker,
       String source,
-      CustomTransformation customTransformation) {
+      CustomTransformation customTransformation,
+      String sessionFilePath,
+      String schemaOverridesFilePath,
+      String tableOverrides,
+      String columnOverrides) {
 
-    this.schemaMapper = schemaMapper;
     this.sourceDbTimezoneOffset = sourceDbTimezoneOffset;
     this.shards = shards;
     this.spannerConfig = spannerConfig;
-    this.ddl = ddl;
-    this.shadowTableDdl = shadowTableDdl;
+    this.ddlView = ddlView;
+    this.shadowTableDdlView = shadowTableDdlView;
     this.sourceSchema = sourceSchema;
     this.shadowTablePrefix = shadowTablePrefix;
     this.skipDirName = skipDirName;
     this.maxThreadPerDataflowWorker = maxThreadPerDataflowWorker;
     this.source = source;
     this.customTransformation = customTransformation;
+    this.sessionFilePath = sessionFilePath;
+    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.tableOverrides = tableOverrides;
+    this.columnOverrides = columnOverrides;
   }
 
   @Override
@@ -95,17 +104,21 @@ public class SourceWriterTransform
             ParDo.of(
                     new SourceWriterFn(
                         this.shards,
-                        this.schemaMapper,
                         this.spannerConfig,
                         this.sourceDbTimezoneOffset,
-                        this.ddl,
-                        this.shadowTableDdl,
                         this.sourceSchema,
                         this.shadowTablePrefix,
                         this.skipDirName,
                         this.maxThreadPerDataflowWorker,
                         this.source,
-                        this.customTransformation))
+                        this.customTransformation,
+                        this.ddlView,
+                        this.shadowTableDdlView,
+                        this.sessionFilePath,
+                        this.schemaOverridesFilePath,
+                        this.tableOverrides,
+                        this.columnOverrides))
+                .withSideInputs(ddlView, shadowTableDdlView)
                 .withOutputTags(
                     Constants.SUCCESS_TAG,
                     TupleTagList.of(Constants.PERMANENT_ERROR_TAG)
