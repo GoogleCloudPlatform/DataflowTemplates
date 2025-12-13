@@ -34,18 +34,18 @@ pipeline:
     - type: ReadFromKafka
       name: ReadFromKafka
       config:
-        bootstrap_servers: {{ bootstrap_servers }}
+        bootstrap_servers: {{ bootstrapServers }}
         topic: {{ topic }}
-        allow_duplicates: {{ allow_duplicates }}
-        confluent_schema_registry_subject: {{ confluent_schema_registry_subject }}
-        confluent_schema_registry_url: {{ confluent_schema_registry_url }}
-        consumer_config_updates: {{ consumer_config_updates }}
-        file_descriptor_path: {{ file_descriptor_path }}
+        allow_duplicates: {{ allowDuplicates }}
+        confluent_schema_registry_subject: {{ confluentSchemaRegistrySubject }}
+        confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
+        consumer_config_updates: {{ consumerConfigUpdates }}
+        file_descriptor_path: {{ fileDescriptorPath }}
         format: {{ format }}
-        message_name: {{ message_name }}
-        offset_deduplication: {{ offset_deduplication }}
-        redistribute_by_record_key: {{ redistribute_by_record_key }}
-        redistribute_num_keys: {{ redistribute_num_keys }}
+        message_name: {{ messageName }}
+        offset_deduplication: {{ offsetDeduplication }}
+        redistribute_by_record_key: {{ redistributeByRecordKey }}
+        redistribute_num_keys: {{ redistributeNumKeys }}
         redistributed: {{ redistributed }}
         schema: {{ schema }}
 

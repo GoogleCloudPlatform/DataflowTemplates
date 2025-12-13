@@ -62,8 +62,8 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "iceberg_namespace";
-  private static final String ICEBERG_TABLE_NAME = "iceberg_table";
+  private static final String NAMESPACE = "kafka_iceberg_namespace";
+  private static final String ICEBERG_TABLE_NAME = "kafka_iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
 
   @Before
@@ -97,7 +97,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter(
-                "bootstrap_servers",
+                "bootstrapServers",
                 kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
             .addParameter("topic", topicName)
             .addParameter(

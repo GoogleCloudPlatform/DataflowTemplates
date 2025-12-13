@@ -2,7 +2,7 @@ options:
   - name: "kafka_read_options"
     parameters:
       - order: 1
-        name: "bootstrap_servers"
+        name: "bootstrapServers"
         description: "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster."
         help: "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2"
         example: "host1:port1,host2:port2"
@@ -16,35 +16,35 @@ options:
         required: true
         type: text
       - order: 3
-        name: "allow_duplicates"
+        name: "allowDuplicates"
         description: "If the Kafka read allows duplicates."
         help: "If the Kafka read allows duplicates. For example: true"
         example: "true"
         required: false
         type: boolean
       - order: 4
-        name: "confluent_schema_registry_subject"
+        name: "confluentSchemaRegistrySubject"
         description: "The subject name for the Confluent Schema Registry."
         help: "The subject name for the Confluent Schema Registry. For example: my_subject"
         example: "my_subject"
         required: false
         type: text
       - order: 5
-        name: "confluent_schema_registry_url"
+        name: "confluentSchemaRegistryUrl"
         description: "The URL for the Confluent Schema Registry."
         help: "The URL for the Confluent Schema Registry. For example: http://schema-registry:8081"
         example: "http://schema-registry:8081"
         required: false
         type: text
       - order: 6
-        name: "consumer_config_updates"
+        name: "consumerConfigUpdates"
         description: "A list of key-value pairs that act as configuration parameters for Kafka consumers."
         help: "A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'}"
         example: '{"group.id": "my_group"}'
         required: false
         type: map
       - order: 7
-        name: "file_descriptor_path"
+        name: "fileDescriptorPath"
         description: "The path to the Protocol Buffer File Descriptor Set file."
         help: "The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb"
         example: "gs://bucket/path/to/descriptor.pb"
@@ -59,28 +59,28 @@ options:
         default: "JSON"
         type: text
       - order: 9
-        name: "message_name"
+        name: "messageName"
         description: "The name of the Protocol Buffer message to be used for schema extraction and data conversion."
         help: "The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage"
         example: "MyMessage"
         required: false
         type: text
       - order: 10
-        name: "offset_deduplication"
+        name: "offsetDeduplication"
         description: "If the redistribute is using offset deduplication mode."
         help: "If the redistribute is using offset deduplication mode. For example: true"
         example: "true"
         required: false
         type: boolean
       - order: 11
-        name: "redistribute_by_record_key"
+        name: "redistributeByRecordKey"
         description: "If the redistribute keys by the Kafka record key."
         help: "If the redistribute keys by the Kafka record key. For example: true"
         example: "true"
         required: false
         type: boolean
       - order: 12
-        name: "redistribute_num_keys"
+        name: "redistributeNumKeys"
         description: "The number of keys for redistributing Kafka inputs."
         help: "The number of keys for redistributing Kafka inputs. For example: 10"
         example: "10"

@@ -49,7 +49,7 @@ public interface KafkaToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 1,
-      name = "bootstrap_servers",
+      name = "bootstrapServers",
       optional = false,
       description =
           "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster.",
@@ -57,7 +57,7 @@ public interface KafkaToIcebergYaml {
           "A list of host/port pairs to use for establishing the initial connection to the Kafka cluster. For example: host1:port1,host2:port2",
       example = "host1:port1,host2:port2")
   @Validation.Required
-  String getBootstrap_servers();
+  String getBootstrapServers();
 
   @TemplateParameter.Text(
       order = 2,
@@ -71,52 +71,52 @@ public interface KafkaToIcebergYaml {
 
   @TemplateParameter.Boolean(
       order = 3,
-      name = "allow_duplicates",
+      name = "allowDuplicates",
       optional = true,
       description = "If the Kafka read allows duplicates.",
       helpText = "If the Kafka read allows duplicates. For example: true",
       example = "true")
-  Boolean getAllow_duplicates();
+  Boolean getAllowDuplicates();
 
   @TemplateParameter.Text(
       order = 4,
-      name = "confluent_schema_registry_subject",
+      name = "confluentSchemaRegistrySubject",
       optional = true,
       description = "The subject name for the Confluent Schema Registry.",
       helpText = "The subject name for the Confluent Schema Registry. For example: my_subject",
       example = "my_subject")
-  String getConfluent_schema_registry_subject();
+  String getConfluentSchemaRegistrySubject();
 
   @TemplateParameter.Text(
       order = 5,
-      name = "confluent_schema_registry_url",
+      name = "confluentSchemaRegistryUrl",
       optional = true,
       description = "The URL for the Confluent Schema Registry.",
       helpText =
           "The URL for the Confluent Schema Registry. For example: http://schema-registry:8081",
       example = "http://schema-registry:8081")
-  String getConfluent_schema_registry_url();
+  String getConfluentSchemaRegistryUrl();
 
   @TemplateParameter.Text(
       order = 6,
-      name = "consumer_config_updates",
+      name = "consumerConfigUpdates",
       optional = true,
       description =
           "A list of key-value pairs that act as configuration parameters for Kafka consumers.",
       helpText =
           "A list of key-value pairs that act as configuration parameters for Kafka consumers. For example: {'group.id': 'my_group'}",
       example = "{\"group.id\": \"my_group\"}")
-  String getConsumer_config_updates();
+  String getConsumerConfigUpdates();
 
   @TemplateParameter.Text(
       order = 7,
-      name = "file_descriptor_path",
+      name = "fileDescriptorPath",
       optional = true,
       description = "The path to the Protocol Buffer File Descriptor Set file.",
       helpText =
           "The path to the Protocol Buffer File Descriptor Set file. For example: gs://bucket/path/to/descriptor.pb",
       example = "gs://bucket/path/to/descriptor.pb")
-  String getFile_descriptor_path();
+  String getFileDescriptorPath();
 
   @TemplateParameter.Text(
       order = 8,
@@ -131,41 +131,41 @@ public interface KafkaToIcebergYaml {
 
   @TemplateParameter.Text(
       order = 9,
-      name = "message_name",
+      name = "messageName",
       optional = true,
       description =
           "The name of the Protocol Buffer message to be used for schema extraction and data conversion.",
       helpText =
           "The name of the Protocol Buffer message to be used for schema extraction and data conversion. For example: MyMessage",
       example = "MyMessage")
-  String getMessage_name();
+  String getMessageName();
 
   @TemplateParameter.Boolean(
       order = 10,
-      name = "offset_deduplication",
+      name = "offsetDeduplication",
       optional = true,
       description = "If the redistribute is using offset deduplication mode.",
       helpText = "If the redistribute is using offset deduplication mode. For example: true",
       example = "true")
-  Boolean getOffset_deduplication();
+  Boolean getOffsetDeduplication();
 
   @TemplateParameter.Boolean(
       order = 11,
-      name = "redistribute_by_record_key",
+      name = "redistributeByRecordKey",
       optional = true,
       description = "If the redistribute keys by the Kafka record key.",
       helpText = "If the redistribute keys by the Kafka record key. For example: true",
       example = "true")
-  Boolean getRedistribute_by_record_key();
+  Boolean getRedistributeByRecordKey();
 
   @TemplateParameter.Integer(
       order = 12,
-      name = "redistribute_num_keys",
+      name = "redistributeNumKeys",
       optional = true,
       description = "The number of keys for redistributing Kafka inputs.",
       helpText = "The number of keys for redistributing Kafka inputs. For example: 10",
       example = "10")
-  Integer getRedistribute_num_keys();
+  Integer getRedistributeNumKeys();
 
   @TemplateParameter.Boolean(
       order = 13,
