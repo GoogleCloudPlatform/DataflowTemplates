@@ -30,15 +30,14 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.google.common.io.Resources;
 
 /**
  * An integration test for {@link SourceDbToSpanner} Flex template which tests schema mapping using
@@ -63,24 +62,20 @@ public class MySQLFileOverridesSchemaMapperIT extends SourceDbToSpannerITBase {
   private static final String SCHEMA_OVERRIDE_GCS_PREFIX = "MySQLFileOverridesCommonIT";
 
   /**
-   * Setup resource managers and Launch dataflow job once during the execution of this test class.
+   * Setup resource managers and Launch dataflow job once during the execution of this test class. \
    */
-  @Before
-  public void setUp() throws Exception {
-    mySQLResourceManager = setUpMySQLResourceManager();
-    spannerResourceManager = setUpSpannerResourceManager();
-    gcsResourceManager = setUpSpannerITGcsResourceManager();
-
-    gcsResourceManager.uploadArtifact(
-        SCHEMA_OVERRIDE_GCS_PREFIX + "/file-overrides.json",
-        Resources.getResource(SCHEMA_OVERRIDE_FILE_RESOURCE).getPath());
+  @BeforeClass
+  public static void setUpClass() {
+    mySQLResourceManager =
+        setUpMySQLResourceManager(String.valueOf(MySQLFileOverridesSchemaMapperIT.class));
+    spannerResourceManager =
+        setUpSpannerResourceManager(String.valueOf(MySQLFileOverridesSchemaMapperIT.class));
   }
 
   /** Cleanup dataflow job and all the resources and resource managers. */
-  @After
-  public void cleanUp() {
-    ResourceManagerUtils.cleanResources(
-        spannerResourceManager, mySQLResourceManager, gcsResourceManager);
+  @AfterClass
+  public static void cleanUpClass() {
+    ResourceManagerUtils.cleanResources(spannerResourceManager, mySQLResourceManager);
   }
 
   @Test
