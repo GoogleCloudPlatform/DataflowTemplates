@@ -47,7 +47,8 @@ pipeline:
         redistribute_by_record_key: {{ redistributeByRecordKey }}
         redistribute_num_keys: {{ redistributeNumKeys }}
         redistributed: {{ redistributed }}
-        schema: {{ schema }}
+        schema: |
+            {{ schema }}
 
     - type: WriteToIceberg
       name: WriteToIceberg
