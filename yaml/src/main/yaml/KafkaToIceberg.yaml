@@ -41,7 +41,7 @@ pipeline:
         confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
         consumer_config_updates: {{ consumerConfigUpdates }}
         file_descriptor_path: {{ fileDescriptorPath }}
-        format: {{ format }}
+        format: {{ format | default('JSON') }}
         message_name: {{ messageName }}
         offset_deduplication: {{ offsetDeduplication }}
         redistribute_by_record_key: {{ redistributeByRecordKey }}

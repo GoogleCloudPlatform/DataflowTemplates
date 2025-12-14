@@ -102,7 +102,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
             .addParameter("topic", topicName)
             .addParameter(
                 "schema",
-                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}, \"ignored\":{\"type\":\"string\"}}}")
+                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"},\"ignored\":{\"type\":\"string\"}}}")
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
