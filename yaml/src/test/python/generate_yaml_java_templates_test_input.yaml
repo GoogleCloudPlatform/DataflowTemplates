@@ -1,0 +1,40 @@
+template:
+  name: "Kafka_to_BigQuery_Yaml"
+  category: "STREAMING"
+  display_name: "Kafka to BigQuery (YAML)"
+  description: "The Apache Kafka ..."
+  flex_container_name: "kafka-to-bigquery-yaml"
+  yamlTemplateFile: "generate_yaml_java_templates_input.yaml"
+  filesToCopy: >
+    {"template.yaml", "main.py", "requirements.txt"}
+  documentation: >
+    https://cloud.google.com/dataflow/docs/guides/templates/provided/kafka-to-bigquery
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+    "req1", "req2"
+  }
+  streaming: true
+  hidden: false
+  parameters:
+    - name: "param1"
+      type: "text"
+      description: "A text parameter"
+      help: ""
+      example: ""
+      required: true
+    - name: "param2"
+      type: "integer"
+      description: "An integer parameter"
+      help: ""
+      example: ""
+      default: 10
+    - name: "param3"
+      type: "enum"
+      description: "An enum parameter"
+      default: "VALUE1"
+    - name: "param4"
+      type: "password"
+      description: "A password parameter"
+    - name: "param5"
+      type: "map"
+      description: "A map parameter"

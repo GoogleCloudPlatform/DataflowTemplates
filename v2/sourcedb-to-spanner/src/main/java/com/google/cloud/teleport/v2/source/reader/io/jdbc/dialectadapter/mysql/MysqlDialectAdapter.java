@@ -364,6 +364,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("MEDIUMINT", IndexType.NUMERIC)
           .put("SMALLINT", IndexType.NUMERIC)
           .put("TINYINT", IndexType.NUMERIC)
+          .put("BIT", IndexType.NUMERIC)
           // String types: Ref https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
           .put("CHAR", IndexType.STRING)
           .put("VARCHAR", IndexType.STRING)
@@ -375,6 +376,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TINYTEXT", IndexType.STRING)
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
+          .put("YEAR", IndexType.NUMERIC)
           .build();
 
   /**

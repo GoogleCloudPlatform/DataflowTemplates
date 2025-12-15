@@ -32,6 +32,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.beam.sdk.coders.StringUtf8Coder;
@@ -122,6 +123,7 @@ public class DeadLetterQueue implements Serializable {
           .withDlqDirectory(dlqUri)
           .withTmpDirectory(dlqUri + "/tmp")
           .setIncludePaneInfo(true)
+          .setFileNamePrefix(UUID.randomUUID().toString())
           .build();
     }
   }
