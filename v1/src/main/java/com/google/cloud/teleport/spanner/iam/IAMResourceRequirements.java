@@ -18,7 +18,10 @@ package com.google.cloud.teleport.spanner.iam;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Represents the IAM permissions required on a specific GCP resource. */
+/**
+ * Represents the IAM permissions required on a specific GCP resource. This can be expanded to
+ * contain resource name when permission specific to resources need to be validated.
+ */
 public class IAMResourceRequirements {
   private final List<String> permissions;
 

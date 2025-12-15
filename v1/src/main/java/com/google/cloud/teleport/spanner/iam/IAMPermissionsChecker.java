@@ -46,46 +46,46 @@ public class IAMPermissionsChecker {
   private static final String RESOURCE_NAME_FORMAT = "projects/%s";
   private final String projectIdResource;
 
-  @VisibleForTesting static CloudResourceManager resourceManagerForTesting;
+  private final CloudResourceManager resourceManager;
 
-  public IAMPermissionsChecker(String projectId, GcpOptions gcpOptions) {
+  public IAMPermissionsChecker(String projectId, GcpOptions gcpOptions)
+      throws GeneralSecurityException, IOException {
     this.credential = gcpOptions.getGcpCredential();
     this.projectIdResource = String.format("projects/%s", projectId);
+    resourceManager = createCloudResourceManagerService();
   }
 
   @VisibleForTesting
-  static void setResourceManagerForTesting(CloudResourceManager resourceManager) {
-    resourceManagerForTesting = resourceManager;
+  IAMPermissionsChecker(
+      String projectId, GcpOptions gcpOptions, CloudResourceManager resourceManager) {
+    this.credential = gcpOptions.getGcpCredential();
+    this.projectIdResource = String.format("projects/%s", projectId);
+    this.resourceManager = resourceManager;
   }
 
   /**
-   * Checks IAM permissions for a list of requirements.
+   * Checks IAM permissions for a list of requirements. This api should be called once with all the
+   * requirements.
    *
    * @param requirements List of resources and required permissions.
    * @return List of results, only missing permissions are included. Empty list indicate all the
    *     requirements are met.
    */
   public IAMCheckResult check(List<IAMResourceRequirements> requirements) {
-    try {
-      CloudResourceManager resourceManager = createCloudResourceManagerService();
+    List<String> permissionList =
+        requirements.stream()
+            .map(IAMResourceRequirements::getPermissions)
+            .flatMap(Collection::stream)
+            .toList();
+    HashSet<String> grantedPermissions =
+        new HashSet<>(checkPermission(resourceManager, projectIdResource, permissionList));
 
-      List<String> permissionList =
-          requirements.stream()
-              .map(IAMResourceRequirements::getPermissions)
-              .flatMap(Collection::stream)
-              .toList();
-      HashSet<String> grantedPermissions =
-          new HashSet<>(checkPermission(resourceManager, projectIdResource, permissionList));
+    List<String> missingPermissions =
+        permissionList.stream()
+            .filter(p -> !grantedPermissions.contains(p))
+            .collect(Collectors.toList());
 
-      List<String> missingPermissions =
-          permissionList.stream()
-              .filter(p -> !grantedPermissions.contains(p))
-              .collect(Collectors.toList());
-
-      return new IAMCheckResult(projectIdResource, missingPermissions);
-    } catch (IOException | GeneralSecurityException e) {
-      throw new RuntimeException(e);
-    }
+    return new IAMCheckResult(projectIdResource, missingPermissions);
   }
 
   private List<String> checkPermission(
@@ -101,15 +101,13 @@ public class IAMPermissionsChecker {
       List<String> granted = testIamPermissionsResponse.getPermissions();
       return granted == null ? Collections.emptyList() : granted;
     } catch (IOException e) {
+      LOG.error("Error checking permissions for resource {}", resourceName, e);
       throw new RuntimeException("Failed to check project permissions", e);
     }
   }
 
   private CloudResourceManager createCloudResourceManagerService()
       throws IOException, GeneralSecurityException {
-    if (resourceManagerForTesting != null) {
-      return resourceManagerForTesting;
-    }
     HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
     JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
     HttpRequestInitializer initializer = getHttpRequestInitializer(this.credential);

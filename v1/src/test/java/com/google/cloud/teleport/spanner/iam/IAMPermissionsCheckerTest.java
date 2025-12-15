@@ -53,10 +53,7 @@ public class IAMPermissionsCheckerTest {
   public void setUp() throws IOException {
     MockitoAnnotations.initMocks(this);
     when(mockGcpOptions.getGcpCredential()).thenReturn(mockCredentials);
-    checker = new IAMPermissionsChecker("test-project", mockGcpOptions);
-
-    // Mock the CloudResourceManager service creation
-    IAMPermissionsChecker.setResourceManagerForTesting(mockResourceManager);
+    checker = new IAMPermissionsChecker("test-project", mockGcpOptions, mockResourceManager);
   }
 
   @Test
@@ -73,7 +70,7 @@ public class IAMPermissionsCheckerTest {
     IAMCheckResult result = checker.check(Collections.singletonList(requirements));
 
     // Assert
-    assertTrue(result.isSuccess());
+    assertTrue(result.isPermissionsAvailable());
     assertTrue(result.getMissingPermissions().isEmpty());
   }
 

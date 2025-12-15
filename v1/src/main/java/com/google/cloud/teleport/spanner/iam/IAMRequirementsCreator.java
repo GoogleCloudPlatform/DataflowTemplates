@@ -18,8 +18,13 @@ package com.google.cloud.teleport.spanner.iam;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 
+/**
+ * The goal of this class contain the list of permissions required by various templates. This will
+ * help in maintaining centralised lists for all templates.
+ */
 public class IAMRequirementsCreator {
-  private static final List<String> SPANNER_PERMISSIONS =
+  /** Default permissions required by templates. */
+  private static final List<String> DEFAULT_SPANNER_PERMISSIONS =
       ImmutableList.of(
           "spanner.databases.beginOrRollbackReadWriteTransaction",
           "spanner.databases.beginPartitionedDmlTransaction",
@@ -40,6 +45,6 @@ public class IAMRequirementsCreator {
           "spanner.instances.list");
 
   public static IAMResourceRequirements createSpannerResourceRequirement() {
-    return new IAMResourceRequirements(SPANNER_PERMISSIONS);
+    return new IAMResourceRequirements(DEFAULT_SPANNER_PERMISSIONS);
   }
 }

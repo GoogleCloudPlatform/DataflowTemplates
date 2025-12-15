@@ -28,6 +28,8 @@ import com.google.cloud.teleport.spanner.iam.IAMPermissionsChecker;
 import com.google.cloud.teleport.spanner.iam.IAMRequirementsCreator;
 import com.google.cloud.teleport.spanner.iam.IAMResourceRequirements;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
+import java.io.IOException;
+import java.security.GeneralSecurityException;
 import java.util.Collections;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
@@ -40,6 +42,8 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.ValueProvider;
 import org.apache.beam.sdk.options.ValueProvider.NestedValueProvider;
 import org.apache.beam.sdk.transforms.SerializableFunction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Dataflow template that exports a Cloud Spanner database to Avro files in GCS.
@@ -78,6 +82,7 @@ import org.apache.beam.sdk.transforms.SerializableFunction;
       "In addition to the Identity and Access Management (IAM) roles necessary to run Dataflow jobs, you must also have the <a href=\"https://cloud.google.com/spanner/docs/export#iam\">appropriate IAM roles</a> for reading your Cloud Spanner data and writing to your Cloud Storage bucket."
     })
 public class ExportPipeline {
+  private static final Logger LOG = LoggerFactory.getLogger(ExportPipeline.class);
 
   /** Options for Export pipeline. */
   public interface ExportPipelineOptions extends PipelineOptions {
@@ -295,24 +300,29 @@ public class ExportPipeline {
   }
 
   private static void validateRequiredPermissions(ExportPipelineOptions options) {
-    IAMResourceRequirements spannerRequirements =
-        IAMRequirementsCreator.createSpannerResourceRequirement();
+    try {
+      IAMResourceRequirements spannerRequirements =
+          IAMRequirementsCreator.createSpannerResourceRequirement();
 
-    GcpOptions gcpOptions = options.as(GcpOptions.class);
+      GcpOptions gcpOptions = options.as(GcpOptions.class);
 
-    IAMPermissionsChecker iamPermissionsChecker =
-        new IAMPermissionsChecker(gcpOptions.getProject(), gcpOptions);
-    IAMCheckResult missingPermission =
-        iamPermissionsChecker.check(Collections.singletonList(spannerRequirements));
-    if (missingPermission.isSuccess()) {
-      return;
+      IAMPermissionsChecker iamPermissionsChecker =
+          new IAMPermissionsChecker(gcpOptions.getProject(), gcpOptions);
+      IAMCheckResult missingPermission =
+          iamPermissionsChecker.check(Collections.singletonList(spannerRequirements));
+      if (missingPermission.isPermissionsAvailable()) {
+        return;
+      }
+      String errorString =
+          "For resource: "
+              + missingPermission.getResourceName()
+              + ", missing permissions: "
+              + missingPermission.getMissingPermissions()
+              + ";";
+      throw new RuntimeException(errorString);
+    } catch (GeneralSecurityException | IOException e) {
+      LOG.error("Error while validating permissions for spanner", e);
+      throw new RuntimeException(e);
     }
-    String errorString =
-        "For resource: "
-            + missingPermission.getResourceName()
-            + ", missing permissions: "
-            + missingPermission.getMissingPermissions()
-            + ";";
-    throw new RuntimeException(errorString);
   }
 }
