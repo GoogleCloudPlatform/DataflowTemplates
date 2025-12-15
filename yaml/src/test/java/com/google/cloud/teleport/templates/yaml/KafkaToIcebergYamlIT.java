@@ -144,6 +144,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
 
     // Verify the records are written to the Iceberg table
     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+    LOG.info("Iceberg records: {}", icebergRecords);
     assertEquals(5, icebergRecords.size());
 
     // Verify the data correctness
@@ -157,6 +158,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
       KafkaProducer<String, String> producer, String topicName, String key, String value) {
     try {
       producer.send(new ProducerRecord<>(topicName, key, value)).get();
+      LOG.info("Published record to Kafka: with key {} and value {}", key, value);
     } catch (Exception e) {
       throw new RuntimeException("Error publishing record to Kafka", e);
     }
