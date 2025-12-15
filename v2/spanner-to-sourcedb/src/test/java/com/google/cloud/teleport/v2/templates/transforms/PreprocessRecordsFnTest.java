@@ -18,7 +18,6 @@ package com.google.cloud.teleport.v2.templates.transforms;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import java.util.Arrays;
-import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.DataChangeRecord;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
@@ -38,10 +37,7 @@ public class PreprocessRecordsFnTest {
   @Test
   public void basicTest() {
     PCollection<TrimmedShardedDataChangeRecord> output =
-        pipeline
-            .apply(Create.of(getDataChangeRecord()))
-            .apply(ParDo.of(new PreprocessRecordsFn()))
-            .setCoder(SerializableCoder.of(TrimmedShardedDataChangeRecord.class));
+        pipeline.apply(Create.of(getDataChangeRecord())).apply(ParDo.of(new PreprocessRecordsFn()));
 
     PAssert.that(output)
         .containsInAnyOrder(
