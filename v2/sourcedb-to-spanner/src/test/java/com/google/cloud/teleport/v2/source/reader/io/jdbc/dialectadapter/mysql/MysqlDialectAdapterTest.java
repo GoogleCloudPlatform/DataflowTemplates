@@ -291,87 +291,7 @@ public class MysqlDialectAdapterTest {
             "binary",
             "year");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
-        ImmutableList.of(
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColFloat1")
-                .setIndexName("testIndexFloat1")
-                .setIsUnique(false)
-                .setIsPrimary(false)
-                .setCardinality(42L)
-                .setOrdinalPosition(1)
-                .setIndexType(IndexType.FLOAT)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColFloat2")
-                .setIndexName("testIndexFloat2")
-                .setIsUnique(false)
-                .setIsPrimary(false)
-                .setCardinality(42L)
-                .setOrdinalPosition(1)
-                .setIndexType(IndexType.FLOAT)
-                .setDecimalStepSize(new BigDecimal("0.000001")) // FLOAT(p, d = 6)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testCol1")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(42L)
-                .setIndexType(IndexType.NUMERIC)
-                .setOrdinalPosition(1)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColBit")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(42L)
-                .setIndexType(IndexType.NUMERIC)
-                .setOrdinalPosition(4)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testCol2")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(42L)
-                .setIndexType(IndexType.STRING)
-                .setOrdinalPosition(2)
-                .setCollationReference(
-                    CollationReference.builder()
-                        .setDbCharacterSet("`utf8mb4`")
-                        .setDbCollation("`utf8mb4_0900_ai_ci`")
-                        .setPadSpace(false)
-                        .build())
-                .setStringMaxLength(42)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColVarBinary")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(42L)
-                .setIndexType(IndexType.BINARY)
-                .setOrdinalPosition(3)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColBinary")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(42L)
-                .setIndexType(IndexType.BINARY)
-                .setOrdinalPosition(4)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColYear")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(100L)
-                .setIndexType(IndexType.NUMERIC)
-                .setOrdinalPosition(6)
-                .build());
+        getExpectedSourceColumnIndexInfosForBasicIndexes(false);
 
     final JdbcSchemaReference sourceSchemaReference =
         JdbcSchemaReference.builder().setDbName("testDB").build();
@@ -390,7 +310,8 @@ public class MysqlDialectAdapterTest {
           .thenReturn(InformationSchemaStatsCols.colList().get(i));
     }
 
-    wireMockResultSet(colTypes, expectedSourceColumnIndexInfos, mockResultSet);
+    wireMockResultSet(
+        colTypes, getExpectedSourceColumnIndexInfosForBasicIndexes(true), mockResultSet);
 
     ImmutableMap<String, ImmutableList<SourceColumnIndexInfo>> discoveredIndexes =
         new MysqlDialectAdapter(MySqlVersion.DEFAULT)
@@ -402,6 +323,93 @@ public class MysqlDialectAdapterTest {
 
     assertThat(discoveredIndexes)
         .isEqualTo(ImmutableMap.of(testTables.get(0), expectedSourceColumnIndexInfos));
+  }
+
+  private ImmutableList<SourceColumnIndexInfo> getExpectedSourceColumnIndexInfosForBasicIndexes(
+      boolean isForMock) {
+    return ImmutableList.of(
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColFloat1")
+            .setIndexName("testIndexFloat1")
+            .setIsUnique(false)
+            .setIsPrimary(false)
+            .setCardinality(42L)
+            .setOrdinalPosition(1)
+            .setIndexType(IndexType.FLOAT)
+            // to test default decimal step size when not specified in column definition
+            .setDecimalStepSize(isForMock ? null : new BigDecimal("0.00001"))
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColFloat2")
+            .setIndexName("testIndexFloat2")
+            .setIsUnique(false)
+            .setIsPrimary(false)
+            .setCardinality(42L)
+            .setOrdinalPosition(1)
+            .setIndexType(IndexType.FLOAT)
+            .setDecimalStepSize(new BigDecimal("0.000001")) // FLOAT(p, d = 6)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testCol1")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(42L)
+            .setIndexType(IndexType.NUMERIC)
+            .setOrdinalPosition(1)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColBit")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(42L)
+            .setIndexType(IndexType.NUMERIC)
+            .setOrdinalPosition(4)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testCol2")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(42L)
+            .setIndexType(IndexType.STRING)
+            .setOrdinalPosition(2)
+            .setCollationReference(
+                CollationReference.builder()
+                    .setDbCharacterSet("`utf8mb4`")
+                    .setDbCollation("`utf8mb4_0900_ai_ci`")
+                    .setPadSpace(false)
+                    .build())
+            .setStringMaxLength(42)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColVarBinary")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(42L)
+            .setIndexType(IndexType.BINARY)
+            .setOrdinalPosition(3)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColBinary")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(42L)
+            .setIndexType(IndexType.BINARY)
+            .setOrdinalPosition(4)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColYear")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(100L)
+            .setIndexType(IndexType.NUMERIC)
+            .setOrdinalPosition(6)
+            .build());
   }
 
   @Test

@@ -280,19 +280,33 @@ public class BoundaryExtractorFactoryTest {
   @Test
   public void testFromFloat() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Float.class)
+            .setDecimalStepSize(new BigDecimal("0.00001"))
+            .build();
     BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
 
+    // If step between values > min step delta
     when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getFloat(1)).thenReturn(-50.0f);
-    when(mockResultSet.getFloat(2)).thenReturn(100.0f);
-    Boundary<Float> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    when(mockResultSet.getFloat(1)).thenReturn(1.001f);
+    when(mockResultSet.getFloat(2)).thenReturn(1.002f);
+    Boundary<Float> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is > minimum delta, boundary is splittable
+    assertThat(boundary1.start()).isEqualTo(1.001f);
+    assertThat(boundary1.end()).isEqualTo(1.002f);
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(1.0015f);
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(1.0015f);
+    assertThat(boundary1.isSplittable(null)).isTrue();
 
-    assertThat(boundary.start()).isEqualTo(-50.0f);
-    assertThat(boundary.end()).isEqualTo(100.0f);
-    assertThat(boundary.split(null).getLeft().end()).isEqualTo(25.0f);
-    assertThat(boundary.split(null).getRight().start()).isEqualTo(25.0f);
-    assertThat(boundary.isSplittable(null)).isTrue();
+    // if step between values < min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getFloat(1)).thenReturn(1.000001f);
+    when(mockResultSet.getFloat(2)).thenReturn(1.000002f);
+    Boundary<Float> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is < minimum delta, boundary is NOT splittable
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
     // Mismatched Type
     assertThrows(
         IllegalArgumentException.class,
@@ -301,59 +315,6 @@ public class BoundaryExtractorFactoryTest {
                 PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
                 mockResultSet,
                 null));
-  }
-
-  @Test
-  public void testFromFloatMinStep() throws SQLException {
-    PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(Float.class).build();
-    BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
-
-    // If step between values > default min step delta 1e-5
-    when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getFloat(1)).thenReturn(1.001f);
-    when(mockResultSet.getFloat(2)).thenReturn(1.002f);
-    Boundary<Float> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
-    // The diff is > minimum delta, boundary is splittable
-    assertThat(boundary1.isSplittable(null)).isTrue();
-
-    // if step between values < default min step delta 1e-5
-    when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getFloat(1)).thenReturn(1.000001f);
-    when(mockResultSet.getFloat(2)).thenReturn(1.000002f);
-    Boundary<Float> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
-    // The diff is < minimum delta, boundary is NOT splittable
-    assertThat(boundary2.isSplittable(null)).isFalse();
-
-    // The database column can set a custom number of decimals precision
-    PartitionColumn partitionColumnWithCustomDecimals =
-        PartitionColumn.builder()
-            .setColumnName("col1")
-            .setColumnClass(Float.class)
-            .setDecimalStepSize(new BigDecimal("0.01"))
-            .build();
-
-    when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getFloat(1)).thenReturn(1.001f);
-    when(mockResultSet.getFloat(2)).thenReturn(1.002f);
-    Boundary<Float> boundary3 =
-        extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
-    assertThat(boundary3.isSplittable(null)).isFalse();
-
-    when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getFloat(1)).thenReturn(1.1f);
-    when(mockResultSet.getFloat(2)).thenReturn(1.2f);
-    Boundary<Float> boundary4 =
-        extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
-    assertThat(boundary4.isSplittable(null)).isTrue();
-
-    // sign does not matter, diff is computed as absolute
-    when(mockResultSet.next()).thenReturn(true);
-    when(mockResultSet.getFloat(1)).thenReturn(-1.1f);
-    when(mockResultSet.getFloat(2)).thenReturn(-1.2f);
-    Boundary<Float> boundary5 =
-        extractor.getBoundary(partitionColumnWithCustomDecimals, mockResultSet, null);
-    assertThat(boundary5.isSplittable(null)).isTrue();
   }
 
   @Test

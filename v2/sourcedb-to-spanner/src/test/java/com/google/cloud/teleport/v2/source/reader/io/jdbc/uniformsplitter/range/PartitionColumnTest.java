@@ -94,5 +94,13 @@ public class PartitionColumnTest {
                         .build())
                 // No Max Length.
                 .build());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PartitionColumn.builder()
+                .setColumnName("col1")
+                .setColumnClass(Float.class)
+                // No decimal step size
+                .build());
   }
 }

@@ -311,7 +311,8 @@ public final class JdbcIoWrapper implements IoWrapper {
                 IndexType.STRING,
                 IndexType.BIG_INT_UNSIGNED,
                 IndexType.BINARY,
-                IndexType.TIME_STAMP);
+                IndexType.TIME_STAMP,
+                IndexType.FLOAT);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
         //    1. support non-primary unique indexes.

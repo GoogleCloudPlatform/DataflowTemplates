@@ -446,7 +446,7 @@ INSERT INTO `tiny_text_pk_table` (`id`, `tiny_text_pk_col`) VALUES ('AA==', 'AA=
 INSERT INTO `date_time_pk_table` (`id`, `date_time_pk_col`) VALUES ('1000-01-01 00:00:00', '1000-01-01 00:00:00'), ('1000-01-01 00:00:01', '1000-01-01 00:00:01'),
                                                                    ('2001-01-01 00:01:54.123456', '2001-01-01 00:01:54.123456'),
                                                                    ('9999-12-30 23:59:59', '9999-12-30 23:59:59'),  ('9999-12-31 23:59:59', '9999-12-31 23:59:59');
-INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 3.4E38, -3.4E38);
+INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (3.4E38, 3.4E38), (-3.4E38, -3.4E38);
 
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `date_time_pk_table` (`id`, `date_time_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');
