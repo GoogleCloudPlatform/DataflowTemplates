@@ -16,7 +16,9 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dao.spanner;
 
 import com.google.cloud.spanner.DatabaseClient;
+import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;
@@ -63,19 +65,21 @@ public class SpannerDao {
       String tableName, com.google.cloud.spanner.Key primaryKey) {
     try {
       DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
-      Struct row =
+      ResultSet rs =
           databaseClient
               .singleUse()
-              .readRow(
+              .read(
                   tableName,
-                  primaryKey,
+                  KeySet.singleKey(primaryKey),
                   Arrays.asList(
-                      Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME));
+                      Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME),
+                  Options.priority(spannerConfig.getRpcPriority().get()));
 
       // This is the first event for the primary key and hence the latest event.
-      if (row == null) {
+      if (!rs.next()) {
         return null;
       }
+      Struct row = rs.getCurrentRowAsStruct();
 
       return new ShadowTableRecord(row.getTimestamp(0), row.getLong(1));
     } catch (Exception e) {
