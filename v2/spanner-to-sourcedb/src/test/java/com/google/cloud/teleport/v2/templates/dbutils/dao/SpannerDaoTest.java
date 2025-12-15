@@ -20,14 +20,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
+import com.google.cloud.spanner.Options.ReadOption;
 import com.google.cloud.spanner.ReadOnlyTransaction;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
@@ -73,7 +77,8 @@ public final class SpannerDaoTest {
 
   @Test
   public void testGetShadowTableRecordReturnsRecord() {
-    SpannerDao spannerDao = new SpannerDao(mockSpannerAccessor);
+    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+
     Struct row =
         Struct.newBuilder()
             .set(Constants.PROCESSED_COMMIT_TS_COLUMN_NAME)
@@ -82,8 +87,13 @@ public final class SpannerDaoTest {
             .to(1)
             .build();
 
-    when(mockReadOnlyTransaction.readRow(eq("junk"), any(), any(Iterable.class))).thenReturn(row);
-    ShadowTableRecord response = spannerDao.getShadowTableRecord("junk", null);
+    SpannerDao spannerDao = new SpannerDao(mockSpannerAccessor);
+    when(mockReadOnlyTransaction.read(
+            eq("junk"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(row);
+    ShadowTableRecord response = spannerDao.getShadowTableRecord("junk", Key.of(1));
     spannerDao.close();
 
     ShadowTableRecord expectedResponse =
@@ -93,12 +103,32 @@ public final class SpannerDaoTest {
     assertThat(response.getRecordSequence()).isEqualTo(expectedResponse.getRecordSequence());
   }
 
+  @Test
+  public void testGetShadowTableRecordNoRecord() {
+    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+    SpannerDao spannerDao = new SpannerDao(mockSpannerAccessor);
+
+    // No pk
+    ShadowTableRecord nullResponse = spannerDao.getShadowTableRecord("junk", null);
+    assertThat(nullResponse).isNull();
+
+    // Row not found
+    when(mockReadOnlyTransaction.read(
+            eq("junk"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(false);
+    ShadowTableRecord response = spannerDao.getShadowTableRecord("junk", Key.of(1));
+    spannerDao.close();
+    assertThat(response).isNull();
+  }
+
   @Test(expected = RuntimeException.class)
   public void testGetShadowTableRecordException() {
     SpannerDao spannerDao = new SpannerDao(mockSpannerAccessor);
     doThrow(new RuntimeException("generic exception"))
-        .when(mockReadOnlyTransaction)
-        .readRow(eq("error"), any(), any(Iterable.class));
+        .when(
+            mockReadOnlyTransaction.read(
+                eq("error"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)));
     ShadowTableRecord response = spannerDao.getShadowTableRecord("error", null);
   }
 

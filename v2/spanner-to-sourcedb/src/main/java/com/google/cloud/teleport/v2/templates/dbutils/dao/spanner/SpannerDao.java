@@ -58,11 +58,15 @@ public class SpannerDao {
 
   // used for unit testing
   public SpannerDao(SpannerAccessor spannerAccessor) {
+    this.spannerConfig = SpannerConfig.create();
     this.spannerAccessor = spannerAccessor;
   }
 
   public ShadowTableRecord getShadowTableRecord(
       String tableName, com.google.cloud.spanner.Key primaryKey) {
+    if (primaryKey == null) {
+      return null;
+    }
     try {
       DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
       ResultSet rs =
