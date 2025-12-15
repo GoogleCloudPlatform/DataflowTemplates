@@ -28,3 +28,13 @@ template:
       help: ""
       example: ""
       default: 10
+    - name: "param3"
+      type: "enum"
+      description: "An enum parameter"
+      default: "VALUE1"
+    - name: "param4"
+      type: "password"
+      description: "A password parameter"
+    - name: "param5"
+      type: "map"
+      description: "A map parameter"
