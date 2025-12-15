@@ -17,23 +17,21 @@ package com.google.cloud.teleport.spanner.iam;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-import com.google.api.services.cloudresourcemanager.v3.CloudResourceManager;
-import com.google.api.services.cloudresourcemanager.v3.model.TestIamPermissionsResponse;
-import com.google.auth.Credentials;
-import java.io.IOException;
+import com.google.cloud.spanner.Database;
+import com.google.cloud.spanner.DatabaseAdminClient;
+import com.google.cloud.spanner.DatabaseNotFoundException;
+import com.google.cloud.spanner.Instance;
+import com.google.cloud.spanner.InstanceAdminClient;
+import com.google.cloud.spanner.Spanner;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.mockito.Answers;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -41,73 +39,98 @@ import org.mockito.MockitoAnnotations;
 @RunWith(JUnit4.class)
 public class IAMPermissionsCheckerTest {
 
-  @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-  private CloudResourceManager mockResourceManager;
+  private static final String PROJECT_ID = "test-project";
+  private static final String INSTANCE_ID = "test-instance";
+  private static final String DATABASE_ID = "test-database";
 
-  @Mock private GcpOptions mockGcpOptions;
-  @Mock private Credentials mockCredentials;
+  @Mock private Spanner spanner;
+  @Mock private InstanceAdminClient instanceAdminClient;
+  @Mock private DatabaseAdminClient databaseAdminClient;
+  @Mock private Instance instance;
+  @Mock private Database database;
 
   private IAMPermissionsChecker checker;
 
   @Before
-  public void setUp() throws IOException {
+  public void setUp() {
     MockitoAnnotations.initMocks(this);
-    when(mockGcpOptions.getGcpCredential()).thenReturn(mockCredentials);
-    checker = new IAMPermissionsChecker("test-project", mockGcpOptions);
+    checker = new IAMPermissionsChecker(spanner, PROJECT_ID);
 
-    // Mock the CloudResourceManager service creation
-    IAMPermissionsChecker.setResourceManagerForTesting(mockResourceManager);
+    when(spanner.getInstanceAdminClient()).thenReturn(instanceAdminClient);
+    when(spanner.getDatabaseAdminClient()).thenReturn(databaseAdminClient);
+    when(instanceAdminClient.getInstance(INSTANCE_ID)).thenReturn(instance);
+    when(databaseAdminClient.getDatabase(INSTANCE_ID, DATABASE_ID)).thenReturn(database);
   }
 
   @Test
-  public void testCheck_allPermissionsGranted() throws IOException {
-    // Arrange
-    List<String> requiredPermissions = Arrays.asList("p1", "p2");
-    IAMResourceRequirements requirements = new IAMResourceRequirements(requiredPermissions);
-    TestIamPermissionsResponse response =
-        new TestIamPermissionsResponse().setPermissions(requiredPermissions);
-    when(mockResourceManager.projects().testIamPermissions(anyString(), any()).execute())
-        .thenReturn(response);
+  public void testCheckSpannerInstanceRequirements_allPermissionsGranted() {
+    List<String> requiredPermissions =
+        Arrays.asList("spanner.instances.get", "spanner.instances.update");
+    when(instance.testIAMPermissions(requiredPermissions)).thenReturn(requiredPermissions);
 
-    // Act
-    IAMCheckResult result = checker.check(Collections.singletonList(requirements));
+    IAMCheckResult result =
+        checker.checkSpannerInstanceRequirements(requiredPermissions, INSTANCE_ID);
 
-    // Assert
-    assertTrue(result.isSuccess());
     assertTrue(result.getMissingPermissions().isEmpty());
+    assertEquals(
+        String.format("projects/%s/instances/%s", PROJECT_ID, INSTANCE_ID),
+        result.getResourceName());
   }
 
   @Test
-  public void testCheck_somePermissionsMissing() throws IOException {
-    // Arrange
-    List<String> requiredPermissions = Arrays.asList("p1", "p2", "p3");
-    List<String> grantedPermissions = Arrays.asList("p1", "p3");
-    IAMResourceRequirements requirements = new IAMResourceRequirements(requiredPermissions);
-    TestIamPermissionsResponse response =
-        new TestIamPermissionsResponse().setPermissions(grantedPermissions);
-    when(mockResourceManager.projects().testIamPermissions(anyString(), any()).execute())
-        .thenReturn(response);
+  public void testCheckSpannerInstanceRequirements_somePermissionsMissing() {
+    List<String> requiredPermissions =
+        Arrays.asList("spanner.instances.get", "spanner.instances.update");
+    List<String> grantedPermissions = Collections.singletonList("spanner.instances.get");
+    when(instance.testIAMPermissions(requiredPermissions)).thenReturn(grantedPermissions);
 
-    // Act
-    IAMCheckResult result = checker.check(Collections.singletonList(requirements));
+    IAMCheckResult result =
+        checker.checkSpannerInstanceRequirements(requiredPermissions, INSTANCE_ID);
 
-    // Assert
-    assertEquals(Arrays.asList("p2"), result.getMissingPermissions());
+    assertEquals(
+        Collections.singletonList("spanner.instances.update"), result.getMissingPermissions());
+    assertEquals(
+        String.format("projects/%s/instances/%s", PROJECT_ID, INSTANCE_ID),
+        result.getResourceName());
   }
 
   @Test
-  public void testCheck_noPermissionsGranted() throws IOException {
-    // Arrange
-    List<String> requiredPermissions = Arrays.asList("p1", "p2");
-    IAMResourceRequirements requirements = new IAMResourceRequirements(requiredPermissions);
-    TestIamPermissionsResponse response = new TestIamPermissionsResponse(); // No permissions
-    when(mockResourceManager.projects().testIamPermissions(anyString(), any()).execute())
-        .thenReturn(response);
+  public void testCheckSpannerDatabaseRequirements_allPermissionsGranted() {
+    List<String> requiredPermissions =
+        Arrays.asList("spanner.databases.get", "spanner.databases.update");
+    when(database.testIAMPermissions(requiredPermissions)).thenReturn(requiredPermissions);
 
-    // Act
-    IAMCheckResult result = checker.check(Collections.singletonList(requirements));
+    IAMCheckResult result =
+        checker.checkSpannerDatabaseRequirements(requiredPermissions, INSTANCE_ID, DATABASE_ID);
 
-    // Assert
-    assertEquals(requiredPermissions, result.getMissingPermissions());
+    assertTrue(result.getMissingPermissions().isEmpty());
+    assertEquals(
+        String.format("projects/%s/instances/%s/database/%s", PROJECT_ID, INSTANCE_ID, DATABASE_ID),
+        result.getResourceName());
+  }
+
+  @Test
+  public void testCheckSpannerDatabaseRequirements_somePermissionsMissing() {
+    List<String> requiredPermissions =
+        Arrays.asList("spanner.databases.get", "spanner.databases.update");
+    List<String> grantedPermissions = Collections.singletonList("spanner.databases.get");
+    when(database.testIAMPermissions(requiredPermissions)).thenReturn(grantedPermissions);
+
+    IAMCheckResult result =
+        checker.checkSpannerDatabaseRequirements(requiredPermissions, INSTANCE_ID, DATABASE_ID);
+
+    assertEquals(
+        Collections.singletonList("spanner.databases.update"), result.getMissingPermissions());
+    assertEquals(
+        String.format("projects/%s/instances/%s/database/%s", PROJECT_ID, INSTANCE_ID, DATABASE_ID),
+        result.getResourceName());
+  }
+
+  @Test(expected = DatabaseNotFoundException.class)
+  public void testCheckSpannerDatabaseRequirements_databaseNotFound() {
+    when(databaseAdminClient.getDatabase(INSTANCE_ID, DATABASE_ID))
+        .thenThrow(DatabaseNotFoundException.class);
+    checker.checkSpannerDatabaseRequirements(
+        Collections.singletonList("spanner.databases.get"), INSTANCE_ID, DATABASE_ID);
   }
 }

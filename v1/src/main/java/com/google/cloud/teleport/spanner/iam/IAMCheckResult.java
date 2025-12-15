@@ -36,7 +36,7 @@ public class IAMCheckResult {
     return new ArrayList<>(missingPermissions);
   }
 
-  public boolean isSuccess() {
+  public boolean isPermissionsAvailable() {
     return missingPermissions.isEmpty();
   }
 
@@ -49,7 +49,7 @@ public class IAMCheckResult {
         + ", missingPermissions="
         + missingPermissions
         + ", success="
-        + isSuccess()
+        + isPermissionsAvailable()
         + '}';
   }
 }

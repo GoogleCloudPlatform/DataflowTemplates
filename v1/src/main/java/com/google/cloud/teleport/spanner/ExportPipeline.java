@@ -23,16 +23,10 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ExportPipeline.ExportPipelineOptions;
-import com.google.cloud.teleport.spanner.iam.IAMCheckResult;
-import com.google.cloud.teleport.spanner.iam.IAMPermissionsChecker;
-import com.google.cloud.teleport.spanner.iam.IAMRequirementsCreator;
-import com.google.cloud.teleport.spanner.iam.IAMResourceRequirements;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
-import java.util.Collections;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -269,7 +263,6 @@ public class ExportPipeline {
             .withDatabaseId(options.getDatabaseId())
             .withRpcPriority(options.getSpannerPriority())
             .withDataBoostEnabled(options.getDataBoostEnabled());
-
     p.begin()
         .apply(
             "Run Export",
@@ -282,7 +275,6 @@ public class ExportPipeline {
                 options.getShouldExportRelatedTables(),
                 options.getShouldExportTimestampAsLogicalType(),
                 options.getAvroTempDirectory()));
-    validateRequiredPermissions(options);
     PipelineResult result = p.run();
     if (options.getWaitUntilFinish()
         &&
@@ -292,27 +284,5 @@ public class ExportPipeline {
         options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
     }
-  }
-
-  private static void validateRequiredPermissions(ExportPipelineOptions options) {
-    IAMResourceRequirements spannerRequirements =
-        IAMRequirementsCreator.createSpannerResourceRequirement();
-
-    GcpOptions gcpOptions = options.as(GcpOptions.class);
-
-    IAMPermissionsChecker iamPermissionsChecker =
-        new IAMPermissionsChecker(gcpOptions.getProject(), gcpOptions);
-    IAMCheckResult missingPermission =
-        iamPermissionsChecker.check(Collections.singletonList(spannerRequirements));
-    if (missingPermission.isSuccess()) {
-      return;
-    }
-    String errorString =
-        "For resource: "
-            + missingPermission.getResourceName()
-            + ", missing permissions: "
-            + missingPermission.getMissingPermissions()
-            + ";";
-    throw new RuntimeException(errorString);
   }
 }

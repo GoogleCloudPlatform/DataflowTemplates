@@ -23,16 +23,10 @@ import com.google.cloud.teleport.metadata.TemplateCreationParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter;
 import com.google.cloud.teleport.metadata.TemplateParameter.TemplateEnumOption;
 import com.google.cloud.teleport.spanner.ImportPipeline.Options;
-import com.google.cloud.teleport.spanner.iam.IAMCheckResult;
-import com.google.cloud.teleport.spanner.iam.IAMPermissionsChecker;
-import com.google.cloud.teleport.spanner.iam.IAMRequirementsCreator;
-import com.google.cloud.teleport.spanner.iam.IAMResourceRequirements;
 import com.google.cloud.teleport.spanner.spannerio.SpannerConfig;
-import java.util.Collections;
 import org.apache.beam.runners.dataflow.options.DataflowPipelineOptions;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
 import org.apache.beam.sdk.options.Default;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
@@ -246,6 +240,7 @@ public class ImportPipeline {
             .withInstanceId(options.getInstanceId())
             .withDatabaseId(options.getDatabaseId())
             .withRpcPriority(options.getSpannerPriority());
+
     p.apply(
         new ImportTransform(
             spannerConfig,
@@ -258,7 +253,6 @@ public class ImportPipeline {
             options.getDdlCreationTimeoutInMinutes(),
             options.getEarlyIndexCreateThreshold()));
 
-    validateRequiredPermissions(options);
     PipelineResult result = p.run();
 
     if (options.getWaitUntilFinish()
@@ -269,26 +263,5 @@ public class ImportPipeline {
         options.as(DataflowPipelineOptions.class).getTemplateLocation() == null) {
       result.waitUntilFinish();
     }
-  }
-
-  private static void validateRequiredPermissions(Options options) {
-    IAMResourceRequirements spannerRequirements =
-        IAMRequirementsCreator.createSpannerResourceRequirement();
-    GcpOptions gcpOptions = options.as(GcpOptions.class);
-
-    IAMPermissionsChecker iamPermissionsChecker =
-        new IAMPermissionsChecker(gcpOptions.getProject(), gcpOptions);
-    IAMCheckResult missingPermission =
-        iamPermissionsChecker.check(Collections.singletonList(spannerRequirements));
-    if (missingPermission.isSuccess()) {
-      return;
-    }
-    String errorString =
-        "For resource: "
-            + missingPermission.getResourceName()
-            + ", missing permissions: "
-            + missingPermission.getMissingPermissions()
-            + ";";
-    throw new RuntimeException(errorString);
   }
 }

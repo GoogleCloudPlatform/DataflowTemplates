@@ -18,28 +18,41 @@ package com.google.cloud.teleport.spanner.iam;
 import com.google.common.collect.ImmutableList;
 import java.util.List;
 
+/**
+ * The goal of this class contain the list of permissions required by various templates. This will
+ * help in maintaining centralised lists for all templates.
+ */
 public class IAMRequirementsCreator {
-  private static final List<String> SPANNER_PERMISSIONS =
+  /** Default permissions required by templates. */
+  private static final List<String> READ_SPANNER_PERMISSIONS =
+      ImmutableList.of(
+          "spanner.databases.beginReadOnlyTransaction",
+          "spanner.databases.get",
+          "spanner.databases.getDdl",
+          "spanner.databases.partitionQuery",
+          "spanner.databases.partitionRead",
+          "spanner.databases.read",
+          "spanner.databases.select");
+
+  private static final List<String> WRITE_SPANNER_PERMISSIONS =
       ImmutableList.of(
           "spanner.databases.beginOrRollbackReadWriteTransaction",
           "spanner.databases.beginPartitionedDmlTransaction",
           "spanner.databases.beginReadOnlyTransaction",
-          "spanner.databases.create",
-          "spanner.databases.drop",
-          "spanner.databases.get",
           "spanner.databases.getDdl",
-          "spanner.databases.list",
           "spanner.databases.partitionQuery",
           "spanner.databases.partitionRead",
           "spanner.databases.read",
           "spanner.databases.select",
           "spanner.databases.update",
           "spanner.databases.updateDdl",
-          "spanner.databases.write",
-          "spanner.instances.get",
-          "spanner.instances.list");
+          "spanner.databases.write");
 
-  public static IAMResourceRequirements createSpannerResourceRequirement() {
-    return new IAMResourceRequirements(SPANNER_PERMISSIONS);
+  public static List<String> createSpannerWriteResourceRequirement() {
+    return WRITE_SPANNER_PERMISSIONS;
+  }
+
+  public static List<String> createSpannerReadResourceRequirement() {
+    return READ_SPANNER_PERMISSIONS;
   }
 }

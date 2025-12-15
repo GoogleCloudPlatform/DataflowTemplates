@@ -15,121 +15,88 @@
  */
 package com.google.cloud.teleport.spanner.iam;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.HttpRequestInitializer;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.services.cloudresourcemanager.v3.CloudResourceManager;
-import com.google.api.services.cloudresourcemanager.v3.model.TestIamPermissionsRequest;
-import com.google.api.services.cloudresourcemanager.v3.model.TestIamPermissionsResponse;
-import com.google.auth.Credentials;
-import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.cloud.spanner.DatabaseNotFoundException;
+import com.google.cloud.spanner.Spanner;
+import com.google.cloud.spanner.SpannerOptions;
 import com.google.common.annotations.VisibleForTesting;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.beam.sdk.extensions.gcp.auth.NullCredentialInitializer;
-import org.apache.beam.sdk.extensions.gcp.options.GcpOptions;
+import java.util.stream.StreamSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Utility to check IAM permissions for various GCP resources. */
 public class IAMPermissionsChecker {
   private static final Logger LOG = LoggerFactory.getLogger(IAMPermissionsChecker.class);
-  private final Credentials credential;
-  private static final String RESOURCE_NAME_FORMAT = "projects/%s";
-  private final String projectIdResource;
+  private final String projectId;
 
-  @VisibleForTesting static CloudResourceManager resourceManagerForTesting;
+  private final Spanner spanner;
+  private static final String INSTANCE_STRING = "projects/%s/instances/%s";
+  private static final String DATABASE_STRING = "projects/%s/instances/%s/database/%s";
 
-  public IAMPermissionsChecker(String projectId, GcpOptions gcpOptions) {
-    this.credential = gcpOptions.getGcpCredential();
-    this.projectIdResource = String.format("projects/%s", projectId);
+  public IAMPermissionsChecker(String projectId) throws GeneralSecurityException, IOException {
+    SpannerOptions options = SpannerOptions.newBuilder().setProjectId(projectId).build();
+
+    this.spanner = options.getService();
+    this.projectId = projectId;
   }
 
   @VisibleForTesting
-  static void setResourceManagerForTesting(CloudResourceManager resourceManager) {
-    resourceManagerForTesting = resourceManager;
+  IAMPermissionsChecker(Spanner spanner, String projectId) {
+    this.projectId = projectId;
+    this.spanner = spanner;
   }
 
   /**
-   * Checks IAM permissions for a list of requirements.
+   * Checks IAM permissions for a list of requirements. This api should be called once with all the
+   * requirements.
    *
-   * @param requirements List of resources and required permissions.
    * @return List of results, only missing permissions are included. Empty list indicate all the
    *     requirements are met.
    */
-  public IAMCheckResult check(List<IAMResourceRequirements> requirements) {
-    try {
-      CloudResourceManager resourceManager = createCloudResourceManagerService();
+  public IAMCheckResult checkSpannerInstanceRequirements(
+      List<String> permissionList, String instanceId) {
 
-      List<String> permissionList =
-          requirements.stream()
-              .map(IAMResourceRequirements::getPermissions)
-              .flatMap(Collection::stream)
-              .toList();
-      HashSet<String> grantedPermissions =
-          new HashSet<>(checkPermission(resourceManager, projectIdResource, permissionList));
+    Iterable<String> grantedPermissions =
+        spanner.getInstanceAdminClient().getInstance(instanceId).testIAMPermissions(permissionList);
 
-      List<String> missingPermissions =
-          permissionList.stream()
-              .filter(p -> !grantedPermissions.contains(p))
-              .collect(Collectors.toList());
-
-      return new IAMCheckResult(projectIdResource, missingPermissions);
-    } catch (IOException | GeneralSecurityException e) {
-      throw new RuntimeException(e);
-    }
+    return new IAMCheckResult(
+        String.format(INSTANCE_STRING, projectId, instanceId),
+        fetchMissingPermission(permissionList, grantedPermissions));
   }
 
-  private List<String> checkPermission(
-      CloudResourceManager resourceManager, String resourceName, List<String> permissions) {
-    try {
+  /**
+   * Checks IAM permissions for a list of requirements. This api should be called once with all the
+   * requirements.
+   *
+   * @return List of results, only missing permissions are included. Empty list indicate all the
+   *     requirements are met.
+   * @throws DatabaseNotFoundException when database is not found.
+   */
+  public IAMCheckResult checkSpannerDatabaseRequirements(
+      List<String> permissionList, String instanceId, String databaseId)
+      throws DatabaseNotFoundException {
 
-      TestIamPermissionsRequest requestBody =
-          new TestIamPermissionsRequest().setPermissions(permissions);
-
-      TestIamPermissionsResponse testIamPermissionsResponse =
-          resourceManager.projects().testIamPermissions(resourceName, requestBody).execute();
-
-      List<String> granted = testIamPermissionsResponse.getPermissions();
-      return granted == null ? Collections.emptyList() : granted;
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to check project permissions", e);
-    }
+    Iterable<String> grantedPermissions =
+        spanner
+            .getDatabaseAdminClient()
+            .getDatabase(instanceId, databaseId)
+            .testIAMPermissions(permissionList);
+    return new IAMCheckResult(
+        String.format(DATABASE_STRING, projectId, instanceId, databaseId),
+        fetchMissingPermission(permissionList, grantedPermissions));
   }
 
-  private CloudResourceManager createCloudResourceManagerService()
-      throws IOException, GeneralSecurityException {
-    if (resourceManagerForTesting != null) {
-      return resourceManagerForTesting;
-    }
-    HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
-    JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-    HttpRequestInitializer initializer = getHttpRequestInitializer(this.credential);
-    CloudResourceManager service =
-        new CloudResourceManager.Builder(httpTransport, jsonFactory, initializer)
-            .setApplicationName("service-accounts")
-            .build();
-    return service;
-  }
+  private List<String> fetchMissingPermission(
+      List<String> requiredPermission, Iterable<String> grantedPermissions) {
 
-  private static HttpRequestInitializer getHttpRequestInitializer(Credentials credential)
-      throws IOException {
-    if (credential == null) {
-      try {
-        return GoogleCredential.getApplicationDefault();
-      } catch (Exception e) {
-        return new NullCredentialInitializer();
-      }
-    } else {
-      return new HttpCredentialsAdapter(credential);
-    }
+    HashSet<String> grantedPermissionsSet =
+        StreamSupport.stream(grantedPermissions.spliterator(), false)
+            .collect(Collectors.toCollection(HashSet::new));
+
+    return requiredPermission.stream().filter(p -> !grantedPermissionsSet.contains(p)).toList();
   }
 }
