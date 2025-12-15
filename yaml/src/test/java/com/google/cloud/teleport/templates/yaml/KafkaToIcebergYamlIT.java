@@ -62,8 +62,8 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
 
   // Iceberg Setup
   private static final String CATALOG_NAME = "hadoop_catalog";
-  private static final String NAMESPACE = "iceberg_namespace";
-  private static final String ICEBERG_TABLE_NAME = "iceberg_table";
+  private static final String NAMESPACE = "kafka_iceberg_namespace";
+  private static final String ICEBERG_TABLE_NAME = "kafka_iceberg_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
 
   @Before
@@ -97,12 +97,12 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
     LaunchConfig.Builder options =
         LaunchConfig.builder(testName, specPath)
             .addParameter(
-                "bootstrap_servers",
+                "bootstrapServers",
                 kafkaResourceManager.getBootstrapServers().replace("PLAINTEXT://", ""))
             .addParameter("topic", topicName)
             .addParameter(
                 "schema",
-                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}, \"ignored\":{\"type\":\"string\"}}}")
+                "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"},\"ignored\":{\"type\":\"string\"}}}")
             .addParameter("table", ICEBERG_TABLE_IDENTIFIER)
             .addParameter("catalogName", CATALOG_NAME)
             .addParameter(
@@ -144,12 +144,13 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
 
     // Verify the records are written to the Iceberg table
     List<Record> icebergRecords = icebergResourceManager.read(ICEBERG_TABLE_IDENTIFIER);
+    LOG.info("Iceberg records: {}", icebergRecords);
     assertEquals(5, icebergRecords.size());
 
     // Verify the data correctness
-    icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.getField("id")));
+    icebergRecords.sort(Comparator.comparingLong(r -> (Long) r.getField("id")));
     Record firstRecord = icebergRecords.get(0);
-    assertEquals(1, firstRecord.getField("id"));
+    assertEquals(1L, firstRecord.getField("id"));
     assertEquals("name_1", firstRecord.getField("name"));
   }
 
@@ -157,6 +158,7 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
       KafkaProducer<String, String> producer, String topicName, String key, String value) {
     try {
       producer.send(new ProducerRecord<>(topicName, key, value)).get();
+      LOG.info("Published record to Kafka: with key {} and value {}", key, value);
     } catch (Exception e) {
       throw new RuntimeException("Error publishing record to Kafka", e);
     }
