@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -33,29 +34,6 @@ public class BoundarySplitterFactory {
 
   private static final BigInteger SECONDS_TO_NANOS =
       BigInteger.valueOf(Duration.ofSeconds(1).toNanos());
-
-  private static final BoundarySplitter<BigDecimal> BIG_DECIMAL_SPLITTER =
-      new BoundarySplitter<BigDecimal>() {
-        @Override
-        public BigDecimal split(
-            BigDecimal start,
-            BigDecimal end,
-            PartitionColumn partitionColumn,
-            BoundaryTypeMapper typeMapper,
-            DoFn.ProcessContext c) {
-          return splitBigDecimal(start, end);
-        }
-
-        @Override
-        public boolean isSplittable(BigDecimal start, BigDecimal end) {
-          return BoundarySplitterFactory.this.isSplittable(start, end);
-        }
-
-        @Override
-        public boolean areValuesEqual(Object valueA, Object valueB) {
-          return BoundarySplitterFactory.this.areValuesEqual(valueA, valueB);
-        }
-      };
 
   private static final ImmutableMap<Class, BoundarySplitter<?>> splittermap =
       ImmutableMap.<Class, BoundarySplitter<?>>builder()
@@ -74,7 +52,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<BigInteger>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitBigIntegers(start, end))
-          .put(BigDecimal.class, BIG_DECIMAL_SPLITTER)
+          .put(
+              BigDecimal.class,
+              (BoundarySplitter<BigDecimal>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitBigDecimals(start, end, partitionColumn))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BYTE_ARRAY_CLASS,
@@ -181,45 +163,21 @@ public class BoundarySplitterFactory {
     return (start & end) + ((start ^ end) >> 1);
   }
 
-  private static BigDecimal splitBigDecimal(BigDecimal start, BigDecimal end) {
-    if (start == null && end == null) {
+  private static BigDecimal splitBigDecimals(
+      BigDecimal start, BigDecimal end, PartitionColumn partitionColumn) {
+    int scale = partitionColumn.numericScale() == null ? 0 : partitionColumn.numericScale();
+    BigInteger startBigInt = bigDecimalToBigInt(start, scale);
+    BigInteger endBigInt = bigDecimalToBigInt(end, scale);
+
+    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+    if (split == null) {
       return null;
     }
-    if (start == null) {
-      start = BigDecimal.ZERO;
-    }
-    if (end == null) {
-      end = BigDecimal.ZERO;
-    }
-
-    int scale = Math.max(start.scale(), end.scale());
-
-    BigInteger startInt = start.movePointRight(scale).toBigInteger();
-    BigInteger endInt = end.movePointRight(scale).toBigInteger();
-
-    BigInteger splitInt = splitBigIntegers(startInt, endInt);
-    if (splitInt == null) {
-      return null;
-    }
-    return new BigDecimal(splitInt, scale);
+    return new BigDecimal(split, scale);
   }
 
-  public boolean areValuesEqual(Object valueA, Object valueB) {
-    if (valueA instanceof BigDecimal b1 && valueB instanceof BigDecimal b2) {
-      BigDecimal diff = b1.subtract(b2).abs();
-      return diff.compareTo(decimalStepSize())
-          < 0; // provided by SourceColumnIndexInfo after Float PR
-    }
-    return Objects.equals(valueA, valueB);
-  }
-
-  public boolean isSplittable(BigDecimal start, BigDecimal end) {
-    BigDecimal mid = splitBigDecimal(start, end);
-    if (mid == null) {
-      return false;
-    }
-    // Only splittable if mid is distinct from start and end at schema precision
-    return !(areValuesEqual(mid, start) || areValuesEqual(mid, end));
+  private static BigInteger bigDecimalToBigInt(BigDecimal value, int scale) {
+    return value == null ? null : value.setScale(scale, RoundingMode.UNNECESSARY).unscaledValue();
   }
 
   private static byte[] splitBytes(byte[] start, byte[] end) {

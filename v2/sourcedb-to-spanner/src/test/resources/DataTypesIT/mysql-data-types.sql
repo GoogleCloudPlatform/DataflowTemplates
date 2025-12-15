@@ -459,7 +459,7 @@ INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 
 SET time_zone = SYSTEM;
 INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 2000);
 
-INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.67, 12345.67), (0.01, 0.01), (99999999.99, 99999999.99);
+INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.60, 12345.60), (0.01, 0.01), (-99999999.99, -99999999.99), (99999999, 99999999);
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

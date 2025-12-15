@@ -353,9 +353,7 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(42L)
                 .setIndexType(IndexType.DECIMAL)
                 .setOrdinalPosition(5)
-                .setPrecision(10)
-                .setScale(2)
-                .setDecimalStepSize(BigDecimal.ONE.scaleByPowerOfTen(-2))
+                .setNumericScale(5)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColYear")
@@ -514,7 +512,10 @@ public class MysqlDialectAdapterTest {
     // Note that CharMaxLength is the only integer column in this query till now.
     OngoingStubbing stubWasNull = when(mockResultSet.wasNull());
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
-      stubWasNull = stubWasNull.thenReturn(info.stringMaxLength() == null);
+      stubWasNull =
+          stubWasNull
+              .thenReturn(info.stringMaxLength() == null)
+              .thenReturn(info.numericScale() == null);
     }
 
     OngoingStubbing stubCharSetCol =
@@ -539,6 +540,12 @@ public class MysqlDialectAdapterTest {
               ? null
               : (info.collationReference().padSpace() ? "PAD SPACE" : "NO PAD");
       stubPadSpaceCol = stubPadSpaceCol.thenReturn(ret);
+    }
+    OngoingStubbing stubNumericScaleCol =
+        when(mockResultSet.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      int ret = (info.numericScale() == null) ? 0 : info.numericScale();
+      stubNumericScaleCol = stubNumericScaleCol.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());
     for (long i = 0; i < expectedSourceColumnIndexInfos.size(); i++) {

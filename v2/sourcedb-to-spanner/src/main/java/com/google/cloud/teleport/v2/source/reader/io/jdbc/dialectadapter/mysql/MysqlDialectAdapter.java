@@ -376,8 +376,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TINYTEXT", IndexType.STRING)
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
-          .put("DECIMAL", IndexType.DECIMAL)
           .put("YEAR", IndexType.NUMERIC)
+          .put("DECIMAL", IndexType.DECIMAL)
           .build();
 
   /**
@@ -425,8 +425,10 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
         @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
         @Nullable String padSpace = getPadSpaceString(rs);
+        int numericScale = rs.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL);
+        boolean hasNumericScale = !rs.wasNull();
         logger.debug(
-            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}",
+            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numericScale {}",
             colName,
             indexName,
             isUnique,
@@ -435,7 +437,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
             ordinalPosition,
             characterSet,
             collation,
-            padSpace);
+            padSpace,
+            numericScale);
         // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
         // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
@@ -453,16 +456,6 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           stringMaxLength = null;
         }
 
-        BigDecimal decimalStepSize = null;
-        if (indexType.equals(IndexType.FLOAT) || indexType.equals(IndexType.DECIMAL)) {
-          if (numericScale > 0) {
-            decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
-          } else {
-            decimalStepSize = BigDecimal.ONE;
-          }
-        }
-
-
         indexesBuilder.add(
             SourceColumnIndexInfo.builder()
                 .setColumnName(colName)
@@ -474,7 +467,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setIndexType(indexType)
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
-                .setDecimalStepSize(decimalStepSize)
+                .setNumericScale(hasNumericScale ? numericScale : null)
                 .build());
       }
     } catch (java.sql.SQLException e) {
@@ -712,6 +705,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
 
+    public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
+
     public static ImmutableList<String> colList() {
       return ImmutableList.of(
           COL_NAME_COL,
@@ -723,7 +718,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           CHAR_MAX_LENGTH_COL,
           CHARACTER_SET_COL,
           COLLATION_COL,
-          PAD_SPACE_COL);
+          PAD_SPACE_COL,
+          NUMERIC_SCALE_COL);
     }
 
     private InformationSchemaStatsCols() {}

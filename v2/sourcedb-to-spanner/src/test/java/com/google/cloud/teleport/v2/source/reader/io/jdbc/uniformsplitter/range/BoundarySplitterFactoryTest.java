@@ -99,7 +99,7 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
-  public void testBigDecimalBoundarySplitter() {
+  public void testBigDecimalBoundarySplitterWholeNumbers() {
     BoundarySplitter<BigDecimal> splitter = BoundarySplitterFactory.create(BigDecimal.class);
     BigDecimal start =
         new BigDecimal(BigInteger.valueOf(Long.MAX_VALUE).multiply(BigInteger.valueOf(10L)));
@@ -116,31 +116,48 @@ public class BoundarySplitterFactoryTest {
     BigDecimal fortyTwo = new BigDecimal(BigInteger.valueOf(42L));
     BigDecimal twentyOne = new BigDecimal(BigInteger.valueOf(21L));
 
-    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
-    assertThat(splitter.getSplitPoint(start, zero, null, null, null)).isEqualTo(startByTwo);
-    assertThat(splitter.getSplitPoint(longMin, longMax, null, null, null)).isEqualTo(negOne);
-    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
-    assertThat(splitter.getSplitPoint(fortyTwo, null, null, null, null)).isEqualTo(twentyOne);
-    assertThat(splitter.getSplitPoint(null, fortyTwo, null, null, null)).isEqualTo(twentyOne);
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(0)
+            .build();
+
+    assertThat(splitter.getSplitPoint(start, end, partitionColumn, null, null)).isEqualTo(mid);
+    assertThat(splitter.getSplitPoint(start, zero, partitionColumn, null, null))
+        .isEqualTo(startByTwo);
+    assertThat(splitter.getSplitPoint(longMin, longMax, partitionColumn, null, null))
+        .isEqualTo(negOne);
+    assertThat(splitter.getSplitPoint(null, null, partitionColumn, null, null)).isNull();
+    assertThat(splitter.getSplitPoint(fortyTwo, null, partitionColumn, null, null))
+        .isEqualTo(twentyOne);
+    assertThat(splitter.getSplitPoint(null, fortyTwo, partitionColumn, null, null))
+        .isEqualTo(twentyOne);
   }
 
   @Test
-  public void testBigDecimalBoundarySplitterWithScale() {
+  public void testBigDecimalBoundarySplitterRealNumbers() {
     BoundarySplitter<BigDecimal> splitter = BoundarySplitterFactory.create(BigDecimal.class);
-    BigDecimal start = new BigDecimal("1.23");
-    BigDecimal end = new BigDecimal("1.2345");
-    BigDecimal expectedMid = new BigDecimal("1.23225");
+    BigDecimal start = new BigDecimal("1.01");
+    BigDecimal end = new BigDecimal("1.03");
 
-    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(expectedMid);
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(2)
+            .build();
+    System.out.println(partitionColumn.numericScale());
 
-    BigDecimal same = new BigDecimal("42.42");
+    assertThat(splitter.getSplitPoint(start, end, partitionColumn, null, null))
+        .isEqualTo(new BigDecimal("1.02"));
 
-    assertThat(splitter.getSplitPoint(same, same, null, null, null)).isEqualTo(same);
-    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
-    assertThat(splitter.getSplitPoint(null, end, null, null, null))
-        .isEqualTo(new BigDecimal("0.61725"));
-    assertThat(splitter.getSplitPoint(start, null, null, null, null))
-        .isEqualTo(new BigDecimal("0.615"));
+    assertThat(splitter.getSplitPoint(start, start, partitionColumn, null, null)).isEqualTo(start);
+    assertThat(splitter.getSplitPoint(null, null, partitionColumn, null, null)).isNull();
+    assertThat(splitter.getSplitPoint(null, end, partitionColumn, null, null))
+        .isEqualTo(new BigDecimal("0.51"));
+    assertThat(splitter.getSplitPoint(start, null, partitionColumn, null, null))
+        .isEqualTo(new BigDecimal("0.50"));
   }
 
   @Test

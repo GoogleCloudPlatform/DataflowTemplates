@@ -19,8 +19,8 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
-import javax.annotation.Nullable;
 import java.math.BigDecimal;
+import javax.annotation.Nullable;
 
 /** Details about a partition column. */
 @AutoValue
@@ -36,9 +36,6 @@ public abstract class PartitionColumn implements Serializable {
    */
   public abstract Class columnClass();
 
-  @Nullable
-  public abstract BigDecimal decimalStepSize();
-
   /**
    * String Collation. Must be set for if {@link PartitionColumn#columnClass()} is {@link String}
    * and must not be set otherwise. Defaults to null.
@@ -52,11 +49,15 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Numeric scale for floating point and decimal columns. Null for other columns. */
+  @Nullable
+  public abstract Integer numericScale();
+
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
         .setStringMaxLength(null)
-        .setDecimalStepSize(null);
+        .setNumericScale(null);
   }
 
   public abstract Builder toBuilder();
@@ -72,7 +73,7 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setStringMaxLength(Integer value);
 
-    public abstract Builder setDecimalStepSize(BigDecimal value);
+    public abstract Builder setNumericScale(Integer value);
 
     abstract PartitionColumn autoBuild();
 
@@ -89,9 +90,9 @@ public abstract class PartitionColumn implements Serializable {
               + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == BigDecimal.class
-                  && partitionColumn.decimalStepSize() != null)
+                  && partitionColumn.numericScale() != null)
               || (partitionColumn.columnClass() != BigDecimal.class),
-          "Decimal columns must specify decimalStepSize. PartitionColumn = " + partitionColumn);
+          "Decimal columns must specify numeric scale. PartitionColumn = " + partitionColumn);
       return partitionColumn;
     }
   }

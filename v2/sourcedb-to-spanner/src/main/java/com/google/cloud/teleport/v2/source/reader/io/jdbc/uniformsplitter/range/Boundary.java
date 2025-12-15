@@ -97,6 +97,11 @@ public abstract class Boundary<T extends Serializable>
     return partitionColumn().stringMaxLength();
   }
 
+  @Nullable
+  Integer numericScale() {
+    return partitionColumn().numericScale();
+  }
+
   /**
    * @return builder for {@link Boundary}.
    */
@@ -245,6 +250,11 @@ public abstract class Boundary<T extends Serializable>
 
     public Builder<T> setCollation(CollationReference value) {
       this.partitionColumnBuilder().setStringCollation(value);
+      return this;
+    }
+
+    public Builder<T> setNumericScale(Integer value) {
+      this.partitionColumnBuilder().setNumericScale(value);
       return this;
     }
 

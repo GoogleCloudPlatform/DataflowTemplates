@@ -21,7 +21,6 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.sql.Timestamp;
 import javax.annotation.Nullable;
 
@@ -83,6 +82,10 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Numeric Scale for floating point and decimal columns. Null for other types. */
+  @Nullable
+  public abstract Integer numericScale();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -127,6 +130,8 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     public abstract Builder setCollationReference(CollationReference value);
 
     public abstract Builder setStringMaxLength(@Nullable Integer value);
+
+    public abstract Builder setNumericScale(@Nullable Integer value);
 
     abstract SourceColumnIndexInfo autoBuild();
 
