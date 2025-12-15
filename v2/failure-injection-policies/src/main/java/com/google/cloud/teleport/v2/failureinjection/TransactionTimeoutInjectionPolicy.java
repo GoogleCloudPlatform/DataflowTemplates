@@ -36,7 +36,10 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
   private static final long serialVersionUID = 1L;
 
   private static final String DEFAULT_BAKE_DURATION = "PT30M"; // 30 Minutes
-  private static final String DEFAULT_TRANSACTION_DELAY_DURATION = "PT260S"; // 4 Minutes 20 seconds
+  // The default Spanner transaction commit timeout is 1 minute. Setting the default delay to 80
+  // seconds ensures that the transaction times out.
+  private static final String DEFAULT_TRANSACTION_DELAY_DURATION = "PT80S"; // 1 minute 20 seconds
+  private static final double DEFAULT_TRANSACTION_DELAY_PROBABILITY = 0.2;
 
   // The JSON field name for the duration during which delays will be injected.
   private static final String TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD =
@@ -44,9 +47,12 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
 
   // The JSON field name for the duration of the delay itself.
   private static final String TRANSACTION_DELAY_DURATION_FIELD = "transactionDelayDuration";
+  // The JSON field name for the probability of injecting the delay.
+  private static final String TRANSACTION_DELAY_PROBABILITY_FIELD = "transactionDelayProbability";
 
   private final Duration injectionWindowDuration;
   private final Duration delayDuration;
+  private final double delayProbability;
 
   private transient Clock clock;
   private Instant startTime;
@@ -60,6 +66,7 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
     this.clock = clock;
     String injectionWindowStr = DEFAULT_BAKE_DURATION;
     String delayDurationStr = DEFAULT_TRANSACTION_DELAY_DURATION;
+    double delayProbabilityVal = DEFAULT_TRANSACTION_DELAY_PROBABILITY;
 
     if (inputParameter != null && inputParameter.isObject()) {
       injectionWindowStr =
@@ -72,11 +79,18 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
           inputParameter.has(TRANSACTION_DELAY_DURATION_FIELD)
               ? inputParameter.get(TRANSACTION_DELAY_DURATION_FIELD).asText(delayDurationStr)
               : delayDurationStr;
+      delayProbabilityVal =
+          inputParameter.has(TRANSACTION_DELAY_PROBABILITY_FIELD)
+              ? inputParameter
+                  .get(TRANSACTION_DELAY_PROBABILITY_FIELD)
+                  .asDouble(delayProbabilityVal)
+              : delayProbabilityVal;
     }
 
     this.injectionWindowDuration =
         parseDuration(injectionWindowStr, TRANSACTION_TIMEOUT_BAKE_DURATION_FIELD);
     this.delayDuration = parseDuration(delayDurationStr, TRANSACTION_DELAY_DURATION_FIELD);
+    this.delayProbability = delayProbabilityVal;
   }
 
   @Override
@@ -102,8 +116,8 @@ public class TransactionTimeoutInjectionPolicy implements ErrorInjectionPolicy, 
     // Compare elapsed time with the configured duration.
     // elapsed.compareTo(injectionWindowDuration) < 0 means elapsed < injectionWindowDuration
     if (elapsed.compareTo(injectionWindowDuration) < 0) {
-      // Introduce delay with 20% probability
-      if (random.nextDouble() < 0.2) {
+      // Introduce delay with configured probability
+      if (random.nextDouble() < delayProbability) {
         try {
           Thread.sleep(delayDuration.toMillis());
         } catch (InterruptedException e) {

@@ -32,7 +32,8 @@ import org.junit.Test;
 /** Test class for {@link TransactionTimeoutInjectionPolicy}. */
 public class TransactionTimeoutInjectionPolicyTest {
 
-  private ObjectNode createInputObject(String windowDuration, String delayDuration) {
+  private ObjectNode createInputObject(
+      String windowDuration, String delayDuration, Double delayProbability) {
     ObjectNode node = JsonNodeFactory.instance.objectNode();
     if (windowDuration != null) {
       node.put("transactionTimeoutBakeDuration", windowDuration);
@@ -40,7 +41,14 @@ public class TransactionTimeoutInjectionPolicyTest {
     if (delayDuration != null) {
       node.put("transactionDelayDuration", delayDuration);
     }
+    if (delayProbability != null) {
+      node.put("transactionDelayProbability", delayProbability);
+    }
     return node;
+  }
+
+  private ObjectNode createInputObject(String windowDuration, String delayDuration) {
+    return createInputObject(windowDuration, delayDuration, null);
   }
 
   @Test
@@ -58,7 +66,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    assertEquals(Duration.ofSeconds(260), policy.getDelay());
+    assertEquals(Duration.ofSeconds(80), policy.getDelay());
   }
 
   @Test
@@ -67,7 +75,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    assertEquals(Duration.ofSeconds(260), policy.getDelay());
+    assertEquals(Duration.ofSeconds(80), policy.getDelay());
   }
 
   @Test
@@ -76,7 +84,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.EPOCH, ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    assertEquals(Duration.ofSeconds(260), policy.getDelay());
+    assertEquals(Duration.ofSeconds(80), policy.getDelay());
   }
 
   @Test
@@ -144,7 +152,7 @@ public class TransactionTimeoutInjectionPolicyTest {
     Clock clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
     TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
 
-    // Case 1: Random < 0.2 -> Should delay
+    // Case 1: Random < 0.2 (Default) -> Should delay
     policy.setRandomForTesting(
         new Random() {
           @Override
@@ -157,12 +165,45 @@ public class TransactionTimeoutInjectionPolicyTest {
     long endTime = System.currentTimeMillis();
     assertThat(endTime - startTime).isAtLeast(100L);
 
-    // Case 2: Random >= 0.2 -> Should NOT delay
+    // Case 2: Random >= 0.2 (Default) -> Should NOT delay
     policy.setRandomForTesting(
         new Random() {
           @Override
           public double nextDouble() {
             return 0.3;
+          }
+        });
+    startTime = System.currentTimeMillis();
+    policy.shouldInjectionError();
+    endTime = System.currentTimeMillis();
+    assertThat(endTime - startTime).isLessThan(50L);
+  }
+
+  @Test
+  public void shouldInjectDelay_respectsConfiguredProbability() {
+    JsonNode input = createInputObject("PT5S", "PT0.1S", 0.5);
+    Clock clock = Clock.fixed(Instant.parse("2025-01-01T00:00:00Z"), ZoneOffset.UTC);
+    TransactionTimeoutInjectionPolicy policy = new TransactionTimeoutInjectionPolicy(input, clock);
+
+    // Case 1: Random < 0.5 -> Should delay
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.4;
+          }
+        });
+    long startTime = System.currentTimeMillis();
+    policy.shouldInjectionError();
+    long endTime = System.currentTimeMillis();
+    assertThat(endTime - startTime).isAtLeast(100L);
+
+    // Case 2: Random >= 0.5 -> Should NOT delay
+    policy.setRandomForTesting(
+        new Random() {
+          @Override
+          public double nextDouble() {
+            return 0.6;
           }
         });
     startTime = System.currentTimeMillis();

@@ -149,7 +149,7 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .withAdditionalMavenProfile("failureInjectionTest")
             .addParameter(
                 "failureInjectionParameter",
-                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\"}")
+                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT260S\" }}")
             .addEnvironmentVariable("numWorkers", NUM_WORKERS)
             .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 
