@@ -376,6 +376,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TINYTEXT", IndexType.STRING)
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
+          .put("DECIMAL", IndexType.DECIMAL)
           .put("YEAR", IndexType.NUMERIC)
           .build();
 
@@ -452,6 +453,16 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           stringMaxLength = null;
         }
 
+        BigDecimal decimalStepSize = null;
+        if (indexType.equals(IndexType.FLOAT) || indexType.equals(IndexType.DECIMAL)) {
+          if (numericScale > 0) {
+            decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+          } else {
+            decimalStepSize = BigDecimal.ONE;
+          }
+        }
+
+
         indexesBuilder.add(
             SourceColumnIndexInfo.builder()
                 .setColumnName(colName)
@@ -463,6 +474,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setIndexType(indexType)
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
+                .setDecimalStepSize(decimalStepSize)
                 .build());
       }
     } catch (java.sql.SQLException e) {

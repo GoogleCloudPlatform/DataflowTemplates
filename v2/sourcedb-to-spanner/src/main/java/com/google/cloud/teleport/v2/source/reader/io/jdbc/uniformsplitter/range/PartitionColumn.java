@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
 import javax.annotation.Nullable;
+import java.math.BigDecimal;
 
 /** Details about a partition column. */
 @AutoValue
@@ -34,6 +35,9 @@ public abstract class PartitionColumn implements Serializable {
    * @return class of the column.
    */
   public abstract Class columnClass();
+
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
 
   /**
    * String Collation. Must be set for if {@link PartitionColumn#columnClass()} is {@link String}
@@ -51,7 +55,8 @@ public abstract class PartitionColumn implements Serializable {
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
-        .setStringMaxLength(null);
+        .setStringMaxLength(null)
+        .setDecimalStepSize(null);
   }
 
   public abstract Builder toBuilder();
@@ -67,6 +72,8 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setStringMaxLength(Integer value);
 
+    public abstract Builder setDecimalStepSize(BigDecimal value);
+
     abstract PartitionColumn autoBuild();
 
     public PartitionColumn build() {
@@ -80,6 +87,11 @@ public abstract class PartitionColumn implements Serializable {
                   && partitionColumn.stringMaxLength() == null),
           "String columns must specify collation, and non string columns must not specify colaltion. PartitionColum = "
               + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == BigDecimal.class
+                  && partitionColumn.decimalStepSize() != null)
+              || (partitionColumn.columnClass() != BigDecimal.class),
+          "Decimal columns must specify decimalStepSize. PartitionColumn = " + partitionColumn);
       return partitionColumn;
     }
   }
