@@ -62,38 +62,6 @@ public class SpannerDao {
     this.spannerAccessor = spannerAccessor;
   }
 
-  public ShadowTableRecord getShadowTableRecord(
-      String tableName, com.google.cloud.spanner.Key primaryKey) {
-    if (primaryKey == null) {
-      return null;
-    }
-    try {
-      DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
-      ResultSet rs =
-          databaseClient
-              .singleUse()
-              .read(
-                  tableName,
-                  KeySet.singleKey(primaryKey),
-                  Arrays.asList(
-                      Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME),
-                  Options.priority(spannerConfig.getRpcPriority().get()));
-
-      // This is the first event for the primary key and hence the latest event.
-      if (!rs.next()) {
-        return null;
-      }
-      Struct row = rs.getCurrentRowAsStruct();
-
-      return new ShadowTableRecord(row.getTimestamp(0), row.getLong(1));
-    } catch (Exception e) {
-      LOG.warn("The {} table could not be read. Exception: {}", tableName, e);
-      // We need to throw the original exception such that the caller can
-      // look at SpannerException class to take decision
-      throw e;
-    }
-  }
-
   public ShadowTableRecord readShadowTableRecordWithExclusiveLock(
       String shadowTableName,
       com.google.cloud.spanner.Key primaryKey,

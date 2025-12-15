@@ -31,7 +31,10 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
 import com.google.cloud.spanner.Key;
+import com.google.cloud.spanner.KeySet;
+import com.google.cloud.spanner.Options.ReadOption;
 import com.google.cloud.spanner.ReadOnlyTransaction;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
 import com.google.cloud.spanner.Value;
@@ -227,6 +230,14 @@ public class AssignShardIdFnTest {
     when(mockOptions.getColumnOverrides()).thenReturn("");
     when(mockOptions.getSchemaOverridesFilePath()).thenReturn("");
 
+    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+    when(mockReadOnlyTransaction.read(
+        eq("tableName"), any(KeySet.class), any(Iterable.class),
+        any(ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(mockRow);
+
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
             SpannerConfig.create(),
@@ -274,6 +285,14 @@ public class AssignShardIdFnTest {
 
     // Prepare mock for c.sideInput(ddlView)
     when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+    when(mockReadOnlyTransaction.read(
+        eq("tableName"), any(KeySet.class), any(Iterable.class),
+        any(ReadOption.class)))
+        .thenReturn(resultSet);
+    when(resultSet.next()).thenReturn(true);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(mockRow);
 
     AssignShardIdFn assignShardIdFn =
         new AssignShardIdFn(
@@ -392,6 +411,8 @@ public class AssignShardIdFnTest {
     when(processContext.element()).thenReturn(record);
     // All datatypes row
     ByteArray bytesArray = ByteArray.copyFrom("abc");
+    com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
+
     Struct allDatatypesRow =
         Struct.newBuilder()
             .set("first_name")
@@ -421,8 +442,14 @@ public class AssignShardIdFnTest {
             .set("date_field2")
             .to(Date.parseDate("2020-12-30"))
             .build();
-    when(mockReadOnlyTransaction.readRow(eq("Users"), any(Key.class), any(Iterable.class)))
-        .thenReturn(allDatatypesRow);
+
+    when(mockReadOnlyTransaction.read(
+        eq("Users"), any(KeySet.class), any(Iterable.class),
+        any(ReadOption.class)))
+        .thenReturn(resultSet);
+
+    when(resultSet.next()).thenReturn(true);
+    when(resultSet.getCurrentRowAsStruct()).thenReturn(allDatatypesRow);
 
     Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(ALL_TYPES_SESSION_FILE_PATH);
     SourceSchema sourceSchema =
