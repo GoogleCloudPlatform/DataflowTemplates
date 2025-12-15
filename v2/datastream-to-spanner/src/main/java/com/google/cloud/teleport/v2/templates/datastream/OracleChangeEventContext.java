@@ -19,10 +19,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.spanner.Mutation;
 import com.google.cloud.spanner.Value;
 import com.google.cloud.teleport.v2.spanner.ddl.Ddl;
+import com.google.cloud.teleport.v2.spanner.ddl.Table;
 import com.google.cloud.teleport.v2.spanner.migrations.convertors.ChangeEventTypeConvertor;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.DroppedTableException;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.InvalidChangeEventException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Oracle implementation of ChangeEventContext that provides implementation of the
@@ -33,10 +36,16 @@ class OracleChangeEventContext extends ChangeEventContext {
   public OracleChangeEventContext(
       JsonNode changeEvent, Ddl ddl, Ddl shadowTableDdl, String shadowTablePrefix)
       throws ChangeEventConvertorException, InvalidChangeEventException, DroppedTableException {
+    super(changeEvent, ddl, DatastreamConstants.ORACLE_SORT_ORDER);
     this.changeEvent = changeEvent;
     this.shadowTablePrefix = shadowTablePrefix;
     this.dataTable = changeEvent.get(DatastreamConstants.EVENT_TABLE_NAME_KEY).asText();
     this.shadowTable = shadowTablePrefix + this.dataTable;
+
+    Table dataTable = ddl.table(this.dataTable);
+    Set<String> primaryKeyColNames =
+        dataTable.primaryKeys().stream().map(k -> k.name()).collect(Collectors.toSet());
+
     convertChangeEventToMutation(ddl, shadowTableDdl);
   }
 
@@ -44,18 +53,19 @@ class OracleChangeEventContext extends ChangeEventContext {
    * Creates shadow table mutation for Oracle.
    */
   @Override
-  Mutation generateShadowTableMutation(Ddl ddl) throws ChangeEventConvertorException {
+  Mutation generateShadowTableMutation(Ddl ddl, Ddl shadowDdl)
+      throws ChangeEventConvertorException {
     // Get shadow information from change event mutation context
     Mutation.WriteBuilder builder =
         ChangeEventConvertor.changeEventToShadowTableMutationBuilder(
-            ddl, changeEvent, shadowTablePrefix);
+            shadowDdl, changeEvent, shadowTablePrefix);
 
     // Add timestamp information to shadow table mutation
     Long changeEventTimestamp =
         ChangeEventTypeConvertor.toLong(
             changeEvent, DatastreamConstants.ORACLE_TIMESTAMP_KEY, /* requiredField= */ true);
     builder
-        .set(DatastreamConstants.ORACLE_TIMESTAMP_SHADOW_INFO.getLeft())
+        .set(getSafeShadowColumn(DatastreamConstants.ORACLE_TIMESTAMP_KEY))
         .to(Value.int64(changeEventTimestamp));
 
     /* Oracle backfill events "can" have SCN value as null.
@@ -69,7 +79,7 @@ class OracleChangeEventContext extends ChangeEventContext {
     }
     // Add scn information to shadow table mutation
     builder
-        .set(DatastreamConstants.ORACLE_SCN_SHADOW_INFO.getLeft())
+        .set(getSafeShadowColumn(DatastreamConstants.ORACLE_SCN_KEY))
         .to(Value.int64(changeEventSCN));
 
     return builder.build();

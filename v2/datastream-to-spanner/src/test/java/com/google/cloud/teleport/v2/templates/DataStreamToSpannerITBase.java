@@ -343,6 +343,7 @@ public abstract class DataStreamToSpannerITBase extends TemplateTestBase {
             put("gcsPubSubSubscription", subscription.toString());
             put("dlqGcsPubSubSubscription", dlqSubscription.toString());
             put("inputFileFormat", "avro");
+            put("workerMachineType", "n2-standard-4");
           }
         };
 

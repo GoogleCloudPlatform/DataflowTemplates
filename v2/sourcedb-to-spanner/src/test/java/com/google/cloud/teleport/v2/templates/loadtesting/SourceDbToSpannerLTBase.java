@@ -152,6 +152,7 @@ public class SourceDbToSpannerLTBase extends TemplateLoadTestBase {
             put("password", sourceDatabaseResource.password());
             put("outputDirectory", "gs://" + artifactBucket + "/" + outputDirectory);
             put("jdbcDriverClassName", driverClassName());
+            put("workerMachineType", "n2-standard-4");
           }
         };
     params.putAll(ADDITIONAL_JOB_PARAMS);
