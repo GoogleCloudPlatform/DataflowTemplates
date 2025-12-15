@@ -136,14 +136,8 @@ public final class CassandraDriverConfigLoader {
 
     TypedDriverOption option = OPTIONS_SUPPORTED_BY_DRIVER.get(optionName);
     if (Objects.equal(option, null)) {
-      LOG.error(
-          "Unknown Cassandra Option {}, Options supported by driver = {}",
-          optionName,
-          OPTIONS_SUPPORTED_BY_DRIVER);
-      throw new IllegalArgumentException(
-          String.format(
-              "Unknown Cassandra Driver Option %s. Supported Options = %s",
-              optionName, OPTIONS_SUPPORTED_BY_DRIVER));
+      LOG.warn("Unknown Cassandra Option {} found in configuration. Ignoring it.", optionName);
+      return;
     }
     putOptionInOptionsMap(optionsMap, profileName, profile, untypedValue, option);
   }
