@@ -16,9 +16,7 @@
 package com.google.cloud.teleport.v2.templates.dbutils.dao.spanner;
 
 import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Options;
 import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.Statement;
 import com.google.cloud.spanner.Struct;

@@ -232,8 +232,7 @@ public class AssignShardIdFnTest {
 
     com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
     when(mockReadOnlyTransaction.read(
-        eq("tableName"), any(KeySet.class), any(Iterable.class),
-        any(ReadOption.class)))
+            eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getCurrentRowAsStruct()).thenReturn(mockRow);
@@ -288,8 +287,7 @@ public class AssignShardIdFnTest {
 
     com.google.cloud.spanner.ResultSet resultSet = mock(ResultSet.class);
     when(mockReadOnlyTransaction.read(
-        eq("tableName"), any(KeySet.class), any(Iterable.class),
-        any(ReadOption.class)))
+            eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenReturn(resultSet);
     when(resultSet.next()).thenReturn(true);
     when(resultSet.getCurrentRowAsStruct()).thenReturn(mockRow);
@@ -444,8 +442,7 @@ public class AssignShardIdFnTest {
             .build();
 
     when(mockReadOnlyTransaction.read(
-        eq("Users"), any(KeySet.class), any(Iterable.class),
-        any(ReadOption.class)))
+            eq("Users"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
         .thenReturn(resultSet);
 
     when(resultSet.next()).thenReturn(true);

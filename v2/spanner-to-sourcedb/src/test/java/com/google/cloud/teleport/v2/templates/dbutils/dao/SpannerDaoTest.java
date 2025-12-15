@@ -15,28 +15,16 @@
  */
 package com.google.cloud.teleport.v2.templates.dbutils.dao;
 
-import static com.google.common.truth.Truth.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.google.cloud.Timestamp;
 import com.google.cloud.spanner.DatabaseClient;
-import com.google.cloud.spanner.Key;
-import com.google.cloud.spanner.KeySet;
 import com.google.cloud.spanner.Mutation;
-import com.google.cloud.spanner.Options.ReadOption;
 import com.google.cloud.spanner.ReadOnlyTransaction;
-import com.google.cloud.spanner.ResultSet;
-import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TransactionContext;
-import com.google.cloud.teleport.v2.templates.constants.Constants;
 import com.google.cloud.teleport.v2.templates.dbutils.dao.spanner.SpannerDao;
-import com.google.cloud.teleport.v2.templates.utils.ShadowTableRecord;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerAccessor;
 import org.junit.Before;
 import org.junit.FixMethodOrder;
