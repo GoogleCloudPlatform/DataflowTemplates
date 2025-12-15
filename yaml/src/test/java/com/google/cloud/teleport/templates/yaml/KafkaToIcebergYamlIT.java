@@ -148,9 +148,9 @@ public class KafkaToIcebergYamlIT extends TemplateTestBase {
     assertEquals(5, icebergRecords.size());
 
     // Verify the data correctness
-    icebergRecords.sort(Comparator.comparingInt(r -> (Integer) r.getField("id")));
+    icebergRecords.sort(Comparator.comparingLong(r -> (Long) r.getField("id")));
     Record firstRecord = icebergRecords.get(0);
-    assertEquals(1, firstRecord.getField("id"));
+    assertEquals(1L, firstRecord.getField("id"));
     assertEquals("name_1", firstRecord.getField("name"));
   }
 
