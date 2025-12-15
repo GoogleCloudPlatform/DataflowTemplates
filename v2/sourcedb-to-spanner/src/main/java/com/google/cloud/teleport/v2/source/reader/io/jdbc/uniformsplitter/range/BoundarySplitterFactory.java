@@ -190,23 +190,20 @@ public class BoundarySplitterFactory {
       end = Date.valueOf(LocalDate.MIN);
     }
 
-    int startDateInt = convertDateToInt(start);
-    int endDateInt = convertDateToInt(end);
+    long startDateLong = convertDateToLong(start);
+    long endDateLong = convertDateToLong(end);
 
-    int dateMid = splitIntegers(startDateInt, endDateInt);
+    long dateMid = splitLongs(startDateLong, endDateLong);
 
-    return convertIntToSqlDate(dateMid);
+    return convertLongToSqlDate(dateMid);
   }
 
-  private static int convertDateToInt(Date sqlDate) {
-    LocalDate localDate = sqlDate.toLocalDate();
-    return (int) localDate.toEpochDay();
+  private static long convertDateToLong(Date sqlDate) {
+    return sqlDate.toLocalDate().toEpochDay();
   }
 
-  private static Date convertIntToSqlDate(int dateInt) {
-    String dateString = String.valueOf(dateInt);
-    LocalDate localDate = LocalDate.parse(dateString, DateTimeFormatter.BASIC_ISO_DATE);
-    return Date.valueOf(localDate);
+  private static Date convertLongToSqlDate(long dateInt) {
+    return Date.valueOf(LocalDate.ofEpochDay(dateInt));
   }
 
   private static byte[] splitBytes(byte[] start, byte[] end) {
