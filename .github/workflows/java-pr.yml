@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -75,7 +75,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -87,7 +87,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -102,7 +102,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -119,7 +119,7 @@ jobs:
             **/surefire-reports/html/**
           retention-days: 1
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.5.1
+        uses: codecov/codecov-action@v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
@@ -135,7 +135,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -168,7 +168,7 @@ jobs:
     runs-on: [self-hosted, it]
     steps:
       - name: Checkout Code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
       - name: Setup Environment
         id: setup-env
         uses: ./.github/actions/setup-env
@@ -216,7 +216,7 @@ jobs:
     runs-on: [self-hosted, perf]
     steps:
     - name: Checkout Code
-      uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3 # v6.0.0
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
     - name: Setup Environment
       id: setup-env
       uses: ./.github/actions/setup-env

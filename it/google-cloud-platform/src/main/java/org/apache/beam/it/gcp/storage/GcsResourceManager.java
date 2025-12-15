@@ -295,9 +295,16 @@ public final class GcsResourceManager implements ArtifactClient, ResourceManager
 
   @Override
   public synchronized void cleanupAll() {
-    // If bucket was created by manager, simply delete the bucket without worrying about other
+    // If bucket was created by manager, simply delete the bucket without worrying
+    // about other
     // cleanups.
     if (hasNonStaticBucket) {
+      // List and delete all objects in the bucket
+      Page<Blob> blobs = client.list(bucket);
+      for (Blob blob : blobs.iterateAll()) {
+        blob.delete();
+      }
+
       boolean deleted = client.delete(bucket);
       if (deleted) {
         LOG.debug("Bucket '{}' was deleted", bucket);

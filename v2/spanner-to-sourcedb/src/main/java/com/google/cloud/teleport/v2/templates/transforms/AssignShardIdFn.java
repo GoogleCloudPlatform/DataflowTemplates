@@ -36,6 +36,7 @@ import com.google.cloud.teleport.v2.spanner.utils.ShardIdResponse;
 import com.google.cloud.teleport.v2.templates.changestream.DataChangeRecordTypeConvertor;
 import com.google.cloud.teleport.v2.templates.changestream.TrimmedShardedDataChangeRecord;
 import com.google.cloud.teleport.v2.templates.constants.Constants;
+import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -56,6 +57,7 @@ import org.apache.beam.sdk.metrics.Distribution;
 import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.values.KV;
+import org.apache.beam.sdk.values.PCollectionView;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.Duration;
 import org.joda.time.Instant;
@@ -75,12 +77,12 @@ public class AssignShardIdFn
   /* SpannerAccessor must be transient so that its value is not serialized at runtime. */
   private transient SpannerAccessor spannerAccessor;
 
-  /* The information schema of the Cloud Spanner database */
-  private final Ddl ddl;
-
   private final SourceSchema sourceSchema;
 
-  private final ISchemaMapper schemaMapper;
+  /* The DDL view for the main Spanner database. Only accessible in processElement. */
+  private final PCollectionView<Ddl> ddlView;
+
+  private transient ISchemaMapper schemaMapper;
 
   // Jackson Object mapper.
   private transient ObjectMapper mapper;
@@ -103,10 +105,14 @@ public class AssignShardIdFn
 
   private final String sourceType;
 
+  private final String sessionFilePath;
+  private final String schemaOverridesFilePath;
+  private final String tableOverrides;
+  private final String columnOverrides;
+
   public AssignShardIdFn(
       SpannerConfig spannerConfig,
-      ISchemaMapper schemaMapper,
-      Ddl ddl,
+      PCollectionView<Ddl> ddlView,
       SourceSchema sourceSchema,
       String shardingMode,
       String shardName,
@@ -115,10 +121,13 @@ public class AssignShardIdFn
       String shardingCustomClassName,
       String shardingCustomParameters,
       Long maxConnectionsAcrossAllShards,
-      String sourceTyoe) {
+      String sourceType,
+      String sessionFilePath,
+      String schemaOverridesFilePath,
+      String tableOverrides,
+      String columnOverrides) {
     this.spannerConfig = spannerConfig;
-    this.schemaMapper = schemaMapper;
-    this.ddl = ddl;
+    this.ddlView = ddlView;
     this.sourceSchema = sourceSchema;
     this.shardingMode = shardingMode;
     this.shardName = shardName;
@@ -127,7 +136,11 @@ public class AssignShardIdFn
     this.shardingCustomClassName = shardingCustomClassName;
     this.shardingCustomParameters = shardingCustomParameters;
     this.maxConnectionsAcrossAllShards = maxConnectionsAcrossAllShards;
-    this.sourceType = sourceTyoe;
+    this.sourceType = sourceType;
+    this.sessionFilePath = sessionFilePath;
+    this.schemaOverridesFilePath = schemaOverridesFilePath;
+    this.tableOverrides = tableOverrides;
+    this.columnOverrides = columnOverrides;
   }
 
   // setSpannerAccessor is added to be used by unit tests
@@ -138,11 +151,6 @@ public class AssignShardIdFn
   // setMapper is added to be used by unit tests
   public void setMapper(ObjectMapper mapper) {
     this.mapper = mapper;
-  }
-
-  // setShardIdFetcher is added to be used by unit tests
-  public void setShardIdFetcher(IShardIdFetcher shardIdFetcher) {
-    this.shardIdFetcher = shardIdFetcher;
   }
 
   /** Setup function connects to Cloud Spanner. */
@@ -156,13 +164,7 @@ public class AssignShardIdFn
         }
         mapper = new ObjectMapper();
         mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
-        shardIdFetcher =
-            ShardingLogicImplFetcher.getShardingLogicImpl(
-                customJarPath,
-                shardingCustomClassName,
-                shardingCustomParameters,
-                schemaMapper,
-                skipDirName);
+
         retry = false;
       } catch (SpannerException e) {
         LOG.info("Exception in setup of AssignShardIdFn {}", e.getMessage());
@@ -194,6 +196,20 @@ public class AssignShardIdFn
    */
   @ProcessElement
   public void processElement(ProcessContext c) throws Exception {
+    Ddl ddl = c.sideInput(ddlView);
+
+    schemaMapper =
+        SchemaMapperUtils.getSchemaMapper(
+            sessionFilePath, schemaOverridesFilePath, tableOverrides, columnOverrides, ddl);
+
+    shardIdFetcher =
+        ShardingLogicImplFetcher.getShardingLogicImpl(
+            customJarPath,
+            shardingCustomClassName,
+            shardingCustomParameters,
+            schemaMapper,
+            skipDirName);
+
     TrimmedShardedDataChangeRecord record = new TrimmedShardedDataChangeRecord(c.element());
     String qualifiedShard = "";
     String tableName = record.getTableName();
@@ -201,14 +217,14 @@ public class AssignShardIdFn
 
     try {
       Map<String, Object> spannerRecord =
-          getSpannerRecordMapAndUpdateDeletedValue(record, tableName, keysJsonStr);
+          getSpannerRecordMapAndUpdateDeletedValue(record, tableName, keysJsonStr, ddl);
 
       if (shardingMode.equals(Constants.SHARDING_MODE_SINGLE_SHARD)) {
         record.setShard(this.shardName);
         qualifiedShard = this.shardName;
       } else {
         // Skip from processing if table not found at source.
-        boolean doesTableExist = doesTableExistAtSource(tableName);
+        boolean doesTableExist = doesTableExistAtSource(tableName, schemaMapper);
         if (!doesTableExist) {
           LOG.warn(
               "Writing record for table {} to skipped directory name {} since table not present in"
@@ -220,7 +236,7 @@ public class AssignShardIdFn
         } else {
           ShardIdRequest shardIdRequest = new ShardIdRequest(tableName, spannerRecord);
 
-          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest);
+          ShardIdResponse shardIdResponse = getShardIdResponse(shardIdRequest, shardIdFetcher);
 
           qualifiedShard = shardIdResponse.getLogicalShardId();
           if (qualifiedShard == null || qualifiedShard.isEmpty() || qualifiedShard.contains("/")) {
@@ -250,7 +266,7 @@ public class AssignShardIdFn
 
   @NotNull
   private Map<String, Object> getSpannerRecordMapAndUpdateDeletedValue(
-      TrimmedShardedDataChangeRecord record, String tableName, String keysJsonStr)
+      TrimmedShardedDataChangeRecord record, String tableName, String keysJsonStr, Ddl ddl)
       throws Exception {
     JsonNode keysJson = mapper.readTree(keysJsonStr);
     String newValueJsonStr = record.getMod().getNewValuesJson();
@@ -265,9 +281,10 @@ public class AssignShardIdFn
               record.getServerTransactionId(),
               keysJson,
               record,
-              record.getModType());
+              record.getModType(),
+              ddl);
     } else {
-      spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson);
+      spannerRecord = getSpannerRecordFromChangeStreamData(tableName, keysJson, newValueJson, ddl);
     }
     return spannerRecord;
   }
@@ -278,7 +295,8 @@ public class AssignShardIdFn
       String serverTxnId,
       JsonNode keysJson,
       TrimmedShardedDataChangeRecord record,
-      ModType modType)
+      ModType modType,
+      Ddl ddl)
       throws Exception {
 
     // Stale read the spanner row for all the columns for timestamp 1 micro second less than the
@@ -301,7 +319,7 @@ public class AssignShardIdFn
         spannerAccessor
             .getDatabaseClient()
             .singleUse(TimestampBound.ofReadTimestamp(staleReadTs))
-            .readRow(tableName, generateKey(tableName, keysJson), columns);
+            .readRow(tableName, generateKey(tableName, keysJson, ddl), columns);
     if (row == null) {
       throw new Exception(
           "stale read on Spanner returned null for table: "
@@ -311,19 +329,19 @@ public class AssignShardIdFn
               + " and serverTxnId:"
               + serverTxnId);
     }
-    Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName);
+    Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName, ddl);
     // TODO find a way to not make a special case from Cassandra.
     if (modType == ModType.DELETE && sourceType != Constants.SOURCE_CASSANDRA) {
 
       Table table = ddl.table(tableName);
       ImmutableSet<String> keyColumns =
           table.primaryKeys().stream().map(k -> k.name()).collect(ImmutableSet.toImmutableSet());
-      Mod newMod;
       ObjectNode newValuesJsonNode =
           (ObjectNode) mapper.readTree(record.getMod().getNewValuesJson());
       rowAsMap.keySet().stream()
           .filter(k -> !keyColumns.contains(k))
-          .forEach(colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row));
+          .forEach(
+              colName -> marshalSpannerValues(newValuesJsonNode, tableName, colName, row, ddl));
       String newValuesJson = mapper.writeValueAsString(newValuesJsonNode);
       record.setMod(
           new Mod(
@@ -336,7 +354,12 @@ public class AssignShardIdFn
    * Marshals Spanner's read row values to match CDC stream's representation.
    */
   private void marshalSpannerValues(
-      ObjectNode newValuesJsonNode, String tableName, String colName, Struct row) {
+      ObjectNode newValuesJsonNode, String tableName, String colName, Struct row, Ddl ddl) {
+    if (row.isNull(colName)) {
+      newValuesJsonNode.putNull(colName);
+      return;
+    }
+
     // TODO(b/430495490): Add support for string arrays on Spanner side.
     switch (ddl.table(tableName).column(colName).type().getCode()) {
       case FLOAT32:
@@ -379,8 +402,8 @@ public class AssignShardIdFn
     }
   }
 
-  public Map<String, Object> getRowAsMap(Struct row, List<String> columns, String tableName)
-      throws Exception {
+  public Map<String, Object> getRowAsMap(
+      Struct row, List<String> columns, String tableName, Ddl ddl) throws Exception {
     Map<String, Object> spannerRecord = new HashMap<>();
     Table table = ddl.table(tableName);
     for (String columnName : columns) {
@@ -395,7 +418,7 @@ public class AssignShardIdFn
   // Refer https://cloud.google.com/spanner/docs/reference/standard-sql/data-types
   // and https://cloud.google.com/spanner/docs/reference/postgresql/data-types
   // for allowed primary key types
-  private com.google.cloud.spanner.Key generateKey(String tableName, JsonNode keysJson)
+  private com.google.cloud.spanner.Key generateKey(String tableName, JsonNode keysJson, Ddl ddl)
       throws Exception {
     try {
       Table table = ddl.table(tableName);
@@ -564,7 +587,7 @@ public class AssignShardIdFn
     }
   }
 
-  private boolean doesTableExistAtSource(String tableName) {
+  private boolean doesTableExistAtSource(String tableName, ISchemaMapper schemaMapper) {
     try {
       String sourceTableName = schemaMapper.getSourceTableName("", tableName);
       if (sourceTableName == null || sourceTableName.isEmpty()) {
@@ -583,7 +606,7 @@ public class AssignShardIdFn
   }
 
   private Map<String, Object> getSpannerRecordFromChangeStreamData(
-      String tableName, JsonNode keysJson, JsonNode newValueJson) throws Exception {
+      String tableName, JsonNode keysJson, JsonNode newValueJson, Ddl ddl) throws Exception {
     Map<String, Object> spannerRecord = new HashMap<>();
     Table table = ddl.table(tableName);
 
@@ -601,7 +624,8 @@ public class AssignShardIdFn
     return spannerRecord;
   }
 
-  private ShardIdResponse getShardIdResponse(ShardIdRequest shardIdRequest) throws Exception {
+  private ShardIdResponse getShardIdResponse(
+      ShardIdRequest shardIdRequest, IShardIdFetcher shardIdFetcher) throws Exception {
     ShardIdResponse shardIdResponse = new ShardIdResponse();
     if (!customJarPath.isEmpty() && !shardingCustomClassName.isEmpty()) {
       Distribution getShardIdResponseTimeMetric =

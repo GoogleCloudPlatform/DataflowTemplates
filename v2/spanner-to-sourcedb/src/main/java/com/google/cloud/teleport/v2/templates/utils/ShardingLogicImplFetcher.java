@@ -62,6 +62,10 @@ public class ShardingLogicImplFetcher {
     return shardIdFetcher;
   }
 
+  public static void reset() {
+    shardIdFetcher = null;
+  }
+
   private static IShardIdFetcher getShardIdFetcherImpl(
       String customJarPath,
       String shardingCustomClassName,

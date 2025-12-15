@@ -260,6 +260,24 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
             .to(Value.bytes(ByteArray.copyFrom("varbinary")))
             .set("bit_column")
             .to(Value.bytes(ByteArray.copyFrom("a")))
+            .set("null_string_column")
+            .to((String) null)
+            .set("null_int_column")
+            .to((Long) null)
+            .set("null_date_column")
+            .to((Date) null)
+            .set("null_float_64_column")
+            .to((Double) null)
+            .set("null_float_32_column")
+            .to((Float) null)
+            .set("null_numeric_column")
+            .to((BigDecimal) null)
+            .set("null_timestamp_column")
+            .to((Timestamp) null)
+            .set("null_blob_column")
+            .to((ByteArray) null)
+            .set("null_bool_column")
+            .to((Boolean) null)
             .build();
     spannerResourceManager.write(m);
 
@@ -423,6 +441,15 @@ public class SpannerToSourceDbDatatypeIT extends SpannerToSourceDbITBase {
         () ->
             assertThat(row.get("varbinary_column"))
                 .isEqualTo("varbinary".getBytes(StandardCharsets.UTF_8)),
-        () -> assertThat(row.get("bit_column")).isEqualTo("a".getBytes(StandardCharsets.UTF_8)));
+        () -> assertThat(row.get("bit_column")).isEqualTo("a".getBytes(StandardCharsets.UTF_8)),
+        () -> assertThat(row.get("null_string_column")).isNull(),
+        () -> assertThat(row.get("null_int_column")).isNull(),
+        () -> assertThat(row.get("null_date_column")).isNull(),
+        () -> assertThat(row.get("null_float_64_column")).isNull(),
+        () -> assertThat(row.get("null_float_32_column")).isNull(),
+        () -> assertThat(row.get("null_numeric_column")).isNull(),
+        () -> assertThat(row.get("null_timestamp_column")).isNull(),
+        () -> assertThat(row.get("null_blob_column")).isNull(),
+        () -> assertThat(row.get("null_bool_column")).isNull());
   }
 }

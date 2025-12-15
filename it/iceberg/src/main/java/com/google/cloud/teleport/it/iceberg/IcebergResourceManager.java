@@ -30,10 +30,9 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.beam.it.common.ResourceManager;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.iceberg.AppendFiles;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DataFiles;
-import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Catalog;
@@ -47,9 +46,8 @@ import org.apache.iceberg.data.parquet.GenericParquetWriter;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.io.CloseableIterable;
-import org.apache.iceberg.io.FileAppender;
+import org.apache.iceberg.io.DataWriter;
 import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.parquet.Parquet;
 import org.slf4j.Logger;
@@ -241,23 +239,21 @@ public class IcebergResourceManager implements ResourceManager {
         String filePath = warehouseLocation + "/data/" + UUID.randomUUID() + ".parquet";
         OutputFile outputFile = io.newOutputFile(filePath);
 
-        FileAppender<Record> appender =
-            Parquet.write(outputFile)
-                .createWriterFunc(GenericParquetWriter::buildWriter)
+        DataWriter<Record> icebergDataWriter =
+            Parquet.writeData(outputFile)
+                .createWriterFunc(GenericParquetWriter::create)
+                .withSpec(table.spec())
                 .schema(table.schema())
                 .overwrite()
                 .build();
-        appender.add(record);
-        appender.close();
+        icebergDataWriter.write(record);
+        icebergDataWriter.close();
 
-        InputFile inputFile = io.newInputFile(filePath);
-        DataFile dataFile =
-            DataFiles.builder(PartitionSpec.unpartitioned())
-                .withInputFile(inputFile)
-                .withMetrics(appender.metrics())
-                .build();
+        DataFile dataFile = icebergDataWriter.toDataFile();
 
-        table.newFastAppend().appendFile(dataFile).commit();
+        AppendFiles update = table.newAppend();
+        update.appendFile(dataFile);
+        update.commit();
       }
     } catch (IOException e) {
       throw new IcebergResourceManagerException(

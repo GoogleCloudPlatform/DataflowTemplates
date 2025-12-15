@@ -1,3 +1,5 @@
+ALTER DATABASE db SET OPTIONS (default_time_zone = 'Australia/Brisbane');
+
 CREATE TABLE IF NOT EXISTS Users (
     id INT64 NOT NULL,
     time_colm TIMESTAMP

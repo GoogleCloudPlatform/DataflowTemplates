@@ -38,6 +38,7 @@ import com.google.cloud.teleport.v2.spanner.migrations.schema.SchemaStringOverri
 import com.google.cloud.teleport.v2.spanner.migrations.shard.ShardingContext;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.TransformationContext;
+import com.google.cloud.teleport.v2.spanner.migrations.utils.DataflowWorkerMachineTypeValidator;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.SessionFileReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.ShardingContextReader;
 import com.google.cloud.teleport.v2.spanner.migrations.utils.TransformationContextReader;
@@ -487,7 +488,7 @@ public class DataStreamToSpanner {
         optional = true,
         helpText =
             "Sharding context file path in cloud storage is used to populate the shard id in spanner database for each source shard."
-                + "It is of the format Map<stream_name, Map<db_name, shard_id>>",
+                + "It expects a JSON file with the format: {\\\"StreamToDbAndShardMap\\\": Map<stream_name, Map<db_name, shard_id>>}",
         description = "Sharding context file path in cloud storage")
     String getShardingContextFilePath();
 
@@ -646,6 +647,9 @@ public class DataStreamToSpanner {
      *   3) Write Failures to GCS Dead Letter Queue
      */
     Pipeline pipeline = Pipeline.create(options);
+    String workerMachineType =
+        pipeline.getOptions().as(DataflowPipelineWorkerPoolOptions.class).getWorkerMachineType();
+    DataflowWorkerMachineTypeValidator.validateMachineSpecs(workerMachineType, 4);
     DeadLetterQueueManager dlqManager = buildDlqManager(options);
     // Ingest session file into schema object.
     Schema schema = SessionFileReader.read(options.getSessionFilePath());
