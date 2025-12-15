@@ -18,6 +18,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -56,6 +57,7 @@ public class BoundaryExtractorFactory {
           .put(
               Timestamp.class,
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
+          .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .build();
 
   /**
@@ -174,6 +176,22 @@ public class BoundaryExtractorFactory {
         .setStart(resultSet.getTimestamp(1, utcCalendar))
         .setEnd(resultSet.getTimestamp(2, utcCalendar))
         .setBoundarySplitter(BoundarySplitterFactory.create(Timestamp.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<Date> fromDates(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Date.class));
+    resultSet.next();
+    return Boundary.<Date>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getDate(1, utcCalendar))
+        .setEnd(resultSet.getDate(2, utcCalendar))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Date.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

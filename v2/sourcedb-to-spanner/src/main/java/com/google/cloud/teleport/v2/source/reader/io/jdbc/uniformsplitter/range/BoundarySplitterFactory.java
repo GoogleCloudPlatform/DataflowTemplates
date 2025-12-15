@@ -202,8 +202,8 @@ public class BoundarySplitterFactory {
     return sqlDate.toLocalDate().toEpochDay();
   }
 
-  private static Date convertLongToSqlDate(long dateInt) {
-    return Date.valueOf(LocalDate.ofEpochDay(dateInt));
+  private static Date convertLongToSqlDate(long dateLong) {
+    return Date.valueOf(LocalDate.ofEpochDay(dateLong));
   }
 
   private static byte[] splitBytes(byte[] start, byte[] end) {
