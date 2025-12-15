@@ -50,8 +50,6 @@ pipeline:
         schema: |
             {{ schema }}
         auto_offset_reset_config: 'earliest'
-        error_handling:
-          output: errors
 
     - type: WriteToIceberg
       name: WriteToIceberg
