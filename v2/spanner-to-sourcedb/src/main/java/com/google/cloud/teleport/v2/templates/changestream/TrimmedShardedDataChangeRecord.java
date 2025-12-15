@@ -19,6 +19,11 @@ import com.google.cloud.Timestamp;
 import com.google.gson.annotations.SerializedName;
 import java.io.Serializable;
 import java.util.Objects;
+import org.apache.avro.reflect.AvroEncode;
+import org.apache.avro.reflect.Nullable;
+import org.apache.beam.sdk.coders.DefaultCoder;
+import org.apache.beam.sdk.extensions.avro.coders.AvroCoder;
+import org.apache.beam.sdk.io.gcp.spanner.changestreams.encoder.TimestampEncoding;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.Mod;
 import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
 
@@ -26,9 +31,13 @@ import org.apache.beam.sdk.io.gcp.spanner.changestreams.model.ModType;
  * Trimmed version of the Apache Beam DataChangeRecord class that only contains the field we need in
  * this pipeline.
  */
-@SuppressWarnings("initialization.fields.uninitialized") // Avro requires the default constructor
+@SuppressWarnings("initialization.fields.uninitialized")
+@DefaultCoder(AvroCoder.class)
 public class TrimmedShardedDataChangeRecord extends java.lang.Object implements Serializable {
+
+  @AvroEncode(using = TimestampEncoding.class)
   private Timestamp commitTimestamp;
+
   private String serverTransactionId;
   private String recordSequence;
   private String tableName;
@@ -36,11 +45,15 @@ public class TrimmedShardedDataChangeRecord extends java.lang.Object implements 
   private ModType modType;
   private long numberOfRecordsInTransaction;
   private String transactionTag;
-  private String shard;
+
+  @Nullable private String shard;
   private boolean isRetryRecord;
 
   @SerializedName("_metadata_retry_count")
   private long metadataRetryCount;
+
+  // AvroCoder requires the default constructor
+  public TrimmedShardedDataChangeRecord() {}
 
   public TrimmedShardedDataChangeRecord(
       com.google.cloud.Timestamp commitTimestamp,
