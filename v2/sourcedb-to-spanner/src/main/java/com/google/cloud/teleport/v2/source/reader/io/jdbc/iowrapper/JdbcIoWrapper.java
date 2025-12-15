@@ -280,6 +280,9 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (config.maxPartitions() != null && config.maxPartitions() != 0) {
       tableConfigBuilder.setMaxPartitions(config.maxPartitions());
     }
+    if (config.maxFetchSize() != null) {
+      tableConfigBuilder.setFetchSize(config.maxFetchSize());
+    }
     /*
      * TODO(vardhanvthigle): Add optional support for non-primary indexes.
      * Note: most of the implementation is generic for any unique index.
@@ -420,8 +423,8 @@ public final class JdbcIoWrapper implements IoWrapper {
     if (tableConfig.maxPartitions() != null) {
       jdbcIO = jdbcIO.withNumPartitions(tableConfig.maxPartitions());
     }
-    if (config.maxFetchSize() != null) {
-      jdbcIO = jdbcIO.withFetchSize(config.maxFetchSize());
+    if (tableConfig.fetchSize() != null) {
+      jdbcIO = jdbcIO.withFetchSize(tableConfig.fetchSize());
     }
     return jdbcIO;
   }
@@ -450,7 +453,7 @@ public final class JdbcIoWrapper implements IoWrapper {
             .setDataSourceProviderFn(JdbcIO.PoolableDataSourceProvider.of(dataSourceConfiguration))
             .setDbAdapter(config.dialectAdapter())
             .setApproxTotalRowCount(tableConfig.approxRowCount())
-            .setFetchSize(config.maxFetchSize())
+            .setFetchSize(tableConfig.fetchSize())
             .setRowMapper(
                 new JdbcSourceRowMapper(
                     config.valueMappingsProvider(),
