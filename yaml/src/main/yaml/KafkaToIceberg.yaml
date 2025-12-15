@@ -47,8 +47,10 @@ pipeline:
         redistribute_by_record_key: {{ redistributeByRecordKey }}
         redistribute_num_keys: {{ redistributeNumKeys }}
         redistributed: {{ redistributed }}
+        {% if schema %}
         schema: |
             {{ schema }}
+        {% endif %}
         auto_offset_reset_config: 'earliest'
 
     - type: WriteToIceberg
