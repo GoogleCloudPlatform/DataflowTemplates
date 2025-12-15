@@ -240,6 +240,8 @@ public class MySQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamToS
   public void testRowSize() {
     assertThatPipeline(jobInfo).isRunning();
 
+    insertMaxRowSizeData();
+
     LOG.info("Waiting for pipeline to process data for row size test...");
     PipelineOperator.Result result =
         pipelineOperator()
@@ -258,5 +260,14 @@ public class MySQLDatastreamToSpannerTableAndIndexLimitsIT extends DataStreamToS
     }
     SpannerAsserts.assertThatStructs(rows)
         .hasRecordsUnorderedCaseInsensitiveColumns(List.of(Map.ofEntries(entry("id", 1))));
+  }
+
+  private void insertMaxRowSizeData() {
+    mySQLResourceManager.runSQLUpdate(
+        String.format(
+            "INSERT INTO %s VALUES (1%s);", WIDE_ROW_TABLE, ", REPEAT('a', 10485760)".repeat(160)));
+    mySQLResourceManager.runSQLUpdate(
+        String.format(
+            "INSERT INTO %s VALUES (2%s);", WIDE_ROW_TABLE, ", REPEAT('a', 11534336)".repeat(160)));
   }
 }
