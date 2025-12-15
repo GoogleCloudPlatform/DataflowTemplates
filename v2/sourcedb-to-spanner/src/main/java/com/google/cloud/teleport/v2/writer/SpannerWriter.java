@@ -45,10 +45,10 @@ public class SpannerWriter implements Serializable {
 
   public Write getSpannerWrite() {
     return setBatchSize(
-            SpannerIO.write()
-                .withSpannerConfig(spannerConfig)
-                .withFailureMode(FailureMode.REPORT_FAILURES))
-        .withGroupingFactor(500);
+        SpannerIO.write()
+            .withSpannerConfig(spannerConfig)
+            .withFailureMode(FailureMode.REPORT_FAILURES)
+            .withGroupingFactor(500));
   }
 
   protected Write setBatchSize(Write write) {
