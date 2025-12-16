@@ -56,34 +56,8 @@ public class SpannerDao {
 
   // used for unit testing
   public SpannerDao(SpannerAccessor spannerAccessor) {
+    this.spannerConfig = SpannerConfig.create();
     this.spannerAccessor = spannerAccessor;
-  }
-
-  public ShadowTableRecord getShadowTableRecord(
-      String tableName, com.google.cloud.spanner.Key primaryKey) {
-    try {
-      DatabaseClient databaseClient = spannerAccessor.getDatabaseClient();
-      Struct row =
-          databaseClient
-              .singleUse()
-              .readRow(
-                  tableName,
-                  primaryKey,
-                  Arrays.asList(
-                      Constants.PROCESSED_COMMIT_TS_COLUMN_NAME, Constants.RECORD_SEQ_COLUMN_NAME));
-
-      // This is the first event for the primary key and hence the latest event.
-      if (row == null) {
-        return null;
-      }
-
-      return new ShadowTableRecord(row.getTimestamp(0), row.getLong(1));
-    } catch (Exception e) {
-      LOG.warn("The {} table could not be read. Exception: {}", tableName, e);
-      // We need to throw the original exception such that the caller can
-      // look at SpannerException class to take decision
-      throw e;
-    }
   }
 
   public ShadowTableRecord readShadowTableRecordWithExclusiveLock(

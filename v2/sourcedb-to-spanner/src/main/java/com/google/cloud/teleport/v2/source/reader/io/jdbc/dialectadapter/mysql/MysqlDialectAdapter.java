@@ -376,8 +376,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TINYTEXT", IndexType.STRING)
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
-          .put("DATE", IndexType.DATE)
+          .put("BOOL", IndexType.NUMERIC)
           .put("YEAR", IndexType.NUMERIC)
+          .put("DATE", IndexType.DATE)
           .build();
 
   /**

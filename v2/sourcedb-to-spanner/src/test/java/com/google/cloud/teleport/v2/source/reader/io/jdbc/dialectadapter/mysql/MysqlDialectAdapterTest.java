@@ -280,7 +280,8 @@ public class MysqlDialectAdapterTest {
   public void testDiscoverIndexesBasic() throws SQLException, RetriableSchemaDiscoveryException {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
-        ImmutableList.of("float", "integer", "bit", "char", "varbinary", "binary", "date", "year");
+        ImmutableList.of(
+            "float", "integer", "bit", "char", "varbinary", "binary", "year", "bool", "date");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
@@ -345,21 +346,30 @@ public class MysqlDialectAdapterTest {
                 .setOrdinalPosition(4)
                 .build(),
             SourceColumnIndexInfo.builder()
-                .setColumnName("testColDate")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(3L)
-                .setIndexType(IndexType.DATE)
-                .setOrdinalPosition(6)
-                .build(),
-            SourceColumnIndexInfo.builder()
                 .setColumnName("testColYear")
                 .setIndexName("primary")
                 .setIsUnique(true)
                 .setIsPrimary(true)
                 .setCardinality(100L)
                 .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(6)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColBool")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(2L)
+                .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(5)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColDate")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(3L)
+                .setIndexType(IndexType.DATE)
                 .setOrdinalPosition(6)
                 .build());
 
