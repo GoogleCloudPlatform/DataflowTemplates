@@ -281,7 +281,7 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
         ImmutableList.of(
-            "float", "integer", "bit", "char", "varbinary", "binary", "decimal", "year");
+            "float", "integer", "bit", "char", "varbinary", "binary", "year", "bool", "decimal");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
@@ -346,6 +346,24 @@ public class MysqlDialectAdapterTest {
                 .setOrdinalPosition(4)
                 .build(),
             SourceColumnIndexInfo.builder()
+                .setColumnName("testColYear")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(100L)
+                .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(6)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColBool")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(2L)
+                .setIndexType(IndexType.NUMERIC)
+                .setOrdinalPosition(5)
+                .build(),
+            SourceColumnIndexInfo.builder()
                 .setColumnName("testColDecimal")
                 .setIndexName("primary")
                 .setIsUnique(true)
@@ -354,15 +372,6 @@ public class MysqlDialectAdapterTest {
                 .setIndexType(IndexType.DECIMAL)
                 .setOrdinalPosition(5)
                 .setNumericScale(5)
-                .build(),
-            SourceColumnIndexInfo.builder()
-                .setColumnName("testColYear")
-                .setIndexName("primary")
-                .setIsUnique(true)
-                .setIsPrimary(true)
-                .setCardinality(100L)
-                .setIndexType(IndexType.NUMERIC)
-                .setOrdinalPosition(6)
                 .build());
 
     final JdbcSchemaReference sourceSchemaReference =

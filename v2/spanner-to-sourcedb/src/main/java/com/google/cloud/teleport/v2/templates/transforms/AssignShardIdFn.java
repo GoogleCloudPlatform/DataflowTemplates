@@ -19,6 +19,9 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.cloud.spanner.KeySet;
+import com.google.cloud.spanner.Options;
+import com.google.cloud.spanner.ResultSet;
 import com.google.cloud.spanner.SpannerException;
 import com.google.cloud.spanner.Struct;
 import com.google.cloud.spanner.TimestampBound;
@@ -315,20 +318,9 @@ public class AssignShardIdFn
             .map(Column::name)
             .collect(Collectors.toList());
 
-    Struct row =
-        spannerAccessor
-            .getDatabaseClient()
-            .singleUse(TimestampBound.ofReadTimestamp(staleReadTs))
-            .readRow(tableName, generateKey(tableName, keysJson, ddl), columns);
-    if (row == null) {
-      throw new Exception(
-          "stale read on Spanner returned null for table: "
-              + tableName
-              + ", commitTimestamp: "
-              + commitTimestamp
-              + " and serverTxnId:"
-              + serverTxnId);
-    }
+    com.google.cloud.spanner.Key pk = generateKey(tableName, keysJson, ddl);
+
+    Struct row = readRowAsStruct(tableName, commitTimestamp, serverTxnId, staleReadTs, columns, pk);
     Map<String, Object> rowAsMap = getRowAsMap(row, columns, tableName, ddl);
     // TODO find a way to not make a special case from Cassandra.
     if (modType == ModType.DELETE && sourceType != Constants.SOURCE_CASSANDRA) {
@@ -348,6 +340,36 @@ public class AssignShardIdFn
               record.getMod().getKeysJson(), record.getMod().getOldValuesJson(), newValuesJson));
     }
     return rowAsMap;
+  }
+
+  private Struct readRowAsStruct(
+      String tableName,
+      com.google.cloud.Timestamp commitTimestamp,
+      String serverTxnId,
+      com.google.cloud.Timestamp staleReadTs,
+      List<String> columns,
+      com.google.cloud.spanner.Key pk)
+      throws Exception {
+    try (ResultSet rs =
+        spannerAccessor
+            .getDatabaseClient()
+            .singleUse(TimestampBound.ofReadTimestamp(staleReadTs))
+            .read(
+                tableName,
+                KeySet.singleKey(pk),
+                columns,
+                Options.priority(spannerConfig.getRpcPriority().get()))) {
+      if (!rs.next()) {
+        throw new Exception(
+            "stale read on Spanner returned null for table: "
+                + tableName
+                + ", commitTimestamp: "
+                + commitTimestamp
+                + " and serverTxnId:"
+                + serverTxnId);
+      }
+      return rs.getCurrentRowAsStruct();
+    }
   }
 
   /*
