@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.time.Duration;
 import javax.annotation.Nullable;
 
 /** Details about a partition column. */
@@ -48,10 +49,15 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Precision of datetime columns. Defaults to null for non-datetime columns. */
+  @Nullable
+  public abstract Integer datetimePrecision();
+
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
-        .setStringMaxLength(null);
+        .setStringMaxLength(null)
+        .setDatetimePrecision(null);
   }
 
   public abstract Builder toBuilder();
@@ -67,6 +73,8 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setStringMaxLength(Integer value);
 
+    public abstract Builder setDatetimePrecision(Integer value);
+
     abstract PartitionColumn autoBuild();
 
     public PartitionColumn build() {
@@ -80,6 +88,11 @@ public abstract class PartitionColumn implements Serializable {
                   && partitionColumn.stringMaxLength() == null),
           "String columns must specify collation, and non string columns must not specify colaltion. PartitionColum = "
               + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == Duration.class
+                  && partitionColumn.datetimePrecision() != null)
+              || partitionColumn.columnClass() != Duration.class,
+          "Time/Duration columns must specify precision. PartitionColum = " + partitionColumn);
       return partitionColumn;
     }
   }

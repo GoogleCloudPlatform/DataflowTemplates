@@ -379,6 +379,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("BOOL", IndexType.NUMERIC)
           .put("YEAR", IndexType.NUMERIC)
           .put("DATE", IndexType.DATE)
+          // MySQL TIME type is closer to a java.time.Duration (which represents a time interval) as
+          // opposed to a java.time.LocalTime (which represents wall-clock time in a 24-hour day)
+          .put("TIME", IndexType.DURATION)
           .build();
 
   /**
@@ -426,8 +429,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
         @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
         @Nullable String padSpace = getPadSpaceString(rs);
+        Integer datetimePrecision = rs.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL);
+        if (rs.wasNull()) {
+          datetimePrecision = null;
+        }
         logger.debug(
-            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}",
+            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, datetimePrecision {}",
             colName,
             indexName,
             isUnique,
@@ -436,7 +443,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
             ordinalPosition,
             characterSet,
             collation,
-            padSpace);
+            padSpace,
+            datetimePrecision);
         // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
         // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
@@ -465,6 +473,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setIndexType(indexType)
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
+                .setDatetimePrecision(datetimePrecision)
                 .build());
       }
     } catch (java.sql.SQLException e) {
@@ -698,6 +707,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String CHAR_MAX_LENGTH_COL = "cols.CHARACTER_MAXIMUM_LENGTH";
     public static final String CHARACTER_SET_COL = "cols.CHARACTER_SET_NAME";
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
+    public static final String DATETIME_PRECISION_COL = "cols.DATETIME_PRECISION";
 
     // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
@@ -713,7 +723,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           CHAR_MAX_LENGTH_COL,
           CHARACTER_SET_COL,
           COLLATION_COL,
-          PAD_SPACE_COL);
+          PAD_SPACE_COL,
+          DATETIME_PRECISION_COL);
     }
 
     private InformationSchemaStatsCols() {}

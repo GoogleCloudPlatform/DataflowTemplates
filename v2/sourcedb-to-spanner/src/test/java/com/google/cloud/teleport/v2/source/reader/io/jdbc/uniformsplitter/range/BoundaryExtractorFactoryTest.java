@@ -31,6 +31,7 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.Map;
 import org.apache.beam.sdk.io.jdbc.JdbcIO.PoolableDataSourceProvider;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -308,6 +309,61 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.getDate(eq(1), any())).thenReturn(null);
     when(mockResultSet.getDate(eq(2), any())).thenReturn(null);
     Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isNull();
+    assertThat(boundary.end()).isNull();
+    assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testFromDuration() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Duration.class)
+            .setDatetimePrecision(2)
+            .build();
+    BoundaryExtractor<Duration> extractor = BoundaryExtractorFactory.create(Duration.class);
+    String startStr = "70:10:00.15";
+    String endStr = "72:30:50.40";
+    Duration start = Duration.parse("PT70H10M00.15S");
+    Duration end = Duration.parse("PT72H30M50.4S");
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(eq(1))).thenReturn(startStr);
+    when(mockResultSet.getString(eq(2))).thenReturn(endStr);
+    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<Duration>, Boundary<Duration>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(Duration.parse("PT71H20M25.27S"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromDurationsEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Duration.class)
+            .setDatetimePrecision(2)
+            .build();
+    BoundaryExtractor<Duration> extractor = BoundaryExtractorFactory.create(Duration.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getString(eq(1))).thenReturn(null);
+    when(mockResultSet.getString(eq(2))).thenReturn(null);
+    Boundary<Duration> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
 
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();

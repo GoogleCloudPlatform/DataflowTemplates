@@ -22,6 +22,7 @@ import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.util.Calendar;
 import java.util.TimeZone;
 import org.apache.beam.vendor.guava.v32_1_2_jre.com.google.common.base.Preconditions;
@@ -58,6 +59,8 @@ public class BoundaryExtractorFactory {
               Timestamp.class,
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
+          .put(
+              Duration.class, (BoundaryExtractor<Duration>) BoundaryExtractorFactory::fromDurations)
           .build();
 
   /**
@@ -194,6 +197,49 @@ public class BoundaryExtractorFactory {
         .setBoundarySplitter(BoundarySplitterFactory.create(Date.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
+  }
+
+  private static Boundary<Duration> fromDurations(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Duration.class));
+    resultSet.next();
+    return Boundary.<Duration>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(parseTimeStringToDuration(resultSet.getString(1)))
+        .setEnd(parseTimeStringToDuration(resultSet.getString(2)))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Duration.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  /**
+   * Converts a string in format "hh:mm:ss.sss" into a Duration by converting to a string with
+   * format "PThhHmmMss.sssS".
+   */
+  private static Duration parseTimeStringToDuration(String timeString) {
+    if (timeString == null || timeString.isBlank()) {
+      return null;
+    }
+    boolean isNegative = timeString.trim().startsWith("-");
+    String[] parts = timeString.trim().split(":");
+    StringBuilder durationStrBuilder = new StringBuilder("PT");
+    durationStrBuilder.append(parts[0]).append("H");
+    if (parts.length > 1) {
+      if (isNegative) {
+        durationStrBuilder.append("-");
+      }
+      durationStrBuilder.append(parts[1]).append("M");
+    }
+    if (parts.length > 2) {
+      if (isNegative) {
+        durationStrBuilder.append("-");
+      }
+      durationStrBuilder.append(parts[2]).append("S");
+    }
+    return Duration.parse(durationStrBuilder.toString());
   }
 
   private BoundaryExtractorFactory() {}

@@ -281,7 +281,16 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
         ImmutableList.of(
-            "float", "integer", "bit", "char", "varbinary", "binary", "year", "bool", "date");
+            "float",
+            "integer",
+            "bit",
+            "char",
+            "varbinary",
+            "binary",
+            "year",
+            "bool",
+            "date",
+            "time");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
@@ -371,6 +380,16 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(3L)
                 .setIndexType(IndexType.DATE)
                 .setOrdinalPosition(6)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColTime")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(100L)
+                .setIndexType(IndexType.DURATION)
+                .setOrdinalPosition(6)
+                .setDatetimePrecision(6)
                 .build());
 
     final JdbcSchemaReference sourceSchemaReference =
@@ -520,7 +539,10 @@ public class MysqlDialectAdapterTest {
     // Note that CharMaxLength is the only integer column in this query till now.
     OngoingStubbing stubWasNull = when(mockResultSet.wasNull());
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
-      stubWasNull = stubWasNull.thenReturn(info.stringMaxLength() == null);
+      stubWasNull =
+          stubWasNull
+              .thenReturn(info.stringMaxLength() == null)
+              .thenReturn(info.datetimePrecision() == null);
     }
 
     OngoingStubbing stubCharSetCol =
@@ -545,6 +567,12 @@ public class MysqlDialectAdapterTest {
               ? null
               : (info.collationReference().padSpace() ? "PAD SPACE" : "NO PAD");
       stubPadSpaceCol = stubPadSpaceCol.thenReturn(ret);
+    }
+    OngoingStubbing stubDatetimePrecision =
+        when(mockResultSet.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      int ret = info.datetimePrecision() == null ? 0 : info.datetimePrecision();
+      stubDatetimePrecision = stubDatetimePrecision.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());
     for (long i = 0; i < expectedSourceColumnIndexInfos.size(); i++) {

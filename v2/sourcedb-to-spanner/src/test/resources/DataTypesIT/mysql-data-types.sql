@@ -301,9 +301,15 @@ CREATE TABLE bool_pk_table (
     bool_pk_col BOOL NOT NULL
 );
 
+
 CREATE TABLE date_pk_table (
     id DATE PRIMARY KEY,
     date_pk_col DATE NOT NULL
+);
+
+CREATE TABLE time_pk_table (
+    id TIME(3) PRIMARY KEY,
+    time_pk_col TIME(3) NOT NULL
 );
 
 
@@ -467,6 +473,7 @@ SET time_zone = SYSTEM;
 INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 2000);
 INSERT INTO `bool_pk_table` (`id`, `bool_pk_col`) VALUES (TRUE, TRUE), (FALSE, FALSE);
 INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01-01'), ('2005-01-01', '2005-01-01'), ('9999-12-31', '9999-12-31');
+INSERT INTO `time_pk_table` (`id`, `time_pk_col`) VALUES ('15:50:00.2', '15:50:00.2'), ('838:59:58.123', '838:59:58.123'), ('-838:59:59', '-838:59:59');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

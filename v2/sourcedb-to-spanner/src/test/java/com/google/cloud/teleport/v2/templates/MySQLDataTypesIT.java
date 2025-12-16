@@ -280,6 +280,8 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
     expectedData.put("bool_pk", createRows("bool_pk", false, true));
     expectedData.put("year_pk", createRows("year_pk", "1901", "2000"));
     expectedData.put("date_pk", createRows("date_pk", "1000-01-01", "2005-01-01", "9999-12-31"));
+    expectedData.put(
+        "time_pk", createRows("time_pk", "15:50:00.200000", "838:59:58.123000", "-838:59:59"));
     return expectedData;
   }
 

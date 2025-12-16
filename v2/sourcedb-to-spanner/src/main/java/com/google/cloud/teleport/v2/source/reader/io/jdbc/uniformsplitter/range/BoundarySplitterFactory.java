@@ -74,6 +74,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<Date>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitDates(start, end))
+          .put(
+              Duration.class,
+              (BoundarySplitter<Duration>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDurations(start, end, partitionColumn))
           .build();
 
   /**
@@ -296,5 +301,36 @@ public class BoundarySplitterFactory {
 
   private static Timestamp splitTimestamps(Timestamp start, Timestamp end) {
     return instantToTimestamp(splitInstants(timeStampToInstant(start), timeStampToInstant(end)));
+  }
+
+  private static Duration splitDurations(
+      Duration start, Duration end, PartitionColumn partitionColumn) {
+    int precision =
+        partitionColumn.datetimePrecision() == null ? 0 : partitionColumn.datetimePrecision();
+    BigInteger startBigInt = durationToBigInteger(start, precision);
+    BigInteger endBigInt = durationToBigInteger(end, precision);
+    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+    return bigIntegerToDuration(split, precision);
+  }
+
+  private static BigInteger durationToBigInteger(Duration duration, int precision) {
+    if (duration == null) {
+      return null;
+    }
+    BigInteger seconds = BigInteger.valueOf(duration.getSeconds());
+    BigInteger nanos = BigInteger.valueOf(duration.getNano());
+    return seconds
+        .multiply(BigInteger.TEN.pow(precision))
+        .add(nanos.divide(BigInteger.TEN.pow(9 - precision)));
+  }
+
+  private static Duration bigIntegerToDuration(BigInteger bigInt, int precision) {
+    if (bigInt == null) {
+      return null;
+    }
+    BigInteger[] quotientAndRemainder = bigInt.divideAndRemainder(BigInteger.TEN.pow(precision));
+    BigInteger seconds = quotientAndRemainder[0];
+    BigInteger nanos = quotientAndRemainder[1].multiply(BigInteger.TEN.pow(9 - precision));
+    return Duration.ofSeconds(seconds.longValueExact(), nanos.longValueExact());
   }
 }
