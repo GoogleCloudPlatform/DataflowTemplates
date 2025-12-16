@@ -135,7 +135,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_to_Elasticsearch_Flex" \
--f v2/googlecloud-to-elasticsearch
+-pl v2/googlecloud-to-elasticsearch -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

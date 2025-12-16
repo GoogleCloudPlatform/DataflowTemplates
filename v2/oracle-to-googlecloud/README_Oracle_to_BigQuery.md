@@ -109,7 +109,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Oracle_to_BigQuery" \
--f v2/oracle-to-googlecloud
+-pl v2/oracle-to-googlecloud -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
