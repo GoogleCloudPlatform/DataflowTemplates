@@ -87,7 +87,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="BigQuery_to_Parquet" \
--f v2/bigquery-to-parquet
+-pl v2/bigquery-to-parquet -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

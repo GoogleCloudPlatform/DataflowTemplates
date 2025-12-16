@@ -117,7 +117,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Sourcedb_to_Spanner_Flex" \
--f v2/sourcedb-to-spanner
+-pl v2/sourcedb-to-spanner -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

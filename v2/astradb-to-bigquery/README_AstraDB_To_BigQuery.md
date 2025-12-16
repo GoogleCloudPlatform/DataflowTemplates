@@ -98,7 +98,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="AstraDB_To_BigQuery" \
--f v2/astradb-to-bigquery
+-pl v2/astradb-to-bigquery -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

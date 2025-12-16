@@ -100,7 +100,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Spanner_Change_Streams_to_Sharded_File_Sink" \
--f v2/spanner-change-streams-to-sharded-file-sink
+-pl v2/spanner-change-streams-to-sharded-file-sink -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

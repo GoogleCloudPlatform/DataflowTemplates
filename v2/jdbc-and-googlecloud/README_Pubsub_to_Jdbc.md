@@ -92,7 +92,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Pubsub_to_Jdbc" \
--f v2/jdbc-and-googlecloud
+-pl v2/jdbc-and-googlecloud -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
