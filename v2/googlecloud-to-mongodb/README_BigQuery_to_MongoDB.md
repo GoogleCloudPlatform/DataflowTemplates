@@ -84,7 +84,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="BigQuery_to_MongoDB" \
--f v2/googlecloud-to-mongodb
+-pl v2/googlecloud-to-mongodb -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

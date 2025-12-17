@@ -290,7 +290,8 @@ public class MysqlDialectAdapterTest {
             "varbinary",
             "binary",
             "year",
-            "bool");
+            "bool",
+            "date");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         getExpectedSourceColumnIndexInfosForBasicIndexes(false);
 
@@ -419,6 +420,15 @@ public class MysqlDialectAdapterTest {
             .setCardinality(2L)
             .setIndexType(IndexType.NUMERIC)
             .setOrdinalPosition(5)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColDate")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(3L)
+            .setIndexType(IndexType.DATE)
+            .setOrdinalPosition(6)
             .build());
   }
 

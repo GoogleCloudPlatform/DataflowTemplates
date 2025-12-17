@@ -125,6 +125,21 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
+  public void testDateBoundarySplitter() {
+    BoundarySplitter<java.sql.Date> splitter = BoundarySplitterFactory.create(java.sql.Date.class);
+
+    java.sql.Date start = java.sql.Date.valueOf("2025-12-01");
+    java.sql.Date end = java.sql.Date.valueOf("2025-12-11");
+    java.sql.Date mid = java.sql.Date.valueOf("2025-12-06");
+
+    assertThat(splitter.getSplitPoint(start, end, null, null, null)).isEqualTo(mid);
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isNull();
+    assertThat(splitter.getSplitPoint(null, end, null, null, null)).isNotNull();
+    assertThat(splitter.getSplitPoint(start, null, null, null, null)).isNotNull();
+    assertThat(splitter.getSplitPoint(start, start, null, null, null)).isEqualTo(start);
+  }
+
+  @Test
   public void testBytesIntegerBoundarySplitter() {
     BoundarySplitter<byte[]> splitter = BoundarySplitterFactory.create(BYTE_ARRAY_CLASS);
     byte[] start =

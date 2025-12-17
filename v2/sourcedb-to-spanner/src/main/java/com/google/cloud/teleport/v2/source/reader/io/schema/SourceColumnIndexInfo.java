@@ -148,6 +148,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     BINARY,
     STRING,
     TIME_STAMP,
+    DATE,
     FLOAT,
     OTHER
   };
@@ -160,5 +161,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
           IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
           IndexType.TIME_STAMP, Timestamp.class,
+          IndexType.DATE, java.sql.Date.class,
           IndexType.FLOAT, Float.class);
 }

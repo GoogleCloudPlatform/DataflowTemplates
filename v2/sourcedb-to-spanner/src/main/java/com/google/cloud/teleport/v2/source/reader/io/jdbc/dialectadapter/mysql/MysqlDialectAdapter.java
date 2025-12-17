@@ -379,6 +379,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TIMESTAMP", IndexType.TIME_STAMP)
           .put("BOOL", IndexType.NUMERIC)
           .put("YEAR", IndexType.NUMERIC)
+          .put("DATE", IndexType.DATE)
           // Float is listed as numeric types in Mysql Ref
           // https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
           // But here the end goal is to map to a Java Float.class,

@@ -27,6 +27,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -271,6 +272,42 @@ public class BoundaryExtractorFactoryTest {
     when(mockResultSet.getTimestamp(eq(1), any())).thenReturn(null);
     when(mockResultSet.getTimestamp(eq(2), any())).thenReturn(null);
     Boundary<Timestamp> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+
+    assertThat(boundary.start()).isNull();
+    assertThat(boundary.end()).isNull();
+    assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testFromDate() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Date.class).build();
+    BoundaryExtractor<Date> extractor = BoundaryExtractorFactory.create(Date.class);
+    Date start = Date.valueOf("0001-01-01");
+    Date end = Date.valueOf("2041-01-31");
+
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDate(eq(1), any())).thenReturn(start);
+    when(mockResultSet.getDate(eq(2), any())).thenReturn(end);
+    Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary.start()).isEqualTo(start);
+    assertThat(boundary.end()).isEqualTo(end);
+    Pair<Boundary<Date>, Boundary<Date>> split = boundary.split(null);
+    assertThat(split.getLeft().start()).isEqualTo(start);
+    assertThat(split.getRight().end()).isEqualTo(end);
+    assertThat(split.getLeft().end()).isEqualTo(Date.valueOf("1021-01-16"));
+    assertThat(split.getRight().start()).isEqualTo(split.getLeft().end());
+  }
+
+  @Test
+  public void testFromDatesEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder().setColumnName("col1").setColumnClass(Date.class).build();
+    BoundaryExtractor<Date> extractor = BoundaryExtractorFactory.create(Date.class);
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDate(eq(1), any())).thenReturn(null);
+    when(mockResultSet.getDate(eq(2), any())).thenReturn(null);
+    Boundary<Date> boundary = extractor.getBoundary(partitionColumn, mockResultSet, null);
 
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
