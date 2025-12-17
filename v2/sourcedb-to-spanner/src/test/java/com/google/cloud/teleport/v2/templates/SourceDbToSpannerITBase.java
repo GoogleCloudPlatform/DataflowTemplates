@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.templates;
 
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 
+import com.google.cloud.spanner.Dialect;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.iowrapper.config.SQLDialect;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
 import com.google.common.io.Resources;
@@ -85,6 +86,12 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
   public SpannerResourceManager setUpSpannerResourceManager() {
     return SpannerResourceManager.builder(testName, PROJECT, REGION)
+        .maybeUseStaticInstance()
+        .build();
+  }
+
+  public SpannerResourceManager setUpPGDialectSpannerResourceManager() {
+    return SpannerResourceManager.builder(testName, PROJECT, REGION, Dialect.POSTGRESQL)
         .maybeUseStaticInstance()
         .build();
   }

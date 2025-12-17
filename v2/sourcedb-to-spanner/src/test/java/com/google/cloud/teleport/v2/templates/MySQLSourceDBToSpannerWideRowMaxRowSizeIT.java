@@ -29,6 +29,7 @@ import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.jdbc.MySQLResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -37,37 +38,39 @@ import org.junit.runners.JUnit4;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpannerITBase {
+@Ignore("Causes OOMs with low-provisioned VMs/DBs")
+public class MySQLSourceDBToSpannerWideRowMaxRowSizeIT extends SourceDbToSpannerITBase {
 
   private static boolean initialized = false;
+  private static boolean dataLoaded = false;
   private static PipelineLauncher.LaunchInfo jobInfo;
   public static MySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   public static SpannerResourceManager pgDialectSpannerResourceManager;
 
-  private static final String MYSQL_DUMP_FILE_RESOURCE =
-      "WideRow/RowMaxSizeString/mysql-schema.sql";
+  private static final String MYSQL_DUMP_FILE_RESOURCE = "WideRow/MaxRowSize/mysql-schema.sql";
   private static final String SPANNER_SCHEMA_FILE_RESOURCE =
-      "WideRow/RowMaxSizeString/spanner-schema.sql";
+      "WideRow/MaxRowSize/spanner-schema.sql";
   private static final String PG_DIALECT_SPANNER_SCHEMA_FILE_RESOURCE =
-      "WideRow/RowMaxSizeString/pg-dialect-spanner-schema.sql";
+      "WideRow/MaxRowSize/pg-dialect-spanner-schema.sql";
 
   private static final String TABLE = "WideRowTable";
-  private static final int MAX_ALLOWED_PACKET = 20 * 1024 * 1024;
 
-  /** Setup resource managers once during the execution of this test class. */
   @Before
   public void setUp() throws Exception {
-    synchronized (MySQLSourceDBToSpannerWideRowMaxSizeStringIT.class) {
+    synchronized (MySQLSourceDBToSpannerWideRowMaxRowSizeIT.class) {
       if (!initialized) {
         mySQLResourceManager = setUpMySQLResourceManager();
         spannerResourceManager = setUpSpannerResourceManager();
         pgDialectSpannerResourceManager = setUpPGDialectSpannerResourceManager();
-
-        increasePacketSize();
-        loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
-
         initialized = true;
+      }
+      // Separate the initialization of the resources and the loading of data so that if the data
+      // loading fails, the resources are not re-initialized (which would leave dangling resources
+      // in GCP).
+      if (!dataLoaded) {
+        loadSQLFileResource(mySQLResourceManager, MYSQL_DUMP_FILE_RESOURCE);
+        dataLoaded = true;
       }
     }
   }
@@ -78,13 +81,8 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
         mySQLResourceManager, spannerResourceManager, pgDialectSpannerResourceManager);
   }
 
-  private void increasePacketSize() {
-    String allowedGlobalPacket = "SET GLOBAL max_allowed_packet = " + MAX_ALLOWED_PACKET;
-    mySQLResourceManager.runSQLUpdate(allowedGlobalPacket);
-  }
-
   @Test
-  public void wideRowMaxSizeString() throws Exception {
+  public void wideRowMaxRowSize() throws Exception {
     createSpannerDDL(spannerResourceManager, SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -100,14 +98,12 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
     assertThatResult(result).isLaunchFinished();
 
     // Verify the data in Spanner
-    ImmutableList<Struct> wideRowData =
-        spannerResourceManager.readTableRecords(
-            TABLE, "id", "max_string_col_to_bytes", "max_string_col_to_str");
+    ImmutableList<Struct> wideRowData = spannerResourceManager.readTableRecords(TABLE, "id");
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 
   @Test
-  public void wideRowMaxSizeStringPGDialect() throws Exception {
+  public void wideRowMaxRowSizePGDialect() throws Exception {
     createSpannerDDL(pgDialectSpannerResourceManager, PG_DIALECT_SPANNER_SCHEMA_FILE_RESOURCE);
     jobInfo =
         launchDataflowJob(
@@ -124,8 +120,7 @@ public class MySQLSourceDBToSpannerWideRowMaxSizeStringIT extends SourceDbToSpan
 
     // Verify the data in Spanner
     ImmutableList<Struct> wideRowData =
-        pgDialectSpannerResourceManager.readTableRecords(
-            TABLE, "id", "max_string_col_to_bytes", "max_string_col_to_str");
+        pgDialectSpannerResourceManager.readTableRecords(TABLE, "id");
     SpannerAsserts.assertThatStructs(wideRowData).hasRows(1);
   }
 }
