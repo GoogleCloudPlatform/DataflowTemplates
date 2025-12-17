@@ -48,6 +48,7 @@ import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Base class for SourceDbToSpanner integration tests. It provides helper functions related to
@@ -74,7 +75,10 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     /* Max Cassandra Keyspace is 48 characters. Base Resource Manager adds 24 characters of date-time at the end.
      * That's why we need to take a smaller subsequence of the testId.
      */
-    String uniqueId = testId.substring(0, Math.min(20, testId.length()));
+    String uniqueId =
+        testId.substring(0, Math.min(15, testId.length()))
+            + "_"
+            + RandomStringUtils.randomAlphabetic(4).toLowerCase();
 
     return CassandraResourceManager.builder(uniqueId).build();
   }
