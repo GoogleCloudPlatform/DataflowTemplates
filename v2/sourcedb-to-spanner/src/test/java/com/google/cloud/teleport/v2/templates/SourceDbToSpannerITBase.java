@@ -338,7 +338,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     gcsClient.copyFileToGcs(tempFile.toAbsolutePath(), configPath);
     LOG.info(
-        "aastha: Cassandra Config File uploaded for test = {}, testID = {} ,at {}\nConfig={}\n",
+        "Cassandra Config File uploaded for test = {}, testID = {} ,at {}\nConfig={}\n",
         testName,
         testId,
         configGcsPath,
