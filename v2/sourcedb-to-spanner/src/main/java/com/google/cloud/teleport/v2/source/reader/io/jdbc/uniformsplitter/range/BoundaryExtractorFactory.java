@@ -59,6 +59,7 @@ public class BoundaryExtractorFactory {
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
+          .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
           .build();
 
   /**
@@ -209,6 +210,22 @@ public class BoundaryExtractorFactory {
         .setStart(resultSet.getFloat(1))
         .setEnd(resultSet.getFloat(2))
         .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
+  private static Boundary<Double> fromDoubles(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Double.class));
+    resultSet.next();
+    return Boundary.<Double>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getDouble(1))
+        .setEnd(resultSet.getDouble(2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
         .setBoundaryTypeMapper(boundaryTypeMapper)
         .build();
   }

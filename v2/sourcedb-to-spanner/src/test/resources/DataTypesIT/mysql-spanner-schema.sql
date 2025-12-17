@@ -347,3 +347,8 @@ CREATE TABLE IF NOT EXISTS float_pk_table (
   id FLOAT64 NOT NULL,
   float_pk_col FLOAT64 NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS double_pk_table (
+  id FLOAT64 NOT NULL,
+  double_pk_col FLOAT64 NOT NULL,
+) PRIMARY KEY(id);
