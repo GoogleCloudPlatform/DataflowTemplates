@@ -69,3 +69,6 @@ pipeline:
 
 options:
   streaming: true
+  dataflow_service_options:
+    - sdf_checkpoint_after_duration=30s
+    - sdf_checkpoint_after_output_bytes=536870912
