@@ -133,6 +133,22 @@ public class BoundarySplitterFactoryTest {
         .isEqualTo(twentyOne);
     assertThat(splitter.getSplitPoint(null, fortyTwo, partitionColumn, null, null))
         .isEqualTo(twentyOne);
+
+    // Null checks
+    assertThrows(
+        NullPointerException.class, () -> splitter.getSplitPoint(start, end, null, null, null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            // can't test via the splitter we need to use a different type since numeric scale is
+            // required for BigDecimal columns
+            BoundarySplitterFactory.splitBigDecimals(
+                start,
+                end,
+                PartitionColumn.builder()
+                    .setColumnName("col1")
+                    .setColumnClass(Integer.class)
+                    .build()));
   }
 
   @Test
@@ -306,6 +322,7 @@ public class BoundarySplitterFactoryTest {
                 PartitionColumn.builder()
                     .setColumnName("intcol")
                     .setColumnClass(Integer.class)
+                    // Missing numeric scale
                     .autoBuild(),
                 mapper,
                 null));

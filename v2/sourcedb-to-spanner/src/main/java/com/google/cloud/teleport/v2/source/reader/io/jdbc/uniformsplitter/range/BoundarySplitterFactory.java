@@ -170,9 +170,14 @@ public class BoundarySplitterFactory {
     return (start & end) + ((start ^ end) >> 1);
   }
 
-  private static BigDecimal splitBigDecimals(
+  @VisibleForTesting
+  protected static BigDecimal splitBigDecimals(
       BigDecimal start, BigDecimal end, PartitionColumn partitionColumn) {
-    int scale = partitionColumn.numericScale() == null ? 0 : partitionColumn.numericScale();
+    Preconditions.checkNotNull(
+        partitionColumn, "Trying to split BigDecimals without partition column information.");
+    Preconditions.checkNotNull(
+        partitionColumn.numericScale(), "Trying to split BigDecimals without numeric scale.");
+    int scale = partitionColumn.numericScale();
     BigInteger startBigInt = bigDecimalToBigInt(start, scale);
     BigInteger endBigInt = bigDecimalToBigInt(end, scale);
 

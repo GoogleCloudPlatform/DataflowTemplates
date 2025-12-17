@@ -281,7 +281,16 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
         ImmutableList.of(
-            "float", "integer", "bit", "char", "varbinary", "binary", "year", "bool", "date", "decimal");
+            "float",
+            "integer",
+            "bit",
+            "char",
+            "varbinary",
+            "binary",
+            "year",
+            "bool",
+            "date",
+            "decimal");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
