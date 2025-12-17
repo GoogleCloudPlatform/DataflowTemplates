@@ -263,6 +263,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     options.addEnvironment("numWorkers", 2);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
+    LOG.info("aastha: Launching Dataflow Job {} with final parameters: {}", jobName, params);
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
 
@@ -297,13 +298,13 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     String configFile =
         String.format(
             """
-                datastax-java-driver {
-                      basic.contact-points = ["%s:%d"]
-                      basic.session-keyspace = %s
-                      basic.load-balancing-policy {
-                        local-datacenter = datacenter1
-                      }
-                    }""",
+                            datastax-java-driver {
+                                  basic.contact-points = ["%s:%d"]
+                                  basic.session-keyspace = %s
+                                  basic.load-balancing-policy {
+                                    local-datacenter = datacenter1
+                                  }
+                                }""",
             cassandraResourceManager.getHost(),
             cassandraResourceManager.getPort(),
             cassandraResourceManager.getKeyspaceName());
@@ -337,7 +338,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     gcsClient.copyFileToGcs(tempFile.toAbsolutePath(), configPath);
     LOG.info(
-        "Cassandra Config File uploaded for test = {}, testID = {} ,at {}\nConfig={}\n",
+        "aastha: Cassandra Config File uploaded for test = {}, testID = {} ,at {}\nConfig={}\n",
         testName,
         testId,
         configGcsPath,
@@ -345,6 +346,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     Files.delete(tempFile);
     params.put("sourceConfigURL", configGcsPath);
     params.put("outputDirectory", outputPath);
+    LOG.info("aastha: Cassandra Parameters: {}", params);
     return params;
   }
 

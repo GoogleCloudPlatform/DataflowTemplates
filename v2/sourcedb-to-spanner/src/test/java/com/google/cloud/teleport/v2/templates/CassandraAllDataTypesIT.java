@@ -178,6 +178,9 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
   public void allTypesTest() throws Exception {
     loadCSQLFileResource(cassandraResourceManager, CASSANDRA_DUMP_FILE_RESOURCE);
     createSpannerDDL(spannerResourceManager, SPANNER_DDL_RESOURCE);
+    LOG.info("aastha: Starting allTypesTest");
+    LOG.info("aastha: Cassandra Host: {}", cassandraResourceManager.getHost());
+    LOG.info("aastha: Cassandra Keyspace: {}", cassandraResourceManager.getKeyspaceName());
     jobInfo =
         launchDataflowJob(
             getClass().getSimpleName(),
@@ -187,6 +190,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             spannerResourceManager,
             null,
             null);
+    LOG.info("aastha: Dataflow job launched with JobId: {}", jobInfo.jobId());
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(jobInfo, Duration.ofMinutes(35L)));
     assertThatResult(result).isLaunchFinished();

@@ -54,7 +54,33 @@ public final class CassandraDriverConfigLoader {
    */
   public static DriverConfigLoader loadFile(String path) throws FileNotFoundException {
     URL url = loadSingleFile(path);
-    LOG.debug("Loaded Cassandra Driver config from path {}", path);
+    LOG.info("aastha: Loaded Cassandra Driver config from path {}", path);
+    try {
+      LOG.info(
+          "aastha: Config content:\n{}",
+          com.google.common.io.Resources.toString(url, java.nio.charset.StandardCharsets.UTF_8));
+    } catch (java.io.IOException e) {
+      LOG.warn("aastha: Failed to read config content for logging", e);
+    }
+
+    URL referenceUrl =
+        CassandraDriverConfigLoader.class.getClassLoader().getResource("reference.conf");
+    LOG.info("aastha: reference.conf location: {}", referenceUrl);
+
+    // Log reference.conf content if found
+    if (referenceUrl != null) {
+      try {
+        LOG.info(
+            "aastha: reference.conf content:\n{}",
+            com.google.common.io.Resources.toString(
+                referenceUrl, java.nio.charset.StandardCharsets.UTF_8));
+      } catch (java.io.IOException e) {
+        LOG.warn("aastha: Failed to read reference.conf content for logging", e);
+      }
+    } else {
+      LOG.warn("aastha: reference.conf not found in classpath!");
+    }
+
     try {
       DriverConfigLoader.fromUrl(url).getInitialConfig();
       return DriverConfigLoader.fromUrl(url);
@@ -80,18 +106,24 @@ public final class CassandraDriverConfigLoader {
   public static OptionsMap getOptionsMapFromFile(String path) throws FileNotFoundException {
     OptionsMap optionsMap = new OptionsMap();
     DriverConfigLoader configLoader = loadFile(path);
+    LOG.info("aastha getOptionsMapFromFile path: {}", path);
     configLoader
         .getInitialConfig()
         .getProfiles()
         .forEach(
-            (profileName, profile) ->
-                profile
-                    .entrySet()
-                    .forEach(
-                        e ->
-                            putInOptionsMap(
-                                optionsMap, profileName, e.getKey(), e.getValue(), profile)));
+            (profileName, profile) -> {
+              LOG.info("aastha Processing Profile: {}", profileName);
+              profile
+                  .entrySet()
+                  .forEach(
+                      e -> {
+                        LOG.info(
+                            "aastha Processing Option: Key={}, Value={}", e.getKey(), e.getValue());
+                        putInOptionsMap(optionsMap, profileName, e.getKey(), e.getValue(), profile);
+                      });
+            });
 
+    LOG.info("aastha Final OptionsMap: {}", optionsMap);
     return optionsMap;
   }
 
@@ -136,8 +168,14 @@ public final class CassandraDriverConfigLoader {
 
     TypedDriverOption option = OPTIONS_SUPPORTED_BY_DRIVER.get(optionName);
     if (Objects.equal(option, null)) {
-      LOG.warn("Unknown Cassandra Option {} found in configuration. Ignoring it.", optionName);
-      return;
+      LOG.error(
+          "aastha: Unknown Cassandra Option {}, Options supported by driver = {}",
+          optionName,
+          OPTIONS_SUPPORTED_BY_DRIVER);
+      throw new IllegalArgumentException(
+          String.format(
+              "aastha: Unknown Cassandra Driver Option %s. Supported Options = %s",
+              optionName, OPTIONS_SUPPORTED_BY_DRIVER));
     }
     putOptionInOptionsMap(optionsMap, profileName, profile, untypedValue, option);
   }

@@ -156,14 +156,17 @@ public class CassandraDriverConfigLoaderTest {
                 .getDefaultProfile()
                 .getBytes(TypedDriverOption.PROTOCOL_MAX_FRAME_LENGTH.getRawOption()))
         .isEqualTo(256000000L);
-    OptionsMap optionsMapToLoad = new OptionsMap();
-    CassandraDriverConfigLoader.putInOptionsMap(
-        optionsMapToLoad,
-        "default",
-        "Unsupported",
-        "Unsupported",
-        driverConfigLoaderDirect.getInitialConfig().getDefaultProfile());
-    assertThat(optionsMapToLoad.get("default", TypedDriverOption.CONTACT_POINTS)).isNull();
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          OptionsMap optionsMapToLoad = new OptionsMap();
+          CassandraDriverConfigLoader.putInOptionsMap(
+              optionsMapToLoad,
+              "default",
+              "Unsupported",
+              "Unsupported",
+              driverConfigLoaderDirect.getInitialConfig().getDefaultProfile());
+        });
   }
 
   @After
