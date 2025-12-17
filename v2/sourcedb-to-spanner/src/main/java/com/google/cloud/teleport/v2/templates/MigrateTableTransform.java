@@ -29,6 +29,7 @@ import com.google.cloud.teleport.v2.writer.DeadLetterQueue;
 import com.google.cloud.teleport.v2.writer.SpannerWriter;
 import java.util.Arrays;
 import java.util.Map;
+import org.apache.beam.sdk.transforms.Reshuffle;
 import org.apache.beam.repackaged.core.org.apache.commons.lang3.StringUtils;
 import org.apache.beam.sdk.coders.SerializableCoder;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
@@ -80,6 +81,8 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
     PCollectionTuple rowsAndTables = input.apply("Read_rows", readerTransform.readTransform());
     PCollection<SourceRow> sourceRows = rowsAndTables.get(readerTransform.sourceRowTag());
+
+    sourceRows = sourceRows.apply("BreakReaderWriterFusion", Reshuffle.viaRandomKey());
 
     CustomTransformation customTransformation =
         CustomTransformation.builder(
