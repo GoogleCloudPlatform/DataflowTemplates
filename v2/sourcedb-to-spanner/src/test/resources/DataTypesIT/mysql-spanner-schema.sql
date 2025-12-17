@@ -333,6 +333,11 @@ CREATE TABLE IF NOT EXISTS year_pk_table (
   year_pk_col INT64 NOT NULL,
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS date_pk_table (
+  id DATE NOT NULL,
+  date_pk_col DATE NOT NULL,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS decimal_pk_table (
   id NUMERIC NOT NULL,
   decimal_pk_col NUMERIC NOT NULL,

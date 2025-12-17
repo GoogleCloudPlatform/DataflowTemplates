@@ -24,9 +24,11 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
+import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import org.apache.beam.sdk.transforms.DoFn;
 
 /** Factory to construct {@link BoundarySplitter} for supported classes. */
@@ -68,6 +70,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<Timestamp>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitTimestamps(start, end))
+          .put(
+              Date.class,
+              (BoundarySplitter<Date>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDates(start, end))
           .build();
 
   /**
@@ -178,6 +185,33 @@ public class BoundarySplitterFactory {
 
   private static BigInteger bigDecimalToBigInt(BigDecimal value, int scale) {
     return value == null ? null : value.setScale(scale, RoundingMode.UNNECESSARY).unscaledValue();
+  }
+
+  private static Date splitDates(Date start, Date end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = Date.valueOf(LocalDate.MIN);
+    }
+    if (end == null) {
+      end = Date.valueOf(LocalDate.MIN);
+    }
+
+    long startDateLong = convertDateToLong(start);
+    long endDateLong = convertDateToLong(end);
+
+    long dateMid = splitLongs(startDateLong, endDateLong);
+
+    return convertLongToSqlDate(dateMid);
+  }
+
+  private static long convertDateToLong(Date sqlDate) {
+    return sqlDate.toLocalDate().toEpochDay();
+  }
+
+  private static Date convertLongToSqlDate(long dateLong) {
+    return Date.valueOf(LocalDate.ofEpochDay(dateLong));
   }
 
   private static byte[] splitBytes(byte[] start, byte[] end) {

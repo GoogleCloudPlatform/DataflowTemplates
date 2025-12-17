@@ -281,7 +281,7 @@ public class MysqlDialectAdapterTest {
     ImmutableList<String> testTables = ImmutableList.of("testTable1");
     ImmutableList<String> colTypes =
         ImmutableList.of(
-            "float", "integer", "bit", "char", "varbinary", "binary", "year", "bool", "decimal");
+            "float", "integer", "bit", "char", "varbinary", "binary", "year", "bool", "date", "decimal");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
             SourceColumnIndexInfo.builder()
@@ -362,6 +362,15 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(2L)
                 .setIndexType(IndexType.NUMERIC)
                 .setOrdinalPosition(5)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColDate")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(3L)
+                .setIndexType(IndexType.DATE)
+                .setOrdinalPosition(6)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColDecimal")

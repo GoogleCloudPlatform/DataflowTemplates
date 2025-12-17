@@ -166,10 +166,6 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
   /** Cleanup dataflow job and all the resources and resource managers. */
   @After
   public void cleanUp() {
-    if (skipBaseCleanup) {
-      ResourceManagerUtils.cleanResources(cassandraResourceManager);
-      return;
-    }
     ResourceManagerUtils.cleanResources(spannerResourceManager, cassandraResourceManager);
     dlqFlexTemplateDataflowJobResourceManagers.forEach(ResourceManagerUtils::cleanResources);
   }

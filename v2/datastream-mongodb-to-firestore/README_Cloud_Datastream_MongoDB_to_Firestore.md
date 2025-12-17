@@ -119,7 +119,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_MongoDB_to_Firestore" \
--f v2/datastream-mongodb-to-firestore
+-pl v2/datastream-mongodb-to-firestore -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
