@@ -49,7 +49,7 @@
       <dependency>
         <groupId>com.datastax.oss</groupId>
         <artifactId>java-driver-core</artifactId>
-        <version>4.17.0</version>
+        <version>4.18.1</version>
         <scope>compile</scope>
         <exclusions>
           <exclusion>
