@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range
 
 import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
@@ -115,7 +116,8 @@ public abstract class Boundary<T extends Serializable>
    * delta/min-step based comparison for: - Floating-point types (Float, Double) - Source DB type
    * where there is a defined precision Examples: Float(p, d) TODO: Double(p, d).
    */
-  public boolean areValuesEqual(Object valueA, Object valueB) {
+  @VisibleForTesting
+  protected boolean areValuesEqual(Object valueA, Object valueB) {
     if (valueA instanceof Float f1 && valueB instanceof Float f2) {
       BigDecimal b1 = new BigDecimal(f1.toString());
       BigDecimal b2 = new BigDecimal(f2.toString());

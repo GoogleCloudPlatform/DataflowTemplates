@@ -472,7 +472,7 @@ SET time_zone = SYSTEM;
 INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 2000);
 INSERT INTO `bool_pk_table` (`id`, `bool_pk_col`) VALUES (TRUE, TRUE), (FALSE, FALSE);
 INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01-01'), ('2005-01-01', '2005-01-01'), ('9999-12-31', '9999-12-31');
-INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (3.4E38, 3.4E38), (-3.4E38, -3.4E38);
+INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (1.00001, 1.00001), (1, 1), (1.00002, 1.00002), (3.4E38, 3.4E38), (-3.4E38, -3.4E38), (1.17E-38, 1.17E-38), (-1.17E-38, -1.17E-38);
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

@@ -381,6 +381,15 @@ public class BoundarySplitterFactoryTest {
     // Full Range: Max to -Max (Inverted Extreme) -> 0
     assertThat(splitter.getSplitPoint(Float.MAX_VALUE, -Float.MAX_VALUE, null, null, null))
         .isEqualTo(0.0f);
+    // Small Positives: Min to Min-0.5 -> Min-0.25
+    assertThat(splitter.getSplitPoint(Float.MIN_VALUE - 0.5f, Float.MIN_VALUE, null, null, null))
+        .isEqualTo(Float.MIN_VALUE - 0.25f);
+    // Small Negatives: -Min to -Min+0.5 -> -Min+0.25
+    assertThat(splitter.getSplitPoint(-Float.MIN_VALUE, -Float.MIN_VALUE + 0.5f, null, null, null))
+        .isEqualTo(-Float.MIN_VALUE + 0.25f);
+    // Small Range: Min to -Min (Inverted Extreme) -> 0
+    assertThat(splitter.getSplitPoint(Float.MIN_VALUE, -Float.MIN_VALUE, null, null, null))
+        .isEqualTo(0.0f);
 
     // 5. Identity, start and end equals
     assertThat(splitter.getSplitPoint(5.0f, 5.0f, null, null, null)).isEqualTo(5.0f);

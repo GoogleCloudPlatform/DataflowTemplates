@@ -175,6 +175,34 @@ public class BoundaryTest {
   }
 
   @Test
+  public void testAreValuesEqual() {
+    // Test special handling for float equality
+    Boundary<Float> floatBoundary =
+        Boundary.<Float>builder()
+            .setColName("col1")
+            .setColClass(Float.class)
+            .setStart(1.01f)
+            .setEnd(1.02f)
+            .setDecimalStepSize(BigDecimal.valueOf(0.01))
+            .setBoundarySplitter(BoundarySplitterFactory.create(Float.class))
+            .build();
+
+    // float to non-float (double) comparison
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.01)).isEqualTo(false);
+    // non-float (double) to float comparison
+    assertThat(floatBoundary.areValuesEqual(0.01, 0.01f)).isEqualTo(false);
+    // float to float comparison
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.01f)).isEqualTo(true);
+    assertThat(floatBoundary.areValuesEqual(0.001f, 0.01f)).isEqualTo(true);
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.001f)).isEqualTo(true);
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0.02f)).isEqualTo(false);
+    assertThat(floatBoundary.areValuesEqual(0.01f, 0f)).isEqualTo(false);
+    // float values that cause issues when compared as floats (1.03f - 1.02f returns 0.00999999
+    // which is less than 0.01)
+    assertThat(floatBoundary.areValuesEqual(1.03f, 1.02f)).isEqualTo(false);
+  }
+
+  @Test
   public void testFloatBoundaryMerge() {
     BigDecimal decimalStepSize = BigDecimal.valueOf(0.01);
 
