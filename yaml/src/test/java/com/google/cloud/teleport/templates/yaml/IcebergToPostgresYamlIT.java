@@ -56,7 +56,7 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergToPostgresYamlIT.class);
 
   // Iceberg Setup
-  private static final String CATALOG_NAME = "gcs_catalog";
+  private static final String CATALOG_NAME = "hadoop_catalog";
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "source_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
