@@ -238,8 +238,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
   public PipelineLauncher.LaunchInfo launchFwdDataflowJobInRetryDlqMode(
       SpannerResourceManager spannerResourceManager,
       String inputLocationFullPath,
-      String dlqLocationFullPath,
-      SubscriptionName dlqPubSubSubscription)
+      String dlqLocationFullPath)
       throws IOException {
 
     // launch dataflow template
@@ -254,10 +253,10 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("databaseId", spannerResourceManager.getDatabaseId())
             .addParameter("projectId", PROJECT)
             .addParameter("deadLetterQueueDirectory", dlqLocationFullPath)
-            .addParameter("dlqGcsPubSubSubscription", dlqPubSubSubscription.toString())
             .addParameter("datastreamSourceType", "mysql")
             .addParameter("inputFileFormat", "avro")
             .addParameter("runMode", "retryDLQ")
+            .addParameter("dlqRetryMinutes", "1")
             .build();
 
     // Run
