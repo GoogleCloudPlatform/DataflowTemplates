@@ -50,6 +50,7 @@ public class CreateDml
   private static Map<String, String> schemaMap = new HashMap<String, String>();
   private static Map<String, String> tableNameMap = new HashMap<String, String>();
   private static Boolean orderByIncludesIsDeleted = false;
+  private static Integer schemaCacheRefreshMinutes = 1440;
 
   // Define the main output tag here if not passed in from outside,
   // but ideally DataStreamToSQL defines it. For now, we'll accept it in expand()
@@ -96,6 +97,13 @@ public class CreateDml
     return this;
   }
 
+  public CreateDml withSchemaCacheRefreshMinutes(Integer minutes) {
+    if (minutes != null) {
+      CreateDml.schemaCacheRefreshMinutes = minutes;
+    }
+    return this;
+  }
+
   public DatastreamToDML getDatastreamToDML() {
     DatastreamToDML datastreamToDML;
     String driverName = this.dataSourceConfiguration.getDriverClassName().get();
@@ -116,7 +124,8 @@ public class CreateDml
         .withColumnCasing(columnCasing)
         .withSchemaMap(this.schemaMap)
         .withTableNameMap(this.tableNameMap)
-        .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted);
+        .withOrderByIncludesIsDeleted(orderByIncludesIsDeleted)
+        .withSchemaCacheRefreshMinutes(schemaCacheRefreshMinutes);
   }
 
   @Override

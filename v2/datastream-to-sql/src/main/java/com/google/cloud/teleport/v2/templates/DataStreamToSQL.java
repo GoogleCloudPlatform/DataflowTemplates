@@ -30,6 +30,7 @@ import com.google.cloud.teleport.v2.datastream.sources.DataStreamIO;
 import com.google.cloud.teleport.v2.datastream.values.DmlInfo;
 import com.google.cloud.teleport.v2.templates.DataStreamToSQL.Options;
 import com.google.cloud.teleport.v2.transforms.CreateDml;
+import com.google.cloud.teleport.v2.transforms.DLQSanitizer;
 import com.google.cloud.teleport.v2.transforms.DLQWriteTransform;
 import com.google.cloud.teleport.v2.transforms.ProcessDml;
 import com.google.cloud.teleport.v2.utils.DatastreamToDML;
@@ -379,6 +380,16 @@ public class DataStreamToSQL {
     Integer getDlqRetryMinutes();
 
     void setDlqRetryMinutes(Integer value);
+
+    @TemplateParameter.Integer(
+        order = 23,
+        optional = true,
+        description = "The number of minutes to cache table schemas.",
+        helpText = "The number of minutes to cache table schemas. Defaults to 1440 (24 hours).")
+    @Default.Integer(1440)
+    Integer getSchemaCacheRefreshMinutes();
+
+    void setSchemaCacheRefreshMinutes(Integer value);
   }
 
   /**
@@ -606,34 +617,7 @@ public class DataStreamToSQL {
     PCollection<FailsafeElement<String, String>> dlqJsonRecords =
         pipeline
             .apply("DLQ Consumer/reader", dlqManager.dlqReconsumer(options.getDlqRetryMinutes()))
-            .apply(
-                "DLQ Consumer/cleaner",
-                ParDo.of(
-                    new DoFn<String, FailsafeElement<String, String>>() {
-                      private final ObjectMapper mapper = new ObjectMapper();
-
-                      @ProcessElement
-                      public void process(
-                          @Element String input,
-                          OutputReceiver<FailsafeElement<String, String>> receiver) {
-                        try {
-                          DatastreamToDML.clearCaches();
-                          JsonNode wrapper = mapper.readTree(input);
-                          if (wrapper.has("message")) {
-                            // FIX: Use .toString() to convert the nested JSON Object back to a
-                            // String.
-                            // .asText() would return null for a JSON Object node.
-                            String payload = wrapper.get("message").toString();
-                            receiver.output(FailsafeElement.of(payload, payload));
-                          } else {
-                            receiver.output(FailsafeElement.of(input, input));
-                          }
-                        } catch (Exception e) {
-                          LOG.warn("Could not parse DLQ wrapper, trying raw: {}", e.getMessage());
-                          receiver.output(FailsafeElement.of(input, input));
-                        }
-                      }
-                    }))
+            .apply("DLQ Consumer/cleaner", ParDo.of(new DLQSanitizer()))
             .setCoder(FAILSAFE_ELEMENT_CODER);
 
     PCollection<FailsafeElement<String, String>> allJsonRecords =
@@ -654,7 +638,8 @@ public class DataStreamToSQL {
                 .withTableNameMap(tableNameMap)
                 .withColumnCasing(options.getColumnCasing())
                 .withOrderByIncludesIsDeleted(options.getOrderByIncludesIsDeleted())
-                .withNumThreads(options.getNumThreads()));
+                .withNumThreads(options.getNumThreads())
+                .withSchemaCacheRefreshMinutes(options.getSchemaCacheRefreshMinutes()));
 
     PCollection<KV<String, DmlInfo>> dmlStatements =
         dmlResults

@@ -66,6 +66,7 @@ public abstract class DatastreamToDML
   protected Map<String, String> schemaMappings = new HashMap<>();
   protected Map<String, String> tableMappings = new HashMap<>();
   protected Boolean orderByIncludesIsDeleted = false;
+  protected Integer schemaCacheRefreshMinutes = 1440;
 
   public abstract String getDefaultQuoteCharacter();
 
@@ -106,6 +107,13 @@ public abstract class DatastreamToDML
   public DatastreamToDML withColumnCasing(String casing) {
     if (casing != null) {
       this.columnCasing = casing;
+    }
+    return this;
+  }
+
+  public DatastreamToDML withSchemaCacheRefreshMinutes(Integer cacheMinutes) {
+    if (cacheMinutes != null) {
+      this.schemaCacheRefreshMinutes = cacheMinutes;
     }
     return this;
   }
@@ -175,29 +183,18 @@ public abstract class DatastreamToDML
         LOG.debug("Skipping Null DmlInfo: {}", jsonString);
       }
     } catch (IOException e) {
-      LOG.error("IOException during JSON parse: {} :: {}", jsonString, e.toString());
       context.output(
           ERROR_TAG,
           FailsafeElement.of(element.getOriginalPayload(), jsonString)
               .setErrorMessage(e.getMessage())
               .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     } catch (Exception e) {
-      LOG.error("Value Error during DML conversion: {} :: {}", jsonString, e.toString());
       context.output(
           ERROR_TAG,
           FailsafeElement.of(element.getOriginalPayload(), jsonString)
               .setErrorMessage(e.getMessage())
               .setStacktrace(java.util.Arrays.toString(e.getStackTrace())));
     }
-  }
-
-  // NEW METHOD: forcefully clear static caches
-  public static synchronized void clearCaches() {
-    if (tableCache != null || primaryKeyCache != null) {
-      LOG.info("Forcing clear of all JDBC schema caches due to DLQ retry.");
-    }
-    tableCache = null;
-    primaryKeyCache = null;
   }
 
   // TODO(dhercher): Only if source is oracle, pull from DatastreamRow
@@ -217,14 +214,17 @@ public abstract class DatastreamToDML
 
   private synchronized void setUpTableCache() {
     if (tableCache == null) {
-      tableCache = new JdbcTableCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
+      tableCache =
+          new JdbcTableCache(this.getDataSource())
+              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
   private synchronized void setUpPrimaryKeyCache() {
     if (primaryKeyCache == null) {
       primaryKeyCache =
-          new JdbcPrimaryKeyCache(this.getDataSource()).withCacheResetTimeUnitValue(1440);
+          new JdbcPrimaryKeyCache(this.getDataSource())
+              .withCacheResetTimeUnitValue(this.schemaCacheRefreshMinutes);
     }
   }
 
