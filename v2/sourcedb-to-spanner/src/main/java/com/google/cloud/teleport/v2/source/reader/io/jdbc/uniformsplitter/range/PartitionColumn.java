@@ -52,10 +52,15 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Numeric scale for floating point and decimal columns. Null for other columns. */
+  @Nullable
+  public abstract Integer numericScale();
+
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
         .setStringMaxLength(null)
+        .setNumericScale(null)
         .setDecimalStepSize(null);
   }
 
@@ -72,6 +77,8 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setStringMaxLength(Integer value);
 
+    public abstract Builder setNumericScale(Integer value);
+
     public abstract Builder setDecimalStepSize(BigDecimal value);
 
     abstract PartitionColumn autoBuild();
@@ -87,6 +94,11 @@ public abstract class PartitionColumn implements Serializable {
                   && partitionColumn.stringMaxLength() == null),
           "String columns must specify collation, and non string columns must not specify collation. PartitionColum = "
               + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == BigDecimal.class
+                  && partitionColumn.numericScale() != null)
+              || (partitionColumn.columnClass() != BigDecimal.class),
+          "Decimal columns must specify numeric scale. PartitionColumn = " + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == Float.class
                   && partitionColumn.decimalStepSize() != null)

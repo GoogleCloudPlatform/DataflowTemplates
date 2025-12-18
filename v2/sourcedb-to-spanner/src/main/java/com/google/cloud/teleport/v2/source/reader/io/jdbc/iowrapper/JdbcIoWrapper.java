@@ -313,6 +313,7 @@ public final class JdbcIoWrapper implements IoWrapper {
                 IndexType.BINARY,
                 IndexType.TIME_STAMP,
                 IndexType.DATE,
+                IndexType.DECIMAL,
                 IndexType.FLOAT);
         // As of now only Primary key index with Numeric type is supported.
         // TODO:
@@ -373,6 +374,7 @@ public final class JdbcIoWrapper implements IoWrapper {
         .setColumnClass(indexTypeToColumnClass(idxInfo))
         .setStringCollation(idxInfo.collationReference())
         .setStringMaxLength(idxInfo.stringMaxLength())
+        .setNumericScale(idxInfo.numericScale())
         .setDecimalStepSize(idxInfo.decimalStepSize())
         .build();
   }

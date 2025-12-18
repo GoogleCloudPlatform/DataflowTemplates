@@ -291,7 +291,8 @@ public class MysqlDialectAdapterTest {
             "binary",
             "year",
             "bool",
-            "date");
+            "date",
+            "decimal");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         getExpectedSourceColumnIndexInfosForBasicIndexes(false);
 
@@ -429,6 +430,16 @@ public class MysqlDialectAdapterTest {
             .setCardinality(3L)
             .setIndexType(IndexType.DATE)
             .setOrdinalPosition(6)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColDecimal")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(42L)
+            .setIndexType(IndexType.DECIMAL)
+            .setOrdinalPosition(5)
+            .setNumericScale(5)
             .build());
   }
 
@@ -548,7 +559,10 @@ public class MysqlDialectAdapterTest {
     // Note that CharMaxLength is the only integer column in this query till now.
     OngoingStubbing stubWasNull = when(mockResultSet.wasNull());
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
-      stubWasNull = stubWasNull.thenReturn(info.stringMaxLength() == null);
+      stubWasNull =
+          stubWasNull
+              .thenReturn(info.stringMaxLength() == null)
+              .thenReturn(info.numericScale() == null);
     }
 
     OngoingStubbing stubCharSetCol =
@@ -577,7 +591,12 @@ public class MysqlDialectAdapterTest {
     OngoingStubbing stubNumericScaleCol =
         when(mockResultSet.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL));
     for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
-      Integer ret = (info.decimalStepSize() == null) ? 0 : info.decimalStepSize().scale();
+      int ret = 0;
+      if (info.numericScale() != null) {
+        ret = info.numericScale();
+      } else if (info.decimalStepSize() != null) {
+        ret = info.decimalStepSize().scale();
+      }
       stubNumericScaleCol = stubNumericScaleCol.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());

@@ -380,6 +380,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("BOOL", IndexType.NUMERIC)
           .put("YEAR", IndexType.NUMERIC)
           .put("DATE", IndexType.DATE)
+          .put("DECIMAL", IndexType.DECIMAL)
           // Float is listed as numeric types in Mysql Ref
           // https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
           // But here the end goal is to map to a Java Float.class,
@@ -433,8 +434,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
         @Nullable String padSpace = getPadSpaceString(rs);
         int numericScale = rs.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL);
+        boolean hasNumericScale = !rs.wasNull();
         logger.debug(
-            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numeric-scale {}",
+            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numericScale {}",
             colName,
             indexName,
             isUnique,
@@ -486,6 +488,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setIndexType(indexType)
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
+                .setNumericScale(hasNumericScale ? numericScale : null)
                 .setDecimalStepSize(decimalStepSize)
                 .build());
       }
@@ -720,10 +723,11 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String CHAR_MAX_LENGTH_COL = "cols.CHARACTER_MAXIMUM_LENGTH";
     public static final String CHARACTER_SET_COL = "cols.CHARACTER_SET_NAME";
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
-    public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
 
     // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
+
+    public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
 
     public static ImmutableList<String> colList() {
       return ImmutableList.of(
@@ -736,8 +740,8 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           CHAR_MAX_LENGTH_COL,
           CHARACTER_SET_COL,
           COLLATION_COL,
-          NUMERIC_SCALE_COL,
-          PAD_SPACE_COL);
+          PAD_SPACE_COL,
+          NUMERIC_SCALE_COL);
     }
 
     private InformationSchemaStatsCols() {}
