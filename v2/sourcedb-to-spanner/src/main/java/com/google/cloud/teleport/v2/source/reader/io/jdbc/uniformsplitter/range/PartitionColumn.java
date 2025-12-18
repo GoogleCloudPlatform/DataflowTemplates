@@ -19,6 +19,7 @@ import com.google.auto.value.AutoValue;
 import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.stringmapper.CollationReference;
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
+import java.math.BigDecimal;
 import javax.annotation.Nullable;
 
 /** Details about a partition column. */
@@ -48,10 +49,15 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Numeric scale for floating point and decimal columns. Null for other columns. */
+  @Nullable
+  public abstract Integer numericScale();
+
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
-        .setStringMaxLength(null);
+        .setStringMaxLength(null)
+        .setNumericScale(null);
   }
 
   public abstract Builder toBuilder();
@@ -67,6 +73,8 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setStringMaxLength(Integer value);
 
+    public abstract Builder setNumericScale(Integer value);
+
     abstract PartitionColumn autoBuild();
 
     public PartitionColumn build() {
@@ -80,6 +88,11 @@ public abstract class PartitionColumn implements Serializable {
                   && partitionColumn.stringMaxLength() == null),
           "String columns must specify collation, and non string columns must not specify colaltion. PartitionColum = "
               + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == BigDecimal.class
+                  && partitionColumn.numericScale() != null)
+              || (partitionColumn.columnClass() != BigDecimal.class),
+          "Decimal columns must specify numeric scale. PartitionColumn = " + partitionColumn);
       return partitionColumn;
     }
   }
