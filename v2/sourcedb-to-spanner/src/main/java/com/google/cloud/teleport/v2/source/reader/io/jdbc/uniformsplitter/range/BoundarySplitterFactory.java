@@ -23,6 +23,7 @@ import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.Duration;
@@ -57,7 +58,7 @@ public class BoundarySplitterFactory {
               BigDecimal.class,
               (BoundarySplitter<BigDecimal>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
-                      splitBigDecimal(start, end))
+                      splitBigDecimals(start, end, partitionColumn))
           .put(String.class, (BoundarySplitter<String>) BoundarySplitterFactory::splitStrings)
           .put(
               BYTE_ARRAY_CLASS,
@@ -174,14 +175,26 @@ public class BoundarySplitterFactory {
     return (start & end) + ((start ^ end) >> 1);
   }
 
-  private static BigDecimal splitBigDecimal(BigDecimal start, BigDecimal end) {
-    BigInteger startBigInt = (start == null) ? null : start.toBigInteger();
-    BigInteger endBigInt = (end == null) ? null : end.toBigInteger();
+  @VisibleForTesting
+  protected static BigDecimal splitBigDecimals(
+      BigDecimal start, BigDecimal end, PartitionColumn partitionColumn) {
+    Preconditions.checkNotNull(
+        partitionColumn, "Trying to split BigDecimals without partition column information.");
+    Preconditions.checkNotNull(
+        partitionColumn.numericScale(), "Trying to split BigDecimals without numeric scale.");
+    int scale = partitionColumn.numericScale();
+    BigInteger startBigInt = bigDecimalToBigInt(start, scale);
+    BigInteger endBigInt = bigDecimalToBigInt(end, scale);
+
     BigInteger split = splitBigIntegers(startBigInt, endBigInt);
     if (split == null) {
       return null;
     }
-    return new BigDecimal(split);
+    return new BigDecimal(split, scale);
+  }
+
+  private static BigInteger bigDecimalToBigInt(BigDecimal value, int scale) {
+    return value == null ? null : value.setScale(scale, RoundingMode.UNNECESSARY).unscaledValue();
   }
 
   private static Date splitDates(Date start, Date end) {

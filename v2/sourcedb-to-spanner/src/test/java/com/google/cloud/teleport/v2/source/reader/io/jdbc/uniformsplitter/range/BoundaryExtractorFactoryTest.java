@@ -98,10 +98,14 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
-  public void testFromBigDecimals() throws SQLException {
+  public void testFromBigDecimalsWholeNumbers() throws SQLException {
     final BigInteger unsignedBigIntMax = new BigInteger("18446744073709551615");
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(0)
+            .build();
     BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1))
@@ -133,9 +137,52 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
-  public void testFromBigIntegersEmptyTable() throws SQLException {
+  public void testFromBigDecimalsRealNumbers() throws SQLException {
     PartitionColumn partitionColumn =
-        PartitionColumn.builder().setColumnName("col1").setColumnClass(BigDecimal.class).build();
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(2)
+            .build();
+    System.out.println(partitionColumn.numericScale());
+    BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
+
+    // Check splittable if there is a mid point within the scale
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBigDecimal(1)).thenReturn(new BigDecimal("1.1"));
+    when(mockResultSet.getBigDecimal(2)).thenReturn(new BigDecimal("1.2"));
+    Boundary<BigDecimal> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary1.start()).isEqualTo(new BigDecimal("1.1"));
+    assertThat(boundary1.end()).isEqualTo(new BigDecimal("1.2"));
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(new BigDecimal("1.15"));
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(new BigDecimal("1.15"));
+    assertThat(boundary1.isSplittable(null)).isTrue();
+
+    // Check bot splittable if there is no mid point within the scale
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getBigDecimal(1)).thenReturn(new BigDecimal("1.01"));
+    when(mockResultSet.getBigDecimal(2)).thenReturn(new BigDecimal("1.02"));
+    Boundary<BigDecimal> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
+  public void testFromBigDecimalsEmptyTable() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(BigDecimal.class)
+            .setNumericScale(0)
+            .build();
     BoundaryExtractor<BigDecimal> extractor = BoundaryExtractorFactory.create(BigDecimal.class);
     when(mockResultSet.next()).thenReturn(true);
     when(mockResultSet.getBigDecimal(1)).thenReturn(null);

@@ -98,6 +98,11 @@ public abstract class Boundary<T extends Serializable>
   }
 
   @Nullable
+  Integer numericScale() {
+    return partitionColumn().numericScale();
+  }
+
+  @Nullable
   Integer datetimePrecision() {
     return partitionColumn().datetimePrecision();
   }
@@ -250,6 +255,11 @@ public abstract class Boundary<T extends Serializable>
 
     public Builder<T> setCollation(CollationReference value) {
       this.partitionColumnBuilder().setStringCollation(value);
+      return this;
+    }
+
+    public Builder<T> setNumericScale(Integer value) {
+      this.partitionColumnBuilder().setNumericScale(value);
       return this;
     }
 

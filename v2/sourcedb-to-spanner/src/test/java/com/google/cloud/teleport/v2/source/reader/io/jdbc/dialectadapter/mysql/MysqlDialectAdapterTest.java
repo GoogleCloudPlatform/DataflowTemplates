@@ -290,6 +290,7 @@ public class MysqlDialectAdapterTest {
             "year",
             "bool",
             "date",
+            "decimal",
             "time");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         ImmutableList.of(
@@ -380,6 +381,16 @@ public class MysqlDialectAdapterTest {
                 .setCardinality(3L)
                 .setIndexType(IndexType.DATE)
                 .setOrdinalPosition(6)
+                .build(),
+            SourceColumnIndexInfo.builder()
+                .setColumnName("testColDecimal")
+                .setIndexName("primary")
+                .setIsUnique(true)
+                .setIsPrimary(true)
+                .setCardinality(42L)
+                .setIndexType(IndexType.DECIMAL)
+                .setOrdinalPosition(5)
+                .setNumericScale(5)
                 .build(),
             SourceColumnIndexInfo.builder()
                 .setColumnName("testColTime")
@@ -542,6 +553,7 @@ public class MysqlDialectAdapterTest {
       stubWasNull =
           stubWasNull
               .thenReturn(info.stringMaxLength() == null)
+              .thenReturn(info.numericScale() == null)
               .thenReturn(info.datetimePrecision() == null);
     }
 
@@ -567,6 +579,12 @@ public class MysqlDialectAdapterTest {
               ? null
               : (info.collationReference().padSpace() ? "PAD SPACE" : "NO PAD");
       stubPadSpaceCol = stubPadSpaceCol.thenReturn(ret);
+    }
+    OngoingStubbing stubNumericScaleCol =
+        when(mockResultSet.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      int ret = (info.numericScale() == null) ? 0 : info.numericScale();
+      stubNumericScaleCol = stubNumericScaleCol.thenReturn(ret);
     }
     OngoingStubbing stubDatetimePrecision =
         when(mockResultSet.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL));

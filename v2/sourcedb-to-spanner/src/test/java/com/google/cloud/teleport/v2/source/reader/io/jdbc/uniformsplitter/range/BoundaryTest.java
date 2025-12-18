@@ -38,11 +38,13 @@ public class BoundaryTest {
             .setStart(0)
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setNumericScale(0)
             .build();
     assertThat(boundary.start()).isEqualTo(0);
     assertThat(boundary.end()).isEqualTo(42);
     assertThat(boundary.toBuilder().build()).isEqualTo(boundary);
     assertThat(boundary.splitIndex().length()).isEqualTo(1);
+    assertThat(boundary.numericScale()).isEqualTo(0);
   }
 
   @Test
@@ -55,6 +57,7 @@ public class BoundaryTest {
             .setStart(null)
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
+            .setNumericScale(null)
             .build();
 
     Boundary<Integer> boundaryNullBoth =
@@ -69,6 +72,8 @@ public class BoundaryTest {
     assertThat(boundaryNullStart.start()).isNull();
     assertThat(boundaryNullBoth.start()).isNull();
     assertThat(boundaryNullBoth.end()).isNull();
+    assertThat(boundaryNullStart.numericScale()).isNull();
+    assertThat(boundaryNullBoth.numericScale()).isNull(); // defaults to null if not explicitly set
   }
 
   @Test
