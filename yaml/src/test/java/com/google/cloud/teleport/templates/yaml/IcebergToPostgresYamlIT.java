@@ -56,15 +56,16 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
   private static final Logger LOG = LoggerFactory.getLogger(IcebergToPostgresYamlIT.class);
 
   // Iceberg Setup
-  private static final String CATALOG_NAME = "hadoop_catalog";
+  private static final String CATALOG_NAME = "gcs_catalog";
   private static final String NAMESPACE = "iceberg_namespace";
   private static final String ICEBERG_TABLE_NAME = "source_table";
   private static final String ICEBERG_TABLE_IDENTIFIER = NAMESPACE + "." + ICEBERG_TABLE_NAME;
 
   // Postgres Setup
   private static final String POSTGRES_TABLE_NAME = "target_table";
-  private static final String WRITE_STATEMENT =
-      "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, active) VALUES (?, ?, ?)";
+
+  //   private static final String WRITE_STATEMENT =
+  //       "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, active) VALUES (?, ?, ?)";
 
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
@@ -135,6 +136,7 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
+            // .addParameter("writeStatement", WRITE_STATEMENT)
             .addParameter("location", POSTGRES_TABLE_NAME);
 
     // Act
@@ -188,13 +190,6 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
         .build();
   }
 
-  /**
-   * Build catalog properties for Iceberg warehouse backed by GCS.
-   *
-   * <p>Uses BigLake REST catalog for Iceberg metadata and GCS for warehouse storage.
-   *
-   * @return Map of catalog properties required by Iceberg
-   */
   private Map<String, String> getCatalogProperties() {
     return Map.of(
         "type", "rest",

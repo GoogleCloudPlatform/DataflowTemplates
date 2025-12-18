@@ -40,6 +40,7 @@ pipeline:
         catalog_properties: {{ catalogProperties }}
         config_properties: {{ configProperties }}
         drop: {{ drop }}
+        filter: {{ filter }}
         keep: {{ keep }}
 
     - type: WriteToPostgres
