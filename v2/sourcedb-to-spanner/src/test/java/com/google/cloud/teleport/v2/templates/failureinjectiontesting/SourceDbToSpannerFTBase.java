@@ -119,6 +119,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("username", cloudSqlResourceManager.getUsername())
             .addParameter("password", cloudSqlResourceManager.getPassword())
             .addParameter("jdbcDriverClassName", "com.mysql.jdbc.Driver")
+            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"));
 
@@ -156,6 +157,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
                 "sourceConfigURL", getGcsPath("input/shard-bulk.json", gcsResourceManager))
             .addEnvironmentVariable(
                 "additionalExperiments", Collections.singletonList("disable_runner_v2"))
+            .addParameter("workerMachineType", "n2-standard-4")
             .build();
 
     PipelineLauncher.LaunchInfo jobInfo = flexTemplateDataflowJobResourceManager.launchJob();
@@ -257,6 +259,7 @@ public abstract class SourceDbToSpannerFTBase extends TemplateTestBase {
             .addParameter("inputFileFormat", "avro")
             .addParameter("runMode", "retryDLQ")
             .addParameter("dlqRetryMinutes", "1")
+            .addParameter("workerMachineType", "n2-standard-4")
             .build();
 
     // Run
