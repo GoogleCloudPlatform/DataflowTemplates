@@ -118,6 +118,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             .addParameter("transformationJarPath", customTransformation.jarPath())
             .addParameter("transformationClassName", customTransformation.classPath())
             .addParameter("dlqRetryMinutes", DLQ_RETRY_MINUTES.toString())
+            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", List.of("use_runner_v2", "enable_data_sampling"))
             .build();
