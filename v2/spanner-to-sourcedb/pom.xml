@@ -69,7 +69,7 @@
             <version>5.0.1</version>
         </dependency>
         <!-- Test dependencies -->
-       
+
          <dependency>
             <groupId>com.google.cloud.teleport</groupId>
             <artifactId>it-google-cloud-platform</artifactId>
@@ -100,9 +100,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.datastax.oss</groupId>
+            <groupId>org.apache.cassandra</groupId>
             <artifactId>java-driver-core</artifactId>
-            <version>4.18.1</version> <!-- Use the latest version -->
+            <version>${cassandra-java-driver-core.version}</version> <!-- Use the latest version -->
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>

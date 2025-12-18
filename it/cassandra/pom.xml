@@ -56,9 +56,9 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.datastax.oss</groupId>
+            <groupId>org.apache.cassandra</groupId>
             <artifactId>java-driver-core</artifactId>
-            <version>4.18.1</version>
+            <version>${cassandra-java-driver-core.version}</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
