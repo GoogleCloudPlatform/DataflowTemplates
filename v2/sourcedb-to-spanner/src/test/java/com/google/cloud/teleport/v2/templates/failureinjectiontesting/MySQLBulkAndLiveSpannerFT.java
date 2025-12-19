@@ -25,7 +25,6 @@ import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
 import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
-import com.google.pubsub.v1.SubscriptionName;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
@@ -135,18 +134,18 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
         pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(20)));
     assertThatResult(result).isLaunchFinished();
     ConditionCheck conditionCheck =
-        // Total events = successfully processed events + errors in output folder
-        new TotalEventsProcessedCheck(
-                spannerResourceManager,
-                List.of(AUTHORS_TABLE, BOOKS_TABLE),
-                gcsResourceManager,
-                "output/dlq/severe/",
-                400)
+        // Check that there are at least 191 errors in DLQ
+        DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
+            .setMinEvents(382)
+            .build()
             .and(
-                // Check that there are at least 191 errors in DLQ
-                DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
-                    .setMinEvents(382)
-                    .build());
+                // Total events = successfully processed events + errors in output folder
+                new TotalEventsProcessedCheck(
+                    spannerResourceManager,
+                    List.of(AUTHORS_TABLE, BOOKS_TABLE),
+                    gcsResourceManager,
+                    "output/dlq/severe/",
+                    400));
 
     assertTrue(conditionCheck.get());
 
@@ -156,24 +155,19 @@ public class MySQLBulkAndLiveSpannerFT extends SourceDbToSpannerFTBase {
     spannerResourceManager.executeDdlStatement(
         "ALTER TABLE `Authors` ALTER COLUMN `name` STRING(200)");
 
-    String dlqGcsPrefix = bulkErrorFolderFullPath.replace("gs://" + artifactBucketName, "");
-    SubscriptionName dlqSubscription =
-        createPubsubResources(
-            testName + "dlq", pubsubResourceManager, dlqGcsPrefix, gcsResourceManager);
-
     // launch forward migration template in retryDLQ mode
     retryLiveJobInfo =
         launchFwdDataflowJobInRetryDlqMode(
-            spannerResourceManager,
-            bulkErrorFolderFullPath,
-            bulkErrorFolderFullPath + "/dlq",
-            dlqSubscription);
+            spannerResourceManager, bulkErrorFolderFullPath, bulkErrorFolderFullPath + "/dlq");
 
-    // TODO: Add number of rows check on Books table after b/465412503 is fixed.
     conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
                     SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
+                        .setMinRows(200)
+                        .setMaxRows(200)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
                         .setMinRows(200)
                         .setMaxRows(200)
                         .build()))
