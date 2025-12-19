@@ -54,33 +54,7 @@ public final class CassandraDriverConfigLoader {
    */
   public static DriverConfigLoader loadFile(String path) throws FileNotFoundException {
     URL url = loadSingleFile(path);
-    LOG.info("aastha: Loaded Cassandra Driver config from path {}", path);
-    try {
-      LOG.info(
-          "aastha: Config content:\n{}",
-          com.google.common.io.Resources.toString(url, java.nio.charset.StandardCharsets.UTF_8));
-    } catch (java.io.IOException e) {
-      LOG.warn("aastha: Failed to read config content for logging", e);
-    }
-
-    URL referenceUrl =
-        CassandraDriverConfigLoader.class.getClassLoader().getResource("reference.conf");
-    LOG.info("aastha: reference.conf location: {}", referenceUrl);
-
-    // Log reference.conf content if found
-    if (referenceUrl != null) {
-      try {
-        LOG.info(
-            "aastha: reference.conf content:\n{}",
-            com.google.common.io.Resources.toString(
-                referenceUrl, java.nio.charset.StandardCharsets.UTF_8));
-      } catch (java.io.IOException e) {
-        LOG.warn("aastha: Failed to read reference.conf content for logging", e);
-      }
-    } else {
-      LOG.warn("aastha: reference.conf not found in classpath!");
-    }
-
+    LOG.debug("Loaded Cassandra Driver config from path {}", path);
     try {
       DriverConfigLoader.fromUrl(url).getInitialConfig();
       return DriverConfigLoader.fromUrl(url);
@@ -106,24 +80,18 @@ public final class CassandraDriverConfigLoader {
   public static OptionsMap getOptionsMapFromFile(String path) throws FileNotFoundException {
     OptionsMap optionsMap = new OptionsMap();
     DriverConfigLoader configLoader = loadFile(path);
-    LOG.info("aastha getOptionsMapFromFile path: {}", path);
     configLoader
         .getInitialConfig()
         .getProfiles()
         .forEach(
-            (profileName, profile) -> {
-              LOG.info("aastha Processing Profile: {}", profileName);
-              profile
-                  .entrySet()
-                  .forEach(
-                      e -> {
-                        LOG.info(
-                            "aastha Processing Option: Key={}, Value={}", e.getKey(), e.getValue());
-                        putInOptionsMap(optionsMap, profileName, e.getKey(), e.getValue(), profile);
-                      });
-            });
+            (profileName, profile) ->
+                profile
+                    .entrySet()
+                    .forEach(
+                        e ->
+                            putInOptionsMap(
+                                optionsMap, profileName, e.getKey(), e.getValue(), profile)));
 
-    LOG.info("aastha Final OptionsMap: {}", optionsMap);
     return optionsMap;
   }
 

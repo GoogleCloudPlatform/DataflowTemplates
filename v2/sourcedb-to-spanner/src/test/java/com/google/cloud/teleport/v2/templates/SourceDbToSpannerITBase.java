@@ -263,7 +263,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     options.addEnvironment("numWorkers", 2);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
-    LOG.info("aastha: Launching Dataflow Job {} with final parameters: {}", jobName, params);
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
     assertThatPipeline(jobInfo).isRunning();
 
@@ -346,7 +345,6 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     Files.delete(tempFile);
     params.put("sourceConfigURL", configGcsPath);
     params.put("outputDirectory", outputPath);
-    LOG.info("aastha: Cassandra Parameters: {}", params);
     return params;
   }
 
