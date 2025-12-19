@@ -342,3 +342,8 @@ CREATE TABLE IF NOT EXISTS decimal_pk_table (
   id NUMERIC NOT NULL,
   decimal_pk_col NUMERIC NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS float_pk_table (
+  id FLOAT64 NOT NULL,
+  float_pk_col FLOAT64 NOT NULL,
+) PRIMARY KEY(id);

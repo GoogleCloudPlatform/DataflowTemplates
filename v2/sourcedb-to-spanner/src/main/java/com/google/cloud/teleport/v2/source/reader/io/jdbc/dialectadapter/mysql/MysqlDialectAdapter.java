@@ -36,6 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Pattern;
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -380,6 +381,11 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("YEAR", IndexType.NUMERIC)
           .put("DATE", IndexType.DATE)
           .put("DECIMAL", IndexType.DECIMAL)
+          // Float is listed as numeric types in Mysql Ref
+          // https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
+          // But here the end goal is to map to a Java Float.class,
+          // we need a distinct Source IndexType to map to Float.class
+          .put("FLOAT", IndexType.FLOAT)
           .build();
 
   /**
@@ -458,6 +464,19 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           stringMaxLength = null;
         }
 
+        // TODO: Support DOUBLE
+        BigDecimal decimalStepSize = null;
+        if (indexType.equals(IndexType.FLOAT)) {
+          if (numericScale > 0) {
+            // Example: If scale is 2, decimal step is 0.01
+            decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+          } else {
+            // Trying to pick a sane default 1e-5 (there is no defined default step for float point
+            // type)
+            decimalStepSize = new BigDecimal("0.00001");
+          }
+        }
+
         indexesBuilder.add(
             SourceColumnIndexInfo.builder()
                 .setColumnName(colName)
@@ -470,6 +489,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
                 .setNumericScale(hasNumericScale ? numericScale : null)
+                .setDecimalStepSize(decimalStepSize)
                 .build());
       }
     } catch (java.sql.SQLException e) {

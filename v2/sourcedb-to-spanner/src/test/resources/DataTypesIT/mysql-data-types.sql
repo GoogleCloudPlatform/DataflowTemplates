@@ -311,6 +311,11 @@ CREATE TABLE decimal_pk_table (
     decimal_pk_col DECIMAL(10,2) NOT NULL
 );
 
+CREATE TABLE float_pk_table (
+  id FLOAT PRIMARY KEY,
+  float_pk_col FLOAT NOT NULL
+);
+
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -472,6 +477,7 @@ INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 20
 INSERT INTO `bool_pk_table` (`id`, `bool_pk_col`) VALUES (TRUE, TRUE), (FALSE, FALSE);
 INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01-01'), ('2005-01-01', '2005-01-01'), ('9999-12-31', '9999-12-31');
 INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.60, 12345.60), (0.01, 0.01), (-99999999.99, -99999999.99), (99999999, 99999999);
+INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (1.00001, 1.00001), (1, 1), (1.00002, 1.00002), (3.4E38, 3.4E38), (-3.4E38, -3.4E38), (1.17E-38, 1.17E-38), (-1.17E-38, -1.17E-38);
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

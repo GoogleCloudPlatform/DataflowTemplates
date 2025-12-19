@@ -362,6 +362,46 @@ public class BoundaryExtractorFactoryTest {
   }
 
   @Test
+  public void testFromFloat() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Float.class)
+            .setDecimalStepSize(new BigDecimal("0.00001"))
+            .build();
+    BoundaryExtractor<Float> extractor = BoundaryExtractorFactory.create(Float.class);
+
+    // If step between values > min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getFloat(1)).thenReturn(1.001f);
+    when(mockResultSet.getFloat(2)).thenReturn(1.002f);
+    Boundary<Float> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is > minimum delta, boundary is splittable
+    assertThat(boundary1.start()).isEqualTo(1.001f);
+    assertThat(boundary1.end()).isEqualTo(1.002f);
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(1.0015f);
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(1.0015f);
+    assertThat(boundary1.isSplittable(null)).isTrue();
+
+    // if step between values < min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getFloat(1)).thenReturn(1.000001f);
+    when(mockResultSet.getFloat(2)).thenReturn(1.000002f);
+    Boundary<Float> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is < minimum delta, boundary is NOT splittable
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
   public void testFromUnsupported() {
     assertThrows(
         UnsupportedOperationException.class,

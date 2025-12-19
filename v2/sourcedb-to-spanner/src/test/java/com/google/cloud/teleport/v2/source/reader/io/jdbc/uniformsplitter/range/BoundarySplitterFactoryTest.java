@@ -389,6 +389,65 @@ public class BoundarySplitterFactoryTest {
         .isEqualTo(Timestamp.valueOf("1975-01-01 00:00:00.000000000"));
   }
 
+  @Test
+  public void testFloatBoundarySplitter() {
+    BoundarySplitter<Float> splitter = BoundarySplitterFactory.create(Float.class);
+
+    // 1. Standard Ascending Ranges
+    // 0 to 10 -> 5
+    assertThat(splitter.getSplitPoint(0.0f, 10.0f, null, null, null)).isEqualTo(5.0f);
+    // Negative range: -20 to -10 -> -15
+    assertThat(splitter.getSplitPoint(-20.0f, -10.0f, null, null, null)).isEqualTo(-15.0f);
+    // Crossing zero symmetric: -100 to 100 -> 0
+    assertThat(splitter.getSplitPoint(-100.0f, 100.0f, null, null, null)).isEqualTo(0.0f);
+    // Crossing zero asymmetric: -50 to 100 -> 25
+    assertThat(splitter.getSplitPoint(-50.0f, 100.0f, null, null, null)).isEqualTo(25.0f);
+
+    // 2. Inverted Ranges (Start > End)
+    // 10 to 0 -> 5 (Same as 0 to 10)
+    assertThat(splitter.getSplitPoint(10.0f, 0.0f, null, null, null)).isEqualTo(5.0f);
+    // -10 to -20 -> -15 (Same as -20 to -10)
+    assertThat(splitter.getSplitPoint(-10.0f, -20.0f, null, null, null)).isEqualTo(-15.0f);
+    // 100 to -100 -> 0 (Same as -100 to 100)
+    assertThat(splitter.getSplitPoint(100.0f, -100.0f, null, null, null)).isEqualTo(0.0f);
+    // 100 to -50 -> 25 (Same as -50 to 100)
+    assertThat(splitter.getSplitPoint(100.0f, -50.0f, null, null, null)).isEqualTo(25.0f);
+
+    // 3. Null Handling
+    // Both Null the splitter does not process and return null
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isEqualTo(null);
+    // Start Null (-Max) to 0 -> Split at half of negative max
+    assertThat(splitter.getSplitPoint(null, 0.0f, null, null, null))
+        .isEqualTo(-Float.MAX_VALUE / 2.0f);
+    // 0 to End Null (+Max) -> Split at half of max
+    assertThat(splitter.getSplitPoint(0.0f, null, null, null, null))
+        .isEqualTo(Float.MAX_VALUE / 2.0f);
+
+    // 4. Overflow Protection & Extreme Values
+    // Large Positives: Max-100 to Max -> Max-50
+    assertThat(splitter.getSplitPoint(Float.MAX_VALUE - 100.0f, Float.MAX_VALUE, null, null, null))
+        .isEqualTo(Float.MAX_VALUE - 50.0f);
+    // Large Negatives: -Max to -Max+100 -> -Max+50
+    assertThat(
+            splitter.getSplitPoint(-Float.MAX_VALUE, -Float.MAX_VALUE + 100.0f, null, null, null))
+        .isEqualTo(-Float.MAX_VALUE + 50.0f);
+    // Full Range: Max to -Max (Inverted Extreme) -> 0
+    assertThat(splitter.getSplitPoint(Float.MAX_VALUE, -Float.MAX_VALUE, null, null, null))
+        .isEqualTo(0.0f);
+    // Small Positives: Min to Min-0.5 -> Min-0.25
+    assertThat(splitter.getSplitPoint(Float.MIN_VALUE - 0.5f, Float.MIN_VALUE, null, null, null))
+        .isEqualTo(Float.MIN_VALUE - 0.25f);
+    // Small Negatives: -Min to -Min+0.5 -> -Min+0.25
+    assertThat(splitter.getSplitPoint(-Float.MIN_VALUE, -Float.MIN_VALUE + 0.5f, null, null, null))
+        .isEqualTo(-Float.MIN_VALUE + 0.25f);
+    // Small Range: Min to -Min (Inverted Extreme) -> 0
+    assertThat(splitter.getSplitPoint(Float.MIN_VALUE, -Float.MIN_VALUE, null, null, null))
+        .isEqualTo(0.0f);
+
+    // 5. Identity, start and end equals
+    assertThat(splitter.getSplitPoint(5.0f, 5.0f, null, null, null)).isEqualTo(5.0f);
+  }
+
   /* Not for production as it does not look at collation ordering */
   private class TestBoundaryTypeMapper implements BoundaryTypeMapper {
 
