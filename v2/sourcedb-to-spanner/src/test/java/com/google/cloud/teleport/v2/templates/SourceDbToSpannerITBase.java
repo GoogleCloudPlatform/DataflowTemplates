@@ -308,13 +308,13 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     String configFile =
         String.format(
             """
-                datastax-java-driver {
-                      basic.contact-points = ["%s:%d"]
-                      basic.session-keyspace = %s
-                      basic.load-balancing-policy {
-                        local-datacenter = datacenter1
-                      }
-                    }""",
+                            datastax-java-driver {
+                                  basic.contact-points = ["%s:%d"]
+                                  basic.session-keyspace = %s
+                                  basic.load-balancing-policy {
+                                    local-datacenter = datacenter1
+                                  }
+                                }""",
             cassandraResourceManager.getHost(),
             cassandraResourceManager.getPort(),
             cassandraResourceManager.getKeyspaceName());

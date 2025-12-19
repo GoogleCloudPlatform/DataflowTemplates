@@ -37,6 +37,9 @@ public abstract class PartitionColumn implements Serializable {
    */
   public abstract Class columnClass();
 
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
+
   /**
    * String Collation. Must be set for if {@link PartitionColumn#columnClass()} is {@link String}
    * and must not be set otherwise. Defaults to null.
@@ -63,6 +66,7 @@ public abstract class PartitionColumn implements Serializable {
         .setStringCollation(null)
         .setStringMaxLength(null)
         .setNumericScale(null)
+        .setDecimalStepSize(null)
         .setDatetimePrecision(null);
   }
 
@@ -81,6 +85,8 @@ public abstract class PartitionColumn implements Serializable {
 
     public abstract Builder setNumericScale(Integer value);
 
+    public abstract Builder setDecimalStepSize(BigDecimal value);
+
     public abstract Builder setDatetimePrecision(Integer value);
 
     abstract PartitionColumn autoBuild();
@@ -94,13 +100,18 @@ public abstract class PartitionColumn implements Serializable {
               || (partitionColumn.columnClass() != String.class
                   && partitionColumn.stringCollation() == null
                   && partitionColumn.stringMaxLength() == null),
-          "String columns must specify collation, and non string columns must not specify colaltion. PartitionColum = "
+          "String columns must specify collation, and non string columns must not specify collation. PartitionColum = "
               + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == BigDecimal.class
                   && partitionColumn.numericScale() != null)
               || (partitionColumn.columnClass() != BigDecimal.class),
           "Decimal columns must specify numeric scale. PartitionColumn = " + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == Float.class
+                  && partitionColumn.decimalStepSize() != null)
+              || (partitionColumn.columnClass() != Float.class),
+          "Float columns must specify decimalStepSize. PartitionColum = " + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == Duration.class
                   && partitionColumn.datetimePrecision() != null)

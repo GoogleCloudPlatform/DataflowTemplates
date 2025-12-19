@@ -83,9 +83,13 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract Integer stringMaxLength();
 
-  /** Numeric Scale for floating point and decimal columns. Null for other types. */
+  /** Numeric Scale for decimal columns. Null for other types. */
   @Nullable
   public abstract Integer numericScale();
+
+  /** Decimal step size for checking equality of floating point columns. Null for other types. */
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
 
   /** Precision for datetime columns. Null for other types. */
   @Nullable
@@ -138,6 +142,8 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
     public abstract Builder setNumericScale(@Nullable Integer value);
 
+    public abstract Builder setDecimalStepSize(@Nullable BigDecimal value);
+
     public abstract Builder setDatetimePrecision(@Nullable Integer value);
 
     abstract SourceColumnIndexInfo autoBuild();
@@ -158,6 +164,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     TIME_STAMP,
     DATE,
     DECIMAL,
+    FLOAT,
     DURATION,
     OTHER
   };
@@ -172,5 +179,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.TIME_STAMP, Timestamp.class,
           IndexType.DATE, java.sql.Date.class,
           IndexType.DECIMAL, BigDecimal.class,
+          IndexType.FLOAT, Float.class,
           IndexType.DURATION, Duration.class);
 }
