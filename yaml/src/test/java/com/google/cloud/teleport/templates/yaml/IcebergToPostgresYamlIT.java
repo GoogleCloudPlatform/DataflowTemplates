@@ -64,9 +64,6 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
   // Postgres Setup
   private static final String POSTGRES_TABLE_NAME = "target_table";
 
-  //   private static final String WRITE_STATEMENT =
-  //       "INSERT INTO " + POSTGRES_TABLE_NAME + " (id, name, active) VALUES (?, ?, ?)";
-
   private PostgresResourceManager postgresResourceManager;
   private IcebergResourceManager icebergResourceManager;
   private GcsResourceManager warehouseGcsResourceManager;
@@ -99,12 +96,19 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
   @Test
   public void testIcebergToPostgres() throws IOException {
     // Iceberg setup
+
+    // Create namespace in the REST catalog
+    icebergResourceManager.createNamespace(NAMESPACE);
+    LOG.info("Namespace '{}' created successfully", NAMESPACE);
+    
+    // Define Iceberg table schema
     Schema icebergSchema =
         new Schema(
             Types.NestedField.required(1, "id", Types.IntegerType.get()),
             Types.NestedField.required(2, "name", Types.StringType.get()),
             Types.NestedField.optional(3, "active", Types.IntegerType.get()));
-
+    
+    // Create Iceberg table
     icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, icebergSchema);
 
     List<Map<String, Object>> icebergRecords =
@@ -136,7 +140,6 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
             .addParameter("jdbcUrl", postgresResourceManager.getUri())
             .addParameter("username", postgresResourceManager.getUsername())
             .addParameter("password", postgresResourceManager.getPassword())
-            // .addParameter("writeStatement", WRITE_STATEMENT)
             .addParameter("location", POSTGRES_TABLE_NAME);
 
     // Act
