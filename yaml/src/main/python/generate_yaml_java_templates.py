@@ -90,6 +90,8 @@ def generate_java_interface(yaml_path, java_path):
         content = f.read()
         # Remove Jinja variables before parsing
         content = re.sub(r'{{.*?}}', '', content)
+        # Remove Jinja control blocks
+        content = re.sub(r'{%.*?%}', '', content)
         # Fix set-like syntax for requirements
         content = re.sub(r'(requirements\s*:\s*)\{([^}]+)\}', r'\1[\2]', content, flags=re.DOTALL)
         # Fix set-like syntax for filesToCopy

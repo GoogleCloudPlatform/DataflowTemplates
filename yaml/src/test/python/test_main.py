@@ -143,5 +143,37 @@ class TestMain(unittest.TestCase):
         # Ensure jinja args are removed from pipeline args
         self.assertNotIn('--var1=value1', beam_run_args)
 
+    @patch('main._get_pipeline_yaml')
+    @patch('main.cache_provider_artifacts')
+    @patch('main.main') # apache_beam.yaml.main
+    def test_run_with_tuning_args(self, mock_beam_main, mock_cache, mock_get_yaml):
+        # Setup
+        yaml_content = """
+        options:
+            dataflow_service_options:
+                - sdf_checkpoint_after_duration={{ sdfCheckpointAfterDuration | default('30s') }}
+                - sdf_checkpoint_after_output_bytes={{ sdfCheckpointAfterOutputBytes | default('536870912') }}
+        pipeline:
+            type: chain
+        """
+        mock_get_yaml.return_value = yaml_content
+
+        test_args = [
+            '--sdfCheckpointAfterDuration=60s',
+            '--sdfCheckpointAfterOutputBytes=1024'
+        ]
+
+        # Execute
+        main.run(test_args)
+
+        # Verify
+        # Check that the final YAML passed to beam main has the substituted values
+        beam_run_args = mock_beam_main.run.call_args[1]['argv']
+        yaml_arg = next(arg for arg in beam_run_args if arg.startswith('--yaml_pipeline='))
+        final_yaml = yaml_arg.split('=', 1)[1]
+        
+        self.assertIn('sdf_checkpoint_after_duration=60s', final_yaml)
+        self.assertIn('sdf_checkpoint_after_output_bytes=1024', final_yaml)
+
 if __name__ == '__main__':
     unittest.main()
