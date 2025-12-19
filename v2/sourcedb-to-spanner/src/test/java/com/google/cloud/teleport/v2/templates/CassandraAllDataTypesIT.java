@@ -54,7 +54,6 @@ import org.jetbrains.annotations.NotNull;
 import org.jline.utils.Log;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -70,8 +69,6 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-@Ignore(
-    "This test is disabled currently because it is failing with Unknown Cassandra Option advanced.load-balancing-policy.dc-failover.preferred-remote-dcs")
 public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
 
   private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
@@ -121,6 +118,7 @@ public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
             .addParameter("transformationJarPath", customTransformation.jarPath())
             .addParameter("transformationClassName", customTransformation.classPath())
             .addParameter("dlqRetryMinutes", DLQ_RETRY_MINUTES.toString())
+            .addParameter("workerMachineType", "n2-standard-4")
             .addEnvironmentVariable(
                 "additionalExperiments", List.of("use_runner_v2", "enable_data_sampling"))
             .build();
