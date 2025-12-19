@@ -280,4 +280,27 @@ public interface KafkaToIcebergYaml {
       example = "60")
   @Validation.Required
   Integer getTriggeringFrequencySeconds();
+
+  @TemplateParameter.Text(
+      order = 25,
+      name = "sdfCheckpointAfterDuration",
+      optional = true,
+      description = "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns.",
+      helpText =
+          "Duration after which to checkpoint stateful DoFns. For example: 30s. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options",
+      example = "30s")
+  @Default.String("30s")
+  String getSdfCheckpointAfterDuration();
+
+  @TemplateParameter.Integer(
+      order = 26,
+      name = "sdfCheckpointAfterOutputBytes",
+      optional = true,
+      description =
+          "Dataflow Pipeline Option: Output bytes after which to checkpoint stateful DoFns.",
+      helpText =
+          "Output bytes after which to checkpoint stateful DoFns. For example: 536870912. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options",
+      example = "536870912")
+  @Default.Integer(536870912)
+  Integer getSdfCheckpointAfterOutputBytes();
 }

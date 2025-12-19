@@ -27,6 +27,22 @@ template:
     - iceberg_common_options
     - iceberg_write_options
     - iceberg_streaming_write_options
+    - name: "sdfCheckpointAfterDuration"
+      label: "SDF Checkpoint After Duration"
+      description: "Dataflow Pipeline Option: Duration after which to checkpoint stateful DoFns."
+      help: "Duration after which to checkpoint stateful DoFns. For example: 30s. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options"
+      example: "30s"
+      default: "30s"
+      required: false
+      type: text
+    - name: "sdfCheckpointAfterOutputBytes"
+      label: "SDF Checkpoint After Output Bytes"
+      description: "Dataflow Pipeline Option: Output bytes after which to checkpoint stateful DoFns."
+      help: "Output bytes after which to checkpoint stateful DoFns. For example: 536870912. Documentation: https://docs.cloud.google.com/dataflow/docs/reference/service-options"
+      example: "536870912"
+      default: "536870912"
+      required: false
+      type: integer
 
 pipeline:
   type: chain
@@ -70,5 +86,5 @@ pipeline:
 options:
   streaming: true
   dataflow_service_options:
-    - sdf_checkpoint_after_duration=30s
-    - sdf_checkpoint_after_output_bytes=536870912
+    - sdf_checkpoint_after_duration={{ sdfCheckpointAfterDuration | default('30s') }}
+    - sdf_checkpoint_after_output_bytes={{ sdfCheckpointAfterOutputBytes | default('536870912') }}
