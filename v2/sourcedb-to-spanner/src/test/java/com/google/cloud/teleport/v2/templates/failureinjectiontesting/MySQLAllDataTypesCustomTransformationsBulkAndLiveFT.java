@@ -37,7 +37,6 @@ import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
-import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
@@ -75,7 +74,6 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
   public static CloudMySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
-  private static PubsubResourceManager pubsubResourceManager;
   private static String bulkErrorFolderFullPath;
 
   @Before
@@ -94,11 +92,8 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
 
     // create MySQL Resources
     mySQLResourceManager = CloudMySQLResourceManager.builder(testName).build();
-    ;
-    loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
 
-    // create pubsub manager
-    pubsubResourceManager = setUpPubSubResourceManager();
+    loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
 
     bulkErrorFolderFullPath = getGcsPath("output", gcsResourceManager);
 
@@ -123,7 +118,7 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, mySQLResourceManager, pubsubResourceManager);
+        spannerResourceManager, mySQLResourceManager, gcsResourceManager);
   }
 
   @Test
