@@ -22,6 +22,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 ### Optional parameters
 
+* **filter**: A filter expression for Iceberg reads. For example, `age > 18`.
 * **configProperties**: A map of properties to pass to the Hadoop Configuration. For example, `{"fs.gs.impl": "com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem"}`.
 * **drop**: A list of field names to drop from the source record. Mutually exclusive with 'keep' and 'only'. For example, `["field_to_drop_1", "field_to_drop_2"]`.
 * **keep**: A list of field names to keep in the source record. Mutually exclusive with 'drop' and 'only'. For example, `["field_to_keep_1", "field_to_keep_2"]`.
@@ -134,6 +135,7 @@ export JDBC_URL=<jdbcUrl>
 export LOCATION=<location>
 
 ### Optional
+export FILTER=<filter>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
 export KEEP=<keep>
@@ -155,6 +157,7 @@ gcloud dataflow flex-template run "iceberg-to-postgres-yaml-job" \
   --parameters "table=$TABLE" \
   --parameters "catalogName=$CATALOG_NAME" \
   --parameters "catalogProperties=$CATALOG_PROPERTIES" \
+  --parameters "filter=$FILTER" \
   --parameters "configProperties=$CONFIG_PROPERTIES" \
   --parameters "drop=$DROP" \
   --parameters "keep=$KEEP" \
@@ -195,6 +198,7 @@ export JDBC_URL=<jdbcUrl>
 export LOCATION=<location>
 
 ### Optional
+export FILTER=<filter>
 export CONFIG_PROPERTIES=<configProperties>
 export DROP=<drop>
 export KEEP=<keep>
@@ -216,7 +220,7 @@ mvn clean package -PtemplatesRun \
 -Dregion="$REGION" \
 -DjobName="iceberg-to-postgres-yaml-job" \
 -DtemplateName="Iceberg_To_Postgres_Yaml" \
--Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
+-Dparameters="table=$TABLE,catalogName=$CATALOG_NAME,catalogProperties=$CATALOG_PROPERTIES,filter=$FILTER,configProperties=$CONFIG_PROPERTIES,drop=$DROP,keep=$KEEP,jdbcUrl=$JDBC_URL,username=$USERNAME,password=$PASSWORD,driverClassName=$DRIVER_CLASS_NAME,driverJars=$DRIVER_JARS,connectionProperties=$CONNECTION_PROPERTIES,connectionInitSql=$CONNECTION_INIT_SQL,jdbcType=$JDBC_TYPE,location=$LOCATION,writeStatement=$WRITE_STATEMENT,batchSize=$BATCH_SIZE,autosharding=$AUTOSHARDING" \
 -f yaml
 ```
 
@@ -266,6 +270,7 @@ resource "google_dataflow_flex_template_job" "iceberg_to_postgres_yaml" {
     catalogProperties = "<catalogProperties>"
     jdbcUrl = "<jdbcUrl>"
     location = "<location>"
+    # filter = "<filter>"
     # configProperties = "<configProperties>"
     # drop = "<drop>"
     # keep = "<keep>"
