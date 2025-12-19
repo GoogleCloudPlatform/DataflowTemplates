@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
 
+import static com.google.cloud.teleport.v2.templates.MySQLDataTypesIT.repeatString;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import static org.junit.Assert.assertTrue;
@@ -225,6 +226,7 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     row.put("enum_col", "1");
     row.put("bool_col", true);
 
+    row.put("binary_col", "eDU4MD" + repeatString("A", 334));
     row.put(
         "varbinary_col", java.util.Base64.getEncoder().encodeToString(("varbin" + id).getBytes()));
 
