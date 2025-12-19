@@ -100,14 +100,14 @@ public class IcebergToPostgresYamlIT extends TemplateTestBase {
     // Create namespace in the REST catalog
     icebergResourceManager.createNamespace(NAMESPACE);
     LOG.info("Namespace '{}' created successfully", NAMESPACE);
-    
+
     // Define Iceberg table schema
     Schema icebergSchema =
         new Schema(
             Types.NestedField.required(1, "id", Types.IntegerType.get()),
             Types.NestedField.required(2, "name", Types.StringType.get()),
             Types.NestedField.optional(3, "active", Types.IntegerType.get()));
-    
+
     // Create Iceberg table
     icebergResourceManager.createTable(ICEBERG_TABLE_IDENTIFIER, icebergSchema);
 
