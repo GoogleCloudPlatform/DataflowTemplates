@@ -1,0 +1,71 @@
+template:
+  name: "Kafka_To_Iceberg_Yaml"
+  category: "STREAMING"
+  type: "YAML"
+  display_name: "Kafka to Iceberg (YAML)"
+  description: >
+    The Kafka to Iceberg template is a streaming pipeline that reads data from Kafka
+    and writes to an Iceberg table.
+  flex_container_name: "kafka-to-iceberg-yaml"
+  yamlTemplateFile: "KafkaToIceberg.yaml"
+  filesToCopy: >
+    {"template.yaml", "main.py", "requirements.txt", "options/kafka_options.yaml", "options/iceberg_options.yaml"}
+  contactInformation: "https://cloud.google.com/support"
+  requirements: {
+      "The Input Kafka topic must exist.",
+      "The Output Iceberg table need not exist, but the storage must exist and passed through catalog_properties."
+    }
+  streaming: true
+  hidden: false
+
+  options_file:
+    - "kafka_options"
+    - "iceberg_options"
+
+  parameters:
+    - kafka_read_options
+    - iceberg_common_options
+    - iceberg_write_options
+    - iceberg_streaming_write_options
+
+pipeline:
+  type: chain
+  transforms:
+    - type: ReadFromKafka
+      name: ReadFromKafka
+      config:
+        bootstrap_servers: {{ bootstrapServers }}
+        topic: {{ topic }}
+        allow_duplicates: {{ allowDuplicates }}
+        confluent_schema_registry_subject: {{ confluentSchemaRegistrySubject }}
+        confluent_schema_registry_url: {{ confluentSchemaRegistryUrl }}
+        consumer_config_updates: {{ consumerConfigUpdates }}
+        file_descriptor_path: {{ fileDescriptorPath }}
+        format: {{ format | default('JSON') }}
+        message_name: {{ messageName }}
+        offset_deduplication: {{ offsetDeduplication }}
+        redistribute_by_record_key: {{ redistributeByRecordKey }}
+        redistribute_num_keys: {{ redistributeNumKeys }}
+        redistributed: {{ redistributed }}
+        {% if schema %}
+        schema: |
+            {{ schema }}
+        {% endif %}
+        auto_offset_reset_config: 'earliest'
+
+    - type: WriteToIceberg
+      name: WriteToIceberg
+      config:
+        table: {{ table }}
+        catalog_name: {{ catalogName }}
+        catalog_properties: {{ catalogProperties }}
+        config_properties: {{ configProperties }}
+        drop: {{ drop }}
+        keep: {{ keep }}
+        only: {{ only }}
+        partition_fields: {{ partitionFields }}
+        table_properties: {{ tableProperties }}
+        triggering_frequency_seconds: {{ triggeringFrequencySeconds }}
+
+options:
+  streaming: true
