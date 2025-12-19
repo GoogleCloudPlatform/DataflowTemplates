@@ -118,6 +118,7 @@ public class SpannerToMySqlCustomTransformationLT extends SpannerToSourceDbLTBas
     dataGenerator.execute(Duration.ofMinutes(90));
     assertThatPipeline(jobInfo).isRunning();
 
+    LOG.info("random");
     JDBCRowsCheck check =
         JDBCRowsCheck.builder(jdbcResourceManagers.get(0), table)
             .setMinRows(300000)
