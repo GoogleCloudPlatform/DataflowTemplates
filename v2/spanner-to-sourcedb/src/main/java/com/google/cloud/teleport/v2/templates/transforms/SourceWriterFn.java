@@ -246,7 +246,20 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
                                               .compareTo(spannerRec.getCommitTimestamp())
                                           == 0
                                       && shadowTableRecord.getRecordSequence()
-                                          > Long.parseLong(spannerRec.getRecordSequence())));
+                                      >= Long.parseLong(spannerRec.getRecordSequence())));
+
+                  if (shadowTableRecord != null
+                      && shadowTableRecord
+                          .getProcessedCommitTimestamp()
+                          .compareTo(spannerRec.getCommitTimestamp()) == 0
+                      && shadowTableRecord.getRecordSequence() == Long.parseLong(spannerRec.getRecordSequence())) {
+                    LOG.info(
+                        "Duplicate record detected. Shadow Table: [{}, {}], Record: [{}, {}]",
+                        shadowTableRecord.getProcessedCommitTimestamp(),
+                        shadowTableRecord.getRecordSequence(),
+                        spannerRec.getCommitTimestamp(),
+                        spannerRec.getRecordSequence());
+                  }
 
                       if (!isSourceAhead) {
                         IDao sourceDao = sourceProcessor.getSourceDao(shardId);
