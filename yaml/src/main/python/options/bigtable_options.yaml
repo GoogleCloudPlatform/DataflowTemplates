@@ -2,19 +2,19 @@ options:
   - name: "bigtable_common_options"
     parameters:
       - order: 1
-        name: "project_id"
+        name: "projectId"
         description: "BigTable project ID"
         help: "The Google Cloud project ID of the BigTable instance."
         required: true
         type: text
       - order: 2
-        name: "instance_id"
+        name: "instanceId"
         description: "BigTable instance ID"
         help: "The BigTable instance ID."
         required: true
         type: text
       - order: 3
-        name: "table_id"
+        name: "tableId"
         description: "BigTable output table"
         help: "BigTable table ID to write the output to."
         required: true
