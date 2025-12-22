@@ -402,6 +402,47 @@ public class BoundaryExtractorFactoryTest {
                 null));
   }
 
+  @Test
+  public void testFromDouble() throws SQLException {
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Double.class)
+            .setDecimalStepSize(new BigDecimal("0.00001"))
+            .build();
+    BoundaryExtractor<Double> extractor = BoundaryExtractorFactory.create(Double.class);
+
+    // If step between values > min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDouble(1)).thenReturn(1.001);
+    when(mockResultSet.getDouble(2)).thenReturn(1.002);
+    Boundary<Double> boundary1 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is > minimum delta, boundary is splittable
+    assertThat(boundary1.start()).isEqualTo(1.001);
+    assertThat(boundary1.end()).isEqualTo(1.002);
+    assertThat(boundary1.split(null).getLeft().end()).isEqualTo(1.0015);
+    assertThat(boundary1.split(null).getRight().start()).isEqualTo(1.0015);
+    assertThat(boundary1.isSplittable(null)).isTrue();
+
+    // if step between values < min step delta
+    when(mockResultSet.next()).thenReturn(true);
+    when(mockResultSet.getDouble(1)).thenReturn(1.000001);
+    when(mockResultSet.getDouble(2)).thenReturn(1.000002);
+    Boundary<Double> boundary2 = extractor.getBoundary(partitionColumn, mockResultSet, null);
+    // The diff is < minimum delta, boundary is NOT splittable
+    assertThat(boundary2.isSplittable(null)).isFalse();
+
+    // Mismatched Type
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            extractor.getBoundary(
+                PartitionColumn.builder().setColumnName("col1").setColumnClass(Long.class).build(),
+                mockResultSet,
+                null));
+  }
+
+  @Test
   public void testFromDuration() throws SQLException {
     PartitionColumn partitionColumn =
         PartitionColumn.builder()
@@ -454,6 +495,26 @@ public class BoundaryExtractorFactoryTest {
     assertThat(boundary.start()).isNull();
     assertThat(boundary.end()).isNull();
     assertThat(boundary.split(null).getLeft().end()).isNull();
+  }
+
+  @Test
+  public void testParseTimeStringToDuration() {
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30"))
+        .isEqualTo(Duration.parse("PT30H"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30"))
+        .isEqualTo(Duration.parse("-PT30H"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30:15"))
+        .isEqualTo(Duration.parse("PT30H15M"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15"))
+        .isEqualTo(Duration.parse("-PT30H15M"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30:15:22"))
+        .isEqualTo(Duration.parse("PT30H15M22S"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15:22"))
+        .isEqualTo(Duration.parse("-PT30H15M22S"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30:15:22.984353"))
+        .isEqualTo(Duration.parse("PT30H15M22.984353S"));
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30:15:22.984353"))
+        .isEqualTo(Duration.parse("-PT30H15M22.984353S"));
   }
 
   @Test

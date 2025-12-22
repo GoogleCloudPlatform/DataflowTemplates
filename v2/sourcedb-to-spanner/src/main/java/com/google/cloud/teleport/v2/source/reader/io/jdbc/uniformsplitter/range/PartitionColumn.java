@@ -108,10 +108,13 @@ public abstract class PartitionColumn implements Serializable {
               || (partitionColumn.columnClass() != BigDecimal.class),
           "Decimal columns must specify numeric scale. PartitionColumn = " + partitionColumn);
       Preconditions.checkState(
-          (partitionColumn.columnClass() == Float.class
+          ((partitionColumn.columnClass() == Float.class
+                      || partitionColumn.columnClass() == Double.class)
                   && partitionColumn.decimalStepSize() != null)
-              || (partitionColumn.columnClass() != Float.class),
-          "Float columns must specify decimalStepSize. PartitionColum = " + partitionColumn);
+              || (partitionColumn.columnClass() != Float.class
+                  && partitionColumn.columnClass() != Double.class),
+          "Float and double columns must specify decimalStepSize. PartitionColum = "
+              + partitionColumn);
       Preconditions.checkState(
           (partitionColumn.columnClass() == Duration.class
                   && partitionColumn.datetimePrecision() != null)

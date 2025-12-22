@@ -165,6 +165,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     DATE,
     DECIMAL,
     FLOAT,
+    DOUBLE,
     DURATION,
     OTHER
   };
@@ -180,5 +181,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.DATE, java.sql.Date.class,
           IndexType.DECIMAL, BigDecimal.class,
           IndexType.FLOAT, Float.class,
+          IndexType.DOUBLE, Double.class,
           IndexType.DURATION, Duration.class);
 }

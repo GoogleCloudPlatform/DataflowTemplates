@@ -40,12 +40,14 @@ public class BoundaryTest {
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setNumericScale(0)
+            .setDatetimePrecision(2)
             .build();
     assertThat(boundary.start()).isEqualTo(0);
     assertThat(boundary.end()).isEqualTo(42);
     assertThat(boundary.toBuilder().build()).isEqualTo(boundary);
     assertThat(boundary.splitIndex().length()).isEqualTo(1);
     assertThat(boundary.numericScale()).isEqualTo(0);
+    assertThat(boundary.datetimePrecision()).isEqualTo(2);
   }
 
   @Test
@@ -59,6 +61,7 @@ public class BoundaryTest {
             .setEnd(42)
             .setBoundarySplitter(BoundarySplitterFactory.create(Integer.class))
             .setNumericScale(null)
+            .setDatetimePrecision(null)
             .build();
 
     Boundary<Integer> boundaryNullBoth =
@@ -75,6 +78,9 @@ public class BoundaryTest {
     assertThat(boundaryNullBoth.end()).isNull();
     assertThat(boundaryNullStart.numericScale()).isNull();
     assertThat(boundaryNullBoth.numericScale()).isNull(); // defaults to null if not explicitly set
+    assertThat(boundaryNullStart.datetimePrecision()).isNull();
+    assertThat(boundaryNullBoth.datetimePrecision())
+        .isNull(); // defaults to null if not explicitly set
   }
 
   @Test
@@ -205,6 +211,31 @@ public class BoundaryTest {
     // float values that cause issues when compared as floats (1.03f - 1.02f returns 0.00999999
     // which is less than 0.01)
     assertThat(floatBoundary.areValuesEqual(1.03f, 1.02f)).isEqualTo(false);
+
+    // Test special handling for double equality
+    Boundary<Double> doubleBoundary =
+        Boundary.<Double>builder()
+            .setColName("col1")
+            .setColClass(Double.class)
+            .setStart(1.01)
+            .setEnd(1.02)
+            .setDecimalStepSize(BigDecimal.valueOf(0.001))
+            .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
+            .build();
+
+    // double to non-double (float) comparison
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.001f)).isEqualTo(false);
+    // non-double (float) to double comparison
+    assertThat(doubleBoundary.areValuesEqual(0.001f, 0.001)).isEqualTo(false);
+    // double to double comparison
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.001)).isEqualTo(true);
+    assertThat(doubleBoundary.areValuesEqual(0.0001, 0.001)).isEqualTo(true);
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.0001)).isEqualTo(true);
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0.002)).isEqualTo(false);
+    assertThat(doubleBoundary.areValuesEqual(0.001, 0)).isEqualTo(false);
+    // double values that cause issues when compared as doubles (1.003 - 1.002 returns 0.000999999
+    // which is less than 0.001)
+    assertThat(doubleBoundary.areValuesEqual(1.003, 1.002)).isEqualTo(false);
   }
 
   @Test

@@ -293,6 +293,8 @@ public class MysqlDialectAdapterTest {
             "bool",
             "date",
             "decimal",
+            "double",
+            "double", // double(p, d)
             "time");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         getExpectedSourceColumnIndexInfosForBasicIndexes(false);
@@ -441,6 +443,27 @@ public class MysqlDialectAdapterTest {
             .setIndexType(IndexType.DECIMAL)
             .setOrdinalPosition(5)
             .setNumericScale(5)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColDouble1")
+            .setIndexName("testIndexDouble1")
+            .setIsUnique(false)
+            .setIsPrimary(false)
+            .setCardinality(42L)
+            .setOrdinalPosition(1)
+            .setIndexType(IndexType.DOUBLE)
+            // to test default decimal step size when not specified in column definition
+            .setDecimalStepSize(isForMock ? null : new BigDecimal("0.0000000001"))
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColDouble2")
+            .setIndexName("testIndexDouble2")
+            .setIsUnique(false)
+            .setIsPrimary(false)
+            .setCardinality(42L)
+            .setOrdinalPosition(1)
+            .setIndexType(IndexType.DOUBLE)
+            .setDecimalStepSize(new BigDecimal("0.000001")) // Double(p, d = 6)
             .build(),
         SourceColumnIndexInfo.builder()
             .setColumnName("testColTime")

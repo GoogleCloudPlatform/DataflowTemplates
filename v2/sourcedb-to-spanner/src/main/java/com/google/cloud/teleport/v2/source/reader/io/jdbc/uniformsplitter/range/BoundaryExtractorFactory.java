@@ -15,6 +15,7 @@
  */
 package com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.range;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -60,6 +61,7 @@ public class BoundaryExtractorFactory {
               (BoundaryExtractor<Timestamp>) BoundaryExtractorFactory::fromTimestamps)
           .put(Date.class, (BoundaryExtractor<Date>) BoundaryExtractorFactory::fromDates)
           .put(Float.class, (BoundaryExtractor<Float>) BoundaryExtractorFactory::fromFloats)
+          .put(Double.class, (BoundaryExtractor<Double>) BoundaryExtractorFactory::fromDoubles)
           .put(
               Duration.class, (BoundaryExtractor<Duration>) BoundaryExtractorFactory::fromDurations)
           .build();
@@ -216,6 +218,22 @@ public class BoundaryExtractorFactory {
         .build();
   }
 
+  private static Boundary<Double> fromDoubles(
+      PartitionColumn partitionColumn,
+      ResultSet resultSet,
+      @Nullable BoundaryTypeMapper boundaryTypeMapper)
+      throws SQLException {
+    Preconditions.checkArgument(partitionColumn.columnClass().equals(Double.class));
+    resultSet.next();
+    return Boundary.<Double>builder()
+        .setPartitionColumn(partitionColumn)
+        .setStart(resultSet.getDouble(1))
+        .setEnd(resultSet.getDouble(2))
+        .setBoundarySplitter(BoundarySplitterFactory.create(Double.class))
+        .setBoundaryTypeMapper(boundaryTypeMapper)
+        .build();
+  }
+
   private static Boundary<Duration> fromDurations(
       PartitionColumn partitionColumn,
       ResultSet resultSet,
@@ -236,7 +254,8 @@ public class BoundaryExtractorFactory {
    * Converts a string in format "hh:mm:ss.sss" into a Duration by converting to a string with
    * format "PThhHmmMss.sssS".
    */
-  private static Duration parseTimeStringToDuration(String timeString) {
+  @VisibleForTesting
+  protected static Duration parseTimeStringToDuration(String timeString) {
     if (timeString == null || timeString.isBlank()) {
       return null;
     }

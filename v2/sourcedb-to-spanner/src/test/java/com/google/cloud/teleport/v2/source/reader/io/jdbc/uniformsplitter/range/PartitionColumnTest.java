@@ -117,6 +117,14 @@ public class PartitionColumnTest {
         () ->
             PartitionColumn.builder()
                 .setColumnName("col1")
+                .setColumnClass(Double.class)
+                // No decimal step size
+                .build());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            PartitionColumn.builder()
+                .setColumnName("col1")
                 .setColumnClass(Duration.class)
                 // No datetime precision.
                 .build());

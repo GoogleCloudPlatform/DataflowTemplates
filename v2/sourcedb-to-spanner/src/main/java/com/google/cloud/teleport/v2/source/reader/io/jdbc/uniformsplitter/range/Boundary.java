@@ -131,13 +131,20 @@ public abstract class Boundary<T extends Serializable>
     if (valueA instanceof Float f1 && valueB instanceof Float f2) {
       BigDecimal b1 = new BigDecimal(f1.toString());
       BigDecimal b2 = new BigDecimal(f2.toString());
-
-      BigDecimal diff = b1.subtract(b2).abs();
-      return diff.compareTo(decimalStepSize()) < 0;
+      return bigDecimalEqual(b1, b2);
     }
-    // TODO special step size for Double
+    if (valueA instanceof Double d1 && valueB instanceof Double d2) {
+      BigDecimal b1 = new BigDecimal(d1.toString());
+      BigDecimal b2 = new BigDecimal(d2.toString());
+      return bigDecimalEqual(b1, b2);
+    }
 
     return Objects.equal(valueA, valueB);
+  }
+
+  private boolean bigDecimalEqual(BigDecimal b1, BigDecimal b2) {
+    BigDecimal diff = b1.subtract(b2).abs();
+    return diff.compareTo(decimalStepSize()) < 0;
   }
 
   /**

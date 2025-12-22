@@ -295,6 +295,18 @@ public class MySQLDataTypesIT extends SourceDbToSpannerITBase {
             "1.17E-38",
             "-1.17E-38"));
     expectedData.put(
+        "double_pk",
+        createRows(
+            "double_pk",
+            "45.56",
+            "1.0000000001",
+            "1.0",
+            "1.0000000002",
+            "1.7976931348623157E308",
+            "-1.7976931348623157E308",
+            "2.2250738585072014E-308",
+            "-2.2250738585072014E-308"));
+    expectedData.put(
         "time_pk", createRows("time_pk", "15:50:00.200000", "838:59:58.123000", "-838:59:59"));
     return expectedData;
   }

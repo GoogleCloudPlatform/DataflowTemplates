@@ -450,6 +450,65 @@ public class BoundarySplitterFactoryTest {
   }
 
   @Test
+  public void testDoubleBoundarySplitter() {
+    BoundarySplitter<Double> splitter = BoundarySplitterFactory.create(Double.class);
+
+    // 1. Standard Ascending Ranges
+    // 0 to 10 -> 5
+    assertThat(splitter.getSplitPoint(0.0, 10.0, null, null, null)).isEqualTo(5.0);
+    // Negative range: -20 to -10 -> -15
+    assertThat(splitter.getSplitPoint(-20.0, -10.0, null, null, null)).isEqualTo(-15.0);
+    // Crossing zero symmetric: -100 to 100 -> 0
+    assertThat(splitter.getSplitPoint(-100.0, 100.0, null, null, null)).isEqualTo(0.0);
+    // Crossing zero asymmetric: -50 to 100 -> 25
+    assertThat(splitter.getSplitPoint(-50.0, 100.0, null, null, null)).isEqualTo(25.0);
+
+    // 2. Inverted Ranges (Start > End)
+    // 10 to 0 -> 5 (Same as 0 to 10)
+    assertThat(splitter.getSplitPoint(10.0, 0.0, null, null, null)).isEqualTo(5.0);
+    // -10 to -20 -> -15 (Same as -20 to -10)
+    assertThat(splitter.getSplitPoint(-10.0, -20.0, null, null, null)).isEqualTo(-15.0);
+    // 100 to -100 -> 0 (Same as -100 to 100)
+    assertThat(splitter.getSplitPoint(100.0, -100.0, null, null, null)).isEqualTo(0.0);
+    // 100 to -50 -> 25 (Same as -50 to 100)
+    assertThat(splitter.getSplitPoint(100.0, -50.0, null, null, null)).isEqualTo(25.0);
+
+    // 3. Null Handling
+    // Both Null the splitter does not process and return null
+    assertThat(splitter.getSplitPoint(null, null, null, null, null)).isEqualTo(null);
+    // Start Null (-Max) to 0 -> Split at half of negative max
+    assertThat(splitter.getSplitPoint(null, 0.0, null, null, null))
+        .isEqualTo(-Double.MAX_VALUE / 2.0);
+    // 0 to End Null (+Max) -> Split at half of max
+    assertThat(splitter.getSplitPoint(0.0, null, null, null, null))
+        .isEqualTo(Double.MAX_VALUE / 2.0);
+
+    // 4. Overflow Protection & Extreme Values
+    // Large Positives: Max-100 to Max -> Max-50
+    assertThat(splitter.getSplitPoint(Double.MAX_VALUE - 100.0, Double.MAX_VALUE, null, null, null))
+        .isEqualTo(Double.MAX_VALUE - 50.0);
+    // Large Negatives: -Max to -Max+100 -> -Max+50
+    assertThat(
+            splitter.getSplitPoint(-Double.MAX_VALUE, -Double.MAX_VALUE + 100.0, null, null, null))
+        .isEqualTo(-Double.MAX_VALUE + 50.0);
+    // Full Range: Max to -Max (Inverted Extreme) -> 0
+    assertThat(splitter.getSplitPoint(Double.MAX_VALUE, -Double.MAX_VALUE, null, null, null))
+        .isEqualTo(0.0);
+    // Small Positives: Min to Min-0.5 -> Min-0.25
+    assertThat(splitter.getSplitPoint(Double.MIN_VALUE - 0.5, Double.MIN_VALUE, null, null, null))
+        .isEqualTo(Double.MIN_VALUE - 0.25);
+    // Small Negatives: -Min to -Min+0.5 -> -Min+0.25
+    assertThat(splitter.getSplitPoint(-Double.MIN_VALUE, -Double.MIN_VALUE + 0.5, null, null, null))
+        .isEqualTo(-Double.MIN_VALUE + 0.25);
+    // Small Range: Min to -Min (Inverted Extreme) -> 0
+    assertThat(splitter.getSplitPoint(Double.MIN_VALUE, -Double.MIN_VALUE, null, null, null))
+        .isEqualTo(0.0);
+
+    // 5. Identity, start and end equals
+    assertThat(splitter.getSplitPoint(5.0, 5.0, null, null, null)).isEqualTo(5.0);
+  }
+
+  @Test
   public void testDurationBoundarySplitter() {
     BoundarySplitter<Duration> splitter = BoundarySplitterFactory.create(Duration.class);
     PartitionColumn partitionColumn =
@@ -473,6 +532,22 @@ public class BoundarySplitterFactoryTest {
         .isEqualTo(Duration.parse("PT36H15M25.2S"));
     assertThat(splitter.getSplitPoint(start, end, partitionColumn, null, null)).isEqualTo(mid);
     assertThat(splitter.getSplitPoint(min, max, partitionColumn, null, null)).isEqualTo(zero);
+
+    // Null checks
+    assertThrows(
+        NullPointerException.class, () -> splitter.getSplitPoint(start, end, null, null, null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            // can't test via the splitter we need to use a different type since datetime precision
+            // is required for Duration columns
+            BoundarySplitterFactory.splitDurations(
+                start,
+                end,
+                PartitionColumn.builder()
+                    .setColumnName("col1")
+                    .setColumnClass(Integer.class)
+                    .build()));
   }
 
   /* Not for production as it does not look at collation ordering */
