@@ -499,6 +499,9 @@ public class BoundaryExtractorFactoryTest {
 
   @Test
   public void testParseTimeStringToDuration() {
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration(null)).isNull();
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("")).isNull();
+    assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("   ")).isNull();
     assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("30"))
         .isEqualTo(Duration.parse("PT30H"));
     assertThat(BoundaryExtractorFactory.parseTimeStringToDuration("-30"))
