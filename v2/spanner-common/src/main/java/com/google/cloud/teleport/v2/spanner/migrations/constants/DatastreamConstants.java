@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.datastream;
+package com.google.cloud.teleport.v2.spanner.migrations.constants;
 
 import com.google.cloud.spanner.Dialect;
 import com.google.common.collect.ImmutableList;
