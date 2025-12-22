@@ -101,7 +101,7 @@
     <jetty.version>12.1.5</jetty.version>
     <!-- Socket factory JARs for Cloud SQL -->
     <mysql-socket-factory.version>1.15.2</mysql-socket-factory.version>
-    <postgres-socket-factory.version>1.25.3</postgres-socket-factory.version>
+    <postgres-socket-factory.version>1.27.1</postgres-socket-factory.version>
 
     <!-- Test categories -->
     <integration.tests>com.google.cloud.teleport.metadata.TemplateIntegrationTest</integration.tests>
