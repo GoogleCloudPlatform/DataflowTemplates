@@ -410,6 +410,23 @@ public class DeadLetterQueueTest {
     assertTrue(dlqElement.getOriginalPayload().contains("\"id\":123"));
     assertTrue(dlqElement.getOriginalPayload().contains("\"bit_col\":1"));
     assertTrue(dlqElement.getOriginalPayload().contains("\"int_col\":456"));
+
+    RowContext r2 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("id", 123L)
+                    .setField("bit_col", null)
+                    .setField("int_col", null)
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement2 = dlq.rowContextToDlqElement(r2);
+    assertNotNull(dlqElement2);
+    // Verify null integral types are handled correctly
+    assertTrue(dlqElement2.getOriginalPayload().contains("\"id\":123"));
+    assertTrue(dlqElement2.getOriginalPayload().contains("\"bit_col\":null"));
+    assertTrue(dlqElement2.getOriginalPayload().contains("\"int_col\":null"));
   }
 
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
