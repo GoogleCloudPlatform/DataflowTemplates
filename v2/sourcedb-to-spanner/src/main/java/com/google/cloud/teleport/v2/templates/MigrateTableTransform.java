@@ -118,7 +118,7 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
                                     "ExtractMutations",
                                     MapElements.into(TypeDescriptor.of(Mutation.class))
                                             .via((RowContext r) -> r.mutation()))
-                            .apply("Reshuffle", Reshuffle.viaRandomKey()));
+                            .apply("RWReshuffle", Reshuffle.viaRandomKey()));
 
     PCollection<MutationGroup> failedMutations = spannerWriteResult.getFailedMutations();
 
