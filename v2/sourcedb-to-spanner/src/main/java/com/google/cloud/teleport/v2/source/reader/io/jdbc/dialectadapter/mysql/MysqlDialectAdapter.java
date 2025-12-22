@@ -386,6 +386,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           // But here the end goal is to map to a Java Float.class,
           // we need a distinct Source IndexType to map to Float.class
           .put("FLOAT", IndexType.FLOAT)
+          .put("DOUBLE", IndexType.DOUBLE)
           .build();
 
   /**
@@ -464,16 +465,19 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           stringMaxLength = null;
         }
 
-        // TODO: Support DOUBLE
         BigDecimal decimalStepSize = null;
-        if (indexType.equals(IndexType.FLOAT)) {
+        if (indexType.equals(IndexType.FLOAT) || indexType.equals(IndexType.DOUBLE)) {
           if (numericScale > 0) {
             // Example: If scale is 2, decimal step is 0.01
             decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
-          } else {
+          } else if (indexType.equals(IndexType.FLOAT)) {
             // Trying to pick a sane default 1e-5 (there is no defined default step for float point
             // type)
             decimalStepSize = new BigDecimal("0.00001");
+          } else {
+            // Trying to pick a sane default 1e-10 (there is no defined default step for double
+            // type)
+            decimalStepSize = new BigDecimal("0.0000000001");
           }
         }
 

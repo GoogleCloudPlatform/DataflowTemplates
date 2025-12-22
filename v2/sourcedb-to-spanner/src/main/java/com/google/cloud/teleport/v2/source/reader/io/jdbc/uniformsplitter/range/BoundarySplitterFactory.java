@@ -80,6 +80,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<Float>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitFloats(start, end))
+          .put(
+              Double.class,
+              (BoundarySplitter<Double>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDoubles(start, end))
           .build();
 
   /**
@@ -339,5 +344,30 @@ public class BoundarySplitterFactory {
     // we use the offset formula to prevent overflow (Infinity).
     // This works regardless of whether start > end or start < end.
     return start + (end - start) / 2.0f;
+  }
+
+  private static Double splitDoubles(Double start, Double end) {
+    if (start == null && end == null) {
+      return null;
+    }
+    if (start == null) {
+      start = -Double.MAX_VALUE;
+    }
+    if (end == null) {
+      end = Double.MAX_VALUE;
+    }
+
+    // Calculate overflow safe mid-point
+
+    // If signs are different, simple addition is safe from overflow
+    // because the values cancel each other out towards zero.
+    if ((start < 0 && end > 0) || (start > 0 && end < 0)) {
+      return (start + end) / 2.0;
+    }
+
+    // If signs are the same (both positive or both negative),
+    // we use the offset formula to prevent overflow (Infinity).
+    // This works regardless of whether start > end or start < end.
+    return start + (end - start) / 2.0;
   }
 }
