@@ -1,3 +1,5 @@
+SET GLOBAL max_connections = 300;
+
 CREATE TABLE `varchar_table` (
     `id` INT PRIMARY KEY,
     `varchar_col` VARCHAR(21000) CHARACTER SET utf8 DEFAULT NULL
