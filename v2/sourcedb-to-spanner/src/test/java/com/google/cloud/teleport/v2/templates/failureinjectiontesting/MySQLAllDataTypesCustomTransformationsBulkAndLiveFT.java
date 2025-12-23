@@ -134,7 +134,7 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     ConditionCheck conditionCheck =
         // Check that there is at least 3 errors in DLQ
         DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
-            .setMinEvents(3)
+            .setMinEvents(4)
             .build();
     assertTrue(conditionCheck.get());
 
@@ -158,8 +158,8 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
         ChainedConditionCheck.builder(
                 List.of(
                     SpannerRowsCheck.builder(spannerResourceManager, TABLE_NAME)
-                        .setMinRows(3)
-                        .setMaxRows(3)
+                        .setMinRows(4)
+                        .setMaxRows(4)
                         .build()))
             .build();
 
@@ -180,6 +180,7 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     data.add(createExpectedRow(1, "valid1"));
     data.add(createExpectedRow(2, "valid2"));
     data.add(createExpectedRow(3, "fail_me"));
+    data.add(createExpectedNullRow(4));
     return data;
   }
 
@@ -236,6 +237,52 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     row.put("timestamp_col", "2023-01-0" + id + "T12:00:00Z");
     row.put("set_col", "v1");
 
+    return row;
+  }
+    return row;
+  }
+
+  private Map<String, Object> createExpectedNullRow(int id) {
+    Map<String, Object> row = new HashMap<>();
+    row.put("id", id);
+    row.put("varchar_col", null);
+    row.put("tinyint_col", null);
+    row.put("tinyint_unsigned_col", null);
+    row.put("text_col", null);
+    row.put("date_col", null);
+    row.put("smallint_col", null);
+    row.put("smallint_unsigned_col", null);
+    row.put("mediumint_col", null);
+    row.put("mediumint_unsigned_col", null);
+    row.put("bigint_col", null);
+    row.put("bigint_unsigned_col", null);
+    row.put("float_col", null);
+    row.put("double_col", null);
+    row.put("decimal_col", null);
+    row.put("datetime_col", null);
+    row.put("time_col", null);
+    row.put("year_col", null);
+    row.put("char_col", null);
+    row.put("tinyblob_col", null);
+    row.put("blob_col", null);
+    row.put("mediumblob_col", null);
+    row.put("tinytext_col", null);
+    row.put("mediumtext_col", null);
+    row.put("test_json_col", null);
+    row.put("longblob_col", null);
+    row.put("longtext_col", null);
+    row.put("enum_col", null);
+    row.put("bool_col", null);
+    row.put("binary_col", null);
+    row.put("varbinary_col", null);
+    row.put("bit_col", null);
+    row.put("bit8_col", null);
+    row.put("bit1_col", null);
+    row.put("boolean_col", null);
+    row.put("int_col", null);
+    row.put("integer_unsigned_col", null);
+    row.put("timestamp_col", null);
+    row.put("set_col", null);
     return row;
   }
 }

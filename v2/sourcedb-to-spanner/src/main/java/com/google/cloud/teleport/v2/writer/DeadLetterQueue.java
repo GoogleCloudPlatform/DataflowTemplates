@@ -304,12 +304,8 @@ public class DeadLetterQueue implements Serializable {
    */
   private void putValueToJson(JSONObject json, String key, Object value) {
     if (value == null) {
-      json.put(key, JSONObject.NULL);
-    } else if (value instanceof Integer
-        || value instanceof Long
-        || value instanceof Short
-        || value instanceof Byte
-        || value instanceof java.math.BigInteger) {
+      json.put(key, (Object) null);
+    } else if (value instanceof Number) {
       json.put(key, value);
     } else {
       json.put(key, value.toString());
