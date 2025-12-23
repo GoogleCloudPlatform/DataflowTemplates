@@ -157,4 +157,65 @@ public final class PostgresChangeEventContextTest {
     assertEquals(shadowMutation.getTable(), "shadow_Users2");
     assertEquals(shadowMutation.getOperation(), Mutation.Op.INSERT_OR_UPDATE);
   }
+
+  @Test
+  public void canGenerateShadowTableMutationWithCollision() throws Exception {
+    long eventTimestamp = 1615159728L;
+    Ddl ddl =
+        Ddl.builder()
+            .createTable("MyTable")
+            .column("lsn")
+            .int64()
+            .max()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("lsn")
+            .end()
+            .endTable()
+            .build();
+    Ddl shadowDdl =
+        Ddl.builder()
+            .createTable("shadow_MyTable")
+            .column("lsn")
+            .int64()
+            .max()
+            .endColumn()
+            .column("data")
+            .string()
+            .max()
+            .endColumn()
+            .column("shadow_lsn")
+            .string()
+            .max()
+            .endColumn()
+            .primaryKey()
+            .asc("lsn")
+            .end()
+            .endTable()
+            .build();
+    JSONObject changeEvent = new JSONObject();
+    changeEvent.put("lsn", 123);
+    changeEvent.put(DatastreamConstants.EVENT_TABLE_NAME_KEY, "MyTable");
+    changeEvent.put(
+        DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.POSTGRES_SOURCE_TYPE);
+    changeEvent.put(DatastreamConstants.POSTGRES_TIMESTAMP_KEY, eventTimestamp);
+    changeEvent.put(DatastreamConstants.POSTGRES_LSN_KEY, "1/ABC");
+
+    ChangeEventContext changeEventContext =
+        ChangeEventContextFactory.createChangeEventContext(
+            getJsonNode(changeEvent.toString()), ddl, shadowDdl, "shadow_", "postgresql");
+    Mutation shadowMutation = changeEventContext.getShadowTableMutation();
+    Map<String, Value> actual = shadowMutation.asMap();
+
+    // The PK column 'lsn' should be present.
+    assertEquals(actual.get("lsn"), Value.int64(123));
+    // The conflicting shadow column should be renamed to 'shadow_lsn'.
+    assertEquals(actual.get("shadow_lsn"), Value.string("1/ABC"));
+    // The other shadow columns should be present with their default names.
+    assertEquals(actual.get("timestamp"), Value.int64(eventTimestamp));
+  }
 }

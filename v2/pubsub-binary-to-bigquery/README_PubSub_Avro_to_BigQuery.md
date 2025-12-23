@@ -20,7 +20,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 ### Required parameters
 
 * **schemaPath**: The Cloud Storage location of the Avro schema file. For example, `gs://path/to/my/schema.avsc`.
-* **inputSubscription**: The Pub/Sub input subscription to read from. For example, `projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>`.
+* **inputSubscription**: The Pub/Sub input subscription to read from. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`.
 * **outputTableSpec**: The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
 * **outputTopic**: The Pub/Sub topic to use for unprocessed records. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
@@ -91,7 +91,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_Avro_to_BigQuery" \
--f v2/pubsub-binary-to-bigquery
+-pl v2/pubsub-binary-to-bigquery -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

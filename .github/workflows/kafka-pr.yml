@@ -109,7 +109,7 @@ jobs:
           ./cicd/run-unit-tests \
           --modules-to-build="KAFKA"
       - name: Upload Unit Tests Report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always() # always run even if the previous step fails
         with:
           name: surefire-unit-test-results
@@ -119,7 +119,7 @@ jobs:
             **/surefire-reports/html/**
           retention-days: 1
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v5.5.1
+        uses: codecov/codecov-action@v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: GoogleCloudPlatform/DataflowTemplates
@@ -147,7 +147,7 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Smoke Tests Report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always() # always run even if the previous step fails
         with:
           name: surefire-smoke-test-results
@@ -179,7 +179,7 @@ jobs:
           --it-artifact-bucket="cloud-teleport-testing-it-gitactions" \
           --it-private-connectivity="datastream-connect-2"
       - name: Upload Integration Tests Report
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always() # always run even if the previous step fails
         with:
           name: surefire-integration-test-results

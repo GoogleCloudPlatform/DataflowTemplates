@@ -49,6 +49,7 @@ import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
+import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Base class for SourceDbToSpanner integration tests. It provides helper functions related to
@@ -75,7 +76,10 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     /* Max Cassandra Keyspace is 48 characters. Base Resource Manager adds 24 characters of date-time at the end.
      * That's why we need to take a smaller subsequence of the testId.
      */
-    String uniqueId = testId.substring(0, Math.min(20, testId.length()));
+    String uniqueId =
+        testId.substring(0, Math.min(15, testId.length()))
+            + "_"
+            + RandomStringUtils.randomAlphabetic(4).toLowerCase();
 
     return CassandraResourceManager.builder(uniqueId).build();
   }
@@ -225,6 +229,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
             put("projectId", PROJECT);
             put("instanceId", spannerResourceManager.getInstanceId());
             put("databaseId", spannerResourceManager.getDatabaseId());
+            put("workerMachineType", "n2-standard-4");
           }
         };
     if (sourceResourceManager instanceof JDBCResourceManager) {
@@ -266,11 +271,7 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
 
     options.setParameters(params);
     options.addEnvironment("additionalExperiments", List.of("disable_runner_v2"));
-    if (System.getProperty("numWorkers") != null) {
-      options.addEnvironment("numWorkers", Integer.parseInt(System.getProperty("numWorkers")));
-    } else {
-      options.addEnvironment("numWorkers", 2);
-    }
+    options.addEnvironment("numWorkers", 2);
     options.addEnvironment("ipConfiguration", "WORKER_IP_PRIVATE");
     // Run
     PipelineLauncher.LaunchInfo jobInfo = launchTemplate(options, false);
@@ -307,13 +308,13 @@ public class SourceDbToSpannerITBase extends JDBCBaseIT {
     String configFile =
         String.format(
             """
-                datastax-java-driver {
-                      basic.contact-points = ["%s:%d"]
-                      basic.session-keyspace = %s
-                      basic.load-balancing-policy {
-                        local-datacenter = datacenter1
-                      }
-                    }""",
+                            datastax-java-driver {
+                                  basic.contact-points = ["%s:%d"]
+                                  basic.session-keyspace = %s
+                                  basic.load-balancing-policy {
+                                    local-datacenter = datacenter1
+                                  }
+                                }""",
             cassandraResourceManager.getHost(),
             cassandraResourceManager.getPort(),
             cassandraResourceManager.getKeyspaceName());

@@ -36,6 +36,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.re2j.Pattern;
+import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -364,6 +365,7 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("MEDIUMINT", IndexType.NUMERIC)
           .put("SMALLINT", IndexType.NUMERIC)
           .put("TINYINT", IndexType.NUMERIC)
+          .put("BIT", IndexType.NUMERIC)
           // String types: Ref https://dev.mysql.com/doc/refman/8.4/en/string-type-syntax.html
           .put("CHAR", IndexType.STRING)
           .put("VARCHAR", IndexType.STRING)
@@ -375,6 +377,19 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           .put("TINYTEXT", IndexType.STRING)
           .put("DATETIME", IndexType.TIME_STAMP)
           .put("TIMESTAMP", IndexType.TIME_STAMP)
+          .put("BOOL", IndexType.NUMERIC)
+          .put("YEAR", IndexType.NUMERIC)
+          .put("DATE", IndexType.DATE)
+          .put("DECIMAL", IndexType.DECIMAL)
+          // Float is listed as numeric types in Mysql Ref
+          // https://dev.mysql.com/doc/refman/8.4/en/numeric-types.html
+          // But here the end goal is to map to a Java Float.class,
+          // we need a distinct Source IndexType to map to Float.class
+          .put("FLOAT", IndexType.FLOAT)
+          .put("DOUBLE", IndexType.DOUBLE)
+          // MySQL TIME type is closer to a java.time.Duration (which represents a time interval) as
+          // opposed to a java.time.LocalTime (which represents wall-clock time in a 24-hour day)
+          .put("TIME", IndexType.DURATION)
           .build();
 
   /**
@@ -422,8 +437,15 @@ public final class MysqlDialectAdapter implements DialectAdapter {
         @Nullable String characterSet = rs.getString(InformationSchemaStatsCols.CHARACTER_SET_COL);
         @Nullable String collation = rs.getString(InformationSchemaStatsCols.COLLATION_COL);
         @Nullable String padSpace = getPadSpaceString(rs);
+        int numericScale = rs.getInt(InformationSchemaStatsCols.NUMERIC_SCALE_COL);
+        boolean hasNumericScale = !rs.wasNull();
+        @Nullable
+        Integer datetimePrecision = rs.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL);
+        if (rs.wasNull()) {
+          datetimePrecision = null;
+        }
         logger.debug(
-            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}",
+            "Discovered column {} from index {}, isUnique {}, isPrimary {}, cardinality {}, ordinalPosition {}, character-set {}, collation {}, pad-space {}, numericScale {}, datetimePrecision {}",
             colName,
             indexName,
             isUnique,
@@ -432,7 +454,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
             ordinalPosition,
             characterSet,
             collation,
-            padSpace);
+            padSpace,
+            numericScale,
+            datetimePrecision);
         // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE
         // Column.
         String columType = normalizeColumnType(rs.getString(InformationSchemaStatsCols.TYPE_COL));
@@ -450,6 +474,22 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           stringMaxLength = null;
         }
 
+        BigDecimal decimalStepSize = null;
+        if (indexType.equals(IndexType.FLOAT) || indexType.equals(IndexType.DOUBLE)) {
+          if (numericScale > 0) {
+            // Example: If scale is 2, decimal step is 0.01
+            decimalStepSize = BigDecimal.ONE.scaleByPowerOfTen(-numericScale);
+          } else if (indexType.equals(IndexType.FLOAT)) {
+            // Trying to pick a sane default 1e-5 (there is no defined default step for float point
+            // type)
+            decimalStepSize = new BigDecimal("0.00001");
+          } else {
+            // Trying to pick a sane default 1e-10 (there is no defined default step for double
+            // type)
+            decimalStepSize = new BigDecimal("0.0000000001");
+          }
+        }
+
         indexesBuilder.add(
             SourceColumnIndexInfo.builder()
                 .setColumnName(colName)
@@ -461,6 +501,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
                 .setIndexType(indexType)
                 .setCollationReference(collationReference)
                 .setStringMaxLength(stringMaxLength)
+                .setNumericScale(hasNumericScale ? numericScale : null)
+                .setDecimalStepSize(decimalStepSize)
+                .setDatetimePrecision(datetimePrecision)
                 .build());
       }
     } catch (java.sql.SQLException e) {
@@ -694,9 +737,12 @@ public final class MysqlDialectAdapter implements DialectAdapter {
     public static final String CHAR_MAX_LENGTH_COL = "cols.CHARACTER_MAXIMUM_LENGTH";
     public static final String CHARACTER_SET_COL = "cols.CHARACTER_SET_NAME";
     public static final String COLLATION_COL = "cols.COLLATION_NAME";
+    public static final String DATETIME_PRECISION_COL = "cols.DATETIME_PRECISION";
 
     // TODO(vardhanvthigle): MySql 5.7 is always PAD space and does not have PAD_ATTRIBUTE Column.
     public static final String PAD_SPACE_COL = "collations.PAD_ATTRIBUTE";
+
+    public static final String NUMERIC_SCALE_COL = "cols.NUMERIC_SCALE";
 
     public static ImmutableList<String> colList() {
       return ImmutableList.of(
@@ -709,7 +755,9 @@ public final class MysqlDialectAdapter implements DialectAdapter {
           CHAR_MAX_LENGTH_COL,
           CHARACTER_SET_COL,
           COLLATION_COL,
-          PAD_SPACE_COL);
+          PAD_SPACE_COL,
+          NUMERIC_SCALE_COL,
+          DATETIME_PRECISION_COL);
     }
 
     private InformationSchemaStatsCols() {}

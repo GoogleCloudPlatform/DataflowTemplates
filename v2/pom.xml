@@ -45,6 +45,7 @@
         <excluded.spanner.tests>com.google.cloud.teleport.v2.spanner.IntegrationTest</excluded.spanner.tests>
 
         <licenseHeaderFile>../JAVA_LICENSE_HEADER</licenseHeaderFile>
+        <cassandra-java-driver-core.version>4.18.1</cassandra-java-driver-core.version>
     </properties>
 
     <dependencyManagement>
@@ -284,12 +285,12 @@
                         <id>copy-dependencies</id>
                         <phase>package</phase>
                         <goals>
-                          <goal>copy-dependencies</goal>
+                            <goal>copy-dependencies</goal>
                         </goals>
                         <configuration>
-                          <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
-                          <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
-                          <stripVersion>true</stripVersion>
+                            <outputDirectory>${project.build.directory}/extra_libs</outputDirectory>
+                            <includeArtifactIds>conscrypt-openjdk-uber</includeArtifactIds>
+                            <stripVersion>true</stripVersion>
                         </configuration>
                     </execution>
                     <execution>
@@ -535,7 +536,7 @@
                                     </filters>
                                     <transformers>
                                         <transformer
-                                            implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                                implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                     </transformers>
                                 </configuration>
                             </execution>

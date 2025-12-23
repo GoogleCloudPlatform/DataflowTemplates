@@ -303,23 +303,26 @@ public class DataStreamToSpannerIT extends SpannerTemplateITBase {
     createPubSubNotifications();
     String jobName = PipelineUtils.createJobName(testName);
     PipelineLauncher.LaunchConfig.Builder options =
-        paramsAdder.apply(
-            PipelineLauncher.LaunchConfig.builder(jobName, specPath)
-                .addParameter("gcsPubSubSubscription", subscription.toString())
-                .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
-                .addParameter("streamName", stream.getName())
-                .addParameter("instanceId", spannerResourceManager.getInstanceId())
-                .addParameter("databaseId", spannerResourceManager.getDatabaseId())
-                .addParameter("projectId", PROJECT)
-                .addParameter(
-                    "deadLetterQueueDirectory", getGcsPath(testName, gcsResourceManager) + "/dlq/")
-                .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
-                .addParameter(
-                    "inputFileFormat",
-                    fileFormat.equals(
-                            DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
-                        ? "avro"
-                        : "json"));
+        paramsAdder
+            .apply(
+                PipelineLauncher.LaunchConfig.builder(jobName, specPath)
+                    .addParameter("gcsPubSubSubscription", subscription.toString())
+                    .addParameter("dlqGcsPubSubSubscription", dlqSubscription.toString())
+                    .addParameter("streamName", stream.getName())
+                    .addParameter("instanceId", spannerResourceManager.getInstanceId())
+                    .addParameter("databaseId", spannerResourceManager.getDatabaseId())
+                    .addParameter("projectId", PROJECT)
+                    .addParameter(
+                        "deadLetterQueueDirectory",
+                        getGcsPath(testName, gcsResourceManager) + "/dlq/")
+                    .addParameter("spannerHost", spannerResourceManager.getSpannerHost())
+                    .addParameter(
+                        "inputFileFormat",
+                        fileFormat.equals(
+                                DatastreamResourceManager.DestinationOutputFormat.AVRO_FILE_FORMAT)
+                            ? "avro"
+                            : "json"))
+            .addParameter("workerMachineType", "n2-standard-4");
 
     // Act
     PipelineLauncher.LaunchInfo info = launchTemplate(options);

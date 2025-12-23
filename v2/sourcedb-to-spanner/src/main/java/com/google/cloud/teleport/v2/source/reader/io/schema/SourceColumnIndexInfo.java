@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.Duration;
 import javax.annotation.Nullable;
 
 @AutoValue
@@ -82,6 +83,18 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract Integer stringMaxLength();
 
+  /** Numeric Scale for decimal columns. Null for other types. */
+  @Nullable
+  public abstract Integer numericScale();
+
+  /** Decimal step size for checking equality of floating point columns. Null for other types. */
+  @Nullable
+  public abstract BigDecimal decimalStepSize();
+
+  /** Precision for datetime columns. Null for other types. */
+  @Nullable
+  public abstract Integer datetimePrecision();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -127,6 +140,12 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
     public abstract Builder setStringMaxLength(@Nullable Integer value);
 
+    public abstract Builder setNumericScale(@Nullable Integer value);
+
+    public abstract Builder setDecimalStepSize(@Nullable BigDecimal value);
+
+    public abstract Builder setDatetimePrecision(@Nullable Integer value);
+
     abstract SourceColumnIndexInfo autoBuild();
 
     public SourceColumnIndexInfo build() {
@@ -143,6 +162,11 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     BINARY,
     STRING,
     TIME_STAMP,
+    DATE,
+    DECIMAL,
+    FLOAT,
+    DOUBLE,
+    DURATION,
     OTHER
   };
 
@@ -153,5 +177,10 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.STRING, String.class,
           IndexType.BIG_INT_UNSIGNED, BigDecimal.class,
           IndexType.BINARY, BoundaryExtractorFactory.BYTE_ARRAY_CLASS,
-          IndexType.TIME_STAMP, Timestamp.class);
+          IndexType.TIME_STAMP, Timestamp.class,
+          IndexType.DATE, java.sql.Date.class,
+          IndexType.DECIMAL, BigDecimal.class,
+          IndexType.FLOAT, Float.class,
+          IndexType.DOUBLE, Double.class,
+          IndexType.DURATION, Duration.class);
 }
