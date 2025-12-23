@@ -98,36 +98,46 @@ public interface PubSubToBigTableYaml {
 
   @TemplateParameter.Text(
       order = 6,
-      name = "project_id",
+      name = "projectId",
       optional = false,
       description = "BigTable project ID",
       helpText = "The Google Cloud project ID of the BigTable instance.",
       example = "")
   @Validation.Required
-  String getProject_id();
+  String getProjectId();
 
   @TemplateParameter.Text(
       order = 7,
-      name = "instance_id",
+      name = "instanceId",
       optional = false,
       description = "BigTable instance ID",
       helpText = "The BigTable instance ID.",
       example = "")
   @Validation.Required
-  String getInstance_id();
+  String getInstanceId();
 
   @TemplateParameter.Text(
       order = 8,
-      name = "table_id",
+      name = "tableId",
       optional = false,
       description = "BigTable output table",
       helpText = "BigTable table ID to write the output to.",
       example = "")
   @Validation.Required
-  String getTable_id();
+  String getTableId();
 
   @TemplateParameter.Text(
       order = 9,
+      name = "windowing",
+      optional = true,
+      description = "Windowing options",
+      helpText =
+          "Windowing options - see https://beam.apache.org/documentation/sdks/yaml/#windowing",
+      example = "")
+  String getWindowing();
+
+  @TemplateParameter.Text(
+      order = 10,
       name = "outputDeadLetterPubSubTopic",
       optional = false,
       description = "Pub/Sub transformation error topic",
