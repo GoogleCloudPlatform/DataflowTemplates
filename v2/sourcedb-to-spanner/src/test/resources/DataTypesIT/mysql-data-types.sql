@@ -1,3 +1,5 @@
+SET GLOBAL max_connections = 300;
+
 CREATE TABLE `varchar_table` (
     `id` INT PRIMARY KEY,
     `varchar_col` VARCHAR(21000) CHARACTER SET utf8 DEFAULT NULL
@@ -296,6 +298,37 @@ CREATE TABLE year_pk_table (
     year_pk_col YEAR NOT NULL
 );
 
+CREATE TABLE bool_pk_table (
+    id BOOL PRIMARY KEY,
+    bool_pk_col BOOL NOT NULL
+);
+
+
+CREATE TABLE date_pk_table (
+    id DATE PRIMARY KEY,
+    date_pk_col DATE NOT NULL
+);
+
+CREATE TABLE decimal_pk_table (
+    id DECIMAL(10,2) PRIMARY KEY,
+    decimal_pk_col DECIMAL(10,2) NOT NULL
+);
+
+CREATE TABLE float_pk_table (
+  id FLOAT PRIMARY KEY,
+  float_pk_col FLOAT NOT NULL
+);
+
+CREATE TABLE double_pk_table (
+  id DOUBLE PRIMARY KEY,
+  double_pk_col DOUBLE NOT NULL
+);
+
+CREATE TABLE time_pk_table (
+    id TIME(3) PRIMARY KEY,
+    time_pk_col TIME(3) NOT NULL
+);
+
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `bigint_unsigned_table` MODIFY `id` INT AUTO_INCREMENT;
 ALTER TABLE `binary_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -449,10 +482,17 @@ SET time_zone = 'UTC';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('1970-01-01 00:00:01', '1970-01-01 00:00:01'), ('1970-01-01 00:00:02', '1970-01-01 00:00:02'),
                                                                    ('2001-01-01 00:01:54.123456', '2001-01-01 00:01:54.123456'),
                                                                    ('2037-12-30 23:59:59', '2037-12-30 23:59:59'),  ('2038-01-18 23:59:59', '2038-01-18 23:59:59');
+
 SET time_zone = 'Asia/Kolkata';
 INSERT INTO `timestamp_pk_table` (`id`, `timestamp_pk_col`) VALUES ('2005-01-01 05:31:54.123456', '2005-01-01 05:31:54.123456');
 SET time_zone = SYSTEM;
 INSERT INTO `year_pk_table` (`id`, `year_pk_col`) VALUES (1901, 1901), (2000, 2000);
+INSERT INTO `bool_pk_table` (`id`, `bool_pk_col`) VALUES (TRUE, TRUE), (FALSE, FALSE);
+INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01-01'), ('2005-01-01', '2005-01-01'), ('9999-12-31', '9999-12-31');
+INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.60, 12345.60), (0.01, 0.01), (-99999999.99, -99999999.99), (99999999, 99999999);
+INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (1.00001, 1.00001), (1, 1), (1.00002, 1.00002), (3.4E38, 3.4E38), (-3.4E38, -3.4E38), (1.17E-38, 1.17E-38), (-1.17E-38, -1.17E-38);
+INSERT INTO `double_pk_table` (`id`, `double_pk_col`) VALUES (45.56, 45.56), (1.0000000001, 1.0000000001), (1, 1), (1.0000000002, 1.0000000002), (1.7976931348623157E308, 1.7976931348623157E308), (-1.7976931348623157E308, -1.7976931348623157E308), (2.2250738585072014E-308, 2.2250738585072014E-308), (-2.2250738585072014E-308, -2.2250738585072014E-308);
+INSERT INTO `time_pk_table` (`id`, `time_pk_col`) VALUES ('15:50:00.2', '15:50:00.2'), ('838:59:58.123', '838:59:58.123'), ('-838:59:59', '-838:59:59');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

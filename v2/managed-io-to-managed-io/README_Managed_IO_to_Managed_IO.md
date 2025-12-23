@@ -89,7 +89,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Managed_IO_to_Managed_IO" \
--f v2/managed-io-to-managed-io
+-pl v2/managed-io-to-managed-io -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

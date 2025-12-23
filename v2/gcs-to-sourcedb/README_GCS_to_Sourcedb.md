@@ -98,7 +98,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="GCS_to_Sourcedb" \
--f v2/gcs-to-sourcedb
+-pl v2/gcs-to-sourcedb -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

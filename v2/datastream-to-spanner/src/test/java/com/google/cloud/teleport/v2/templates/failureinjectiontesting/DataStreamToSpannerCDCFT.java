@@ -23,7 +23,6 @@ import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 import com.google.cloud.datastream.v1.Stream;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
-import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.DataflowFailureInjector;
 import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.FuzzyCDCLoadGenerator;
 import com.google.cloud.teleport.v2.templates.DataStreamToSpanner;
 import com.google.pubsub.v1.SubscriptionName;
@@ -47,9 +46,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
 import org.apache.beam.it.jdbc.JDBCResourceManager;
-import org.checkerframework.checker.initialization.qual.Initialized;
-import org.checkerframework.checker.nullness.qual.NonNull;
-import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -150,6 +146,10 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
 
     FlexTemplateDataflowJobResourceManager.Builder flexTemplateBuilder =
         FlexTemplateDataflowJobResourceManager.builder(testName)
+            .withAdditionalMavenProfile("failureInjectionTest")
+            .addParameter(
+                "failureInjectionParameter",
+                "{\"policyType\":\"TransactionTimeoutInjectionPolicy\", \"policyInput\": { \"injectionWindowDuration\": \"PT30M\", \"delayDuration\": \"PT260S\" }}")
             .addEnvironmentVariable("numWorkers", NUM_WORKERS)
             .addEnvironmentVariable("maxWorkers", MAX_WORKERS);
 
@@ -188,34 +188,6 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
     // Wait for Forward migration job to be in running state
     assertThatPipeline(jobInfo).isRunning();
 
-    // Wait for at least 1 row to appear in Spanner
-    ConditionCheck conditionCheck =
-        SpannerRowsCheck.builder(spannerResourceManager, USERS_TABLE).setMinRows(1).build();
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
-    assertThatResult(result).meetsConditions();
-
-    // Kill the dataflow workers multiple times to induce work item assignment rebalancing and
-    // inturn increase the chance of same key being processed by multiple workers parallelly.
-    ConditionCheck workerFailureInjectorAsConditionCheck =
-        new ConditionCheck() {
-          @Override
-          protected @UnknownKeyFor @NonNull @Initialized String getDescription() {
-            return "Kill all workers for job " + jobInfo.jobId();
-          }
-
-          @Override
-          protected @UnknownKeyFor @NonNull @Initialized CheckResult check() {
-            try {
-              DataflowFailureInjector.abruptlyKillWorkers(jobInfo.projectId(), jobInfo.jobId());
-            } catch (Exception e) {
-              throw new RuntimeException(e);
-            }
-            return new CheckResult(true, "Killed all workers for job " + jobInfo.jobId());
-          }
-        };
-
     long expectedRows = sourceDBResourceManager.getRowCount(USERS_TABLE);
     // Wait for exact number of rows as source to appear in Spanner
     ConditionCheck spannerRowCountConditionCheck =
@@ -224,16 +196,10 @@ public class DataStreamToSpannerCDCFT extends DataStreamToSpannerFTBase {
             .setMaxRows((int) expectedRows)
             .build();
 
-    // Implementing workerFailureInjector as condition check to rely on the Condition check
-    // framework to execute the check every 30 seconds until the condition is met. Combining
-    // workerFailureInjectorAsConditionCheck and spannerRowCountConditionCheck would mean that the
-    // kill dataflow worker function will be called until all the rows appear in spanner i.e., until
-    // the end of migration.
-    conditionCheck = workerFailureInjectorAsConditionCheck.and(spannerRowCountConditionCheck);
-
-    result =
+    PipelineOperator.Result result =
         pipelineOperator()
-            .waitForCondition(createConfig(jobInfo, Duration.ofMinutes(20)), conditionCheck);
+            .waitForCondition(
+                createConfig(jobInfo, Duration.ofHours(1)), spannerRowCountConditionCheck);
     assertThatResult(result).meetsConditions();
 
     // Usually the dataflow finishes processing the events within 10 minutes. Giving 10 more minutes

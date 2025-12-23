@@ -323,7 +323,37 @@ CREATE TABLE IF NOT EXISTS timestamp_pk_table (
                                                   timestamp_pk_col TIMESTAMP NOT NULL,
 ) PRIMARY KEY(id);
 
+CREATE TABLE IF NOT EXISTS bool_pk_table (
+  id BOOL NOT NULL,
+  bool_pk_col BOOL NOT NULL,
+) PRIMARY KEY(id);
+
 CREATE TABLE IF NOT EXISTS year_pk_table (
   id INT64 NOT NULL,
   year_pk_col INT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS date_pk_table (
+  id DATE NOT NULL,
+  date_pk_col DATE NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS decimal_pk_table (
+  id NUMERIC NOT NULL,
+  decimal_pk_col NUMERIC NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS float_pk_table (
+  id FLOAT64 NOT NULL,
+  float_pk_col FLOAT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE IF NOT EXISTS double_pk_table (
+  id FLOAT64 NOT NULL,
+  double_pk_col FLOAT64 NOT NULL,
+) PRIMARY KEY(id);
+
+CREATE TABLE time_pk_table (
+  id STRING(MAX) NOT NULL,
+  time_pk_col STRING(MAX) NOT NULL
 ) PRIMARY KEY(id);

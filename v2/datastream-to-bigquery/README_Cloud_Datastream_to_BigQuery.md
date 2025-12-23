@@ -134,7 +134,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Cloud_Datastream_to_BigQuery" \
--f v2/datastream-to-bigquery
+-pl v2/datastream-to-bigquery -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

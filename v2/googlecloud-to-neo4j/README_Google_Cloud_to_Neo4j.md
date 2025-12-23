@@ -90,7 +90,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="Google_Cloud_to_Neo4j" \
--f v2/googlecloud-to-neo4j
+-pl v2/googlecloud-to-neo4j -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.

@@ -39,7 +39,7 @@
     <bigtable-beam-import.version>2.15.6</bigtable-beam-import.version>
     <protobuf.version>4.29.4</protobuf.version>
     <nashorn.version>15.4</nashorn.version>
-    <junit.jupiter.version>6.0.0</junit.jupiter.version>
+    <junit.jupiter.version>6.0.1</junit.jupiter.version>
     <codehaus-jackson.version>1.9.13</codehaus-jackson.version>
     <commons-csv.version>1.8</commons-csv.version>
     <commons-text.version>1.10.0</commons-text.version>
@@ -47,11 +47,11 @@
     <threetenbp.version>1.7.2</threetenbp.version>
     <spring.version>5.2.22.RELEASE</spring.version>
     <tensorflow.version>1.0.0</tensorflow.version>
-    <dlp.version>3.72.0</dlp.version>
+    <dlp.version>3.85.0</dlp.version>
     <hbase.version>2.5.3-hadoop3</hbase.version>
     <scassandra.version>1.1.2</scassandra.version>
     <cassandra.driver.version>3.6.0</cassandra.driver.version>
-    <datastax.query.builder.version>4.16.0</datastax.query.builder.version>
+    <datastax.query.builder.version>4.17.0</datastax.query.builder.version>
     <jacoco.version>0.8.13</jacoco.version>
     <excluded.spanner.tests>com.google.cloud.teleport.spanner.IntegrationTest</excluded.spanner.tests>
   </properties>

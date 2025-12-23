@@ -831,6 +831,10 @@ public class DataStreamToSpanner {
     spannerConfig =
         SpannerServiceFactoryImpl.createSpannerService(
             spannerConfig, options.getFailureInjectionParameter());
+    shadowTableSpannerConfig =
+        SpannerServiceFactoryImpl.createSpannerService(
+            shadowTableSpannerConfig, options.getFailureInjectionParameter());
+
     /*
      * Stage 4: Write transformed records to Cloud Spanner
      */

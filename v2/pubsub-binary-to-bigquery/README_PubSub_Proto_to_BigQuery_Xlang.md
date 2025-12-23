@@ -25,7 +25,7 @@ on [Metadata Annotations](https://github.com/GoogleCloudPlatform/DataflowTemplat
 
 * **protoSchemaPath**: The Cloud Storage location of the self-contained proto schema file. For example, `gs://path/to/my/file.pb`. You can generate this file with the `--descriptor_set_out` flag of the protoc command. The `--include_imports` flag guarantees that the file is self-contained.
 * **fullMessageName**: The full proto message name. For example, `package.name`. `MessageName`, where `package.name` is the value provided for the `package` statement and not the `java_package` statement.
-* **inputSubscription**: The Pub/Sub input subscription to read from. For example, `projects/<PROJECT_ID>/subscription/<SUBSCRIPTION_ID>`.
+* **inputSubscription**: The Pub/Sub input subscription to read from. For example, `projects/<PROJECT_ID>/subscriptions/<SUBSCRIPTION_ID>`.
 * **outputTableSpec**: The BigQuery output table location to write the output to. For example, `<PROJECT_ID>:<DATASET_NAME>.<TABLE_NAME>`.Depending on the `createDisposition` specified, the output table might be created automatically using the user provided Avro schema.
 * **outputTopic**: The Pub/Sub topic to use for unprocessed records. For example, `projects/<PROJECT_ID>/topics/<TOPIC_NAME>`.
 
@@ -101,7 +101,7 @@ mvn clean package -PtemplatesStage  \
 -DartifactRegistry="$ARTIFACT_REGISTRY_REPO" \
 -DstagePrefix="templates" \
 -DtemplateName="PubSub_Proto_to_BigQuery_Xlang" \
--f v2/pubsub-binary-to-bigquery
+-pl v2/pubsub-binary-to-bigquery -am
 ```
 
 The `-DartifactRegistry` parameter can be specified to set the artifact registry repository of the Flex Templates image.
