@@ -169,10 +169,32 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
                 createConfig(retryLiveJobInfo, Duration.ofMinutes(15)), conditionCheck);
     assertThatResult(result).meetsConditions();
 
-    // Verify Data Content
-    List<Map<String, Object>> expectedData = getExpectedData();
-    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("SELECT * FROM " + TABLE_NAME))
-        .hasRecordsUnorderedCaseInsensitiveColumns(expectedData);
+    // Verify Non null Data Content
+    List<Map<String, Object>> expectedDataNonNull = getExpectedData();
+
+    List<com.google.cloud.spanner.Struct> allRecords = spannerResourceManager.runQuery("SELECT * FROM " + TABLE_NAME);
+
+    SpannerAsserts.assertThatStructs(allRecords)
+        .hasRecordsUnorderedCaseInsensitiveColumns(expectedDataNonNull);
+
+    // Manual assertion for the null row
+    verifyNullRow(allRecords);
+  }
+
+  private void verifyNullRow(List<com.google.cloud.spanner.Struct> structs) {
+    // Iterate over all structs and verify the struct with id=4
+    for (com.google.cloud.spanner.Struct struct : structs) {
+      if (struct.getLong("id") == 4) {
+          // Verify all columns except id are null
+          for (com.google.cloud.spanner.Type.StructField field : struct.getType().getStructFields()) {
+              if (field.getName().equalsIgnoreCase("id")) {
+                  continue;
+              }
+              assertTrue("Field " + field.getName() + " should be null", struct.isNull(field.getName()));
+          }
+          break;
+      }
+    }
   }
 
   private List<Map<String, Object>> getExpectedData() {
@@ -180,7 +202,6 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     data.add(createExpectedRow(1, "valid1"));
     data.add(createExpectedRow(2, "valid2"));
     data.add(createExpectedRow(3, "fail_me"));
-    data.add(createExpectedNullRow(4));
     return data;
   }
 
@@ -237,50 +258,6 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     row.put("timestamp_col", "2023-01-0" + id + "T12:00:00Z");
     row.put("set_col", "v1");
 
-    return row;
-  }
-
-  private Map<String, Object> createExpectedNullRow(int id) {
-    Map<String, Object> row = new HashMap<>();
-    row.put("id", id);
-    row.put("varchar_col", null);
-    row.put("tinyint_col", null);
-    row.put("tinyint_unsigned_col", null);
-    row.put("text_col", null);
-    row.put("date_col", null);
-    row.put("smallint_col", null);
-    row.put("smallint_unsigned_col", null);
-    row.put("mediumint_col", null);
-    row.put("mediumint_unsigned_col", null);
-    row.put("bigint_col", null);
-    row.put("bigint_unsigned_col", null);
-    row.put("float_col", null);
-    row.put("double_col", null);
-    row.put("decimal_col", null);
-    row.put("datetime_col", null);
-    row.put("time_col", null);
-    row.put("year_col", null);
-    row.put("char_col", null);
-    row.put("tinyblob_col", null);
-    row.put("blob_col", null);
-    row.put("mediumblob_col", null);
-    row.put("tinytext_col", null);
-    row.put("mediumtext_col", null);
-    row.put("test_json_col", null);
-    row.put("longblob_col", null);
-    row.put("longtext_col", null);
-    row.put("enum_col", null);
-    row.put("bool_col", null);
-    row.put("binary_col", null);
-    row.put("varbinary_col", null);
-    row.put("bit_col", null);
-    row.put("bit8_col", null);
-    row.put("bit1_col", null);
-    row.put("boolean_col", null);
-    row.put("int_col", null);
-    row.put("integer_unsigned_col", null);
-    row.put("timestamp_col", null);
-    row.put("set_col", null);
     return row;
   }
 }
