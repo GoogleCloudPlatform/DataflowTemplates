@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.writer;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -425,8 +426,8 @@ public class DeadLetterQueueTest {
     assertNotNull(dlqElement2);
     // Verify null integral types are handled correctly
     assertTrue(dlqElement2.getOriginalPayload().contains("\"id\":123"));
-    assertTrue(dlqElement2.getOriginalPayload().contains("\"bit_col\":null"));
-    assertTrue(dlqElement2.getOriginalPayload().contains("\"int_col\":null"));
+    assertFalse(dlqElement2.getOriginalPayload().contains("\"bit_col\":"));
+    assertFalse(dlqElement2.getOriginalPayload().contains("\"int_col\":"));
   }
 
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
