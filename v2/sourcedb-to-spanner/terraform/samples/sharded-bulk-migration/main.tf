@@ -91,20 +91,23 @@ resource "google_dataflow_flex_template_job" "generated" {
     transformationClassName        = var.common_params.transformation_class_name
     transformationCustomParameters = var.common_params.transformation_custom_parameters
     defaultSdkHarnessLogLevel      = var.common_params.default_log_level
+    fetchSize                      = var.common_params.fetch_size
+    gcsOutputDirectory             = var.common_params.gcs_output_directory
   }
 
-  service_account_email  = var.common_params.service_account_email
-  additional_experiments = var.common_params.additional_experiments
-  launcher_machine_type  = var.common_params.launcher_machine_type
-  machine_type           = var.common_params.machine_type
-  max_workers            = var.common_params.max_workers
-  name                   = "${random_pet.job_prefixes[count.index].id}-${var.common_params.run_id}"
-  ip_configuration       = var.common_params.ip_configuration
-  network                = var.common_params.network != null ? var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.network}" : "projects/${var.common_params.project}/global/networks/${var.common_params.network}" : null
-  subnetwork             = var.common_params.subnetwork != null ? var.common_params.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.common_params.host_project}/regions/${var.common_params.region}/subnetworks/${var.common_params.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.common_params.project}/regions/${var.common_params.region}/subnetworks/${var.common_params.subnetwork}" : null
-  num_workers            = var.common_params.num_workers
-  project                = var.common_params.project
-  region                 = var.common_params.region
+  service_account_email       = var.common_params.service_account_email
+  additional_experiments      = var.common_params.additional_experiments
+  additional_pipeline_options = var.common_params.additional_pipeline_options
+  launcher_machine_type       = var.common_params.launcher_machine_type
+  machine_type                = var.common_params.machine_type
+  max_workers                 = var.common_params.max_workers
+  name                        = "${random_pet.job_prefixes[count.index].id}-${var.common_params.run_id}"
+  ip_configuration            = var.common_params.ip_configuration
+  network                     = var.common_params.network != null ? var.common_params.host_project != null ? "projects/${var.common_params.host_project}/global/networks/${var.common_params.network}" : "projects/${var.common_params.project}/global/networks/${var.common_params.network}" : null
+  subnetwork                  = var.common_params.subnetwork != null ? var.common_params.host_project != null ? "https://www.googleapis.com/compute/v1/projects/${var.common_params.host_project}/regions/${var.common_params.region}/subnetworks/${var.common_params.subnetwork}" : "https://www.googleapis.com/compute/v1/projects/${var.common_params.project}/regions/${var.common_params.region}/subnetworks/${var.common_params.subnetwork}" : null
+  num_workers                 = var.common_params.num_workers
+  project                     = var.common_params.project
+  region                      = var.common_params.region
 
   labels = {
     "migration_id" = "${random_pet.job_prefixes[count.index].id}-${var.common_params.run_id}"
