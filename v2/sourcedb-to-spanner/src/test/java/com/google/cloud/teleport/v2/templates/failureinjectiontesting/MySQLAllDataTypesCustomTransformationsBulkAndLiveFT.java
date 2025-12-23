@@ -172,7 +172,8 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     // Verify Non null Data Content
     List<Map<String, Object>> expectedDataNonNull = getExpectedData();
 
-    List<com.google.cloud.spanner.Struct> allRecords = spannerResourceManager.runQuery("SELECT * FROM " + TABLE_NAME);
+    List<com.google.cloud.spanner.Struct> allRecords =
+        spannerResourceManager.runQuery("SELECT * FROM " + TABLE_NAME);
 
     SpannerAsserts.assertThatStructs(allRecords)
         .hasRecordsUnorderedCaseInsensitiveColumns(expectedDataNonNull);
@@ -185,14 +186,15 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     // Iterate over all structs and verify the struct with id=4
     for (com.google.cloud.spanner.Struct struct : structs) {
       if (struct.getLong("id") == 4) {
-          // Verify all columns except id are null
-          for (com.google.cloud.spanner.Type.StructField field : struct.getType().getStructFields()) {
-              if (field.getName().equalsIgnoreCase("id")) {
-                  continue;
-              }
-              assertTrue("Field " + field.getName() + " should be null", struct.isNull(field.getName()));
+        // Verify all columns except id are null
+        for (com.google.cloud.spanner.Type.StructField field : struct.getType().getStructFields()) {
+          if (field.getName().equalsIgnoreCase("id")) {
+            continue;
           }
-          break;
+          assertTrue(
+              "Field " + field.getName() + " should be null", struct.isNull(field.getName()));
+        }
+        break;
       }
     }
   }
