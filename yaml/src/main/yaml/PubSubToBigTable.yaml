@@ -27,12 +27,14 @@ template:
   options_file:
     - "pubsub_options"
     - "maptofields_options"
+    - "windowinto_options"
     - "bigtable_options"
 
   parameters:
     - pubsub_common_options
     - maptofields_common_options
     - bigtable_common_options
+    - windowinto_common_options
 
     - name: "outputDeadLetterPubSubTopic"
       description: "Pub/Sub transformation error topic"
@@ -40,7 +42,7 @@ template:
       example: "projects/your-project-id/topics/your-error-topic-name"
       required: true
       type: text
-      order: 4
+      order: 1
 
 
 pipeline:
@@ -51,20 +53,27 @@ pipeline:
       config:
         topic: {{ topic }}
         format: {{ format }}
-        schema: |
-          {{ schema }}
+        schema: {{ schema }}
     - type: MapToFields
       name: ConvertStringsToBytes
+      input: ReadMessages
       config:
         language: {{ language }}
         fields: {{ fields }}
         error_handling:
           output: errors
-    - type: WriteToBigTable
+    - type: WindowInto
+      name: WindowInto
+      input: ConvertStringsToBytes
       config:
-        project: {{ project_id }}
-        instance: {{ instance_id }}
-        table: {{ table_id }}
+        windowing: {{ windowing }}
+    - type: WriteToBigTable
+      name: WriteGoodMessagesToBigTable
+      input: WindowInto
+      config:
+        project: {{ projectId }}
+        instance: {{ instanceId }}
+        table: {{ tableId }}
     - type: WriteToPubSub
       name: WriteTransformationErrorsToDeadLetterQueue
       input: ConvertStringsToBytes.errors
