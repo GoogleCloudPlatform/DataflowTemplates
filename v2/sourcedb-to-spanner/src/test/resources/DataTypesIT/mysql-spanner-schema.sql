@@ -352,3 +352,8 @@ CREATE TABLE IF NOT EXISTS double_pk_table (
   id FLOAT64 NOT NULL,
   double_pk_col FLOAT64 NOT NULL,
 ) PRIMARY KEY(id);
+
+CREATE TABLE time_pk_table (
+  id STRING(MAX) NOT NULL,
+  time_pk_col STRING(MAX) NOT NULL
+) PRIMARY KEY(id);

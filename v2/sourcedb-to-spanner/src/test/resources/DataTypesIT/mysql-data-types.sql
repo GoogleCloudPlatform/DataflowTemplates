@@ -301,6 +301,7 @@ CREATE TABLE bool_pk_table (
     bool_pk_col BOOL NOT NULL
 );
 
+
 CREATE TABLE date_pk_table (
     id DATE PRIMARY KEY,
     date_pk_col DATE NOT NULL
@@ -319,6 +320,11 @@ CREATE TABLE float_pk_table (
 CREATE TABLE double_pk_table (
   id DOUBLE PRIMARY KEY,
   double_pk_col DOUBLE NOT NULL
+);
+
+CREATE TABLE time_pk_table (
+    id TIME(3) PRIMARY KEY,
+    time_pk_col TIME(3) NOT NULL
 );
 
 ALTER TABLE `bigint_table` MODIFY `id` INT AUTO_INCREMENT;
@@ -484,6 +490,7 @@ INSERT INTO `date_pk_table` (`id`, `date_pk_col`) VALUES ('1000-01-01', '1000-01
 INSERT INTO `decimal_pk_table` (`id`, `decimal_pk_col`) VALUES (12345.60, 12345.60), (0.01, 0.01), (-99999999.99, -99999999.99), (99999999, 99999999);
 INSERT INTO `float_pk_table` (`id`, `float_pk_col`) VALUES (45.56, 45.56), (1.00001, 1.00001), (1, 1), (1.00002, 1.00002), (3.4E38, 3.4E38), (-3.4E38, -3.4E38), (1.17E-38, 1.17E-38), (-1.17E-38, -1.17E-38);
 INSERT INTO `double_pk_table` (`id`, `double_pk_col`) VALUES (45.56, 45.56), (1.0000000001, 1.0000000001), (1, 1), (1.0000000002, 1.0000000002), (1.7976931348623157E308, 1.7976931348623157E308), (-1.7976931348623157E308, -1.7976931348623157E308), (2.2250738585072014E-308, 2.2250738585072014E-308), (-2.2250738585072014E-308, -2.2250738585072014E-308);
+INSERT INTO `time_pk_table` (`id`, `time_pk_col`) VALUES ('15:50:00.2', '15:50:00.2'), ('838:59:58.123', '838:59:58.123'), ('-838:59:59', '-838:59:59');
 
 INSERT INTO `bigint_table` (`bigint_col`) VALUES (NULL);
 INSERT INTO `bigint_unsigned_table` (`bigint_unsigned_col`) VALUES (NULL);

@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
+import java.time.Duration;
 import javax.annotation.Nullable;
 
 @AutoValue
@@ -90,6 +91,10 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
   @Nullable
   public abstract BigDecimal decimalStepSize();
 
+  /** Precision for datetime columns. Null for other types. */
+  @Nullable
+  public abstract Integer datetimePrecision();
+
   /**
    * Builder for {@link SourceColumnIndexInfo}.
    *
@@ -139,6 +144,8 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
 
     public abstract Builder setDecimalStepSize(@Nullable BigDecimal value);
 
+    public abstract Builder setDatetimePrecision(@Nullable Integer value);
+
     abstract SourceColumnIndexInfo autoBuild();
 
     public SourceColumnIndexInfo build() {
@@ -159,6 +166,7 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
     DECIMAL,
     FLOAT,
     DOUBLE,
+    DURATION,
     OTHER
   };
 
@@ -173,5 +181,6 @@ public abstract class SourceColumnIndexInfo implements Comparable<SourceColumnIn
           IndexType.DATE, java.sql.Date.class,
           IndexType.DECIMAL, BigDecimal.class,
           IndexType.FLOAT, Float.class,
-          IndexType.DOUBLE, Double.class);
+          IndexType.DOUBLE, Double.class,
+          IndexType.DURATION, Duration.class);
 }

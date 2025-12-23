@@ -24,6 +24,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.sql.Timestamp;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 import org.apache.beam.sdk.transforms.DoFn.ProcessContext;
@@ -505,6 +506,48 @@ public class BoundarySplitterFactoryTest {
 
     // 5. Identity, start and end equals
     assertThat(splitter.getSplitPoint(5.0, 5.0, null, null, null)).isEqualTo(5.0);
+  }
+
+  @Test
+  public void testDurationBoundarySplitter() {
+    BoundarySplitter<Duration> splitter = BoundarySplitterFactory.create(Duration.class);
+    PartitionColumn partitionColumn =
+        PartitionColumn.builder()
+            .setColumnName("col1")
+            .setColumnClass(Duration.class)
+            .setDatetimePrecision(2)
+            .build();
+
+    Duration start = Duration.parse("PT70H10M00.15S");
+    Duration end = Duration.parse("PT72H30M50.4S");
+    Duration mid = Duration.parse("PT71H20M25.27S");
+    Duration zero = Duration.parse("PT0H");
+    Duration min = Duration.parse("-PT838H59M59S");
+    Duration max = Duration.parse("PT838H59M59S");
+
+    assertThat(splitter.getSplitPoint(null, null, partitionColumn, null, null)).isEqualTo(null);
+    assertThat(splitter.getSplitPoint(start, null, partitionColumn, null, null))
+        .isEqualTo(Duration.parse("PT35H5M00.07S"));
+    assertThat(splitter.getSplitPoint(null, end, partitionColumn, null, null))
+        .isEqualTo(Duration.parse("PT36H15M25.2S"));
+    assertThat(splitter.getSplitPoint(start, end, partitionColumn, null, null)).isEqualTo(mid);
+    assertThat(splitter.getSplitPoint(min, max, partitionColumn, null, null)).isEqualTo(zero);
+
+    // Null checks
+    assertThrows(
+        NullPointerException.class, () -> splitter.getSplitPoint(start, end, null, null, null));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            // can't test via the splitter we need to use a different type since datetime precision
+            // is required for Duration columns
+            BoundarySplitterFactory.splitDurations(
+                start,
+                end,
+                PartitionColumn.builder()
+                    .setColumnName("col1")
+                    .setColumnClass(Integer.class)
+                    .build()));
   }
 
   /* Not for production as it does not look at collation ordering */

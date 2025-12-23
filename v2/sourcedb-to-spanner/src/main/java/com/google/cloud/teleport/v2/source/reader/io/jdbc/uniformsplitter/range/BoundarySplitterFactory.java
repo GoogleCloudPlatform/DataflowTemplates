@@ -85,6 +85,11 @@ public class BoundarySplitterFactory {
               (BoundarySplitter<Double>)
                   (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
                       splitDoubles(start, end))
+          .put(
+              Duration.class,
+              (BoundarySplitter<Duration>)
+                  (start, end, partitionColumn, boundaryTypeMapper, processContext) ->
+                      splitDurations(start, end, partitionColumn))
           .build();
 
   /**
@@ -369,5 +374,41 @@ public class BoundarySplitterFactory {
     // we use the offset formula to prevent overflow (Infinity).
     // This works regardless of whether start > end or start < end.
     return start + (end - start) / 2.0;
+  }
+
+  @VisibleForTesting
+  protected static Duration splitDurations(
+      Duration start, Duration end, PartitionColumn partitionColumn) {
+    Preconditions.checkNotNull(
+        partitionColumn, "Trying to split Durations without partition column information.");
+    Preconditions.checkNotNull(
+        partitionColumn.datetimePrecision(),
+        "Trying to split Durations without datetime precision.");
+    int precision = partitionColumn.datetimePrecision();
+    BigInteger startBigInt = durationToBigInteger(start, precision);
+    BigInteger endBigInt = durationToBigInteger(end, precision);
+    BigInteger split = splitBigIntegers(startBigInt, endBigInt);
+    return bigIntegerToDuration(split, precision);
+  }
+
+  private static BigInteger durationToBigInteger(Duration duration, int precision) {
+    if (duration == null) {
+      return null;
+    }
+    BigInteger seconds = BigInteger.valueOf(duration.getSeconds());
+    BigInteger nanos = BigInteger.valueOf(duration.getNano());
+    return seconds
+        .multiply(BigInteger.TEN.pow(precision))
+        .add(nanos.divide(BigInteger.TEN.pow(9 - precision)));
+  }
+
+  private static Duration bigIntegerToDuration(BigInteger bigInt, int precision) {
+    if (bigInt == null) {
+      return null;
+    }
+    BigInteger[] quotientAndRemainder = bigInt.divideAndRemainder(BigInteger.TEN.pow(precision));
+    BigInteger seconds = quotientAndRemainder[0];
+    BigInteger nanos = quotientAndRemainder[1].multiply(BigInteger.TEN.pow(9 - precision));
+    return Duration.ofSeconds(seconds.longValueExact(), nanos.longValueExact());
   }
 }
