@@ -42,6 +42,7 @@ import org.apache.beam.sdk.io.fs.ResolveOptions.StandardResolveOptions;
 import org.apache.beam.sdk.io.gcp.spanner.MutationGroup;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerConfig;
 import org.apache.beam.sdk.io.gcp.spanner.SpannerWriteResult;
+import org.apache.beam.sdk.metrics.Metrics;
 import org.apache.beam.sdk.transforms.Contextful;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -172,6 +173,11 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
 
   public WriteFilesResult<AvroDestination> writeToGCS(
       PCollection<SourceRow> sourceRows, String gcsOutputDirectory) {
+    String shardIdForMetric = this.shardId;
+    String metricName =
+        StringUtils.isEmpty(shardIdForMetric)
+            ? "gcs_records_written"
+            : "gcs_records_written-" + shardIdForMetric;
     return sourceRows.apply(
         "WriteAvroToGCS",
         FileIO.<AvroDestination, SourceRow>writeDynamic()
@@ -180,7 +186,11 @@ public class MigrateTableTransform extends PTransform<PBegin, PCollection<Void>>
                     AvroDestination.of(
                         record.tableName(), record.getPayload().getSchema().toString()))
             .via(
-                Contextful.fn(record -> record.getPayload()),
+                Contextful.fn(
+                    record -> {
+                      Metrics.counter(MigrateTableTransform.class, metricName).inc();
+                      return record.getPayload();
+                    }),
                 Contextful.fn(destination -> AvroIO.sink(destination.jsonSchema)))
             .withDestinationCoder(AvroCoder.of(AvroDestination.class))
             .to(gcsOutputDirectory)
