@@ -17,6 +17,7 @@ package com.google.cloud.teleport.v2.writer;
 
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -148,9 +149,9 @@ public class DeadLetterQueueTest {
             .setErr(new Exception("test exception"))
             .build();
     String expectedDataWithSuccessfulConversion =
-        "\"timestamp_col\":\"1970-01-01T00:29:09.630376Z\",\"new_quantity\":\"42\"";
+        "\"timestamp_col\":\"1970-01-01T00:29:09.630376Z\",\"new_quantity\":42";
     String expectedDataForConversionException =
-        "\"timestamp_col\":\"1749630376\",\"new_quantity\":\"42\"";
+        "\"timestamp_col\":\"1749630376\",\"new_quantity\":42";
     assertThat(dlq.rowContextToDlqElement(r1).getPayload())
         .contains(expectedDataWithSuccessfulConversion);
     try (MockedStatic<GenericRecordTypeConvertor> genericRecordTypeConvertorMockedStatic =
@@ -369,6 +370,64 @@ public class DeadLetterQueueTest {
     assertTrue(dlqElement.getOriginalPayload().contains("\"_metadata_table\":\"srcTable\""));
     assertTrue(dlqElement.getOriginalPayload().contains("\"firstName\":\"abc\""));
     assertTrue(dlqElement.getOriginalPayload().contains("\"lastName\":\"def\""));
+  }
+
+  @Test
+  public void testRowContextToDlqElementWithIntegralTypes() {
+    final String testTable = "srcTable";
+    var schemaRef = SchemaTestUtils.generateSchemaReference("public", "mydb");
+    SourceTableSchema schema =
+        SourceTableSchema.builder(SQLDialect.MYSQL)
+            .setTableName(testTable)
+            .addSourceColumnNameToSourceColumnType(
+                "id", new SourceColumnType("Bigint", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "bit_col", new SourceColumnType("Bit", new Long[] {}, null))
+            .addSourceColumnNameToSourceColumnType(
+                "int_col", new SourceColumnType("Integer", new Long[] {}, null))
+            .build();
+
+    DeadLetterQueue dlq =
+        DeadLetterQueue.create(
+            "testDir",
+            spannerDdl,
+            new HashMap<>(),
+            SQLDialect.MYSQL,
+            getIdentityMapper(spannerDdl));
+
+    RowContext r1 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("id", 123L)
+                    .setField("bit_col", 1L)
+                    .setField("int_col", 456)
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement = dlq.rowContextToDlqElement(r1);
+    assertNotNull(dlqElement);
+    // Verify integral types are not quoted
+    assertTrue(dlqElement.getOriginalPayload().contains("\"id\":123"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"bit_col\":1"));
+    assertTrue(dlqElement.getOriginalPayload().contains("\"int_col\":456"));
+
+    RowContext r2 =
+        RowContext.builder()
+            .setRow(
+                SourceRow.builder(schemaRef, schema, null, 12412435345L)
+                    .setField("id", 123L)
+                    .setField("bit_col", null)
+                    .setField("int_col", null)
+                    .build())
+            .setErr(new Exception("test exception"))
+            .build();
+    FailsafeElement<String, String> dlqElement2 = dlq.rowContextToDlqElement(r2);
+    assertNotNull(dlqElement2);
+    // Verify null integral types are handled correctly
+    assertTrue(dlqElement2.getOriginalPayload().contains("\"id\":123"));
+    assertFalse(dlqElement2.getOriginalPayload().contains("\"bit_col\":"));
+    assertFalse(dlqElement2.getOriginalPayload().contains("\"int_col\":"));
   }
 
   private static ISchemaMapper getIdentityMapper(Ddl spannerDdl) {
