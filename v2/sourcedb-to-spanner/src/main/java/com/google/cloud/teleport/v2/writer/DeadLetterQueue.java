@@ -213,7 +213,7 @@ public class DeadLetterQueue implements Serializable {
             f,
             e);
       }
-      json.put(f.name(), value == null ? null : value.toString());
+      putValueToJson(json, f.name(), value);
     }
     if (r.row().shardId() != null) {
       // Added default to not fail in the DLQ flow if the src table is not found in map
@@ -291,6 +291,22 @@ public class DeadLetterQueue implements Serializable {
         break;
       default:
         json.put(DatastreamConstants.EVENT_SOURCE_TYPE_KEY, DatastreamConstants.MYSQL_SOURCE_TYPE);
+    }
+  }
+
+  /*
+   * Puts the value into the JSON object.
+   * If the value is an integral type (Long, Integer, Short, Byte, BigInteger), it is put as is.
+   * Otherwise, it is converted to string.
+   * This is to ensure that BIT datatypes (which are mapped to Long/BigInteger) are preserved as numbers in the JSON output.
+   */
+  private void putValueToJson(JSONObject json, String key, Object value) {
+    if (value == null) {
+      json.put(key, (Object) null);
+    } else if (value instanceof Number) {
+      json.put(key, value);
+    } else {
+      json.put(key, value.toString());
     }
   }
 }

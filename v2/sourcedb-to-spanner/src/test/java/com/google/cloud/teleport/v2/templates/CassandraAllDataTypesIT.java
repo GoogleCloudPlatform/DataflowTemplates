@@ -71,7 +71,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 @RunWith(JUnit4.class)
 public class CassandraAllDataTypesIT extends SourceDbToSpannerITBase {
 
-  private static final Logger LOG = LoggerFactory.getLogger(MySQLDataTypesIT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(CassandraAllDataTypesIT.class);
   public static final String CUSTOM_TRANSFORMATION_ALL_DATA_TYPES_GCS_PREFIX =
       "CustomTransformationAllDataTypes";
   private static PipelineLauncher.LaunchInfo jobInfo;

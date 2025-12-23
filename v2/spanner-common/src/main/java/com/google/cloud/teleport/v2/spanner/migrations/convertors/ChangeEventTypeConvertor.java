@@ -21,6 +21,7 @@ import com.google.cloud.Date;
 import com.google.cloud.Timestamp;
 import com.google.cloud.teleport.v2.spanner.migrations.exceptions.ChangeEventConvertorException;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -143,9 +144,17 @@ public class ChangeEventTypeConvertor {
       return null;
     }
     try {
+      JsonNode node = changeEvent.get(key);
+      if (node.isIntegralNumber()) {
+        // Datastream returns integral types (e.g. Long) for BIT and similar datatypes.
+        // These should be interpreted as-is and directly converted to a byte array.
+        BigInteger bigIntValue = new BigInteger(node.asText());
+        return ByteArray.copyFrom(bigIntValue.toByteArray());
+      }
+
       // For data with Spanner type as BYTES, Datastream returns a hex encoded string. We need to
       // decode it before returning to ensure data correctness.
-      String s = changeEvent.get(key).asText();
+      String s = node.asText();
       // Make an odd length hex string even by appending a 0 in the beginning.
       if (s.length() % 2 == 1) {
         s = "0" + s;
