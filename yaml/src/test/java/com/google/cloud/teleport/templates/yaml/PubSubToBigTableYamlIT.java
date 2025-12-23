@@ -19,17 +19,20 @@ import static com.google.common.truth.Truth.assertThat;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
 
+import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutures;
 import com.google.cloud.bigtable.data.v2.models.Row;
+import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.PubsubMessage;
 import com.google.pubsub.v1.TopicName;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.beam.it.common.PipelineLauncher;
@@ -38,6 +41,7 @@ import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.gcp.TemplateTestBase;
 import org.apache.beam.it.gcp.bigtable.BigtableResourceManager;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
+import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -47,9 +51,7 @@ import org.junit.runners.JUnit4;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// import com.google.pubsub.v1.SubscriptionName;
-// import org.apache.beam.it.gcp.pubsub.conditions.PubsubMessagesCheck;
-
+/** Integration test for {@link PubSubToBigTableYaml}. */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(PubSubToBigTableYaml.class)
 @RunWith(JUnit4.class)
@@ -77,7 +79,7 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
 
   @Test
   public void testPubSubToBigTable() throws IOException {
-    pubSubToBigTable(Function.identity()); // no extra parameters
+    pubSubToBigTable(Function.identity());
   }
 
   public void pubSubToBigTable(
@@ -85,135 +87,142 @@ public final class PubSubToBigTableYamlIT extends TemplateTestBase {
           paramsAdder)
       throws IOException {
 
+    LOG.info("Starting pubSubToBigTable test. Test name: {}. Spec path: {}", testName, specPath);
+
     /******************************* Arrange ********************************/
 
-    // Create main and dead letter queue topics
+    LOG.info("Creating main and dead letter queue topics...");
     TopicName topic = pubsubResourceManager.createTopic("input");
     TopicName dlqTopic = pubsubResourceManager.createTopic("dlq");
 
-    // Create Bigtable table
+    LOG.info("Creating Bigtable table...");
     String tableId = "test_table";
-    bigtableResourceManager.createTable(tableId, ImmutableList.of("cf"));
+    bigtableResourceManager.createTable(tableId, ImmutableList.of("cf1"));
 
-    // Create launch config with the yaml pipeline parameters
+    LOG.info("Creating launch config with yaml pipeline parameters...");
     PipelineLauncher.LaunchConfig.Builder options =
         paramsAdder.apply(
             PipelineLauncher.LaunchConfig.builder(testName, specPath)
                 .addParameter("topic", topic.toString())
                 .addParameter("format", "JSON")
-                // .addParameter("schema",
-                // "{\"type\":\"object\",\"properties\":{\"key\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"},\"family_name\":{\"type\":\"string\"},\"column_qualifier\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"},\"timestamp_micros\":{\"type\":\"integer\"}},\"required\":[\"key\",\"type\",\"family_name\",\"column_qualifier\",\"value\"]}")
                 .addParameter(
                     "schema",
-                    "{\"type\":\"object\",\"properties\":{\"key\":\"string\",\"type\":\"string\",\"family_name\":\"string\",\"column_qualifier\":\"string\",\"value\":\"string\",\"timestamp_micros\":\"integer\"})")
-                // .addParameter(
-                //     "schema",
-                //
-                // "{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"name\":{\"type\":\"string\"}}}")
-                .addParameter("table_id", tableId)
-                .addParameter("instance_id", bigtableResourceManager.getInstanceId())
-                .addParameter("project_id", PROJECT)
-                .addParameter("language", "generic")
+                    "{\"type\":\"object\",\"properties\":{\"key\":{\"type\":\"string\"},\"type\":{\"type\":\"string\"},\"family_name\":{\"type\":\"string\"},\"column_qualifier\":{\"type\":\"string\"},\"value\":{\"type\":\"string\"},\"timestamp_micros\":{\"type\":\"integer\"}}}")
+                .addParameter("windowing", "{\"type\":\"fixed\",\"size\":\"10s\"}")
+                .addParameter("tableId", tableId)
+                .addParameter("instanceId", bigtableResourceManager.getInstanceId())
+                .addParameter("projectId", PROJECT)
+                .addParameter("language", "python")
                 .addParameter(
                     "fields",
-                    "[{\"name\": \"rowkey\", \"value\": \"id\"}, {\"name\": \"cf:name\", \"value\": \"name\"}]")
+                    "{"
+                        + "\"key\": {\"expression\": \"key.encode('utf-8')\", \"output_type\": \"bytes\"},"
+                        + "\"type\": {\"expression\": \"type\", \"output_type\": \"string\"},"
+                        + "\"family_name\": {\"expression\": \"family_name\", \"output_type\": \"string\"},"
+                        + "\"column_qualifier\": {\"expression\": \"column_qualifier.encode('utf-8')\", \"output_type\": \"bytes\"},"
+                        + "\"value\": {\"expression\": \"value.encode('utf-8')\", \"output_type\": \"bytes\"},"
+                        + "\"timestamp_micros\": {\"expression\": \"timestamp_micros\", \"output_type\": \"integer\"}"
+                        + "}")
                 .addParameter("outputDeadLetterPubSubTopic", dlqTopic.toString()));
 
     /********************************* Act **********************************/
 
-    // Launch pipeline and assert running
+    LOG.info("Launching template with options...");
     PipelineLauncher.LaunchInfo info = launchTemplate(options);
+
+    LOG.info("Template launched. LaunchInfo: {}", info);
     assertThatPipeline(info).isRunning();
 
-    // Publish messages to the topic while the pipeline is running
-    List<Map<String, Object>> expectedSuccessRecords = new ArrayList<>();
-    List<ByteString> expectedFailureRecords = new ArrayList<>();
+    LOG.info("Creating messages to be published into the topic...");
+    List<ByteString> successMessages = new ArrayList<>();
+    List<ByteString> failureMessages = new ArrayList<>();
     for (int i = 1; i <= 10; i++) {
-      // Valid schema
       long id1 = Long.parseLong(i + "1");
       long id2 = Long.parseLong(i + "2");
-      pubsubResourceManager.publish(
-          topic,
-          null,
+      successMessages.add(
           ByteString.copyFromUtf8(
               "{\"key\": \"row"
                   + id1
                   + "\", \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq1\", \"value\": \"value1\", \"timestamp_micros\": 5000}"));
-      pubsubResourceManager.publish(
-          topic,
-          null,
+      successMessages.add(
           ByteString.copyFromUtf8(
               "{\"key\": \"row"
                   + id2
                   + "\", \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq2\", \"value\": \"value2\", \"timestamp_micros\": 1000}"));
-      expectedSuccessRecords.add(
-          Map.of(
-              "key",
-              "row" + id1,
-              "type",
-              "SetCell",
-              "family_name",
-              "cf1",
-              "column_qualifier",
-              "cq1",
-              "value",
-              "value1",
-              "timestamp_micros",
-              5000));
-      expectedSuccessRecords.add(
-          Map.of(
-              "key",
-              "row" + id2,
-              "type",
-              "SetCell",
-              "family_name",
-              "cf1",
-              "column_qualifier",
-              "cq2",
-              "value",
-              "value2",
-              "timestamp_micros",
-              1000));
 
-      // Invalid schema
+      // Missing a field, which during MapToFields transformation will cause a failure
       String invalidRow =
-          "{\"key\": 123, \"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq-invalid\", \"value\": \"invalid-value\", \"timestamp_micros\": 0}";
-      pubsubResourceManager.publish(topic, null, ByteString.copyFromUtf8(invalidRow));
-      expectedFailureRecords.add(ByteString.copyFromUtf8(invalidRow));
+          "{\"type\": \"SetCell\", \"family_name\": \"cf1\", \"column_qualifier\": \"cq-invalid\", \"value\": \"invalid-value\", \"timestamp_micros\": 0}";
+      failureMessages.add(ByteString.copyFromUtf8(invalidRow));
+    }
 
-      try {
-        TimeUnit.SECONDS.sleep(3);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
+    LOG.info("Waiting for pipeline condition...");
+
+    Publisher publisher = null;
+    try {
+      publisher = Publisher.newBuilder(topic).setCredentialsProvider(credentialsProvider).build();
+      final Publisher finalPublisher = publisher;
+
+      PipelineOperator.Result result =
+          pipelineOperator()
+              .waitForConditionsAndFinish(
+                  createConfig(info),
+                  // Publish messages and check that 20 rows are in the BigTable
+                  () -> {
+                    LOG.info(
+                        "Publishing messages to the topic to ensure pipeline has messages to"
+                            + " process...");
+                    List<ApiFuture<String>> futures = new ArrayList<>();
+                    for (ByteString successMessage : successMessages) {
+                      futures.add(
+                          finalPublisher.publish(
+                              PubsubMessage.newBuilder().setData(successMessage).build()));
+                    }
+                    for (ByteString failureMessage : failureMessages) {
+                      futures.add(
+                          finalPublisher.publish(
+                              PubsubMessage.newBuilder().setData(failureMessage).build()));
+                    }
+                    try {
+                      ApiFutures.allAsList(futures).get();
+                      LOG.info("All messages published successfully for this check.");
+                      Thread.sleep(1000); // Sleep for 1 second to avoid crashing the vm
+                    } catch (InterruptedException e) {
+                      Thread.currentThread().interrupt();
+                      throw new RuntimeException("Action interrupted", e);
+                    } catch (java.util.concurrent.ExecutionException e) {
+                      throw new RuntimeException("Error publishing messages", e);
+                    }
+
+                    List<Row> rows = bigtableResourceManager.readTable(tableId);
+                    if (rows == null) {
+                      LOG.warn(
+                          "bigtableResourceManager.readTable(tableId) returned null. Retrying.");
+                      return false;
+                    }
+                    int tableSize = rows.size();
+                    LOG.info("Checking table size. Current size: {}", tableSize);
+                    return tableSize == 20;
+                  },
+                  // Check that a minimum of 10 messages are in the dead letter queue
+                  PubsubMessagesCheck.builder(pubsubResourceManager, dlqTopic, "dlq-topic")
+                      .setMinMessages(10)
+                      .build());
+
+      /******************************** Assert ********************************/
+      assertThatResult(result).meetsConditions();
+
+    } finally {
+      if (publisher != null) {
+        publisher.shutdown();
       }
     }
 
-    // Add check that 10 dlq messages were received
-    // PubsubMessagesCheck dlqCheck =
-    //     PubsubMessagesCheck.builder(pubsubResourceManager, dlqTopic, "dlq-topic")
-    //         .setMinMessages(10)
-    //         .build();
-
-    // Add check that 20 messages were written to the table
-
-    // PipelineOperator.Result result =
-    // pipelineOperator().waitForConditionAndFinish(createConfig(info), dlqCheck);
-
-    PipelineOperator.Result result =
-        pipelineOperator()
-            .waitForConditionAndFinish(
-                createConfig(info),
-                // dlqCheck,
-                () -> bigtableResourceManager.readTable(tableId).size() >= 20);
-
-    /******************************** Assert ********************************/
-    assertThatResult(result).meetsConditions();
-
-    // Verify 20 rows in the table
+    LOG.info("Verifying 20 rows in the BigTable still exist...");
     List<Row> tableRows = bigtableResourceManager.readTable(tableId);
     assertThat(tableRows).hasSize(20);
 
-    // Verify 20 rows are expected
+    LOG.info("Verifying the exact 20 rows in BigTable...");
     Map<String, Row> rowMap =
         tableRows.stream()
             .collect(Collectors.toMap(row -> row.getKey().toStringUtf8(), row -> row));
