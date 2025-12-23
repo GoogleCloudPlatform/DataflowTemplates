@@ -85,6 +85,7 @@
     <spotless-maven-plugin.version>2.46.1</spotless-maven-plugin.version>
     <surefire.version>2.21.0</surefire.version>
     <truth.version>1.4.5</truth.version>
+    <netty.version>4.1.125.Final</netty.version>
 
     <!-- Drop pinned version once maven-dependency-plugin gets past plexus-archiver 4.8.0 -->
     <plexus-archiver.version>4.8.0</plexus-archiver.version>
@@ -115,6 +116,13 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.apache.beam</groupId>
         <artifactId>beam-sdks-java-google-cloud-platform-bom</artifactId>
