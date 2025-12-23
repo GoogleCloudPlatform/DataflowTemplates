@@ -239,8 +239,6 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
 
     return row;
   }
-    return row;
-  }
 
   private Map<String, Object> createExpectedNullRow(int id) {
     Map<String, Object> row = new HashMap<>();
