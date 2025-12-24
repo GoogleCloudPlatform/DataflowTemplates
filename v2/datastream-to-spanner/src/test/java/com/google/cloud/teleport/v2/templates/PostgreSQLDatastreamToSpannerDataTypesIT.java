@@ -36,6 +36,7 @@ import org.apache.beam.it.common.PipelineOperator;
 import org.apache.beam.it.common.utils.ResourceManagerUtils;
 import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
+import org.apache.beam.it.gcp.cloudsql.CloudPostgresResourceManager;
 import org.apache.beam.it.gcp.datastream.DatastreamResourceManager;
 import org.apache.beam.it.gcp.datastream.PostgresqlSource;
 import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
@@ -43,7 +44,6 @@ import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
 import org.apache.beam.it.gcp.storage.GcsResourceManager;
-import org.apache.beam.it.jdbc.PostgresResourceManager;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.Test;
@@ -129,7 +129,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
       "pg_dialect_data_types_test_replication_slot";
 
   private static boolean initialized = false;
-  private static PostgresResourceManager postgresResourceManager;
+  private static CloudPostgresResourceManager postgresResourceManager;
   private static SpannerResourceManager spannerResourceManager;
   private static SpannerResourceManager pgDialectSpannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
@@ -145,7 +145,7 @@ public class PostgreSQLDatastreamToSpannerDataTypesIT extends DataStreamToSpanne
       testInstances.add(this);
       if (!initialized) {
         LOG.info("Setting up PostgreSQL resource manager...");
-        postgresResourceManager = PostgresResourceManager.builder(testName).build();
+        postgresResourceManager = CloudPostgresResourceManager.builder(testName).build();
         LOG.info(
             "PostgreSQL resource manager created with URI: {}", postgresResourceManager.getUri());
         LOG.info("Setting up Spanner resource manager...");
