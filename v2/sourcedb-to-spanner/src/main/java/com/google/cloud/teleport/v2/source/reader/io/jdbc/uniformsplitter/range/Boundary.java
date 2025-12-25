@@ -109,6 +109,11 @@ public abstract class Boundary<T extends Serializable>
     return partitionColumn().decimalStepSize();
   }
 
+  @Nullable
+  Integer datetimePrecision() {
+    return partitionColumn().datetimePrecision();
+  }
+
   /**
    * @return builder for {@link Boundary}.
    */
@@ -293,6 +298,11 @@ public abstract class Boundary<T extends Serializable>
 
     public Builder<T> setDecimalStepSize(BigDecimal value) {
       this.partitionColumnBuilder().setDecimalStepSize(value);
+      return this;
+    }
+
+    public Builder<T> setDatetimePrecision(Integer value) {
+      this.partitionColumnBuilder().setDatetimePrecision(value);
       return this;
     }
 

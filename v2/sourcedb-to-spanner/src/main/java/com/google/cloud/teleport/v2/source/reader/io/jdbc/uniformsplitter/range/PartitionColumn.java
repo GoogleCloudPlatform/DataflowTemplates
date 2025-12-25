@@ -20,6 +20,7 @@ import com.google.cloud.teleport.v2.source.reader.io.jdbc.uniformsplitter.string
 import com.google.common.base.Preconditions;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.Duration;
 import javax.annotation.Nullable;
 
 /** Details about a partition column. */
@@ -56,12 +57,17 @@ public abstract class PartitionColumn implements Serializable {
   @Nullable
   public abstract Integer numericScale();
 
+  /** Precision of datetime columns. Defaults to null for non-datetime columns. */
+  @Nullable
+  public abstract Integer datetimePrecision();
+
   public static Builder builder() {
     return new AutoValue_PartitionColumn.Builder()
         .setStringCollation(null)
         .setStringMaxLength(null)
         .setNumericScale(null)
-        .setDecimalStepSize(null);
+        .setDecimalStepSize(null)
+        .setDatetimePrecision(null);
   }
 
   public abstract Builder toBuilder();
@@ -80,6 +86,8 @@ public abstract class PartitionColumn implements Serializable {
     public abstract Builder setNumericScale(Integer value);
 
     public abstract Builder setDecimalStepSize(BigDecimal value);
+
+    public abstract Builder setDatetimePrecision(Integer value);
 
     abstract PartitionColumn autoBuild();
 
@@ -107,6 +115,11 @@ public abstract class PartitionColumn implements Serializable {
                   && partitionColumn.columnClass() != Double.class),
           "Float and double columns must specify decimalStepSize. PartitionColum = "
               + partitionColumn);
+      Preconditions.checkState(
+          (partitionColumn.columnClass() == Duration.class
+                  && partitionColumn.datetimePrecision() != null)
+              || partitionColumn.columnClass() != Duration.class,
+          "Time/Duration columns must specify precision. PartitionColum = " + partitionColumn);
       return partitionColumn;
     }
   }

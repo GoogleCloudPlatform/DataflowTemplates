@@ -294,7 +294,8 @@ public class MysqlDialectAdapterTest {
             "date",
             "decimal",
             "double",
-            "double"); // double(p, d)
+            "double", // double(p, d)
+            "time");
     ImmutableList<SourceColumnIndexInfo> expectedSourceColumnIndexInfos =
         getExpectedSourceColumnIndexInfosForBasicIndexes(false);
 
@@ -463,6 +464,16 @@ public class MysqlDialectAdapterTest {
             .setOrdinalPosition(1)
             .setIndexType(IndexType.DOUBLE)
             .setDecimalStepSize(new BigDecimal("0.000001")) // Double(p, d = 6)
+            .build(),
+        SourceColumnIndexInfo.builder()
+            .setColumnName("testColTime")
+            .setIndexName("primary")
+            .setIsUnique(true)
+            .setIsPrimary(true)
+            .setCardinality(100L)
+            .setIndexType(IndexType.DURATION)
+            .setOrdinalPosition(6)
+            .setDatetimePrecision(6)
             .build());
   }
 
@@ -585,7 +596,8 @@ public class MysqlDialectAdapterTest {
       stubWasNull =
           stubWasNull
               .thenReturn(info.stringMaxLength() == null)
-              .thenReturn(info.numericScale() == null);
+              .thenReturn(info.numericScale() == null)
+              .thenReturn(info.datetimePrecision() == null);
     }
 
     OngoingStubbing stubCharSetCol =
@@ -621,6 +633,12 @@ public class MysqlDialectAdapterTest {
         ret = info.decimalStepSize().scale();
       }
       stubNumericScaleCol = stubNumericScaleCol.thenReturn(ret);
+    }
+    OngoingStubbing stubDatetimePrecision =
+        when(mockResultSet.getInt(InformationSchemaStatsCols.DATETIME_PRECISION_COL));
+    for (SourceColumnIndexInfo info : expectedSourceColumnIndexInfos) {
+      int ret = info.datetimePrecision() == null ? 0 : info.datetimePrecision();
+      stubDatetimePrecision = stubDatetimePrecision.thenReturn(ret);
     }
     OngoingStubbing stubNext = when(mockResultSet.next());
     for (long i = 0; i < expectedSourceColumnIndexInfos.size(); i++) {
