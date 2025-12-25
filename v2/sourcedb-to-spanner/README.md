@@ -91,7 +91,8 @@ gcloud dataflow flex-template run ${JOB_NAME} \
 ```
 #### Replaying DLQ entries.
 Any errors to transform a source row or failures to write to spanner get written to `dlq/severe/` path within the `outputDirectory`. It's recommended to retry the DLQ entries before applying any change capture (if any).
-To retry the DLQs, please run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in `retryDLQ` mode. After the DLQs are successfully applied, the files will be deleted from the dlq directory.
+To retry the DLQs, run the [Cloud_Datastream_to_Spanner](../datastream-to-spanner/README_Cloud_Datastream_to_Spanner.md) job in `retryDLQ` mode. Files for successfully applied DLQ entries in `dlq/severe` are deleted. Failed entries are retried until they are successfully applied.
+
 ##### Sample Command to retry DLQs.
 The following sample command could help to start a DLQ retry job.
 ```bash
@@ -99,7 +100,7 @@ gcloud  dataflow flex-template run <jobname> \
 --region=<the region where the dataflow job must run> \
 --template-file-gcs-location=gs://dataflow-templates/latest/flex/Cloud_Datastream_to_Spanner \
 --additional-experiments=use_runner_v2 \
---parameters inputFilePattern=<GCS location of the input file pattern>,streamName="ignore",\
+--parameters inputFilePattern=<outputDirectory of the bulk job>,streamName="ignore",\
 datastreamSourceType=<source_type for example mysql/oracle. This needs to be set in the absence of an actual datastream.>,\
 instanceId=<Spanner Instance Id>,databaseId=<Spanner Database Id>,sessionFilePath=<GCS path to session file>,\
 deadLetterQueueDirectory=<outputDirectory/dlq>,runMode="retryDLQ"
