@@ -39,15 +39,15 @@ public class SpannerToSourceDbExceptionClassifierTest {
   @Test
   public void testClassifySpannerExceptionPermanentCodes() {
     ErrorCode[] permanentCodes = {
-        ErrorCode.ALREADY_EXISTS,
-        ErrorCode.OUT_OF_RANGE,
-        ErrorCode.INVALID_ARGUMENT,
-        ErrorCode.NOT_FOUND,
-        ErrorCode.FAILED_PRECONDITION,
-        ErrorCode.PERMISSION_DENIED,
-        ErrorCode.UNAUTHENTICATED,
-        ErrorCode.RESOURCE_EXHAUSTED,
-        ErrorCode.UNIMPLEMENTED
+      ErrorCode.ALREADY_EXISTS,
+      ErrorCode.OUT_OF_RANGE,
+      ErrorCode.INVALID_ARGUMENT,
+      ErrorCode.NOT_FOUND,
+      ErrorCode.FAILED_PRECONDITION,
+      ErrorCode.PERMISSION_DENIED,
+      ErrorCode.UNAUTHENTICATED,
+      ErrorCode.RESOURCE_EXHAUSTED,
+      ErrorCode.UNIMPLEMENTED
     };
 
     for (ErrorCode code : permanentCodes) {
@@ -60,11 +60,11 @@ public class SpannerToSourceDbExceptionClassifierTest {
   @Test
   public void testClassifySpannerExceptionRetryableCodes() {
     ErrorCode[] retryableCodes = {
-        ErrorCode.UNAVAILABLE,
-        ErrorCode.ABORTED,
-        ErrorCode.DEADLINE_EXCEEDED,
-        ErrorCode.INTERNAL,
-        ErrorCode.UNKNOWN
+      ErrorCode.UNAVAILABLE,
+      ErrorCode.ABORTED,
+      ErrorCode.DEADLINE_EXCEEDED,
+      ErrorCode.INTERNAL,
+      ErrorCode.UNKNOWN
     };
 
     for (ErrorCode code : retryableCodes) {
@@ -83,16 +83,18 @@ public class SpannerToSourceDbExceptionClassifierTest {
 
   @Test
   public void testClassifyWrappedInvalidTransformationException() {
-    SpannerException ex = SpannerExceptionFactory.newSpannerException(
-        ErrorCode.UNKNOWN, "test", new InvalidTransformationException("test"));
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(
+            ErrorCode.UNKNOWN, "test", new InvalidTransformationException("test"));
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyWrappedChangeEventConvertorException() {
-    SpannerException ex = SpannerExceptionFactory.newSpannerException(
-        ErrorCode.UNKNOWN, "test", new ChangeEventConvertorException("test"));
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(
+            ErrorCode.UNKNOWN, "test", new ChangeEventConvertorException("test"));
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
@@ -100,46 +102,50 @@ public class SpannerToSourceDbExceptionClassifierTest {
   @Test
   public void testClassifyWrappedCodecNotFoundException() {
     CodecNotFoundException mockException = org.mockito.Mockito.mock(CodecNotFoundException.class);
-    SpannerException ex = SpannerExceptionFactory.newSpannerException(
-        ErrorCode.UNKNOWN, "test", mockException);
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(ErrorCode.UNKNOWN, "test", mockException);
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyWrappedSQLSyntaxErrorException() {
-    SpannerException ex = SpannerExceptionFactory.newSpannerException(
-        ErrorCode.UNKNOWN, "test", new SQLSyntaxErrorException("test"));
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(
+            ErrorCode.UNKNOWN, "test", new SQLSyntaxErrorException("test"));
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyWrappedSQLDataException() {
-    SpannerException ex = SpannerExceptionFactory.newSpannerException(
-        ErrorCode.UNKNOWN, "test", new SQLDataException("test"));
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(
+            ErrorCode.UNKNOWN, "test", new SQLDataException("test"));
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyWrappedSQLNonTransientConnectionExceptionPermanent() {
-    SpannerException ex = SpannerExceptionFactory.newSpannerException(
-        ErrorCode.UNKNOWN,
-        "test",
-        new SQLNonTransientConnectionException("test", "state", 9999));
+    SpannerException ex =
+        SpannerExceptionFactory.newSpannerException(
+            ErrorCode.UNKNOWN,
+            "test",
+            new SQLNonTransientConnectionException("test", "state", 9999));
     TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
     assertEquals(Constants.PERMANENT_ERROR_TAG, tag);
   }
 
   @Test
   public void testClassifyWrappedSQLNonTransientConnectionExceptionRetryable() {
-    int[] retryableSqlCodes = { 1053, 1159, 1161 };
+    int[] retryableSqlCodes = {1053, 1159, 1161};
     for (int code : retryableSqlCodes) {
-      SpannerException ex = SpannerExceptionFactory.newSpannerException(
-          ErrorCode.UNKNOWN,
-          "test",
-          new SQLNonTransientConnectionException("test", "state", code));
+      SpannerException ex =
+          SpannerExceptionFactory.newSpannerException(
+              ErrorCode.UNKNOWN,
+              "test",
+              new SQLNonTransientConnectionException("test", "state", code));
       TupleTag<String> tag = SpannerToSourceDbExceptionClassifier.classify(ex);
       assertEquals("Expected RETRYABLE for SQL code " + code, Constants.RETRYABLE_ERROR_TAG, tag);
     }

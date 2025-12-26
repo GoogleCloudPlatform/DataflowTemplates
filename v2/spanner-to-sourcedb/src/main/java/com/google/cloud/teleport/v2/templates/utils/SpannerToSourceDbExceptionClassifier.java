@@ -27,22 +27,20 @@ import java.sql.SQLSyntaxErrorException;
 import java.util.Set;
 import org.apache.beam.sdk.values.TupleTag;
 
-/**
- * Helper class to classify SpannerExceptions to Retryable error or Permanent
- * error.
- */
+/** Helper class to classify Exceptions into Retryable or Permanent error. */
 public class SpannerToSourceDbExceptionClassifier {
 
-  private static final Set<ErrorCode> permanentSpannerErrorCodes = Set.of(
-      ErrorCode.ALREADY_EXISTS,
-      ErrorCode.OUT_OF_RANGE,
-      ErrorCode.INVALID_ARGUMENT,
-      ErrorCode.NOT_FOUND,
-      ErrorCode.FAILED_PRECONDITION,
-      ErrorCode.PERMISSION_DENIED,
-      ErrorCode.UNAUTHENTICATED,
-      ErrorCode.RESOURCE_EXHAUSTED,
-      ErrorCode.UNIMPLEMENTED);
+  private static final Set<ErrorCode> permanentSpannerErrorCodes =
+      Set.of(
+          ErrorCode.ALREADY_EXISTS,
+          ErrorCode.OUT_OF_RANGE,
+          ErrorCode.INVALID_ARGUMENT,
+          ErrorCode.NOT_FOUND,
+          ErrorCode.FAILED_PRECONDITION,
+          ErrorCode.PERMISSION_DENIED,
+          ErrorCode.UNAUTHENTICATED,
+          ErrorCode.RESOURCE_EXHAUSTED,
+          ErrorCode.UNIMPLEMENTED);
 
   public static TupleTag<String> classify(Exception exception) {
     if (exception instanceof SpannerException e) {
