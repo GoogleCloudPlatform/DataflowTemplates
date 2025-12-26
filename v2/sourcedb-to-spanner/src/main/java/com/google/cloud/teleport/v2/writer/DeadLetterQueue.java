@@ -46,6 +46,7 @@ import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PDone;
+import org.apache.commons.codec.binary.Hex;
 import org.checkerframework.checker.initialization.qual.Initialized;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.UnknownKeyFor;
@@ -273,7 +274,29 @@ public class DeadLetterQueue implements Serializable {
     Map<String, Value> mutationMap = m.asMap();
     for (Map.Entry<String, Value> entry : mutationMap.entrySet()) {
       Value value = entry.getValue();
-      json.put(entry.getKey(), value == null ? null : String.valueOf(value));
+      Object val = null;
+      if (value != null && !value.isNull()) {
+        switch (value.getType().getCode()) {
+          case BYTES:
+            val = Hex.encodeHexString(value.getBytes().toByteArray());
+            break;
+          case INT64:
+            val = value.getInt64();
+            break;
+          case FLOAT64:
+            val = value.getFloat64();
+            break;
+          case NUMERIC:
+            val = value.getNumeric();
+            break;
+          case BOOL:
+            val = value.getBool();
+            break;
+          default:
+            val = value.toString();
+        }
+      }
+      putValueToJson(json, entry.getKey(), val);
     }
 
     return FailsafeElement.of(json.toString(), json.toString())
