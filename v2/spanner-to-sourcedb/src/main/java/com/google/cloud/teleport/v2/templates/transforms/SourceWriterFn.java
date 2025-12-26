@@ -208,6 +208,12 @@ public class SourceWriterFn extends DoFn<KV<Long, TrimmedShardedDataChangeRecord
       // no shard found, move to permanent error
       outputWithTag(
           c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
+    } else if (shardId.equals(Constants.RETRYABLE_SENTINEL_SHARD_ID)) {
+      outputWithTag(
+          c, Constants.RETRYABLE_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
+    } else if (shardId.equals(Constants.SEVERE_SENTINEL_SHARD_ID)) {
+      outputWithTag(
+          c, Constants.PERMANENT_ERROR_TAG, Constants.SHARD_NOT_PRESENT_ERROR_MESSAGE, spannerRec);
     } else if (shardId.equals(skipDirName)) {
       // the record is skipped
       skippedRecordCountMetric.inc();

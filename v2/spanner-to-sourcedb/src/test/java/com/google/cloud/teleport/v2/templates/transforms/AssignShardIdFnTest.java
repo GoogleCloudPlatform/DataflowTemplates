@@ -575,14 +575,14 @@ public class AssignShardIdFnTest {
             "");
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
-    record.setShard("skip");
+    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
 
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
     assignShardIdFn.setMapper(mapper);
     assignShardIdFn.processElement(processContext);
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
-    assertEquals("skip", record.getShard());
+    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -614,7 +614,7 @@ public class AssignShardIdFnTest {
             "",
             "");
 
-    record.setShard("shard1");
+    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -624,6 +624,7 @@ public class AssignShardIdFnTest {
     String keyStr = "tableName" + "_" + record.getMod().getKeysJson() + "_" + "skip";
     Long key = keyStr.hashCode() % 10000L;
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -659,7 +660,7 @@ public class AssignShardIdFnTest {
             "",
             "");
 
-    record.setShard("shard1");
+    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
     assignShardIdFn.setSpannerAccessor(spannerAccessor);
     ObjectMapper mapper = new ObjectMapper();
     mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
@@ -670,6 +671,7 @@ public class AssignShardIdFnTest {
     Long key = keyStr.hashCode() % 10000L;
 
     verify(processContext, atLeast(1)).output(eq(KV.of(key, record)));
+    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
   }
 
   @Test
@@ -734,6 +736,105 @@ public class AssignShardIdFnTest {
     com.google.cloud.Timestamp actualStaleTimestamp = capturedBound.getReadTimestamp();
 
     assertEquals(expectedStaleTimestamp, actualStaleTimestamp);
+  }
+
+  @Test
+  public void testProcessElementSpannerRetryableException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE_PATH);
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    // Mock ReadOnlyTransaction to throw a Retryable SpannerException
+    when(mockReadOnlyTransaction.read(
+            eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenThrow(
+            com.google.cloud.spanner.SpannerExceptionFactory.newSpannerException(
+                com.google.cloud.spanner.ErrorCode.UNAVAILABLE, "Detailed retryable error"));
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            SESSION_FILE_PATH,
+            "",
+            "",
+            "");
+    record.setShard(Constants.RETRYABLE_SENTINEL_SHARD_ID);
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+
+    assignShardIdFn.processElement(processContext);
+
+    String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "skip";
+    Long key = keyStr.hashCode() % 10000L;
+
+    verify(processContext).output(eq(KV.of(key, record)));
+    assertEquals(Constants.RETRYABLE_SENTINEL_SHARD_ID, record.getShard());
+  }
+
+  @Test
+  public void testProcessElementSpannerSevereException() throws Exception {
+    TrimmedShardedDataChangeRecord record = getDeleteTrimmedDataChangeRecord("shard1");
+    when(processContext.element()).thenReturn(record);
+
+    Ddl ddl = SchemaUtils.buildSpannerDdlFromSessionFile(SESSION_FILE_PATH);
+    SourceSchema sourceSchema = SchemaUtils.buildSourceSchemaFromSessionFile(SESSION_FILE_PATH);
+
+    when(processContext.sideInput(mockDdlView)).thenReturn(ddl);
+
+    // Mock ReadOnlyTransaction to throw a Permanent SpannerException (e.g. Table
+    // not found)
+    when(mockReadOnlyTransaction.read(
+            eq("tableName"), any(KeySet.class), any(Iterable.class), any(ReadOption.class)))
+        .thenThrow(
+            com.google.cloud.spanner.SpannerExceptionFactory.newSpannerException(
+                com.google.cloud.spanner.ErrorCode.NOT_FOUND, "Detailed permanent error"));
+
+    AssignShardIdFn assignShardIdFn =
+        new AssignShardIdFn(
+            SpannerConfig.create(),
+            mockDdlView,
+            sourceSchema,
+            Constants.SHARDING_MODE_MULTI_SHARD,
+            "test",
+            "skip",
+            "",
+            "",
+            "",
+            10000L,
+            Constants.SOURCE_MYSQL,
+            SESSION_FILE_PATH,
+            "",
+            "",
+            "");
+    record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+    assignShardIdFn.setSpannerAccessor(spannerAccessor);
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+    assignShardIdFn.setMapper(mapper);
+
+    assignShardIdFn.processElement(processContext);
+
+    String keyStr = record.getTableName() + "_" + record.getMod().getKeysJson() + "_" + "skip";
+    Long key = keyStr.hashCode() % 10000L;
+
+    verify(processContext).output(eq(KV.of(key, record)));
+    assertEquals(Constants.SEVERE_SENTINEL_SHARD_ID, record.getShard());
   }
 
   public TrimmedShardedDataChangeRecord getInsertTrimmedDataChangeRecord(String shardId) {

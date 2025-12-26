@@ -43,7 +43,6 @@ import com.google.cloud.teleport.v2.templates.utils.SchemaMapperUtils;
 import com.google.cloud.teleport.v2.templates.utils.ShardingLogicImplFetcher;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import java.io.StringWriter;
 import java.math.BigDecimal;
 import java.util.Base64;
 import java.util.HashMap;
@@ -258,9 +257,13 @@ public class AssignShardIdFn
       // maxConnectionsAcrossAllShards
       c.output(KV.of(finalKey, record));
     } catch (Exception e) {
-      StringWriter errors = new StringWriter();
       LOG.error("Error fetching shard Id column: {}", e);
       // The record has no shard hence will be sent to DLQ in subsequent steps
+      if (e instanceof SpannerException && ((SpannerException) e).isRetryable()) {
+        record.setShard(Constants.RETRYABLE_SENTINEL_SHARD_ID);
+      } else {
+        record.setShard(Constants.SEVERE_SENTINEL_SHARD_ID);
+      }
       String finalKeyString = record.getTableName() + "_" + keysJsonStr + "_" + skipDirName;
       Long finalKey = finalKeyString.hashCode() % maxConnectionsAcrossAllShards;
       c.output(KV.of(finalKey, record));

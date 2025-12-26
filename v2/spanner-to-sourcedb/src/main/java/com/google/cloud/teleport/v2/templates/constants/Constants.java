@@ -80,4 +80,8 @@ public class Constants {
   // Message written to the file for filtered records
   public static final String FILTERED_TAG_MESSAGE =
       "Filtered record from custom transformation in reverse replication";
+
+  // Sentinel Shard IDs for error handling
+  public static final String RETRYABLE_SENTINEL_SHARD_ID = "retryable_error_shard";
+  public static final String SEVERE_SENTINEL_SHARD_ID = "severe_error_shard";
 }
