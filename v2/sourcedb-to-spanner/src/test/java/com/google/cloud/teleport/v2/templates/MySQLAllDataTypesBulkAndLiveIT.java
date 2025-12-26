@@ -146,7 +146,7 @@ public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
     bulkJobInfo =
         launchBulkDataflowJob(
-            getClass().getSimpleName() + "_Bulk",
+            getClass().getSimpleName() + "-Bulk",
             null,
             params,
             spannerResourceManager,
