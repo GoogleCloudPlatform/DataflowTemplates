@@ -196,17 +196,16 @@ echo "{
        \"language\": \"JAVA\"
     }
   }" > ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json
-gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${TEMPLATE_IMAGE_SPEC}
+gcloud storage cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${TEMPLATE_IMAGE_SPEC}
 ```
 
 ## Rewrite default image to latest
 ```sh
 cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec.json
-gsutil cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${BUCKET_NAME}/images/${APP_NAME}-image-spec.json
+gcloud storage cp ./v2/googlecloud-to-neo4j/docs/${APP_NAME}-image-spec-${IMAGE_NAME_VERSION}.json ${BUCKET_NAME}/images/${APP_NAME}-image-spec.json
 ```
 
 ## Other resources
 
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/build
     https://cloud.google.com/sdk/gcloud/reference/dataflow/flex-template/run
-

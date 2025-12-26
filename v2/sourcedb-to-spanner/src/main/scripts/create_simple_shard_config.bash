@@ -95,7 +95,7 @@ temp_file=$(mktemp "shard-config-$(ts)-XXXX.json")
 generate_json | tee "$temp_file"
 
 # Uploads the temporary file to GCS.
-gsutil cp "$temp_file" "${OUTPUT_PATH}"
+gcloud storage cp "$temp_file" "${OUTPUT_PATH}"
 
 # Cleans up the temporary file.
 rm "$temp_file"
