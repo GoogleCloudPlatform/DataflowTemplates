@@ -13,8 +13,10 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.google.cloud.teleport.v2.templates.failureinjectiontesting;
+package com.google.cloud.teleport.v2.templates;
 
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.AUTHORS_TABLE;
+import static com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider.BOOKS_TABLE;
 import static com.google.cloud.teleport.v2.templates.MySQLDataTypesIT.repeatString;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatPipeline;
 import static org.apache.beam.it.truthmatchers.PipelineAsserts.assertThatResult;
@@ -23,7 +25,8 @@ import static org.junit.Assert.assertTrue;
 import com.google.cloud.teleport.metadata.SkipDirectRunnerTest;
 import com.google.cloud.teleport.metadata.TemplateIntegrationTest;
 import com.google.cloud.teleport.v2.spanner.migrations.transformation.CustomTransformation;
-import com.google.cloud.teleport.v2.templates.SourceDbToSpanner;
+import com.google.cloud.teleport.v2.spanner.testutils.failureinjectiontesting.MySQLSrcDataProvider;
+import com.google.cloud.teleport.v2.templates.failureinjectiontesting.SourceDbToSpannerFTBase;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -37,6 +40,7 @@ import org.apache.beam.it.conditions.ChainedConditionCheck;
 import org.apache.beam.it.conditions.ConditionCheck;
 import org.apache.beam.it.gcp.cloudsql.CloudMySQLResourceManager;
 import org.apache.beam.it.gcp.datastream.conditions.DlqEventsCountCheck;
+import org.apache.beam.it.gcp.pubsub.PubsubResourceManager;
 import org.apache.beam.it.gcp.spanner.SpannerResourceManager;
 import org.apache.beam.it.gcp.spanner.conditions.SpannerRowsCheck;
 import org.apache.beam.it.gcp.spanner.matchers.SpannerAsserts;
@@ -51,30 +55,36 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * An integration test for {@link SourceDbToSpanner} Flex template which tests all data types
- * migration with custom transformations, bulk failure injection, and live retry.
+ * A failure injection test for Bulk + retry DLQ Live migration i.e., SourceDbToSpanner and
+ * DataStreamToSpanner templates. The bulk migration template does not retry transient failures.
+ * Live migration template is used to retry the failures which happened during the Bulk migration.
+ * This test injects Spanner errors to simulate transient errors during Bulk migration and checks
+ * the template behaviour. This test tests all data types migration with custom transformations,
+ * bulk failure injection, and live retry. The Bulk failures are injected both at Custom
+ * transformation phase and Spanner write phase. The test case also includes an interleaved table.
  */
 @Category({TemplateIntegrationTest.class, SkipDirectRunnerTest.class})
 @TemplateIntegrationTest(SourceDbToSpanner.class)
 @RunWith(JUnit4.class)
-public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceDbToSpannerFTBase {
+public class MySQLAllDataTypesBulkAndLiveIT extends SourceDbToSpannerFTBase {
 
-  private static final Logger LOG =
-      LoggerFactory.getLogger(MySQLAllDataTypesCustomTransformationsBulkAndLiveFT.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MySQLAllDataTypesBulkAndLiveIT.class);
 
   private static final String MYSQL_DDL_RESOURCE =
-      "MySQLAllDataTypesCustomTransformationsBulkAndLiveFT/mysql-schema.sql";
+      "MySQLAllDataTypesBulkAndLiveIT/mysql-schema.sql";
   private static final String SPANNER_DDL_RESOURCE =
-      "MySQLAllDataTypesCustomTransformationsBulkAndLiveFT/spanner-schema.sql";
-  private static final String TABLE_NAME = "AllDataTypes";
+      "MySQLAllDataTypesBulkAndLiveIT/spanner-schema.sql";
+
+  private static final String TABLE_CT = "AllDataTypes_CT"; // Custom transformation failures
+  private static final String TABLE_SWF = "AllDataTypes_SWF"; // Spanner write failures
 
   private static PipelineLauncher.LaunchInfo bulkJobInfo;
-  private static PipelineLauncher.LaunchInfo retryLiveJobInfo;
+  private static PipelineLauncher.LaunchInfo liveJobInfo;
 
   public static CloudMySQLResourceManager mySQLResourceManager;
   public static SpannerResourceManager spannerResourceManager;
   private static GcsResourceManager gcsResourceManager;
-  private static String bulkErrorFolderFullPath;
+  private static PubsubResourceManager pubsubResourceManager;
 
   @Before
   public void setUp() throws Exception {
@@ -93,100 +103,145 @@ public class MySQLAllDataTypesCustomTransformationsBulkAndLiveFT extends SourceD
     // create MySQL Resources
     mySQLResourceManager = CloudMySQLResourceManager.builder(testName).build();
 
+    // Load DDL for AllDataTypes tables and Authors/Books
     loadSQLFileResource(mySQLResourceManager, MYSQL_DDL_RESOURCE);
 
-    bulkErrorFolderFullPath = getGcsPath("output", gcsResourceManager);
+    // Insert data for Authors and Books
+    MySQLSrcDataProvider.writeRowsInSourceDB(1, 200, mySQLResourceManager);
 
-    // Define Custom Transformation with Exception (Bad)
-    CustomTransformation customTransformationBad =
-        CustomTransformation.builder(
-                "customTransformation.jar", "com.custom.CustomTransformationAllTypesWithException")
-            .build();
-
-    // launch bulk migration
-    bulkJobInfo =
-        launchBulkDataflowJob(
-            getClass().getSimpleName(),
-            null,
-            null,
-            spannerResourceManager,
-            gcsResourceManager,
-            mySQLResourceManager,
-            customTransformationBad);
+    // create pubsub manager
+    pubsubResourceManager = setUpPubSubResourceManager();
   }
 
   @After
   public void cleanUp() {
     ResourceManagerUtils.cleanResources(
-        spannerResourceManager, mySQLResourceManager, gcsResourceManager);
+        spannerResourceManager, mySQLResourceManager, gcsResourceManager, pubsubResourceManager);
   }
 
   @Test
-  public void testAllDataTypesCustomTransformationsBulkAndLive() throws IOException {
-    // Wait for Bulk migration job to be in running state
+  public void testAllScenarios() throws IOException {
+    // --------------------------------------------------------------------------------------------
+    // Phase 1: Bulk Migration
+    // --------------------------------------------------------------------------------------------
+
+    // Launch Bulk Job for All Scenarios
+    // We use CustomTransformationAllTypesWithException which is selective:
+    // - AllDataTypes_CT table: Fails (Simulated) - Custom transformation class throws exception
+    // - AllDataTypes_SWF table: Passes transformation, Fails at Spanner Write (Schema mismatch) -
+    // length of bit_col is too small
+    // - Authors/Books table: Passes transformation, Fails at Spanner Write (Schema mismatch for
+    // Authors) - length of name column in authors table is too small. It is such that 9 rows
+    // `author_1` to `author_9` gets inserted and the rest 191 rows fail. Similarly, 9 books rows
+    // corresponding to authors would get inserted and rest 191 would fail.
+
+    CustomTransformation customTransformationBad =
+        CustomTransformation.builder(
+                "customTransformation.jar", "com.custom.CustomTransformationAllTypesWithException")
+            .build();
+
+    Map<String, String> params = new HashMap<>();
+    // No 'tables' parameter needed, migrate everything
+    params.put("outputDirectory", getGcsPath("output", gcsResourceManager));
+
+    bulkJobInfo =
+        launchBulkDataflowJob(
+            getClass().getSimpleName() + "_Bulk",
+            null,
+            params,
+            spannerResourceManager,
+            gcsResourceManager,
+            mySQLResourceManager,
+            customTransformationBad);
+
+    // Wait for bulk job
     assertThatPipeline(bulkJobInfo).isRunning();
 
     PipelineOperator.Result result =
         pipelineOperator().waitUntilDone(createConfig(bulkJobInfo, Duration.ofMinutes(30)));
     assertThatResult(result).isLaunchFinished();
 
-    // Verify DLQ has 3 events
-    ConditionCheck conditionCheck =
-        // Check that there is at least 3 errors in DLQ
+    // Verify DLQ Events
+    // Total events expected:
+    // - CT: 4 events (3 rows + 1 null row)
+    // - SWF: 3 events (3 rows, bit_col too small)
+    // - Authors: 191 events (name column too small)
+    // - Books: 191 events (parent Authors failed)
+    // Total: 4 + 3 + 191 + 191 = 389
+    assertTrue(
         DlqEventsCountCheck.builder(gcsResourceManager, "output/dlq/severe/")
-            .setMinEvents(4)
-            .build();
-    assertTrue(conditionCheck.get());
+            .setMinEvents(389)
+            .build()
+            .get());
 
-    // Define Custom Transformation without Exception (Good)
+    // --------------------------------------------------------------------------------------------
+    // Phase 2: Live Migration (Retry)
+    // --------------------------------------------------------------------------------------------
+
+    // Fix schemas before retry
+    spannerResourceManager.executeDdlStatement(
+        "ALTER TABLE `" + TABLE_SWF + "` ALTER COLUMN `bit_col` BYTES(MAX)");
+    spannerResourceManager.executeDdlStatement(
+        "ALTER TABLE `Authors` ALTER COLUMN `name` STRING(200)");
+
+    // Retry with Good Custom Transformation class
     CustomTransformation customTransformationGood =
         CustomTransformation.builder(
                 "customTransformation.jar", "com.custom.CustomTransformationAllTypes")
             .build();
 
-    // launch forward migration template in retryDLQ mode
-    retryLiveJobInfo =
+    liveJobInfo =
         launchFwdDataflowJobInRetryDlqMode(
             spannerResourceManager,
-            bulkErrorFolderFullPath,
-            bulkErrorFolderFullPath + "/dlq",
+            getGcsPath("output", gcsResourceManager),
+            getGcsPath("output/dlq", gcsResourceManager),
             gcsResourceManager,
             customTransformationGood);
 
-    // Wait for Spanner to have all 3 rows
-    conditionCheck =
+    // Wait and Verify All Tables
+    ConditionCheck conditionCheck =
         ChainedConditionCheck.builder(
                 List.of(
-                    SpannerRowsCheck.builder(spannerResourceManager, TABLE_NAME)
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE_CT)
                         .setMinRows(4)
                         .setMaxRows(4)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, TABLE_SWF)
+                        .setMinRows(3)
+                        .setMaxRows(3)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, AUTHORS_TABLE)
+                        .setMinRows(200)
+                        .setMaxRows(200)
+                        .build(),
+                    SpannerRowsCheck.builder(spannerResourceManager, BOOKS_TABLE)
+                        .setMinRows(200)
+                        .setMaxRows(200)
                         .build()))
             .build();
 
-    result =
-        pipelineOperator()
-            .waitForConditionAndCancel(
-                createConfig(retryLiveJobInfo, Duration.ofMinutes(15)), conditionCheck);
-    assertThatResult(result).meetsConditions();
+    assertThatResult(
+            pipelineOperator()
+                .waitForConditionAndCancel(
+                    createConfig(liveJobInfo, Duration.ofMinutes(15)), conditionCheck))
+        .meetsConditions();
 
-    // Verify Non null Data Content
+    // Verify CT Data
     List<Map<String, Object>> expectedDataNonNull = getExpectedData();
-
-    List<com.google.cloud.spanner.Struct> allRecords =
-        spannerResourceManager.runQuery("SELECT * FROM " + TABLE_NAME);
-
-    SpannerAsserts.assertThatStructs(allRecords)
+    List<com.google.cloud.spanner.Struct> allRecordsCT =
+        spannerResourceManager.runQuery("SELECT * FROM " + TABLE_CT);
+    SpannerAsserts.assertThatStructs(allRecordsCT)
         .hasRecordsUnorderedCaseInsensitiveColumns(expectedDataNonNull);
+    verifyNullRow(allRecordsCT);
 
-    // Manual assertion for the null row
-    verifyNullRow(allRecords);
+    // Verify SWF Data
+    SpannerAsserts.assertThatStructs(spannerResourceManager.runQuery("SELECT * FROM " + TABLE_SWF))
+        .hasRecordsUnorderedCaseInsensitiveColumns(expectedDataNonNull);
   }
 
   private void verifyNullRow(List<com.google.cloud.spanner.Struct> structs) {
-    // Iterate over all structs and verify the struct with id=4
     for (com.google.cloud.spanner.Struct struct : structs) {
       if (struct.getLong("id") == 4) {
-        // Verify all columns except id are null
         for (com.google.cloud.spanner.Type.StructField field : struct.getType().getStructFields()) {
           if (field.getName().equalsIgnoreCase("id")) {
             continue;
