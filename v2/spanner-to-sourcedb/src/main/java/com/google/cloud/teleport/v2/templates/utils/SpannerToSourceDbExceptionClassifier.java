@@ -33,7 +33,7 @@ import org.apache.beam.sdk.values.TupleTag;
  */
 public class SpannerToSourceDbExceptionClassifier {
 
-  private static final Set<ErrorCode> permanentErrorCodes = Set.of(
+  private static final Set<ErrorCode> permanentSpannerErrorCodes = Set.of(
       ErrorCode.ALREADY_EXISTS,
       ErrorCode.OUT_OF_RANGE,
       ErrorCode.INVALID_ARGUMENT,
@@ -78,7 +78,7 @@ public class SpannerToSourceDbExceptionClassifier {
       return Constants.PERMANENT_ERROR_TAG;
     }
 
-    if (permanentErrorCodes.contains(exception.getErrorCode())) {
+    if (permanentSpannerErrorCodes.contains(exception.getErrorCode())) {
       return Constants.PERMANENT_ERROR_TAG;
     }
     return Constants.RETRYABLE_ERROR_TAG;
